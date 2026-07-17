@@ -84,7 +84,7 @@ readonly FILE_ROWS="${work_dir}/files.jsonl"
 for file_name in "${DOMEYE_CORE_INFO_FILES[@]}"; do
     file_path="${PAYLOAD_DIR}/${file_name}"
     if [[ "${file_name}" == *.csv ]]; then
-        record_count="$(awk 'END { print NR > 0 ? NR - 1 : 0 }' "${file_path}")"
+        record_count="$(awk 'END { print (NR > 0 ? NR - 1 : 0) }' "${file_path}")"
         count_method='CSV 物理行数减去表头'
     else
         domeye_artifact_require_command unzip
