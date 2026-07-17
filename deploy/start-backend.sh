@@ -46,7 +46,7 @@ install -d -m 0750 "${DOMEYE_CORE_LOG_DIR}"
 screen \
     -L \
     -Logfile "${DOMEYE_CORE_BACKEND_LOG}" \
-    -DmS "${DOMEYE_CORE_SCREEN_NAME}" \
+    -dmS "${DOMEYE_CORE_SCREEN_NAME}" \
     env \
         FLASK_CONFIG=production \
         HOST="${DOMEYE_CORE_BACKEND_HOST}" \
