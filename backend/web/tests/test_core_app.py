@@ -1,5 +1,6 @@
 import hashlib
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -44,12 +45,21 @@ def test_removed_platform_routes_return_404(client):
         assert client.get(path).status_code == 404
 
 
-def test_health_does_not_require_database_or_assets(client):
+def test_health_does_not_require_database_or_assets(client, assert_contract):
+    before = datetime.now(timezone.utc)
     response = client.get('/api/v1/healthz')
+    after = datetime.now(timezone.utc)
+
     assert response.status_code == 200
     payload = response.get_json()
+    assert_contract(payload, {'status': str, 'service': str, 'time': str})
     assert payload['status'] == 'ok'
     assert payload['service'] == 'domeye-core'
+    assert payload['time'].endswith('Z')
+
+    health_time = datetime.fromisoformat(payload['time'].replace('Z', '+00:00'))
+    assert health_time.tzinfo == timezone.utc
+    assert before <= health_time <= after
 
 
 def test_removed_services_are_not_imported(app):
