@@ -84,7 +84,13 @@ domeye_database_wait_container() {
     local container_name="$1"
     local attempt
     for (( attempt = 1; attempt <= 90; attempt++ )); do
-        if docker exec "${container_name}" pg_isready -q -U "${DOMEYE_CORE_DB_ADMIN_USER}" -d "${DOMEYE_CORE_DB_NAME}"; then
+        # 首次初始化会短暂启动临时 PostgreSQL；只有 PID 1 已切换为最终 postgres 才算就绪。
+        if docker exec "${container_name}" sh -c \
+            'test "$(cat /proc/1/comm)" = postgres' \
+            >/dev/null 2>&1 \
+            && docker exec "${container_name}" pg_isready -q \
+                -U "${DOMEYE_CORE_DB_ADMIN_USER}" \
+                -d "${DOMEYE_CORE_DB_NAME}"; then
             return 0
         fi
         sleep 1
