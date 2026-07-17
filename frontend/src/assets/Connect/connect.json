@@ -1,0 +1,726 @@
+[
+  {
+    "visualCountry": "中国",
+    "connectArea": [
+      {
+        "countryArea": "G20",
+        "connectData": {
+          "LeftTopData": [
+            {"title": "出口总路径", "num": 91509, "changeType": true, "changeNum": "10%"},
+            {"title": "出口关键路径", "num": 3924, "changeType": false, "changeNum": "9%"},
+            {"title": "出口机构", "num": 40, "changeType": true, "changeNum": "5%"},
+            {"title": "出口AS", "num": 40, "changeType": false, "changeNum": "7%"}
+          ],
+          "LeftCenterData": {
+            "country": [
+              {
+                "countryFlag": "us",
+                "countryName": "美国",
+                "num": 34339
+              },
+              {
+                "countryFlag": "br",
+                "countryName": "巴西",
+                "num": 14511
+              },
+              {
+                "countryFlag": "ru",
+                "countryName": "俄罗斯",
+                "num": 7449
+              },
+              {
+                "countryFlag": "in",
+                "countryName": "印度",
+                "num": 5906
+              },
+              {
+                "countryFlag": "id",
+                "countryName": "印度尼西亚",
+                "num": 5437
+              },
+              {
+                "countryFlag": "gb",
+                "countryName": "英国",
+                "num": 3275
+              },
+              {
+                "countryFlag": "de",
+                "countryName": "德国",
+                "num": 3051
+              },
+              {
+                "countryFlag": "au",
+                "countryName": "澳大利亚",
+                "num": 3020
+              },
+              {
+                "countryFlag": "ca",
+                "countryName": "加拿大",
+                "num": 2571
+              },
+              {
+                "countryFlag": "ar",
+                "countryName": "阿根廷",
+                "num": 1915
+              }
+            ],
+            "organization": [
+              {
+                "name": "Shanghai Huajuan Information Technology Co. Ltd.",
+                "value": 81598
+              },
+              {
+                "name": "Datacamp Limited",
+                "value": 62078
+              },
+              {
+                "name": "Comcast Cable Communications LLC",
+                "value": 28783
+              },
+              {
+                "name": "PT. Mega Akses Persada",
+                "value": 19192
+              },
+              {
+                "name": "Sify Limited",
+                "value": 16343
+              },
+              {
+                "name": "Hurricane Electric LLC",
+                "value": 16110
+              },
+              {
+                "name": "Cogent Communications",
+                "value": 15533
+              },
+              {
+                "name": "Level 3 Parent LLC",
+                "value": 13038
+              },
+              {
+                "name": "Wuhan LSHIY Network Technology Co. Ltd.",
+                "value": 9912
+              },
+              {
+                "name": "TATA COMMUNICATIONS (AMERICA) INC",
+                "value": 5949
+              }
+            ],
+            "as": [
+              {
+                "organization": "Shanghai Huajuan Information Technology Co. Ltd.",
+                "as": "AS131477",
+                "path": 81598
+              },
+              {
+                "organization": "Datacamp Limited",
+                "as": "AS60068",
+                "path": 62065
+              },
+              {
+                "organization": "Comcast Cable Communications LLC",
+                "as": "AS7922",
+                "path": 27354
+              },
+              {
+                "organization": "Hurricane Electric LLC",
+                "as": "AS6939",
+                "path": 16110
+              },
+              {
+                "organization": "Cogent Communications",
+                "as": "AS174",
+                "path": 15532
+              },
+              {
+                "organization": "Level 3 Parent LLC",
+                "as": "AS3356",
+                "path": 12509
+              },
+              {
+                "organization": "Wuhan LSHIY Network Technology Co. Ltd.",
+                "as": "AS139589",
+                "path": 9911
+              },
+              {
+                "organization": "TATA COMMUNICATIONS (AMERICA) INC",
+                "as": "AS6453",
+                "path": 5942
+              },
+              {
+                "organization": "ALOO TELECOM - FSF TECNOLOGIA SA",
+                "as": "AS61568",
+                "path": 4083
+              },
+              {
+                "organization": "Bharti Airtel Limited",
+                "as": "AS9498",
+                "path": 3876
+              }
+            ]
+          },
+          "LeftBottomData": {
+            "organization": [
+              {
+                "organization": "Wuhan LSHIY Network Technology Co. Ltd.",
+                "path": 1
+              },
+              {
+                "organization": "China Telecom",
+                "path": 1
+              },
+              {
+                "organization": "Shanghai Huajuan Information Technology Co. Ltd.",
+                "path": 1
+              }
+            ],
+            "area": [
+              {
+                "organization": "China Telecom",
+                "path": 1298,
+                "countryFlag": "flag-icon-cn",
+                "countryName": "中国"
+              },
+              {
+                "organization": "DMIT Cloud Services",
+                "path": 578,
+                "countryFlag": "flag-icon-us",
+                "countryName": "美国"
+              },
+              {
+                "organization": "Datacamp Limited",
+                "path": 348,
+                "countryFlag": "flag-icon-gb",
+                "countryName": "英国"
+              },
+              {
+                "organization": "CHINA UNICOM Industrial Internet Backbone",
+                "path": 270,
+                "countryFlag": "flag-icon-cn",
+                "countryName": "中国"
+              },
+              {
+                "organization": "China Mobile",
+                "path": 202,
+                "countryFlag": "flag-icon-cn",
+                "countryName": "中国"
+              },
+              {
+                "organization": "Alibaba (US) Technology Co. Ltd.",
+                "path": 173,
+                "countryFlag": "flag-icon-cn",
+                "countryName": "中国"
+              },
+              {
+                "organization": "Arelion",
+                "path": 129,
+                "countryFlag": "flag-icon-se",
+                "countryName": "瑞典"
+              },
+              {
+                "organization": "Hurricane Electric LLC",
+                "path": 87,
+                "countryFlag": "flag-icon-us",
+                "countryName": "美国"
+              },
+              {
+                "organization": "Cogent Communications",
+                "path": 86,
+                "countryFlag": "flag-icon-us",
+                "countryName": "美国"
+              },
+              {
+                "organization": "Comcast Cable Communications LLC",
+                "path": 75,
+                "countryFlag": "flag-icon-us",
+                "countryName": "美国"
+              }
+            ]
+          },
+          "CenterTopData": [
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "美国",
+              "ImportLng": -77.036369,
+              "ImportLat": 38.895111,
+              "t": 34339,
+              "label": "美国:34339"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "日本",
+              "ImportLng": 139.691711,
+              "ImportLat": 35.689499,
+              "t": 941,
+              "label": "日本:941"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "印度",
+              "ImportLng": 77.216667,
+              "ImportLat": 28.666668,
+              "t": 5906,
+              "label": "印度:5906"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "印度尼西亚",
+              "ImportLng": 106.845131,
+              "ImportLat": -6.21462,
+              "t": 5437,
+              "label": "印度尼西亚:5437"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "澳大利亚",
+              "ImportLng": 149.128067,
+              "ImportLat": -35.283459,
+              "t": 3020,
+              "label": "澳大利亚:3020"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "南非",
+              "ImportLng": 28.18783,
+              "ImportLat": -25.74486,
+              "t": 912,
+              "label": "南非:912"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "德国",
+              "ImportLng": 13.41053,
+              "ImportLat": 52.524368,
+              "t": 3051,
+              "label": "德国:3051"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "英国",
+              "ImportLng": -0.09184,
+              "ImportLat": 51.512791,
+              "t": 3275,
+              "label": "英国:3275"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "法国",
+              "ImportLng": 2.3488,
+              "ImportLat": 48.853409,
+              "t": 1716,
+              "label": "法国:1716"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "意大利",
+              "ImportLng": 12.51133,
+              "ImportLat": 41.89193,
+              "t": 1462,
+              "label": "意大利:1462"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "加拿大",
+              "ImportLng": -75.69812,
+              "ImportLat": 45.411171,
+              "t": 2571,
+              "label": "加拿大:2571"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "巴西",
+              "ImportLng": -47.929722,
+              "ImportLat": -15.77972,
+              "t": 14511,
+              "label": "巴西:14511"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "韩国",
+              "ImportLng": 128.725006,
+              "ImportLat": 36.565559,
+              "t": 1200,
+              "label": "韩国:1200"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "西班牙",
+              "ImportLng": -3.70256,
+              "ImportLat": 40.4165,
+              "t": 1378,
+              "label": "西班牙:1378"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "阿根廷",
+              "ImportLng": -68.827171,
+              "ImportLat": -32.890839,
+              "t": 1915,
+              "label": "阿根廷:1915"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "墨西哥",
+              "ImportLng": -99.127663,
+              "ImportLat": 19.428471,
+              "t": 920,
+              "label": "墨西哥:920"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "俄罗斯",
+              "ImportLng": 37.615555,
+              "ImportLat": 55.75222,
+              "t": 7449,
+              "label": "俄罗斯:7449"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "土耳其",
+              "ImportLng": 32.854271,
+              "ImportLat": 39.919868,
+              "t": 1168,
+              "label": "土耳其:1168"
+            },
+            {
+              "ExportCountry": "中国",
+              "ExportLng": 118.849998,
+              "ExportLat": 32.033329,
+              "ImportCountry": "沙特阿拉伯",
+              "ImportLng": 46.721851,
+              "ImportLat": 24.687731,
+              "t": 338,
+              "label": "沙特阿拉伯:338"
+            }
+          ],
+          "RightTopData": [
+            {
+              "title": "入口总路径",
+              "num": 107541,
+              "changeType": true,
+              "changeNum": "11%"
+            },
+            {
+              "title": "入口关键路径",
+              "num": 4376,
+              "changeType": false,
+              "changeNum": "13%"
+            },
+            {
+              "title": "入口机构",
+              "num": 1367,
+              "changeType": true,
+              "changeNum": "9%"
+            },
+            {
+              "title": "入口AS",
+              "num": 2458,
+              "changeType": false,
+              "changeNum": "5%"
+            }
+          ],
+          "RightCenterData": {
+            "country": [
+              {
+                "countryFlag": "us",
+                "countryName": "美国",
+                "num": 24414
+              },
+              {
+                "countryFlag": "gb",
+                "countryName": "英国",
+                "num": 18445
+              },
+              {
+                "countryFlag": "de",
+                "countryName": "德国",
+                "num": 18023
+              },
+              {
+                "countryFlag": "ca",
+                "countryName": "加拿大",
+                "num": 17889
+              },
+              {
+                "countryFlag": "fr",
+                "countryName": "法国",
+                "num": 11879
+              },
+              {
+                "countryFlag": "tr",
+                "countryName": "土耳其",
+                "num": 6807
+              },
+              {
+                "countryFlag": "ru",
+                "countryName": "俄罗斯",
+                "num": 6127
+              },
+              {
+                "countryFlag": "au",
+                "countryName": "澳大利亚",
+                "num": 1897
+              },
+              {
+                "countryFlag": "za",
+                "countryName": "南非",
+                "num": 1054
+              },
+              {
+                "countryFlag": "it",
+                "countryName": "意大利",
+                "num": 1006
+              }
+            ],
+            "organization": [
+              {
+                "name": "China Education and Research Network (CERNET)",
+                "value": 213142
+              },
+              {
+                "name": "Hurricane Electric LLC",
+                "value": 76067
+              },
+              {
+                "name": "China Telecom",
+                "value": 30065
+              },
+              {
+                "name": "Alibaba (US) Technology Co. Ltd.",
+                "value": 15313
+              },
+              {
+                "name": "Level 3 Parent LLC",
+                "value": 10191
+              },
+              {
+                "name": "China Mobile",
+                "value": 9853
+              },
+              {
+                "name": "CHINA UNICOM Industrial Internet Backbone",
+                "value": 8605
+              },
+              {
+                "name": "Omer GOLGELI",
+                "value": 6807
+              },
+              {
+                "name": "meerfarbig GmbH & Co. KG",
+                "value": 6462
+              },
+              {
+                "name": "Staclar Carrier Ltd.",
+                "value": 6183
+              }
+            ],
+            "as": [
+              {
+                "organization": "Hurricane Electric LLC",
+                "as": "AS6939",
+                "path": 76067
+              },
+              {
+                "organization": "China Education and Research Network (CERNET)",
+                "as": "AS23911",
+                "path": 70500
+              },
+              {
+                "organization": "China Education and Research Network (CERNET)",
+                "as": "AS38255",
+                "path": 69669
+              },
+              {
+                "organization": "China Telecom",
+                "as": "AS4134",
+                "path": 12749
+              },
+              {
+                "organization": "Level 3 Parent LLC",
+                "as": "AS3356",
+                "path": 9245
+              },
+              {
+                "organization": "Omer GOLGELI",
+                "as": "AS202365",
+                "path": 6807
+              },
+              {
+                "organization": "meerfarbig GmbH & Co. KG",
+                "as": "AS34549",
+                "path": 6462
+              },
+              {
+                "organization": "Staclar Carrier Ltd.",
+                "as": "AS34854",
+                "path": 6183
+              },
+              {
+                "organization": "4b42 UG",
+                "as": "AS61218",
+                "path": 6138
+              },
+              {
+                "organization": "EBOX",
+                "as": "AS1403",
+                "path": 6082
+              }
+            ]
+          },
+          "RightBottomData": {
+            "country": [
+              {
+                "countryFlag": "flag-icon-ch",
+                "countryName": "瑞士",
+                "path": 738398
+              },
+              {
+                "countryFlag": "flag-icon-us",
+                "countryName": "美国",
+                "path": 545815
+              },
+              {
+                "countryFlag": "flag-icon-no",
+                "countryName": "挪威",
+                "path": 488527
+              },
+              {
+                "countryFlag": "flag-icon-pl",
+                "countryName": "波兰",
+                "path": 454198
+              },
+              {
+                "countryFlag": "flag-icon-gb",
+                "countryName": "英国",
+                "path": 451750
+              },
+              {
+                "countryFlag": "flag-icon-de",
+                "countryName": "德国",
+                "path": 436837
+              },
+              {
+                "countryFlag": "flag-icon-nl",
+                "countryName": "荷兰",
+                "path": 431168
+              },
+              {
+                "countryFlag": "flag-icon-sg",
+                "countryName": "新加坡",
+                "path": 425056
+              },
+              {
+                "countryFlag": "flag-icon-ca",
+                "countryName": "加拿大",
+                "path": 423330
+              },
+              {
+                "countryFlag": "flag-icon-fr",
+                "countryName": "法国",
+                "path": 293683
+              }
+            ],
+            "area": [
+              {
+                "countryFlag": "flag-icon-ch",
+                "countryName": "瑞士",
+                "organization": "Securebit AG",
+                "path": 461934
+              },
+              {
+                "countryFlag": "flag-icon-ch",
+                "countryName": "瑞士",
+                "organization": "iFog GmbH",
+                "path": 276327
+              },
+              {
+                "countryFlag": "flag-icon-tr",
+                "countryName": "土耳其",
+                "organization": "Omer GOLGELI",
+                "path": 242009
+              },
+              {
+                "countryFlag": "flag-icon-my",
+                "countryName": "马来西亚",
+                "organization": "Gigabit Hosting Sdn Bhd",
+                "path": 240757
+              },
+              {
+                "countryFlag": "flag-icon-gb",
+                "countryName": "英国",
+                "organization": "Staclar Carrier Ltd.",
+                "path": 156206
+              },
+              {
+                "countryFlag": "flag-icon-no",
+                "countryName": "挪威",
+                "organization": "Anders Hansen",
+                "path": 154569
+              },
+              {
+                "countryFlag": "flag-icon-sg",
+                "countryName": "新加坡",
+                "organization": "eSys Technologies Pte Ltd",
+                "path": 151898
+              },
+              {
+                "countryFlag": "flag-icon-no",
+                "countryName": "挪威",
+                "organization": "Daniel Husand",
+                "path": 151582
+              },
+              {
+                "countryFlag": "flag-icon-nl",
+                "countryName": "荷兰",
+                "organization": "The Mastermind Holding B.V.",
+                "path": 150883
+              },
+              {
+                "countryFlag": "flag-icon-de",
+                "countryName": "德国",
+                "organization": "Nonattached Network e.V.",
+                "path": 150556
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+]
