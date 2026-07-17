@@ -1,12 +1,9 @@
 from flask import request
 from flask_restful import Resource
-from services import (
+from services.events_service import (
     get_event_detail_data,
     get_event_list_data,
-    get_event_state,
     get_top_event_items,
-    judge_event,
-    notify_event,
 )
 
 # --- Resource Classes ---
@@ -47,40 +44,4 @@ class EventDetailResource(Resource):
             event_id=event_id,
             source=source,
             query_params=request.args.to_dict(flat=True),
-        )
-
-class EventStateResource(Resource):
-    """
-    获取或更新事件的研判状态
-    Endpoint: /api/v1/events/state
-    """
-    def get(self):
-        return get_event_state(detail_url=request.args.get('detail_url'))
-
-### 新加类
-class EventJudgeResource(Resource):
-    """
-    提交事件的研判结论
-    Endpoint: /api/v1/events/judge
-    """
-    def post(self):
-        data = request.get_json()
-        return judge_event(
-            detail_url=data.get('detail_url'),
-            state=data.get('state'),
-            judge_reason=data.get('judge_reason'),
-            userid='admin',
-        )
-
-
-class EventNotifyResource(Resource):
-    """
-    提交事件的通报操作
-    Endpoint: /api/v1/events/notify
-    """
-    def post(self):
-        data = request.get_json()
-        return notify_event(
-            detail_url=data.get('detail_url'),
-            userid='admin',
         )

@@ -1,11 +1,5 @@
-'''
-Author: Botong Wu 2048400180@qq.com
-Date: 2025-07-10 20:26:39
-LastEditors: Botong Wu 2048400180@qq.com
-LastEditTime: 2026-02-04 18:52:40
-FilePath: /bgpdata/Domeye/backend/run.py
-Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-'''
+"""Domeye Core Web 服务入口。"""
+
 import os
 
 
@@ -21,62 +15,52 @@ def load_local_env():
                 continue
             key, value = line.split('=', 1)
             key = key.strip()
-            value = value.strip()
-            if not key or key in os.environ:
-                continue
-            os.environ[key] = value
+            if key and key not in os.environ:
+                os.environ[key] = value.strip()
 
 
 load_local_env()
 
-from web.flask_app import flask_app
-from config.config import DEBUG, PORT, init_runtime_directories
+from config.config import (  # noqa: E402
+    AUTO_INIT_DB,
+    DEBUG,
+    HOST,
+    LOAD_CORE_DATA_ON_STARTUP,
+    PORT,
+    init_runtime_directories,
+)
+from web.flask_app import create_flask_app  # noqa: E402
 
-# --- Application Factory Pattern ---
 
 def create_app(config_name=None):
-    """
-    创建并配置 Flask 应用实例
-    """
-    if config_name is None:
-        config_name = os.getenv('FLASK_CONFIG', 'default')
-    
-    # 1. 从 config/config.py 加载配置
-    app = flask_app
-
-    register_routes(app)
-    initialize_runtime_services()
-    
-    return app
-
-
-def register_routes(app):
-    # 导入路由配置会触发 api.add_resource，仍然集中在启动流程中完成。
-    with app.app_context():
-        from web.api import route
+    app = create_flask_app()
+    effective_config = config_name or os.getenv('FLASK_CONFIG', 'default')
+    if effective_config != 'testing':
+        initialize_runtime_services()
     return app
 
 
 def initialize_runtime_services():
-    if os.getenv('FLASK_CONFIG') == 'testing':
+    if not (AUTO_INIT_DB or LOAD_CORE_DATA_ON_STARTUP):
         return
 
     init_runtime_directories()
 
-    from init_db import auto_init_db
-    auto_init_db()
+    if AUTO_INIT_DB:
+        from init_db import auto_init_db
 
-    from utils.data_loader import init_global_data
-    init_global_data()
+        auto_init_db()
 
-# --- Main Entry Point ---
+    if LOAD_CORE_DATA_ON_STARTUP:
+        from utils.data_loader import init_global_data
+
+        init_global_data()
+
 
 if __name__ == '__main__':
-    # 创建应用实例
-    app = create_app()
-    
-    
-    # 启动 Flask 开发服务器
-    # DEBUG=True 时启用自动重载，避免每次改代码都手动重启
-    # app.run(host='0.0.0.0', port=PORT, debug=DEBUG, use_reloader=DEBUG)
-    app.run(host='0.0.0.0', port=PORT, debug=False, use_reloader=False)
+    create_app().run(
+        host=HOST,
+        port=PORT,
+        debug=DEBUG,
+        use_reloader=DEBUG,
+    )

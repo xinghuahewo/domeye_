@@ -16,6 +16,6 @@ class HealthzResource(Resource):
     def get(self):
         return {
             "status": "ok",
-            "service": "domeye-backend",
+            "service": "domeye-core",
             "time": _utc_now_iso(),
         }, 200

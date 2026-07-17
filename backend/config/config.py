@@ -38,8 +38,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # print(BASE_DIR)
 # Flask 应用配置
 SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production')
-PORT = _get_int('PORT', 19743)
+HOST = os.environ.get('HOST', '127.0.0.1')
+PORT = _get_int('PORT', 28473)
 DEBUG = _get_bool('DEBUG', True)
+AUTO_INIT_DB = _get_bool('AUTO_INIT_DB', False)
+LOAD_CORE_DATA_ON_STARTUP = _get_bool('LOAD_CORE_DATA_ON_STARTUP', False)
 
 # 检测数据来源 SOURCE: r表示数据来源于ripe ris, c表示数据来源于中心内部
 SOURCE = os.environ.get('SOURCE', 'r')
@@ -68,7 +71,7 @@ COUNTRY_TOPOLOGY_SNAPSHOT_TABLE = 'country_topology_snapshot'
 COUNTRY_TOPOLOGY_FULL_EDGE_THRESHOLD = 50000
 
 # 信息文件路径
-INFO_DIR = os.path.join(BASE_DIR, 'info')
+INFO_DIR = os.environ.get('INFO_DIR', os.path.join(BASE_DIR, 'info'))
 AS_INFO_FILE = os.path.join(INFO_DIR, 'as_entity.csv')
 AS_INFO_OLD_FILE = os.path.join(INFO_DIR, 'as_dict.txt')
 TOP_NX_FILE = os.path.join(INFO_DIR, 'top_nx.csv')
