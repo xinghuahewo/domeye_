@@ -1,0 +1,198 @@
+国家拓扑（国家中断页）操作手册
+================================
+
+一、功能说明
+------------
+本功能用于在“国家中断详情页”展示“国家内部 AS 拓扑”，并将事件中的 outage_ases（中断 AS 列表）标红返回前端。
+
+拓扑口径（非常重要）：
+- 使用 RIB 原始 AS_PATH 的相邻两跳 (u, v) 作为一条边
+- 只保留 u 与 v 同属一个国家（中文国家名 country_cn 相同）的边，作为该国“内部拓扑”
+- 边为无向边：统一存为 (min(u,v), max(u,v))，只存一条，天然去重
+
+
+二、涉及模块/文件
+----------------
+1) 数据构建入口（读取RIB、抽边、写库）
+- /home/bgpdata/Domeye/backend/core/BGPResource.py
+  - CountryTopologyBuilder.build_and_store_from_rib()
+  - 通过环境变量 BUILD_COUNTRY_TOPOLOGY=1 启用
+
+2) 数据库表与SQL封装
+- /home/bgpdata/Domeye/backend/database/country_topology.py
+  - create_country_topology_edge_table()
+  - create_country_topology_snapshot_table()
+  - insert_country_edges(), delete_country_edges()
+  - get_latest_build_time(), get_country_edges_by_nodes(), get_all_country_edges()
+
+3) 接口返回（国家中断详情页）
+- /home/bgpdata/Domeye/backend/web/api/events/api.py
+  - country_outage 分支调用 build_country_topo_dict()
+
+4) 拓扑组装/子图裁剪（接口用）
+- /home/bgpdata/Domeye/backend/core/visualize/outage_topo.py
+  - build_country_topo_dict()
+  - generate_graph()（目前优先从DB读取，失败回退旧 topo.pkl）
+
+5) 配置项
+- /home/bgpdata/Domeye/backend/config/config.py
+  - COUNTRY_TOPOLOGY_EDGE_TABLE（默认 country_topology_edge）
+  - COUNTRY_TOPOLOGY_SNAPSHOT_TABLE（默认 country_topology_snapshot）
+  - COUNTRY_TOPOLOGY_FULL_EDGE_THRESHOLD（小国全量阈值，默认 50000）
+
+
+三、数据库与建表
+----------------
+数据库连接参数来自：
+- /home/bgpdata/Domeye/backend/config/database.py
+  DB_HOST=<your-db-host>
+  DB_PORT=<your-db-port>
+  DB_USER=<your-db-user>
+  DB_NAME=<your-db-name>
+
+1) 使用 psql 连接数据库
+在容器/机器上执行（需要安装 psql 客户端）：
+
+  psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+
+非交互（不推荐长期使用）：
+
+  PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"
+
+常用检查：
+  \\dt
+  \\d country_topology_edge
+  \\d country_topology_snapshot
+
+2) 通过Python建表（推荐，使用项目内封装）
+在容器内执行（要求能 import 项目包）：
+
+  cd /home/bgpdata/Domeye/backend && python -c "
+  from database.utils import get_conn
+  from config.database import DATABASE, USER, PASSWORD, HOST, PORT
+  from config.config import COUNTRY_TOPOLOGY_EDGE_TABLE, COUNTRY_TOPOLOGY_SNAPSHOT_TABLE
+  from database.country_topology import create_country_topology_edge_table, create_country_topology_snapshot_table
+  conn = get_conn(database=DATABASE, user=USER, password=PASSWORD, host=HOST, port=PORT)
+  create_country_topology_edge_table(conn, COUNTRY_TOPOLOGY_EDGE_TABLE)
+  create_country_topology_snapshot_table(conn, COUNTRY_TOPOLOGY_SNAPSHOT_TABLE)
+  print('OK: tables created')
+  conn.close()
+  "
+
+说明：
+- 建表为 CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
+- 只影响新表，不会修改既有业务表数据
+
+
+四、构建“基线国家拓扑”（从RIB抽取）
+--------------------------------
+1) 前置条件
+- RIB 数据目录/文件配置在 /home/bgpdata/Domeye/backend/config/config.py
+  - BASE_DATA_PATH
+  - MODE / RIB_HISTORY_FILE
+
+- ASN -> 国家映射文件：
+  /home/bgpdata/Domeye/backend/screen_data/info/as_dict.json
+  其中字段 country_cn 是中文国家名（例如 “中国”“智利”）
+
+2) 启动构建
+CountryTopologyBuilder 默认关闭，通过环境变量开启：
+
+  cd /home/bgpdata/Domeye/backend
+  BUILD_COUNTRY_TOPOLOGY=1 python core/BGPResource.py
+
+过程：
+- 脚本先按原有逻辑处理 RIB 的 prefix_count 统计
+- 同时从同一个解压后的 RIB 文件提取国家内部无向边并写入 DB
+
+写入时机（触发条件）:
+必须同时满足两个条件
+条件 A：启动 BGPResource.py 时设置了环境变量 BUILD_COUNTRY_TOPOLOGY=1
+条件 B：主循环处理到一个 RIB 文件（从队列取出并解压后）
+
+
+3) 结果验证（SQL）
+进入 psql 后：
+
+  SELECT country_cn, COUNT(*) AS edge_cnt
+  FROM country_topology_edge
+  GROUP BY country_cn
+  ORDER BY edge_cnt DESC
+  LIMIT 20;
+
+查看某国最新 build_time（baseline）：
+  SELECT MAX(build_time) FROM country_topology_edge WHERE country_cn='中国';
+
+
+五、接口验证（国家中断详情页）
+----------------------------
+国家中断详情接口会：
+1) 从 country_outage_YYYYMM 取事件详情，得到：
+   - attacked_country（中文名）
+   - outage_ases（jsonb列表）
+2) 调用 build_country_topo_dict() 从DB取拓扑并标红 outage_ases
+
+接口支持参数（追加在请求URL上）：
+- topo_mode=auto|full|subgraph
+  - auto：小国全量，大国子图（默认）
+  - full：强制全量（大国慎用）
+  - subgraph：强制子图
+- k_hop=2            子图 hop 数（默认2）
+- max_nodes=2000     子图最大节点数（默认2000）
+- max_edges=5000     子图最大边数（默认5000）
+
+建议：
+- 大国（如中国）默认 subgraph，避免一次返回 20万边导致前端卡死。
+
+
+六、常见问题排查
+----------------
+1) 页面只显示红点，没有边
+可能原因：
+- DB里该国无拓扑数据（未跑构建 / 构建失败）
+- 国家名不一致：事件表里用 country_chinese_name（中文名），拓扑表也必须用同样中文名
+- build_time 为空或未找到最新 build_time
+
+排查SQL：
+  SELECT COUNT(*) FROM country_topology_edge WHERE country_cn='智利';
+  SELECT MAX(build_time) FROM country_topology_edge WHERE country_cn='智利';
+
+2) 构建脚本启动失败（TypeError: 'type' object is not subscriptable）
+原因：
+- 容器 Python 版本过低（例如 3.6）不支持 list[int] 语法
+处理：
+- 使用 typing.List[int] 兼容注解，或升级 Python 版本
+
+3) 连接数据库失败
+排查：
+- 容器内网络是否能访问目标数据库地址
+- 用户/密码是否正确
+- 目标库 bgp_project 是否存在
+
+4) 返回太慢/前端卡顿
+处理：
+- 使用 topo_mode=subgraph
+- 调小 max_nodes/max_edges
+- 将 k_hop 从 2 调为 1
+
+
+七、数据结构与表说明
+-------------------
+1) country_topology_edge（核心边表）
+字段：
+- country_cn (text)      中文国家名
+- build_time (timestamp) 构建时间（baseline版本）
+- a_asn (int)            无向边端点 min(asn1,asn2)
+- b_asn (int)            无向边端点 max(asn1,asn2)
+- weight (int)           可选权重（出现次数）
+
+2) country_topology_snapshot（可选快照表）
+- 用于小国直接存 graph_json（nodes/links），接口可直接读
+
+
+八、推荐运行方式（最小闭环）
+--------------------------
+1) 建表（Python方式）
+2) 跑一次构建：BUILD_COUNTRY_TOPOLOGY=1 python core/BGPResource.py
+3) 用 psql 确认 country_topology_edge 有数据
+4) 打开国家中断详情页验证（默认 auto 子图）
