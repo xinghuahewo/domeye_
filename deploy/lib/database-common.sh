@@ -225,7 +225,7 @@ domeye_database_apply_reader() {
             'CREATE TEMP TABLE domeye_reader_secret(value text NOT NULL);' \
             'COPY domeye_reader_secret(value) FROM STDIN;'
         printf '%s\n' "${escaped_reader_password}"
-        printf '%s\n' '\\.'
+        printf '%s\n' '\.'
         cat -- "${sql_path}"
     } | docker exec \
         --interactive \
