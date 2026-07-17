@@ -1,12 +1,10 @@
 from flask import request
 from flask_restful import Resource
 
-from services import (
+from services.features_service import (
     get_as_feature_series,
     get_as_outage_feature,
-    get_country_as_outage_export,
     get_country_feature_series,
-    get_country_prefix_outage_export,
     get_prefix_outage_feature,
     get_top_feature_data,
 )
@@ -24,7 +22,6 @@ class TopFeatureResource(Resource):
             end_time=request.args.get('end_time'),
             target=request.args.get('target'),
         )
-
 
 class CountryFeatureListResource(Resource):
     """
@@ -127,34 +124,6 @@ class GlobalPrefixOutageFeatureResource(Resource):
         return get_prefix_outage_feature(
             country=None,
             asn=None,
-            start_time=request.args.get('start_time'),
-            end_time=request.args.get('end_time'),
-        )
-
-
-class CountryASOutageExportResource(Resource):
-    """
-    导出某个国家在指定时间范围内的AS中断明细
-    Endpoint: /api/v1/features/outages/export/country-as
-    """
-
-    def get(self):
-        return get_country_as_outage_export(
-            country=request.args.get('country'),
-            start_time=request.args.get('start_time'),
-            end_time=request.args.get('end_time'),
-        )
-
-
-class CountryPrefixOutageExportResource(Resource):
-    """
-    导出某个国家在指定时间范围内的前缀中断明细
-    Endpoint: /api/v1/features/outages/export/country-prefix
-    """
-
-    def get(self):
-        return get_country_prefix_outage_export(
-            country=request.args.get('country'),
             start_time=request.args.get('start_time'),
             end_time=request.args.get('end_time'),
         )

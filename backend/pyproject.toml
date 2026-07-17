@@ -4,13 +4,9 @@ version = "0.1.0"
 description = "Domeye 路由异常检测核心精简版后端"
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    "authlib",
-    "beautifulsoup4",
     "flask",
     "flask-cors",
     "flask-restful",
-    "matplotlib",
-    "netaddr",
     "networkx",
     "numpy",
     "openpyxl",
@@ -18,11 +14,8 @@ dependencies = [
     "psycopg2-binary",
     "pyinotify",
     "python-dateutil",
-    "python-docx",
     "pytricia",
-    "pytz",
     "requests",
-    "seaborn",
     "xlrd",
 ]
 
@@ -33,3 +26,7 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["web/tests"]

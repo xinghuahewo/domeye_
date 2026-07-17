@@ -130,6 +130,12 @@ def ensure_domain_data_loaded():
         load_domain_data()
 
 
+def ensure_core_data_loaded():
+    """按需加载核心 AS、前缀与国家数据。"""
+    if not _core_data_loaded:
+        _load_core_data()
+
+
 def init_global_data():
     """
     加载所有需要全局访问的数据字典
