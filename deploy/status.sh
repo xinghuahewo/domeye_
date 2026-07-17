@@ -8,6 +8,7 @@ source "${SCRIPT_DIR}/lib/backend-common.sh"
 
 domeye_core_require_command screen
 domeye_core_require_command curl
+domeye_core_require_command docker
 
 status_code=0
 mapfile -t existing_sessions < <(domeye_core_list_backend_sessions)
@@ -21,6 +22,27 @@ elif (( ${#existing_sessions[@]} > 1 )); then
 else
     printf 'Screen 后端：运行中（%s）\n' "${existing_sessions[0]}"
 fi
+
+if [[ "$(docker inspect --format '{{.State.Running}}' "${DOMEYE_CORE_DB_CONTAINER}" 2>/dev/null || true)" == 'true' ]]; then
+    printf '独立数据库容器：运行中（%s）\n' "${DOMEYE_CORE_DB_CONTAINER}"
+    if docker exec "${DOMEYE_CORE_DB_CONTAINER}" pg_isready -q >/dev/null 2>&1; then
+        printf '独立数据库：可连接（%s:%s）\n' "${DOMEYE_CORE_BACKEND_DB_HOST}" "${DOMEYE_CORE_BACKEND_DB_PORT}"
+    else
+        printf '独立数据库：未就绪（%s:%s）\n' "${DOMEYE_CORE_BACKEND_DB_HOST}" "${DOMEYE_CORE_BACKEND_DB_PORT}"
+        status_code=1
+    fi
+else
+    printf '独立数据库容器：未运行（%s）\n' "${DOMEYE_CORE_DB_CONTAINER}"
+    status_code=1
+fi
+
+for info_file in important_as.csv as_entity.csv ip_bgp_entity.csv country.xlsx; do
+    info_path="${DOMEYE_CORE_INFO_DIR}/${info_file}"
+    if [[ ! -f "${info_path}" || -L "${info_path}" ]]; then
+        printf '基础信息文件：异常（%s）\n' "${info_path}"
+        status_code=1
+    fi
+done
 
 if curl --fail --silent --show-error --max-time 3 "${DOMEYE_CORE_HEALTH_URL}" >/dev/null 2>&1; then
     printf '后端健康检查：正常（%s）\n' "${DOMEYE_CORE_HEALTH_URL}"

@@ -1,3 +1,5 @@
 .DS_Store
-artifacts/
+/artifacts/
 var/
+deploy/database/database.env
+deploy/database/source.env

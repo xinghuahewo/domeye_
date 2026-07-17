@@ -1,8 +1,11 @@
 info/
 logs/
 reports/
+.venv/
 venv/
 .env
+.env.backup-*
+.info-backup-*/
 __pycache__/
 *.pyc
 *.pyo
