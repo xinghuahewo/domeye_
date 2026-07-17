@@ -2,6 +2,7 @@ info/
 logs/
 reports/
 venv/
+.env
 __pycache__/
 *.pyc
 *.pyo

@@ -1,368 +1,202 @@
-# Domeye Backend
+# Domeye Core 后端
 
-## 1. 项目定位
+`backend/` 是 Domeye 路由异常检测核心精简版的后端。它包含两部分：
 
-`backend/` 是 Domeye 的后端服务与检测任务目录，负责两类能力：
+- 只读 Flask API：向精简前端提供事件、统计、详情和特征查询。
+- 原样迁移的 `core/`：保留离线检测算法与任务入口，但默认不随 Web 服务启动。
 
-1. Flask API  
-对前端提供事件、特征、地理数据、认证、看板等接口。
+完整平台中的认证、研判、通知、报告、地理增强、节点状态和数据任务编排已从 API 注册链路中移除。
 
-2. BGP 检测与数据加工任务  
-从 RIB / update 数据中提取路由异常、资源统计、特征数据，并写入 PostgreSQL。
+## 设计边界
 
-当前后端以 Flask + PostgreSQL 为核心，目录中同时包含：
+本次后端迁移遵循原项目 `docs/00`—`docs/09` 与技术路线报告中的核心关系：
 
-- 在线 API 服务
-- 批处理检测脚本
-- 数据初始化与建表逻辑
-- 测试脚本与部分测试样例
+- `BGPRib` 提供共享路由状态。
+- 四条检测路径分别处理前缀劫持、子前缀劫持、中断和路由泄漏。
+- 中断由前缀向 AS、国家两层聚合，对外形成前缀中断、AS 中断和国家中断。
+- 事件列表从事件总表读取，详情再定位到对应月份的事实表。
+- 风险等级、时间信息和路径事实作为精简证据返回。
 
-## 2. 目录结构
+当前代码不宣称已经实现 RPKI、DNS 等技术路线中的后续增强能力。
+
+## 目录结构
 
 ```text
 backend/
-├── config/                 运行时配置、数据库连接、日志配置
-├── core/                   BGP 检测与离线/批处理任务
-├── database/               数据库访问层
-├── info/                   基础信息数据文件（AS、前缀、国家、域名等）
-├── logs/                   运行日志
-├── reports/                导出文件目录
-├── screen_data/            屏幕展示/中间产物
-├── tests/                  测试脚本与测试样例
-├── utils/                  通用工具、全局数据初始化、报告辅助
-├── web/                    Flask API、资源路由、接口测试
-├── .env.example            环境变量示例
-├── init_db.py              启动时建表/补表
-├── requirements.txt        Python 依赖
-└── run.py                  Flask 服务入口
+├── config/                运行参数、数据库连接和日志配置
+├── core/                  原样迁移的检测核心与可视化辅助文件
+├── database/              API 和核心任务使用的数据库访问函数
+├── services/              事件、特征、首页统计三个精简查询服务
+├── utils/                 查询整理与按需基础数据加载
+├── web/
+│   ├── api/               API 白名单及资源实现
+│   └── tests/             API、服务边界和迁移完整性测试
+├── .env.example           无真实凭据的环境变量示例
+├── core.sha256            核心迁移文件哈希清单
+├── pyproject.toml          Python 项目与直接依赖
+├── uv.lock                锁定的完整依赖图
+└── run.py                 Flask 应用入口
 ```
 
-重点子目录说明：
+`requirements.txt` 是原项目遗留的依赖列表，其中仍包含精简版已移除功能的包；不要用它判断当前依赖。安装、同步和验证均以 `pyproject.toml` 与 `uv.lock` 为准。
 
-- `config/config.py`：业务配置、阈值、数据路径、邮件配置
-- `config/database.py`：数据库与 SSH 配置，当前会在导入时直接建立连接
-- `core/`：核心检测脚本，不同脚本负责不同任务
-- `web/api/route.py`：统一路由注册入口
-- `utils/data_loader.py`：启动时加载全局静态数据
+## 环境与依赖
 
-## 3. 运行架构
+- Python `>=3.10,<3.11`。
+- 使用 `uv` 管理虚拟环境和依赖。
+- PostgreSQL 连接用于事件、详情、统计和特征查询。
+- 部分特征查询需要原项目 `info` 基础文件。
 
-后端大致分成三层：
-
-1. 数据任务层  
-`core/` 下脚本消费本地 BGP 数据文件，生成事件、特征和资源信息。
-
-2. 数据访问层  
-`database/` 负责 PostgreSQL 查询与写入。
-
-3. API 层  
-`web/` 负责封装 Flask + Flask-RESTful 接口，对前端提供查询能力。
-
-启动 `run.py` 时会发生：
-
-1. 自动读取 `backend/.env`（如果存在）
-2. 导入 Flask app 和 API 路由
-3. 导入数据库连接与配置
-4. 执行 `init_db.auto_init_db()`
-5. 执行 `utils.data_loader.init_global_data()`
-6. 启动 Flask 服务
-
-这意味着：
-
-- 数据库不可达时，服务可能在导入阶段就失败
-- `info/` 下基础数据文件缺失时，初始化也可能失败
-
-## 4. 环境要求
-
-建议环境：
-
-- Python 3.10+
-- PostgreSQL
-- Linux
-
-主要 Python 依赖见 [requirements.txt](/home/bgpdata/Domeye/backend/requirements.txt)：
-
-- `Flask`
-- `Flask-Cors`
-- `Flask-RESTful`
-- `psycopg2-binary`
-- `pandas`
-- `numpy`
-- `networkx`
-- `matplotlib`
-- `requests`
-- `pytest`
-
-安装依赖：
+创建锁定环境：
 
 ```bash
-cd /home/bgpdata/Domeye/backend
-pip install -r requirements.txt
+cd /home/bgpdata/Domeye-Core/backend
+UV_PROJECT_ENVIRONMENT=venv /home/bgpdata/.local/bin/uv sync --locked
 ```
 
-## 5. 配置方式
+不要使用未锁定的 `pip install -r requirements.txt` 作为正式部署流程，否则运行环境可能偏离已验证版本。
 
-### 5.1 配置来源
+## 配置
 
-运行配置主要来自两个文件：
+`run.py` 会先读取同目录的 `.env`。进程环境中已经存在的变量优先级更高，不会被 `.env` 覆盖。
 
-- [config/config.py](/home/bgpdata/Domeye/backend/config/config.py)
-- [config/database.py](/home/bgpdata/Domeye/backend/config/database.py)
-
-现在代码已经改成“优先读取环境变量”，并提供了示例文件：
-
-- [backend/.env.example](/home/bgpdata/Domeye/backend/.env.example)
-
-本地开发可直接复制：
+首次配置：
 
 ```bash
-cd /home/bgpdata/Domeye/backend
+cd /home/bgpdata/Domeye-Core/backend
 cp .env.example .env
+chmod 600 .env
 ```
 
-### 5.2 常用环境变量
+常用变量：
 
-基础运行：
+| 变量 | 默认值或建议值 | 说明 |
+| --- | --- | --- |
+| `FLASK_CONFIG` | `production` | 非测试模式会执行运行时初始化判断 |
+| `HOST` | `127.0.0.1` | 后端仅向本机代理开放 |
+| `PORT` | `28473` | Flask API 端口 |
+| `DEBUG` | `false` | 生产环境必须关闭调试 |
+| `AUTO_INIT_DB` | `false` | 是否在启动时初始化数据库结构 |
+| `LOAD_CORE_DATA_ON_STARTUP` | `false` | 是否在启动时预加载基础数据 |
+| `INFO_DIR` | `/home/bgpdata/Domeye/backend/info` | 当前阶段只读复用原信息文件 |
+| `DB_HOST` 等 | 无可提交默认值 | 现有 PostgreSQL 连接信息 |
+| `SOURCE` | `r` | 数据来源标识 |
+| `MODE` | `1` | 核心任务模式；Web 查询不会主动运行任务 |
 
-- `PORT`
-- `DEBUG`
-- `SOURCE`
-- `MODE`
-- `RIB_HISTORY_FILE`
-- `BASE_DATA_PATH`
+`.env.example` 中的数据库字段只是占位符。真实密码、SSH 信息和邮件凭据不得写入文档或提交到版本库。
 
-数据库：
+当前精简部署建议保持：
 
-- `DB_HOST`
-- `DB_PORT`
-- `DB_NAME`
-- `DB_USER`
-- `DB_PASSWORD`
+```dotenv
+HOST=127.0.0.1
+PORT=28473
+DEBUG=false
+AUTO_INIT_DB=false
+LOAD_CORE_DATA_ON_STARTUP=false
+INFO_DIR=/home/bgpdata/Domeye/backend/info
+```
 
-邮件：
+这组配置只限制 Web 启动行为，不会把数据库账号技术性降权为只读账号。是否具备写权限仍由 PostgreSQL 账号本身决定，因此不要通过 Web 部署流程运行建表或核心检测脚本。
 
-- `MAIL_ENABLED`
-- `MAIL_SMTP_HOST`
-- `MAIL_SMTP_PORT`
-- `MAIL_USERNAME`
-- `MAIL_PASSWORD`
-- `MAIL_FROM`
-- `MAIL_TO`
-
-SSH / 数据通道：
-
-- `SSH_HOST`
-- `SSH_USER`
-- `SSH_PWD`
-- `REMOTE_PATH`
-- `SSH_HOST2`
-- `SSH_USER2`
-- `SSH_PWD2`
-- `REMOTE_PATH2`
-
-### 5.3 当前实现限制
-
-[config/database.py](/home/bgpdata/Domeye/backend/config/database.py) 当前在模块导入时就执行：
-
-- `conn_11`
-- `conn_13`
-- `conn_15`
-- `conn_226`
-
-也就是说，只要导入后端模块，就会尝试连数据库。  
-如果数据库未启动、地址错误或密码不对，`python run.py` 会直接报 `psycopg2.OperationalError`。
-
-## 6. 启动方式
-
-### 6.1 启动 Flask API
+## 启动与健康检查
 
 ```bash
-cd /home/bgpdata/Domeye/backend
-python3 run.py
+cd /home/bgpdata/Domeye-Core/backend
+UV_PROJECT_ENVIRONMENT=venv /home/bgpdata/.local/bin/uv run --locked python run.py
 ```
 
-默认监听：
-
-- `0.0.0.0:${PORT}`
-
-`run.py` 现在会自动加载：
-
-- [backend/.env](/home/bgpdata/Domeye/backend/.env)
-
-所以不需要每次手动 `source .env`。
-
-### 6.2 初始化数据库结构
-
-启动 API 时会自动调用：
-
-- [init_db.py](/home/bgpdata/Domeye/backend/init_db.py)
-
-如果你只想单独执行初始化，也可以直接调用相关脚本或导入 `auto_init_db()`。
-
-## 7. 核心任务脚本
-
-`core/` 目录里的主要脚本：
-
-- [BGPDetection.py](/home/bgpdata/Domeye/backend/core/BGPDetection.py)  
-  检测主任务入口，负责异常检测流程。
-
-- [BGPResource.py](/home/bgpdata/Domeye/backend/core/BGPResource.py)  
-  资源统计与部分基础数据生成；国家内部拓扑构建也和它相关。
-
-- [BGPFeature.py](/home/bgpdata/Domeye/backend/core/BGPFeature.py)  
-  特征提取任务。
-
-- [BGPFeature_ir.py](/home/bgpdata/Domeye/backend/core/BGPFeature_ir.py)  
-  与特征计算相关的另一套实现/实验版本。
-
-- [BGPHijack.py](/home/bgpdata/Domeye/backend/core/BGPHijack.py)  
-  前缀劫持检测。
-
-- [BGPSubHijack.py](/home/bgpdata/Domeye/backend/core/BGPSubHijack.py)  
-  子前缀劫持检测。
-
-- [BGPLeak.py](/home/bgpdata/Domeye/backend/core/BGPLeak.py)  
-  路由泄露检测。
-
-- [BGPOutage.py](/home/bgpdata/Domeye/backend/core/BGPOutage.py)  
-  路由中断检测。
-
-常见运行方式：
+服务默认监听 `127.0.0.1:28473`：
 
 ```bash
-cd /home/bgpdata/Domeye/backend
-python3 core/BGPDetection.py
-python3 core/BGPResource.py
-python3 core/BGPFeature.py
+curl http://127.0.0.1:28473/api/v1/healthz
 ```
 
-这些任务通常不是通过 Flask 触发，而是单独跑在后台。
+健康接口独立于数据库和基础文件，可用于判断 Flask 进程是否可用。其他业务接口需要数据库连接；特征接口还可能按需加载 `INFO_DIR` 中的数据。
 
-## 8. API 模块
+## API 白名单
 
-API 路由集中注册在：
+所有接口均为 GET 请求，并统一使用 `/api/v1` 前缀。
 
-- [web/api/route.py](/home/bgpdata/Domeye/backend/web/api/route.py)
+| 路径 | 作用 | 主要参数 |
+| --- | --- | --- |
+| `/healthz` | 进程健康检查 | 无 |
+| `/events` | 六类异常事件分页与筛选 | `page_num`、`page_size`、`event_type`、`level`、`country`、`event_info`、`date` 等 |
+| `/events/top` | 最新核心事件 | `event_type` |
+| `/<event_type>/<start_time>/<problem>/<event_id>/<source>` | 按详情引用读取月度事实表 | 路径参数 |
+| `/features/top` | 全球采集点、国家或 ASN 的特征时序 | `target`、`start_time`、`end_time` |
+| `/features/countries` | 国家特征列表 | `country`、时间范围、分页参数 |
+| `/features/ases` | ASN 特征列表 | `asn`、`country`、时间范围、分页参数 |
+| `/features/outages/country-as` | 国家 AS 中断时序 | `country`、时间范围 |
+| `/features/outages/country-prefix` | 国家前缀中断时序 | `country`、时间范围 |
+| `/features/outages/as-prefix` | 指定 ASN 的前缀中断时序 | `asn`、时间范围 |
+| `/features/outages/global-as` | 全局 AS 中断时序 | 时间范围 |
+| `/features/outages/global-prefix` | 全局前缀中断时序 | 时间范围 |
+| `/dashboard/counts/total` | 首页事件总量时序 | 可选 `country` |
+| `/dashboard/counts/type` | 指定异常类型统计 | `event_type` |
 
-当前包含的模块：
+时间范围参数的格式为 `YYYY-MM-DD HH:MM:SS`。事件列表的 `date` 使用 `开始日期_结束日期`。事件详情通常由列表响应中的详情引用进入，前端统一请求层负责解析和规范化，不建议手工拼接包含前缀的详情路径。
 
-- `auth`：登录、注册、用户信息
-- `events`：事件列表、详情、状态、研判、通知
-- `features`：国家/AS 特征与中断特征
-- `geodata`：边界、连通性、展示屏数据
-- `dashboard`：看板统计
-- `reports`：当前仓库里是占位实现，接口会返回 `501`
-
-常见接口前缀：
+以下旧接口不会注册，并应返回 `404`：
 
 - `/api/v1/login`
-- `/api/v1/register`
-- `/api/v1/events`
-- `/api/v1/features/*`
-- `/api/v1/geodata/*`
-- `/api/v1/dashboard/*`
-- `/api/v1/reports/*`
+- `/api/v1/events/state`
+- `/api/v1/events/judge`
+- `/api/v1/events/notify`
+- `/api/v1/reports/word-export`
+- `/api/v1/geodata/boundaries`
+- `/api/v1/node-status`
+- `/api/v1/data-query/tasks`
 
-## 9. 数据文件依赖
+## 启动行为
 
-后端严重依赖 `info/` 与外部 BGP 数据目录。
+`create_app()` 只构建 Flask 应用并注册白名单路由。默认配置下：
 
-### 9.1 `info/` 目录
+1. 不执行 `init_db.auto_init_db()`。
+2. 不执行全量 `utils.data_loader.init_global_data()`。
+3. 不运行 `core/` 中的离线检测任务。
+4. 只有业务查询真正需要基础信息时，才调用按需加载逻辑。
 
-`config/config.py` 中会读取很多基础文件，例如：
+因此健康检查可以在数据库或 `info` 尚不可用时启动成功；这不代表其他业务接口也能脱离数据源工作。
 
-- `as_entity.csv`
-- `ip_bgp_entity.csv`
-- `country.xlsx`
-- `as_rank.json`
-- `pfx2as_dict.txt`
+## 核心迁移完整性
 
-如果这些文件缺失，很多查询与初始化会失败。
-
-### 9.2 BGP 原始数据目录
-
-由以下变量控制：
-
-- `BASE_DATA_PATH`
-- `MODE`
-- `RIB_HISTORY_FILE`
-
-默认数据路径不是仓库内目录，而是外部路径，例如：
-
-```text
-/home/bgpdata/data/ripe/rrc25/
-```
-
-所以迁移部署时必须同步准备外部数据目录。
-
-## 10. 测试
-
-测试主要分两类：
-
-1. API / 单元测试  
-位于：
-- [backend/web/tests](/home/bgpdata/Domeye/backend/web/tests)
-
-2. 分析脚本 / 样例验证  
-位于：
-- [backend/tests](/home/bgpdata/Domeye/backend/tests)
-
-运行测试：
+`core/` 当前保持迁移时的核心逻辑，不在精简阶段重写。可用哈希清单验证：
 
 ```bash
-cd /home/bgpdata/Domeye/backend
-pytest -q
+cd /home/bgpdata/Domeye-Core/backend
+sha256sum -c core.sha256
 ```
 
-如果只跑 API 相关：
+清单覆盖 `BGPDetection.py`、`BGPRib.py`、各类检测器、特征与资源脚本，以及保留的可视化辅助文件。任何校验失败都应先按迁移完整性问题处理，不应直接更新哈希掩盖差异。
+
+如需与原目录做只读对比：
 
 ```bash
-cd /home/bgpdata/Domeye/backend
-pytest -q web/tests
+diff -qr /home/bgpdata/Domeye/backend/core /home/bgpdata/Domeye-Core/backend/core
 ```
 
-注意：
+核心任务仍保留原有文件路径、数据库和资源行为。Web 服务不会调用它们；显式运行前应单独审查输入路径、写库目标、数据规模和运行窗口。
 
-- 某些测试依赖真实数据文件
-- 某些测试依赖数据库
-- `tests/temp/` 下有测试生成图
+## 测试
 
-## 11. 常见问题
+```bash
+cd /home/bgpdata/Domeye-Core/backend
+UV_PROJECT_ENVIRONMENT=venv /home/bgpdata/.local/bin/uv run --locked pytest
+```
 
-### 11.1 `psycopg2.OperationalError`
+测试覆盖：
 
-说明数据库连接失败。优先检查：
+- API 路由白名单。
+- 已移除平台接口返回 `404`。
+- 健康检查不依赖数据库和基础文件。
+- 事件、统计和特征服务的响应边界。
+- `core.sha256` 中所有迁移文件的哈希一致性。
 
-- `backend/.env` 中的 `DB_*`
-- 目标 PostgreSQL 是否可访问
-- 用户名/密码是否正确
+## 数据和性能限制
 
-### 11.2 `ModuleNotFoundError: web.api.reports.api`
-
-当前仓库已经补了一个占位版 `reports` 模块。  
-如果你需要真正的导出报表实现，需要再恢复原始业务代码。
-
-### 11.3 启动时报基础数据缺失
-
-说明：
-
-- `info/` 内基础文件不完整
-- 或 `utils/data_loader.py` 在启动时读取失败
-
-### 11.4 路径相关错误
-
-这个项目不是“纯仓库内自给自足”结构，很多数据路径依赖外部目录。  
-迁移到新机器后，最容易出错的是：
-
-- `BASE_DATA_PATH`
-- `screen_data/`
-- PostgreSQL 连接地址
-
-## 12. 建议的后续整理方向
-
-如果后续继续维护这个后端，建议优先做这几件事：
-
-1. 把 `config/database.py` 从“导入即连接”改成延迟连接
-2. 把 `run.py`、`core/*.py` 的配置加载方式统一
-3. 把生成产物（`logs/`、`screen_data/`、`tests/temp/`）和源码进一步分离
-4. 把部署说明单独拆到 `docs/`，不要和后端总览混在一起
+- 新项目不复制原数据库，也不维护原 `info` 目录；当前阶段只读复用这些外部资源。
+- 业务查询仍受现有月度表、字段格式和数据库索引影响。
+- 跨月事件查询、较大时间范围和未缓存的冷查询可能较慢。
+- 国家、ASN 和前缀特征的首次查询可能触发大文件加载，第一次响应会慢于后续请求。
+- 启动时关闭预加载是为了缩短进程启动并隔离健康检查，不等于消除了业务查询的数据成本。
+- 认证、写操作、人工研判、报告、通知、地理增强和任务调度不属于当前后端契约。
