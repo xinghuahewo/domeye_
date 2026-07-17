@@ -7,9 +7,9 @@ CREATE TEMP TABLE domeye_discarded_malformed_event (
     PRIMARY KEY(month, event_type)
 );
 
-SELECT set_config('domeye.data_start', :'data_start', false);
-SELECT set_config('domeye.snapshot_local', :'snapshot_local', false);
-SELECT set_config('domeye.snapshot_month', :'snapshot_month', false);
+SET domeye.data_start TO :'data_start';
+SET domeye.snapshot_local TO :'snapshot_local';
+SET domeye.snapshot_month TO :'snapshot_month';
 
 DO $block$
 DECLARE

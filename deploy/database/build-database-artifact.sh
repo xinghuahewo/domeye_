@@ -209,7 +209,7 @@ if [[ -z "${PREBUILT_FULL_DUMP}" ]]; then
 fi
 
 source_psql() {
-    docker run --rm \
+    docker run --rm --interactive \
         --network host \
         --volume "${SOURCE_PGPASS}:/run/secrets/source.pgpass:ro" \
         --env 'PGPASSFILE=/run/secrets/source.pgpass' \
@@ -220,6 +220,16 @@ source_psql() {
             --username "${SOURCE_DB_USER}" \
             --dbname "${SOURCE_DB_NAME}" \
             "$@"
+}
+
+source_snapshot_query() {
+    local query="$1"
+    printf '%s\n' \
+        'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;' \
+        "SET TRANSACTION SNAPSHOT '${SNAPSHOT_ID}';" \
+        "${query}" \
+        'COMMIT;' \
+        | source_psql --quiet --no-align --tuples-only --file=-
 }
 
 start_source_snapshot() {
@@ -325,8 +335,7 @@ refresh_from_source() {
     local table_query
     table_query="SELECT tablename FROM pg_tables WHERE schemaname='public' AND ((tablename ~ '^(event_table|hijack|sub_hijack|leak_event|prefix_outage|as_outage|country_outage)_[0-9]{6}$') OR (tablename ~ '^feature_(other|us|br|cn|ru|in|gb|id|de|au|pl)_[0-9]{6}$')) AND right(tablename, 6) BETWEEN '${base_month}' AND '${SNAPSHOT_MONTH}' ORDER BY tablename;"
 
-    refresh_table_output="$(source_psql --quiet --no-align --tuples-only \
-        --command "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY; SET TRANSACTION SNAPSHOT '${SNAPSHOT_ID}'; ${table_query} COMMIT;")"
+    refresh_table_output="$(source_snapshot_query "${table_query}")"
     mapfile -t refresh_tables <<< "${refresh_table_output}"
     if [[ ${#refresh_tables[@]} -eq 1 && -z "${refresh_tables[0]}" ]]; then
         refresh_tables=()
@@ -346,7 +355,7 @@ refresh_from_source() {
 
         binary_path="${work_dir}/${table_name}.bin"
         source_copy_to_file "(SELECT * FROM public.${table_name})" "${binary_path}"
-        source_count="$(source_psql --quiet --no-align --tuples-only --command "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY; SET TRANSACTION SNAPSHOT '${SNAPSHOT_ID}'; SELECT count(*) FROM public.${table_name}; COMMIT;")"
+        source_count="$(source_snapshot_query "SELECT count(*) FROM public.${table_name};")"
         docker exec --interactive \
             "${CANDIDATE_CONTAINER}" \
             psql -X --set ON_ERROR_STOP=1 \
@@ -383,7 +392,7 @@ refresh_from_source() {
             --dbname "${DOMEYE_CORE_DB_NAME}" \
             --command '\copy public.__domeye_feature_country_refresh FROM STDIN WITH (FORMAT binary)' \
             < "${country_binary}"
-    source_country_count="$(source_psql --quiet --no-align --tuples-only --command "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY; SET TRANSACTION SNAPSHOT '${SNAPSHOT_ID}'; SELECT count(*) FROM public.feature_country WHERE t >= timestamp '${overlap_start}' AND t <= timestamp '${SNAPSHOT_LOCAL}'; COMMIT;")"
+    source_country_count="$(source_snapshot_query "SELECT count(*) FROM public.feature_country WHERE t >= timestamp '${overlap_start}' AND t <= timestamp '${SNAPSHOT_LOCAL}';")"
     candidate_country_count="$(domeye_database_psql "${CANDIDATE_CONTAINER}" --quiet --no-align --tuples-only --command 'SELECT count(*) FROM public.__domeye_feature_country_refresh;')"
     if [[ "${candidate_country_count}" != "${source_country_count}" ]]; then
         domeye_artifact_error "feature_country 重叠窗口行数不一致（源 ${source_country_count}，候选 ${candidate_country_count}）"
@@ -485,17 +494,23 @@ if [[ "${POSTGRES_VERSION}" != '12.16' || "${TIMESCALEDB_VERSION}" != '2.11.2' ]
     exit 1
 fi
 
-reader_result="$(docker exec \
+# PostgreSQL 12 的单个 psql --command 只保留最后一个结果集，状态与计数必须分开查询。
+reader_readonly="$(docker exec \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \
         --dbname "${DOMEYE_CORE_DB_NAME}" \
-        --command 'SHOW transaction_read_only; SELECT count(*) FROM public.feature_country;')"
-if [[ "${reader_result%%$'\n'*}" != 'on' ]]; then
+        --command 'SHOW transaction_read_only;')"
+if [[ "${reader_readonly}" != 'on' ]]; then
     domeye_artifact_error '只读账号没有启用默认只读事务'
     exit 1
 fi
-reader_count="${reader_result##*$'\n'}"
+reader_count="$(docker exec \
+    "${CANDIDATE_CONTAINER}" \
+    psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
+        --username "${DOMEYE_CORE_DB_READER_USER}" \
+        --dbname "${DOMEYE_CORE_DB_NAME}" \
+        --command 'SELECT count(*) FROM public.feature_country;')"
 if [[ ! "${reader_count}" =~ ^[0-9]+$ || "${reader_count}" == '0' ]]; then
     domeye_artifact_error '只读账号未能读取非空的 feature_country 超表'
     exit 1

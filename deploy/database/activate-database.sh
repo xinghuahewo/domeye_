@@ -206,13 +206,20 @@ fi
 "${SCRIPT_DIR}/dbctl.sh" up "${DATABASE_ENV_FILE}"
 "${BACKEND_ROOT}/deploy/start-backend.sh"
 curl --fail --silent --show-error --max-time 5 'http://127.0.0.1:28473/api/v1/healthz' >/dev/null
-database_probe="$(docker exec \
+# PostgreSQL 12 的单个 psql --command 只保留最后一个结果集，状态与计数必须分开查询。
+database_readonly="$(docker exec \
     "${DOMEYE_CORE_DATABASE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \
         --dbname "${DOMEYE_CORE_DB_NAME}" \
-        --command 'SHOW transaction_read_only; SELECT count(*) FROM public.feature_country;')"
-if [[ "${database_probe%%$'\n'*}" != on || ! "${database_probe##*$'\n'}" =~ ^[1-9][0-9]*$ ]]; then
+        --command 'SHOW transaction_read_only;')"
+database_count="$(docker exec \
+    "${DOMEYE_CORE_DATABASE_CONTAINER}" \
+    psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
+        --username "${DOMEYE_CORE_DB_READER_USER}" \
+        --dbname "${DOMEYE_CORE_DB_NAME}" \
+        --command 'SELECT count(*) FROM public.feature_country;')"
+if [[ "${database_readonly}" != on || ! "${database_count}" =~ ^[1-9][0-9]*$ ]]; then
     domeye_artifact_error '生产只读账号未能查询独立 feature_country 超表'
     exit 1
 fi

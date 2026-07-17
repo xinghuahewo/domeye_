@@ -1,8 +1,8 @@
 \set ON_ERROR_STOP on
 
-SELECT set_config('domeye.refresh_table', :'table_name', false);
-SELECT set_config('domeye.refresh_family', :'table_family', false);
-SELECT set_config('domeye.refresh_is_feature', :'is_feature', false);
+SET domeye.refresh_table TO :'table_name';
+SET domeye.refresh_family TO :'table_family';
+SET domeye.refresh_is_feature TO :'is_feature';
 
 DO $block$
 DECLARE

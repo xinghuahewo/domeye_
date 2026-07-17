@@ -3,9 +3,9 @@
 BEGIN;
 SET LOCAL enable_nestloop = off;
 SET LOCAL enable_mergejoin = off;
-SELECT set_config('domeye.data_start', :'data_start', true);
-SELECT set_config('domeye.snapshot_time', :'snapshot_time', true);
-SELECT set_config('domeye.snapshot_month', :'snapshot_month', true);
+SET LOCAL domeye.data_start TO :'data_start';
+SET LOCAL domeye.snapshot_time TO :'snapshot_time';
+SET LOCAL domeye.snapshot_month TO :'snapshot_month';
 
 CREATE TEMP TABLE domeye_expected_table (
     table_name text PRIMARY KEY

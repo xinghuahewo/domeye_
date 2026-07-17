@@ -181,13 +181,20 @@ if ! diff -u \
     exit 1
 fi
 
-reader_check="$(docker exec \
+# PostgreSQL 12 的单个 psql --command 只保留最后一个结果集，状态与计数必须分开查询。
+reader_readonly="$(docker exec \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \
         --dbname "${DOMEYE_CORE_DB_NAME}" \
-        --command 'SHOW transaction_read_only; SELECT count(*) FROM public.feature_country;')"
-if [[ "${reader_check%%$'\n'*}" != 'on' || ! "${reader_check##*$'\n'}" =~ ^[1-9][0-9]*$ ]]; then
+        --command 'SHOW transaction_read_only;')"
+reader_count="$(docker exec \
+    "${CANDIDATE_CONTAINER}" \
+    psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
+        --username "${DOMEYE_CORE_DB_READER_USER}" \
+        --dbname "${DOMEYE_CORE_DB_NAME}" \
+        --command 'SELECT count(*) FROM public.feature_country;')"
+if [[ "${reader_readonly}" != 'on' || ! "${reader_count}" =~ ^[1-9][0-9]*$ ]]; then
     domeye_artifact_error '恢复后的只读账号不能读取 feature_country 超表'
     exit 1
 fi
