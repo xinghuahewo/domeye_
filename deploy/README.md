@@ -243,6 +243,7 @@ cd /home/bgpdata/Domeye-Core
 ## 9. 安全和运维约定
 
 - `database.env`、`source.env`、真实 `.env`、dump、镜像和数据目录权限必须受限，禁止提交 Git。
+- 管理员密码、只读密码和 `SECRET_KEY` 不作为宿主进程命令行参数传递；空库初始化使用临时 `0600` env 文件，只读角色密码经受保护的标准输入设置，候选后端和隔离后端从临时 `0600` 环境文件加载。
 - 信息归档安装拒绝多余成员、软链接、大小或 SHA256 不一致，并以同目录重命名原子切换。
 - 活动数据库路径只能指向 `/home/bgpdata/Domeye-Core-data/releases/<release-id>/postgres`。
 - `dbctl.sh up` 每次从 `restore-state.json` 校验镜像 ID，防止可变标签漂移。

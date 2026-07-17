@@ -26,10 +26,16 @@ domeye_database_load_env() {
         return 1
     fi
 
-    set -a
     # shellcheck disable=SC1090
     source "${env_file}"
-    set +a
+
+    # 配置只保留在当前 shell 变量中；具体子进程按最小需要显式接收。
+    export -n \
+        DOMEYE_CORE_DB_ADMIN_PASSWORD \
+        DOMEYE_CORE_DB_READER_PASSWORD \
+        DOMEYE_CORE_SECRET_KEY \
+        SOURCE_DB_PASSWORD \
+        2>/dev/null || true
 }
 
 domeye_database_apply_defaults() {
@@ -115,20 +121,29 @@ domeye_database_start_candidate() {
     fi
     domeye_database_prepare_empty_data_dir "${data_dir}"
 
-    docker run --detach \
+    local postgres_env_file
+    postgres_env_file="$(mktemp)"
+    printf 'POSTGRES_PASSWORD=%s\n' "${DOMEYE_CORE_DB_ADMIN_PASSWORD}" > "${postgres_env_file}"
+    chmod 0600 "${postgres_env_file}"
+
+    if ! docker run --detach \
         --name "${container_name}" \
         --memory "${DOMEYE_CORE_DATABASE_MEMORY}" \
         --shm-size 4g \
         --env "POSTGRES_DB=${DOMEYE_CORE_DB_NAME}" \
         --env "POSTGRES_USER=${DOMEYE_CORE_DB_ADMIN_USER}" \
-        --env "POSTGRES_PASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
+        --env-file "${postgres_env_file}" \
         --volume "${data_dir}:/var/lib/postgresql/data" \
         "${DOMEYE_CORE_DB_IMAGE}" \
         postgres \
         -c "shared_buffers=${DOMEYE_CORE_DATABASE_SHARED_BUFFERS}" \
         -c 'listen_addresses=*' \
         -c 'timescaledb.telemetry_level=off' \
-        >/dev/null
+        >/dev/null; then
+        rm -f -- "${postgres_env_file}"
+        return 1
+    fi
+    rm -f -- "${postgres_env_file}"
     domeye_database_wait_container "${container_name}"
 }
 
@@ -144,7 +159,6 @@ domeye_database_psql() {
     local container_name="$1"
     shift
     docker exec \
-        --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
         "${container_name}" \
         psql -X --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -189,7 +203,6 @@ domeye_database_restore_archive() {
     if ! zstd --quiet --decompress --stdout "${archive_path}" \
         | docker exec \
             --interactive \
-            --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
             "${container_name}" \
             pg_restore \
                 --exit-on-error \
@@ -206,15 +219,20 @@ domeye_database_restore_archive() {
 domeye_database_apply_reader() {
     local container_name="$1"
     local sql_path="$2"
-    docker exec \
+    local escaped_reader_password="${DOMEYE_CORE_DB_READER_PASSWORD//\\/\\\\}"
+    {
+        printf '%s\n' \
+            'CREATE TEMP TABLE domeye_reader_secret(value text NOT NULL);' \
+            'COPY domeye_reader_secret(value) FROM STDIN;'
+        printf '%s\n' "${escaped_reader_password}"
+        printf '%s\n' '\\.'
+        cat -- "${sql_path}"
+    } | docker exec \
         --interactive \
-        --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
         "${container_name}" \
         psql -X --set ON_ERROR_STOP=1 \
             --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
             --dbname "${DOMEYE_CORE_DB_NAME}" \
             --set "reader_role=${DOMEYE_CORE_DB_READER_USER}" \
-            --set "reader_password=${DOMEYE_CORE_DB_READER_PASSWORD}" \
-            --set "database_name=${DOMEYE_CORE_DB_NAME}" \
-            < "${sql_path}"
+            --set "database_name=${DOMEYE_CORE_DB_NAME}"
 }

@@ -348,7 +348,6 @@ refresh_from_source() {
         source_copy_to_file "(SELECT * FROM public.${table_name})" "${binary_path}"
         source_count="$(source_psql --quiet --no-align --tuples-only --command "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY; SET TRANSACTION SNAPSHOT '${SNAPSHOT_ID}'; SELECT count(*) FROM public.${table_name}; COMMIT;")"
         docker exec --interactive \
-            --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
             "${CANDIDATE_CONTAINER}" \
             psql -X --set ON_ERROR_STOP=1 \
                 --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -358,7 +357,6 @@ refresh_from_source() {
                 --set "is_feature=${is_feature}" \
                 < "${SQL_DIR}/prepare-refresh-table.sql"
         docker exec --interactive \
-            --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
             "${CANDIDATE_CONTAINER}" \
             psql -X --set ON_ERROR_STOP=1 \
                 --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -379,7 +377,6 @@ refresh_from_source() {
         "${country_binary}"
     domeye_database_psql "${CANDIDATE_CONTAINER}" --file=- < "${SQL_DIR}/upsert-feature-country.sql"
     docker exec --interactive \
-        --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
         "${CANDIDATE_CONTAINER}" \
         psql -X --set ON_ERROR_STOP=1 \
             --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -441,7 +438,6 @@ fi
 readonly PRUNE_OUTPUT="${work_dir}/prune-output.txt"
 readonly PRUNE_AUDIT="${work_dir}/prune-audit.json"
 docker exec --interactive \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -490,7 +486,6 @@ if [[ "${POSTGRES_VERSION}" != '12.16' || "${TIMESCALEDB_VERSION}" != '2.11.2' ]
 fi
 
 reader_result="$(docker exec \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_READER_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \
@@ -506,7 +501,6 @@ if [[ ! "${reader_count}" =~ ^[0-9]+$ || "${reader_count}" == '0' ]]; then
     exit 1
 fi
 if docker exec \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_READER_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \
@@ -520,7 +514,6 @@ fi
 
 readonly INTEGRITY_TMP="${work_dir}/database-integrity.json"
 docker exec --interactive \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -549,7 +542,6 @@ fi
 readonly INVENTORY_RAW="${work_dir}/database-inventory-raw.json"
 readonly INVENTORY_TMP="${work_dir}/database-inventory.json"
 docker exec --interactive \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -573,7 +565,6 @@ fi
 
 readonly SCHEMA_TMP="${work_dir}/database-schema.sql"
 docker exec \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     pg_dump \
         --schema-only \
@@ -586,7 +577,6 @@ chmod 0600 "${SCHEMA_TMP}"
 
 readonly DATABASE_TMP="${work_dir}/${DOMEYE_CORE_DATABASE_ARCHIVE}"
 docker exec \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     pg_dump \
         --format=custom \

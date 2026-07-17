@@ -207,7 +207,6 @@ fi
 "${BACKEND_ROOT}/deploy/start-backend.sh"
 curl --fail --silent --show-error --max-time 5 'http://127.0.0.1:28473/api/v1/healthz' >/dev/null
 database_probe="$(docker exec \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_READER_PASSWORD}" \
     "${DOMEYE_CORE_DATABASE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \

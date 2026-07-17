@@ -68,6 +68,7 @@ container_suffix="${RELEASE_ID//[^a-zA-Z0-9]/_}"
 readonly CANDIDATE_CONTAINER="domeye_core_accept_${container_suffix}_$$"
 work_dir="$(mktemp -d)"
 readonly BACKEND_LOG="${work_dir}/backend.log"
+readonly BACKEND_SECRETS_FILE="${work_dir}/backend-secrets.env"
 readonly NGINX_CONF="${work_dir}/nginx.conf"
 readonly NGINX_PID_FILE="${work_dir}/nginx.pid"
 readonly CANDIDATE_INFO_DIR="${work_dir}/info"
@@ -96,6 +97,12 @@ trap cleanup EXIT
 
 "${DEPLOY_DIR}/artifacts/stage-info-artifact.sh" "${RELEASE_DIR}" "${CANDIDATE_INFO_DIR}"
 
+{
+    printf 'SECRET_KEY=%q\n' "${DOMEYE_CORE_SECRET_KEY}"
+    printf 'DB_PASSWORD=%q\n' "${DOMEYE_CORE_DB_READER_PASSWORD}"
+} > "${BACKEND_SECRETS_FILE}"
+chmod 0600 "${BACKEND_SECRETS_FILE}"
+
 docker run --detach \
     --name "${CANDIDATE_CONTAINER}" \
     --memory "${DOMEYE_CORE_DATABASE_MEMORY}" \
@@ -103,7 +110,6 @@ docker run --detach \
     --publish "127.0.0.1:${CANDIDATE_DB_PORT}:5432" \
     --env "POSTGRES_DB=${DOMEYE_CORE_DB_NAME}" \
     --env "POSTGRES_USER=${DOMEYE_CORE_DB_ADMIN_USER}" \
-    --env "POSTGRES_PASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     --volume "${DATA_DIR}:/var/lib/postgresql/data" \
     "${DOMEYE_CORE_DB_IMAGE}" \
     postgres \
@@ -120,21 +126,27 @@ domeye_database_wait_container "${CANDIDATE_CONTAINER}"
         USER=bgpdata \
         LANG=C.UTF-8 \
         PATH='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin:/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' \
+        DOMEYE_CANDIDATE_SECRETS_FILE="${BACKEND_SECRETS_FILE}" \
         FLASK_CONFIG=production \
-        SECRET_KEY="${DOMEYE_CORE_SECRET_KEY}" \
         HOST=127.0.0.1 \
         PORT="${CANDIDATE_BACKEND_PORT}" \
         DEBUG=false \
         AUTO_INIT_DB=false \
         LOAD_CORE_DATA_ON_STARTUP=false \
+        SOURCE=r \
         INFO_DIR="${CANDIDATE_INFO_DIR}" \
         DB_HOST=127.0.0.1 \
         DB_PORT="${CANDIDATE_DB_PORT}" \
         DB_NAME="${DOMEYE_CORE_DB_NAME}" \
         DB_USER="${DOMEYE_CORE_DB_READER_USER}" \
-        DB_PASSWORD="${DOMEYE_CORE_DB_READER_PASSWORD}" \
         PYTHONUNBUFFERED=1 \
-        /home/bgpdata/.local/bin/uv run --frozen python run.py
+        /usr/bin/bash -Eeuo pipefail -c '
+            set -a
+            source "${DOMEYE_CANDIDATE_SECRETS_FILE}"
+            set +a
+            unset DOMEYE_CANDIDATE_SECRETS_FILE
+            exec /home/bgpdata/.local/bin/uv run --frozen python run.py
+        '
 ) > "${BACKEND_LOG}" 2>&1 &
 backend_pid=$!
 

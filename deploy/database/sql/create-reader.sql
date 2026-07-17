@@ -7,8 +7,9 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'reader_role')
 SELECT format(
     'ALTER ROLE %I LOGIN PASSWORD %L',
     :'reader_role',
-    :'reader_password'
+    secret.value
 )
+FROM pg_temp.domeye_reader_secret AS secret
 \gexec
 SELECT format(
     'ALTER ROLE %I SET default_transaction_read_only = on',

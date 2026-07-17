@@ -67,14 +67,38 @@ fi
 feature_start="$(jq -r '.acceptance.feature_window.start_time' "${MANIFEST_PATH}")"
 feature_end="$(jq -r '.acceptance.feature_window.end_time' "${MANIFEST_PATH}")"
 feature_asn="$(jq -r '.acceptance.feature_window.asn' "${MANIFEST_PATH}")"
+runtime_env_file="$(mktemp)"
+cleanup_outer() {
+    local exit_code=$?
+    rm -f -- "${runtime_env_file}"
+    return "${exit_code}"
+}
+trap cleanup_outer EXIT
+{
+    printf '%s\n' \
+        'FLASK_CONFIG=production' \
+        'HOST=127.0.0.1' \
+        "PORT=${test_port}" \
+        'DEBUG=false' \
+        'AUTO_INIT_DB=false' \
+        'LOAD_CORE_DATA_ON_STARTUP=false' \
+        'SOURCE=r' \
+        "INFO_DIR=${ISOLATION_INFO_DIR}" \
+        'PYTHONUNBUFFERED=1'
+    if [[ -n "${DOMEYE_CORE_DB_NAME}" ]]; then
+        printf '%s\n' \
+            'DB_HOST=127.0.0.1' \
+            "DB_PORT=${ISOLATION_DB_PORT}" \
+            "DB_NAME=${DOMEYE_CORE_DB_NAME}" \
+            "DB_USER=${DOMEYE_CORE_DB_READER_USER}"
+        printf 'DB_PASSWORD=%q\n' "${DOMEYE_CORE_DB_READER_PASSWORD}"
+        printf 'SECRET_KEY=%q\n' "${DOMEYE_CORE_SECRET_KEY}"
+    fi
+} > "${runtime_env_file}"
+chmod 0600 "${runtime_env_file}"
 
 unshare --mount --propagation private /usr/bin/env -i \
     PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/bgpdata/.local/bin' \
-    DOMEYE_ISOLATION_DB_NAME="${DOMEYE_CORE_DB_NAME}" \
-    DOMEYE_ISOLATION_DB_USER="${DOMEYE_CORE_DB_READER_USER}" \
-    DOMEYE_ISOLATION_DB_PASSWORD="${DOMEYE_CORE_DB_READER_PASSWORD}" \
-    DOMEYE_ISOLATION_SECRET_KEY="${DOMEYE_CORE_SECRET_KEY}" \
-    DOMEYE_ISOLATION_DB_PORT="${ISOLATION_DB_PORT}" \
     /usr/bin/bash -Eeuo pipefail -c '
         hidden_path="$1"
         backend_dir="$2"
@@ -84,6 +108,7 @@ unshare --mount --propagation private /usr/bin/env -i \
         feature_end="$6"
         feature_asn="$7"
         info_dir="$8"
+        runtime_env_file="$9"
         empty_mount="$(mktemp -d)"
         log_file="$(mktemp)"
         test_pid=""
@@ -106,27 +131,20 @@ unshare --mount --propagation private /usr/bin/env -i \
 
         mount --bind "${empty_mount}" "${hidden_path}"
         cd -- "${backend_dir}"
-        database_env=()
-        if [[ -n "${DOMEYE_ISOLATION_DB_NAME}" ]]; then
-            database_env=(
-                DB_HOST=127.0.0.1
-                "DB_PORT=${DOMEYE_ISOLATION_DB_PORT}"
-                "DB_NAME=${DOMEYE_ISOLATION_DB_NAME}"
-                "DB_USER=${DOMEYE_ISOLATION_DB_USER}"
-                "DB_PASSWORD=${DOMEYE_ISOLATION_DB_PASSWORD}"
-                "SECRET_KEY=${DOMEYE_ISOLATION_SECRET_KEY}"
-            )
-        fi
-        setsid env \
-            HOST=127.0.0.1 \
-            PORT="${test_port}" \
-            DEBUG=false \
-            AUTO_INIT_DB=false \
-            LOAD_CORE_DATA_ON_STARTUP=false \
-            INFO_DIR="${info_dir}" \
-            PYTHONUNBUFFERED=1 \
-            "${database_env[@]}" \
-            "${uv_bin}" run --frozen python run.py \
+        setsid env -i \
+            HOME=/home/bgpdata \
+            USER=bgpdata \
+            LANG=C.UTF-8 \
+            PATH=/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+            DOMEYE_ISOLATION_RUNTIME_FILE="${runtime_env_file}" \
+            UV_BIN="${uv_bin}" \
+            /usr/bin/bash -Eeuo pipefail -c '\''
+                set -a
+                source "${DOMEYE_ISOLATION_RUNTIME_FILE}"
+                set +a
+                unset DOMEYE_ISOLATION_RUNTIME_FILE
+                exec "${UV_BIN}" run --frozen python run.py
+            '\'' \
             >"${log_file}" 2>&1 &
         test_pid=$!
 
@@ -183,6 +201,7 @@ unshare --mount --propagation private /usr/bin/env -i \
     "${feature_start}" \
     "${feature_end}" \
     "${feature_asn}" \
-    "${ISOLATION_INFO_DIR}"
+    "${ISOLATION_INFO_DIR}" \
+    "${runtime_env_file}"
 
 printf '旧目录不可见条件下的冷启动、真实特征查询和文件描述符检查通过。\n'

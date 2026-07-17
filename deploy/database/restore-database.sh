@@ -102,7 +102,6 @@ if [[ "${reuse_existing}" == true ]]; then
         --shm-size 4g \
         --env "POSTGRES_DB=${DOMEYE_CORE_DB_NAME}" \
         --env "POSTGRES_USER=${DOMEYE_CORE_DB_ADMIN_USER}" \
-        --env "POSTGRES_PASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
         --volume "${DATA_DIR}:/var/lib/postgresql/data" \
         "${DOMEYE_CORE_DB_IMAGE}" \
         postgres \
@@ -134,7 +133,6 @@ readonly snapshot_time snapshot_local snapshot_month
 
 readonly RESTORED_INTEGRITY="${work_dir}/database-integrity.json"
 docker exec --interactive \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -163,7 +161,6 @@ fi
 readonly RESTORED_INVENTORY_RAW="${work_dir}/database-inventory-raw.json"
 readonly RESTORED_INVENTORY="${work_dir}/database-inventory.json"
 docker exec --interactive \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_ADMIN_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_ADMIN_USER}" \
@@ -185,7 +182,6 @@ if ! diff -u \
 fi
 
 reader_check="$(docker exec \
-    --env "PGPASSWORD=${DOMEYE_CORE_DB_READER_PASSWORD}" \
     "${CANDIDATE_CONTAINER}" \
     psql -X --quiet --no-align --tuples-only --set ON_ERROR_STOP=1 \
         --username "${DOMEYE_CORE_DB_READER_USER}" \
