@@ -1,90 +1,86 @@
-<template>
-	<el-config-provider :size="getGlobalComponentSize" :locale="getGlobalI18n">
-		<router-view v-show="setLockScreen" />
-		<LockScreen v-if="themeConfig.isLockScreen" />
-		<Setings ref="setingsRef" v-show="setLockScreen" />
-		<CloseFull v-if="!themeConfig.isLockScreen" />
-<!--		<Upgrade v-if="getVersion" />-->
-<!--		<Sponsors />-->
-	</el-config-provider>
-</template>
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 
-<script setup lang="ts" name="app">
-import { defineAsyncComponent, computed, ref, onBeforeMount, onMounted, onUnmounted, nextTick, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { useI18n } from 'vue-i18n';
-import { storeToRefs } from 'pinia';
-import { useTagsViewRoutes } from '/@/stores/tagsViewRoutes';
-import { useThemeConfig } from '/@/stores/themeConfig';
-import other from '/@/utils/other';
-import { Local, Session } from '/@/utils/storage';
-import mittBus from '/@/utils/mitt';
-import setIntroduction from '/@/utils/setIconfont';
+import { getHealth } from '@/api/health'
 
-// 引入组件
-const LockScreen = defineAsyncComponent(() => import('/@/layout/lockScreen/index.vue'));
-const Setings = defineAsyncComponent(() => import('/@/layout/navBars/breadcrumb/setings.vue'));
-const CloseFull = defineAsyncComponent(() => import('/@/layout/navBars/breadcrumb/closeFull.vue'));
+const route = useRoute()
+const healthy = ref(false)
+const checkedAt = ref('')
+let timer: number | undefined
 
-// 定义变量内容
-const { messages, locale } = useI18n();
-const setingsRef = ref();
-const route = useRoute();
-const stores = useTagsViewRoutes();
-const storesThemeConfig = useThemeConfig();
-const { themeConfig } = storeToRefs(storesThemeConfig);
+const sectionCode = computed(() => {
+  const codeByRoute: Record<string, string> = {
+    home: '01 / 态势',
+    events: '02 / 事件',
+    'event-detail': '02A / 证据',
+    features: '03 / 特征',
+  }
+  return codeByRoute[String(route.name)] || '00 / 系统'
+})
 
-// 设置锁屏时组件显示隐藏
-const setLockScreen = computed(() => {
-	// 防止锁屏后，刷新出现不相关界面
-	// https://gitee.com/lyt-top/vue-next-admin/issues/I6AF8P
-	return themeConfig.value.isLockScreen ? themeConfig.value.lockScreenTime > 1 : themeConfig.value.lockScreenTime >= 0;
-});
-// 获取全局组件大小
-const getGlobalComponentSize = computed(() => {
-	return other.globalComponentSize();
-});
-// 获取全局 i18n
-const getGlobalI18n = computed(() => {
-	return messages.value[locale.value];
-});
-// 设置初始化，防止刷新时恢复默认
-onBeforeMount(() => {
-	// 设置批量第三方 icon 图标
-	setIntroduction.cssCdn();
-	// 设置批量第三方 js
-	setIntroduction.jsCdn();
-});
-// 页面加载时
+async function checkHealth() {
+  try {
+    const payload = await getHealth()
+    healthy.value = payload.status === 'ok'
+    checkedAt.value = new Date(payload.time).toLocaleTimeString('zh-CN', { hour12: false })
+  } catch {
+    healthy.value = false
+    checkedAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  }
+}
+
 onMounted(() => {
-	nextTick(() => {
-		// 监听布局配'置弹窗点击打开
-		mittBus.on('openSetingsDrawer', () => {
-			setingsRef.value.openDrawer();
-		});
-		// 获取缓存中的布局配置
-		if (Local.get('themeConfig')) {
-			// storesThemeConfig.setThemeConfig({ themeConfig: Local.get('themeConfig') });
-			document.documentElement.style.cssText = Local.get('themeConfigStyle');
-		}
-		// 获取缓存中的全屏配置
-		if (Session.get('isTagsViewCurrenFull')) {
-			stores.setCurrenFullscreen(Session.get('isTagsViewCurrenFull'));
-		}
-	});
-});
-// 页面销毁时，关闭监听布局配置/i18n监听
-onUnmounted(() => {
-	mittBus.off('openSetingsDrawer', () => {});
-});
-// 监听路由的变化，设置网站标题
-watch(
-	() => route.path,
-	() => {
-		other.useTitle();
-	},
-	{
-		deep: true,
-	}
-);
+  void checkHealth()
+  timer = window.setInterval(checkHealth, 30_000)
+})
+
+onBeforeUnmount(() => {
+  if (timer !== undefined) window.clearInterval(timer)
+})
 </script>
+
+<template>
+  <div class="app-shell">
+    <header class="site-header">
+      <RouterLink class="brand" to="/" aria-label="返回 Domeye Core 首页">
+        <span class="brand-mark" aria-hidden="true"><i></i></span>
+        <span class="brand-copy">
+          <strong>Domeye</strong>
+          <small>ROUTING ANOMALY CORE</small>
+        </span>
+      </RouterLink>
+
+      <nav class="primary-nav" aria-label="主导航">
+        <RouterLink to="/">核心态势</RouterLink>
+        <RouterLink to="/events">异常事件</RouterLink>
+        <RouterLink to="/features">路由特征</RouterLink>
+      </nav>
+
+      <div class="system-state" :class="{ 'is-offline': !healthy }" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>{{ healthy ? 'API ONLINE' : 'API OFFLINE' }}</span>
+        <time v-if="checkedAt">{{ checkedAt }}</time>
+      </div>
+    </header>
+
+    <div class="context-bar">
+      <span>{{ sectionCode }}</span>
+      <span>RR / BGP · CORE PROFILE</span>
+      <span>UTC+08</span>
+    </div>
+
+    <main class="site-main">
+      <RouterView v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </RouterView>
+    </main>
+
+    <footer class="site-footer">
+      <span>Domeye Core / Route anomaly evidence console</span>
+      <span>入口端口 28471 · API 28473</span>
+    </footer>
+  </div>
+</template>
