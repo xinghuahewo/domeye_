@@ -571,8 +571,8 @@ domeye_artifact_json_file "${INVENTORY_TMP}"
 
 if ! jq -e \
     --arg start "${DOMEYE_CORE_DATA_START}" \
-    --arg end "${SNAPSHOT_LOCAL}" \
-    'all(.tables[]; ((.min_time == null or .min_time >= $start) and (.max_time == null or .max_time <= $end)))' \
+    --arg snapshot_end "${SNAPSHOT_LOCAL}" \
+    'all(.tables[]; ((.min_time == null or .min_time >= $start) and (.max_time == null or .max_time <= $snapshot_end)))' \
     "${INVENTORY_TMP}" >/dev/null; then
     domeye_artifact_error '候选库存在超出固定时间范围的数据'
     exit 1
