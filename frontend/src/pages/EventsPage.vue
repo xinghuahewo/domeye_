@@ -72,11 +72,11 @@ onMounted(() => load())
   <article class="page events-page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Unified event ledger / Six core classes</p>
-        <h1>异常事件账本</h1>
+        <p class="eyebrow">异常监测 / Events</p>
+        <h1>异常事件</h1>
       </div>
       <p class="page-heading-copy">
-        统一读取事件总表，并沿详情引用回到六类业务事实表。筛选只保留类型、等级、范围和摘要，不包含研判与通报流程。
+        在六类核心异常中按等级、范围、日期和摘要检索，点击事件可继续查看对应业务事实与路径证据。
       </p>
     </header>
 
@@ -129,7 +129,7 @@ onMounted(() => load())
       <button class="solid-action" type="submit">执行查询</button>
     </form>
 
-    <section>
+    <section class="data-panel">
       <div class="section-heading result-heading">
         <h2>查询结果</h2>
         <span>{{ result.recordCount.toLocaleString('zh-CN') }} records · page {{ pageLabel }}</span>
@@ -162,74 +162,90 @@ onMounted(() => load())
 <style scoped>
 .filter-console {
   display: grid;
-  grid-template-columns: repeat(3, minmax(150px, 1fr)) minmax(210px, 1.4fr);
-  gap: 1px;
-  padding: 1px;
-  background: var(--line);
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 13px;
+  padding: 16px;
+  background: var(--paper);
   border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-console label {
-  min-height: 76px;
   display: grid;
-  align-content: center;
-  gap: 8px;
-  padding: 12px 14px;
-  background: var(--paper);
+  gap: 7px;
 }
 
 .filter-console label span {
   color: var(--muted);
-  font: 9px/1 var(--mono);
-  letter-spacing: 0.07em;
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .filter-console input,
 .filter-console select {
   width: 100%;
   min-width: 0;
-  height: 31px;
-  padding: 0 4px;
+  height: 38px;
+  padding: 0 10px;
   color: var(--ink);
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid #8e9498;
-  border-radius: 0;
-  font-size: 13px;
+  background: #fff;
+  border: 1px solid #cfd7e1;
+  border-radius: 5px;
+  font-size: 12px;
 }
 
 .filter-console .solid-action {
-  min-height: 76px;
+  align-self: end;
+  height: 38px;
+  min-height: 38px;
 }
 
 .result-heading {
-  margin-bottom: 16px;
+  margin: 0;
+  padding: 15px 18px;
+  border-bottom: 0;
+}
+
+.data-panel {
+  overflow: hidden;
+}
+
+.data-panel > .page-state {
+  margin: 0 18px 18px;
 }
 
 .pagination {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 18px;
-  margin-top: 18px;
-  font: 11px/1 var(--mono);
+  gap: 14px;
+  min-height: 58px;
+  margin: 0;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
 }
 
 .pagination button {
-  min-height: 38px;
+  min-height: 34px;
   cursor: pointer;
-  padding: 0 16px;
-  color: var(--paper);
-  background: var(--ink);
-  border: 0;
+  padding: 0 13px;
+  color: var(--primary);
+  background: var(--paper);
+  border: 1px solid #b8cdf5;
+  border-radius: 5px;
+  font-size: 10px;
 }
 
 .pagination button:disabled {
   cursor: not-allowed;
-  opacity: 0.35;
+  color: #98a2b3;
+  background: #f2f4f7;
+  border-color: var(--line);
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1180px) {
   .filter-console {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -238,10 +254,13 @@ onMounted(() => load())
 @media (max-width: 560px) {
   .filter-console {
     grid-template-columns: 1fr;
+    gap: 11px;
+    padding: 13px;
   }
 
   .pagination {
     justify-content: space-between;
+    padding: 10px 12px;
   }
 }
 </style>
