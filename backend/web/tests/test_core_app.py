@@ -69,6 +69,18 @@ def test_removed_services_are_not_imported(app):
     assert 'web.api.reports.api' not in sys.modules
 
 
+def test_local_env_loader_can_be_disabled(monkeypatch):
+    from run import load_local_env
+
+    monkeypatch.setenv('DOMEYE_CORE_SKIP_LOCAL_ENV', 'true')
+
+    def unexpected_env_lookup(_):
+        raise AssertionError('禁用本地环境加载后不应读取 .env')
+
+    monkeypatch.setattr('run.os.path.exists', unexpected_env_lookup)
+    load_local_env()
+
+
 def test_core_files_match_migration_manifest():
     backend_dir = Path(__file__).resolve().parents[2]
     manifest = backend_dir / 'core.sha256'

@@ -21,6 +21,16 @@ readonly RELEASE_STATE_DIR="${PROJECT_ROOT}/var/releases"
 readonly CURRENT_STATE="${RELEASE_STATE_DIR}/database-current"
 readonly ACTIVATION_JOURNAL="${RELEASE_STATE_DIR}/database-rollback.json"
 
+defer_backend_restart=false
+case "${DOMEYE_CORE_DEFER_BACKEND_RESTART_ON_ROLLBACK:-false}" in
+    true) defer_backend_restart=true ;;
+    false|'') ;;
+    *)
+        domeye_artifact_error 'DOMEYE_CORE_DEFER_BACKEND_RESTART_ON_ROLLBACK 只能为 true 或 false'
+        exit 1
+        ;;
+esac
+
 domeye_database_load_env "${DATABASE_ENV_FILE}"
 domeye_database_validate_config
 domeye_artifact_require_regular_file "${ACTIVATION_JOURNAL}"
@@ -107,7 +117,15 @@ else
     rm -f -- "${DOMEYE_CORE_DATABASE_ACTIVE_LINK}"
 fi
 
-if [[ "${BACKEND_WAS_RUNNING}" == true ]]; then
+if [[ -z "${previous_target}" && "${BACKEND_ENV_EXISTED}" == true && "${PREVIOUS_INFO_EXISTED}" == true ]]; then
+    domeye_core_write_source_rollback_state \
+        "${previous_info_dir}" \
+        "manual-rollback-${CURRENT_RELEASE}"
+else
+    domeye_core_clear_source_rollback_state
+fi
+
+if [[ "${BACKEND_WAS_RUNNING}" == true && "${defer_backend_restart}" != true ]]; then
     DOMEYE_CORE_ALLOW_ROLLBACK_CONFIG=true \
         DOMEYE_CORE_ROLLBACK_INFO_DIR="${previous_info_dir}" \
         "${PROJECT_ROOT}/deploy/start-backend.sh"

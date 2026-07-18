@@ -23,7 +23,7 @@
 
 ## 目录职责
 
-- `artifacts/`：构建和安装四文件信息制品，定稿并校验八文件发布集合。
+- `artifacts/`：构建和安装四文件信息制品，原子安装/回滚前端构建，定稿并校验八文件发布集合。
 - `database/`：生成、刷新、恢复、激活和回滚独立数据库。
 - `acceptance/`：运行随机端口候选栈、核心 API 冒烟、SPA 刷新和旧目录隔离检查。
 - `nginx/`：生产前端和 API 代理配置。
@@ -132,6 +132,24 @@ cd /home/bgpdata/Domeye-Core
 - 严格对照从 202602 至快照月的表网格，拒绝缺表、多余公共表和非 TimescaleDB 用户 schema 表。
 - 只在候选库删除无法路由的核心事件总表行，按月份和类型记录 `discarded_malformed_event_rows`；随后逐月对所有有效详情键做集合级 Hash Anti Join，要求 `malformed_count=0`、`orphan_count=0`。
 
+完整恢复或刷新成功后，脚本会先原子写入 `pre_prune_context` 检查点，再执行 `prune.sql`；该上下文已落盘且裁剪尚未产生任何输出时可以续跑。若 system identifier、JQ 或状态写入恰好在上下文本身落盘前失败，脚本仍保留候选库并禁止自动重建，但必须先人工复核，不能由续跑入口猜测状态。`prune.sql` 完整返回后，以独立的成功哨兵、`prune-output.sha256`、完成标记和 `build-state.json` 形成交叉校验的 post-prune 续跑点。此后若只读授权、JQ、inventory、schema dump、压缩、清单、打包或冒烟失败，脚本会停止候选容器，但保留候选 PGDATA、状态和裁剪证据，并拒绝同一 release-id 自动重建。数据库组件生成后也保留候选 PGDATA，直到正式发布恢复和完整验收通过。
+
+默认原则是“能续跑就不重建”。只有源转储哈希或一致性错误、`pg_restore` 本身失败、`prune.sql` 或数据本身失败且无法修复、schema/表数量/完整性无法修复，或者数据范围与快照基准发生变化时，才进入人工确认重建流程。脚本解析、JQ、清单、压缩、打包、恢复后门禁或冒烟错误都不得自动删除候选 PGDATA。
+
+若 `pg_restore` 已完整返回、仅 `timescaledb_post_restore()` 失败，构建脚本会写入 `post-restore-pending.tsv` 并保留候选 PGDATA，不把它误判为完整恢复失败而删除。增量刷新已恢复基准库但刷新阶段失败时，会留下 `refresh-pending.tsv` 和候选 PGDATA。两类状态都必须先人工复核：能从失败门禁安全续跑时继续，状态不足以证明幂等时先隔离现场；不得直接重建或越过未完成阶段进入裁剪。
+
+后置阶段失败时，使用错误信息中给出的候选构建目录续跑，不再执行完整恢复和裁剪：
+
+```bash
+./deploy/database/resume-database-artifact.sh \
+  /home/bgpdata/Domeye-Core-data/config/database.env \
+  "${release_id}" \
+  /home/bgpdata/Domeye-Core-data/work/build-${release_id}-<pid> \
+  /home/bgpdata/Domeye-Core-artifacts
+```
+
+续跑入口会先验证 `build-state.json`、候选 PGDATA 和已有裁剪证据均不是软链接，并绑定 release-id、固定数据起点、快照时间、镜像 ID、`prune.sql`、裁剪输出 SHA256 和 PostgreSQL system identifier。若停在完整的 `pre_prune_context` 且不存在任何裁剪输出，入口只补做一次裁剪；若只有一个 pending 输出且存在与其文件名和审计末行匹配的持久成功哨兵，入口可原子晋升该输出，避免重复执行已成功的裁剪。最终输出可信时，缺失的 checksum、完成标记或状态字段可以重建；没有成功哨兵的部分输出一律拒绝猜测和覆盖。通过 post-prune 检查点后才重跑只读授权、版本、完整性、inventory、时间边界、schema、数据库 dump、镜像归档和数据库清单。若上次已发布部分数据库文件，只复用与检查点中可信 staging 大小及 SHA256 完全一致的文件；不一致内容一律拒绝覆盖，`database-manifest.json` 始终最后发布。续跑成功后仍保留候选 PGDATA，待完整发布验收通过后再人工清理。
+
 ## 4. 定稿发布
 
 信息和数据库组件都完成后：
@@ -142,7 +160,7 @@ release_dir="/home/bgpdata/Domeye-Core-artifacts/releases/${release_id}"
 ./deploy/artifacts/verify-release.sh "${release_dir}"
 ```
 
-校验器强制八个发布文件恰好各出现一次，验证 64 位十六进制 SHA256，并交叉核对总清单和两个组件清单。`SHA256SUMS` 缺行、重复行、多余文件名或内嵌哈希不一致都会失败。
+定稿脚本不会覆盖不一致的内容：若上次只生成了 `manifest.json`，会保留原 `created_at`、重建期望清单并逐字段比对，一致时只续做 `SHA256SUMS`；若两者都已存在，则直接完整复验。校验器强制八个发布文件恰好各出现一次，验证 64 位十六进制 SHA256，并交叉核对总清单和两个组件清单。`SHA256SUMS` 缺行、重复行、多余文件名或内嵌哈希不一致都会失败。
 
 ## 5. 一次完成独立部署验收
 
@@ -161,14 +179,14 @@ cd /home/bgpdata/Domeye-Core
 1. 校验发布；四文件信息制品先解包到候选临时目录，不触碰生产 `backend/info`。
 2. 加载冻结镜像，将数据库恢复到版本目录并复验 inventory、版本和只读查询。
 3. `uv sync --frozen`、后端 pytest、`core.sha256` 校验。
-4. 断言隔离 Node.js 为 `v22.23.1`，再执行 `npm ci`、前端测试和候选构建；构建输出写入一次性临时目录，不覆盖在线 Nginx 使用的 `frontend/dist`。
+4. 断言隔离 Node.js 为 `v22.23.1`，再执行 `npm ci`、前端测试和候选构建；构建输出先写入一次性临时目录，不覆盖在线 Nginx 使用的 `frontend/dist`。
 5. 用三个随机高位端口启动候选 PostgreSQL、候选 Flask 和临时 Nginx。
 6. 在候选栈运行核心接口、六类详情、五类中断时序、仪表盘、移除接口 404 和 SPA 直达刷新。
 7. 在挂载命名空间中遮蔽固定旧目录，重新冷启动后端并执行真实 ASN 特征查询；检查进程环境、文件描述符和日志不存在带路径边界的旧目录引用。
-8. 候选全部通过后才安装生产 Nginx；随后先短暂停止 Domeye Core Screen，再原子安装正式信息目录、切换活动数据库软链接与 `.env`，最后启动新后端。
-9. 再次运行生产状态、完整冒烟和隔离测试。
+8. 候选全部通过后先备份生产 Nginx 配置，再短暂停止 Domeye Core Screen，依次原子安装正式信息目录、切换活动数据库软链接与 `.env`，并启动、检查新后端。
+9. 新后端健康后才原子安装候选前端构建，随后安装并校验生产 Nginx 配置；最后运行生产状态、完整冒烟和隔离测试。
 
-候选验收不会修改生产信息目录、在线前端制品、Nginx 或活动数据库链接。生产切换前会从实际 Screen 进程树安全捕获其 `INFO_DIR`，不读取或打印其他环境密钥。切换期间如完整冒烟失败，脚本会消费一次性回滚日志，恢复原信息目录、`.env`、活动链接、Nginx 和原运行状态；首次安装前不存在 `.env`、信息目录或活动数据库链接时，也会恢复为“不存在”而不是制造占位状态。
+候选验收不会修改生产信息目录、在线前端制品、Nginx 或活动数据库链接。生产切换前会从实际 Screen 进程树安全捕获其 `INFO_DIR`，不读取或打印其他环境密钥。前端构建采用同文件系统 staging 和目录重命名，并以 `frontend-current`、一次性回滚日志及持久安装状态覆盖子进程中断窗口。切换期间如完整冒烟失败，脚本会先停止新后端，再恢复原前端、信息目录、`.env`、活动链接、Nginx 和原运行状态；只有各项恢复全部成功才重启旧后端。首次安装前不存在 `.env`、前端构建、信息目录或活动数据库链接时，也会恢复为“不存在”而不是制造占位状态。
 
 ## 6. 分步恢复和候选排障
 
@@ -184,7 +202,7 @@ cd /home/bgpdata/Domeye-Core
   /home/bgpdata/Domeye
 ```
 
-`restore-database.sh` 可幂等复验已恢复 release：每次都会重新加载并校验离线镜像、启动候选实例、对照 inventory 并使用只读账号查询超表，不会仅凭 `PG_VERSION` 提前返回。
+`restore-database.sh` 在完整 `pg_restore` 成功后立即原子写入 `restore-checkpoint.json`，阶段为 `restored_unverified`。后续 inventory、JQ、schema 或只读查询门禁失败时保留 PGDATA；再次执行会校验 release-id、dump SHA256、镜像 ID 和 PostgreSQL system identifier，然后只重跑后置门禁。全部通过后才生成阶段为 `verified` 的 `restore-state.json`。脚本不会仅凭 `PG_VERSION` 提前返回，也不会因后置脚本错误重做昂贵恢复。
 
 生产信息目录、数据库链接和 `.env` 必须作为同一次切换处理。不要在仍运行旧 Screen 时单独执行 `install-info-artifact.sh`，也不要把 `activate-database.sh` 当作日常入口；候选排障通过后，仍应重新运行第 5 节的 `full-acceptance.sh` 完成受事务保护的最终切换。
 
@@ -229,22 +247,25 @@ cd /home/bgpdata/Domeye-Core
 ./deploy/database/dbctl.sh status
 ```
 
-显式回滚最近一次生产切换时，先停止新后端并恢复信息目录，再消费数据库回滚日志；`rollback-database.sh` 会按日志恢复原 `.env`、活动链接和原 Screen 运行状态：
+显式回滚最近一次生产切换时，先停止新后端并恢复前端和信息目录，再消费数据库回滚日志；`rollback-database.sh` 会按日志恢复原 `.env`、活动链接和原 Screen 运行状态：
 
 ```bash
 ./deploy/stop-backend.sh
+./deploy/artifacts/rollback-frontend-build.sh
 ./deploy/artifacts/rollback-info-artifact.sh
 ./deploy/database/rollback-database.sh \
   /home/bgpdata/Domeye-Core-data/config/database.env
 ```
 
-完整验收过程中的失败会自动执行同一顺序，并额外恢复切换前 Nginx 配置。回滚只操作 Domeye Core 的 Screen、`.env`、独立数据库容器、信息目录和活动软链接；不会删除新 release 数据，也不会操作原项目。上一数据库目录、信息目录、切换前后端配置及一次性回滚日志保存在已忽略的 `/home/bgpdata/Domeye-Core/var/releases`。成功回滚会把日志标记为已消费，重复调用会被拒绝。
+完整验收过程中的失败会自动执行同一顺序，并额外恢复切换前 Nginx 配置及其原运行状态；每个回滚步骤都会记录结果，任一步失败都会汇总为明确的回滚失败。回到旧源库配置时会原子写入 `source-rollback-active.json`，绑定整份 `.env` 的 SHA256、数据库地址和实际 `INFO_DIR`；普通启停只有验证该标记后才允许持久回滚态，不能仅凭活动链接缺失绕过独立库门禁。回滚只操作 Domeye Core 的 Screen、`.env`、独立数据库容器、前端构建、信息目录和活动软链接；不会删除新 release 数据，也不会操作原项目。上一数据库目录、前端构建、信息目录、切换前后端配置及一次性回滚日志保存在已忽略的 `/home/bgpdata/Domeye-Core/var/releases`。成功回滚会把日志标记为已消费，重复调用会被拒绝。
 
 ## 9. 安全和运维约定
 
 - `database.env`、`source.env`、真实 `.env`、dump、镜像和数据目录权限必须受限，禁止提交 Git。
+- 候选栈和旧目录隔离测试显式禁用项目 `.env` 回填，并拒绝 SSH、SMTP、旧采集路径和源库高权限变量进入候选进程；生产后端仍只读取切换后收口的 `.env`。
 - 管理员密码、只读密码和 `SECRET_KEY` 不作为宿主进程命令行参数传递；空库初始化使用临时 `0600` env 文件，只读角色密码经受保护的标准输入设置，候选后端和隔离后端从临时 `0600` 环境文件加载。
 - 信息归档安装拒绝多余成员、软链接、大小或 SHA256 不一致，并以同目录重命名原子切换。
+- 前端安装拒绝软链接和特殊文件，复制前后核对确定性目录哈希，并以同目录重命名原子切换。
 - 活动数据库路径只能指向 `/home/bgpdata/Domeye-Core-data/releases/<release-id>/postgres`。
 - `dbctl.sh up` 每次从 `restore-state.json` 校验镜像 ID，防止可变标签漂移。
 - 任何脚本都只按精确容器名、Screen 会话名和固定项目路径操作。

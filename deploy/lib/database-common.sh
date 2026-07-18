@@ -101,6 +101,7 @@ domeye_database_wait_container() {
 
 domeye_database_prepare_empty_data_dir() {
     local data_dir="$1"
+    local runtime_image="${DOMEYE_CORE_DB_IMAGE_RUNTIME:-${DOMEYE_CORE_DB_IMAGE}}"
 
     if [[ "${data_dir}" != "${DOMEYE_CORE_DATABASE_RELEASE_ROOT}/"* && "${data_dir}" != "${DOMEYE_CORE_DATABASE_WORK_ROOT}/"* ]]; then
         domeye_artifact_error "候选数据库目录越界：${data_dir}"
@@ -112,14 +113,15 @@ domeye_database_prepare_empty_data_dir() {
     fi
 
     local postgres_uid postgres_gid
-    postgres_uid="$(docker run --rm --entrypoint sh "${DOMEYE_CORE_DB_IMAGE}" -c 'id -u postgres')"
-    postgres_gid="$(docker run --rm --entrypoint sh "${DOMEYE_CORE_DB_IMAGE}" -c 'id -g postgres')"
+    postgres_uid="$(docker run --rm --entrypoint sh "${runtime_image}" -c 'id -u postgres')"
+    postgres_gid="$(docker run --rm --entrypoint sh "${runtime_image}" -c 'id -g postgres')"
     install -d -o "${postgres_uid}" -g "${postgres_gid}" -m 0700 "${data_dir}"
 }
 
 domeye_database_start_candidate() {
     local container_name="$1"
     local data_dir="$2"
+    local runtime_image="${DOMEYE_CORE_DB_IMAGE_RUNTIME:-${DOMEYE_CORE_DB_IMAGE}}"
 
     if docker inspect "${container_name}" >/dev/null 2>&1; then
         domeye_artifact_error "候选容器名称已存在：${container_name}"
@@ -140,7 +142,7 @@ domeye_database_start_candidate() {
         --env "POSTGRES_USER=${DOMEYE_CORE_DB_ADMIN_USER}" \
         --env-file "${postgres_env_file}" \
         --volume "${data_dir}:/var/lib/postgresql/data" \
-        "${DOMEYE_CORE_DB_IMAGE}" \
+        "${runtime_image}" \
         postgres \
         -c "shared_buffers=${DOMEYE_CORE_DATABASE_SHARED_BUFFERS}" \
         -c 'listen_addresses=*' \
@@ -203,9 +205,10 @@ domeye_database_verify_source_env() {
 domeye_database_restore_archive() {
     local container_name="$1"
     local archive_path="$2"
+    DOMEYE_DATABASE_ARCHIVE_RESTORED=false
 
-    domeye_database_psql "${container_name}" --command 'CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;'
-    domeye_database_psql "${container_name}" --command 'SELECT timescaledb_pre_restore();'
+    domeye_database_psql "${container_name}" --command 'CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;' || return 1
+    domeye_database_psql "${container_name}" --command 'SELECT timescaledb_pre_restore();' || return 1
     if ! zstd --quiet --decompress --stdout "${archive_path}" \
         | docker exec \
             --interactive \
@@ -219,7 +222,8 @@ domeye_database_restore_archive() {
         domeye_database_psql "${container_name}" --command 'SELECT timescaledb_post_restore();' || true
         return 1
     fi
-    domeye_database_psql "${container_name}" --command 'SELECT timescaledb_post_restore();'
+    DOMEYE_DATABASE_ARCHIVE_RESTORED=true
+    domeye_database_psql "${container_name}" --command 'SELECT timescaledb_post_restore();' || return 1
 }
 
 domeye_database_apply_reader() {

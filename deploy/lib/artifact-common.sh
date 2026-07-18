@@ -70,6 +70,15 @@ domeye_artifact_assert_safe_release_dir() {
         domeye_artifact_error "拒绝使用越界发布目录：${release_dir}"
         return 1
     fi
+    if [[ -L "${artifact_root}" || -L "${artifact_root%/}/releases" \
+        || -L "${release_dir}" ]]; then
+        domeye_artifact_error "制品根、releases 或发布目录不能是软链接：${release_dir}"
+        return 1
+    fi
+    if [[ -e "${release_dir}" && ! -d "${release_dir}" ]]; then
+        domeye_artifact_error "发布路径已存在但不是目录：${release_dir}"
+        return 1
+    fi
 }
 
 domeye_artifact_json_file() {

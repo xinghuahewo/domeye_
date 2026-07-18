@@ -4,6 +4,9 @@ import os
 
 
 def load_local_env():
+    if os.getenv('DOMEYE_CORE_SKIP_LOCAL_ENV', '').strip().lower() == 'true':
+        return
+
     env_path = os.path.join(os.path.dirname(__file__), '.env')
     if not os.path.exists(env_path):
         return
