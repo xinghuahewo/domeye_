@@ -48,10 +48,12 @@ request_json() {
 }
 
 request_json '健康检查' 'healthz' 'type == "object" and (.status == true or .status == "ok")'
+nonempty_start="$(jq -r '.acceptance.nonempty_window.start_time' "${MANIFEST_PATH}")"
+nonempty_end="$(jq -r '.acceptance.nonempty_window.end_time' "${MANIFEST_PATH}")"
 request_json '事件列表' 'events' 'type == "object" and (.data | type == "array" and length > 0)' \
     --data-urlencode 'page_num=1' \
     --data-urlencode 'page_size=10' \
-    --data-urlencode 'date=2026-06-11_2026-06-13'
+    --data-urlencode "date=${nonempty_start}_${nonempty_end}"
 request_json '最新事件' 'events/top' 'type == "array"' \
     --data-urlencode 'event_type=["前缀劫持","子前缀劫持","前缀中断","AS中断","国家中断","路由泄漏"]'
 
@@ -89,20 +91,18 @@ request_json 'ASN 特征列表' 'features/ases' 'type == "object" and (.data | t
     --data-urlencode 'page_num=1' \
     --data-urlencode 'page_size=5'
 
-outage_start="$(jq -r '.acceptance.nonempty_window.start_time' "${MANIFEST_PATH}")"
-outage_end="$(jq -r '.acceptance.nonempty_window.end_time' "${MANIFEST_PATH}")"
 for outage_endpoint in country-as country-prefix global-as global-prefix; do
     request_json \
         "中断时序 ${outage_endpoint}" \
         "features/outages/${outage_endpoint}" \
         'type == "array" and length > 0 and any(.[]; (.outage_count | type) == "number" and .outage_count > 0)' \
-        --data-urlencode "start_time=${outage_start}" \
-        --data-urlencode "end_time=${outage_end}"
+        --data-urlencode "start_time=${nonempty_start}" \
+        --data-urlencode "end_time=${nonempty_end}"
 done
 request_json '中断时序 as-prefix' 'features/outages/as-prefix' 'type == "array" and length > 0 and any(.[]; (.outage_count | type) == "number" and .outage_count > 0)' \
     --data-urlencode "asn=${feature_asn}" \
-    --data-urlencode "start_time=${outage_start}" \
-    --data-urlencode "end_time=${outage_end}"
+    --data-urlencode "start_time=${nonempty_start}" \
+    --data-urlencode "end_time=${nonempty_end}"
 
 request_json '仪表盘总量' 'dashboard/counts/total' 'type == "array" or type == "object"'
 request_json '仪表盘分类' 'dashboard/counts/type' 'type == "array" or type == "object"' \

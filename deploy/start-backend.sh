@@ -40,22 +40,61 @@ if [[ ! -f "${DOMEYE_CORE_BACKEND_DIR}/.env" ]]; then
     exit 1
 fi
 
-configured_db_host="$(awk -F= '$1 == "DB_HOST" {gsub(/^[[:space:]\"\047]+|[[:space:]\"\047]+$/, "", $2); print $2; exit}' "${DOMEYE_CORE_BACKEND_DIR}/.env")"
-configured_db_port="$(awk -F= '$1 == "DB_PORT" {gsub(/^[[:space:]\"\047]+|[[:space:]\"\047]+$/, "", $2); print $2; exit}' "${DOMEYE_CORE_BACKEND_DIR}/.env")"
-runtime_info_dir="${DOMEYE_CORE_INFO_DIR}"
-if [[ "${DOMEYE_CORE_ALLOW_ROLLBACK_CONFIG:-false}" != true ]]; then
-    if [[ "${configured_db_host}" != "${DOMEYE_CORE_BACKEND_DB_HOST}" || "${configured_db_port}" != "${DOMEYE_CORE_BACKEND_DB_PORT}" ]]; then
+configured_db_host="$(domeye_core_backend_env_value DB_HOST)"
+configured_db_port="$(domeye_core_backend_env_value DB_PORT)"
+readonly DATABASE_CURRENT_STATE="${DOMEYE_CORE_ROOT}/var/releases/database-current"
+readonly DATABASE_ACTIVE_LINK="${DOMEYE_CORE_DATA_ROOT}/postgres"
+
+explicit_rollback_mode=false
+case "${DOMEYE_CORE_ALLOW_ROLLBACK_CONFIG:-false}" in
+    true) explicit_rollback_mode=true ;;
+    false|'') ;;
+    *)
+        domeye_core_error 'DOMEYE_CORE_ALLOW_ROLLBACK_CONFIG 只能为 true 或 false'
+        exit 1
+        ;;
+esac
+
+db_config_is_independent=false
+if [[ "${configured_db_host}" == "${DOMEYE_CORE_BACKEND_DB_HOST}" \
+    && "${configured_db_port}" == "${DOMEYE_CORE_BACKEND_DB_PORT}" ]]; then
+    db_config_is_independent=true
+fi
+
+persistent_source_rollback_mode=false
+if [[ "${explicit_rollback_mode}" != true \
+    && ! -e "${DATABASE_CURRENT_STATE}" && ! -L "${DATABASE_CURRENT_STATE}" \
+    && ! -e "${DATABASE_ACTIVE_LINK}" && ! -L "${DATABASE_ACTIVE_LINK}" \
+    && "${db_config_is_independent}" != true ]]; then
+    runtime_info_dir="$(domeye_core_backend_env_value INFO_DIR)"
+    if [[ -z "${runtime_info_dir}" ]]; then
+        domeye_core_error '非独立数据库配置缺少 INFO_DIR'
+        exit 1
+    fi
+    domeye_core_validate_source_rollback_state "${runtime_info_dir%/}"
+    persistent_source_rollback_mode=true
+fi
+
+runtime_info_dir="${runtime_info_dir:-${DOMEYE_CORE_INFO_DIR}}"
+if [[ "${explicit_rollback_mode}" != true && "${persistent_source_rollback_mode}" != true ]]; then
+    if [[ "${db_config_is_independent}" != true ]]; then
         domeye_core_error "生产 .env 必须连接独立数据库 ${DOMEYE_CORE_BACKEND_DB_HOST}:${DOMEYE_CORE_BACKEND_DB_PORT}"
         exit 1
     fi
 else
-    runtime_info_dir="${DOMEYE_CORE_ROLLBACK_INFO_DIR:-}"
+    runtime_info_dir=''
+    if [[ "${explicit_rollback_mode}" == true ]]; then
+        runtime_info_dir="${DOMEYE_CORE_ROLLBACK_INFO_DIR:-}"
+    fi
     if [[ -z "${runtime_info_dir}" ]]; then
-        runtime_info_dir="$(awk -F= '$1 == "INFO_DIR" {sub(/^[^=]*=/, ""); gsub(/^[[:space:]\"\047]+|[[:space:]\"\047]+$/, ""); print; exit}' "${DOMEYE_CORE_BACKEND_DIR}/.env")"
+        runtime_info_dir="$(domeye_core_backend_env_value INFO_DIR)"
     fi
     if [[ -z "${runtime_info_dir}" ]]; then
         domeye_core_error '回滚启动缺少切换前实际 INFO_DIR'
         exit 1
+    fi
+    if [[ "${persistent_source_rollback_mode}" == true ]]; then
+        printf '检测到无活动独立数据库的持久回滚态，将使用已恢复的 .env。\n'
     fi
 fi
 

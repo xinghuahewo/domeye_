@@ -19,6 +19,8 @@ readonly DOMEYE_CORE_ARTIFACT_ROOT='/home/bgpdata/Domeye-Core-artifacts'
 readonly DOMEYE_CORE_DATA_ROOT='/home/bgpdata/Domeye-Core-data'
 readonly DOMEYE_CORE_LOG_DIR="${DOMEYE_CORE_ROOT}/var/log"
 readonly DOMEYE_CORE_BACKEND_LOG="${DOMEYE_CORE_LOG_DIR}/backend-screen.log"
+readonly DOMEYE_CORE_RELEASE_STATE_DIR="${DOMEYE_CORE_ROOT}/var/releases"
+readonly DOMEYE_CORE_SOURCE_ROLLBACK_STATE="${DOMEYE_CORE_RELEASE_STATE_DIR}/source-rollback-active.json"
 readonly DOMEYE_CORE_HEALTH_URL="http://${DOMEYE_CORE_BACKEND_HOST}:${DOMEYE_CORE_BACKEND_PORT}/api/v1/healthz"
 readonly DOMEYE_CORE_FRONTEND_URL="http://127.0.0.1:${DOMEYE_CORE_FRONTEND_PORT}/"
 
@@ -65,6 +67,159 @@ domeye_core_validate_info_dir() {
             return 1
         fi
     done
+}
+
+domeye_core_backend_env_value() {
+    local key="$1"
+    local env_file="${DOMEYE_CORE_BACKEND_DIR}/.env"
+    awk -v wanted="${key}" '
+        /^[[:space:]]*(#|$)/ { next }
+        {
+            separator = index($0, "=")
+            if (separator == 0) next
+            name = substr($0, 1, separator - 1)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+            if (name != wanted) next
+            value = substr($0, separator + 1)
+            gsub(/^[[:space:]\"\047]+|[[:space:]\"\047]+$/, "", value)
+            print value
+            exit
+        }
+    ' "${env_file}"
+}
+
+domeye_core_write_source_rollback_state() {
+    local info_dir="${1%/}"
+    local reason="${2:-database-rollback}"
+    local env_file="${DOMEYE_CORE_BACKEND_DIR}/.env"
+    local db_host db_port env_info_dir env_sha state_tmp
+
+    if [[ ! -f "${env_file}" || -L "${env_file}" ]]; then
+        domeye_core_error "无法为回滚态绑定非普通生产配置：${env_file}"
+        return 1
+    fi
+    if [[ -e "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" || -L "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" ]]; then
+        if [[ ! -f "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" || -L "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" ]]; then
+            domeye_core_error "既有源库回滚标记不是普通文件：${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}"
+            return 1
+        fi
+    fi
+    for command_name in date install jq mv sha256sum; do
+        domeye_core_require_command "${command_name}" || return 1
+    done
+
+    db_host="$(domeye_core_backend_env_value DB_HOST)"
+    db_port="$(domeye_core_backend_env_value DB_PORT)"
+    env_info_dir="$(domeye_core_backend_env_value INFO_DIR)"
+    if [[ -z "${db_host}" || -z "${db_port}" || -z "${env_info_dir}" ]]; then
+        domeye_core_error '回滚配置必须包含 DB_HOST、DB_PORT 和 INFO_DIR'
+        return 1
+    fi
+    if [[ "${db_host}" == "${DOMEYE_CORE_BACKEND_DB_HOST}" \
+        && "${db_port}" == "${DOMEYE_CORE_BACKEND_DB_PORT}" ]]; then
+        domeye_core_error '独立数据库配置不能登记为源库回滚态'
+        return 1
+    fi
+    if [[ "${env_info_dir%/}" != "${info_dir}" ]]; then
+        domeye_core_error "回滚 INFO_DIR 与生产配置不一致：${info_dir} != ${env_info_dir%/}"
+        return 1
+    fi
+    domeye_core_validate_info_dir "${info_dir}" || return 1
+
+    install -d -m 0750 "${DOMEYE_CORE_RELEASE_STATE_DIR}" || return 1
+    env_sha="$(sha256sum "${env_file}" | awk '{print $1}')" || return 1
+    state_tmp="${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}.tmp.$$"
+    if ! jq -n \
+        --argjson schema_version 1 \
+        --arg state 'source_rollback' \
+        --arg created_at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+        --arg reason "${reason}" \
+        --arg backend_env_sha256 "${env_sha}" \
+        --arg db_host "${db_host}" \
+        --arg db_port "${db_port}" \
+        --arg info_dir "${info_dir}" \
+        '{
+          schema_version: $schema_version,
+          state: $state,
+          created_at: $created_at,
+          reason: $reason,
+          backend_env_sha256: $backend_env_sha256,
+          db_host: $db_host,
+          db_port: $db_port,
+          info_dir: $info_dir
+        }' > "${state_tmp}"; then
+        rm -f -- "${state_tmp}"
+        return 1
+    fi
+    if ! chmod 0600 "${state_tmp}"; then
+        rm -f -- "${state_tmp}"
+        return 1
+    fi
+    if ! mv -T -- "${state_tmp}" "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}"; then
+        rm -f -- "${state_tmp}"
+        return 1
+    fi
+}
+
+domeye_core_validate_source_rollback_state() {
+    local expected_info_dir="${1%/}"
+    local env_file="${DOMEYE_CORE_BACKEND_DIR}/.env"
+    local db_host db_port env_info_dir env_sha
+
+    if [[ ! -f "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" || -L "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" ]]; then
+        domeye_core_error "缺少可信的持久回滚标记：${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}"
+        return 1
+    fi
+    if [[ ! -f "${env_file}" || -L "${env_file}" ]]; then
+        domeye_core_error "持久回滚配置不是普通文件：${env_file}"
+        return 1
+    fi
+    for command_name in jq sha256sum; do
+        domeye_core_require_command "${command_name}" || return 1
+    done
+
+    db_host="$(domeye_core_backend_env_value DB_HOST)"
+    db_port="$(domeye_core_backend_env_value DB_PORT)"
+    env_info_dir="$(domeye_core_backend_env_value INFO_DIR)"
+    env_sha="$(sha256sum "${env_file}" | awk '{print $1}')" || return 1
+    if [[ -z "${db_host}" || -z "${db_port}" || -z "${env_info_dir}" \
+        || ( "${db_host}" == "${DOMEYE_CORE_BACKEND_DB_HOST}" \
+        && "${db_port}" == "${DOMEYE_CORE_BACKEND_DB_PORT}" ) ]]; then
+        domeye_core_error '持久回滚标记只能绑定完整的非独立数据库配置'
+        return 1
+    fi
+    if [[ "${env_info_dir%/}" != "${expected_info_dir}" ]]; then
+        domeye_core_error '持久回滚标记的 INFO_DIR 与当前生产配置不一致'
+        return 1
+    fi
+    if ! jq -e \
+        --arg env_sha "${env_sha}" \
+        --arg db_host "${db_host}" \
+        --arg db_port "${db_port}" \
+        --arg info_dir "${expected_info_dir}" \
+        '.schema_version == 1
+         and .state == "source_rollback"
+         and (.created_at | type) == "string"
+         and (.reason | type) == "string"
+         and .backend_env_sha256 == $env_sha
+         and .db_host == $db_host
+         and .db_port == $db_port
+         and .info_dir == $info_dir' \
+        "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" >/dev/null; then
+        domeye_core_error '持久回滚标记与当前 .env 不一致或格式无效'
+        return 1
+    fi
+    domeye_core_validate_info_dir "${expected_info_dir}"
+}
+
+domeye_core_clear_source_rollback_state() {
+    if [[ -e "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" || -L "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" ]]; then
+        if [[ ! -f "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" || -L "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}" ]]; then
+            domeye_core_error "源库回滚标记不是普通文件：${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}"
+            return 1
+        fi
+        rm -f -- "${DOMEYE_CORE_SOURCE_ROLLBACK_STATE}"
+    fi
 }
 
 # 仅从 Domeye Core Screen 的进程树读取 INFO_DIR；不会输出其他环境变量。

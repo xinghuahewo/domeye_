@@ -17,9 +17,30 @@ readonly DATABASE_MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_DATABASE_MANIFEST}
 readonly MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_RELEASE_MANIFEST}"
 readonly CHECKSUM_PATH="${RELEASE_DIR}/${DOMEYE_CORE_CHECKSUM_FILE}"
 
-for command_name in jq sha256sum; do
+domeye_artifact_assert_safe_release_dir "${DOMEYE_CORE_DEFAULT_ARTIFACT_ROOT}" "${RELEASE_DIR}"
+if [[ ! -d "${RELEASE_DIR}" || -L "${RELEASE_DIR}" ]]; then
+    domeye_artifact_error "发布目录必须是实际目录：${RELEASE_DIR}"
+    exit 1
+fi
+
+for command_name in diff dirname jq mktemp sha256sum; do
     domeye_artifact_require_command "${command_name}"
 done
+if [[ -L "${MANIFEST_PATH}" || -L "${CHECKSUM_PATH}" \
+    || -e "${MANIFEST_PATH}" && ! -f "${MANIFEST_PATH}" \
+    || -e "${CHECKSUM_PATH}" && ! -f "${CHECKSUM_PATH}" ]]; then
+    domeye_artifact_error '定稿文件存在软链接或非普通文件，拒绝继续'
+    exit 1
+fi
+if [[ -f "${CHECKSUM_PATH}" ]]; then
+    if [[ ! -f "${MANIFEST_PATH}" ]]; then
+        domeye_artifact_error '发现 SHA256SUMS 但缺少 manifest.json，必须人工复核'
+        exit 1
+    fi
+    "${SCRIPT_DIR}/verify-release.sh" "${RELEASE_DIR}"
+    printf '发布制品已经定稿且复验通过：%s\n' "${RELEASE_DIR}"
+    exit 0
+fi
 for file_path in "${INFO_MANIFEST_PATH}" "${DATABASE_MANIFEST_PATH}"; do
     domeye_artifact_require_regular_file "${file_path}"
     domeye_artifact_json_file "${file_path}"
@@ -44,11 +65,30 @@ for file_name in \
     domeye_artifact_require_regular_file "${RELEASE_DIR}/${file_name}"
 done
 
-manifest_tmp="${RELEASE_DIR}/.${DOMEYE_CORE_RELEASE_MANIFEST}.tmp.$$"
+finalize_work_dir="$(mktemp -d "$(dirname -- "${RELEASE_DIR}")/.finalize-${info_release}.XXXXXX")"
+manifest_tmp="${finalize_work_dir}/${DOMEYE_CORE_RELEASE_MANIFEST}"
+checksum_tmp="${finalize_work_dir}/${DOMEYE_CORE_CHECKSUM_FILE}"
+cleanup() {
+    if [[ "${finalize_work_dir}" == "$(dirname -- "${RELEASE_DIR}")/.finalize-${info_release}."* \
+        && -d "${finalize_work_dir}" && ! -L "${finalize_work_dir}" ]]; then
+        rm -rf -- "${finalize_work_dir}"
+    fi
+}
+trap cleanup EXIT
+
+manifest_created_at="$(domeye_artifact_iso_utc_now)"
+if [[ -f "${MANIFEST_PATH}" ]]; then
+    domeye_artifact_json_file "${MANIFEST_PATH}"
+    manifest_created_at="$(jq -r '.created_at // empty' "${MANIFEST_PATH}")"
+    if [[ ! "${manifest_created_at}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+        domeye_artifact_error '已有 manifest.json 的 created_at 无效，拒绝续跑定稿'
+        exit 1
+    fi
+fi
 jq -n \
     --argjson schema_version 1 \
     --arg release_id "${info_release}" \
-    --arg created_at "$(domeye_artifact_iso_utc_now)" \
+    --arg created_at "${manifest_created_at}" \
     --arg data_start "${DOMEYE_CORE_DATA_START}" \
     --slurpfile info "${INFO_MANIFEST_PATH}" \
     --slurpfile database "${DATABASE_MANIFEST_PATH}" \
@@ -74,9 +114,18 @@ jq -n \
       }
     }' > "${manifest_tmp}"
 chmod 0600 "${manifest_tmp}"
-mv -- "${manifest_tmp}" "${MANIFEST_PATH}"
+if [[ -f "${MANIFEST_PATH}" ]]; then
+    if ! diff -u \
+        <(jq -S . "${MANIFEST_PATH}") \
+        <(jq -S . "${manifest_tmp}") \
+        >/dev/null; then
+        domeye_artifact_error '已有 manifest.json 与当前组件不一致，拒绝覆盖'
+        exit 1
+    fi
+else
+    mv -T -- "${manifest_tmp}" "${MANIFEST_PATH}"
+fi
 
-checksum_tmp="${RELEASE_DIR}/.${DOMEYE_CORE_CHECKSUM_FILE}.tmp.$$"
 (
     cd -- "${RELEASE_DIR}"
     sha256sum \
@@ -90,5 +139,6 @@ checksum_tmp="${RELEASE_DIR}/.${DOMEYE_CORE_CHECKSUM_FILE}.tmp.$$"
         "${DOMEYE_CORE_RELEASE_MANIFEST}"
 ) > "${checksum_tmp}"
 chmod 0600 "${checksum_tmp}"
-mv -- "${checksum_tmp}" "${CHECKSUM_PATH}"
+mv -T -- "${checksum_tmp}" "${CHECKSUM_PATH}"
+"${SCRIPT_DIR}/verify-release.sh" "${RELEASE_DIR}"
 printf '发布制品已定稿：%s\n' "${RELEASE_DIR}"

@@ -82,6 +82,7 @@ trap cleanup_outer EXIT
         'DEBUG=false' \
         'AUTO_INIT_DB=false' \
         'LOAD_CORE_DATA_ON_STARTUP=false' \
+        'DOMEYE_CORE_SKIP_LOCAL_ENV=true' \
         'SOURCE=r' \
         "INFO_DIR=${ISOLATION_INFO_DIR}" \
         'PYTHONUNBUFFERED=1'
@@ -184,8 +185,9 @@ unshare --mount --propagation private /usr/bin/env -i \
                 printf "隔离进程环境仍包含旧目录：PID %s。\n" "${process_pid}" >&2
                 exit 1
             fi
-            if tr "\0" "\n" < "/proc/${process_pid}/environ" | grep -E "^(DOMEYE_CORE_DB_ADMIN_PASSWORD|SOURCE_DB_[A-Z_]+)=" >/dev/null; then
-                printf "隔离进程环境泄露管理员或源数据库配置：PID %s。\n" "${process_pid}" >&2
+            if tr "\0" "\n" < "/proc/${process_pid}/environ" \
+                | grep -E "^(DOMEYE_CORE_DB_ADMIN_PASSWORD|SOURCE_DB_[A-Z_]+|SSH_(HOST2?|USER2?|PWD2?)|REMOTE_PATH2?|MAIL_[A-Z_]+|BASE_DATA_PATH|RIB_HISTORY_FILE)=" >/dev/null; then
+                printf "隔离进程环境泄露旧项目或高权限配置：PID %s。\n" "${process_pid}" >&2
                 exit 1
             fi
         done
