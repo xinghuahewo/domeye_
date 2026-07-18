@@ -27,12 +27,12 @@ const latestObservation = computed(() => features.value.at(-1)?.time || '等待�
 const messageSeries = computed<ChartSeries[]>(() => [
   {
     name: 'ANNOUNCE',
-    color: '#0b9b9d',
+    color: '#0b57b7',
     data: features.value.map((point) => [point.time, point.announce]),
   },
   {
     name: 'WITHDRAW',
-    color: '#ff6542',
+    color: '#35b6d4',
     data: features.value.map((point) => [point.time, point.withdraw]),
   },
 ])
@@ -74,12 +74,11 @@ onMounted(load)
   <article class="page home-page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Routing anomaly intelligence / Core edition</p>
-        <h1>把路由偏离<br />变成可读证据</h1>
+        <p class="eyebrow">核心态势 / Overview</p>
+        <h1>路由异常监测概览</h1>
       </div>
       <p class="page-heading-copy">
-        以 BGP 路由事实为基线，集中查看前缀劫持、子前缀劫持、路由泄漏及三级中断。
-        当前精简版只保留检测结果、路径证据与时序特征。
+        汇总 BGP 报文变化、六类核心异常和最新事件，数据范围固定保留自 2026 年 2 月 1 日以来的发布快照。
       </p>
     </header>
 
@@ -107,7 +106,7 @@ onMounted(load)
     </section>
 
     <section class="home-grid">
-      <div class="home-chart">
+      <div class="home-chart dashboard-card">
         <div class="section-heading">
           <h2>采集点报文脉冲</h2>
           <RouterLink to="/features">进入特征分析 →</RouterLink>
@@ -128,7 +127,7 @@ onMounted(load)
         <LineChart v-else :series="messageSeries" unit="条" :height="330" />
       </div>
 
-      <aside class="detection-index">
+      <aside class="detection-index dashboard-card">
         <div class="section-heading">
           <h2>检测索引</h2>
           <span>06 classes</span>
@@ -144,7 +143,7 @@ onMounted(load)
       </aside>
     </section>
 
-    <section>
+    <section class="events-card dashboard-card">
       <div class="section-heading">
         <h2>最新核心事件</h2>
         <RouterLink to="/events">查看全部事件 →</RouterLink>
@@ -172,70 +171,71 @@ onMounted(load)
 .metric-ledger {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--ink);
-  border-bottom: 1px solid var(--ink);
+  gap: 12px;
 }
 
 .metric-ledger > div {
-  min-height: 146px;
+  min-height: 112px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 18px 20px;
-  border-right: 1px solid var(--line);
-}
-
-.metric-ledger > div:last-child {
-  border-right: 0;
+  padding: 15px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .metric-ledger span,
 .metric-ledger small {
   color: var(--muted);
-  font: 10px/1.2 var(--mono);
-  letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
 }
 
 .metric-ledger strong {
-  font-family: "Arial Narrow", "DIN Alternate", sans-serif;
-  font-size: 52px;
+  color: #17212b;
+  font-size: 34px;
+  font-weight: 720;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
 }
 
 .metric-ledger .metric-time {
-  font: 700 16px/1.35 var(--mono);
-  letter-spacing: -0.03em;
+  font: 650 13px/1.35 var(--mono);
+  letter-spacing: -0.02em;
 }
 
 .home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(290px, 0.65fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.72fr);
+  gap: 16px;
 }
 
 .home-chart,
 .detection-index {
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 14px;
+  padding: 18px;
 }
 
 .detection-index ol {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--ink);
-  color: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
 }
 
 .detection-index li {
   display: grid;
-  grid-template-columns: 36px 1fr auto;
-  align-items: baseline;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
   gap: 10px;
-  padding: 15px 16px;
-  border-bottom: 1px solid var(--line-dark);
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .detection-index li:last-child {
@@ -244,29 +244,37 @@ onMounted(load)
 
 .detection-index b {
   color: var(--signal);
-  font: 11px/1 var(--mono);
+  font: 700 9px/1 var(--mono);
 }
 
 .detection-index span {
-  font-weight: 700;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .detection-index small {
-  color: #8f9aa1;
-  font: 9px/1 var(--mono);
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 9px;
 }
 
-@media (max-width: 1000px) {
+.events-card {
+  overflow: hidden;
+  padding-top: 18px;
+}
+
+.events-card > .section-heading {
+  margin: 0 18px 14px;
+}
+
+.events-card > .page-state {
+  margin: 0 18px 18px;
+}
+
+@media (max-width: 1100px) {
   .metric-ledger {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metric-ledger > div:nth-child(2) {
-    border-right: 0;
-  }
-
-  .metric-ledger > div:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--line);
   }
 
   .home-grid {
@@ -280,25 +288,16 @@ onMounted(load)
   }
 
   .metric-ledger > div {
-    min-height: 110px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .metric-ledger > div:last-child {
-    border-bottom: 0;
+    min-height: 104px;
   }
 
   .metric-ledger strong {
-    font-size: 42px;
+    font-size: 30px;
   }
 
-  .detection-index li {
-    grid-template-columns: 30px 1fr;
-  }
-
-  .detection-index small {
-    grid-column: 2;
+  .home-chart,
+  .detection-index {
+    padding: 14px;
   }
 }
 </style>

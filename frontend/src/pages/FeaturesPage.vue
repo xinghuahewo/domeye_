@@ -45,12 +45,12 @@ const targetLabel = computed(() => {
 const messageSeries = computed<ChartSeries[]>(() => [
   {
     name: 'ANNOUNCE',
-    color: '#0b9b9d',
+    color: '#0b57b7',
     data: features.value.map((point) => [point.time, point.announce]),
   },
   {
     name: 'WITHDRAW',
-    color: '#ff6542',
+    color: '#35b6d4',
     data: features.value.map((point) => [point.time, point.withdraw]),
   },
 ])
@@ -58,14 +58,14 @@ const messageSeries = computed<ChartSeries[]>(() => [
 const resourceSeries = computed<ChartSeries[]>(() => [
   {
     name: 'IPv4 PREFIX',
-    color: '#111b24',
+    color: '#175cd3',
     data: features.value
       .filter((point) => point.ipv4Prefixes !== null)
       .map((point) => [point.time, point.ipv4Prefixes]),
   },
   {
     name: 'IPv6 PREFIX',
-    color: '#8b6f47',
+    color: '#35b6d4',
     data: features.value
       .filter((point) => point.ipv6Prefixes !== null)
       .map((point) => [point.time, point.ipv6Prefixes]),
@@ -76,13 +76,13 @@ const outageSeries = computed<ChartSeries[]>(() => {
   const primaryName = targetMode.value === 'as' ? 'PREFIX OUTAGE' : 'AS OUTAGE'
   const series: ChartSeries[] = [{
     name: primaryName,
-    color: '#d13f32',
+    color: '#f48120',
     data: outagePrimary.value.map((point) => [point.time, point.count]),
   }]
   if (targetMode.value !== 'as') {
     series.push({
       name: 'PREFIX OUTAGE',
-      color: '#e9b736',
+      color: '#c9372c',
       data: outageSecondary.value.map((point) => [point.time, point.count]),
     })
   }
@@ -151,11 +151,11 @@ onMounted(load)
   <article class="page features-page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Time series / Message · Resource · Outage</p>
-        <h1>路由特征剖面</h1>
+        <p class="eyebrow">时序特征 / Feature profile</p>
+        <h1>综合特征</h1>
       </div>
       <p class="page-heading-copy">
-        同一时间轴区分报文量、资源量和并发中断量。目标支持全球采集点、中文国家名与 ASN；缺失资源字段不会被误记为零。
+        以同一时间范围查看采集点、国家或 ASN 的报文量、路由资源量和并发中断量，缺失资源字段保持为空。
       </p>
     </header>
 
@@ -243,78 +243,88 @@ onMounted(load)
 <style scoped>
 .feature-console {
   display: grid;
-  grid-template-columns: minmax(240px, 1.3fr) repeat(2, minmax(210px, 1fr)) 150px;
-  gap: 1px;
-  padding: 1px;
-  background: var(--line);
+  grid-template-columns: minmax(220px, 1.25fr) repeat(2, minmax(190px, 1fr)) 132px;
+  gap: 13px;
+  padding: 16px;
+  background: var(--paper);
   border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .feature-console label {
-  min-height: 80px;
   display: grid;
-  align-content: center;
-  gap: 9px;
-  padding: 12px 15px;
-  background: var(--paper);
+  gap: 7px;
 }
 
 .feature-console label span {
   color: var(--muted);
-  font: 9px/1 var(--mono);
-  letter-spacing: 0.07em;
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .feature-console input {
   width: 100%;
   min-width: 0;
-  height: 32px;
-  padding: 0 4px;
+  height: 38px;
+  padding: 0 10px;
   color: var(--ink);
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid #8e9498;
-  border-radius: 0;
-  font-size: 13px;
+  background: #fff;
+  border: 1px solid #cfd7e1;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.feature-console .solid-action {
+  align-self: end;
+  height: 38px;
+  min-height: 38px;
 }
 
 .target-ledger {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 22px;
-  padding: 18px 22px;
-  color: var(--paper);
-  background: var(--ink);
+  gap: 18px;
+  padding: 14px 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .target-ledger span,
 .target-ledger small {
-  color: #9aa4aa;
-  font: 10px/1 var(--mono);
-  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.045em;
 }
 
 .target-ledger strong {
-  font-family: "Arial Narrow", "DIN Alternate", sans-serif;
-  font-size: 28px;
+  color: #17212b;
+  font-size: 20px;
+  font-weight: 720;
 }
 
 .chart-section {
   display: grid;
-  gap: 16px;
+  gap: 14px;
+  padding: 18px;
 }
 
 .chart-note {
   margin: -2px 0 0;
-  padding-left: 14px;
+  padding: 10px 12px;
   color: var(--muted);
-  border-left: 3px solid var(--signal);
-  font-size: 12px;
-  line-height: 1.7;
+  background: #f8fafc;
+  border-left: 3px solid var(--cyan);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .feature-console {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -323,11 +333,17 @@ onMounted(load)
 @media (max-width: 620px) {
   .feature-console {
     grid-template-columns: 1fr;
+    gap: 11px;
+    padding: 13px;
   }
 
   .target-ledger {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .chart-section {
+    padding: 14px;
   }
 }
 </style>

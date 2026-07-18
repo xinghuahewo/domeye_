@@ -11,10 +11,10 @@ defineEmits<{
 }>()
 
 const levelLabels = {
-  high: '高',
-  middle: '中',
-  low: '低',
-  unknown: '—',
+  high: '高风险',
+  middle: '中风险',
+  low: '低风险',
+  unknown: '未分级',
 }
 </script>
 

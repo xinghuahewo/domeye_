@@ -139,8 +139,8 @@ watch(reference, load, { immediate: true })
   <article class="page detail-page">
     <header class="detail-header">
       <div>
-        <RouterLink class="back-link" to="/events">← 返回事件账本</RouterLink>
-        <p class="eyebrow">Event evidence / Fact table record</p>
+        <RouterLink class="back-link" to="/events">← 返回异常事件</RouterLink>
+        <p class="eyebrow">事件证据 / Evidence</p>
         <h1>{{ title }}</h1>
       </div>
       <dl v-if="parsed" class="reference-block">
@@ -171,7 +171,7 @@ watch(reference, load, { immediate: true })
         <p>{{ description }}</p>
       </section>
 
-      <section>
+      <section class="detail-section dashboard-card">
         <div class="section-heading">
           <h2>事实字段</h2>
           <span>{{ facts.length }} verified fields</span>
@@ -184,7 +184,7 @@ watch(reference, load, { immediate: true })
         </dl>
       </section>
 
-      <section>
+      <section class="detail-section dashboard-card">
         <div class="section-heading">
           <h2>路径与影响证据</h2>
           <span>before / event / recovery</span>
@@ -215,105 +215,129 @@ watch(reference, load, { immediate: true })
 .detail-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.55fr);
-  gap: 32px;
-  align-items: end;
-  padding-bottom: 26px;
-  border-bottom: 2px solid var(--ink);
+  gap: 24px;
+  align-items: start;
+  padding: 18px 20px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .detail-header h1 {
   margin: 0;
-  font-family: "Arial Narrow", "DIN Alternate", sans-serif;
-  font-size: clamp(44px, 7vw, 88px);
-  line-height: 0.95;
-  letter-spacing: -0.045em;
+  color: #17212b;
+  font-size: clamp(25px, 3vw, 34px);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
 }
 
 .back-link {
   display: inline-block;
-  margin-bottom: 28px;
-  color: var(--muted);
-  font: 11px/1 var(--mono);
+  margin-bottom: 13px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
 }
 
 .reference-block {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
   margin: 0;
-  border-top: 1px solid var(--ink);
+  overflow: hidden;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
 }
 
 .reference-block div {
-  display: grid;
-  grid-template-columns: 94px 1fr;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  min-width: 0;
+  display: block;
+  padding: 10px 12px;
+  background: #f8fafc;
 }
 
 .reference-block dt {
+  margin-bottom: 5px;
   color: var(--muted);
-  font: 9px/1.4 var(--mono);
+  font: 8px/1.3 var(--mono);
+  letter-spacing: 0.045em;
 }
 
 .reference-block dd {
   margin: 0;
   overflow-wrap: anywhere;
-  font: 12px/1.4 var(--mono);
+  color: #344054;
+  font: 600 10px/1.4 var(--mono);
 }
 
 .narrative {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 28px;
-  padding: 26px;
-  color: var(--paper);
-  background: var(--ink);
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px 20px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .narrative span {
   color: var(--signal);
-  font: 11px/1 var(--mono);
+  font-size: 10px;
+  font-weight: 750;
 }
 
 .narrative p {
-  max-width: 900px;
   margin: 0;
-  font-size: 18px;
-  line-height: 1.7;
+  color: #344054;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.detail-section {
+  padding: 18px;
 }
 
 .fact-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 16px 0 0;
-  border-top: 1px solid var(--line);
-  border-left: 1px solid var(--line);
+  gap: 1px;
+  margin: 14px 0 0;
+  overflow: hidden;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
 }
 
 .fact-grid div {
-  min-height: 100px;
-  padding: 17px;
+  min-height: 88px;
+  padding: 14px;
   background: var(--paper);
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
 }
 
 .fact-grid dt {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   color: var(--muted);
-  font: 9px/1 var(--mono);
-  letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 650;
 }
 
 .fact-grid dd {
   margin: 0;
   overflow-wrap: anywhere;
-  font: 600 13px/1.5 var(--mono);
+  color: #344054;
+  font: 600 11px/1.5 var(--mono);
 }
 
 .evidence-stack {
   display: grid;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .evidence-stack article {
@@ -321,20 +345,23 @@ watch(reference, load, { immediate: true })
   grid-template-columns: 180px minmax(0, 1fr);
   background: var(--paper);
   border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .evidence-stack h3 {
   margin: 0;
-  padding: 18px;
-  color: var(--paper);
-  background: #25323a;
-  font-size: 13px;
+  padding: 15px;
+  color: #124b9f;
+  background: #f0f5ff;
+  border-right: 1px solid #d7e5ff;
+  font-size: 11px;
 }
 
 .evidence-stack ol {
   list-style: none;
   margin: 0;
-  padding: 8px 18px;
+  padding: 6px 16px;
 }
 
 .evidence-stack li {
@@ -342,7 +369,7 @@ watch(reference, load, { immediate: true })
   grid-template-columns: 36px minmax(0, 1fr);
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid #dedcd5;
+  border-bottom: 1px solid #edf0f3;
 }
 
 .evidence-stack li:last-child {
@@ -350,33 +377,40 @@ watch(reference, load, { immediate: true })
 }
 
 .evidence-stack b {
-  color: var(--signal);
-  font: 10px/1.5 var(--mono);
+  color: var(--primary);
+  font: 650 9px/1.5 var(--mono);
 }
 
 .evidence-stack code {
   overflow-wrap: anywhere;
   white-space: normal;
-  font: 11px/1.5 var(--mono);
+  color: #344054;
+  font: 10px/1.5 var(--mono);
 }
 
 .raw-facts {
-  border-top: 1px solid var(--ink);
+  overflow: hidden;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .raw-facts summary {
   cursor: pointer;
-  padding: 14px 0;
-  font: 11px/1 var(--mono);
+  padding: 14px 18px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .raw-facts pre {
   max-height: 420px;
   overflow: auto;
-  padding: 18px;
-  color: #d8dedf;
-  background: var(--ink);
-  font: 11px/1.5 var(--mono);
+  margin: 0;
+  padding: 16px 18px;
+  color: #d9e2ec;
+  background: #17212b;
+  font: 10px/1.55 var(--mono);
 }
 
 @media (max-width: 900px) {
@@ -395,12 +429,18 @@ watch(reference, load, { immediate: true })
     grid-template-columns: 1fr;
   }
 
+  .reference-block {
+    grid-template-columns: 1fr;
+  }
+
   .fact-grid {
     grid-template-columns: 1fr;
   }
 
   .evidence-stack h3 {
     padding: 13px 16px;
+    border-right: 0;
+    border-bottom: 1px solid #d7e5ff;
   }
 }
 </style>
