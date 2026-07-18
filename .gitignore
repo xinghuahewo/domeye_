@@ -3,3 +3,7 @@
 var/
 deploy/database/database.env
 deploy/database/source.env
+frontend/.dist-backup-*/
+frontend/.dist-deploy-*/
+frontend/.dist-install-*/
+frontend/.dist-rollback-discard-*/
