@@ -22,7 +22,7 @@ readonly MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_RELEASE_MANIFEST}"
 readonly NGINX_SOURCE="${PROJECT_ROOT}/deploy/nginx/domeye-core.conf"
 readonly NGINX_TARGET='/etc/nginx/conf.d/domeye-core.conf'
 
-for command_name in awk nginx ps screen systemctl tr; do
+for command_name in awk chmod mktemp nginx ps screen systemctl tr; do
     domeye_artifact_require_command "${command_name}"
 done
 if [[ ! -x "${DOMEYE_CORE_NODE_BIN_DIR}/node" || ! -x "${DOMEYE_CORE_NODE_BIN_DIR}/npm" ]]; then
@@ -54,11 +54,14 @@ elif (( ${#initial_backend_sessions[@]} == 1 )); then
         exit 1
     fi
 fi
+readonly ACCEPTANCE_WORK_DIR="$(mktemp -d /tmp/domeye-core-full-acceptance.XXXXXX)"
+readonly CANDIDATE_FRONTEND_DIST="${ACCEPTANCE_WORK_DIR}/frontend-dist"
+chmod 0755 "${ACCEPTANCE_WORK_DIR}"
 rollback_full_acceptance() {
     local exit_code=$?
     trap - EXIT
+    set +e
     if [[ "${acceptance_complete}" != true ]]; then
-        set +e
         if [[ "${production_activated}" == true ]]; then
             "${DEPLOY_DIR}/stop-backend.sh" >/dev/null 2>&1
         fi
@@ -88,6 +91,9 @@ rollback_full_acceptance() {
             fi
         fi
     fi
+    if [[ "${ACCEPTANCE_WORK_DIR}" == /tmp/domeye-core-full-acceptance.* && -d "${ACCEPTANCE_WORK_DIR}" ]]; then
+        rm -rf -- "${ACCEPTANCE_WORK_DIR}" || true
+    fi
     exit "${exit_code}"
 }
 trap rollback_full_acceptance EXIT
@@ -107,10 +113,12 @@ trap rollback_full_acceptance EXIT
     [[ "$(node --version)" == 'v22.23.1' ]]
     npm ci
     npm test
-    npm run build
+    npm run build -- --outDir "${CANDIDATE_FRONTEND_DIST}" --emptyOutDir
 )
+chmod -R u=rwX,go=rX "${CANDIDATE_FRONTEND_DIST}"
 
-"${SCRIPT_DIR}/candidate-stack.sh" "${RELEASE_DIR}" "${DATABASE_ENV_FILE}" "${HIDDEN_PATH}"
+DOMEYE_CORE_CANDIDATE_FRONTEND_DIST="${CANDIDATE_FRONTEND_DIST}" \
+    "${SCRIPT_DIR}/candidate-stack.sh" "${RELEASE_DIR}" "${DATABASE_ENV_FILE}" "${HIDDEN_PATH}"
 
 if [[ -f "${NGINX_TARGET}" && ! -L "${NGINX_TARGET}" ]]; then
     nginx_backup="${PROJECT_ROOT}/var/releases/nginx-before-$(date -u '+%Y%m%dT%H%M%SZ')-$$.conf"

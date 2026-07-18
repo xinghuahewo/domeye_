@@ -20,12 +20,13 @@ readonly HIDDEN_PATH="$3"
 readonly URL_OUTPUT_FILE="${4:-}"
 readonly MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_RELEASE_MANIFEST}"
 readonly PROJECT_ROOT='/home/bgpdata/Domeye-Core'
+readonly CANDIDATE_FRONTEND_DIST_INPUT="${DOMEYE_CORE_CANDIDATE_FRONTEND_DIST:-${PROJECT_ROOT}/frontend/dist}"
 readonly RELEASE_ID="$(jq -r '.release_id' "${MANIFEST_PATH}")"
 readonly RELEASE_DATA_ROOT="${DOMEYE_CORE_DATABASE_RELEASE_ROOT}/${RELEASE_ID}"
 readonly DATA_DIR="${RELEASE_DATA_ROOT}/postgres"
 readonly RESTORE_STATE="${RELEASE_DATA_ROOT}/restore-state.json"
 
-for command_name in curl docker find jq nginx ps setsid ss; do
+for command_name in curl docker find jq nginx ps readlink setsid ss; do
     domeye_artifact_require_command "${command_name}"
 done
 "${DEPLOY_DIR}/artifacts/verify-release.sh" "${RELEASE_DIR}"
@@ -33,6 +34,18 @@ domeye_database_load_env "${DATABASE_ENV_FILE}"
 domeye_database_validate_config
 domeye_artifact_require_regular_file "${DATA_DIR}/PG_VERSION"
 domeye_artifact_require_regular_file "${RESTORE_STATE}"
+if [[ ! "${CANDIDATE_FRONTEND_DIST_INPUT}" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+    || [[ ! -d "${CANDIDATE_FRONTEND_DIST_INPUT}" || -L "${CANDIDATE_FRONTEND_DIST_INPUT}" ]]; then
+    domeye_artifact_error "候选前端制品目录无效：${CANDIDATE_FRONTEND_DIST_INPUT}"
+    exit 1
+fi
+candidate_frontend_dist="$(readlink -f -- "${CANDIDATE_FRONTEND_DIST_INPUT}")"
+if [[ ! "${candidate_frontend_dist}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+    domeye_artifact_error "候选前端制品真实路径无效：${candidate_frontend_dist}"
+    exit 1
+fi
+readonly CANDIDATE_FRONTEND_DIST="${candidate_frontend_dist}"
+domeye_artifact_require_regular_file "${CANDIDATE_FRONTEND_DIST}/index.html"
 
 if [[ -L "${DOMEYE_CORE_DATABASE_ACTIVE_LINK}" && "$(readlink -f "${DOMEYE_CORE_DATABASE_ACTIVE_LINK}")" == "${DATA_DIR}" ]]; then
     domeye_artifact_error '候选 PGDATA 已是生产活动目录，拒绝并发启动第二个 PostgreSQL 实例'
@@ -201,7 +214,7 @@ done
         '  include /etc/nginx/mime.types;' \
         '  server {' \
         "    listen 127.0.0.1:${CANDIDATE_FRONTEND_PORT};" \
-        "    root ${PROJECT_ROOT}/frontend/dist;" \
+        "    root ${CANDIDATE_FRONTEND_DIST};" \
         '    index index.html;' \
         '    location = /api/v1 { return 308 /api/v1/; }' \
         '    location ^~ /api/v1/ {' \
