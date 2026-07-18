@@ -1,0 +1,173 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Domeye Core 只读查询 API",
+    "version": "0.1.0",
+    "description": "精简前端使用的只读接口契约。该文件是前端原始响应类型和开发 Mock 的机器基线。"
+  },
+  "servers": [{"url": "/api/v1"}],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {"200": {"description": "服务正常", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HealthPayload"}}}}}
+      }
+    },
+    "/events": {
+      "get": {
+        "operationId": "getEvents",
+        "parameters": [
+          {"name": "page_num", "in": "query", "schema": {"type": "integer", "minimum": 1}},
+          {"name": "page_size", "in": "query", "schema": {"type": "integer", "enum": [10, 50, 100, 200]}},
+          {"name": "event_type", "in": "query", "schema": {"type": "string"}},
+          {"name": "level", "in": "query", "schema": {"type": "string"}},
+          {"name": "country", "in": "query", "schema": {"type": "string"}},
+          {"name": "event_info", "in": "query", "schema": {"type": "string"}},
+          {"name": "date", "in": "query", "schema": {"type": "string"}},
+          {"name": "sort_mode", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "分页事件", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventPage"}}}}}
+      }
+    },
+    "/events/top": {
+      "get": {
+        "operationId": "getTopEvents",
+        "parameters": [{"name": "event_type", "in": "query", "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "最新事件", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/EventItem"}}}}}}
+      }
+    },
+    "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+      "get": {
+        "operationId": "getEventDetail",
+        "parameters": [
+          {"name": "event_type", "in": "path", "required": true, "schema": {"type": "string", "enum": ["hijack", "sub_hijack", "prefix_outage", "as_outage", "country_outage", "leak"]}},
+          {"name": "start_time", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "problem", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "event_id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "source", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "事件事实与路径证据", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventDetail"}}}}}
+      }
+    },
+    "/features/top": {
+      "get": {
+        "operationId": "getTopFeatures",
+        "parameters": [
+          {"$ref": "#/components/parameters/Target"},
+          {"$ref": "#/components/parameters/StartTime"},
+          {"$ref": "#/components/parameters/EndTime"}
+        ],
+        "responses": {"200": {"description": "特征时序", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/FeaturePoint"}}}}}}
+      }
+    },
+    "/features/countries": {
+      "get": {
+        "operationId": "getCountryFeatures",
+        "parameters": [{"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}],
+        "responses": {"200": {"description": "国家特征分页", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeaturePage"}}}}}
+      }
+    },
+    "/features/ases": {
+      "get": {
+        "operationId": "getAsFeatures",
+        "parameters": [{"name": "asn", "in": "query", "schema": {"type": "string"}}, {"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}],
+        "responses": {"200": {"description": "ASN 特征分页", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeaturePage"}}}}}
+      }
+    },
+    "/features/outages/country-as": {
+      "get": {"operationId": "getCountryAsOutages", "parameters": [{"$ref": "#/components/parameters/Country"}, {"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}], "responses": {"200": {"$ref": "#/components/responses/OutageSeries"}}}
+    },
+    "/features/outages/country-prefix": {
+      "get": {"operationId": "getCountryPrefixOutages", "parameters": [{"$ref": "#/components/parameters/Country"}, {"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}], "responses": {"200": {"$ref": "#/components/responses/OutageSeries"}}}
+    },
+    "/features/outages/as-prefix": {
+      "get": {"operationId": "getAsPrefixOutages", "parameters": [{"name": "asn", "in": "query", "required": true, "schema": {"type": "string"}}, {"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}], "responses": {"200": {"$ref": "#/components/responses/OutageSeries"}}}
+    },
+    "/features/outages/global-as": {
+      "get": {"operationId": "getGlobalAsOutages", "parameters": [{"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}], "responses": {"200": {"$ref": "#/components/responses/OutageSeries"}}}
+    },
+    "/features/outages/global-prefix": {
+      "get": {"operationId": "getGlobalPrefixOutages", "parameters": [{"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}], "responses": {"200": {"$ref": "#/components/responses/OutageSeries"}}}
+    },
+    "/dashboard/counts/total": {
+      "get": {"operationId": "getEventCounts", "responses": {"200": {"description": "每日事件数", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/CountPoint"}}}}}}}
+    },
+    "/dashboard/counts/type": {
+      "get": {"operationId": "getTypeCount", "parameters": [{"name": "event_type", "in": "query", "required": true, "schema": {"type": "string"}}], "responses": {"200": {"description": "事件类型统计", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TypeCount"}}}}}}
+    }
+  },
+  "components": {
+    "parameters": {
+      "StartTime": {"name": "start_time", "in": "query", "required": true, "schema": {"type": "string"}},
+      "EndTime": {"name": "end_time", "in": "query", "required": true, "schema": {"type": "string"}},
+      "Target": {"name": "target", "in": "query", "required": true, "schema": {"type": "string"}},
+      "Country": {"name": "country", "in": "query", "required": true, "schema": {"type": "string"}}
+    },
+    "responses": {
+      "OutageSeries": {"description": "中断时序", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/OutagePoint"}}}}}
+    },
+    "schemas": {
+      "HealthPayload": {
+        "type": "object",
+        "required": ["status", "service", "time"],
+        "properties": {"status": {"type": "string"}, "service": {"type": "string"}, "time": {"type": "string"}}
+      },
+      "EventItem": {
+        "type": "object",
+        "required": ["event_type", "level", "start_time", "end_time", "attacker_as", "attacked_as", "event_info", "detail_url", "affected_prefix", "attacker_org", "attacked_org", "attacker_country", "attacked_country"],
+        "properties": {
+          "event_type": {"type": "string"}, "level": {"type": "string"},
+          "start_time": {"type": "string"}, "end_time": {"type": "string"},
+          "attacker_as": {"type": "string"}, "attacked_as": {"type": "string"},
+          "event_info": {"type": "string"}, "detail_url": {"type": "string"},
+          "affected_prefix": {"type": "string"}, "attacker_org": {"type": "string"},
+          "attacked_org": {"type": "string"}, "attacker_country": {"type": "string"},
+          "attacked_country": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "EventPage": {
+        "type": "object",
+        "required": ["data", "total_page", "record_count"],
+        "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/EventItem"}}, "total_page": {"type": "integer"}, "record_count": {"type": "integer"}}
+      },
+      "EventDetail": {
+        "type": "object",
+        "required": ["start_time", "end_time", "duration", "event_level", "event_descr", "event_info"],
+        "properties": {
+          "start_time": {"type": "string"}, "end_time": {"type": "string"}, "duration": {"type": "string"},
+          "event_level": {"type": "string"}, "event_descr": {"type": "string"}, "event_info": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "FeaturePoint": {
+        "type": "object",
+        "required": ["t", "announce", "withdraw"],
+        "properties": {
+          "t": {"type": "string"}, "asn": {"type": "string"}, "announce": {"type": "integer"}, "withdraw": {"type": "integer"},
+          "v4Prefix_num": {"type": ["integer", "null"]}, "v6Prefix_num": {"type": ["integer", "null"]}, "v4IP_num": {"type": ["integer", "null"]}
+        }
+      },
+      "FeaturePage": {
+        "type": "object",
+        "required": ["total_page", "record_count", "current_page", "page_size", "data"],
+        "properties": {
+          "total_page": {"type": "integer"}, "record_count": {"type": "integer"}, "current_page": {"type": "integer"}, "page_size": {"type": "integer"},
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/FeaturePoint"}}
+        }
+      },
+      "OutagePoint": {
+        "type": "object", "required": ["time_slot", "outage_count"],
+        "properties": {"time_slot": {"type": "string"}, "outage_count": {"type": "integer"}}
+      },
+      "CountPoint": {
+        "type": "object", "required": ["time", "num"],
+        "properties": {"time": {"type": "string"}, "num": {"type": "integer"}}
+      },
+      "TypeCount": {
+        "type": "object", "required": ["event_type", "num", "amplitude_type", "amplitude", "icon"],
+        "properties": {"event_type": {"type": "string"}, "num": {"type": "integer"}, "amplitude_type": {"type": "boolean"}, "amplitude": {"type": "string"}, "icon": {"type": "string"}}
+      }
+    }
+  }
+}

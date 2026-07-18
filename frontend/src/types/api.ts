@@ -72,11 +72,7 @@ export interface CountPoint {
   count: number
 }
 
-export interface HealthPayload {
-  status: string
-  service: string
-  time: string
-}
+export type HealthPayload = components['schemas']['HealthPayload']
 
 export interface EventQuery {
   page_num?: number
@@ -94,3 +90,4 @@ export interface EventQuery {
   date?: string
   sort_mode?: string
 }
+import type { components } from './openapi.generated'

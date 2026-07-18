@@ -6,7 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:related": "vitest related --run",
+    "api:types": "openapi-typescript ../contracts/openapi.json -o src/types/openapi.generated.d.ts",
+    "preview": "vite preview",
     "build": "vue-tsc --noEmit && vite build"
   },
   "dependencies": {
@@ -19,6 +23,7 @@
     "@types/node": "^18.15.10",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/compiler-sfc": "^3.2.47",
+    "openapi-typescript": "^7.9.1",
     "typescript": "^5.0.2",
     "vite": "^6.3.5",
     "vitest": "^3.2.4",
