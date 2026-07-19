@@ -7,7 +7,7 @@ import EventTable from '@/components/EventTable.vue'
 import PageState from '@/components/PageState.vue'
 import { CORE_EVENT_TYPES, type EventPage, type EventRow } from '@/types/api'
 import { errorMessage } from '@/utils/normalize'
-import { recentDateRange, resolveDataWindow } from '@/utils/time'
+import { eventDateTimeRange, recentDateRange, resolveDataWindow } from '@/utils/time'
 
 const router = useRouter()
 const defaultDates = recentDateRange(7)
@@ -46,7 +46,7 @@ async function load(resetPage = false) {
       country: filters.country,
       event_info: filters.keyword.trim() || undefined,
       date: filters.startDate && filters.endDate
-        ? `${filters.startDate}_${filters.endDate}`
+        ? eventDateTimeRange(filters.startDate, filters.endDate)
         : undefined,
       sort_mode: 'start_timeB',
     })

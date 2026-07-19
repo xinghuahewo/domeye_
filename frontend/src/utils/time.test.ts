@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  eventDateTimeRange,
   parseInputTime,
   recentDateRange,
   recentRange,
@@ -14,6 +15,12 @@ const developmentWindow = {
 }
 
 describe('开发数据时间窗口', () => {
+  it('事件日期范围转换为数据库接受的秒级边界', () => {
+    expect(eventDateTimeRange('2026-03-25', '2026-03-31')).toBe(
+      '2026-03-25 00:00:00_2026-03-31 23:59:59',
+    )
+  })
+
   it('解析合法的固定开发窗口', () => {
     expect(resolveDataWindow(developmentWindow)).toEqual({
       start: '2026-02-01T00:00:00',

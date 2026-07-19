@@ -80,3 +80,6 @@ export const recentDateRange = (days = 7, env?: DataWindowEnv) => {
   const dateOnly = (value: Date) => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
   return { start: dateOnly(start), end: dateOnly(end) }
 }
+
+export const eventDateTimeRange = (startDate: string, endDate: string): string =>
+  `${startDate} 00:00:00_${endDate} 23:59:59`
