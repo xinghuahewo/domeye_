@@ -99,6 +99,8 @@ make check-release
 
 分层门禁、真实后端模式、OpenAPI 类型生成和完整发布验收边界见 [开发与验收流水线](docs/开发与验收流水线.md)。
 
+项目默认采用“启动 → 看报错 → 最小修改 → 快速测试”的开发循环。只有数据库裁剪/恢复、部署切换、`backend/core/` 或生产配置变更才进入严格验收；脚本解析、清单和普通前端问题一律保留现有数据库并从失败点续跑。
+
 ## 环境要求
 
 - Linux，具备 GNU Bash、GNU coreutils、GNU tar、zstd、jq、curl、Screen 和 Nginx。
