@@ -5,6 +5,9 @@ import os
 from flask import Flask
 from flask_cors import CORS
 
+from config.data_window import validate_data_window_config
+from .data_window_guard import enforce_request_data_window
+
 
 def _cors_origins():
     raw_value = os.environ.get('CORS_ORIGINS', '')
@@ -14,6 +17,7 @@ def _cors_origins():
 
 
 def create_flask_app():
+    validate_data_window_config()
     app = Flask(__name__)
     origins = _cors_origins()
     if origins:
@@ -27,5 +31,6 @@ def create_flask_app():
 
     from .api.route import api_v1_bp
 
+    app.before_request(enforce_request_data_window)
     app.register_blueprint(api_v1_bp, url_prefix='/api/v1')
     return app

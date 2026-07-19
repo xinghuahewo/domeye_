@@ -7,10 +7,13 @@ import EventTable from '@/components/EventTable.vue'
 import PageState from '@/components/PageState.vue'
 import { CORE_EVENT_TYPES, type EventPage, type EventRow } from '@/types/api'
 import { errorMessage } from '@/utils/normalize'
-import { recentDateRange } from '@/utils/time'
+import { recentDateRange, resolveDataWindow } from '@/utils/time'
 
 const router = useRouter()
 const defaultDates = recentDateRange(7)
+const dataWindow = resolveDataWindow(import.meta.env)
+const minimumDate = dataWindow?.start.slice(0, 10)
+const maximumDate = dataWindow?.end.slice(0, 10)
 const filters = reactive({
   eventType: '',
   level: '',
@@ -111,11 +114,11 @@ onMounted(() => load())
       </label>
       <label>
         <span>开始日期</span>
-        <input v-model="filters.startDate" type="date" />
+        <input v-model="filters.startDate" type="date" :min="minimumDate" :max="maximumDate" />
       </label>
       <label>
         <span>结束日期</span>
-        <input v-model="filters.endDate" type="date" />
+        <input v-model="filters.endDate" type="date" :min="minimumDate" :max="maximumDate" />
       </label>
       <label>
         <span>每页数量</span>

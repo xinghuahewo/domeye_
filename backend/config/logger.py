@@ -11,10 +11,25 @@ from config.config import BASE_DIR
 from datetime import datetime
 import time
 
+
+LOG_DIR_ENV = 'DOMEYE_LOG_DIR'
+
+
+def resolve_log_dir(environ=None):
+    """允许隔离开发实例覆盖日志目录；生产未配置时保持原路径。"""
+
+    active_environ = os.environ if environ is None else environ
+    configured = active_environ.get(LOG_DIR_ENV, '').strip()
+    if not configured:
+        return os.path.join(BASE_DIR, 'logs')
+    if not os.path.isabs(configured):
+        raise RuntimeError(f'{LOG_DIR_ENV} 必须是绝对路径')
+    return os.path.normpath(configured)
+
+
 # 日志文件路径
-LOG_DIR = os.path.join(BASE_DIR, 'logs')
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+LOG_DIR = resolve_log_dir()
+os.makedirs(LOG_DIR, exist_ok=True)
 LOG_PATH = os.path.join(LOG_DIR, 'bgp_log')
 OUTAGE_LOG_PATH = os.path.join(LOG_DIR, 'outage_log')
 PRIVATE_OUTAGE_LOG_PATH = os.path.join(LOG_DIR, 'private_outage_log')

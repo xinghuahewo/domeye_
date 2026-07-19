@@ -80,6 +80,25 @@ Domeye-Core/
 
 后端接口和配置见 [后端说明](backend/README.md)，制品生成、部署、刷新和回滚见 [部署说明](deploy/README.md)。
 
+## 本地快速开发
+
+日常前端和接口联调默认使用固定小型快照，不需要配置完整数据库、Nginx、Screen 或生产 `.env`：
+
+```bash
+make dev
+make dev API_MODE=remote
+make check-fast
+make preview
+make check-integration
+make check-release
+```
+
+`make dev` 会自动分配不冲突的前端与 API 端口，并在退出时清理临时进程；`make check-fast` 根据 Git 改动自动判断 L0–L3 风险并选择受影响测试。固定快照的数据窗口为 `2026-02-01 00:00:00` 至 `2026-03-31 23:59:59`，支持正常、空数据、超时和错误四类响应，开发环境还提供 `/__components` 组件标本页。
+
+需要真实数据联调时，服务器可使用 OverlayFS 从已保留候选库派生同一时间窗口的独立开发数据库；`make dev API_MODE=remote` 会通过 SSH 隧道连接只监听服务器回环地址的开发 API，不在本机保存数据库密码。该流程不恢复全量 dump、不复制 84GB PGDATA，说明见 [2–3 月快速开发数据库](dev/database/README.md) 和 [服务器真实开发 API](dev/backend/README.md)。
+
+分层门禁、真实后端模式、OpenAPI 类型生成和完整发布验收边界见 [开发与验收流水线](docs/开发与验收流水线.md)。
+
 ## 环境要求
 
 - Linux，具备 GNU Bash、GNU coreutils、GNU tar、zstd、jq、curl、Screen 和 Nginx。

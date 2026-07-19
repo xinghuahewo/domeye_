@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string
   readonly VITE_API_TIMEOUT_MS?: string
+  readonly VITE_DATA_WINDOW_START?: string
+  readonly VITE_DATA_WINDOW_END?: string
 }
 
 declare module '*.vue' {

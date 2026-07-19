@@ -24,7 +24,7 @@ readonly CANDIDATE_ROOT="${3%/}"
 readonly ARTIFACT_ROOT="${4:-${DOMEYE_CORE_DEFAULT_ARTIFACT_ROOT}}"
 
 domeye_artifact_validate_release_id "${RELEASE_ID}"
-for command_name in awk date docker jq mktemp readlink sha256sum stat tail tar zstd; do
+for command_name in awk chmod date docker install jq mkdir mktemp mv readlink rm rmdir sha256sum stat tail tar zstd; do
     domeye_artifact_require_command "${command_name}"
 done
 for sql_file in inventory.sql validate-integrity.sql create-reader.sql prune.sql; do
@@ -308,6 +308,40 @@ if [[ "${offline_system_identifier}" != "${STATE_SYSTEM_IDENTIFIER}" ]]; then
     exit 1
 fi
 
+readonly CANDIDATE_USE_GUARD_ROOT="${DOMEYE_CORE_DATABASE_WORK_ROOT}/.candidate-use-locks"
+readonly CANDIDATE_USE_GUARD="${CANDIDATE_USE_GUARD_ROOT}/${RELEASE_ID}.dev-overlay.lock"
+readonly CANDIDATE_USE_GUARD_OWNER="${CANDIDATE_USE_GUARD}/owner.json"
+install -d -m 0750 "${CANDIDATE_USE_GUARD_ROOT}"
+if ! mkdir -m 0700 "${CANDIDATE_USE_GUARD}" 2>/dev/null; then
+    domeye_artifact_error "候选 PGDATA 已被开发 Overlay 或其他续跑流程保留，拒绝并发续跑：${CANDIDATE_USE_GUARD}"
+    exit 1
+fi
+cleanup_candidate_guard_early() {
+    rm -f -- "${CANDIDATE_USE_GUARD_OWNER}"
+    rmdir "${CANDIDATE_USE_GUARD}" 2>/dev/null || true
+}
+trap cleanup_candidate_guard_early EXIT
+candidate_guard_owner_tmp="${CANDIDATE_USE_GUARD}/.owner.json.tmp.$$"
+jq -n \
+    --argjson schema_version 1 \
+    --arg owner 'database-artifact-resume' \
+    --arg lower_pgdata "${CANDIDATE_DATA_DIR}" \
+    --arg release_id "${RELEASE_ID}" \
+    --arg system_identifier "${STATE_SYSTEM_IDENTIFIER}" \
+    --arg state_file "${STATE_FILE}" \
+    --arg created_at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    '{
+      schema_version: $schema_version,
+      owner: $owner,
+      lower_pgdata: $lower_pgdata,
+      release_id: $release_id,
+      system_identifier: $system_identifier,
+      state_file: $state_file,
+      created_at: $created_at
+    }' > "${candidate_guard_owner_tmp}"
+chmod 0600 "${candidate_guard_owner_tmp}"
+mv -T -- "${candidate_guard_owner_tmp}" "${CANDIDATE_USE_GUARD_OWNER}"
+
 candidate_real="$(readlink -f -- "${CANDIDATE_DATA_DIR}")"
 while IFS= read -r existing_container; do
     [[ -n "${existing_container}" ]] || continue
@@ -337,6 +371,8 @@ cleanup() {
         rm -rf -- "${work_dir}"
     fi
     rmdir "${LOCK_DIR}" 2>/dev/null || true
+    rm -f -- "${CANDIDATE_USE_GUARD_OWNER}"
+    rmdir "${CANDIDATE_USE_GUARD}" 2>/dev/null || true
     if (( exit_code != 0 )); then
         printf '续跑失败；候选 PGDATA、build-state.json 与原裁剪证据均已保留：%s\n' "${CANDIDATE_ROOT}" >&2
     fi

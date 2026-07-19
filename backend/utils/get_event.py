@@ -835,7 +835,7 @@ def deal_connection(connection_rows) -> list:
 
 
 
-def get_top_event(conn, last_month_table, event_table, country, page_size, event_type):
+def get_top_event(conn, last_month_table, event_table, country, page_size, event_type, now=None):
     """
     返回近一周的高危事件
     :param conn: 数据库连接
@@ -846,7 +846,7 @@ def get_top_event(conn, last_month_table, event_table, country, page_size, event
     """
     # 一周可能横跨两个月
     # 获取当前的UTC时间
-    bj_now = datetime.datetime.now()
+    bj_now = now or datetime.datetime.now()
     # 一周之前的UTC时间
     bj_week_ago = bj_now - datetime.timedelta(days=10)
     country = 'True' if country == 'domestic' else 'is_domestic'
@@ -1617,7 +1617,7 @@ def deal_sort_event_count(conn, last_month_table, event_table, event_rows, obj, 
         res_list.append(d)
     return res_list
 
-def get_event_count(conn, last_month_table, event_table, country):
+def get_event_count(conn, last_month_table, event_table, country, now=None):
     """
     返回近30天的各等级国内/全球事件数量
     :param conn: 数据库连接
@@ -1626,7 +1626,7 @@ def get_event_count(conn, last_month_table, event_table, country):
     :return: 事件列表
     """
     # 获取当前的UTC时间
-    bj_now = datetime.datetime.now()
+    bj_now = now or datetime.datetime.now()
 
     # 一个月之前的UTC时间
     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -1765,7 +1765,7 @@ def deal_geo_event_count(event_rows, country_info) -> list:
         res_list.append(d)
     return res_list
 
-def get_type_event_count(conn, last_month_table, event_table, country, event_type):
+def get_type_event_count(conn, last_month_table, event_table, country, event_type, now=None):
     """
     返回今天和昨天的AS/机构拥有事件数量排名
     :param conn: 数据库连接
@@ -1775,7 +1775,7 @@ def get_type_event_count(conn, last_month_table, event_table, country, event_typ
     :return: 事件列表
     """
     # 获取当前的UTC时间
-    bj_now = datetime.datetime.now()
+    bj_now = now or datetime.datetime.now()
 
     # 一天前、两天前的UTC时间
     bj_day_ago = bj_now - datetime.timedelta(days=1)

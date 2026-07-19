@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = "==3.10.*"
 
+[manifest]
+
+[[manifest.dependency-metadata]]
+name = "pyinotify"
+version = "0.9.6"
+
 [[package]]
 name = "aniso8601"
 version = "10.0.1"
@@ -85,7 +91,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "psycopg2-binary" },
-    { name = "pyinotify" },
+    { name = "pyinotify", marker = "sys_platform == 'linux'" },
     { name = "python-dateutil" },
     { name = "pytricia" },
     { name = "requests" },
@@ -107,7 +113,7 @@ requires-dist = [
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "psycopg2-binary" },
-    { name = "pyinotify" },
+    { name = "pyinotify", marker = "sys_platform == 'linux'" },
     { name = "python-dateutil" },
     { name = "pytricia" },
     { name = "requests" },

@@ -10,6 +10,7 @@ import json
 
 from dateutil.relativedelta import relativedelta
 
+from config.data_window import resolve_query_now
 from config.database import conn_11, conn_13, conn_15
 from database.as_outage import get_as_outage_de
 from database.country_outage import get_country_outage_de
@@ -54,7 +55,7 @@ def _parse_date_range(raw_value):
 
 
 def _event_table_names(now=None):
-    current_time = now or datetime.datetime.now()
+    current_time = resolve_query_now(now)
     current_table = 'event_table_{}'.format(current_time.strftime('%Y%m'))
     last_month = current_time.date() - relativedelta(months=1)
     return current_table, 'event_table_{}'.format(last_month.strftime('%Y%m'))
@@ -352,7 +353,8 @@ def get_event_list_data(params, conn=conn_11):
 
 
 def get_top_event_items(event_type_str=None, conn=conn_11, now=None, page_size=10):
-    event_table, last_month_table = _event_table_names(now=now)
+    effective_now = resolve_query_now(now)
+    event_table, last_month_table = _event_table_names(now=effective_now)
     rows = get_top_event(
         conn=conn,
         last_month_table=last_month_table,
@@ -360,6 +362,7 @@ def get_top_event_items(event_type_str=None, conn=conn_11, now=None, page_size=1
         country='is_domestic',
         page_size=page_size,
         event_type=_parse_event_types(event_type_str),
+        now=effective_now,
     )
     return deal_top_event(top_event_rows=rows)
 

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
 import { getHealth } from '@/api/health'
+import { resolveDataWindow } from '@/utils/time'
 
 const route = useRoute()
 const healthy = ref(false)
@@ -13,6 +14,10 @@ const isCompactViewport = ref(false)
 const sidebarElement = ref<HTMLElement | null>(null)
 const sidebarClose = ref<HTMLButtonElement | null>(null)
 const menuTrigger = ref<HTMLButtonElement | null>(null)
+const dataWindow = resolveDataWindow(import.meta.env)
+const dataWindowLabel = dataWindow
+  ? `${dataWindow.start.slice(0, 10)} 至 ${dataWindow.end.slice(0, 10)}`
+  : '2026-02-01 至制品快照'
 let timer: number | undefined
 let compactViewportQuery: MediaQueryList | undefined
 
@@ -254,7 +259,7 @@ onBeforeUnmount(() => {
         <div class="topbar-meta">
           <div class="data-window">
             <span>数据范围</span>
-            <strong>2026-02-01 至制品快照</strong>
+            <strong>{{ dataWindowLabel }}</strong>
           </div>
           <div
             class="topbar-health"

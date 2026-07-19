@@ -12,7 +12,7 @@ dependencies = [
     "openpyxl",
     "pandas",
     "psycopg2-binary",
-    "pyinotify",
+    "pyinotify; sys_platform == 'linux'",
     "python-dateutil",
     "pytricia",
     "requests",
@@ -26,6 +26,11 @@ dev = [
 
 [tool.uv]
 package = false
+
+[[tool.uv.dependency-metadata]]
+name = "pyinotify"
+version = "0.9.6"
+requires-dist = []
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

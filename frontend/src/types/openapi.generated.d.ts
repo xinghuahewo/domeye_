@@ -257,7 +257,7 @@ export interface components {
         EventPage: {
             data: components["schemas"]["EventItem"][];
             total_page: number;
-            record_count: number;
+            record_count: string;
         };
         EventDetail: {
             start_time: string;
@@ -278,12 +278,38 @@ export interface components {
             v6Prefix_num?: number | null;
             v4IP_num?: number | null;
         };
-        FeaturePage: {
+        FeatureSeriesPoint: {
+            time: string;
+            announce: number;
+            withdraw: number;
+            v4Prefix_num: number;
+            v6Prefix_num: number;
+            v4IP_num: number;
+        };
+        CountryFeatureItem: {
+            country: string;
+            time_series_data: components["schemas"]["FeatureSeriesPoint"][];
+        };
+        AsFeatureItem: {
+            asn: string;
+            as_name: string;
+            country: string;
+            org_name: string;
+            time_series_data: components["schemas"]["FeatureSeriesPoint"][];
+        };
+        CountryFeaturePage: {
             total_page: number;
             record_count: number;
             current_page: number;
             page_size: number;
-            data: components["schemas"]["FeaturePoint"][];
+            data: components["schemas"]["CountryFeatureItem"][];
+        };
+        AsFeaturePage: {
+            total_page: number;
+            record_count: number;
+            current_page: number;
+            page_size: number;
+            data: components["schemas"]["AsFeatureItem"][];
         };
         OutagePoint: {
             time_slot: string;
@@ -317,6 +343,8 @@ export interface components {
         EndTime: string;
         Target: string;
         Country: string;
+        PageNum: number;
+        FeaturePageSize: 5 | 10 | 20 | 50;
     };
     requestBodies: never;
     headers: never;
@@ -448,6 +476,9 @@ export interface operations {
     getCountryFeatures: {
         parameters: {
             query: {
+                country?: string;
+                page_num?: components["parameters"]["PageNum"];
+                page_size?: components["parameters"]["FeaturePageSize"];
                 start_time: components["parameters"]["StartTime"];
                 end_time: components["parameters"]["EndTime"];
             };
@@ -463,7 +494,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeaturePage"];
+                    "application/json": components["schemas"]["CountryFeaturePage"];
                 };
             };
         };
@@ -472,6 +503,9 @@ export interface operations {
         parameters: {
             query: {
                 asn?: string;
+                country?: string;
+                page_num?: components["parameters"]["PageNum"];
+                page_size?: components["parameters"]["FeaturePageSize"];
                 start_time: components["parameters"]["StartTime"];
                 end_time: components["parameters"]["EndTime"];
             };
@@ -487,7 +521,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeaturePage"];
+                    "application/json": components["schemas"]["AsFeaturePage"];
                 };
             };
         };

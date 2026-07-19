@@ -1,0 +1,244 @@
+{
+  "data_window": {
+    "start_time": "2026-02-01 00:00:00",
+    "end_time": "2026-03-31 23:59:59",
+    "timezone": "Asia/Shanghai"
+  },
+  "health": {
+    "status": "ok",
+    "service": "domeye-core-mock",
+    "time": "2026-03-31T15:59:59Z"
+  },
+  "events": {
+    "total_page": 1,
+    "record_count": 6,
+    "data": [
+      {
+        "event_type": "前缀劫持",
+        "level": "high",
+        "start_time": "2026-03-31 18:00:00",
+        "end_time": "2026-03-31 18:12:00",
+        "attacker_as": "64513",
+        "attacked_as": "64512",
+        "event_info": "检测到源 AS 从 64512 变为 64513",
+        "detail_url": "hijack/2026-03-31 18:00:00/203.0.113.0-24/1/r",
+        "affected_prefix": "203.0.113.0/24",
+        "attacker_org": "示例异常来源",
+        "attacked_org": "示例受影响网络",
+        "attacker_country": "美国",
+        "attacked_country": "中国"
+      },
+      {
+        "event_type": "子前缀劫持",
+        "level": "high",
+        "start_time": "2026-03-31 19:00:00",
+        "end_time": "2026-03-31 19:09:00",
+        "attacker_as": "64514",
+        "attacked_as": "64512",
+        "event_info": "更具体前缀出现异常起源",
+        "detail_url": "sub_hijack/2026-03-31 19:00:00/203.0.113.0-25/2/r",
+        "affected_prefix": "203.0.113.0/25",
+        "attacker_org": "示例异常来源二",
+        "attacked_org": "示例受影响网络",
+        "attacker_country": "德国",
+        "attacked_country": "中国"
+      },
+      {
+        "event_type": "路由泄漏",
+        "level": "middle",
+        "start_time": "2026-03-31 20:00:00",
+        "end_time": "2026-03-31 20:24:00",
+        "attacker_as": "64515",
+        "attacked_as": "64512",
+        "event_info": "AS_PATH 传播关系异常",
+        "detail_url": "leak/2026-03-31 20:00:00/198.51.100.0-24/3/r",
+        "affected_prefix": "198.51.100.0/24",
+        "attacker_org": "示例泄漏网络",
+        "attacked_org": "示例受影响网络",
+        "attacker_country": "法国",
+        "attacked_country": "中国"
+      },
+      {
+        "event_type": "前缀中断",
+        "level": "middle",
+        "start_time": "2026-03-31 21:00:00",
+        "end_time": "2026-03-31 21:18:00",
+        "attacker_as": "",
+        "attacked_as": "64516",
+        "event_info": "前缀在全部观测点不可见",
+        "detail_url": "prefix_outage/2026-03-31 21:00:00/192.0.2.0-24/4/r",
+        "affected_prefix": "192.0.2.0/24",
+        "attacker_org": "",
+        "attacked_org": "示例中断网络",
+        "attacker_country": "",
+        "attacked_country": "日本"
+      },
+      {
+        "event_type": "AS中断",
+        "level": "low",
+        "start_time": "2026-03-31 22:00:00",
+        "end_time": "2026-03-31 22:06:00",
+        "attacker_as": "",
+        "attacked_as": "64517",
+        "event_info": "AS 路由资源可见性显著下降",
+        "detail_url": "as_outage/2026-03-31 22:00:00/64517/5/r",
+        "affected_prefix": "",
+        "attacker_org": "",
+        "attacked_org": "示例 AS 网络",
+        "attacker_country": "",
+        "attacked_country": "新加坡"
+      },
+      {
+        "event_type": "国家中断",
+        "level": "low",
+        "start_time": "2026-03-31 23:00:00",
+        "end_time": "2026-03-31 23:03:00",
+        "attacker_as": "",
+        "attacked_as": "",
+        "event_info": "国家范围 AS 可见性下降",
+        "detail_url": "country_outage/2026-03-31 23:00:00/CN/6/r",
+        "affected_prefix": "",
+        "attacker_org": "",
+        "attacked_org": "",
+        "attacker_country": "",
+        "attacked_country": "中国"
+      }
+    ]
+  },
+  "event_details": {
+    "hijack": {
+      "start_time": "2026-03-31 18:00:00", "end_time": "2026-03-31 18:12:00", "duration": "0:12:00",
+      "event_level": "high", "event_descr": "高风险", "event_info": "源 AS 发生偏离",
+      "hijacked_prefix": "203.0.113.0/24", "attacked_as": "64512", "attacked_as_name": "示例受影响网络",
+      "attacked_org": "示例受影响机构", "attacked_country": "中国", "attacked_as_descr": null, "attacked_as_admin": null,
+      "attacker_as": "64513",
+      "attacker_as_name": "示例异常来源", "attacker_org": "示例来源机构", "attacker_country": "美国",
+      "attacker_as_descr": null, "attacker_as_admin": null,
+      "pre_vp_paths": {"2026-03-31 17:57:00": ["64500 64512"]},
+      "eve_vp_paths": {"2026-03-31 18:00:00": ["64500 64513"]}, "next_vp_paths": []
+    },
+    "sub_hijack": {
+      "start_time": "2026-03-31 19:00:00", "end_time": "2026-03-31 19:09:00", "duration": "0:09:00",
+      "event_level": "high", "event_descr": "更具体前缀异常", "event_info": "异常来源发布了子前缀",
+      "hijacker_prefix": "203.0.113.0/25", "hijacked_prefix": "203.0.113.0/24",
+      "attacked_as": "64512", "attacked_ases": ["64512"], "attacked_as_name": "示例受影响网络",
+      "attacked_org": "示例受影响机构", "attacked_country": "中国", "attacked_as_descr": null, "attacked_as_admin": null,
+      "attacker_as": "64514",
+      "attacker_ases": ["64514"], "attacker_as_name": "示例异常来源二", "attacker_org": "示例来源机构二",
+      "attacker_country": "德国", "attacker_as_descr": null, "attacker_as_admin": null
+    },
+    "leak": {
+      "start_time": "2026-03-31 20:00:00", "end_time": "", "duration": "",
+      "event_level": "middle", "event_descr": "传播关系异常", "event_info": "观测到异常 AS_PATH",
+      "leak_prefix": "198.51.100.0/24", "attacked_as": "64512", "attacked_as_name": "示例受影响网络",
+      "attacked_org": "示例受影响机构", "attacked_country": "中国", "attacker_as": "64515",
+      "attacker_as_name": "示例泄漏网络", "attacker_org": "示例泄漏机构", "attacker_country": "法国",
+      "leak_to": "64518", "leak_to_name": "示例接收网络", "leak_to_org": "示例接收机构",
+      "leak_to_country": "英国", "as_path": "64500 64515 64518 64512"
+    },
+    "prefix_outage": {
+      "start_time": "2026-03-31 21:00:00", "end_time": "2026-03-31 21:18:00", "duration": "0:18:00",
+      "event_level": "middle", "event_descr": "前缀可见性消失", "event_info": "全部观测点失去该前缀",
+      "outage_prefix": "192.0.2.0/24", "attacked_as": "64516", "attacked_as_name": "示例中断网络",
+      "attacked_org": "示例中断机构", "attacked_country": "日本", "as_type": "内容网络", "as_descr": null, "as_admin": null,
+      "pre_vp_paths": {"2026-03-31 20:57:00": ["64500 64516"]},
+      "eve_vp_paths": {"2026-03-31 21:00:00": []}, "next_vp_paths": [{"path": ["64500", "64516"]}]
+    },
+    "as_outage": {
+      "start_time": "2026-03-31 22:00:00", "end_time": "2026-03-31 22:06:00", "duration": "0:06:00",
+      "event_level": "low", "event_descr": "AS 路由资源下降", "event_info": "AS 多个前缀同时不可见",
+      "outage_as": "64517", "attacked_as": "64517", "attacked_as_name": "示例 AS 网络",
+      "attacked_org": "示例 AS 机构", "attacked_country": "新加坡", "total_prefix_num": 12,
+      "outage_prefix_num": 4, "outage_prefixes": ["192.0.2.0/24", "198.51.100.0/24"], "as_type": "接入网络",
+      "as_descr": null, "as_admin": null,
+      "pre_vp_paths": {"2026-03-31 21:57:00": ["64500 64517"]},
+      "eve_vp_paths": {"2026-03-31 22:00:00": []}, "next_vp_paths": []
+    },
+    "country_outage": {
+      "start_time": "2026-03-31 23:00:00", "end_time": "2026-03-31 23:03:00", "duration": "0:03:00",
+      "event_level": "low", "event_descr": "国家范围可见性下降", "event_info": "多个 AS 同时出现中断",
+      "outage_country": "中国", "attacked_country": "中国", "total_as_num": 1000,
+      "outage_as_num": 3, "outage_ases": ["64512", "64516", "64517"]
+    }
+  },
+  "features": [
+    {"t": "2026-02-01 00:00:00", "announce": 120, "withdraw": 18, "v4Prefix_num": 980, "v6Prefix_num": 82, "v4IP_num": 250880},
+    {"t": "2026-02-01 00:03:00", "announce": 168, "withdraw": 46, "v4Prefix_num": 982, "v6Prefix_num": 82, "v4IP_num": 251392},
+    {"t": "2026-02-01 00:06:00", "announce": 132, "withdraw": 22, "v4Prefix_num": 981, "v6Prefix_num": 83, "v4IP_num": 251136},
+    {"t": "2026-02-01 00:09:00", "announce": 145, "withdraw": 15, "v4Prefix_num": 984, "v6Prefix_num": 83, "v4IP_num": 251904},
+    {"t": "2026-03-31 23:50:00", "announce": 151, "withdraw": 19, "v4Prefix_num": 1012, "v6Prefix_num": 91, "v4IP_num": 259072},
+    {"t": "2026-03-31 23:53:00", "announce": 184, "withdraw": 37, "v4Prefix_num": 1013, "v6Prefix_num": 91, "v4IP_num": 259328},
+    {"t": "2026-03-31 23:56:00", "announce": 163, "withdraw": 24, "v4Prefix_num": 1015, "v6Prefix_num": 92, "v4IP_num": 259840},
+    {"t": "2026-03-31 23:59:00", "announce": 172, "withdraw": 21, "v4Prefix_num": 1016, "v6Prefix_num": 92, "v4IP_num": 260096}
+  ],
+  "country_features": {
+    "total_page": 1,
+    "record_count": 2,
+    "current_page": 1,
+    "page_size": 5,
+    "data": [
+      {
+        "country": "中国",
+        "time_series_data": [
+          {"time": "2026-02-01 00:00:00", "announce": 120, "withdraw": 18, "v4Prefix_num": 980, "v6Prefix_num": 82, "v4IP_num": 250880},
+          {"time": "2026-03-31 23:59:00", "announce": 172, "withdraw": 21, "v4Prefix_num": 1016, "v6Prefix_num": 92, "v4IP_num": 260096}
+        ]
+      },
+      {
+        "country": "美国",
+        "time_series_data": [
+          {"time": "2026-03-31 23:59:00", "announce": 88, "withdraw": 12, "v4Prefix_num": 764, "v6Prefix_num": 66, "v4IP_num": 195584}
+        ]
+      }
+    ]
+  },
+  "as_features": {
+    "total_page": 1,
+    "record_count": 2,
+    "current_page": 1,
+    "page_size": 5,
+    "data": [
+      {
+        "asn": "4134",
+        "as_name": "中国电信",
+        "country": "中国",
+        "org_name": "中国电信集团",
+        "time_series_data": [
+          {"time": "2026-02-01 00:00:00", "announce": 42, "withdraw": 6, "v4Prefix_num": 310, "v6Prefix_num": 31, "v4IP_num": 79360},
+          {"time": "2026-03-31 23:59:00", "announce": 55, "withdraw": 9, "v4Prefix_num": 318, "v6Prefix_num": 34, "v4IP_num": 81408}
+        ]
+      },
+      {
+        "asn": "1299",
+        "as_name": "Arelion",
+        "country": "瑞典",
+        "org_name": "Arelion Sweden AB",
+        "time_series_data": [
+          {"time": "2026-03-31 23:59:00", "announce": 37, "withdraw": 4, "v4Prefix_num": 205, "v6Prefix_num": 28, "v4IP_num": 52480}
+        ]
+      }
+    ]
+  },
+  "outages": {
+    "country_as": [{"time_slot": "2026-02-01 00:00:00", "outage_count": 2}, {"time_slot": "2026-02-01 00:03:00", "outage_count": 1}, {"time_slot": "2026-03-31 23:56:00", "outage_count": 3}, {"time_slot": "2026-03-31 23:59:00", "outage_count": 2}],
+    "country_prefix": [{"time_slot": "2026-02-01 00:00:00", "outage_count": 8}, {"time_slot": "2026-02-01 00:03:00", "outage_count": 3}, {"time_slot": "2026-03-31 23:56:00", "outage_count": 11}, {"time_slot": "2026-03-31 23:59:00", "outage_count": 7}],
+    "as_prefix": [{"time_slot": "2026-02-01 00:00:00", "outage_count": 4}, {"time_slot": "2026-02-01 00:03:00", "outage_count": 1}, {"time_slot": "2026-03-31 23:56:00", "outage_count": 5}, {"time_slot": "2026-03-31 23:59:00", "outage_count": 2}],
+    "global_as": [{"time_slot": "2026-02-01 00:00:00", "outage_count": 5}, {"time_slot": "2026-02-01 00:03:00", "outage_count": 3}, {"time_slot": "2026-03-31 23:56:00", "outage_count": 6}, {"time_slot": "2026-03-31 23:59:00", "outage_count": 4}],
+    "global_prefix": [{"time_slot": "2026-02-01 00:00:00", "outage_count": 16}, {"time_slot": "2026-02-01 00:03:00", "outage_count": 9}, {"time_slot": "2026-03-31 23:56:00", "outage_count": 18}, {"time_slot": "2026-03-31 23:59:00", "outage_count": 12}]
+  },
+  "counts": [
+    {"time": "2026-02-01", "num": 6},
+    {"time": "2026-02-02", "num": 4},
+    {"time": "2026-02-03", "num": 7},
+    {"time": "2026-03-29", "num": 9},
+    {"time": "2026-03-30", "num": 8},
+    {"time": "2026-03-31", "num": 11}
+  ],
+  "type_count": {
+    "event_type": "前缀劫持",
+    "num": 2,
+    "amplitude_type": true,
+    "amplitude": "20.00%",
+    "icon": "icon-dongtai"
+  }
+}

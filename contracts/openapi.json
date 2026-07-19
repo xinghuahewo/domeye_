@@ -63,15 +63,28 @@
     "/features/countries": {
       "get": {
         "operationId": "getCountryFeatures",
-        "parameters": [{"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}],
-        "responses": {"200": {"description": "国家特征分页", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeaturePage"}}}}}
+        "parameters": [
+          {"name": "country", "in": "query", "schema": {"type": "string"}},
+          {"$ref": "#/components/parameters/PageNum"},
+          {"$ref": "#/components/parameters/FeaturePageSize"},
+          {"$ref": "#/components/parameters/StartTime"},
+          {"$ref": "#/components/parameters/EndTime"}
+        ],
+        "responses": {"200": {"description": "国家特征分页", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryFeaturePage"}}}}}
       }
     },
     "/features/ases": {
       "get": {
         "operationId": "getAsFeatures",
-        "parameters": [{"name": "asn", "in": "query", "schema": {"type": "string"}}, {"$ref": "#/components/parameters/StartTime"}, {"$ref": "#/components/parameters/EndTime"}],
-        "responses": {"200": {"description": "ASN 特征分页", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeaturePage"}}}}}
+        "parameters": [
+          {"name": "asn", "in": "query", "schema": {"type": "string"}},
+          {"name": "country", "in": "query", "schema": {"type": "string"}},
+          {"$ref": "#/components/parameters/PageNum"},
+          {"$ref": "#/components/parameters/FeaturePageSize"},
+          {"$ref": "#/components/parameters/StartTime"},
+          {"$ref": "#/components/parameters/EndTime"}
+        ],
+        "responses": {"200": {"description": "ASN 特征分页", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AsFeaturePage"}}}}}
       }
     },
     "/features/outages/country-as": {
@@ -101,7 +114,9 @@
       "StartTime": {"name": "start_time", "in": "query", "required": true, "schema": {"type": "string"}},
       "EndTime": {"name": "end_time", "in": "query", "required": true, "schema": {"type": "string"}},
       "Target": {"name": "target", "in": "query", "required": true, "schema": {"type": "string"}},
-      "Country": {"name": "country", "in": "query", "required": true, "schema": {"type": "string"}}
+      "Country": {"name": "country", "in": "query", "required": true, "schema": {"type": "string"}},
+      "PageNum": {"name": "page_num", "in": "query", "schema": {"type": "integer", "minimum": 1}},
+      "FeaturePageSize": {"name": "page_size", "in": "query", "schema": {"type": "integer", "enum": [5, 10, 20, 50]}}
     },
     "responses": {
       "OutageSeries": {"description": "中断时序", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/OutagePoint"}}}}}
@@ -129,7 +144,7 @@
       "EventPage": {
         "type": "object",
         "required": ["data", "total_page", "record_count"],
-        "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/EventItem"}}, "total_page": {"type": "integer"}, "record_count": {"type": "integer"}}
+        "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/EventItem"}}, "total_page": {"type": "integer"}, "record_count": {"type": "string"}}
       },
       "EventDetail": {
         "type": "object",
@@ -148,12 +163,44 @@
           "v4Prefix_num": {"type": ["integer", "null"]}, "v6Prefix_num": {"type": ["integer", "null"]}, "v4IP_num": {"type": ["integer", "null"]}
         }
       },
-      "FeaturePage": {
+      "FeatureSeriesPoint": {
+        "type": "object",
+        "required": ["time", "announce", "withdraw", "v4Prefix_num", "v6Prefix_num", "v4IP_num"],
+        "properties": {
+          "time": {"type": "string"}, "announce": {"type": "integer"}, "withdraw": {"type": "integer"},
+          "v4Prefix_num": {"type": "integer"}, "v6Prefix_num": {"type": "integer"}, "v4IP_num": {"type": "integer"}
+        }
+      },
+      "CountryFeatureItem": {
+        "type": "object",
+        "required": ["country", "time_series_data"],
+        "properties": {
+          "country": {"type": "string"},
+          "time_series_data": {"type": "array", "items": {"$ref": "#/components/schemas/FeatureSeriesPoint"}}
+        }
+      },
+      "AsFeatureItem": {
+        "type": "object",
+        "required": ["asn", "as_name", "country", "org_name", "time_series_data"],
+        "properties": {
+          "asn": {"type": "string"}, "as_name": {"type": "string"}, "country": {"type": "string"}, "org_name": {"type": "string"},
+          "time_series_data": {"type": "array", "items": {"$ref": "#/components/schemas/FeatureSeriesPoint"}}
+        }
+      },
+      "CountryFeaturePage": {
         "type": "object",
         "required": ["total_page", "record_count", "current_page", "page_size", "data"],
         "properties": {
           "total_page": {"type": "integer"}, "record_count": {"type": "integer"}, "current_page": {"type": "integer"}, "page_size": {"type": "integer"},
-          "data": {"type": "array", "items": {"$ref": "#/components/schemas/FeaturePoint"}}
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/CountryFeatureItem"}}
+        }
+      },
+      "AsFeaturePage": {
+        "type": "object",
+        "required": ["total_page", "record_count", "current_page", "page_size", "data"],
+        "properties": {
+          "total_page": {"type": "integer"}, "record_count": {"type": "integer"}, "current_page": {"type": "integer"}, "page_size": {"type": "integer"},
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/AsFeatureItem"}}
         }
       },
       "OutagePoint": {

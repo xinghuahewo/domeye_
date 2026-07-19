@@ -3,6 +3,11 @@
 var/
 deploy/database/database.env
 deploy/database/source.env
+/dev/database/*.env
+/dev/database/state.json
+/dev/database/candidate-reservation.json
+/dev/database/.manage.lock/
+/dev/database/overlay/
 frontend/.dist-backup-*/
 frontend/.dist-deploy-*/
 frontend/.dist-install-*/

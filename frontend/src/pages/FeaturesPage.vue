@@ -14,9 +14,10 @@ import LineChart, { type ChartSeries } from '@/components/LineChart.vue'
 import PageState from '@/components/PageState.vue'
 import type { FeaturePoint, OutagePoint } from '@/types/api'
 import { errorMessage } from '@/utils/normalize'
-import { recentRange, toBackendTime } from '@/utils/time'
+import { parseInputTime, recentRange, resolveDataWindow, toBackendTime } from '@/utils/time'
 
 const defaults = recentRange(24)
+const dataWindow = resolveDataWindow(import.meta.env)
 const query = reactive({
   target: 'collector',
   start: defaults.start,
@@ -106,7 +107,13 @@ async function load() {
     featureError.value = '目标和时间范围不能为空'
     return
   }
-  if (new Date(query.start).getTime() >= new Date(query.end).getTime()) {
+  const startTime = parseInputTime(query.start)
+  const endTime = parseInputTime(query.end)
+  if (!startTime || !endTime) {
+    featureError.value = '时间格式无效，请填写完整日期和时间'
+    return
+  }
+  if (startTime.getTime() >= endTime.getTime()) {
     featureError.value = '开始时间必须早于结束时间'
     return
   }
@@ -172,11 +179,23 @@ onMounted(load)
       </label>
       <label>
         <span>开始时间</span>
-        <input v-model="query.start" type="datetime-local" />
+        <input
+          v-model="query.start"
+          type="datetime-local"
+          step="1"
+          :min="dataWindow?.start"
+          :max="dataWindow?.end"
+        />
       </label>
       <label>
         <span>结束时间</span>
-        <input v-model="query.end" type="datetime-local" />
+        <input
+          v-model="query.end"
+          type="datetime-local"
+          step="1"
+          :min="dataWindow?.start"
+          :max="dataWindow?.end"
+        />
       </label>
       <button class="solid-action" type="submit">刷新剖面</button>
     </form>
