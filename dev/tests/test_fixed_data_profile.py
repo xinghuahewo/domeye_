@@ -1,0 +1,66 @@
+from pathlib import Path
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[2]
+PROFILE = (ROOT / "deploy" / "lib" / "data-profile.sh").read_text(encoding="utf-8")
+API_MANAGER = (ROOT / "dev" / "backend" / "manage-dev-api.sh").read_text(
+    encoding="utf-8"
+)
+DATABASE_MANAGER = (ROOT / "dev" / "database" / "manage-dev-database.sh").read_text(
+    encoding="utf-8"
+)
+START_BACKEND = (ROOT / "deploy" / "start-backend.sh").read_text(encoding="utf-8")
+ACTIVATE_DATABASE = (ROOT / "deploy" / "database" / "activate-database.sh").read_text(
+    encoding="utf-8"
+)
+ROLLBACK_DATABASE = (ROOT / "deploy" / "database" / "rollback-database.sh").read_text(
+    encoding="utf-8"
+)
+BUILD_DATABASE = (ROOT / "deploy" / "database" / "build-database-artifact.sh").read_text(
+    encoding="utf-8"
+)
+FULL_ACCEPTANCE = (ROOT / "deploy" / "acceptance" / "full-acceptance.sh").read_text(
+    encoding="utf-8"
+)
+
+
+class FixedDataProfileContractTest(unittest.TestCase):
+    def test_profile_is_pinned_to_february_and_march(self):
+        self.assertIn("DOMEYE_CORE_ACTIVE_DATA_PROFILE='feb-mar-2026'", PROFILE)
+        self.assertIn("DOMEYE_CORE_FIXED_DATA_START='2026-02-01 00:00:00'", PROFILE)
+        self.assertIn(
+            "DOMEYE_CORE_FIXED_DATA_END_EXCLUSIVE='2026-04-01 00:00:00'",
+            PROFILE,
+        )
+        self.assertIn("DOMEYE_CORE_FIXED_DATABASE_PORT='31627'", PROFILE)
+
+    def test_core_profile_reuses_verified_manager_on_existing_api_port(self):
+        self.assertIn("SCREEN_NAME='domeye_core_app'", API_MANAGER)
+        self.assertIn("API_INSTANCE='domeye-core-feb-mar-2026'", API_MANAGER)
+        self.assertIn("API_PORT='28473'", API_MANAGER)
+        self.assertIn('DOMEYE_CORE_API_PROFILE="${API_PROFILE}"', API_MANAGER)
+
+    def test_database_mutations_are_blocked_while_either_api_is_running(self):
+        self.assertIn("CORE_API_SCREEN_NAME='domeye_core_app'", DATABASE_MANAGER)
+        self.assertIn('core_suffix=".${CORE_API_SCREEN_NAME}"', DATABASE_MANAGER)
+
+    def test_legacy_backend_start_is_blocked_in_fixed_profile(self):
+        self.assertIn("deploy/manage-fixed-backend.sh", START_BACKEND)
+        self.assertIn("domeye_core_require_realtime_profile", START_BACKEND)
+
+    def test_realtime_activation_rollback_and_source_read_are_blocked(self):
+        self.assertIn("domeye_core_require_realtime_profile", ACTIVATE_DATABASE)
+        self.assertIn("domeye_core_require_realtime_profile", ROLLBACK_DATABASE)
+        self.assertIn("domeye_core_require_source_database_access", BUILD_DATABASE)
+
+    def test_full_acceptance_is_blocked_before_any_mutation(self):
+        gate = FULL_ACCEPTANCE.index("domeye_core_require_realtime_profile || exit 1")
+        first_stop = FULL_ACCEPTANCE.index('"${DEPLOY_DIR}/stop-backend.sh"')
+        first_restore = FULL_ACCEPTANCE.index('"${DEPLOY_DIR}/database/restore-database.sh"')
+        self.assertLess(gate, first_stop)
+        self.assertLess(gate, first_restore)
+
+
+if __name__ == "__main__":
+    unittest.main()

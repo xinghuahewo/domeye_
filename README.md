@@ -2,7 +2,7 @@
 
 Domeye Core 是 Domeye 路由异常检测系统的核心精简版。项目保留现有核心检测逻辑和只读查询契约，以独立的基础信息制品、独立 PostgreSQL/TimescaleDB、Flask API 和 Vue 前端组成可单独部署的最小系统。
 
-当前阶段只做运行依赖收口，不增加业务功能，也不实施新的前端视觉方案。`backend/core/` 保持迁移基线逐字节不变。
+当前进入二三月固定开发阶段。所有真实数据联调只读取 `2026-02-01` 至 `2026-03-31` 的独立只读快照，Domeye Core 不再连接原生产数据库。详细约束见 [二三月固定开发模式](docs/二三月固定开发模式.md)。`backend/core/` 保持迁移基线逐字节不变。
 
 ## 系统能力
 
@@ -20,10 +20,10 @@ Domeye Core 是 Domeye 路由异常检测系统的核心精简版。项目保留
   ▼
 Nginx :28471
   ├── /              → frontend/dist
-  └── /api/v1/*      → Flask 127.0.0.1:28473
+  └── /api/v1/*      → 固定开发 Flask 127.0.0.1:28473
                               │
-                              ├── PostgreSQL/TimescaleDB 127.0.0.1:29429
-                              └── backend/info 四文件基础信息制品
+                              ├── PostgreSQL/TimescaleDB 127.0.0.1:31627
+                              └── Domeye-Core-dev-data/api/info 四文件制品
 
 backend/core（离线检测核心，Web 启动时不自动运行）
 ```
@@ -33,7 +33,7 @@ backend/core（离线检测核心，Web 启动时不自动运行）
 ## 数据边界
 
 - 固定数据起点为 `2026-02-01 00:00:00`。
-- 数据终点为每个发布制品记录的一致性快照时刻；清单同时保存 UTC 时间和 `Asia/Shanghai` 业务时间。
+- 当前开发数据终点固定为 `2026-03-31 23:59:59`；后续恢复实时发布前不会自动推进。
 - 已结束历史月份保留不变；人工刷新时补齐上一制品的当前月，再导入新增月份和新的当前月。
 - 基础信息只包含 `important_as.csv`、`as_entity.csv`、`ip_bgp_entity.csv` 和 `country.xlsx`。
 - 数据库转储、数据库镜像、基础信息归档和真实 `.env` 均位于 Git 仓库外。
@@ -137,9 +137,10 @@ npm run build
 | 用途 | 地址 |
 | --- | --- |
 | Nginx 前端入口 | `0.0.0.0:28471` |
-| Flask API | `127.0.0.1:28473` |
-| 独立数据库 | `127.0.0.1:29429` |
-| Screen 会话 | `domeye_core_app` |
+| 固定开发 Flask API | `127.0.0.1:28473` |
+| 本地联调 Flask API | `127.0.0.1:31629` |
+| 二三月只读数据库 | `127.0.0.1:31627` |
+| Screen 会话 | `domeye_core_app`、`domeye_core_dev_api` |
 
 完成制品恢复和生产激活后：
 

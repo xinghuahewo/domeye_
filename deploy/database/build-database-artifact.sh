@@ -8,6 +8,8 @@ readonly SQL_DIR="${SCRIPT_DIR}/sql"
 source "${SCRIPT_DIR}/../lib/artifact-common.sh"
 # shellcheck source=../lib/database-common.sh
 source "${SCRIPT_DIR}/../lib/database-common.sh"
+# shellcheck source=../lib/data-profile.sh
+source "${SCRIPT_DIR}/../lib/data-profile.sh"
 
 usage() {
     printf '%s\n' \
@@ -29,6 +31,10 @@ readonly BASE_RELEASE_DIR="${5:-}"
 readonly PREBUILT_FULL_DUMP="${6:-}"
 readonly PREBUILT_METADATA="${7:-}"
 readonly PREBUILT_CHECKSUM="${8:-}"
+
+if [[ "${SOURCE_ENV_FILE}" != '-' ]]; then
+    domeye_core_require_source_database_access || exit 1
+fi
 
 PREBUILT_SOURCE_NAME=''
 PREBUILT_SOURCE_SIZE=''

@@ -29,6 +29,7 @@ readonly CONTAINER_ROLE_LABEL='development-database'
 readonly CONTAINER_INSTANCE_LABEL='domeye-core-dev-feb-mar-2026'
 readonly CONTAINER_STATE_LABEL="${STATE_FILE}"
 readonly DEV_API_SCREEN_NAME='domeye_core_dev_api'
+readonly CORE_API_SCREEN_NAME='domeye_core_app'
 
 VALIDATED_RELEASE_MANIFEST_SHA=''
 VALIDATED_DATABASE_MANIFEST_SHA=''
@@ -60,13 +61,18 @@ require_root() {
 }
 
 assert_dev_api_not_running() {
-    if screen -ls 2>/dev/null | awk -v suffix=".${DEV_API_SCREEN_NAME}" '
-        $1 ~ /^[0-9]+\./ && substr($1, length($1) - length(suffix) + 1) == suffix {
+    if screen -ls 2>/dev/null | awk \
+        -v dev_suffix=".${DEV_API_SCREEN_NAME}" \
+        -v core_suffix=".${CORE_API_SCREEN_NAME}" '
+        $1 ~ /^[0-9]+\./ && (
+            substr($1, length($1) - length(dev_suffix) + 1) == dev_suffix
+            || substr($1, length($1) - length(core_suffix) + 1) == core_suffix
+        ) {
             found = 1
         }
         END { exit(found ? 0 : 1) }
     '; then
-        error "开发 API 仍在运行；数据库复验或启停前必须先执行 dev/backend/manage-dev-api.sh stop"
+        error "二三月 API 仍在运行；数据库复验或启停前必须停止远程开发档和核心冻结档"
         exit 1
     fi
 }

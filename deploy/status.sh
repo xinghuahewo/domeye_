@@ -5,6 +5,25 @@ set -Eeuo pipefail
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/backend-common.sh
 source "${SCRIPT_DIR}/lib/backend-common.sh"
+# shellcheck source=lib/data-profile.sh
+source "${SCRIPT_DIR}/lib/data-profile.sh"
+
+if [[ "${DOMEYE_CORE_ACTIVE_DATA_PROFILE}" == 'feb-mar-2026' ]]; then
+    status_code=0
+    printf '当前数据档：%s（%s <= t < %s）\n' \
+        "${DOMEYE_CORE_ACTIVE_DATA_PROFILE}" \
+        "${DOMEYE_CORE_FIXED_DATA_START}" \
+        "${DOMEYE_CORE_FIXED_DATA_END_EXCLUSIVE}"
+    "${DOMEYE_CORE_ROOT}/dev/database/manage-dev-database.sh" status || status_code=1
+    "${DOMEYE_CORE_ROOT}/deploy/manage-fixed-backend.sh" status || status_code=1
+    if curl --fail --silent --show-error --max-time 3 "${DOMEYE_CORE_FRONTEND_URL}" >/dev/null 2>&1; then
+        printf '前端入口：正常（%s）\n' "${DOMEYE_CORE_FRONTEND_URL}"
+    else
+        printf '前端入口：失败（%s）\n' "${DOMEYE_CORE_FRONTEND_URL}"
+        status_code=1
+    fi
+    exit "${status_code}"
+fi
 
 domeye_core_require_command screen
 domeye_core_require_command curl

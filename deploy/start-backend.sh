@@ -5,6 +5,14 @@ set -Eeuo pipefail
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/backend-common.sh
 source "${SCRIPT_DIR}/lib/backend-common.sh"
+# shellcheck source=lib/data-profile.sh
+source "${SCRIPT_DIR}/lib/data-profile.sh"
+
+if [[ "${DOMEYE_CORE_ACTIVE_DATA_PROFILE}" == 'feb-mar-2026' ]]; then
+    domeye_core_error '当前固定使用 2026 年 2–3 月数据；请使用 deploy/manage-fixed-backend.sh 启动后端'
+    exit 1
+fi
+domeye_core_require_realtime_profile
 
 domeye_core_require_command screen
 

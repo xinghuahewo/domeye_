@@ -9,6 +9,10 @@ source "${SCRIPT_DIR}/../lib/artifact-common.sh"
 source "${SCRIPT_DIR}/../lib/database-common.sh"
 # shellcheck source=../lib/backend-common.sh
 source "${SCRIPT_DIR}/../lib/backend-common.sh"
+# shellcheck source=../lib/data-profile.sh
+source "${SCRIPT_DIR}/../lib/data-profile.sh"
+
+domeye_core_require_realtime_profile || exit 1
 
 if (( $# > 1 )); then
     printf '用法：%s [数据库配置]\n' "${0##*/}" >&2

@@ -26,10 +26,25 @@ readonly DATABASE_STATE_LABEL="${DATABASE_STATE}"
 readonly EXPECTED_DATABASE_RELEASE_ID='20260717T124354Z'
 readonly EXPECTED_DATABASE_RELEASE_DIR='/home/bgpdata/Domeye-Core-artifacts/releases/20260717T124354Z'
 readonly EXPECTED_LOWER_PGDATA='/home/bgpdata/Domeye-Core-data/work/resume-20260717T124354Z-attempt3/postgres'
-readonly SCREEN_NAME='domeye_core_dev_api'
-readonly API_INSTANCE='domeye-core-dev-api-v1'
+readonly API_PROFILE="${DOMEYE_CORE_API_PROFILE:-remote}"
+case "${API_PROFILE}" in
+    remote)
+        SCREEN_NAME='domeye_core_dev_api'
+        API_INSTANCE='domeye-core-dev-api-v1'
+        API_PORT='31629'
+        ;;
+    core)
+        SCREEN_NAME='domeye_core_app'
+        API_INSTANCE='domeye-core-feb-mar-2026'
+        API_PORT='28473'
+        ;;
+    *)
+        printf '错误：不支持的开发 API 运行档：%s\n' "${API_PROFILE}" >&2
+        exit 2
+        ;;
+esac
+readonly SCREEN_NAME API_INSTANCE API_PORT
 readonly API_HOST='127.0.0.1'
-readonly API_PORT='31629'
 readonly HEALTH_URL="http://${API_HOST}:${API_PORT}/api/v1/healthz"
 readonly DATABASE_SMOKE_URL="http://${API_HOST}:${API_PORT}/api/v1/events?datetime=2026-03-31%2000%3A00%3A00_2026-03-31%2023%3A59%3A59&page_num=1&page_size=10"
 readonly DATA_START='2026-02-01 00:00:00'
@@ -675,6 +690,7 @@ start_action() {
             LOGNAME=root \
             LANG=C.UTF-8 \
             PATH="${RUNTIME_PATH}" \
+            DOMEYE_CORE_API_PROFILE="${API_PROFILE}" \
             DOMEYE_DEV_API_INSTANCE="${API_INSTANCE}" \
             /bin/bash "${SCRIPT_PATH}" _serve
 
@@ -734,7 +750,7 @@ stop_action() {
         return 1
     fi
     stop_exact_session "${sessions[0]}"
-    printf '开发 API 已停止：%s；未操作生产 Screen、端口或 .env。\n' "${sessions[0]}"
+    printf '二三月固定数据 API 已停止：%s；未操作数据库或 .env。\n' "${sessions[0]}"
 }
 
 health_action() {
