@@ -237,7 +237,7 @@ validate_database_state() {
     fi
     if ! jq -e \
         --arg start "${DATA_START}" \
-        --arg end "${DATA_END_EXCLUSIVE}" \
+        --arg end_exclusive "${DATA_END_EXCLUSIVE}" \
         --arg release_id "${EXPECTED_DATABASE_RELEASE_ID}" \
         --arg release_dir "${EXPECTED_DATABASE_RELEASE_DIR}" \
         --arg lower_pgdata "${EXPECTED_LOWER_PGDATA}" \
@@ -248,7 +248,7 @@ validate_database_state() {
          and .release_dir == $release_dir
          and .lower_pgdata == $lower_pgdata
          and .data_start == $start
-         and .data_end_exclusive == $end
+         and .data_end_exclusive == $end_exclusive
          and (.image_id | test("^sha256:[0-9a-f]{64}$"))
          and .port == $port
          and (.system_identifier | test("^[0-9]+$"))
