@@ -200,7 +200,7 @@ DECLARE
     as_family text;
     month_suffix text;
     family text;
-    event_type text;
+    expected_event_type text;
     problem_column text;
     event_id_column text;
     event_table_name text;
@@ -361,10 +361,10 @@ BEGIN
             'hijack', 'sub_hijack', 'leak_event',
             'prefix_outage', 'as_outage', 'country_outage'
         ] LOOP
-            event_type := CASE family WHEN 'leak_event' THEN 'leak' ELSE family END;
+            expected_event_type := CASE family WHEN 'leak_event' THEN 'leak' ELSE family END;
             IF EXISTS (
                 SELECT 1 FROM domeye_detail_reference_sample AS sample
-                WHERE sample.event_type = event_type
+                WHERE sample.event_type = expected_event_type
             ) THEN
                 CONTINUE;
             END IF;
@@ -402,12 +402,12 @@ BEGIN
                 fact_table_name,
                 problem_column,
                 event_id_column,
-                event_type
+                expected_event_type
             ) INTO has_reference;
 
             IF has_reference THEN
                 INSERT INTO domeye_detail_reference_sample(event_type, month_suffix)
-                VALUES (event_type, month_suffix);
+                VALUES (expected_event_type, month_suffix);
             END IF;
         END LOOP;
     END LOOP;
