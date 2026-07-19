@@ -50,17 +50,17 @@ class DevelopmentWindowTest(unittest.TestCase):
         self.assertEqual(RUN_LOCAL.configure_mock_scenario(env), "normal")
         self.assertEqual(env["VITE_API_TIMEOUT_MS"], "9000")
 
-    def test_real_backend_enforces_fixture_window(self):
-        window = RUN_LOCAL.load_data_window()
-        env = RUN_LOCAL.build_real_backend_env({}, window, 32123)
-        self.assertEqual(env["DOMEYE_DATA_SNAPSHOT_TIME"], "2026-03-31 23:59:59")
-        self.assertEqual(env["DOMEYE_ENFORCE_DATA_WINDOW"], "true")
-        self.assertEqual(env["DOMEYE_DATA_WINDOW_START"], "2026-02-01 00:00:00")
-        self.assertEqual(
-            env["DOMEYE_DATA_WINDOW_END_EXCLUSIVE"],
-            "2026-04-01 00:00:00",
-        )
-        self.assertEqual(env["PORT"], "32123")
+    def test_local_real_backend_is_disabled_in_fixed_profile(self):
+        args = SimpleNamespace(mode="dev", api="real")
+        with self.assertRaisesRegex(RuntimeError, "API_MODE=remote"):
+            RUN_LOCAL.start_development_processes(
+                args,
+                {},
+                RUN_LOCAL.load_data_window(),
+                32123,
+                32125,
+                [],
+            )
 
     def test_startup_failure_cleans_every_process_started_so_far(self):
         marker = object()

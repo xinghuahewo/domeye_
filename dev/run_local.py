@@ -66,24 +66,6 @@ def configure_mock_scenario(env):
     return scenario
 
 
-def build_real_backend_env(common_env, data_window, api_port):
-    backend_env = common_env.copy()
-    backend_env.update({
-        "DOMEYE_CORE_SKIP_LOCAL_ENV": "true",
-        "FLASK_CONFIG": "development",
-        "HOST": "127.0.0.1",
-        "PORT": str(api_port),
-        "DEBUG": "true",
-        "AUTO_INIT_DB": "false",
-        "LOAD_CORE_DATA_ON_STARTUP": "false",
-        "DOMEYE_DATA_SNAPSHOT_TIME": data_window["snapshot"],
-        "DOMEYE_ENFORCE_DATA_WINDOW": "true",
-        "DOMEYE_DATA_WINDOW_START": data_window["backend_start"],
-        "DOMEYE_DATA_WINDOW_END_EXCLUSIVE": data_window["backend_end_exclusive"],
-    })
-    return backend_env
-
-
 def available_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -201,14 +183,10 @@ def start_development_processes(args, common_env, data_window, api_port, fronten
         api_label = "固定开发快照（{}）".format(scenario)
         processes.append(start_process(api_command, ROOT, common_env))
     elif args.api == "real":
-        require_command("uv")
-        backend_env = build_real_backend_env(common_env, data_window, api_port)
-        processes.append(start_process(
-            ["uv", "run", "--frozen", "python", "run.py"],
-            BACKEND_DIR,
-            backend_env,
-        ))
-        api_label = "真实 Flask 后端（需自行提供开发数据库配置）"
+        raise RuntimeError(
+            "feb-mar-2026 数据档禁止本地真实后端，真实数据联调请使用 "
+            "make dev API_MODE=remote"
+        )
     else:
         require_command("ssh")
         remote_host = common_env.get("DOMEYE_DEV_REMOTE_HOST", "root@10.99.8.16")

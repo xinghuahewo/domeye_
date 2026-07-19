@@ -23,6 +23,9 @@ BUILD_DATABASE = (ROOT / "deploy" / "database" / "build-database-artifact.sh").r
 FULL_ACCEPTANCE = (ROOT / "deploy" / "acceptance" / "full-acceptance.sh").read_text(
     encoding="utf-8"
 )
+FIXED_FRONTEND = (ROOT / "deploy" / "build-fixed-frontend.sh").read_text(
+    encoding="utf-8"
+)
 
 
 class FixedDataProfileContractTest(unittest.TestCase):
@@ -60,6 +63,11 @@ class FixedDataProfileContractTest(unittest.TestCase):
         first_restore = FULL_ACCEPTANCE.index('"${DEPLOY_DIR}/database/restore-database.sh"')
         self.assertLess(gate, first_stop)
         self.assertLess(gate, first_restore)
+
+    def test_production_frontend_is_built_with_fixed_window(self):
+        self.assertIn("VITE_DATA_WINDOW_START='2026-02-01T00:00:00'", FIXED_FRONTEND)
+        self.assertIn("VITE_DATA_WINDOW_END='2026-03-31T23:59:59'", FIXED_FRONTEND)
+        self.assertIn("install-frontend-build.sh", FIXED_FRONTEND)
 
 
 if __name__ == "__main__":
