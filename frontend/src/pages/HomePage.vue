@@ -9,6 +9,7 @@ import EventTable from '@/components/EventTable.vue'
 import LineChart, { type ChartSeries } from '@/components/LineChart.vue'
 import PageState from '@/components/PageState.vue'
 import type { CountPoint, EventRow, FeaturePoint } from '@/types/api'
+import { summarizeFeatureWindow } from '@/utils/featureSummary'
 import { errorMessage } from '@/utils/normalize'
 import { recentRange, toBackendTime } from '@/utils/time'
 
@@ -23,6 +24,24 @@ const chartError = ref('')
 const totalEvents = computed(() => counts.value.reduce((sum, point) => sum + point.count, 0))
 const latestCount = computed(() => counts.value.at(-1)?.count ?? 0)
 const latestObservation = computed(() => features.value.at(-1)?.time || '等待特征数据')
+const windowSummary = computed(() => summarizeFeatureWindow(features.value))
+const announceShare = computed(() => {
+  if (windowSummary.value.updateTotal === 0) return 0
+  return windowSummary.value.announceTotal / windowSummary.value.updateTotal * 100
+})
+const withdrawShare = computed(() => {
+  if (windowSummary.value.updateTotal === 0) return 0
+  return windowSummary.value.withdrawTotal / windowSummary.value.updateTotal * 100
+})
+const withdrawRateLabel = computed(() => {
+  const rate = windowSummary.value.withdrawRate
+  return rate === null ? '—' : `${(rate * 100).toFixed(1)}%`
+})
+
+function formatFeatureCount(value: number | null) {
+  if (value === null || windowSummary.value.observedPoints === 0) return '—'
+  return value.toLocaleString('zh-CN')
+}
 
 const messageSeries = computed<ChartSeries[]>(() => [
   {
@@ -127,19 +146,65 @@ onMounted(load)
         <LineChart v-else :series="messageSeries" unit="条" :height="330" />
       </div>
 
-      <aside class="detection-index dashboard-card">
+      <aside class="window-summary dashboard-card" aria-label="24 小时报文窗口摘要">
         <div class="section-heading">
-          <h2>检测索引</h2>
-          <span>06 classes</span>
+          <h2>窗口摘要</h2>
+          <span>24H · {{ windowSummary.observedPoints }} SAMPLES</span>
         </div>
-        <ol>
-          <li><b>01</b><span>前缀劫持</span><small>起源 AS 偏离</small></li>
-          <li><b>02</b><span>子前缀劫持</span><small>更具体前缀偏离</small></li>
-          <li><b>03</b><span>路由泄漏</span><small>AS_PATH 关系异常</small></li>
-          <li><b>04</b><span>前缀中断</span><small>可见性消失</small></li>
-          <li><b>05</b><span>AS 中断</span><small>前缀聚合异常</small></li>
-          <li><b>06</b><span>国家中断</span><small>AS 聚合异常</small></li>
-        </ol>
+        <div v-if="loading" class="summary-state">
+          <PageState kind="loading" title="正在计算窗口摘要" />
+        </div>
+        <div v-else-if="chartError" class="summary-state">
+          <PageState
+            kind="error"
+            title="窗口摘要暂不可用"
+            :detail="chartError"
+            @retry="load"
+          />
+        </div>
+        <div v-else class="window-summary-body">
+          <div class="window-total">
+            <span>报文更新总量</span>
+            <strong>{{ formatFeatureCount(windowSummary.updateTotal) }}</strong>
+            <small>ANNOUNCE + WITHDRAW</small>
+          </div>
+
+          <dl class="traffic-split">
+            <div class="announce-reading">
+              <dt><i aria-hidden="true"></i>ANNOUNCE</dt>
+              <dd>{{ formatFeatureCount(windowSummary.announceTotal) }}</dd>
+            </div>
+            <div class="withdraw-reading">
+              <dt><i aria-hidden="true"></i>WITHDRAW</dt>
+              <dd>{{ formatFeatureCount(windowSummary.withdrawTotal) }}</dd>
+            </div>
+          </dl>
+
+          <div class="message-mix">
+            <div>
+              <span>撤回率</span>
+              <strong>{{ withdrawRateLabel }}</strong>
+            </div>
+            <div
+              class="message-mix-track"
+              role="img"
+              :aria-label="`ANNOUNCE 占 ${announceShare.toFixed(1)}%，WITHDRAW 占 ${withdrawShare.toFixed(1)}%`"
+            >
+              <i class="announce-share" :style="{ width: `${announceShare}%` }"></i>
+              <i class="withdraw-share" :style="{ width: `${withdrawShare}%` }"></i>
+            </div>
+          </div>
+
+          <div class="peak-reading">
+            <div>
+              <span>窗口峰值</span>
+              <strong>{{ formatFeatureCount(windowSummary.peakUpdates) }}<small> 条</small></strong>
+            </div>
+            <time :datetime="windowSummary.peakTime || undefined">
+              {{ windowSummary.peakTime || '暂无有效观测' }}
+            </time>
+          </div>
+        </div>
       </aside>
     </section>
 
@@ -214,49 +279,167 @@ onMounted(load)
 }
 
 .home-chart,
-.detection-index {
+.window-summary {
   display: grid;
   align-content: start;
   gap: 14px;
   padding: 18px;
 }
 
-.detection-index ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.summary-state,
+.window-summary-body {
+  min-height: 330px;
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 
-.detection-index li {
+.summary-state {
   display: grid;
-  grid-template-columns: 32px 1fr;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
+  place-items: center;
+  padding: 16px;
+}
+
+.window-summary-body {
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(11, 87, 183, 0.035), transparent 45%),
+    var(--paper);
+}
+
+.window-total {
+  display: grid;
+  gap: 8px;
+  padding: 19px 16px 17px;
   border-bottom: 1px solid var(--line);
 }
 
-.detection-index li:last-child {
-  border-bottom: 0;
-}
-
-.detection-index b {
-  color: var(--signal);
-  font: 700 9px/1 var(--mono);
-}
-
-.detection-index span {
-  color: #344054;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.detection-index small {
-  grid-column: 2;
+.window-total span,
+.window-total small,
+.traffic-split dt,
+.message-mix span,
+.peak-reading span {
   color: var(--muted);
   font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+}
+
+.window-total strong {
+  color: #17212b;
+  font: 720 32px/1 var(--mono);
+  letter-spacing: -0.045em;
+}
+
+.traffic-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.traffic-split > div {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 15px 16px;
+}
+
+.traffic-split > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.traffic-split dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.traffic-split dt i {
+  width: 14px;
+  height: 2px;
+  display: inline-block;
+  background: #0b57b7;
+}
+
+.traffic-split .withdraw-reading i {
+  background: #35b6d4;
+}
+
+.traffic-split dd {
+  overflow: hidden;
+  margin: 0;
+  color: #344054;
+  font: 700 15px/1.2 var(--mono);
+  text-overflow: ellipsis;
+}
+
+.message-mix {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.message-mix > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.message-mix strong {
+  color: #17212b;
+  font: 750 15px/1 var(--mono);
+}
+
+.message-mix-track {
+  height: 5px;
+  display: flex;
+  overflow: hidden;
+  background: #e8edf2;
+  border-radius: 999px;
+}
+
+.message-mix-track i {
+  height: 100%;
+  display: block;
+}
+
+.announce-share {
+  background: #0b57b7;
+}
+
+.withdraw-share {
+  background: #35b6d4;
+}
+
+.peak-reading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 12px;
+  padding: 15px 16px 16px;
+}
+
+.peak-reading > div {
+  display: grid;
+  gap: 8px;
+}
+
+.peak-reading strong {
+  color: #17212b;
+  font: 720 17px/1 var(--mono);
+}
+
+.peak-reading strong small {
+  color: var(--muted);
+  font: 650 9px/1 var(--mono);
+}
+
+.peak-reading time {
+  color: var(--signal);
+  font: 650 9px/1.35 var(--mono);
+  text-align: right;
 }
 
 .events-card {
@@ -296,7 +479,7 @@ onMounted(load)
   }
 
   .home-chart,
-  .detection-index {
+  .window-summary {
     padding: 14px;
   }
 }
