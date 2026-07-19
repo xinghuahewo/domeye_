@@ -35,6 +35,8 @@ class ServerLifecycleContractTest(unittest.TestCase):
         )
         self.assertIn('export PYTHONDONTWRITEBYTECODE=1', API_SCRIPT)
         self.assertIn(".hashes.verify_sql", API_SCRIPT)
+        self.assertIn("    export INFO_DIR\n", API_SCRIPT)
+        self.assertNotIn('export INFO_DIR="${INFO_DIR}"', API_SCRIPT)
 
 
 if __name__ == "__main__":

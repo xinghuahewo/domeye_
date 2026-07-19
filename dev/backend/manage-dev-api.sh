@@ -590,7 +590,7 @@ serve_internal() {
     export AUTO_INIT_DB=false
     export LOAD_CORE_DATA_ON_STARTUP=false
     export SOURCE=r
-    export INFO_DIR="${INFO_DIR}"
+    export INFO_DIR
     export DOMEYE_LOG_DIR="${APP_LOG_DIR}"
     export DB_HOST=127.0.0.1
     export DB_PORT="${DB_PORT}"
