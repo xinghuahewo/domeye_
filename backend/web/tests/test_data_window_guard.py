@@ -59,6 +59,25 @@ def test_march_boundary_reaches_event_service(client, enforced_window):
     query.assert_called_once()
 
 
+def test_second_precision_march_range_reaches_event_service(client, enforced_window):
+    expected = {"total_page": 0, "record_count": "0", "data": []}
+    with patch(
+        "web.api.events.api.get_event_list_data",
+        return_value=expected,
+    ) as query:
+        response = client.get(
+            "/api/v1/events"
+            "?datetime=2026-03-31%2000:00:00_2026-03-31%2023:59:59"
+        )
+
+    assert response.status_code == 200
+    assert response.get_json() == expected
+    query.assert_called_once()
+    assert query.call_args.kwargs["params"]["datetime"] == (
+        "2026-03-31 00:00:00_2026-03-31 23:59:59"
+    )
+
+
 def test_rejected_feature_range_does_not_reach_service(client, enforced_window):
     with patch("web.api.features.api.get_top_feature_data") as query:
         response = client.get(

@@ -31,7 +31,7 @@ readonly API_INSTANCE='domeye-core-dev-api-v1'
 readonly API_HOST='127.0.0.1'
 readonly API_PORT='31629'
 readonly HEALTH_URL="http://${API_HOST}:${API_PORT}/api/v1/healthz"
-readonly DATABASE_SMOKE_URL="http://${API_HOST}:${API_PORT}/api/v1/events?date=2026-03-31_2026-03-31&page_num=1&page_size=10"
+readonly DATABASE_SMOKE_URL="http://${API_HOST}:${API_PORT}/api/v1/events?datetime=2026-03-31%2000%3A00%3A00_2026-03-31%2023%3A59%3A59&page_num=1&page_size=10"
 readonly DATA_START='2026-02-01 00:00:00'
 readonly DATA_END_EXCLUSIVE='2026-04-01 00:00:00'
 readonly SNAPSHOT_TIME='2026-03-31 23:59:59'

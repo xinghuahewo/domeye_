@@ -24,6 +24,13 @@ def _date(value, end_of_day=False):
     return parsed
 
 
+def _event_boundary(value, end_of_day=False):
+    timestamp = _timestamp(value)
+    if timestamp is not None:
+        return timestamp
+    return _date(value, end_of_day=end_of_day)
+
+
 def _error(start, end_exclusive, reason):
     return {
         "status": False,
@@ -57,8 +64,8 @@ def enforce_request_data_window():
     if path == "/api/v1/events":
         raw_range = request.args.get("datetime") or request.args.get("date")
         parts = raw_range.split("_", 1) if raw_range else []
-        start = _date(parts[0]) if parts else None
-        end = _date(parts[1], end_of_day=True) if len(parts) == 2 else None
+        start = _event_boundary(parts[0]) if parts else None
+        end = _event_boundary(parts[1], end_of_day=True) if len(parts) == 2 else None
         if start is None or end is None:
             return _error(window_start, window_end, "事件列表必须提供完整 date 范围")
         if not _inside(start, end, window_start, window_end):

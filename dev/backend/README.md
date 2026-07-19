@@ -87,7 +87,7 @@ MAIL_ENABLED=false
 启动验收不只依赖不连数据库的 `/healthz`。健康探针通过后，脚本还会请求固定窗口的事件列表，并要求 HTTP 200 及合法 JSON：
 
 ```text
-/api/v1/events?date=2026-03-31_2026-03-31&page_num=1&page_size=10
+/api/v1/events?datetime=2026-03-31%2000%3A00%3A00_2026-03-31%2023%3A59%3A59&page_num=1&page_size=10
 ```
 
 这一步会真正使用只读账号连接开发数据库；若查询失败，新启动的 Screen 会被精确停止。
