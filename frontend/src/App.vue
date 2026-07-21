@@ -201,20 +201,28 @@ onBeforeUnmount(() => {
             </svg>
             <span>综合特征</span>
           </RouterLink>
-          <span class="nav-link is-disabled" aria-disabled="true">
+          <RouterLink
+            class="nav-link"
+            :class="{ 'is-active': isRouteActive('countries', 'country-detail') }"
+            to="/countries"
+            @click="closeSidebar()"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="8.5" /><path d="M3.8 12h16.4M12 3.5c2.2 2.3 3.3 5.2 3.3 8.5S14.2 18.2 12 20.5C9.8 18.2 8.7 15.3 8.7 12S9.8 5.8 12 3.5" />
             </svg>
             <span>国家特征</span>
-            <small>下一阶段</small>
-          </span>
-          <span class="nav-link is-disabled" aria-disabled="true">
+          </RouterLink>
+          <RouterLink
+            class="nav-link"
+            :class="{ 'is-active': isRouteActive('ases', 'asn-detail') }"
+            to="/ases"
+            @click="closeSidebar()"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="6" cy="12" r="2.3" /><circle cx="18" cy="6" r="2.3" /><circle cx="18" cy="18" r="2.3" /><path d="m8.1 11 7.8-4m-7.8 6 7.8 4" />
             </svg>
             <span>AS 特征</span>
-            <small>下一阶段</small>
-          </span>
+          </RouterLink>
         </section>
       </nav>
 

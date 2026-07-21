@@ -1,6 +1,7 @@
 from flask import request
 from flask_restful import Resource
 from services.events_service import (
+    get_event_evidence_bundle_data,
     get_event_detail_data,
     get_event_list_data,
     get_top_event_items,
@@ -28,6 +29,22 @@ class TopEventResource(Resource):
     """
     def get(self):
         return get_top_event_items(event_type_str=request.args.get('event_type'))
+
+
+class EventEvidenceBundleResource(Resource):
+    """返回六类业务事实记录的只读 Evidence Bundle。"""
+
+    def get(self, event_type, start_time, problem, event_id, source):
+        payload = get_event_evidence_bundle_data(
+            event_type=event_type,
+            start_time=start_time,
+            problem=problem,
+            event_id=event_id,
+            source=source,
+        )
+        if payload is None:
+            return {'status': False, 'msg': '业务事实表中未找到该事件记录'}, 404
+        return payload
 
 
 ### TODO get_feature 

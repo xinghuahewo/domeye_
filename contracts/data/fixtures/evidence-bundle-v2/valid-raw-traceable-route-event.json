@@ -1,0 +1,397 @@
+{
+  "bundle_version": "evidence_bundle_v2",
+  "bundle_id": "eb_v2_44444444444444444444444444444444",
+  "compatibility": {
+    "previous_contract": "evidence_bundle_v1",
+    "incident_id_schema": "incident_id_v1",
+    "v1_fields_reinterpreted": false,
+    "v1_bundle_ref": "/api/v1/events/evidence-bundle?incident_id=inc_v1_444444444444444444444444"
+  },
+  "subject_kind": "incident",
+  "incident": {
+    "incident_id": "inc_v1_444444444444444444444444",
+    "incident_id_schema": "incident_id_v1",
+    "event_type": "hijack",
+    "source": "r",
+    "start_time": "2026-03-04T11:35:43Z",
+    "end_time": "2026-03-04T12:00:00Z",
+    "source_timezone": "Asia/Shanghai",
+    "affected_entities": [
+      {
+        "entity_type": "prefix",
+        "entity_id": "203.0.113.0/24",
+        "role": "affected"
+      },
+      {
+        "entity_type": "asn",
+        "entity_id": "64496",
+        "role": "observed_origin"
+      }
+    ],
+    "summary": "在 rrc25 的单一 VP 路由观测中记录到该前缀的起源快照。",
+    "detail_url": "hijack/2026-03-04 19:35:43/203.0.113.0-24/8/r",
+    "detection_version": null
+  },
+  "source_fact_mapping": {
+    "mapping_id": "sfm_v2_444444444444444444444444",
+    "mapping_status": "exact",
+    "incident_ids": [
+      "inc_v1_444444444444444444444444"
+    ],
+    "source_facts": [
+      {
+        "source_fact_id": "sf_v1_444444444444444444444444",
+        "fact_type": "hijack",
+        "table_name": "hijack_202603",
+        "partition_month": "202603",
+        "fact_locator": "source=r,prefix=203.0.113.0/24,hijack_eventid=8",
+        "key_fields": [
+          {
+            "name": "source",
+            "value": "r"
+          },
+          {
+            "name": "prefix",
+            "value": "203.0.113.0/24"
+          },
+          {
+            "name": "hijack_eventid",
+            "value": 8
+          }
+        ],
+        "fact_role": "primary",
+        "start_time": "2026-03-04T11:35:43Z",
+        "end_time": "2026-03-04T12:00:00Z",
+        "record_hash": null
+      }
+    ],
+    "collision_group_id": null,
+    "quarantine_id": null,
+    "quality_flags": [
+      "partial_raw_coverage"
+    ]
+  },
+  "disposition": {
+    "status": "visible",
+    "visibility": "visible",
+    "reason_codes": [],
+    "collision": null,
+    "quarantine": null
+  },
+  "data_snapshot": {
+    "profile_id": "fixed-feb-mar-2026",
+    "profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "window_start": "2026-01-31T16:00:00Z",
+    "window_end_exclusive": "2026-03-31T16:00:00Z",
+    "snapshot_time": "2026-03-31T15:59:59Z",
+    "business_timezone": "Asia/Shanghai",
+    "database_release_id": "p0-fixed-overlay-20260720",
+    "overlay_inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "raw_source_status": "partial"
+  },
+  "route_event_refs": [
+    {
+      "route_event_id": "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473",
+      "route_event_id_schema": "route_event_id_v1",
+      "schema_version": "route_event_v1",
+      "relation": "supports_observation",
+      "semantics": "route_observation",
+      "lineage_status": "raw_traceable",
+      "observed_at": "2026-03-04T11:35:43Z",
+      "collector_id": "rrc25",
+      "vp_id": "vp_v1_b922edb0eb37b2fe314cac6bae099f9b",
+      "vp_asn": 64500,
+      "raw_record_ref_ids": [
+        "raw_v1_0857b453b87d49f9c584d2caf302aa24"
+      ]
+    }
+  ],
+  "raw_record_refs": [
+    {
+      "raw_record_ref_id": "raw_v1_0857b453b87d49f9c584d2caf302aa24",
+      "artifact_id": "art_v1_0857b453b87d49f9c584d2caf302aa24",
+      "file_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "record_offset": 4096,
+      "record_length": 128,
+      "record_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "record_ordinal": 42,
+      "element_ordinal": 0,
+      "collector_id": "rrc25",
+      "vp_id": "vp_v1_b922edb0eb37b2fe314cac6bae099f9b",
+      "vp_asn": 64500,
+      "verification_status": "verified"
+    }
+  ],
+  "processing_lineage": {
+    "lineage_status": "raw_traceable",
+    "parser": {
+      "name": "bgpdump",
+      "version": "1.6.2",
+      "code_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "config_sha256": null
+    },
+    "importer": {
+      "name": "domeye_route_ingest",
+      "version": "1.0.0",
+      "code_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "detector": null,
+    "normalizer": {
+      "name": "p0-incident-normalizer",
+      "version": "1.0.0",
+      "code_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "bundle_generator": {
+      "name": "p0-evidence-bundle-generator",
+      "version": "2.0.0",
+      "code_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "import_run_id": "run_v1_c70b95a26810f49e649e472e1df53c1a",
+    "route_event_schema_version": "route_event_v1",
+    "incident_schema_version": "incident_id_v1",
+    "generated_at": "2026-07-20T08:15:00Z",
+    "quality_flags": [
+      "partial_raw_coverage"
+    ]
+  },
+  "metric_windows": [],
+  "field_quality": [
+    {
+      "field_path": "/route_event_refs/0",
+      "value_state": "observed_nonzero",
+      "missing_reason": null,
+      "source_ref_ids": [
+        "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473"
+      ],
+      "correction_ref_ids": [],
+      "quality_flags": []
+    },
+    {
+      "field_path": "/raw_record_refs/0",
+      "value_state": "observed_nonzero",
+      "missing_reason": null,
+      "source_ref_ids": [
+        "raw_v1_0857b453b87d49f9c584d2caf302aa24"
+      ],
+      "correction_ref_ids": [],
+      "quality_flags": []
+    }
+  ],
+  "phase_coverage": {
+    "before": {
+      "status": "not_available",
+      "snapshot_count": 0,
+      "path_count": 0,
+      "evidence_ids": [
+        "ev_v2_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "route_event_ref_ids": [],
+      "missing_reasons": [
+        "not_retained"
+      ],
+      "quality_flags": [
+        "phase_not_retained"
+      ]
+    },
+    "during": {
+      "status": "observed_paths",
+      "snapshot_count": 1,
+      "path_count": 1,
+      "evidence_ids": [
+        "ev_v2_88888888888888888888888888888888",
+        "ev_v2_99999999999999999999999999999999"
+      ],
+      "route_event_ref_ids": [
+        "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473"
+      ],
+      "missing_reasons": [],
+      "quality_flags": []
+    },
+    "after": {
+      "status": "not_available",
+      "snapshot_count": 0,
+      "path_count": 0,
+      "evidence_ids": [
+        "ev_v2_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "route_event_ref_ids": [],
+      "missing_reasons": [
+        "not_retained"
+      ],
+      "quality_flags": [
+        "phase_not_retained"
+      ]
+    }
+  },
+  "evidence_registry": [
+    {
+      "evidence_id": "ev_v2_88888888888888888888888888888888",
+      "phase": "during",
+      "kind": "route_observation",
+      "stance": "support",
+      "label": "单一 VP Route Observation",
+      "semantics": "route_observation",
+      "observation_summary": "rrc25 的该 VP 在事件时点观测到规范 AS_PATH 快照。",
+      "observed_at": "2026-03-04T11:35:43Z",
+      "source_ref_ids": [
+        "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473",
+        "raw_v1_0857b453b87d49f9c584d2caf302aa24"
+      ],
+      "field_paths": [
+        "/route_event_refs/0"
+      ]
+    },
+    {
+      "evidence_id": "ev_v2_99999999999999999999999999999999",
+      "phase": "during",
+      "kind": "raw_record",
+      "stance": "support",
+      "label": "已校验原始 MRT 记录引用",
+      "semantics": "raw_bgp_record",
+      "observation_summary": "该 RouteEvent 可定位到已校验哈希、偏移和元素序号的 MRT 记录。",
+      "observed_at": "2026-03-04T11:35:43Z",
+      "source_ref_ids": [
+        "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473",
+        "raw_v1_0857b453b87d49f9c584d2caf302aa24"
+      ],
+      "field_paths": [
+        "/raw_record_refs/0"
+      ]
+    },
+    {
+      "evidence_id": "ev_v2_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "phase": "context",
+      "kind": "quality_finding",
+      "stance": "counterevidence",
+      "label": "前后阶段未保留",
+      "semantics": "quality_finding",
+      "observation_summary": "本证据包只有事件期间的记录级观测，前后阶段没有可复核记录。",
+      "observed_at": null,
+      "source_ref_ids": [
+        "sf_v1_444444444444444444444444"
+      ],
+      "field_paths": [
+        "/phase_coverage/before",
+        "/phase_coverage/after"
+      ]
+    }
+  ],
+  "supporting_evidence_refs": [
+    "ev_v2_88888888888888888888888888888888",
+    "ev_v2_99999999999999999999999999999999"
+  ],
+  "counterevidence_refs": [
+    "ev_v2_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ],
+  "coverage_summary": {
+    "admission_level": "raw_traceable",
+    "raw_source": {
+      "expected_count": 1,
+      "observed_count": 1,
+      "coverage_ratio": 1,
+      "status": "full"
+    },
+    "route_event": {
+      "expected_count": 1,
+      "observed_count": 1,
+      "coverage_ratio": 1,
+      "status": "full"
+    },
+    "phase": {
+      "expected_count": 3,
+      "observed_count": 1,
+      "coverage_ratio": 0.333333333,
+      "status": "partial"
+    },
+    "evidence_reference_closure": "passed",
+    "unexplained_source_fact_count": 0,
+    "collision_group_count": 0,
+    "quarantine_count": 0,
+    "unknown_missing_reason_count": 0,
+    "missing_counts": [
+      {
+        "reason": "not_retained",
+        "count": 2
+      }
+    ]
+  },
+  "correction_refs": [],
+  "reproducibility": {
+    "schema_id": "https://domeye.example/contracts/data/evidence-bundle-v2.schema.json",
+    "schema_version": "2.0.0",
+    "generator": {
+      "name": "p0-evidence-bundle-generator",
+      "version": "2.0.0",
+      "code_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "input_snapshot_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "query_fingerprint_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "parameters": [
+      {
+        "name": "incident_id",
+        "value": "inc_v1_444444444444444444444444"
+      },
+      {
+        "name": "route_event_id",
+        "value": "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473"
+      },
+      {
+        "name": "raw_record_ref_id",
+        "value": "raw_v1_0857b453b87d49f9c584d2caf302aa24"
+      }
+    ],
+    "output_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "generated_at": "2026-07-20T08:15:00Z",
+    "business_timezone": "Asia/Shanghai",
+    "reference_validation_status": "passed",
+    "source_hash_verification_status": "verified"
+  },
+  "limitations": [
+    {
+      "code": "partial_raw_coverage",
+      "severity": "warning",
+      "scope": "bundle",
+      "description": "该记录可原始追溯，但固定二三月数据档整体仍只有部分 MRT 覆盖。",
+      "affected_fields": [
+        "/data_snapshot/raw_source_status"
+      ],
+      "evidence_refs": [
+        "ev_v2_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ]
+    },
+    {
+      "code": "phase_not_retained",
+      "severity": "warning",
+      "scope": "phase",
+      "description": "事件前后阶段没有可复核 RouteEvent，不得据此补齐状态。",
+      "affected_fields": [
+        "/phase_coverage/before",
+        "/phase_coverage/after"
+      ],
+      "evidence_refs": [
+        "ev_v2_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ]
+    },
+    {
+      "code": "path_snapshot_not_causal",
+      "severity": "warning",
+      "scope": "route_event",
+      "description": "单一 VP 的 AS_PATH 快照不证明真实转发、全网扩散或网络根因。",
+      "affected_fields": [
+        "/route_event_refs/0"
+      ],
+      "evidence_refs": [
+        "ev_v2_88888888888888888888888888888888"
+      ]
+    }
+  ],
+  "conclusion": {
+    "classification": "observation_only",
+    "observation_summary": "该事件期间 RouteEvent 可回链到已校验原始 MRT 记录；前后阶段及固定窗口整体覆盖仍有限。",
+    "causal_conclusion": null
+  }
+}

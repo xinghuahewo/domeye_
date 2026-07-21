@@ -38,6 +38,13 @@ class ServerLifecycleContractTest(unittest.TestCase):
         self.assertIn("    export INFO_DIR\n", API_SCRIPT)
         self.assertNotIn('export INFO_DIR="${INFO_DIR}"', API_SCRIPT)
 
+    def test_remote_development_api_prewarms_static_as_data_before_ready(self):
+        self.assertIn('STATIC_AS_WARMUP_URL=', API_SCRIPT)
+        self.assertIn('if [[ "${API_PROFILE}" != \'remote\' ]]; then', API_SCRIPT)
+        warmup = API_SCRIPT.index('if ! api_static_as_warmup_request; then')
+        ready = API_SCRIPT.index('START_COMPLETE=true', warmup)
+        self.assertLess(warmup, ready)
+
 
 if __name__ == "__main__":
     unittest.main()

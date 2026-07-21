@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { getEvents } from '@/api/events'
 import EventTable from '@/components/EventTable.vue'
@@ -10,14 +10,27 @@ import { errorMessage } from '@/utils/normalize'
 import { eventDateTimeRange, recentDateRange, resolveDataWindow } from '@/utils/time'
 
 const router = useRouter()
+const route = useRoute()
 const defaultDates = recentDateRange(7)
 const dataWindow = resolveDataWindow(import.meta.env)
 const minimumDate = dataWindow?.start.slice(0, 10)
 const maximumDate = dataWindow?.end.slice(0, 10)
+const requestedEventType = typeof route.query.event_type === 'string'
+  && CORE_EVENT_TYPES.includes(route.query.event_type as (typeof CORE_EVENT_TYPES)[number])
+  ? route.query.event_type
+  : ''
+const requestedAttackedCountry = typeof route.query.attacked_country === 'string'
+  ? route.query.attacked_country.trim()
+  : ''
+const requestedAttackedAs = typeof route.query.attacked_as === 'string'
+  ? route.query.attacked_as.trim().replace(/^AS/i, '')
+  : ''
 const filters = reactive({
-  eventType: '',
+  eventType: requestedEventType,
   level: '',
   country: 'all',
+  attackedCountry: requestedAttackedCountry,
+  attackedAs: requestedAttackedAs,
   keyword: '',
   startDate: defaultDates.start,
   endDate: defaultDates.end,
@@ -44,6 +57,8 @@ async function load(resetPage = false) {
       event_type: filters.eventType || undefined,
       level: filters.level || undefined,
       country: filters.country,
+      attacked_country: filters.attackedCountry.trim() || undefined,
+      attacked_as: filters.attackedAs.trim() || undefined,
       event_info: filters.keyword.trim() || undefined,
       date: filters.startDate && filters.endDate
         ? eventDateTimeRange(filters.startDate, filters.endDate)
@@ -111,6 +126,14 @@ onMounted(() => load())
       <label class="filter-keyword">
         <span>摘要检索</span>
         <input v-model="filters.keyword" type="search" placeholder="输入 ASN、前缀或事件描述" />
+      </label>
+      <label>
+        <span>受影响国家</span>
+        <input v-model="filters.attackedCountry" type="search" placeholder="例如：中国" />
+      </label>
+      <label>
+        <span>受影响 ASN</span>
+        <input v-model="filters.attackedAs" type="search" placeholder="例如：3356" />
       </label>
       <label>
         <span>开始日期</span>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import {
   getASPrefixOutages,
@@ -16,10 +17,12 @@ import type { FeaturePoint, OutagePoint } from '@/types/api'
 import { errorMessage } from '@/utils/normalize'
 import { parseInputTime, recentRange, resolveDataWindow, toBackendTime } from '@/utils/time'
 
+const route = useRoute()
 const defaults = recentRange(24)
 const dataWindow = resolveDataWindow(import.meta.env)
+const requestedTarget = typeof route.query.target === 'string' ? route.query.target.trim() : ''
 const query = reactive({
-  target: 'collector',
+  target: requestedTarget || 'collector',
   start: defaults.start,
   end: defaults.end,
 })

@@ -1,0 +1,80 @@
+{
+  "schema_version": "metric-series/v1",
+  "metric_name": "bgp_announce_record_count",
+  "subject": {
+    "subject_type": "global",
+    "subject_id": "global",
+    "display_name": "全局观测范围"
+  },
+  "collector_scope": {
+    "scope_kind": "all_available_collectors",
+    "collector_ids": ["rrc25"],
+    "limitation_reason": "当前固定数据档仅确认 rrc25，不能解释为全网覆盖"
+  },
+  "window": {
+    "start": "2026-03-30T23:25:00Z",
+    "end": "2026-03-30T23:40:00Z",
+    "boundary": "[start,end)",
+    "timezone": "Asia/Shanghai"
+  },
+  "granularity_seconds": 300,
+  "unit": "bgp_update_record",
+  "aggregation": "sum_observation_values",
+  "formula": "sum(feature_country.announ_num)",
+  "formula_version": "announce_count_v1",
+  "expected_sample_count": 3,
+  "source_observed_sample_count": 2,
+  "metric_observed_sample_count": 1,
+  "subject_active_sample_count": 1,
+  "coverage": {
+    "source_coverage_ratio": 0.6666666667,
+    "metric_coverage_ratio": 0.3333333333,
+    "subject_activity_density": 0.5,
+    "source_gap_sample_count": 1,
+    "processing_gap_sample_count": 1,
+    "classification_complete": true
+  },
+  "points": [
+    {
+      "time": "2026-03-30T23:25:00Z",
+      "value": 15432,
+      "value_state": "observed_nonzero",
+      "missing_reason": null,
+      "formula_inputs": null
+    },
+    {
+      "time": "2026-03-30T23:30:00Z",
+      "value": null,
+      "value_state": "processing_gap",
+      "missing_reason": "processing_gap",
+      "formula_inputs": null
+    },
+    {
+      "time": "2026-03-30T23:35:00Z",
+      "value": null,
+      "value_state": "source_unavailable",
+      "missing_reason": "source_unavailable",
+      "formula_inputs": null
+    }
+  ],
+  "source_refs": [
+    {
+      "source_layer": "derived_metric",
+      "ref_id": "table:feature_country",
+      "locator": "feature_country/source=r/window=2026-03-31T07:25:00+08:00..2026-03-31T07:40:00+08:00",
+      "sha256": null
+    },
+    {
+      "source_layer": "data_quality_report",
+      "ref_id": "dqr:p0-feb-mar-2026",
+      "locator": "quality-report/checks/sample-coverage-feature-country",
+      "sha256": "471fb0196480fbf2645ae2dc855099eee7ee1e30438919566f6e4f27b29cc10d"
+    }
+  ],
+  "generated_at": "2026-07-20T12:30:00Z",
+  "ranking_scope": {
+    "scope_kind": "not_ranked",
+    "candidate_count": null,
+    "filter_rules": []
+  }
+}

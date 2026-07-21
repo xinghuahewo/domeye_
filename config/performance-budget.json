@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "readonly-api-dev-v1",
+  "data_profile": "feb-mar-2026",
+  "measurement_semantics": "客户端从开发环境服务就绪后顺序发起只读 GET；first_sample 不冒充未预热冷启动，warm_p95 使用同一路径后续样本的最近秩 P95。",
+  "timeout_seconds": 30,
+  "manager_start_max_seconds": 60,
+  "endpoints": [
+    {
+      "id": "dashboard_overview",
+      "label": "首页总览聚合",
+      "path": "/api/v1/dashboard/overview?start_time=2026-03-30%2023%3A59%3A59&end_time=2026-03-31%2023%3A59%3A59",
+      "sample_count": 20,
+      "first_sample_max_ms": 1000,
+      "warm_p95_max_ms": 500
+    },
+    {
+      "id": "country_overview",
+      "label": "国家工作台聚合",
+      "path": "/api/v1/features/countries/overview?start_time=2026-03-30%2023%3A59%3A59&end_time=2026-03-31%2023%3A59%3A59&country=%E4%B8%AD%E5%9B%BD&limit=6",
+      "sample_count": 20,
+      "first_sample_max_ms": 2000,
+      "warm_p95_max_ms": 250
+    },
+    {
+      "id": "asn_overview",
+      "label": "ASN 工作台聚合",
+      "path": "/api/v1/features/ases/overview?start_time=2026-03-30%2023%3A59%3A59&end_time=2026-03-31%2023%3A59%3A59&asn=3356&limit=6",
+      "sample_count": 20,
+      "first_sample_max_ms": 3000,
+      "warm_p95_max_ms": 250
+    },
+    {
+      "id": "event_evidence_bundle",
+      "label": "事件 Evidence Bundle",
+      "path": "/api/v1/events/evidence-bundle/prefix_outage/2026-03-31%2023%3A58%3A13/173.82.66.0-24/1696/r",
+      "sample_count": 20,
+      "first_sample_max_ms": 500,
+      "warm_p95_max_ms": 250
+    }
+  ]
+}

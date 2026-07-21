@@ -1,0 +1,2718 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/evidence-bundle-v2.schema.json",
+  "title": "Domeye Evidence Bundle v2",
+  "description": "P0 只读调查证据包合同。v2 保留 incident_id_v1 身份兼容性，但不重新解释 evidence_bundle_v1 字段；路径只表示 Route Observation 或 Path Snapshot，不表示真实转发、全网传播或因果链路。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundle_version",
+    "bundle_id",
+    "compatibility",
+    "subject_kind",
+    "incident",
+    "source_fact_mapping",
+    "disposition",
+    "data_snapshot",
+    "route_event_refs",
+    "raw_record_refs",
+    "processing_lineage",
+    "metric_windows",
+    "field_quality",
+    "phase_coverage",
+    "evidence_registry",
+    "supporting_evidence_refs",
+    "counterevidence_refs",
+    "coverage_summary",
+    "correction_refs",
+    "reproducibility",
+    "limitations",
+    "conclusion"
+  ],
+  "properties": {
+    "bundle_version": {
+      "description": "证据包合同版本。",
+      "const": "evidence_bundle_v2"
+    },
+    "bundle_id": {
+      "description": "由规范输入确定性生成的 v2 证据包标识。",
+      "type": "string",
+      "pattern": "^eb_v2_[0-9a-f]{32}$"
+    },
+    "compatibility": {
+      "$ref": "#/$defs/CompatibilityBoundary"
+    },
+    "subject_kind": {
+      "description": "证据包主体。正常或碰撞事件使用 incident；没有可见 Incident 的隔离事实使用 quarantined_source_fact。",
+      "type": "string",
+      "enum": [
+        "incident",
+        "quarantined_source_fact"
+      ]
+    },
+    "incident": {
+      "description": "可见 Incident；隔离源事实不得伪造 Incident，因此允许且要求为 null。",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Incident"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_fact_mapping": {
+      "$ref": "#/$defs/SourceFactMapping"
+    },
+    "disposition": {
+      "$ref": "#/$defs/Disposition"
+    },
+    "data_snapshot": {
+      "$ref": "#/$defs/DataSnapshot"
+    },
+    "route_event_refs": {
+      "description": "规范 RouteEvent 引用。历史不可追溯记录可为空，不得伪造引用。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RouteEventRef"
+      },
+      "uniqueItems": true
+    },
+    "raw_record_refs": {
+      "description": "已定位的原始 MRT 记录或记录元素引用。历史不可追溯记录可为空。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RawRecordRef"
+      },
+      "uniqueItems": true
+    },
+    "processing_lineage": {
+      "$ref": "#/$defs/ProcessingLineage"
+    },
+    "metric_windows": {
+      "description": "与事件调查相关的指标窗口摘要；没有可复核指标时返回空数组而不是补零。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MetricWindow"
+      },
+      "uniqueItems": true
+    },
+    "field_quality": {
+      "description": "逐字段质量、缺失原因和纠错引用。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/FieldQuality"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "phase_coverage": {
+      "$ref": "#/$defs/PhaseCoverageSet"
+    },
+    "evidence_registry": {
+      "description": "本证据包内稳定 Evidence ID 注册表。阶段、支持、反向证据和限制只能引用本注册表中的 ID。引用闭合由质量服务复核。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EvidenceRegistryItem"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "supporting_evidence_refs": {
+      "description": "支持当前观测描述的 Evidence ID，不表示因果证明。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EvidenceId"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "counterevidence_refs": {
+      "description": "与当前描述不一致、降低覆盖范围或暴露数据缺口的 Evidence ID。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EvidenceId"
+      },
+      "uniqueItems": true
+    },
+    "coverage_summary": {
+      "$ref": "#/$defs/CoverageSummary"
+    },
+    "correction_refs": {
+      "description": "只读旁路纠错记录引用；不得据此覆盖历史事实表。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CorrectionRef"
+      },
+      "uniqueItems": true
+    },
+    "reproducibility": {
+      "$ref": "#/$defs/Reproducibility"
+    },
+    "limitations": {
+      "description": "证据边界、未知项和不可作出的结论。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Limitation"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "conclusion": {
+      "$ref": "#/$defs/ObservationConclusion"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "subject_kind": {
+            "const": "incident"
+          }
+        },
+        "required": [
+          "subject_kind"
+        ],
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "incident": {
+            "$ref": "#/$defs/Incident"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "subject_kind": {
+            "const": "quarantined_source_fact"
+          }
+        },
+        "required": [
+          "subject_kind"
+        ],
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "incident": {
+            "type": "null"
+          },
+          "disposition": {
+            "properties": {
+              "status": {
+                "const": "quarantined"
+              },
+              "visibility": {
+                "const": "hidden"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "properties": {
+              "status": {
+                "const": "visible"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "subject_kind": {
+            "const": "incident"
+          },
+          "source_fact_mapping": {
+            "properties": {
+              "mapping_status": {
+                "const": "exact"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "properties": {
+              "status": {
+                "const": "legacy_collision"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "subject_kind": {
+            "const": "incident"
+          },
+          "source_fact_mapping": {
+            "properties": {
+              "mapping_status": {
+                "const": "collision"
+              },
+              "quality_flags": {
+                "contains": {
+                  "const": "source_fact_collision"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "disposition": {
+            "properties": {
+              "visibility": {
+                "const": "visible"
+              },
+              "collision": {
+                "$ref": "#/$defs/CollisionDisposition"
+              },
+              "quarantine": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "properties": {
+              "status": {
+                "const": "quarantined"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "subject_kind": {
+            "const": "quarantined_source_fact"
+          },
+          "incident": {
+            "type": "null"
+          },
+          "source_fact_mapping": {
+            "properties": {
+              "mapping_status": {
+                "const": "quarantined"
+              }
+            },
+            "type": "object"
+          },
+          "disposition": {
+            "properties": {
+              "visibility": {
+                "const": "hidden"
+              },
+              "collision": {
+                "type": "null"
+              },
+              "quarantine": {
+                "$ref": "#/$defs/QuarantineDisposition"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "processing_lineage": {
+            "properties": {
+              "lineage_status": {
+                "const": "raw_traceable"
+              }
+            },
+            "required": [
+              "lineage_status"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "route_event_refs": {
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/RouteEventRef"
+                },
+                {
+                  "properties": {
+                    "lineage_status": {
+                      "const": "raw_traceable"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "raw_record_refs": {
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/RawRecordRef"
+                },
+                {
+                  "properties": {
+                    "verification_status": {
+                      "const": "verified"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ],
+  "$defs": {
+    "Sha256": {
+      "description": "小写十六进制 SHA256。",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "EvidenceId": {
+      "description": "稳定 Evidence ID。",
+      "type": "string",
+      "pattern": "^ev_v2_[0-9a-f]{32}$"
+    },
+    "CompatibilityBoundary": {
+      "description": "v1 与 v2 的兼容边界。复用事件身份，不把 v2 字段反向解释为 v1 字段。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "previous_contract",
+        "incident_id_schema",
+        "v1_fields_reinterpreted",
+        "v1_bundle_ref"
+      ],
+      "properties": {
+        "previous_contract": {
+          "description": "继续独立保留的历史合同。",
+          "const": "evidence_bundle_v1"
+        },
+        "incident_id_schema": {
+          "description": "沿用的稳定 Incident ID 生成规则。",
+          "const": "incident_id_v1"
+        },
+        "v1_fields_reinterpreted": {
+          "description": "必须为 false，防止修改历史字段语义。",
+          "const": false
+        },
+        "v1_bundle_ref": {
+          "description": "可选的历史 v1 证据包只读引用。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "Incident": {
+      "description": "规范化可见事件。时间字符串必须携带 UTC 偏移，历史本地时间不得直接追加 Z。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "incident_id",
+        "incident_id_schema",
+        "event_type",
+        "source",
+        "start_time",
+        "end_time",
+        "source_timezone",
+        "affected_entities",
+        "summary",
+        "detail_url",
+        "detection_version"
+      ],
+      "properties": {
+        "incident_id": {
+          "description": "沿用 incident_id_v1 的稳定事件标识。",
+          "type": "string",
+          "pattern": "^inc_v1_[0-9a-f]{24}$"
+        },
+        "incident_id_schema": {
+          "description": "事件 ID 规则。",
+          "const": "incident_id_v1"
+        },
+        "event_type": {
+          "description": "六类核心异常的规范名称。",
+          "type": "string",
+          "enum": [
+            "hijack",
+            "sub_hijack",
+            "leak",
+            "prefix_outage",
+            "as_outage",
+            "country_outage"
+          ]
+        },
+        "source": {
+          "description": "历史检测来源标识。",
+          "type": "string",
+          "minLength": 1
+        },
+        "start_time": {
+          "description": "事件开始时间，必须携带时区偏移。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_time": {
+          "description": "事件结束时间；历史未知时为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "source_timezone": {
+          "description": "源业务时间采用的 IANA 时区。",
+          "type": "string",
+          "minLength": 1
+        },
+        "affected_entities": {
+          "description": "受影响实体，不推断未被观测到的对象。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EntityRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "summary": {
+          "description": "业务事实层的观测摘要，不得写成自动根因结论。",
+          "type": "string",
+          "minLength": 1
+        },
+        "detail_url": {
+          "description": "冻结的历史详情定位符。",
+          "type": "string",
+          "minLength": 1
+        },
+        "detection_version": {
+          "description": "可复核的检测版本；历史未保留时为 null 并在 field_quality 中说明。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "EntityRef": {
+      "description": "事件或指标关联实体。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_type",
+        "entity_id",
+        "role"
+      ],
+      "properties": {
+        "entity_type": {
+          "description": "实体类型。",
+          "type": "string",
+          "enum": [
+            "prefix",
+            "asn",
+            "country",
+            "collector",
+            "vantage_point"
+          ]
+        },
+        "entity_id": {
+          "description": "实体稳定标识。",
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "description": "实体在该观测中的角色。",
+          "type": "string",
+          "enum": [
+            "affected",
+            "observed_origin",
+            "suspected_origin",
+            "observer",
+            "scope"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"entity_type": {"const": "asn"}},
+            "required": ["entity_type"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "entity_id": {
+                "description": "ASN 使用不带 AS 前缀的十进制字符串；保留号有效性由质量规则判断。",
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {"entity_type": {"const": "country"}},
+            "required": ["entity_type"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "entity_id": {
+                "description": "国家使用 ISO 3166-1 alpha-2 大写代码。",
+                "type": "string",
+                "pattern": "^[A-Z]{2}$"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {"entity_type": {"const": "prefix"}},
+            "required": ["entity_type"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "entity_id": {
+                "description": "前缀使用 IPv4 或 IPv6 CIDR 文本。",
+                "type": "string",
+                "pattern": "^(?:(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])/(?:[0-9]|[12][0-9]|3[0-2])|[0-9A-Fa-f:]+/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))$"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {"entity_type": {"const": "collector"}},
+            "required": ["entity_type"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "entity_id": {
+                "description": "Collector 使用小写稳定标识。",
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {"entity_type": {"const": "vantage_point"}},
+            "required": ["entity_type"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "entity_id": {
+                "description": "VP 使用冻结的 vp_v1_ 稳定 ID。",
+                "type": "string",
+                "pattern": "^vp_v1_[0-9a-f]{32}$"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "SourceFactMapping": {
+      "description": "Incident 与六类源事实的显式映射，支持一条可变历史事实被多个 Incident 复用以及事实隔离。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mapping_id",
+        "mapping_status",
+        "incident_ids",
+        "source_facts",
+        "collision_group_id",
+        "quarantine_id",
+        "quality_flags"
+      ],
+      "properties": {
+        "mapping_id": {
+          "description": "映射记录的稳定标识。",
+          "type": "string",
+          "pattern": "^sfm_v2_[0-9a-f]{24}$"
+        },
+        "mapping_status": {
+          "description": "精确映射、历史主键碰撞或隔离状态。",
+          "type": "string",
+          "enum": [
+            "exact",
+            "collision",
+            "quarantined"
+          ]
+        },
+        "incident_ids": {
+          "description": "关联 Incident。隔离事实必须为空，碰撞映射至少包含两个 Incident。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^inc_v1_[0-9a-f]{24}$"
+          },
+          "uniqueItems": true
+        },
+        "source_facts": {
+          "description": "只读源事实定位。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceFactRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "collision_group_id": {
+          "description": "历史碰撞组 ID；非碰撞时必须为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^lcg_v1_[0-9a-f]{32}$"
+        },
+        "quarantine_id": {
+          "description": "只读隔离记录 ID；非隔离时必须为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^qr_v1_[0-9a-f]{32}$"
+        },
+        "quality_flags": {
+          "description": "映射层质量标志。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualityFlag"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mapping_status": {
+                "const": "exact"
+              }
+            },
+            "required": [
+              "mapping_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "incident_ids": {
+                "minItems": 1,
+                "maxItems": 1,
+                "type": "array"
+              },
+              "collision_group_id": {
+                "type": "null"
+              },
+              "quarantine_id": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mapping_status": {
+                "const": "collision"
+              }
+            },
+            "required": [
+              "mapping_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "incident_ids": {
+                "minItems": 2,
+                "type": "array"
+              },
+              "collision_group_id": {
+                "type": "string",
+                "pattern": "^lcg_v1_[0-9a-f]{32}$"
+              },
+              "quarantine_id": {
+                "type": "null"
+              },
+              "quality_flags": {
+                "contains": {
+                  "const": "source_fact_collision"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mapping_status": {
+                "const": "quarantined"
+              }
+            },
+            "required": [
+              "mapping_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "incident_ids": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "collision_group_id": {
+                "type": "null"
+              },
+              "quarantine_id": {
+                "type": "string",
+                "pattern": "^qr_v1_[0-9a-f]{32}$"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "SourceFactRef": {
+      "description": "六类事实表中的只读记录定位，不等同于原始 BGP 记录。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_fact_id",
+        "fact_type",
+        "table_name",
+        "partition_month",
+        "fact_locator",
+        "key_fields",
+        "fact_role",
+        "start_time",
+        "end_time",
+        "record_hash"
+      ],
+      "properties": {
+        "source_fact_id": {
+          "description": "由表名、分区和主键生成的稳定事实引用。",
+          "type": "string",
+          "pattern": "^sf_v1_[0-9a-f]{24}$"
+        },
+        "fact_type": {
+          "description": "事实类型。",
+          "type": "string",
+          "enum": [
+            "hijack",
+            "sub_hijack",
+            "leak",
+            "prefix_outage",
+            "as_outage",
+            "country_outage"
+          ]
+        },
+        "table_name": {
+          "description": "实际事实表名。",
+          "type": "string",
+          "pattern": "^(hijack|sub_hijack|leak_event|prefix_outage|as_outage|country_outage)_20260[23]$"
+        },
+        "partition_month": {
+          "description": "事实表分区月份。",
+          "type": "string",
+          "pattern": "^20260[23]$"
+        },
+        "fact_locator": {
+          "description": "冻结的业务主键定位文本。",
+          "type": "string",
+          "minLength": 1
+        },
+        "key_fields": {
+          "description": "按名称保存的完整源主键，避免 prefix_outage 遗漏 ASN。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NameValue"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "fact_role": {
+          "description": "该事实记录在映射中的状态。",
+          "type": "string",
+          "enum": [
+            "primary",
+            "mixed_state",
+            "orphan",
+            "quarantined"
+          ]
+        },
+        "start_time": {
+          "description": "事实开始时间，必须携带偏移。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_time": {
+          "description": "事实结束时间；未知时为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "record_hash": {
+          "description": "旁路规范序列化记录哈希；尚未生成时为 null。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "NameValue": {
+      "description": "严格名称和值对。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "description": "字段名。",
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "description": "规范化字段值。",
+          "type": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "QualityFlag": {
+      "description": "P0 质量标志。",
+      "type": "string",
+      "enum": [
+        "source_fact_collision",
+        "invalid_identity",
+        "legacy_window_contamination",
+        "source_fact_orphan",
+        "locator_incomplete",
+        "time_partition_mismatch",
+        "legacy_mutable_state",
+        "partial_raw_coverage",
+        "vp_identity_unavailable",
+        "processing_gap",
+        "phase_not_retained"
+      ]
+    },
+    "Disposition": {
+      "description": "事件或源事实的展示处置。历史碰撞保留事件但限定字段；隔离记录不可作为正常 Incident 展示。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "visibility",
+        "reason_codes",
+        "collision",
+        "quarantine"
+      ],
+      "properties": {
+        "status": {
+          "description": "处置状态。",
+          "type": "string",
+          "enum": [
+            "visible",
+            "legacy_collision",
+            "quarantined"
+          ]
+        },
+        "visibility": {
+          "description": "前端事件队列可见性。",
+          "type": "string",
+          "enum": [
+            "visible",
+            "hidden"
+          ]
+        },
+        "reason_codes": {
+          "description": "处置原因。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MissingReason"
+          },
+          "uniqueItems": true
+        },
+        "collision": {
+          "description": "历史事实碰撞详情。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CollisionDisposition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quarantine": {
+          "description": "隔离详情。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/QuarantineDisposition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "visible"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "visibility": {
+                "const": "visible"
+              },
+              "collision": {
+                "type": "null"
+              },
+              "quarantine": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "legacy_collision"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "visibility": {
+                "const": "visible"
+              },
+              "reason_codes": {
+                "contains": {
+                  "const": "source_fact_collision"
+                },
+                "type": "array"
+              },
+              "collision": {
+                "$ref": "#/$defs/CollisionDisposition"
+              },
+              "quarantine": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "quarantined"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "visibility": {
+                "const": "hidden"
+              },
+              "collision": {
+                "type": "null"
+              },
+              "quarantine": {
+                "$ref": "#/$defs/QuarantineDisposition"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "CollisionDisposition": {
+      "description": "同一源事实被多个 Incident 复用或混合状态时的旁路碰撞组。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collision_group_id",
+        "incident_ids",
+        "source_fact_ids",
+        "conflicted_fields",
+        "resolution_state"
+      ],
+      "properties": {
+        "collision_group_id": {
+          "description": "碰撞组 ID。",
+          "type": "string",
+          "pattern": "^lcg_v1_[0-9a-f]{32}$"
+        },
+        "incident_ids": {
+          "description": "共享事实记录的 Incident。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^inc_v1_[0-9a-f]{24}$"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "source_fact_ids": {
+          "description": "发生复用或混合的源事实。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sf_v1_[0-9a-f]{24}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "conflicted_fields": {
+          "description": "不能完整归属到单一 Incident 的字段路径。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "resolution_state": {
+          "description": "旁路重建状态。",
+          "type": "string",
+          "enum": [
+            "unresolved",
+            "partially_reconstructed",
+            "reconstructed",
+            "accepted_with_limitations"
+          ]
+        }
+      }
+    },
+    "QuarantineDisposition": {
+      "description": "只读隔离记录，原事实继续保留但不得生成可见 Incident。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quarantine_id",
+        "reason_codes",
+        "source_fact_ids",
+        "review_status"
+      ],
+      "properties": {
+        "quarantine_id": {
+          "description": "隔离记录 ID。",
+          "type": "string",
+          "pattern": "^qr_v1_[0-9a-f]{32}$"
+        },
+        "reason_codes": {
+          "description": "必须可机器读取的隔离原因。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MissingReason"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "source_fact_ids": {
+          "description": "被隔离的源事实。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sf_v1_[0-9a-f]{24}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "review_status": {
+          "description": "隔离记录审核状态。",
+          "type": "string",
+          "enum": [
+            "pending",
+            "confirmed",
+            "released"
+          ]
+        }
+      }
+    },
+    "DataSnapshot": {
+      "description": "固定数据档和数据库旁路制品身份。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "profile_sha256",
+        "window_start",
+        "window_end_exclusive",
+        "snapshot_time",
+        "business_timezone",
+        "database_release_id",
+        "overlay_inventory_sha256",
+        "raw_source_status"
+      ],
+      "properties": {
+        "profile_id": {
+          "description": "数据档标识。",
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "window_start": {
+          "description": "固定窗口开始，包含。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "window_end_exclusive": {
+          "description": "固定窗口结束，不包含。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "snapshot_time": {
+          "description": "快照时钟。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "business_timezone": {
+          "description": "业务 IANA 时区。",
+          "type": "string",
+          "minLength": 1
+        },
+        "database_release_id": {
+          "description": "只读数据库制品或 Overlay 发布 ID。",
+          "type": "string",
+          "minLength": 1
+        },
+        "overlay_inventory_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "raw_source_status": {
+          "description": "固定窗口内原始制品可用性。",
+          "type": "string",
+          "enum": [
+            "full",
+            "partial",
+            "unavailable"
+          ]
+        }
+      }
+    },
+    "RouteEventRef": {
+      "description": "不可变 RouteEvent 引用。路径语义只允许 route_observation 或 path_snapshot。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_event_id",
+        "route_event_id_schema",
+        "schema_version",
+        "relation",
+        "semantics",
+        "lineage_status",
+        "observed_at",
+        "collector_id",
+        "vp_id",
+        "vp_asn",
+        "raw_record_ref_ids"
+      ],
+      "properties": {
+        "route_event_id": {
+          "description": "规范 RouteEvent ID。",
+          "type": "string",
+          "pattern": "^rte_v1_[0-9a-f]{32}$"
+        },
+        "route_event_id_schema": {
+          "description": "与 RouteEvent 合同一致的稳定 ID 算法版本。",
+          "const": "route_event_id_v1"
+        },
+        "schema_version": {
+          "description": "RouteEvent 合同版本。",
+          "const": "route_event_v1"
+        },
+        "relation": {
+          "description": "该观测与调查对象的关系，不表达因果。",
+          "type": "string",
+          "enum": [
+            "supports_observation",
+            "counterevidence",
+            "context"
+          ]
+        },
+        "semantics": {
+          "description": "路径只可声明为路由观测或路径快照。",
+          "type": "string",
+          "enum": [
+            "route_observation",
+            "path_snapshot"
+          ]
+        },
+        "lineage_status": {
+          "description": "RouteEvent 的原始追溯等级。",
+          "type": "string",
+          "enum": [
+            "raw_traceable",
+            "legacy_untraceable"
+          ]
+        },
+        "observed_at": {
+          "description": "路由观测时间。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "collector_id": {
+          "description": "Collector 标识；历史未知时为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "vp_id": {
+          "description": "稳定 VP 标识；历史未保留时为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^vp_v1_[0-9a-f]{32}$"
+        },
+        "vp_asn": {
+          "description": "VP ASN；历史未保留时为 null。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "raw_record_ref_ids": {
+          "description": "关联原始记录引用。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^raw_v1_[0-9a-f]{32}$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "lineage_status": {
+                "const": "raw_traceable"
+              }
+            },
+            "required": [
+              "lineage_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "collector_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "vp_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "vp_asn": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "raw_record_ref_ids": {
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "RawRecordRef": {
+      "description": "可按哈希和偏移校验的原始 MRT 记录元素引用。只记录实际存在的引用。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_record_ref_id",
+        "artifact_id",
+        "file_sha256",
+        "record_offset",
+        "record_length",
+        "record_hash",
+        "record_ordinal",
+        "element_ordinal",
+        "collector_id",
+        "vp_id",
+        "vp_asn",
+        "verification_status"
+      ],
+      "properties": {
+        "raw_record_ref_id": {
+          "description": "原始记录引用 ID。",
+          "type": "string",
+          "pattern": "^raw_v1_[0-9a-f]{32}$"
+        },
+        "artifact_id": {
+          "description": "原始制品 ID。",
+          "type": "string",
+          "pattern": "^art_v1_[0-9a-f]{32}$"
+        },
+        "file_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "record_offset": {
+          "description": "记录在未压缩逻辑流中的字节偏移。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "record_length": {
+          "description": "原始记录字节长度。",
+          "type": "integer",
+          "minimum": 12
+        },
+        "record_hash": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "record_ordinal": {
+          "description": "文件内记录序号。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "element_ordinal": {
+          "description": "记录内元素序号。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "collector_id": {
+          "description": "Collector 标识。",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "vp_id": {
+          "description": "由 peer IP 与 peer ASN 规范生成的 VP ID。",
+          "type": "string",
+          "pattern": "^vp_v1_[0-9a-f]{32}$"
+        },
+        "vp_asn": {
+          "description": "原始记录中的 peer ASN。",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "verification_status": {
+          "description": "偏移、长度和哈希校验状态。",
+          "type": "string",
+          "enum": [
+            "verified",
+            "failed"
+          ]
+        }
+      }
+    },
+    "ProcessingLineage": {
+      "description": "从原始记录或历史事实到证据包的处理血缘。历史没有的信息必须保留为空并标记 legacy_untraceable。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineage_status",
+        "parser",
+        "importer",
+        "detector",
+        "normalizer",
+        "bundle_generator",
+        "import_run_id",
+        "route_event_schema_version",
+        "incident_schema_version",
+        "generated_at",
+        "quality_flags"
+      ],
+      "properties": {
+        "lineage_status": {
+          "description": "原始可追溯、历史不可追溯或隔离。",
+          "type": "string",
+          "enum": [
+            "raw_traceable",
+            "legacy_untraceable",
+            "quarantined"
+          ]
+        },
+        "parser": {
+          "description": "原始解析程序；历史未保留时为 null。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ProgramVersion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importer": {
+          "description": "RouteEvent 导入程序；未执行时为 null。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ProgramVersion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detector": {
+          "description": "检测程序版本；历史未保留时为 null。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ProgramVersion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "normalizer": {
+          "$ref": "#/$defs/ProgramVersion"
+        },
+        "bundle_generator": {
+          "$ref": "#/$defs/ProgramVersion"
+        },
+        "import_run_id": {
+          "description": "RouteEvent 导入运行 ID；未执行时为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "route_event_schema_version": {
+          "description": "使用的 RouteEvent 合同；没有 RouteEvent 时为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "route_event_v1",
+            null
+          ]
+        },
+        "incident_schema_version": {
+          "description": "Incident ID 规则。",
+          "const": "incident_id_v1"
+        },
+        "generated_at": {
+          "description": "证据包生成时间。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "quality_flags": {
+          "description": "血缘质量标志。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualityFlag"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "lineage_status": {
+                "const": "raw_traceable"
+              }
+            },
+            "required": [
+              "lineage_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "parser": {
+                "$ref": "#/$defs/ProgramVersion"
+              },
+              "importer": {
+                "$ref": "#/$defs/ProgramVersion"
+              },
+              "import_run_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "route_event_schema_version": {
+                "const": "route_event_v1"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "ProgramVersion": {
+      "description": "可版本化程序及其代码哈希。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "code_sha256",
+        "config_sha256"
+      ],
+      "properties": {
+        "name": {
+          "description": "程序名称。",
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "description": "程序版本。",
+          "type": "string",
+          "minLength": 1
+        },
+        "code_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "config_sha256": {
+          "description": "运行配置哈希；没有独立配置时为 null。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MetricWindow": {
+      "description": "指标窗口摘要，分别记录源观测、派生观测和实体活动样本，禁止将缺失槽补为零。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_series_id",
+        "metric_name",
+        "subject",
+        "collector_scope",
+        "window_start",
+        "window_end_exclusive",
+        "granularity",
+        "unit",
+        "aggregation",
+        "formula_version",
+        "expected_sample_count",
+        "source_observed_sample_count",
+        "derived_observed_sample_count",
+        "subject_active_sample_count",
+        "source_coverage_ratio",
+        "derived_coverage_ratio",
+        "missing_counts",
+        "source_refs"
+      ],
+      "properties": {
+        "metric_series_id": {
+          "description": "MetricSeries 稳定 ID。",
+          "type": "string",
+          "pattern": "^ms_v1_[0-9a-f]{24}$"
+        },
+        "metric_name": {
+          "description": "指标规范名称。",
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "$ref": "#/$defs/MetricSubject"
+        },
+        "collector_scope": {
+          "description": "Collector 范围。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "window_start": {
+          "description": "指标窗口开始，包含。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "window_end_exclusive": {
+          "description": "指标窗口结束，不包含。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "granularity": {
+          "description": "采样粒度。",
+          "type": "string",
+          "enum": [
+            "5m",
+            "1h",
+            "1d"
+          ]
+        },
+        "unit": {
+          "description": "不可混用的物理或计数单位。",
+          "type": "string",
+          "minLength": 1
+        },
+        "aggregation": {
+          "description": "窗口聚合。",
+          "type": "string",
+          "enum": [
+            "sum",
+            "avg",
+            "min",
+            "max",
+            "last",
+            "ratio"
+          ]
+        },
+        "formula_version": {
+          "description": "冻结公式版本。",
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_sample_count": {
+          "description": "按窗口和粒度期望的槽数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_observed_sample_count": {
+          "description": "原始源实际可用槽数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "derived_observed_sample_count": {
+          "description": "派生指标实际存在槽数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "subject_active_sample_count": {
+          "description": "实体在活动稀疏表中出现的槽数，不得冒充覆盖率。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_coverage_ratio": {
+          "description": "原始源覆盖率。",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "derived_coverage_ratio": {
+          "description": "派生指标覆盖率。",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "missing_counts": {
+          "description": "按明确原因计数的缺失槽。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MissingCount"
+          },
+          "uniqueItems": true
+        },
+        "source_refs": {
+          "description": "指标来源表、RouteEvent 或制品引用。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "MetricSubject": {
+      "description": "指标主体和排名范围。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_type",
+        "subject_id",
+        "scope_kind",
+        "candidate_count"
+      ],
+      "properties": {
+        "subject_type": {
+          "description": "指标主体类型。",
+          "type": "string",
+          "enum": [
+            "global",
+            "country",
+            "asn",
+            "prefix",
+            "collector"
+          ]
+        },
+        "subject_id": {
+          "description": "主体 ID；global 使用 global。",
+          "type": "string",
+          "minLength": 1
+        },
+        "scope_kind": {
+          "description": "排名或计算候选范围。",
+          "type": "string",
+          "enum": [
+            "all_observed",
+            "operational_asn_cohort",
+            "selected_entities",
+            "not_ranked"
+          ]
+        },
+        "candidate_count": {
+          "description": "候选实体数量；未排名时为 null。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "MissingCount": {
+      "description": "缺失原因及计数。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "count"
+      ],
+      "properties": {
+        "reason": {
+          "$ref": "#/$defs/MissingReason"
+        },
+        "count": {
+          "description": "对应原因的记录或槽位数。",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "ValueState": {
+      "description": "字段值状态。只有 observed 和 observed_zero 表示已有观测值。",
+      "type": "string",
+      "enum": [
+        "observed_nonzero",
+        "observed_zero",
+        "not_observed",
+        "not_retained",
+        "not_applicable",
+        "source_unavailable",
+        "processing_gap",
+        "parse_failed",
+        "legacy_unknown",
+        "source_fact_collision",
+        "invalid_identity",
+        "legacy_window_contamination"
+      ]
+    },
+    "MissingReason": {
+      "description": "P0 缺失、碰撞、隔离或处理缺口原因。",
+      "type": "string",
+      "enum": [
+        "not_observed",
+        "not_retained",
+        "not_applicable",
+        "source_unavailable",
+        "parse_failed",
+        "legacy_unknown",
+        "processing_gap",
+        "source_fact_collision",
+        "invalid_identity",
+        "legacy_window_contamination",
+        "source_fact_orphan",
+        "quarantined"
+      ]
+    },
+    "FieldQuality": {
+      "description": "单字段质量状态。碰撞字段必须保留 legacy_unknown/source_fact_collision，不能从混合事实生成确定值。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field_path",
+        "value_state",
+        "missing_reason",
+        "source_ref_ids",
+        "correction_ref_ids",
+        "quality_flags"
+      ],
+      "properties": {
+        "field_path": {
+          "description": "JSON Pointer 风格字段路径。",
+          "type": "string",
+          "pattern": "^/"
+        },
+        "value_state": {
+          "$ref": "#/$defs/ValueState"
+        },
+        "missing_reason": {
+          "description": "缺失或不可信原因；已有观测值时必须为 null。",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MissingReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ref_ids": {
+          "description": "源事实、RouteEvent、原始记录或指标引用。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "correction_ref_ids": {
+          "description": "应用或候选纠错引用。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^corr_v1_[0-9a-f]{24}$"
+          },
+          "uniqueItems": true
+        },
+        "quality_flags": {
+          "description": "字段质量标志。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualityFlag"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "value_state": {
+                "enum": [
+                  "observed_nonzero",
+                  "observed_zero"
+                ]
+              }
+            },
+            "required": [
+              "value_state"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "missing_reason": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "missing_reason": {
+                "$ref": "#/$defs/MissingReason"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "missing_reason": {
+                "const": "source_fact_collision"
+              }
+            },
+            "required": [
+              "missing_reason"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "value_state": {
+                "const": "source_fact_collision"
+              },
+              "quality_flags": {
+                "contains": {
+                  "const": "source_fact_collision"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "PhaseCoverageSet": {
+      "description": "事件前、中、后阶段覆盖。所有阶段都必须显式返回。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "during",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/PhaseCoverage"
+        },
+        "during": {
+          "$ref": "#/$defs/PhaseCoverage"
+        },
+        "after": {
+          "$ref": "#/$defs/PhaseCoverage"
+        }
+      }
+    },
+    "PhaseCoverage": {
+      "description": "单阶段证据覆盖；没有数据时返回 not_available 和原因，不补成空路径或零。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "snapshot_count",
+        "path_count",
+        "evidence_ids",
+        "route_event_ref_ids",
+        "missing_reasons",
+        "quality_flags"
+      ],
+      "properties": {
+        "status": {
+          "description": "阶段观测状态。compromised 表示历史混合事实不可完整归属。",
+          "type": "string",
+          "enum": [
+            "not_available",
+            "observed_no_path",
+            "observed_paths",
+            "compromised"
+          ]
+        },
+        "snapshot_count": {
+          "description": "阶段路径快照数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "path_count": {
+          "description": "阶段内路径条数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_ids": {
+          "description": "注册表中的阶段证据。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          },
+          "uniqueItems": true
+        },
+        "route_event_ref_ids": {
+          "description": "关联 RouteEvent；历史没有时为空。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^rte_v1_[0-9a-f]{32}$"
+          },
+          "uniqueItems": true
+        },
+        "missing_reasons": {
+          "description": "未覆盖或不可信原因。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MissingReason"
+          },
+          "uniqueItems": true
+        },
+        "quality_flags": {
+          "description": "阶段质量标志。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QualityFlag"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observed_paths"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "snapshot_count": {
+                "minimum": 1,
+                "type": "number"
+              },
+              "path_count": {
+                "minimum": 1,
+                "type": "number"
+              },
+              "evidence_ids": {
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_available"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "snapshot_count": {
+                "const": 0
+              },
+              "path_count": {
+                "const": 0
+              },
+              "missing_reasons": {
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "compromised"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "missing_reasons": {
+                "contains": {
+                  "const": "source_fact_collision"
+                },
+                "type": "array"
+              },
+              "quality_flags": {
+                "contains": {
+                  "const": "source_fact_collision"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "ObservationText": {
+      "description": "仅描述观测，不允许把路径快照写成因果、传播链或根因。",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!.*(?:因果链|传播链|传播路径|自动根因|[Cc][Aa][Uu][Ss][Aa][Ll] [Cc][Hh][Aa][Ii][Nn]|[Rr][Oo][Oo][Tt][ _-]?[Cc][Aa][Uu][Ss][Ee]|[Pp][Rr][Oo][Pp][Aa][Gg][Aa][Tt][Ii][Oo][Nn] [Pp][Aa][Tt][Hh])).*$"
+    },
+    "EvidenceRegistryItem": {
+      "description": "稳定证据注册项。AS_PATH 只能登记为 route_observation 或 path_snapshot。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "phase",
+        "kind",
+        "stance",
+        "label",
+        "semantics",
+        "observation_summary",
+        "observed_at",
+        "source_ref_ids",
+        "field_paths"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/EvidenceId"
+        },
+        "phase": {
+          "description": "证据阶段。",
+          "type": "string",
+          "enum": [
+            "before",
+            "during",
+            "after",
+            "context"
+          ]
+        },
+        "kind": {
+          "description": "证据载体类型。",
+          "type": "string",
+          "enum": [
+            "fact_record",
+            "route_observation",
+            "path_snapshot",
+            "raw_record",
+            "metric_window",
+            "quality_finding",
+            "correction"
+          ]
+        },
+        "stance": {
+          "description": "证据在本次观测描述中的作用。",
+          "type": "string",
+          "enum": [
+            "support",
+            "counterevidence",
+            "context",
+            "limitation"
+          ]
+        },
+        "label": {
+          "description": "面向调查者的简短标签。",
+          "type": "string",
+          "minLength": 1
+        },
+        "semantics": {
+          "description": "证据精确定义；路径字段不得使用因果传播语义。",
+          "type": "string",
+          "enum": [
+            "fact_record",
+            "route_observation",
+            "path_snapshot",
+            "raw_bgp_record",
+            "metric_observation",
+            "quality_finding",
+            "correction_record"
+          ]
+        },
+        "observation_summary": {
+          "$ref": "#/$defs/ObservationText"
+        },
+        "observed_at": {
+          "description": "实际观测时间；纯质量发现可以为 null。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "source_ref_ids": {
+          "description": "证据来源引用。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "field_paths": {
+          "description": "该证据覆盖的字段路径。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "route_observation",
+                  "path_snapshot"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "semantics": {
+                "enum": [
+                  "route_observation",
+                  "path_snapshot"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "CoverageSummary": {
+      "description": "证据包层面的覆盖和准入摘要。不得用一个总分掩盖原始、阶段或引用缺口。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "admission_level",
+        "raw_source",
+        "route_event",
+        "phase",
+        "evidence_reference_closure",
+        "unexplained_source_fact_count",
+        "collision_group_count",
+        "quarantine_count",
+        "unknown_missing_reason_count",
+        "missing_counts"
+      ],
+      "properties": {
+        "admission_level": {
+          "description": "当前证据包可达等级。",
+          "type": "string",
+          "enum": [
+            "not_accepted",
+            "legacy_compatible",
+            "raw_traceable"
+          ]
+        },
+        "raw_source": {
+          "$ref": "#/$defs/CoverageDimension"
+        },
+        "route_event": {
+          "$ref": "#/$defs/CoverageDimension"
+        },
+        "phase": {
+          "$ref": "#/$defs/CoverageDimension"
+        },
+        "evidence_reference_closure": {
+          "description": "phase、支持、反向证据和限制的 Evidence ID 是否全部闭合。",
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        },
+        "unexplained_source_fact_count": {
+          "description": "未被解释的孤儿或悬空引用数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "collision_group_count": {
+          "description": "与该主体相关的显式碰撞组数量。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "quarantine_count": {
+          "description": "与该主体或审计记录相关的隔离数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown_missing_reason_count": {
+          "description": "仍无法分类的缺失原因数量。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_counts": {
+          "description": "按原因汇总的缺失、隔离和处理缺口。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MissingCount"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "CoverageDimension": {
+      "description": "单独覆盖维度，明确分子、分母和比率。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_count",
+        "observed_count",
+        "coverage_ratio",
+        "status"
+      ],
+      "properties": {
+        "expected_count": {
+          "description": "期望记录、槽或阶段数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed_count": {
+          "description": "实际可用记录、槽或阶段数。",
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_ratio": {
+          "description": "覆盖率，分母为零时为 null。",
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "status": {
+          "description": "覆盖状态。",
+          "type": "string",
+          "enum": [
+            "full",
+            "partial",
+            "none",
+            "not_applicable"
+          ]
+        }
+      }
+    },
+    "CorrectionRef": {
+      "description": "不可变旁路纠错引用，包含变更前后摘要和审核状态。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "correction_id",
+        "target_ref_id",
+        "field_path",
+        "before_value_hash",
+        "after_value_hash",
+        "reason",
+        "processor",
+        "review_status"
+      ],
+      "properties": {
+        "correction_id": {
+          "description": "纠错 ID。",
+          "type": "string",
+          "pattern": "^corr_v1_[0-9a-f]{24}$"
+        },
+        "target_ref_id": {
+          "description": "被纠错的旁路记录引用。",
+          "type": "string",
+          "minLength": 1
+        },
+        "field_path": {
+          "description": "纠错字段路径。",
+          "type": "string",
+          "pattern": "^/"
+        },
+        "before_value_hash": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "after_value_hash": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "reason": {
+          "description": "纠错依据。",
+          "type": "string",
+          "minLength": 1
+        },
+        "processor": {
+          "$ref": "#/$defs/ProgramVersion"
+        },
+        "review_status": {
+          "description": "审核状态。",
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "Reproducibility": {
+      "description": "同一输入得到同一 Evidence ID 和内容摘要所需的信息。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "generator",
+        "input_snapshot_sha256",
+        "query_fingerprint_sha256",
+        "parameters",
+        "output_sha256",
+        "generated_at",
+        "business_timezone",
+        "reference_validation_status",
+        "source_hash_verification_status"
+      ],
+      "properties": {
+        "schema_id": {
+          "description": "本合同稳定 ID。",
+          "const": "https://domeye.example/contracts/data/evidence-bundle-v2.schema.json"
+        },
+        "schema_version": {
+          "description": "本合同语义版本。",
+          "const": "2.0.0"
+        },
+        "generator": {
+          "$ref": "#/$defs/ProgramVersion"
+        },
+        "input_snapshot_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "query_fingerprint_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "parameters": {
+          "description": "规范排序后的生成参数。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NameValue"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "output_sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "generated_at": {
+          "description": "生成时间。",
+          "type": "string",
+          "format": "date-time"
+        },
+        "business_timezone": {
+          "description": "复算使用的 IANA 业务时区。",
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_validation_status": {
+          "description": "Evidence ID 与来源引用闭合检查。",
+          "const": "passed"
+        },
+        "source_hash_verification_status": {
+          "description": "原始制品哈希校验状态。",
+          "type": "string",
+          "enum": [
+            "verified",
+            "partial",
+            "not_available"
+          ]
+        }
+      }
+    },
+    "Limitation": {
+      "description": "机器可读限制。说明不能证明的内容不等于给出因果结论。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "scope",
+        "description",
+        "affected_fields",
+        "evidence_refs"
+      ],
+      "properties": {
+        "code": {
+          "description": "限制代码。",
+          "type": "string",
+          "enum": [
+            "partial_raw_coverage",
+            "raw_source_unavailable",
+            "vp_identity_unavailable",
+            "processing_lineage_unavailable",
+            "phase_not_retained",
+            "source_fact_collision",
+            "invalid_identity",
+            "legacy_window_contamination",
+            "quarantined_source_fact",
+            "path_snapshot_not_causal",
+            "metric_processing_gap",
+            "legacy_unknown"
+          ]
+        },
+        "severity": {
+          "description": "限制严重度。",
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "blocking"
+          ]
+        },
+        "scope": {
+          "description": "限制作用域。",
+          "type": "string",
+          "enum": [
+            "bundle",
+            "incident",
+            "source_fact",
+            "phase",
+            "route_event",
+            "raw_record",
+            "metric"
+          ]
+        },
+        "description": {
+          "description": "中文限制说明。",
+          "type": "string",
+          "minLength": 1
+        },
+        "affected_fields": {
+          "description": "受限字段路径。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "evidence_refs": {
+          "description": "支持该限制判断的 Evidence ID。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "ObservationConclusion": {
+      "description": "P0 只允许观测结论，因果结论固定为 null。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "observation_summary",
+        "causal_conclusion"
+      ],
+      "properties": {
+        "classification": {
+          "description": "结论分类。",
+          "const": "observation_only"
+        },
+        "observation_summary": {
+          "$ref": "#/$defs/ObservationText"
+        },
+        "causal_conclusion": {
+          "description": "P0 禁止生成因果结论。",
+          "type": "null"
+        }
+      }
+    }
+  }
+}

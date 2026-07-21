@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 # 离线制品脚本共用约定。调用方必须先启用 set -Eeuo pipefail。
-readonly DOMEYE_CORE_DATA_START='2026-02-01 00:00:00'
+# shellcheck source=data-profile.sh
+source "${BASH_SOURCE[0]%/*}/data-profile.sh"
+readonly DOMEYE_CORE_DATA_START="${DOMEYE_CORE_FIXED_DATA_START}"
 readonly DOMEYE_CORE_DEFAULT_ARTIFACT_ROOT='/home/bgpdata/Domeye-Core-artifacts'
 readonly DOMEYE_CORE_DEFAULT_INFO_TARGET='/home/bgpdata/Domeye-Core/backend/info'
 readonly DOMEYE_CORE_DEFAULT_DATA_ROOT='/home/bgpdata/Domeye-Core-data'

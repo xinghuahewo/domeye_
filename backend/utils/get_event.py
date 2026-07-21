@@ -1643,14 +1643,14 @@ def get_event_count(conn, last_month_table, event_table, country, now=None):
             sql_event_lm = """
                     select count(*), to_date(cast(s_time as TEXT), 'yyyy-MM-dd') as days 
                     from {}
-                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', 'AS中断', '边界中断') 
+                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断')
                     and is_domestic={} and s_time > '{}'
                     and cast(split_part(detail_url, '/', 4) as INTEGER ) < 10
                     group by days
                     UNION ALL
                     select count(*), to_date(cast(s_time as TEXT), 'yyyy-MM-dd') as days 
                     from {}
-                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', 'AS中断', '边界中断') 
+                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断')
                     and is_domestic={} and s_time > '{}'
                     and cast(split_part(detail_url, '/', 4) as INTEGER ) < 10
                     and (duration >= '00:03:00' or duration is null)
@@ -1666,7 +1666,7 @@ def get_event_count(conn, last_month_table, event_table, country, now=None):
         sql_event = """
                     select count(*), to_date(cast(s_time as TEXT), 'yyyy-MM-dd') as days 
                     from {}
-                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', 'AS中断', '边界中断') 
+                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断')
                     and is_domestic={} and s_time > '{}'
                     and cast(split_part(detail_url, '/', 4) as INTEGER ) < 10
                     and (duration >= '00:03:00' or duration is null)

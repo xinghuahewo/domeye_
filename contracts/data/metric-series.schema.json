@@ -1,0 +1,815 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/metric-series.schema.json",
+  "title": "P0 MetricSeries 指标时序合同",
+  "description": "冻结 P0 前端指标的身份、半开窗口、五分钟粒度、物理单位、公式版本、源覆盖、派生覆盖、实体活动和缺失语义。此合同只表达观测，不表达因果结论。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "metric_name",
+    "subject",
+    "collector_scope",
+    "window",
+    "granularity_seconds",
+    "unit",
+    "aggregation",
+    "formula",
+    "formula_version",
+    "expected_sample_count",
+    "source_observed_sample_count",
+    "metric_observed_sample_count",
+    "subject_active_sample_count",
+    "coverage",
+    "points",
+    "source_refs",
+    "generated_at",
+    "ranking_scope"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "metric-series/v1",
+      "description": "MetricSeries 合同版本；变更字段语义时必须升级版本。"
+    },
+    "metric_name": {
+      "description": "指标的稳定机器名；IPv4 /24 等价值与 IPv6 /48 等价值必须使用不同名称。",
+      "enum": [
+        "bgp_announce_record_count",
+        "bgp_withdraw_record_count",
+        "bgp_update_record_count",
+        "bgp_withdraw_ratio",
+        "ipv4_24_equivalent_count",
+        "ipv6_48_equivalent_count",
+        "ipv4_equivalent_address_count",
+        "anomaly_incident_count",
+        "prefix_outage_concurrent_count",
+        "as_outage_concurrent_count"
+      ]
+    },
+    "subject": {
+      "$ref": "#/$defs/subject"
+    },
+    "collector_scope": {
+      "$ref": "#/$defs/collectorScope"
+    },
+    "window": {
+      "$ref": "#/$defs/window"
+    },
+    "granularity_seconds": {
+      "const": 300,
+      "description": "P0 指标固定为 300 秒桶；期望槽数按半开窗口 [start,end) 计算。"
+    },
+    "unit": {
+      "description": "不可互换的物理单位；禁止使用含义不明的 count 或 resource_change。",
+      "enum": [
+        "bgp_update_record",
+        "ratio_0_1",
+        "ipv4_24_equivalent",
+        "ipv6_48_equivalent",
+        "ipv4_equivalent_address",
+        "anomaly_incident",
+        "prefix_count",
+        "asn_count"
+      ]
+    },
+    "aggregation": {
+      "description": "单个 300 秒桶的冻结聚合方法。",
+      "enum": [
+        "sum_observation_values",
+        "sum_components",
+        "ratio_of_sums",
+        "last_observation",
+        "count_distinct_incidents",
+        "max_concurrent"
+      ]
+    },
+    "formula": {
+      "type": "string",
+      "minLength": 1,
+      "description": "可审阅的冻结公式文本；必须与 metric_name 和 formula_version 对应。"
+    },
+    "formula_version": {
+      "type": "string",
+      "enum": [
+        "announce_count_v1",
+        "withdraw_count_v1",
+        "update_total_v1",
+        "withdraw_ratio_v1",
+        "ipv4_24e_v1",
+        "ipv6_48e_v1",
+        "ipv4_address_v1",
+        "anomaly_incident_count_v1",
+        "prefix_outage_concurrency_v1",
+        "as_outage_concurrency_v1"
+      ],
+      "description": "稳定公式版本，禁止由前端临时改写口径。"
+    },
+    "expected_sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "按半开窗口和 300 秒粒度计算的期望源时间槽数。"
+    },
+    "source_observed_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "采集源实际存在的时间槽数；用于计算 source_coverage_ratio。"
+    },
+    "metric_observed_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "派生指标成功生成的时间槽数；处理缺口会使其小于源已观测槽数。"
+    },
+    "subject_active_sample_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "对象在源已观测槽中实际发生活动的槽数；ASN 稀疏活动表的该值不是覆盖率。"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "points": {
+      "type": "array",
+      "minItems": 1,
+      "description": "按时间升序的五分钟点。业务校验还必须确认时间位于半开窗口内、无重复并与计数一致。",
+      "items": {
+        "$ref": "#/$defs/point"
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "可复核的来源引用；不得只写自然语言来源名称。",
+      "items": {
+        "$ref": "#/$defs/sourceRef"
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "服务端生成时间，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。"
+    },
+    "ranking_scope": {
+      "$ref": "#/$defs/rankingScope"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "bgp_announce_record_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "bgp_update_record"},
+          "aggregation": {"const": "sum_observation_values"},
+          "formula": {"const": "sum(feature_country.announ_num)"},
+          "formula_version": {"const": "announce_count_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "bgp_withdraw_record_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "bgp_update_record"},
+          "aggregation": {"const": "sum_observation_values"},
+          "formula": {"const": "sum(feature_country.withdraw_num)"},
+          "formula_version": {"const": "withdraw_count_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "bgp_update_record_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "bgp_update_record"},
+          "aggregation": {"const": "sum_components"},
+          "formula": {"const": "sum(feature_country.announ_num) + sum(feature_country.withdraw_num)"},
+          "formula_version": {"const": "update_total_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "bgp_withdraw_ratio"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "ratio_0_1"},
+          "aggregation": {"const": "ratio_of_sums"},
+          "formula": {"const": "sum(feature_country.withdraw_num) / (sum(feature_country.announ_num) + sum(feature_country.withdraw_num))"},
+          "formula_version": {"const": "withdraw_ratio_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/withdrawRatePoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "ipv4_24_equivalent_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "ipv4_24_equivalent"},
+          "aggregation": {"const": "last_observation"},
+          "formula": {"const": "last_observation(feature_country.v4prefix_num)"},
+          "formula_version": {"const": "ipv4_24e_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "ipv6_48_equivalent_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "ipv6_48_equivalent"},
+          "aggregation": {"const": "last_observation"},
+          "formula": {"const": "last_observation(feature_country.v6prefix_num)"},
+          "formula_version": {"const": "ipv6_48e_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "ipv4_equivalent_address_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "ipv4_equivalent_address"},
+          "aggregation": {"const": "last_observation"},
+          "formula": {"const": "last_observation(feature_country.v4ip_num)"},
+          "formula_version": {"const": "ipv4_address_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "anomaly_incident_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "anomaly_incident"},
+          "aggregation": {"const": "count_distinct_incidents"},
+          "formula": {"const": "count(distinct Incident.incident_id)"},
+          "formula_version": {"const": "anomaly_incident_count_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "prefix_outage_concurrent_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "prefix_count"},
+          "aggregation": {"const": "max_concurrent"},
+          "formula": {"const": "max_180s(count(distinct prefix_outage_YYYYMM.prefix))"},
+          "formula_version": {"const": "prefix_outage_concurrency_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "metric_name": {
+            "const": "as_outage_concurrent_count"
+          }
+        },
+        "required": ["metric_name"]
+      },
+      "then": {
+        "properties": {
+          "unit": {"const": "asn_count"},
+          "aggregation": {"const": "max_concurrent"},
+          "formula": {"const": "max_180s(count(distinct as_outage_YYYYMM.asn))"},
+          "formula_version": {"const": "as_outage_concurrency_v1"},
+          "points": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/nonRatioPoint"}
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject_type", "subject_id", "display_name"],
+      "properties": {
+        "subject_type": {
+          "enum": ["global", "country", "asn", "prefix"],
+          "description": "指标对象类型。"
+        },
+        "subject_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "规范对象 ID；ASN 使用不带 AS 前缀的十进制字符串，国家使用两位大写代码。"
+        },
+        "display_name": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "可选展示名，不参与指标身份。"
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"subject_type": {"const": "global"}}},
+          "then": {"properties": {"subject_id": {"const": "global"}}}
+        },
+        {
+          "if": {"properties": {"subject_type": {"const": "country"}}},
+          "then": {"properties": {"subject_id": {"type": "string", "pattern": "^[A-Z]{2}$"}}}
+        },
+        {
+          "if": {"properties": {"subject_type": {"const": "asn"}}},
+          "then": {"properties": {"subject_id": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"}}}
+        },
+        {
+          "if": {"properties": {"subject_type": {"const": "prefix"}}},
+          "then": {"properties": {"subject_id": {"type": "string", "pattern": "^[0-9A-Fa-f:.]+/[0-9]{1,3}$"}}}
+        }
+      ]
+    },
+    "collectorScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "collector_ids", "limitation_reason"],
+      "properties": {
+        "scope_kind": {
+          "enum": ["collector_set", "all_available_collectors", "legacy_unknown"],
+          "description": "采集范围类型；all_available_collectors 只表示当前数据档可用范围，不表示全网。"
+        },
+        "collector_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]+$"
+          }
+        },
+        "limitation_reason": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "采集范围未知或受限时的明确说明。"
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"scope_kind": {"enum": ["collector_set", "all_available_collectors"]}}},
+          "then": {"properties": {"collector_ids": {"type": "array", "minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"scope_kind": {"const": "legacy_unknown"}}},
+          "then": {
+            "properties": {
+              "collector_ids": {"type": "array", "maxItems": 0},
+              "limitation_reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "boundary", "timezone"],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time",
+          "description": "包含的窗口起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time",
+          "description": "排除的窗口终点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。"
+        },
+        "boundary": {
+          "const": "[start,end)",
+          "description": "固定半开窗口，禁止闭区间导致五分钟槽多算一个。"
+        },
+        "timezone": {
+          "const": "Asia/Shanghai",
+          "description": "当前 P0 数据档业务时区。"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_coverage_ratio",
+        "metric_coverage_ratio",
+        "subject_activity_density",
+        "source_gap_sample_count",
+        "processing_gap_sample_count",
+        "classification_complete"
+      ],
+      "properties": {
+        "source_coverage_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "source_observed_sample_count / expected_sample_count；仅表示采集源覆盖。"
+        },
+        "metric_coverage_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "metric_observed_sample_count / expected_sample_count；与源覆盖分开报告。"
+        },
+        "subject_activity_density": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "subject_active_sample_count / source_observed_sample_count；源样本为 0 时为 null。它是活动密度，不得命名为 ASN 覆盖率。"
+        },
+        "source_gap_sample_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "因 source_unavailable 或 parse_failed 导致、未进入 source_observed_sample_count 的缺槽总数；精确分类由 points.value_state 给出。"
+        },
+        "processing_gap_sample_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "源存在但派生处理失败或未生成的缺槽数。"
+        },
+        "classification_complete": {
+          "type": "boolean",
+          "description": "全部缺槽是否已分类；false 时不得通过 P0 指标准入。"
+        }
+      },
+      "description": "比值与计数的一致性由业务校验器复算；JSON Schema 负责冻结字段和取值范围。"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "value", "value_state", "missing_reason", "formula_inputs"],
+      "properties": {
+        "time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "五分钟桶起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。"
+        },
+        "value": {
+          "type": ["number", "null"],
+          "description": "仅 observed_nonzero/observed_zero 可以是数字；其他状态必须为 null。"
+        },
+        "value_state": {
+          "enum": [
+            "observed_nonzero",
+            "observed_zero",
+            "not_observed",
+            "source_unavailable",
+            "processing_gap",
+            "parse_failed",
+            "not_retained",
+            "not_applicable",
+            "legacy_unknown",
+            "invalid_identity",
+            "legacy_window_contamination",
+            "source_fact_collision"
+          ],
+          "description": "P0 冻结值状态；缺失状态不得被前后端补为 0。"
+        },
+        "missing_reason": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "not_observed",
+            "source_unavailable",
+            "processing_gap",
+            "parse_failed",
+            "not_retained",
+            "not_applicable",
+            "denominator_zero",
+            "legacy_unknown",
+            "invalid_identity",
+            "legacy_window_contamination",
+            "source_fact_collision"
+          ],
+          "description": "缺失或不可计算原因；观测值必须为 null。"
+        },
+        "formula_inputs": {
+          "description": "撤回率必须带分子分母；其他指标固定为 null。",
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/ratioInputs"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"value_state": {"const": "observed_zero"}}},
+          "then": {
+            "properties": {
+              "value": {"const": 0},
+              "missing_reason": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "observed_nonzero"}}},
+          "then": {
+            "properties": {
+              "value": {"type": "number", "not": {"const": 0}},
+              "missing_reason": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "not_observed"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "not_observed"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "source_unavailable"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "source_unavailable"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "processing_gap"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "processing_gap"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "parse_failed"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "parse_failed"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "not_retained"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "not_retained"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "not_applicable"}}},
+          "then": {
+            "properties": {
+              "value": {"type": "null"},
+              "missing_reason": {"enum": ["not_applicable", "denominator_zero"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "legacy_unknown"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "legacy_unknown"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "invalid_identity"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "invalid_identity"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "legacy_window_contamination"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "legacy_window_contamination"}}}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "source_fact_collision"}}},
+          "then": {"properties": {"value": {"type": "null"}, "missing_reason": {"const": "source_fact_collision"}}}
+        }
+      ]
+    },
+    "ratioInputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator_withdraw_count", "denominator_update_total"],
+      "properties": {
+        "numerator_withdraw_count": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "撤回报文数；源缺失时为 null。"
+        },
+        "denominator_update_total": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "announce + withdraw；为 0 时撤回率必须是 null。"
+        }
+      }
+    },
+    "nonRatioPoint": {
+      "allOf": [
+        {"$ref": "#/$defs/point"},
+        {"type": "object", "properties": {"formula_inputs": {"type": "null"}}}
+      ]
+    },
+    "withdrawRatePoint": {
+      "allOf": [
+        {"$ref": "#/$defs/point"},
+        {
+          "type": "object",
+          "properties": {
+            "value": {
+              "oneOf": [
+                {"type": "null"},
+                {"type": "number", "minimum": 0, "maximum": 1}
+              ]
+            },
+            "formula_inputs": {"$ref": "#/$defs/ratioInputs"}
+          }
+        },
+        {
+          "type": "object",
+          "if": {
+            "type": "object",
+            "properties": {
+              "formula_inputs": {
+                "type": "object",
+                "properties": {
+                  "denominator_update_total": {"const": 0}
+                },
+                "required": ["denominator_update_total"]
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "value": {"type": "null"},
+              "value_state": {"const": "not_applicable"},
+              "missing_reason": {"const": "denominator_zero"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "if": {
+            "type": "object",
+            "properties": {
+              "value_state": {"enum": ["observed_nonzero", "observed_zero"]}
+            },
+            "required": ["value_state"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "formula_inputs": {
+                "type": "object",
+                "properties": {
+                  "numerator_withdraw_count": {"type": "integer", "minimum": 0},
+                  "denominator_update_total": {"type": "integer", "exclusiveMinimum": 0}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_layer", "ref_id", "locator", "sha256"],
+      "properties": {
+        "source_layer": {
+          "enum": [
+            "raw_observation",
+            "route_event",
+            "detection_fact",
+            "derived_metric",
+            "release_inventory",
+            "data_quality_report"
+          ],
+          "description": "来源分层，业务事实和原始观测不得混称。"
+        },
+        "ref_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "稳定来源 ID。"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "可由服务端解析的表、制品或事件定位符。"
+        },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "来源制品具备稳定哈希时填写；历史来源未知时为 null 并由质量报告说明。"
+        }
+      }
+    },
+    "rankingScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "candidate_count", "filter_rules"],
+      "properties": {
+        "scope_kind": {
+          "enum": ["not_ranked", "global_all_subjects", "operational_asn_cohort", "explicit_subject_set"],
+          "description": "ASN 未完成全量扫描时必须使用 operational_asn_cohort。"
+        },
+        "candidate_count": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "参与排名的候选数；非排名序列为 null。"
+        },
+        "filter_rules": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "候选过滤规则；运营 ASN 排名必须明确规则。"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "scope_kind": {"const": "not_ranked"},
+            "candidate_count": {"type": "null"},
+            "filter_rules": {"type": "array", "maxItems": 0}
+          }
+        },
+        {
+          "properties": {
+            "scope_kind": {"const": "global_all_subjects"},
+            "candidate_count": {"type": "integer", "minimum": 1},
+            "filter_rules": {"type": "array"}
+          }
+        },
+        {
+          "properties": {
+            "scope_kind": {"enum": ["operational_asn_cohort", "explicit_subject_set"]},
+            "candidate_count": {"type": "integer", "minimum": 1},
+            "filter_rules": {"type": "array", "minItems": 1}
+          }
+        }
+      ]
+    }
+  }
+}

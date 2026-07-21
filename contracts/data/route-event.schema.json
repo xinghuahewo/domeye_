@@ -1,0 +1,1462 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/route-event.schema.json",
+  "title": "Domeye P0 RouteEvent 合同",
+  "description": "批准原始 MRT 路由元素的不可变旁路索引，以及未获准作为 RouteEvent 的历史观测占位。该合同只表达单一 Collector/VP 观测到的路由快照，不表达传播顺序、转发路径或因果根因。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_kind",
+    "route_event_id_schema",
+    "route_event_id",
+    "source",
+    "collector_id",
+    "source_timezone",
+    "event_time_utc",
+    "ingest_time_utc",
+    "parse_time_utc",
+    "vp_id",
+    "vp_peer_ip",
+    "vp_asn",
+    "action",
+    "afi_safi",
+    "prefix",
+    "as_path",
+    "origin_asn",
+    "raw_ref",
+    "parser_name",
+    "parser_version",
+    "importer_name",
+    "importer_version",
+    "import_run_id",
+    "lineage_status",
+    "quality_flags",
+    "missing_reasons"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "route_event_v1",
+      "description": "RouteEvent 机器合同版本；字段或语义发生不兼容变化时必须升级版本。"
+    },
+    "record_kind": {
+      "enum": [
+        "route_event",
+        "legacy_observation_stub"
+      ],
+      "description": "记录类别。只有 route_event 是已满足原始追溯合同的 RouteEvent；legacy_observation_stub 只是历史兼容占位，不得计入已准入 RouteEvent。"
+    },
+    "route_event_id_schema": {
+      "const": "route_event_id_v1",
+      "description": "稳定 ID 算法版本。identity 为规范 JSON {schema:'route_event_id_v1',file_sha256,record_ordinal,element_ordinal}；SHA256 后取前 32 位小写十六进制并加前缀 rte_v1_。"
+    },
+    "route_event_id": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/routeEventId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "稳定 RouteEvent ID。只有具备不可变 file/record/element 坐标的 raw_traceable 记录可以生成；历史占位必须为 null，禁止用事实表字段伪造。"
+    },
+    "source": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "description": "原始观测来源的稳定代码，例如 ripe_ris；不是检测事实表中的展示名称。"
+    },
+    "collector_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+      "description": "Collector 稳定标识，例如 rrc25。"
+    },
+    "source_timezone": {
+      "enum": [
+        "UTC",
+        "Asia/Shanghai"
+      ],
+      "description": "来源时间在规范化前采用的时区。原始 MRT RouteEvent 必须为 UTC；历史占位可明确记录 Asia/Shanghai。"
+    },
+    "event_time_utc": {
+      "$ref": "#/$defs/utcTimestamp",
+      "description": "BGP/MRT 记录事件时间，规范化为以 Z 结尾的 UTC RFC 3339 时间。"
+    },
+    "ingest_time_utc": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "导入器开始接收该原始记录的 UTC 时间；历史未保留时为 null 并给出缺失原因。"
+    },
+    "parse_time_utc": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "该路由元素完成解析的 UTC 时间；历史未保留时为 null 并给出缺失原因。"
+    },
+    "vp_id": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/vpId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "由 collector_id、规范 peer IP 和 peer ASN 生成的稳定 VP ID；单独的历史 ASN token 不得提升为 vp_id。"
+    },
+    "vp_peer_ip": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ipAddress"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "原始 MRT 中的 peer IP；与 collector_id、vp_asn 共同定义稳定 VP 身份。"
+    },
+    "vp_asn": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/asn"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "原始 MRT 中的 peer ASN。历史事实中的观察者 ASN token 不能单独证明稳定 VP。"
+    },
+    "action": {
+      "enum": [
+        "announce",
+        "withdraw",
+        "rib_snapshot"
+      ],
+      "description": "路由元素动作。BGP session STATE_CHANGE 没有前缀，必须由 peer_session_event 建模，不能伪造成 RouteEvent。"
+    },
+    "afi_safi": {
+      "enum": [
+        "ipv4_unicast",
+        "ipv6_unicast"
+      ],
+      "description": "本 P0 合同冻结的地址族和子地址族。"
+    },
+    "prefix": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "description": "规范 CIDR 前缀；必须与 afi_safi 一致，主机位应按实现规范归零。"
+    },
+    "as_path": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/asPathSnapshot"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "单一 Collector/VP 在该时点观测到的 AS_PATH 快照；不是因果链、传播顺序或数据包转发路径。"
+    },
+    "origin_asn": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/asn"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "能够从规范路径唯一确定时的原点 ASN；AS_SET、空路径、撤回或解析失败时为 null 并给出缺失原因。"
+    },
+    "raw_ref": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/rawReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "artifact/file/record/element 四级原始引用。历史不可追溯占位必须为 null，不得填写猜测的文件哈希、偏移或序号。"
+    },
+    "parser_name": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/componentName"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "解析器稳定名称。"
+    },
+    "parser_version": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "解析器语义版本；raw_traceable 时必须完整。"
+    },
+    "importer_name": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/componentName"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "旁路导入器稳定名称。"
+    },
+    "importer_version": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "旁路导入器语义版本；raw_traceable 时必须完整。"
+    },
+    "import_run_id": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/importRunId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "导入运行稳定 ID，格式为 run_v1_ 加 SHA256 前 32 位小写十六进制。"
+    },
+    "lineage_status": {
+      "enum": [
+        "raw_traceable",
+        "legacy_untraceable"
+      ],
+      "description": "原始血缘等级。raw_traceable 表示可以稳定回到原始 route element；legacy_untraceable 表示仅为未准入历史观测占位。"
+    },
+    "quality_flags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/qualityFlag"
+      },
+      "description": "该元素的非缺失质量标记；不得用质量标记替代 null 与 missing_reasons。"
+    },
+    "missing_reasons": {
+      "$ref": "#/$defs/missingReasons",
+      "description": "所有 null 字段的逐字段缺失原因。非 null 字段禁止同时声明缺失原因。"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "lineage_status": {
+            "const": "raw_traceable"
+          }
+        },
+        "required": [
+          "lineage_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "record_kind": {
+            "const": "route_event"
+          },
+          "route_event_id": {
+            "$ref": "#/$defs/routeEventId"
+          },
+          "source_timezone": {
+            "const": "UTC"
+          },
+          "ingest_time_utc": {
+            "$ref": "#/$defs/utcTimestamp"
+          },
+          "parse_time_utc": {
+            "$ref": "#/$defs/utcTimestamp"
+          },
+          "vp_id": {
+            "$ref": "#/$defs/vpId"
+          },
+          "vp_peer_ip": {
+            "$ref": "#/$defs/ipAddress"
+          },
+          "vp_asn": {
+            "$ref": "#/$defs/asn"
+          },
+          "raw_ref": {
+            "$ref": "#/$defs/rawReference"
+          },
+          "parser_name": {
+            "$ref": "#/$defs/componentName"
+          },
+          "parser_version": {
+            "$ref": "#/$defs/semanticVersion"
+          },
+          "importer_name": {
+            "$ref": "#/$defs/componentName"
+          },
+          "importer_version": {
+            "$ref": "#/$defs/semanticVersion"
+          },
+          "import_run_id": {
+            "$ref": "#/$defs/importRunId"
+          },
+          "quality_flags": {
+            "not": {
+              "type": "array",
+              "contains": {
+                "enum": [
+                  "raw_reference_unavailable",
+                  "legacy_vp_identity_unavailable",
+                  "legacy_observation_only"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "lineage_status": {
+            "const": "legacy_untraceable"
+          }
+        },
+        "required": [
+          "lineage_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "record_kind": {
+            "const": "legacy_observation_stub"
+          },
+          "route_event_id": {
+            "type": "null"
+          },
+          "vp_id": {
+            "type": "null"
+          },
+          "vp_peer_ip": {
+            "type": "null"
+          },
+          "vp_asn": {
+            "type": "null"
+          },
+          "raw_ref": {
+            "type": "null"
+          },
+          "quality_flags": {
+            "allOf": [
+              {
+                "type": "array",
+                "contains": {
+                  "const": "raw_reference_unavailable"
+                }
+              },
+              {
+                "type": "array",
+                "contains": {
+                  "const": "legacy_vp_identity_unavailable"
+                }
+              },
+              {
+                "type": "array",
+                "contains": {
+                  "const": "legacy_observation_only"
+                }
+              }
+            ]
+          },
+          "missing_reasons": {
+            "type": "object",
+            "required": [
+              "route_event_id",
+              "vp_id",
+              "vp_peer_ip",
+              "vp_asn",
+              "raw_ref"
+            ],
+            "properties": {
+              "route_event_id": {
+                "enum": [
+                  "invalid_identity",
+                  "legacy_unknown"
+                ]
+              },
+              "vp_id": {
+                "enum": [
+                  "not_retained",
+                  "legacy_unknown"
+                ]
+              },
+              "vp_peer_ip": {
+                "enum": [
+                  "not_retained",
+                  "legacy_unknown"
+                ]
+              },
+              "vp_asn": {
+                "enum": [
+                  "not_retained",
+                  "legacy_unknown"
+                ]
+              },
+              "raw_ref": {
+                "enum": [
+                  "source_unavailable",
+                  "not_retained",
+                  "legacy_unknown"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "withdraw"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "then": {
+        "properties": {
+          "as_path": {
+            "type": "null"
+          },
+          "origin_asn": {
+            "type": "null"
+          },
+          "missing_reasons": {
+            "type": "object",
+            "required": [
+              "as_path",
+              "origin_asn"
+            ],
+            "properties": {
+              "as_path": {
+                "const": "not_applicable"
+              },
+              "origin_asn": {
+                "const": "not_applicable"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "afi_safi": {
+            "const": "ipv4_unicast"
+          }
+        },
+        "required": [
+          "afi_safi"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prefix": {
+            "$ref": "#/$defs/ipv4Prefix"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "afi_safi": {
+            "const": "ipv6_unicast"
+          }
+        },
+        "required": [
+          "afi_safi"
+        ]
+      },
+      "then": {
+        "properties": {
+          "prefix": {
+            "$ref": "#/$defs/ipv6Prefix"
+          }
+        }
+      }
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_route_event_id"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_ingest_time_utc"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_parse_time_utc"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_vp_id"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_vp_peer_ip"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_vp_asn"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_as_path"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_origin_asn"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_raw_ref"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_parser_name"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_parser_version"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_importer_name"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_importer_version"
+    },
+    {
+      "$ref": "#/$defs/nullReasonPair_import_run_id"
+    }
+  ],
+  "$defs": {
+    "routeEventId": {
+      "type": "string",
+      "pattern": "^rte_v1_[0-9a-f]{32}$",
+      "description": "route_event_id_v1：rte_v1_ 加稳定 identity SHA256 的前 32 位小写十六进制。"
+    },
+    "vpId": {
+      "type": "string",
+      "pattern": "^vp_v1_[0-9a-f]{32}$",
+      "description": "稳定 VP ID；identity 至少包含 collector_id、规范 peer IP 和 peer ASN。"
+    },
+    "importRunId": {
+      "type": "string",
+      "pattern": "^run_v1_[0-9a-f]{32}$",
+      "description": "导入运行 ID。"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?Z$",
+      "description": "以 Z 结尾的 UTC RFC 3339 时间；不接受本地时区偏移。"
+    },
+    "asn": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "description": "0 到 2^32-1 范围内的 32 位 ASN 数值；保留 ASN 的有效性或保留号检查由导入质量规则负责。"
+    },
+    "ipAddress": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 45,
+      "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?:\\.(?!$)|$)){4}$|^[0-9A-Fa-f:]*:[0-9A-Fa-f:]+$",
+      "description": "规范 IPv4 或 IPv6 地址文本。导入器必须进一步执行完整 IP 语义解析与规范化。"
+    },
+    "ipv4Prefix": {
+      "type": "string",
+      "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])/(?:[0-9]|[12][0-9]|3[0-2])$",
+      "description": "IPv4 CIDR 文本。"
+    },
+    "ipv6Prefix": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f:]+/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8])$",
+      "description": "IPv6 CIDR 文本；导入器必须进一步执行完整 IPv6 与主机位规范化校验。"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "description": "SemVer 2.0.0 版本字符串。"
+    },
+    "componentName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,63}$",
+      "description": "解析或导入组件的稳定名称。"
+    },
+    "asPathSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantics",
+        "causal_conclusion",
+        "canonical",
+        "segments"
+      ],
+      "properties": {
+        "semantics": {
+          "const": "route_observation_path_snapshot",
+          "description": "固定为路由观测路径快照。"
+        },
+        "causal_conclusion": {
+          "type": "null",
+          "description": "P0 不允许从 AS_PATH 自动生成因果结论，必须为 null。"
+        },
+        "canonical": {
+          "type": "string",
+          "maxLength": 65535,
+          "description": "保留 segment 类型的规范 AS_PATH 文本；不得将 AS_SET 或 confederation 拍平。"
+        },
+        "segments": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/asPathSegment"
+          },
+          "description": "按观测顺序保存的 AS_PATH segment。该顺序不等同于真实传播时间顺序。"
+        }
+      }
+    },
+    "asPathSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment_type",
+        "asns"
+      ],
+      "properties": {
+        "segment_type": {
+          "enum": [
+            "as_sequence",
+            "as_set",
+            "confederation_sequence",
+            "confederation_set"
+          ],
+          "description": "BGP AS_PATH segment 类型。"
+        },
+        "asns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/asn"
+          },
+          "description": "该 segment 内的 ASN；不得用扁平化破坏 segment 语义。"
+        }
+      }
+    },
+    "rawReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "file_sha256",
+        "record_ordinal",
+        "element_ordinal",
+        "record_offset",
+        "record_length",
+        "record_hash"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "pattern": "^art_v1_[0-9a-f]{32}$",
+          "description": "文件级原始制品 ID，由 file_sha256 的稳定 identity 生成。"
+        },
+        "file_sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "压缩原始 MRT 文件完整字节的 SHA256；也是 route_event_id_v1 identity 的组成部分。"
+        },
+        "record_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "文件内 MRT 物理记录的零基序号。"
+        },
+        "element_ordinal": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "同一 MRT record 展开的逻辑 route element 零基序号。"
+        },
+        "record_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "解压字节流中 MRT 12 字节 common header 起点的零基偏移；不是 gzip 压缩偏移。"
+        },
+        "record_length": {
+          "type": "integer",
+          "minimum": 12,
+          "description": "MRT common header 与 payload 的总字节数。"
+        },
+        "record_hash": {
+          "$ref": "#/$defs/sha256",
+          "description": "从 record_offset 开始、长度为 record_length 的 header+payload 字节 SHA256。"
+        }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "64 位小写十六进制 SHA256。"
+    },
+    "qualityFlag": {
+      "enum": [
+        "as_set_present",
+        "confederation_segment_present",
+        "origin_ambiguous",
+        "empty_as_path",
+        "parser_warning",
+        "record_time_anomaly",
+        "raw_reference_unavailable",
+        "legacy_vp_identity_unavailable",
+        "legacy_observation_only"
+      ],
+      "description": "RouteEvent v1 冻结质量标记。"
+    },
+    "missingReason": {
+      "enum": [
+        "not_observed",
+        "source_unavailable",
+        "processing_gap",
+        "parse_failed",
+        "not_retained",
+        "not_applicable",
+        "legacy_unknown",
+        "invalid_identity",
+        "legacy_window_contamination",
+        "source_fact_collision"
+      ],
+      "description": "P0 数据字典冻结的缺失原因；缺失不等于零。"
+    },
+    "missingReasons": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "route_event_id": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "ingest_time_utc": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "parse_time_utc": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "vp_id": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "vp_peer_ip": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "vp_asn": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "as_path": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "origin_asn": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "raw_ref": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "parser_name": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "parser_version": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "importer_name": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "importer_version": {
+          "$ref": "#/$defs/missingReason"
+        },
+        "import_run_id": {
+          "$ref": "#/$defs/missingReason"
+        }
+      }
+    },
+    "nullReasonPair_route_event_id": {
+      "$ref": "#/$defs/nullReasonPairTemplate_route_event_id"
+    },
+    "nullReasonPair_ingest_time_utc": {
+      "$ref": "#/$defs/nullReasonPairTemplate_ingest_time_utc"
+    },
+    "nullReasonPair_parse_time_utc": {
+      "$ref": "#/$defs/nullReasonPairTemplate_parse_time_utc"
+    },
+    "nullReasonPair_vp_id": {
+      "$ref": "#/$defs/nullReasonPairTemplate_vp_id"
+    },
+    "nullReasonPair_vp_peer_ip": {
+      "$ref": "#/$defs/nullReasonPairTemplate_vp_peer_ip"
+    },
+    "nullReasonPair_vp_asn": {
+      "$ref": "#/$defs/nullReasonPairTemplate_vp_asn"
+    },
+    "nullReasonPair_as_path": {
+      "$ref": "#/$defs/nullReasonPairTemplate_as_path"
+    },
+    "nullReasonPair_origin_asn": {
+      "$ref": "#/$defs/nullReasonPairTemplate_origin_asn"
+    },
+    "nullReasonPair_raw_ref": {
+      "$ref": "#/$defs/nullReasonPairTemplate_raw_ref"
+    },
+    "nullReasonPair_parser_name": {
+      "$ref": "#/$defs/nullReasonPairTemplate_parser_name"
+    },
+    "nullReasonPair_parser_version": {
+      "$ref": "#/$defs/nullReasonPairTemplate_parser_version"
+    },
+    "nullReasonPair_importer_name": {
+      "$ref": "#/$defs/nullReasonPairTemplate_importer_name"
+    },
+    "nullReasonPair_importer_version": {
+      "$ref": "#/$defs/nullReasonPairTemplate_importer_version"
+    },
+    "nullReasonPair_import_run_id": {
+      "$ref": "#/$defs/nullReasonPairTemplate_import_run_id"
+    },
+    "nullReasonPairTemplate_route_event_id": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "route_event_id": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "route_event_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "missing_reasons": {
+                "type": "object",
+                "properties": {
+                  "route_event_id": {}
+                },
+                "required": [
+                  "route_event_id"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "missing_reasons": {
+                "type": "object",
+                "properties": {
+                  "route_event_id": {}
+                },
+                "propertyNames": {
+                  "not": {
+                    "const": "route_event_id"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nullReasonPairTemplate_ingest_time_utc": {
+      "$ref": "#/$defs/nullReasonPairBase_ingest_time_utc"
+    },
+    "nullReasonPairBase_ingest_time_utc": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "ingest_time_utc": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "ingest_time_utc"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "ingest_time_utc": {}
+            },
+            "required": [
+              "ingest_time_utc"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "ingest_time_utc": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "ingest_time_utc"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_parse_time_utc": {
+      "$ref": "#/$defs/nullReasonPairBase_parse_time_utc"
+    },
+    "nullReasonPairBase_parse_time_utc": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "parse_time_utc": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "parse_time_utc"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "parse_time_utc": {}
+            },
+            "required": [
+              "parse_time_utc"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "parse_time_utc": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "parse_time_utc"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_vp_id": {
+      "$ref": "#/$defs/nullReasonPairBase_vp_id"
+    },
+    "nullReasonPairBase_vp_id": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "vp_id": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "vp_id"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "vp_id": {}
+            },
+            "required": [
+              "vp_id"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "vp_id": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "vp_id"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_vp_peer_ip": {
+      "$ref": "#/$defs/nullReasonPairBase_vp_peer_ip"
+    },
+    "nullReasonPairBase_vp_peer_ip": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "vp_peer_ip": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "vp_peer_ip"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "vp_peer_ip": {}
+            },
+            "required": [
+              "vp_peer_ip"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "vp_peer_ip": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "vp_peer_ip"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_vp_asn": {
+      "$ref": "#/$defs/nullReasonPairBase_vp_asn"
+    },
+    "nullReasonPairBase_vp_asn": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "vp_asn": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "vp_asn"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "vp_asn": {}
+            },
+            "required": [
+              "vp_asn"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "vp_asn": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "vp_asn"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_as_path": {
+      "$ref": "#/$defs/nullReasonPairBase_as_path"
+    },
+    "nullReasonPairBase_as_path": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "as_path": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "as_path"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "as_path": {}
+            },
+            "required": [
+              "as_path"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "as_path": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "as_path"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_origin_asn": {
+      "$ref": "#/$defs/nullReasonPairBase_origin_asn"
+    },
+    "nullReasonPairBase_origin_asn": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "origin_asn": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "origin_asn"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "origin_asn": {}
+            },
+            "required": [
+              "origin_asn"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "origin_asn": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "origin_asn"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_raw_ref": {
+      "$ref": "#/$defs/nullReasonPairBase_raw_ref"
+    },
+    "nullReasonPairBase_raw_ref": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "raw_ref": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "raw_ref"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "raw_ref": {}
+            },
+            "required": [
+              "raw_ref"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "raw_ref": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "raw_ref"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_parser_name": {
+      "$ref": "#/$defs/nullReasonPairBase_parser_name"
+    },
+    "nullReasonPairBase_parser_name": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "parser_name": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "parser_name"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "parser_name": {}
+            },
+            "required": [
+              "parser_name"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "parser_name": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "parser_name"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_parser_version": {
+      "$ref": "#/$defs/nullReasonPairBase_parser_version"
+    },
+    "nullReasonPairBase_parser_version": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "parser_version": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "parser_version"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "parser_version": {}
+            },
+            "required": [
+              "parser_version"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "parser_version": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "parser_version"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_importer_name": {
+      "$ref": "#/$defs/nullReasonPairBase_importer_name"
+    },
+    "nullReasonPairBase_importer_name": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "importer_name": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "importer_name"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "importer_name": {}
+            },
+            "required": [
+              "importer_name"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "importer_name": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "importer_name"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_importer_version": {
+      "$ref": "#/$defs/nullReasonPairBase_importer_version"
+    },
+    "nullReasonPairBase_importer_version": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "importer_version": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "importer_version"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "importer_version": {}
+            },
+            "required": [
+              "importer_version"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "importer_version": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "importer_version"
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullReasonPairTemplate_import_run_id": {
+      "$ref": "#/$defs/nullReasonPairBase_import_run_id"
+    },
+    "nullReasonPairBase_import_run_id": {
+      "type": "object",
+      "if": {
+        "properties": {
+          "import_run_id": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "import_run_id"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "import_run_id": {}
+            },
+            "required": [
+              "import_run_id"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "missing_reasons": {
+            "type": "object",
+            "properties": {
+              "import_run_id": {}
+            },
+            "propertyNames": {
+              "not": {
+                "const": "import_run_id"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

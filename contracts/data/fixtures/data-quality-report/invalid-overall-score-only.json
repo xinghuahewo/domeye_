@@ -1,0 +1,5 @@
+{
+  "schema_version": "data-quality-report/v1",
+  "report_id": "dqr-invalid-overall-score-only",
+  "overall_score": 95
+}

@@ -20,6 +20,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/p0/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取显式 P0 候选仓库的数据身份、门禁、覆盖和限制；不连接数据库，不表示生产已激活。 */
+        get: operations["getP0DataStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/p0/metrics/{metric_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 只返回已进入 P0 数据字典、manifest 已准入且 SHA 闭合的 MetricSeries。缺失点保持 null、value_state 和 missing_reason。 */
+        get: operations["getP0MetricSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/p0/evidence/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 通过 D4 注册表返回引用闭合的 Evidence Bundle v2。响应明确区分六类调查样本和后续全量候选。 */
+        get: operations["getP0EvidenceBundleV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/p0/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 返回 SHA、fingerprint 和检查引用闭合的完整质量报告；gate 失败仍是可信的 200 状态。 */
+        get: operations["getP0DataQualityReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -44,6 +112,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getTopEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/evidence-bundle/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 基于六类业务事实表组装确定性只读证据包。路径字段是 Route Observation / Path Snapshot，不是因果链路。 */
+        get: operations["getEventEvidenceBundle"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,6 +185,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/countries/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCountryWorkbenchOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/features/ases": {
         parameters: {
             query?: never;
@@ -108,6 +209,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getAsFeatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/ases/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAsWorkbenchOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/ases/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAsExactRecentEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -228,10 +361,217 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDashboardOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        P0ErrorResponse: {
+            /** @constant */
+            schema_version: "p0_error_v1";
+            /** @constant */
+            status: "error";
+            error: {
+                /** @enum {unknown} */
+                code: "invalid_identifier" | "candidate_resource_not_found" | "candidate_artifact_conflict" | "candidate_repository_unavailable" | "p0_internal_error";
+                message_zh: string;
+            };
+        };
+        P0Limitation: {
+            code: string;
+            /** @enum {unknown} */
+            severity: "blocking" | "warning" | "info";
+            message_zh: string;
+        };
+        P0Profile: {
+            id: string;
+            /** @constant */
+            timezone: "Asia/Shanghai";
+            /** Format: date-time */
+            window_start: string;
+            /** Format: date-time */
+            window_end_exclusive: string;
+            /** Format: date-time */
+            snapshot_time: string;
+            /** @constant */
+            boundary: "[start,end)";
+        };
+        P0Releases: {
+            source_release_id: string;
+            normalization_candidate_fingerprint_sha256: string;
+            artifact_manifest_fingerprint_sha256: string;
+            evidence_candidate_fingerprint_sha256: string;
+            metric_candidate_fingerprint_sha256: string;
+            quality_report_id: string;
+            quality_report_fingerprint_sha256: string;
+            repository_fingerprint_sha256: string;
+        };
+        P0QualityDecision: {
+            /** @enum {unknown} */
+            status: "passed" | "failed" | "pending";
+            /** @enum {unknown} */
+            admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+            blocking_failed_check_ids: string[];
+            blocking_pending_check_ids: string[];
+            warning_check_ids: string[];
+            decision_reasons_zh: string[];
+        };
+        P0AvailableMetric: {
+            metric_name: string;
+            unit: string;
+            aggregation: string;
+            formula: string;
+            formula_version: string;
+            subject: components["schemas"]["subject"];
+            window: components["schemas"]["window"];
+            coverage: components["schemas"]["coverage"];
+        };
+        P0EvidenceCoverage: {
+            candidate_kind: string;
+            admission_status: string;
+            bundle_count: number;
+            event_type_count: number;
+            registry_entry_count: number;
+            represents_full_evidence_population: boolean;
+            raw_traceable: boolean;
+        };
+        P0RawCoverage: {
+            /** @constant */
+            artifact_type: "update";
+            collector_scope: string[];
+            /** @enum {unknown} */
+            status: "complete" | "partial";
+            expected_count: number;
+            /** @description 发现文件且通过压缩容器完整性校验的 UPDATE 槽数；不等同于全量 MRT 语义解析通过。 */
+            observed_count: number;
+            /** @description 发现 UPDATE 文件的槽数，等于 observed_count + parse_failed。 */
+            present_count: number;
+            missing_count: number;
+            coverage_ratio: number;
+            presence_ratio: number;
+            /**
+             * @description 缺口聚合状态；mixed 表示来源不可用与解析失败同时存在，精确计数以 missing_state_counts 为准。
+             * @enum {unknown}
+             */
+            missing_value_state: null | "source_unavailable" | "parse_failed" | "mixed";
+            /** @description 原始 UPDATE 缺口的互斥分解；两项之和必须等于 missing_count。 */
+            missing_state_counts: {
+                /** @description 未发现对应原始 UPDATE 制品的时间槽数。 */
+                source_unavailable: number;
+                /** @description 发现原始 UPDATE 文件但因空文件、压缩 magic 错误或压缩流 EOF/CRC 完整性失败而不可用的时间槽数。 */
+                parse_failed: number;
+            };
+            /** @description 仅针对 UPDATE 的 parse_failed 原因互斥分解；三项之和必须等于 missing_state_counts.parse_failed。 */
+            invalid_reason_counts: {
+                compressed_stream_invalid: number;
+                compression_magic_mismatch: number;
+                empty_file: number;
+            };
+        };
+        P0DataStatus: {
+            /** @constant */
+            schema_version: "p0_data_status_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            profile: components["schemas"]["P0Profile"];
+            releases: components["schemas"]["P0Releases"];
+            quality_decision: components["schemas"]["P0QualityDecision"];
+            available_metrics: components["schemas"]["P0AvailableMetric"][];
+            evidence_coverage: components["schemas"]["P0EvidenceCoverage"];
+            raw_coverage: components["schemas"]["P0RawCoverage"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
+        P0MetricResponse: {
+            /** @constant */
+            schema_version: "p0_metric_response_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            candidate_fingerprint_sha256: string;
+            /** @constant */
+            admission_status: "metric_candidate_ready";
+            metric: components["schemas"]["metric-series.schema"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
+        P0EvidenceResponse: {
+            /** @constant */
+            schema_version: "p0_evidence_response_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            candidate_fingerprint_sha256: string;
+            /** @enum {unknown} */
+            coverage_scope: "sample_only" | "full_population";
+            represents_full_evidence_population: boolean;
+            bundle_file: string;
+            bundle: components["schemas"]["evidence-bundle-v2.schema"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
+        P0QualityResponse: {
+            /** @constant */
+            schema_version: "p0_quality_response_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            report: components["schemas"]["data-quality-report.schema"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
         HealthPayload: {
             status: string;
             service: string;
@@ -269,6 +609,86 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        EvidenceBundle: {
+            /** @constant */
+            bundle_version: "evidence_bundle_v1";
+            incident_id: string;
+            /** @constant */
+            incident_id_schema: "incident_id_v1";
+            event: components["schemas"]["EvidenceEvent"];
+            data_snapshot: {
+                [key: string]: unknown;
+            };
+            source_record: {
+                [key: string]: unknown;
+            };
+            phase_coverage: {
+                before: components["schemas"]["EvidencePhaseCoverage"];
+                during: components["schemas"]["EvidencePhaseCoverage"];
+                after: components["schemas"]["EvidencePhaseCoverage"];
+            };
+            evidence_items: components["schemas"]["EvidenceItem"][];
+            assessment: components["schemas"]["EvidenceAssessment"];
+            data_quality: components["schemas"]["EvidenceDataQuality"];
+            fact_record: components["schemas"]["EventDetail"];
+        };
+        EvidenceEvent: {
+            kind: string;
+            label: string;
+            object: string;
+            level: string;
+            summary: string;
+            duration: string;
+            event_time_local: string | null;
+            event_time_utc: string | null;
+            end_time_local: string | null;
+            end_time_utc: string | null;
+            source_timezone: string;
+        };
+        EvidencePhaseCoverage: {
+            /** @enum {string} */
+            status: "not_available" | "observed_no_path" | "observed_paths";
+            snapshot_count: number;
+            path_count: number;
+            evidence_ids: string[];
+        };
+        EvidenceItem: {
+            evidence_id: string;
+            /** @enum {string} */
+            phase: "before" | "during" | "after" | "context";
+            /** @enum {string} */
+            kind: "fact_record" | "route_observation" | "affected_object_set";
+            label: string;
+            source_field: string;
+            semantics: string;
+            observed_at_local?: string | null;
+            observed_at_utc?: string | null;
+            observation_state?: string;
+            path_count?: number;
+            paths?: string[];
+            object_count?: number;
+            objects?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        EvidenceAssessment: {
+            /** @constant */
+            classification: "observation_only";
+            supports: string[];
+            counterevidence: string[];
+            gaps: string[];
+            causal_conclusion: null;
+        };
+        EvidenceDataQuality: {
+            observed_phase_count: number;
+            expected_phase_count: number;
+            route_observation_count: number;
+            evidence_item_count: number;
+            vantage_point_identity_available: boolean;
+            raw_bgp_message_available: boolean;
+            timezone_semantics: string;
+            limitations: string[];
+        };
         FeaturePoint: {
             t: string;
             asn?: string;
@@ -289,6 +709,125 @@ export interface components {
         CountryFeatureItem: {
             country: string;
             time_series_data: components["schemas"]["FeatureSeriesPoint"][];
+        };
+        CountrySparkPoint: {
+            time: string;
+            announce: number;
+            withdraw: number;
+        };
+        CountrySeriesPoint: {
+            time: string;
+            announce: number | null;
+            withdraw: number | null;
+            ipv4_prefixes: number | null;
+            ipv6_prefixes: number | null;
+            ipv4_addresses: number | null;
+        };
+        CountryProfile: {
+            country: string;
+            announce: number;
+            withdraw: number;
+            update_total: number;
+            withdraw_rate: number;
+            previous_update_total: number;
+            update_change_rate: number | null;
+            sample_count: number;
+            latest_observation: string | null;
+            ipv4_prefixes: number | null;
+            ipv6_prefixes: number | null;
+            ipv4_addresses: number | null;
+            ipv4_prefix_change: number | null;
+            ipv6_prefix_change: number | null;
+            ipv4_address_change: number | null;
+            resource_change: number;
+            resource_change_rate: number | null;
+            peak_updates: number;
+            peak_time: string | null;
+            anomaly_count: number;
+            high_risk_count: number;
+            sparkline: components["schemas"]["CountrySparkPoint"][];
+            series: components["schemas"]["CountrySeriesPoint"][];
+        };
+        CountryOverview: {
+            start_time: string;
+            end_time: string;
+            timezone: string;
+            latest_observation: string | null;
+            country_count: number;
+            countries_with_anomalies: number;
+            update_leader: components["schemas"]["CountryProfile"] | null;
+            withdraw_rate_leader: components["schemas"]["CountryProfile"] | null;
+            resource_change_leader: components["schemas"]["CountryProfile"] | null;
+            update_rankings: components["schemas"]["CountryProfile"][];
+            withdraw_rate_rankings: components["schemas"]["CountryProfile"][];
+            resource_change_rankings: components["schemas"]["CountryProfile"][];
+            anomaly_rankings: components["schemas"]["CountryProfile"][];
+            selected_country: components["schemas"]["CountryProfile"] | null;
+        };
+        AsProfile: {
+            asn: string;
+            as_name: string;
+            org_name: string;
+            country: string;
+            as_type: string;
+            global_rank: number | null;
+            country_rank: number | null;
+            important: boolean;
+            announce: number;
+            withdraw: number;
+            update_total: number;
+            withdraw_rate: number;
+            previous_update_total: number;
+            update_change_rate: number | null;
+            sample_count: number;
+            latest_observation: string | null;
+            ipv4_prefixes: number | null;
+            ipv6_prefixes: number | null;
+            ipv4_addresses: number | null;
+            ipv4_prefix_change: number | null;
+            ipv6_prefix_change: number | null;
+            ipv4_address_change: number | null;
+            resource_change: number;
+            resource_change_rate: number | null;
+            peak_updates: number;
+            peak_time: string | null;
+            volatility: number;
+            anomaly_count: number;
+            high_risk_count: number;
+            sparkline: components["schemas"]["CountrySparkPoint"][];
+            series: components["schemas"]["CountrySeriesPoint"][];
+        };
+        AsOverview: {
+            start_time: string;
+            end_time: string;
+            timezone: string;
+            latest_observation: string | null;
+            /** @enum {string} */
+            scope_kind: "operational_asn_cohort";
+            scope_note: string;
+            candidate_pool_size: number;
+            scope_size: number;
+            feature_asn_count: number;
+            important_asn_count: number;
+            asns_with_anomalies: number;
+            update_leader: components["schemas"]["AsProfile"] | null;
+            withdraw_rate_leader: components["schemas"]["AsProfile"] | null;
+            resource_change_leader: components["schemas"]["AsProfile"] | null;
+            volatility_leader: components["schemas"]["AsProfile"] | null;
+            update_rankings: components["schemas"]["AsProfile"][];
+            withdraw_rate_rankings: components["schemas"]["AsProfile"][];
+            resource_change_rankings: components["schemas"]["AsProfile"][];
+            volatility_rankings: components["schemas"]["AsProfile"][];
+            anomaly_rankings: components["schemas"]["AsProfile"][];
+            selected_asn: components["schemas"]["AsProfile"] | null;
+        };
+        AsExactEventPage: {
+            /** @enum {string} */
+            match_mode: "asn_token_exact";
+            asn: string;
+            record_count: string;
+            total_page: number;
+            data: components["schemas"]["EventItem"][];
         };
         AsFeatureItem: {
             asn: string;
@@ -326,6 +865,2216 @@ export interface components {
             amplitude: string;
             icon: string;
         };
+        EventTypeCounts: {
+            "\u524D\u7F00\u52AB\u6301": number;
+            "\u5B50\u524D\u7F00\u52AB\u6301": number;
+            "\u524D\u7F00\u4E2D\u65AD": number;
+            "AS\u4E2D\u65AD": number;
+            "\u56FD\u5BB6\u4E2D\u65AD": number;
+            "\u8DEF\u7531\u6CC4\u6F0F": number;
+        };
+        EventSeriesPoint: {
+            time: string;
+            counts: components["schemas"]["EventTypeCounts"];
+            total: number;
+        };
+        CountryRanking: {
+            name: string;
+            event_count: number;
+            high_risk_count: number;
+        };
+        AsRanking: {
+            asn: string;
+            name: string;
+            event_count: number;
+            high_risk_count: number;
+        };
+        DashboardOverview: {
+            start_time: string;
+            end_time: string;
+            timezone: string;
+            latest_observation: string | null;
+            event_count: number;
+            previous_event_count: number;
+            event_change_rate: number | null;
+            high_risk_count: number;
+            active_event_count: number;
+            affected_asn_count: number;
+            affected_country_count: number;
+            event_series: components["schemas"]["EventSeriesPoint"][];
+            country_rankings: components["schemas"]["CountryRanking"][];
+            asn_rankings: components["schemas"]["AsRanking"][];
+        };
+        subject: {
+            /**
+             * @description 指标对象类型。
+             * @enum {unknown}
+             */
+            subject_type: "global" | "country" | "asn" | "prefix";
+            /** @description 规范对象 ID；ASN 使用不带 AS 前缀的十进制字符串，国家使用两位大写代码。 */
+            subject_id: string;
+            /** @description 可选展示名，不参与指标身份。 */
+            display_name: string | null;
+        } & (unknown & unknown & unknown & unknown);
+        window: {
+            /**
+             * Format: date-time
+             * @description 包含的窗口起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description 排除的窗口终点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            end: string;
+            /**
+             * @description 固定半开窗口，禁止闭区间导致五分钟槽多算一个。
+             * @constant
+             */
+            boundary: "[start,end)";
+            /**
+             * @description 当前 P0 数据档业务时区。
+             * @constant
+             */
+            timezone: "Asia/Shanghai";
+        };
+        /** @description 比值与计数的一致性由业务校验器复算；JSON Schema 负责冻结字段和取值范围。 */
+        coverage: {
+            /** @description source_observed_sample_count / expected_sample_count；仅表示采集源覆盖。 */
+            source_coverage_ratio: number;
+            /** @description metric_observed_sample_count / expected_sample_count；与源覆盖分开报告。 */
+            metric_coverage_ratio: number;
+            /** @description subject_active_sample_count / source_observed_sample_count；源样本为 0 时为 null。它是活动密度，不得命名为 ASN 覆盖率。 */
+            subject_activity_density: number | null;
+            /** @description 因 source_unavailable 或 parse_failed 导致、未进入 source_observed_sample_count 的缺槽总数；精确分类由 points.value_state 给出。 */
+            source_gap_sample_count: number;
+            /** @description 源存在但派生处理失败或未生成的缺槽数。 */
+            processing_gap_sample_count: number;
+            /** @description 全部缺槽是否已分类；false 时不得通过 P0 指标准入。 */
+            classification_complete: boolean;
+        };
+        ratioInputs: {
+            /** @description 撤回报文数；源缺失时为 null。 */
+            numerator_withdraw_count: number | null;
+            /** @description announce + withdraw；为 0 时撤回率必须是 null。 */
+            denominator_update_total: number | null;
+        };
+        point: {
+            /**
+             * Format: date-time
+             * @description 五分钟桶起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            time: string;
+            /** @description 仅 observed_nonzero/observed_zero 可以是数字；其他状态必须为 null。 */
+            value: number | null;
+            /**
+             * @description P0 冻结值状态；缺失状态不得被前后端补为 0。
+             * @enum {unknown}
+             */
+            value_state: "observed_nonzero" | "observed_zero" | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+            /**
+             * @description 缺失或不可计算原因；观测值必须为 null。
+             * @enum {string|null}
+             */
+            missing_reason: null | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "denominator_zero" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+            /** @description 撤回率必须带分子分母；其他指标固定为 null。 */
+            formula_inputs: null | components["schemas"]["ratioInputs"];
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        nonRatioPoint: components["schemas"]["point"] & {
+            formula_inputs?: null;
+        };
+        withdrawRatePoint: components["schemas"]["point"] & {
+            value?: null | number;
+            formula_inputs?: components["schemas"]["ratioInputs"];
+        } & Record<string, never> & Record<string, never>;
+        collectorScope: {
+            /**
+             * @description 采集范围类型；all_available_collectors 只表示当前数据档可用范围，不表示全网。
+             * @enum {unknown}
+             */
+            scope_kind: "collector_set" | "all_available_collectors" | "legacy_unknown";
+            collector_ids: string[];
+            /** @description 采集范围未知或受限时的明确说明。 */
+            limitation_reason: string | null;
+        } & (unknown & unknown);
+        sourceRef: {
+            /**
+             * @description 来源分层，业务事实和原始观测不得混称。
+             * @enum {unknown}
+             */
+            source_layer: "raw_observation" | "route_event" | "detection_fact" | "derived_metric" | "release_inventory" | "data_quality_report";
+            /** @description 稳定来源 ID。 */
+            ref_id: string;
+            /** @description 可由服务端解析的表、制品或事件定位符。 */
+            locator: string;
+            /** @description 来源制品具备稳定哈希时填写；历史来源未知时为 null 并由质量报告说明。 */
+            sha256: string | null;
+        };
+        rankingScope: {
+            /**
+             * @description ASN 未完成全量扫描时必须使用 operational_asn_cohort。
+             * @enum {unknown}
+             */
+            scope_kind: "not_ranked" | "global_all_subjects" | "operational_asn_cohort" | "explicit_subject_set";
+            /** @description 参与排名的候选数；非排名序列为 null。 */
+            candidate_count: number | null;
+            /** @description 候选过滤规则；运营 ASN 排名必须明确规则。 */
+            filter_rules: string[];
+        } & ({
+            /** @constant */
+            scope_kind?: "not_ranked";
+            candidate_count?: null;
+            filter_rules?: unknown[];
+        } | {
+            /** @constant */
+            scope_kind?: "global_all_subjects";
+            candidate_count?: number;
+            filter_rules?: unknown[];
+        } | {
+            /** @enum {unknown} */
+            scope_kind?: "operational_asn_cohort" | "explicit_subject_set";
+            candidate_count?: number;
+            filter_rules?: unknown[];
+        });
+        /**
+         * P0 MetricSeries 指标时序合同
+         * @description 冻结 P0 前端指标的身份、半开窗口、五分钟粒度、物理单位、公式版本、源覆盖、派生覆盖、实体活动和缺失语义。此合同只表达观测，不表达因果结论。
+         */
+        "metric-series.schema": {
+            /**
+             * @description MetricSeries 合同版本；变更字段语义时必须升级版本。
+             * @constant
+             */
+            schema_version: "metric-series/v1";
+            /**
+             * @description 指标的稳定机器名；IPv4 /24 等价值与 IPv6 /48 等价值必须使用不同名称。
+             * @enum {unknown}
+             */
+            metric_name: "bgp_announce_record_count" | "bgp_withdraw_record_count" | "bgp_update_record_count" | "bgp_withdraw_ratio" | "ipv4_24_equivalent_count" | "ipv6_48_equivalent_count" | "ipv4_equivalent_address_count" | "anomaly_incident_count" | "prefix_outage_concurrent_count" | "as_outage_concurrent_count";
+            subject: components["schemas"]["subject"];
+            collector_scope: components["schemas"]["collectorScope"];
+            window: components["schemas"]["window"];
+            /**
+             * @description P0 指标固定为 300 秒桶；期望槽数按半开窗口 [start,end) 计算。
+             * @constant
+             */
+            granularity_seconds: 300;
+            /**
+             * @description 不可互换的物理单位；禁止使用含义不明的 count 或 resource_change。
+             * @enum {unknown}
+             */
+            unit: "bgp_update_record" | "ratio_0_1" | "ipv4_24_equivalent" | "ipv6_48_equivalent" | "ipv4_equivalent_address" | "anomaly_incident" | "prefix_count" | "asn_count";
+            /**
+             * @description 单个 300 秒桶的冻结聚合方法。
+             * @enum {unknown}
+             */
+            aggregation: "sum_observation_values" | "sum_components" | "ratio_of_sums" | "last_observation" | "count_distinct_incidents" | "max_concurrent";
+            /** @description 可审阅的冻结公式文本；必须与 metric_name 和 formula_version 对应。 */
+            formula: string;
+            /**
+             * @description 稳定公式版本，禁止由前端临时改写口径。
+             * @enum {string}
+             */
+            formula_version: "announce_count_v1" | "withdraw_count_v1" | "update_total_v1" | "withdraw_ratio_v1" | "ipv4_24e_v1" | "ipv6_48e_v1" | "ipv4_address_v1" | "anomaly_incident_count_v1" | "prefix_outage_concurrency_v1" | "as_outage_concurrency_v1";
+            /** @description 按半开窗口和 300 秒粒度计算的期望源时间槽数。 */
+            expected_sample_count: number;
+            /** @description 采集源实际存在的时间槽数；用于计算 source_coverage_ratio。 */
+            source_observed_sample_count: number;
+            /** @description 派生指标成功生成的时间槽数；处理缺口会使其小于源已观测槽数。 */
+            metric_observed_sample_count: number;
+            /** @description 对象在源已观测槽中实际发生活动的槽数；ASN 稀疏活动表的该值不是覆盖率。 */
+            subject_active_sample_count: number;
+            coverage: components["schemas"]["coverage"];
+            /** @description 按时间升序的五分钟点。业务校验还必须确认时间位于半开窗口内、无重复并与计数一致。 */
+            points: components["schemas"]["point"][];
+            /** @description 可复核的来源引用；不得只写自然语言来源名称。 */
+            source_refs: components["schemas"]["sourceRef"][];
+            /**
+             * Format: date-time
+             * @description 服务端生成时间，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            generated_at: string;
+            ranking_scope: components["schemas"]["rankingScope"];
+            $defs: {
+                subject: {
+                    /**
+                     * @description 指标对象类型。
+                     * @enum {unknown}
+                     */
+                    subject_type: "global" | "country" | "asn" | "prefix";
+                    /** @description 规范对象 ID；ASN 使用不带 AS 前缀的十进制字符串，国家使用两位大写代码。 */
+                    subject_id: string;
+                    /** @description 可选展示名，不参与指标身份。 */
+                    display_name: string | null;
+                } & (unknown & unknown & unknown & unknown);
+                collectorScope: {
+                    /**
+                     * @description 采集范围类型；all_available_collectors 只表示当前数据档可用范围，不表示全网。
+                     * @enum {unknown}
+                     */
+                    scope_kind: "collector_set" | "all_available_collectors" | "legacy_unknown";
+                    collector_ids: string[];
+                    /** @description 采集范围未知或受限时的明确说明。 */
+                    limitation_reason: string | null;
+                } & (unknown & unknown);
+                window: {
+                    /**
+                     * Format: date-time
+                     * @description 包含的窗口起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+                     */
+                    start: string;
+                    /**
+                     * Format: date-time
+                     * @description 排除的窗口终点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+                     */
+                    end: string;
+                    /**
+                     * @description 固定半开窗口，禁止闭区间导致五分钟槽多算一个。
+                     * @constant
+                     */
+                    boundary: "[start,end)";
+                    /**
+                     * @description 当前 P0 数据档业务时区。
+                     * @constant
+                     */
+                    timezone: "Asia/Shanghai";
+                };
+                /** @description 比值与计数的一致性由业务校验器复算；JSON Schema 负责冻结字段和取值范围。 */
+                coverage: {
+                    /** @description source_observed_sample_count / expected_sample_count；仅表示采集源覆盖。 */
+                    source_coverage_ratio: number;
+                    /** @description metric_observed_sample_count / expected_sample_count；与源覆盖分开报告。 */
+                    metric_coverage_ratio: number;
+                    /** @description subject_active_sample_count / source_observed_sample_count；源样本为 0 时为 null。它是活动密度，不得命名为 ASN 覆盖率。 */
+                    subject_activity_density: number | null;
+                    /** @description 因 source_unavailable 或 parse_failed 导致、未进入 source_observed_sample_count 的缺槽总数；精确分类由 points.value_state 给出。 */
+                    source_gap_sample_count: number;
+                    /** @description 源存在但派生处理失败或未生成的缺槽数。 */
+                    processing_gap_sample_count: number;
+                    /** @description 全部缺槽是否已分类；false 时不得通过 P0 指标准入。 */
+                    classification_complete: boolean;
+                };
+                point: {
+                    /**
+                     * Format: date-time
+                     * @description 五分钟桶起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+                     */
+                    time: string;
+                    /** @description 仅 observed_nonzero/observed_zero 可以是数字；其他状态必须为 null。 */
+                    value: number | null;
+                    /**
+                     * @description P0 冻结值状态；缺失状态不得被前后端补为 0。
+                     * @enum {unknown}
+                     */
+                    value_state: "observed_nonzero" | "observed_zero" | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+                    /**
+                     * @description 缺失或不可计算原因；观测值必须为 null。
+                     * @enum {string|null}
+                     */
+                    missing_reason: null | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "denominator_zero" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+                    /** @description 撤回率必须带分子分母；其他指标固定为 null。 */
+                    formula_inputs: null | components["schemas"]["ratioInputs"];
+                } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+                ratioInputs: {
+                    /** @description 撤回报文数；源缺失时为 null。 */
+                    numerator_withdraw_count: number | null;
+                    /** @description announce + withdraw；为 0 时撤回率必须是 null。 */
+                    denominator_update_total: number | null;
+                };
+                nonRatioPoint: components["schemas"]["point"] & {
+                    formula_inputs?: null;
+                };
+                withdrawRatePoint: components["schemas"]["point"] & {
+                    value?: null | number;
+                    formula_inputs?: components["schemas"]["ratioInputs"];
+                } & Record<string, never> & Record<string, never>;
+                sourceRef: {
+                    /**
+                     * @description 来源分层，业务事实和原始观测不得混称。
+                     * @enum {unknown}
+                     */
+                    source_layer: "raw_observation" | "route_event" | "detection_fact" | "derived_metric" | "release_inventory" | "data_quality_report";
+                    /** @description 稳定来源 ID。 */
+                    ref_id: string;
+                    /** @description 可由服务端解析的表、制品或事件定位符。 */
+                    locator: string;
+                    /** @description 来源制品具备稳定哈希时填写；历史来源未知时为 null 并由质量报告说明。 */
+                    sha256: string | null;
+                };
+                rankingScope: {
+                    /**
+                     * @description ASN 未完成全量扫描时必须使用 operational_asn_cohort。
+                     * @enum {unknown}
+                     */
+                    scope_kind: "not_ranked" | "global_all_subjects" | "operational_asn_cohort" | "explicit_subject_set";
+                    /** @description 参与排名的候选数；非排名序列为 null。 */
+                    candidate_count: number | null;
+                    /** @description 候选过滤规则；运营 ASN 排名必须明确规则。 */
+                    filter_rules: string[];
+                } & ({
+                    /** @constant */
+                    scope_kind?: "not_ranked";
+                    candidate_count?: null;
+                    filter_rules?: unknown[];
+                } | {
+                    /** @constant */
+                    scope_kind?: "global_all_subjects";
+                    candidate_count?: number;
+                    filter_rules?: unknown[];
+                } | {
+                    /** @enum {unknown} */
+                    scope_kind?: "operational_asn_cohort" | "explicit_subject_set";
+                    candidate_count?: number;
+                    filter_rules?: unknown[];
+                });
+            };
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        /** @description 事件或指标关联实体。 */
+        EntityRef: {
+            /**
+             * @description 实体类型。
+             * @enum {string}
+             */
+            entity_type: "prefix" | "asn" | "country" | "collector" | "vantage_point";
+            /** @description 实体稳定标识。 */
+            entity_id: string;
+            /**
+             * @description 实体在该观测中的角色。
+             * @enum {string}
+             */
+            role: "affected" | "observed_origin" | "suspected_origin" | "observer" | "scope";
+        } & (unknown & unknown & unknown & unknown & unknown);
+        /** @description 严格名称和值对。 */
+        NameValue: {
+            /** @description 字段名。 */
+            name: string;
+            /** @description 规范化字段值。 */
+            value: string | number | boolean | null;
+        };
+        /** @description 小写十六进制 SHA256。 */
+        Sha256: string;
+        /** @description 六类事实表中的只读记录定位，不等同于原始 BGP 记录。 */
+        SourceFactRef: {
+            /** @description 由表名、分区和主键生成的稳定事实引用。 */
+            source_fact_id: string;
+            /**
+             * @description 事实类型。
+             * @enum {string}
+             */
+            fact_type: "hijack" | "sub_hijack" | "leak" | "prefix_outage" | "as_outage" | "country_outage";
+            /** @description 实际事实表名。 */
+            table_name: string;
+            /** @description 事实表分区月份。 */
+            partition_month: string;
+            /** @description 冻结的业务主键定位文本。 */
+            fact_locator: string;
+            /** @description 按名称保存的完整源主键，避免 prefix_outage 遗漏 ASN。 */
+            key_fields: components["schemas"]["NameValue"][];
+            /**
+             * @description 该事实记录在映射中的状态。
+             * @enum {string}
+             */
+            fact_role: "primary" | "mixed_state" | "orphan" | "quarantined";
+            /**
+             * Format: date-time
+             * @description 事实开始时间，必须携带偏移。
+             */
+            start_time: string;
+            /**
+             * Format: date-time
+             * @description 事实结束时间；未知时为 null。
+             */
+            end_time: string | null;
+            /** @description 旁路规范序列化记录哈希；尚未生成时为 null。 */
+            record_hash: components["schemas"]["Sha256"] | null;
+        };
+        /**
+         * @description P0 质量标志。
+         * @enum {string}
+         */
+        QualityFlag: "source_fact_collision" | "invalid_identity" | "legacy_window_contamination" | "source_fact_orphan" | "locator_incomplete" | "time_partition_mismatch" | "legacy_mutable_state" | "partial_raw_coverage" | "vp_identity_unavailable" | "processing_gap" | "phase_not_retained";
+        /** @description 同一源事实被多个 Incident 复用或混合状态时的旁路碰撞组。 */
+        CollisionDisposition: {
+            /** @description 碰撞组 ID。 */
+            collision_group_id: string;
+            /** @description 共享事实记录的 Incident。 */
+            incident_ids: string[];
+            /** @description 发生复用或混合的源事实。 */
+            source_fact_ids: string[];
+            /** @description 不能完整归属到单一 Incident 的字段路径。 */
+            conflicted_fields: string[];
+            /**
+             * @description 旁路重建状态。
+             * @enum {string}
+             */
+            resolution_state: "unresolved" | "partially_reconstructed" | "reconstructed" | "accepted_with_limitations";
+        };
+        /**
+         * @description P0 缺失、碰撞、隔离或处理缺口原因。
+         * @enum {string}
+         */
+        MissingReason: "not_observed" | "not_retained" | "not_applicable" | "source_unavailable" | "parse_failed" | "legacy_unknown" | "processing_gap" | "source_fact_collision" | "invalid_identity" | "legacy_window_contamination" | "source_fact_orphan" | "quarantined";
+        /** @description 只读隔离记录，原事实继续保留但不得生成可见 Incident。 */
+        QuarantineDisposition: {
+            /** @description 隔离记录 ID。 */
+            quarantine_id: string;
+            /** @description 必须可机器读取的隔离原因。 */
+            reason_codes: components["schemas"]["MissingReason"][];
+            /** @description 被隔离的源事实。 */
+            source_fact_ids: string[];
+            /**
+             * @description 隔离记录审核状态。
+             * @enum {string}
+             */
+            review_status: "pending" | "confirmed" | "released";
+        };
+        /** @description 可版本化程序及其代码哈希。 */
+        ProgramVersion: {
+            /** @description 程序名称。 */
+            name: string;
+            /** @description 程序版本。 */
+            version: string;
+            code_sha256: components["schemas"]["Sha256"];
+            /** @description 运行配置哈希；没有独立配置时为 null。 */
+            config_sha256: components["schemas"]["Sha256"] | null;
+        };
+        /** @description 指标主体和排名范围。 */
+        MetricSubject: {
+            /**
+             * @description 指标主体类型。
+             * @enum {string}
+             */
+            subject_type: "global" | "country" | "asn" | "prefix" | "collector";
+            /** @description 主体 ID；global 使用 global。 */
+            subject_id: string;
+            /**
+             * @description 排名或计算候选范围。
+             * @enum {string}
+             */
+            scope_kind: "all_observed" | "operational_asn_cohort" | "selected_entities" | "not_ranked";
+            /** @description 候选实体数量；未排名时为 null。 */
+            candidate_count: number | null;
+        };
+        /** @description 缺失原因及计数。 */
+        MissingCount: {
+            reason: components["schemas"]["MissingReason"];
+            /** @description 对应原因的记录或槽位数。 */
+            count: number;
+        };
+        /**
+         * @description 字段值状态。只有 observed 和 observed_zero 表示已有观测值。
+         * @enum {string}
+         */
+        ValueState: "observed_nonzero" | "observed_zero" | "not_observed" | "not_retained" | "not_applicable" | "source_unavailable" | "processing_gap" | "parse_failed" | "legacy_unknown" | "source_fact_collision" | "invalid_identity" | "legacy_window_contamination";
+        /** @description 稳定 Evidence ID。 */
+        EvidenceId: string;
+        /** @description 单阶段证据覆盖；没有数据时返回 not_available 和原因，不补成空路径或零。 */
+        PhaseCoverage: {
+            /**
+             * @description 阶段观测状态。compromised 表示历史混合事实不可完整归属。
+             * @enum {string}
+             */
+            status: "not_available" | "observed_no_path" | "observed_paths" | "compromised";
+            /** @description 阶段路径快照数。 */
+            snapshot_count: number;
+            /** @description 阶段内路径条数。 */
+            path_count: number;
+            /** @description 注册表中的阶段证据。 */
+            evidence_ids: components["schemas"]["EvidenceId"][];
+            /** @description 关联 RouteEvent；历史没有时为空。 */
+            route_event_ref_ids: string[];
+            /** @description 未覆盖或不可信原因。 */
+            missing_reasons: components["schemas"]["MissingReason"][];
+            /** @description 阶段质量标志。 */
+            quality_flags: components["schemas"]["QualityFlag"][];
+        } & (unknown & unknown & unknown);
+        /** @description 仅描述观测，不允许把路径快照写成因果、传播链或根因。 */
+        ObservationText: string;
+        /** @description 单独覆盖维度，明确分子、分母和比率。 */
+        CoverageDimension: {
+            /** @description 期望记录、槽或阶段数。 */
+            expected_count: number;
+            /** @description 实际可用记录、槽或阶段数。 */
+            observed_count: number;
+            /** @description 覆盖率，分母为零时为 null。 */
+            coverage_ratio: number | null;
+            /**
+             * @description 覆盖状态。
+             * @enum {string}
+             */
+            status: "full" | "partial" | "none" | "not_applicable";
+        };
+        /** @description 规范化可见事件。时间字符串必须携带 UTC 偏移，历史本地时间不得直接追加 Z。 */
+        Incident: {
+            /** @description 沿用 incident_id_v1 的稳定事件标识。 */
+            incident_id: string;
+            /**
+             * @description 事件 ID 规则。
+             * @constant
+             */
+            incident_id_schema: "incident_id_v1";
+            /**
+             * @description 六类核心异常的规范名称。
+             * @enum {string}
+             */
+            event_type: "hijack" | "sub_hijack" | "leak" | "prefix_outage" | "as_outage" | "country_outage";
+            /** @description 历史检测来源标识。 */
+            source: string;
+            /**
+             * Format: date-time
+             * @description 事件开始时间，必须携带时区偏移。
+             */
+            start_time: string;
+            /**
+             * Format: date-time
+             * @description 事件结束时间；历史未知时为 null。
+             */
+            end_time: string | null;
+            /** @description 源业务时间采用的 IANA 时区。 */
+            source_timezone: string;
+            /** @description 受影响实体，不推断未被观测到的对象。 */
+            affected_entities: components["schemas"]["EntityRef"][];
+            /** @description 业务事实层的观测摘要，不得写成自动根因结论。 */
+            summary: string;
+            /** @description 冻结的历史详情定位符。 */
+            detail_url: string;
+            /** @description 可复核的检测版本；历史未保留时为 null 并在 field_quality 中说明。 */
+            detection_version: string | null;
+        };
+        /** @description 不可变 RouteEvent 引用。路径语义只允许 route_observation 或 path_snapshot。 */
+        RouteEventRef: {
+            /** @description 规范 RouteEvent ID。 */
+            route_event_id: string;
+            /**
+             * @description 与 RouteEvent 合同一致的稳定 ID 算法版本。
+             * @constant
+             */
+            route_event_id_schema: "route_event_id_v1";
+            /**
+             * @description RouteEvent 合同版本。
+             * @constant
+             */
+            schema_version: "route_event_v1";
+            /**
+             * @description 该观测与调查对象的关系，不表达因果。
+             * @enum {string}
+             */
+            relation: "supports_observation" | "counterevidence" | "context";
+            /**
+             * @description 路径只可声明为路由观测或路径快照。
+             * @enum {string}
+             */
+            semantics: "route_observation" | "path_snapshot";
+            /**
+             * @description RouteEvent 的原始追溯等级。
+             * @enum {string}
+             */
+            lineage_status: "raw_traceable" | "legacy_untraceable";
+            /**
+             * Format: date-time
+             * @description 路由观测时间。
+             */
+            observed_at: string;
+            /** @description Collector 标识；历史未知时为 null。 */
+            collector_id: string | null;
+            /** @description 稳定 VP 标识；历史未保留时为 null。 */
+            vp_id: string | null;
+            /** @description VP ASN；历史未保留时为 null。 */
+            vp_asn: number | null;
+            /** @description 关联原始记录引用。 */
+            raw_record_ref_ids: string[];
+        } & unknown;
+        /** @description 可按哈希和偏移校验的原始 MRT 记录元素引用。只记录实际存在的引用。 */
+        RawRecordRef: {
+            /** @description 原始记录引用 ID。 */
+            raw_record_ref_id: string;
+            /** @description 原始制品 ID。 */
+            artifact_id: string;
+            file_sha256: components["schemas"]["Sha256"];
+            /** @description 记录在未压缩逻辑流中的字节偏移。 */
+            record_offset: number;
+            /** @description 原始记录字节长度。 */
+            record_length: number;
+            record_hash: components["schemas"]["Sha256"];
+            /** @description 文件内记录序号。 */
+            record_ordinal: number;
+            /** @description 记录内元素序号。 */
+            element_ordinal: number;
+            /** @description Collector 标识。 */
+            collector_id: string;
+            /** @description 由 peer IP 与 peer ASN 规范生成的 VP ID。 */
+            vp_id: string;
+            /** @description 原始记录中的 peer ASN。 */
+            vp_asn: number;
+            /**
+             * @description 偏移、长度和哈希校验状态。
+             * @enum {string}
+             */
+            verification_status: "verified" | "failed";
+        };
+        /** @description v1 与 v2 的兼容边界。复用事件身份，不把 v2 字段反向解释为 v1 字段。 */
+        CompatibilityBoundary: {
+            /**
+             * @description 继续独立保留的历史合同。
+             * @constant
+             */
+            previous_contract: "evidence_bundle_v1";
+            /**
+             * @description 沿用的稳定 Incident ID 生成规则。
+             * @constant
+             */
+            incident_id_schema: "incident_id_v1";
+            /**
+             * @description 必须为 false，防止修改历史字段语义。
+             * @constant
+             */
+            v1_fields_reinterpreted: false;
+            /** @description 可选的历史 v1 证据包只读引用。 */
+            v1_bundle_ref: string | null;
+        };
+        /** @description Incident 与六类源事实的显式映射，支持一条可变历史事实被多个 Incident 复用以及事实隔离。 */
+        SourceFactMapping: {
+            /** @description 映射记录的稳定标识。 */
+            mapping_id: string;
+            /**
+             * @description 精确映射、历史主键碰撞或隔离状态。
+             * @enum {string}
+             */
+            mapping_status: "exact" | "collision" | "quarantined";
+            /** @description 关联 Incident。隔离事实必须为空，碰撞映射至少包含两个 Incident。 */
+            incident_ids: string[];
+            /** @description 只读源事实定位。 */
+            source_facts: components["schemas"]["SourceFactRef"][];
+            /** @description 历史碰撞组 ID；非碰撞时必须为 null。 */
+            collision_group_id: string | null;
+            /** @description 只读隔离记录 ID；非隔离时必须为 null。 */
+            quarantine_id: string | null;
+            /** @description 映射层质量标志。 */
+            quality_flags: components["schemas"]["QualityFlag"][];
+        } & (unknown & unknown & unknown);
+        /** @description 事件或源事实的展示处置。历史碰撞保留事件但限定字段；隔离记录不可作为正常 Incident 展示。 */
+        Disposition: {
+            /**
+             * @description 处置状态。
+             * @enum {string}
+             */
+            status: "visible" | "legacy_collision" | "quarantined";
+            /**
+             * @description 前端事件队列可见性。
+             * @enum {string}
+             */
+            visibility: "visible" | "hidden";
+            /** @description 处置原因。 */
+            reason_codes: components["schemas"]["MissingReason"][];
+            /** @description 历史事实碰撞详情。 */
+            collision: components["schemas"]["CollisionDisposition"] | null;
+            /** @description 隔离详情。 */
+            quarantine: components["schemas"]["QuarantineDisposition"] | null;
+        } & (unknown & unknown & unknown);
+        /** @description 固定数据档和数据库旁路制品身份。 */
+        DataSnapshot: {
+            /** @description 数据档标识。 */
+            profile_id: string;
+            profile_sha256: components["schemas"]["Sha256"];
+            /**
+             * Format: date-time
+             * @description 固定窗口开始，包含。
+             */
+            window_start: string;
+            /**
+             * Format: date-time
+             * @description 固定窗口结束，不包含。
+             */
+            window_end_exclusive: string;
+            /**
+             * Format: date-time
+             * @description 快照时钟。
+             */
+            snapshot_time: string;
+            /** @description 业务 IANA 时区。 */
+            business_timezone: string;
+            /** @description 只读数据库制品或 Overlay 发布 ID。 */
+            database_release_id: string;
+            overlay_inventory_sha256: components["schemas"]["Sha256"];
+            /**
+             * @description 固定窗口内原始制品可用性。
+             * @enum {string}
+             */
+            raw_source_status: "full" | "partial" | "unavailable";
+        };
+        /** @description 从原始记录或历史事实到证据包的处理血缘。历史没有的信息必须保留为空并标记 legacy_untraceable。 */
+        ProcessingLineage: {
+            /**
+             * @description 原始可追溯、历史不可追溯或隔离。
+             * @enum {string}
+             */
+            lineage_status: "raw_traceable" | "legacy_untraceable" | "quarantined";
+            /** @description 原始解析程序；历史未保留时为 null。 */
+            parser: components["schemas"]["ProgramVersion"] | null;
+            /** @description RouteEvent 导入程序；未执行时为 null。 */
+            importer: components["schemas"]["ProgramVersion"] | null;
+            /** @description 检测程序版本；历史未保留时为 null。 */
+            detector: components["schemas"]["ProgramVersion"] | null;
+            normalizer: components["schemas"]["ProgramVersion"];
+            bundle_generator: components["schemas"]["ProgramVersion"];
+            /** @description RouteEvent 导入运行 ID；未执行时为 null。 */
+            import_run_id: string | null;
+            /**
+             * @description 使用的 RouteEvent 合同；没有 RouteEvent 时为 null。
+             * @enum {string|null}
+             */
+            route_event_schema_version: "route_event_v1" | null;
+            /**
+             * @description Incident ID 规则。
+             * @constant
+             */
+            incident_schema_version: "incident_id_v1";
+            /**
+             * Format: date-time
+             * @description 证据包生成时间。
+             */
+            generated_at: string;
+            /** @description 血缘质量标志。 */
+            quality_flags: components["schemas"]["QualityFlag"][];
+        } & unknown;
+        /** @description 指标窗口摘要，分别记录源观测、派生观测和实体活动样本，禁止将缺失槽补为零。 */
+        MetricWindow: {
+            /** @description MetricSeries 稳定 ID。 */
+            metric_series_id: string;
+            /** @description 指标规范名称。 */
+            metric_name: string;
+            subject: components["schemas"]["MetricSubject"];
+            /** @description Collector 范围。 */
+            collector_scope: string[];
+            /**
+             * Format: date-time
+             * @description 指标窗口开始，包含。
+             */
+            window_start: string;
+            /**
+             * Format: date-time
+             * @description 指标窗口结束，不包含。
+             */
+            window_end_exclusive: string;
+            /**
+             * @description 采样粒度。
+             * @enum {string}
+             */
+            granularity: "5m" | "1h" | "1d";
+            /** @description 不可混用的物理或计数单位。 */
+            unit: string;
+            /**
+             * @description 窗口聚合。
+             * @enum {string}
+             */
+            aggregation: "sum" | "avg" | "min" | "max" | "last" | "ratio";
+            /** @description 冻结公式版本。 */
+            formula_version: string;
+            /** @description 按窗口和粒度期望的槽数。 */
+            expected_sample_count: number;
+            /** @description 原始源实际可用槽数。 */
+            source_observed_sample_count: number;
+            /** @description 派生指标实际存在槽数。 */
+            derived_observed_sample_count: number;
+            /** @description 实体在活动稀疏表中出现的槽数，不得冒充覆盖率。 */
+            subject_active_sample_count: number;
+            /** @description 原始源覆盖率。 */
+            source_coverage_ratio: number;
+            /** @description 派生指标覆盖率。 */
+            derived_coverage_ratio: number;
+            /** @description 按明确原因计数的缺失槽。 */
+            missing_counts: components["schemas"]["MissingCount"][];
+            /** @description 指标来源表、RouteEvent 或制品引用。 */
+            source_refs: string[];
+        };
+        /** @description 单字段质量状态。碰撞字段必须保留 legacy_unknown/source_fact_collision，不能从混合事实生成确定值。 */
+        FieldQuality: {
+            /** @description JSON Pointer 风格字段路径。 */
+            field_path: string;
+            value_state: components["schemas"]["ValueState"];
+            /** @description 缺失或不可信原因；已有观测值时必须为 null。 */
+            missing_reason: components["schemas"]["MissingReason"] | null;
+            /** @description 源事实、RouteEvent、原始记录或指标引用。 */
+            source_ref_ids: string[];
+            /** @description 应用或候选纠错引用。 */
+            correction_ref_ids: string[];
+            /** @description 字段质量标志。 */
+            quality_flags: components["schemas"]["QualityFlag"][];
+        } & (unknown & unknown);
+        /** @description 事件前、中、后阶段覆盖。所有阶段都必须显式返回。 */
+        PhaseCoverageSet: {
+            before: components["schemas"]["PhaseCoverage"];
+            during: components["schemas"]["PhaseCoverage"];
+            after: components["schemas"]["PhaseCoverage"];
+        };
+        /** @description 稳定证据注册项。AS_PATH 只能登记为 route_observation 或 path_snapshot。 */
+        EvidenceRegistryItem: {
+            evidence_id: components["schemas"]["EvidenceId"];
+            /**
+             * @description 证据阶段。
+             * @enum {string}
+             */
+            phase: "before" | "during" | "after" | "context";
+            /**
+             * @description 证据载体类型。
+             * @enum {string}
+             */
+            kind: "fact_record" | "route_observation" | "path_snapshot" | "raw_record" | "metric_window" | "quality_finding" | "correction";
+            /**
+             * @description 证据在本次观测描述中的作用。
+             * @enum {string}
+             */
+            stance: "support" | "counterevidence" | "context" | "limitation";
+            /** @description 面向调查者的简短标签。 */
+            label: string;
+            /**
+             * @description 证据精确定义；路径字段不得使用因果传播语义。
+             * @enum {string}
+             */
+            semantics: "fact_record" | "route_observation" | "path_snapshot" | "raw_bgp_record" | "metric_observation" | "quality_finding" | "correction_record";
+            observation_summary: components["schemas"]["ObservationText"];
+            /**
+             * Format: date-time
+             * @description 实际观测时间；纯质量发现可以为 null。
+             */
+            observed_at: string | null;
+            /** @description 证据来源引用。 */
+            source_ref_ids: string[];
+            /** @description 该证据覆盖的字段路径。 */
+            field_paths: string[];
+        } & unknown;
+        /** @description 证据包层面的覆盖和准入摘要。不得用一个总分掩盖原始、阶段或引用缺口。 */
+        CoverageSummary: {
+            /**
+             * @description 当前证据包可达等级。
+             * @enum {string}
+             */
+            admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+            raw_source: components["schemas"]["CoverageDimension"];
+            route_event: components["schemas"]["CoverageDimension"];
+            phase: components["schemas"]["CoverageDimension"];
+            /**
+             * @description phase、支持、反向证据和限制的 Evidence ID 是否全部闭合。
+             * @enum {string}
+             */
+            evidence_reference_closure: "passed" | "failed";
+            /** @description 未被解释的孤儿或悬空引用数。 */
+            unexplained_source_fact_count: number;
+            /** @description 与该主体相关的显式碰撞组数量。 */
+            collision_group_count: number;
+            /** @description 与该主体或审计记录相关的隔离数。 */
+            quarantine_count: number;
+            /** @description 仍无法分类的缺失原因数量。 */
+            unknown_missing_reason_count: number;
+            /** @description 按原因汇总的缺失、隔离和处理缺口。 */
+            missing_counts: components["schemas"]["MissingCount"][];
+        };
+        /** @description 不可变旁路纠错引用，包含变更前后摘要和审核状态。 */
+        CorrectionRef: {
+            /** @description 纠错 ID。 */
+            correction_id: string;
+            /** @description 被纠错的旁路记录引用。 */
+            target_ref_id: string;
+            /** @description 纠错字段路径。 */
+            field_path: string;
+            before_value_hash: components["schemas"]["Sha256"];
+            after_value_hash: components["schemas"]["Sha256"];
+            /** @description 纠错依据。 */
+            reason: string;
+            processor: components["schemas"]["ProgramVersion"];
+            /**
+             * @description 审核状态。
+             * @enum {string}
+             */
+            review_status: "pending" | "approved" | "rejected";
+        };
+        /** @description 同一输入得到同一 Evidence ID 和内容摘要所需的信息。 */
+        Reproducibility: {
+            /**
+             * @description 本合同稳定 ID。
+             * @constant
+             */
+            schema_id: "https://domeye.example/contracts/data/evidence-bundle-v2.schema.json";
+            /**
+             * @description 本合同语义版本。
+             * @constant
+             */
+            schema_version: "2.0.0";
+            generator: components["schemas"]["ProgramVersion"];
+            input_snapshot_sha256: components["schemas"]["Sha256"];
+            query_fingerprint_sha256: components["schemas"]["Sha256"];
+            /** @description 规范排序后的生成参数。 */
+            parameters: components["schemas"]["NameValue"][];
+            output_sha256: components["schemas"]["Sha256"];
+            /**
+             * Format: date-time
+             * @description 生成时间。
+             */
+            generated_at: string;
+            /** @description 复算使用的 IANA 业务时区。 */
+            business_timezone: string;
+            /**
+             * @description Evidence ID 与来源引用闭合检查。
+             * @constant
+             */
+            reference_validation_status: "passed";
+            /**
+             * @description 原始制品哈希校验状态。
+             * @enum {string}
+             */
+            source_hash_verification_status: "verified" | "partial" | "not_available";
+        };
+        /** @description 机器可读限制。说明不能证明的内容不等于给出因果结论。 */
+        Limitation: {
+            /**
+             * @description 限制代码。
+             * @enum {string}
+             */
+            code: "partial_raw_coverage" | "raw_source_unavailable" | "vp_identity_unavailable" | "processing_lineage_unavailable" | "phase_not_retained" | "source_fact_collision" | "invalid_identity" | "legacy_window_contamination" | "quarantined_source_fact" | "path_snapshot_not_causal" | "metric_processing_gap" | "legacy_unknown";
+            /**
+             * @description 限制严重度。
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "blocking";
+            /**
+             * @description 限制作用域。
+             * @enum {string}
+             */
+            scope: "bundle" | "incident" | "source_fact" | "phase" | "route_event" | "raw_record" | "metric";
+            /** @description 中文限制说明。 */
+            description: string;
+            /** @description 受限字段路径。 */
+            affected_fields: string[];
+            /** @description 支持该限制判断的 Evidence ID。 */
+            evidence_refs: components["schemas"]["EvidenceId"][];
+        };
+        /** @description P0 只允许观测结论，因果结论固定为 null。 */
+        ObservationConclusion: {
+            /**
+             * @description 结论分类。
+             * @constant
+             */
+            classification: "observation_only";
+            observation_summary: components["schemas"]["ObservationText"];
+            /** @description P0 禁止生成因果结论。 */
+            causal_conclusion: null;
+        };
+        /**
+         * Domeye Evidence Bundle v2
+         * @description P0 只读调查证据包合同。v2 保留 incident_id_v1 身份兼容性，但不重新解释 evidence_bundle_v1 字段；路径只表示 Route Observation 或 Path Snapshot，不表示真实转发、全网传播或因果链路。
+         */
+        "evidence-bundle-v2.schema": {
+            /**
+             * @description 证据包合同版本。
+             * @constant
+             */
+            bundle_version: "evidence_bundle_v2";
+            /** @description 由规范输入确定性生成的 v2 证据包标识。 */
+            bundle_id: string;
+            compatibility: components["schemas"]["CompatibilityBoundary"];
+            /**
+             * @description 证据包主体。正常或碰撞事件使用 incident；没有可见 Incident 的隔离事实使用 quarantined_source_fact。
+             * @enum {string}
+             */
+            subject_kind: "incident" | "quarantined_source_fact";
+            /** @description 可见 Incident；隔离源事实不得伪造 Incident，因此允许且要求为 null。 */
+            incident: components["schemas"]["Incident"] | null;
+            source_fact_mapping: components["schemas"]["SourceFactMapping"];
+            disposition: components["schemas"]["Disposition"];
+            data_snapshot: components["schemas"]["DataSnapshot"];
+            /** @description 规范 RouteEvent 引用。历史不可追溯记录可为空，不得伪造引用。 */
+            route_event_refs: components["schemas"]["RouteEventRef"][];
+            /** @description 已定位的原始 MRT 记录或记录元素引用。历史不可追溯记录可为空。 */
+            raw_record_refs: components["schemas"]["RawRecordRef"][];
+            processing_lineage: components["schemas"]["ProcessingLineage"];
+            /** @description 与事件调查相关的指标窗口摘要；没有可复核指标时返回空数组而不是补零。 */
+            metric_windows: components["schemas"]["MetricWindow"][];
+            /** @description 逐字段质量、缺失原因和纠错引用。 */
+            field_quality: components["schemas"]["FieldQuality"][];
+            phase_coverage: components["schemas"]["PhaseCoverageSet"];
+            /** @description 本证据包内稳定 Evidence ID 注册表。阶段、支持、反向证据和限制只能引用本注册表中的 ID。引用闭合由质量服务复核。 */
+            evidence_registry: components["schemas"]["EvidenceRegistryItem"][];
+            /** @description 支持当前观测描述的 Evidence ID，不表示因果证明。 */
+            supporting_evidence_refs: components["schemas"]["EvidenceId"][];
+            /** @description 与当前描述不一致、降低覆盖范围或暴露数据缺口的 Evidence ID。 */
+            counterevidence_refs: components["schemas"]["EvidenceId"][];
+            coverage_summary: components["schemas"]["CoverageSummary"];
+            /** @description 只读旁路纠错记录引用；不得据此覆盖历史事实表。 */
+            correction_refs: components["schemas"]["CorrectionRef"][];
+            reproducibility: components["schemas"]["Reproducibility"];
+            /** @description 证据边界、未知项和不可作出的结论。 */
+            limitations: components["schemas"]["Limitation"][];
+            conclusion: components["schemas"]["ObservationConclusion"];
+            $defs: {
+                /** @description 小写十六进制 SHA256。 */
+                Sha256: string;
+                /** @description 稳定 Evidence ID。 */
+                EvidenceId: string;
+                /** @description v1 与 v2 的兼容边界。复用事件身份，不把 v2 字段反向解释为 v1 字段。 */
+                CompatibilityBoundary: {
+                    /**
+                     * @description 继续独立保留的历史合同。
+                     * @constant
+                     */
+                    previous_contract: "evidence_bundle_v1";
+                    /**
+                     * @description 沿用的稳定 Incident ID 生成规则。
+                     * @constant
+                     */
+                    incident_id_schema: "incident_id_v1";
+                    /**
+                     * @description 必须为 false，防止修改历史字段语义。
+                     * @constant
+                     */
+                    v1_fields_reinterpreted: false;
+                    /** @description 可选的历史 v1 证据包只读引用。 */
+                    v1_bundle_ref: string | null;
+                };
+                /** @description 规范化可见事件。时间字符串必须携带 UTC 偏移，历史本地时间不得直接追加 Z。 */
+                Incident: {
+                    /** @description 沿用 incident_id_v1 的稳定事件标识。 */
+                    incident_id: string;
+                    /**
+                     * @description 事件 ID 规则。
+                     * @constant
+                     */
+                    incident_id_schema: "incident_id_v1";
+                    /**
+                     * @description 六类核心异常的规范名称。
+                     * @enum {string}
+                     */
+                    event_type: "hijack" | "sub_hijack" | "leak" | "prefix_outage" | "as_outage" | "country_outage";
+                    /** @description 历史检测来源标识。 */
+                    source: string;
+                    /**
+                     * Format: date-time
+                     * @description 事件开始时间，必须携带时区偏移。
+                     */
+                    start_time: string;
+                    /**
+                     * Format: date-time
+                     * @description 事件结束时间；历史未知时为 null。
+                     */
+                    end_time: string | null;
+                    /** @description 源业务时间采用的 IANA 时区。 */
+                    source_timezone: string;
+                    /** @description 受影响实体，不推断未被观测到的对象。 */
+                    affected_entities: components["schemas"]["EntityRef"][];
+                    /** @description 业务事实层的观测摘要，不得写成自动根因结论。 */
+                    summary: string;
+                    /** @description 冻结的历史详情定位符。 */
+                    detail_url: string;
+                    /** @description 可复核的检测版本；历史未保留时为 null 并在 field_quality 中说明。 */
+                    detection_version: string | null;
+                };
+                /** @description 事件或指标关联实体。 */
+                EntityRef: {
+                    /**
+                     * @description 实体类型。
+                     * @enum {string}
+                     */
+                    entity_type: "prefix" | "asn" | "country" | "collector" | "vantage_point";
+                    /** @description 实体稳定标识。 */
+                    entity_id: string;
+                    /**
+                     * @description 实体在该观测中的角色。
+                     * @enum {string}
+                     */
+                    role: "affected" | "observed_origin" | "suspected_origin" | "observer" | "scope";
+                } & (unknown & unknown & unknown & unknown & unknown);
+                /** @description Incident 与六类源事实的显式映射，支持一条可变历史事实被多个 Incident 复用以及事实隔离。 */
+                SourceFactMapping: {
+                    /** @description 映射记录的稳定标识。 */
+                    mapping_id: string;
+                    /**
+                     * @description 精确映射、历史主键碰撞或隔离状态。
+                     * @enum {string}
+                     */
+                    mapping_status: "exact" | "collision" | "quarantined";
+                    /** @description 关联 Incident。隔离事实必须为空，碰撞映射至少包含两个 Incident。 */
+                    incident_ids: string[];
+                    /** @description 只读源事实定位。 */
+                    source_facts: components["schemas"]["SourceFactRef"][];
+                    /** @description 历史碰撞组 ID；非碰撞时必须为 null。 */
+                    collision_group_id: string | null;
+                    /** @description 只读隔离记录 ID；非隔离时必须为 null。 */
+                    quarantine_id: string | null;
+                    /** @description 映射层质量标志。 */
+                    quality_flags: components["schemas"]["QualityFlag"][];
+                } & (unknown & unknown & unknown);
+                /** @description 六类事实表中的只读记录定位，不等同于原始 BGP 记录。 */
+                SourceFactRef: {
+                    /** @description 由表名、分区和主键生成的稳定事实引用。 */
+                    source_fact_id: string;
+                    /**
+                     * @description 事实类型。
+                     * @enum {string}
+                     */
+                    fact_type: "hijack" | "sub_hijack" | "leak" | "prefix_outage" | "as_outage" | "country_outage";
+                    /** @description 实际事实表名。 */
+                    table_name: string;
+                    /** @description 事实表分区月份。 */
+                    partition_month: string;
+                    /** @description 冻结的业务主键定位文本。 */
+                    fact_locator: string;
+                    /** @description 按名称保存的完整源主键，避免 prefix_outage 遗漏 ASN。 */
+                    key_fields: components["schemas"]["NameValue"][];
+                    /**
+                     * @description 该事实记录在映射中的状态。
+                     * @enum {string}
+                     */
+                    fact_role: "primary" | "mixed_state" | "orphan" | "quarantined";
+                    /**
+                     * Format: date-time
+                     * @description 事实开始时间，必须携带偏移。
+                     */
+                    start_time: string;
+                    /**
+                     * Format: date-time
+                     * @description 事实结束时间；未知时为 null。
+                     */
+                    end_time: string | null;
+                    /** @description 旁路规范序列化记录哈希；尚未生成时为 null。 */
+                    record_hash: components["schemas"]["Sha256"] | null;
+                };
+                /** @description 严格名称和值对。 */
+                NameValue: {
+                    /** @description 字段名。 */
+                    name: string;
+                    /** @description 规范化字段值。 */
+                    value: string | number | boolean | null;
+                };
+                /**
+                 * @description P0 质量标志。
+                 * @enum {string}
+                 */
+                QualityFlag: "source_fact_collision" | "invalid_identity" | "legacy_window_contamination" | "source_fact_orphan" | "locator_incomplete" | "time_partition_mismatch" | "legacy_mutable_state" | "partial_raw_coverage" | "vp_identity_unavailable" | "processing_gap" | "phase_not_retained";
+                /** @description 事件或源事实的展示处置。历史碰撞保留事件但限定字段；隔离记录不可作为正常 Incident 展示。 */
+                Disposition: {
+                    /**
+                     * @description 处置状态。
+                     * @enum {string}
+                     */
+                    status: "visible" | "legacy_collision" | "quarantined";
+                    /**
+                     * @description 前端事件队列可见性。
+                     * @enum {string}
+                     */
+                    visibility: "visible" | "hidden";
+                    /** @description 处置原因。 */
+                    reason_codes: components["schemas"]["MissingReason"][];
+                    /** @description 历史事实碰撞详情。 */
+                    collision: components["schemas"]["CollisionDisposition"] | null;
+                    /** @description 隔离详情。 */
+                    quarantine: components["schemas"]["QuarantineDisposition"] | null;
+                } & (unknown & unknown & unknown);
+                /** @description 同一源事实被多个 Incident 复用或混合状态时的旁路碰撞组。 */
+                CollisionDisposition: {
+                    /** @description 碰撞组 ID。 */
+                    collision_group_id: string;
+                    /** @description 共享事实记录的 Incident。 */
+                    incident_ids: string[];
+                    /** @description 发生复用或混合的源事实。 */
+                    source_fact_ids: string[];
+                    /** @description 不能完整归属到单一 Incident 的字段路径。 */
+                    conflicted_fields: string[];
+                    /**
+                     * @description 旁路重建状态。
+                     * @enum {string}
+                     */
+                    resolution_state: "unresolved" | "partially_reconstructed" | "reconstructed" | "accepted_with_limitations";
+                };
+                /** @description 只读隔离记录，原事实继续保留但不得生成可见 Incident。 */
+                QuarantineDisposition: {
+                    /** @description 隔离记录 ID。 */
+                    quarantine_id: string;
+                    /** @description 必须可机器读取的隔离原因。 */
+                    reason_codes: components["schemas"]["MissingReason"][];
+                    /** @description 被隔离的源事实。 */
+                    source_fact_ids: string[];
+                    /**
+                     * @description 隔离记录审核状态。
+                     * @enum {string}
+                     */
+                    review_status: "pending" | "confirmed" | "released";
+                };
+                /** @description 固定数据档和数据库旁路制品身份。 */
+                DataSnapshot: {
+                    /** @description 数据档标识。 */
+                    profile_id: string;
+                    profile_sha256: components["schemas"]["Sha256"];
+                    /**
+                     * Format: date-time
+                     * @description 固定窗口开始，包含。
+                     */
+                    window_start: string;
+                    /**
+                     * Format: date-time
+                     * @description 固定窗口结束，不包含。
+                     */
+                    window_end_exclusive: string;
+                    /**
+                     * Format: date-time
+                     * @description 快照时钟。
+                     */
+                    snapshot_time: string;
+                    /** @description 业务 IANA 时区。 */
+                    business_timezone: string;
+                    /** @description 只读数据库制品或 Overlay 发布 ID。 */
+                    database_release_id: string;
+                    overlay_inventory_sha256: components["schemas"]["Sha256"];
+                    /**
+                     * @description 固定窗口内原始制品可用性。
+                     * @enum {string}
+                     */
+                    raw_source_status: "full" | "partial" | "unavailable";
+                };
+                /** @description 不可变 RouteEvent 引用。路径语义只允许 route_observation 或 path_snapshot。 */
+                RouteEventRef: {
+                    /** @description 规范 RouteEvent ID。 */
+                    route_event_id: string;
+                    /**
+                     * @description 与 RouteEvent 合同一致的稳定 ID 算法版本。
+                     * @constant
+                     */
+                    route_event_id_schema: "route_event_id_v1";
+                    /**
+                     * @description RouteEvent 合同版本。
+                     * @constant
+                     */
+                    schema_version: "route_event_v1";
+                    /**
+                     * @description 该观测与调查对象的关系，不表达因果。
+                     * @enum {string}
+                     */
+                    relation: "supports_observation" | "counterevidence" | "context";
+                    /**
+                     * @description 路径只可声明为路由观测或路径快照。
+                     * @enum {string}
+                     */
+                    semantics: "route_observation" | "path_snapshot";
+                    /**
+                     * @description RouteEvent 的原始追溯等级。
+                     * @enum {string}
+                     */
+                    lineage_status: "raw_traceable" | "legacy_untraceable";
+                    /**
+                     * Format: date-time
+                     * @description 路由观测时间。
+                     */
+                    observed_at: string;
+                    /** @description Collector 标识；历史未知时为 null。 */
+                    collector_id: string | null;
+                    /** @description 稳定 VP 标识；历史未保留时为 null。 */
+                    vp_id: string | null;
+                    /** @description VP ASN；历史未保留时为 null。 */
+                    vp_asn: number | null;
+                    /** @description 关联原始记录引用。 */
+                    raw_record_ref_ids: string[];
+                } & unknown;
+                /** @description 可按哈希和偏移校验的原始 MRT 记录元素引用。只记录实际存在的引用。 */
+                RawRecordRef: {
+                    /** @description 原始记录引用 ID。 */
+                    raw_record_ref_id: string;
+                    /** @description 原始制品 ID。 */
+                    artifact_id: string;
+                    file_sha256: components["schemas"]["Sha256"];
+                    /** @description 记录在未压缩逻辑流中的字节偏移。 */
+                    record_offset: number;
+                    /** @description 原始记录字节长度。 */
+                    record_length: number;
+                    record_hash: components["schemas"]["Sha256"];
+                    /** @description 文件内记录序号。 */
+                    record_ordinal: number;
+                    /** @description 记录内元素序号。 */
+                    element_ordinal: number;
+                    /** @description Collector 标识。 */
+                    collector_id: string;
+                    /** @description 由 peer IP 与 peer ASN 规范生成的 VP ID。 */
+                    vp_id: string;
+                    /** @description 原始记录中的 peer ASN。 */
+                    vp_asn: number;
+                    /**
+                     * @description 偏移、长度和哈希校验状态。
+                     * @enum {string}
+                     */
+                    verification_status: "verified" | "failed";
+                };
+                /** @description 从原始记录或历史事实到证据包的处理血缘。历史没有的信息必须保留为空并标记 legacy_untraceable。 */
+                ProcessingLineage: {
+                    /**
+                     * @description 原始可追溯、历史不可追溯或隔离。
+                     * @enum {string}
+                     */
+                    lineage_status: "raw_traceable" | "legacy_untraceable" | "quarantined";
+                    /** @description 原始解析程序；历史未保留时为 null。 */
+                    parser: components["schemas"]["ProgramVersion"] | null;
+                    /** @description RouteEvent 导入程序；未执行时为 null。 */
+                    importer: components["schemas"]["ProgramVersion"] | null;
+                    /** @description 检测程序版本；历史未保留时为 null。 */
+                    detector: components["schemas"]["ProgramVersion"] | null;
+                    normalizer: components["schemas"]["ProgramVersion"];
+                    bundle_generator: components["schemas"]["ProgramVersion"];
+                    /** @description RouteEvent 导入运行 ID；未执行时为 null。 */
+                    import_run_id: string | null;
+                    /**
+                     * @description 使用的 RouteEvent 合同；没有 RouteEvent 时为 null。
+                     * @enum {string|null}
+                     */
+                    route_event_schema_version: "route_event_v1" | null;
+                    /**
+                     * @description Incident ID 规则。
+                     * @constant
+                     */
+                    incident_schema_version: "incident_id_v1";
+                    /**
+                     * Format: date-time
+                     * @description 证据包生成时间。
+                     */
+                    generated_at: string;
+                    /** @description 血缘质量标志。 */
+                    quality_flags: components["schemas"]["QualityFlag"][];
+                } & unknown;
+                /** @description 可版本化程序及其代码哈希。 */
+                ProgramVersion: {
+                    /** @description 程序名称。 */
+                    name: string;
+                    /** @description 程序版本。 */
+                    version: string;
+                    code_sha256: components["schemas"]["Sha256"];
+                    /** @description 运行配置哈希；没有独立配置时为 null。 */
+                    config_sha256: components["schemas"]["Sha256"] | null;
+                };
+                /** @description 指标窗口摘要，分别记录源观测、派生观测和实体活动样本，禁止将缺失槽补为零。 */
+                MetricWindow: {
+                    /** @description MetricSeries 稳定 ID。 */
+                    metric_series_id: string;
+                    /** @description 指标规范名称。 */
+                    metric_name: string;
+                    subject: components["schemas"]["MetricSubject"];
+                    /** @description Collector 范围。 */
+                    collector_scope: string[];
+                    /**
+                     * Format: date-time
+                     * @description 指标窗口开始，包含。
+                     */
+                    window_start: string;
+                    /**
+                     * Format: date-time
+                     * @description 指标窗口结束，不包含。
+                     */
+                    window_end_exclusive: string;
+                    /**
+                     * @description 采样粒度。
+                     * @enum {string}
+                     */
+                    granularity: "5m" | "1h" | "1d";
+                    /** @description 不可混用的物理或计数单位。 */
+                    unit: string;
+                    /**
+                     * @description 窗口聚合。
+                     * @enum {string}
+                     */
+                    aggregation: "sum" | "avg" | "min" | "max" | "last" | "ratio";
+                    /** @description 冻结公式版本。 */
+                    formula_version: string;
+                    /** @description 按窗口和粒度期望的槽数。 */
+                    expected_sample_count: number;
+                    /** @description 原始源实际可用槽数。 */
+                    source_observed_sample_count: number;
+                    /** @description 派生指标实际存在槽数。 */
+                    derived_observed_sample_count: number;
+                    /** @description 实体在活动稀疏表中出现的槽数，不得冒充覆盖率。 */
+                    subject_active_sample_count: number;
+                    /** @description 原始源覆盖率。 */
+                    source_coverage_ratio: number;
+                    /** @description 派生指标覆盖率。 */
+                    derived_coverage_ratio: number;
+                    /** @description 按明确原因计数的缺失槽。 */
+                    missing_counts: components["schemas"]["MissingCount"][];
+                    /** @description 指标来源表、RouteEvent 或制品引用。 */
+                    source_refs: string[];
+                };
+                /** @description 指标主体和排名范围。 */
+                MetricSubject: {
+                    /**
+                     * @description 指标主体类型。
+                     * @enum {string}
+                     */
+                    subject_type: "global" | "country" | "asn" | "prefix" | "collector";
+                    /** @description 主体 ID；global 使用 global。 */
+                    subject_id: string;
+                    /**
+                     * @description 排名或计算候选范围。
+                     * @enum {string}
+                     */
+                    scope_kind: "all_observed" | "operational_asn_cohort" | "selected_entities" | "not_ranked";
+                    /** @description 候选实体数量；未排名时为 null。 */
+                    candidate_count: number | null;
+                };
+                /** @description 缺失原因及计数。 */
+                MissingCount: {
+                    reason: components["schemas"]["MissingReason"];
+                    /** @description 对应原因的记录或槽位数。 */
+                    count: number;
+                };
+                /**
+                 * @description 字段值状态。只有 observed 和 observed_zero 表示已有观测值。
+                 * @enum {string}
+                 */
+                ValueState: "observed_nonzero" | "observed_zero" | "not_observed" | "not_retained" | "not_applicable" | "source_unavailable" | "processing_gap" | "parse_failed" | "legacy_unknown" | "source_fact_collision" | "invalid_identity" | "legacy_window_contamination";
+                /**
+                 * @description P0 缺失、碰撞、隔离或处理缺口原因。
+                 * @enum {string}
+                 */
+                MissingReason: "not_observed" | "not_retained" | "not_applicable" | "source_unavailable" | "parse_failed" | "legacy_unknown" | "processing_gap" | "source_fact_collision" | "invalid_identity" | "legacy_window_contamination" | "source_fact_orphan" | "quarantined";
+                /** @description 单字段质量状态。碰撞字段必须保留 legacy_unknown/source_fact_collision，不能从混合事实生成确定值。 */
+                FieldQuality: {
+                    /** @description JSON Pointer 风格字段路径。 */
+                    field_path: string;
+                    value_state: components["schemas"]["ValueState"];
+                    /** @description 缺失或不可信原因；已有观测值时必须为 null。 */
+                    missing_reason: components["schemas"]["MissingReason"] | null;
+                    /** @description 源事实、RouteEvent、原始记录或指标引用。 */
+                    source_ref_ids: string[];
+                    /** @description 应用或候选纠错引用。 */
+                    correction_ref_ids: string[];
+                    /** @description 字段质量标志。 */
+                    quality_flags: components["schemas"]["QualityFlag"][];
+                } & (unknown & unknown);
+                /** @description 事件前、中、后阶段覆盖。所有阶段都必须显式返回。 */
+                PhaseCoverageSet: {
+                    before: components["schemas"]["PhaseCoverage"];
+                    during: components["schemas"]["PhaseCoverage"];
+                    after: components["schemas"]["PhaseCoverage"];
+                };
+                /** @description 单阶段证据覆盖；没有数据时返回 not_available 和原因，不补成空路径或零。 */
+                PhaseCoverage: {
+                    /**
+                     * @description 阶段观测状态。compromised 表示历史混合事实不可完整归属。
+                     * @enum {string}
+                     */
+                    status: "not_available" | "observed_no_path" | "observed_paths" | "compromised";
+                    /** @description 阶段路径快照数。 */
+                    snapshot_count: number;
+                    /** @description 阶段内路径条数。 */
+                    path_count: number;
+                    /** @description 注册表中的阶段证据。 */
+                    evidence_ids: components["schemas"]["EvidenceId"][];
+                    /** @description 关联 RouteEvent；历史没有时为空。 */
+                    route_event_ref_ids: string[];
+                    /** @description 未覆盖或不可信原因。 */
+                    missing_reasons: components["schemas"]["MissingReason"][];
+                    /** @description 阶段质量标志。 */
+                    quality_flags: components["schemas"]["QualityFlag"][];
+                } & (unknown & unknown & unknown);
+                /** @description 仅描述观测，不允许把路径快照写成因果、传播链或根因。 */
+                ObservationText: string;
+                /** @description 稳定证据注册项。AS_PATH 只能登记为 route_observation 或 path_snapshot。 */
+                EvidenceRegistryItem: {
+                    evidence_id: components["schemas"]["EvidenceId"];
+                    /**
+                     * @description 证据阶段。
+                     * @enum {string}
+                     */
+                    phase: "before" | "during" | "after" | "context";
+                    /**
+                     * @description 证据载体类型。
+                     * @enum {string}
+                     */
+                    kind: "fact_record" | "route_observation" | "path_snapshot" | "raw_record" | "metric_window" | "quality_finding" | "correction";
+                    /**
+                     * @description 证据在本次观测描述中的作用。
+                     * @enum {string}
+                     */
+                    stance: "support" | "counterevidence" | "context" | "limitation";
+                    /** @description 面向调查者的简短标签。 */
+                    label: string;
+                    /**
+                     * @description 证据精确定义；路径字段不得使用因果传播语义。
+                     * @enum {string}
+                     */
+                    semantics: "fact_record" | "route_observation" | "path_snapshot" | "raw_bgp_record" | "metric_observation" | "quality_finding" | "correction_record";
+                    observation_summary: components["schemas"]["ObservationText"];
+                    /**
+                     * Format: date-time
+                     * @description 实际观测时间；纯质量发现可以为 null。
+                     */
+                    observed_at: string | null;
+                    /** @description 证据来源引用。 */
+                    source_ref_ids: string[];
+                    /** @description 该证据覆盖的字段路径。 */
+                    field_paths: string[];
+                } & unknown;
+                /** @description 证据包层面的覆盖和准入摘要。不得用一个总分掩盖原始、阶段或引用缺口。 */
+                CoverageSummary: {
+                    /**
+                     * @description 当前证据包可达等级。
+                     * @enum {string}
+                     */
+                    admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+                    raw_source: components["schemas"]["CoverageDimension"];
+                    route_event: components["schemas"]["CoverageDimension"];
+                    phase: components["schemas"]["CoverageDimension"];
+                    /**
+                     * @description phase、支持、反向证据和限制的 Evidence ID 是否全部闭合。
+                     * @enum {string}
+                     */
+                    evidence_reference_closure: "passed" | "failed";
+                    /** @description 未被解释的孤儿或悬空引用数。 */
+                    unexplained_source_fact_count: number;
+                    /** @description 与该主体相关的显式碰撞组数量。 */
+                    collision_group_count: number;
+                    /** @description 与该主体或审计记录相关的隔离数。 */
+                    quarantine_count: number;
+                    /** @description 仍无法分类的缺失原因数量。 */
+                    unknown_missing_reason_count: number;
+                    /** @description 按原因汇总的缺失、隔离和处理缺口。 */
+                    missing_counts: components["schemas"]["MissingCount"][];
+                };
+                /** @description 单独覆盖维度，明确分子、分母和比率。 */
+                CoverageDimension: {
+                    /** @description 期望记录、槽或阶段数。 */
+                    expected_count: number;
+                    /** @description 实际可用记录、槽或阶段数。 */
+                    observed_count: number;
+                    /** @description 覆盖率，分母为零时为 null。 */
+                    coverage_ratio: number | null;
+                    /**
+                     * @description 覆盖状态。
+                     * @enum {string}
+                     */
+                    status: "full" | "partial" | "none" | "not_applicable";
+                };
+                /** @description 不可变旁路纠错引用，包含变更前后摘要和审核状态。 */
+                CorrectionRef: {
+                    /** @description 纠错 ID。 */
+                    correction_id: string;
+                    /** @description 被纠错的旁路记录引用。 */
+                    target_ref_id: string;
+                    /** @description 纠错字段路径。 */
+                    field_path: string;
+                    before_value_hash: components["schemas"]["Sha256"];
+                    after_value_hash: components["schemas"]["Sha256"];
+                    /** @description 纠错依据。 */
+                    reason: string;
+                    processor: components["schemas"]["ProgramVersion"];
+                    /**
+                     * @description 审核状态。
+                     * @enum {string}
+                     */
+                    review_status: "pending" | "approved" | "rejected";
+                };
+                /** @description 同一输入得到同一 Evidence ID 和内容摘要所需的信息。 */
+                Reproducibility: {
+                    /**
+                     * @description 本合同稳定 ID。
+                     * @constant
+                     */
+                    schema_id: "https://domeye.example/contracts/data/evidence-bundle-v2.schema.json";
+                    /**
+                     * @description 本合同语义版本。
+                     * @constant
+                     */
+                    schema_version: "2.0.0";
+                    generator: components["schemas"]["ProgramVersion"];
+                    input_snapshot_sha256: components["schemas"]["Sha256"];
+                    query_fingerprint_sha256: components["schemas"]["Sha256"];
+                    /** @description 规范排序后的生成参数。 */
+                    parameters: components["schemas"]["NameValue"][];
+                    output_sha256: components["schemas"]["Sha256"];
+                    /**
+                     * Format: date-time
+                     * @description 生成时间。
+                     */
+                    generated_at: string;
+                    /** @description 复算使用的 IANA 业务时区。 */
+                    business_timezone: string;
+                    /**
+                     * @description Evidence ID 与来源引用闭合检查。
+                     * @constant
+                     */
+                    reference_validation_status: "passed";
+                    /**
+                     * @description 原始制品哈希校验状态。
+                     * @enum {string}
+                     */
+                    source_hash_verification_status: "verified" | "partial" | "not_available";
+                };
+                /** @description 机器可读限制。说明不能证明的内容不等于给出因果结论。 */
+                Limitation: {
+                    /**
+                     * @description 限制代码。
+                     * @enum {string}
+                     */
+                    code: "partial_raw_coverage" | "raw_source_unavailable" | "vp_identity_unavailable" | "processing_lineage_unavailable" | "phase_not_retained" | "source_fact_collision" | "invalid_identity" | "legacy_window_contamination" | "quarantined_source_fact" | "path_snapshot_not_causal" | "metric_processing_gap" | "legacy_unknown";
+                    /**
+                     * @description 限制严重度。
+                     * @enum {string}
+                     */
+                    severity: "info" | "warning" | "blocking";
+                    /**
+                     * @description 限制作用域。
+                     * @enum {string}
+                     */
+                    scope: "bundle" | "incident" | "source_fact" | "phase" | "route_event" | "raw_record" | "metric";
+                    /** @description 中文限制说明。 */
+                    description: string;
+                    /** @description 受限字段路径。 */
+                    affected_fields: string[];
+                    /** @description 支持该限制判断的 Evidence ID。 */
+                    evidence_refs: components["schemas"]["EvidenceId"][];
+                };
+                /** @description P0 只允许观测结论，因果结论固定为 null。 */
+                ObservationConclusion: {
+                    /**
+                     * @description 结论分类。
+                     * @constant
+                     */
+                    classification: "observation_only";
+                    observation_summary: components["schemas"]["ObservationText"];
+                    /** @description P0 禁止生成因果结论。 */
+                    causal_conclusion: null;
+                };
+            };
+        } & (unknown & unknown & unknown & unknown & unknown & unknown);
+        "$defs-window": {
+            /**
+             * Format: date-time
+             * @description 包含的窗口起点。
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description 排除的窗口终点。
+             */
+            end: string;
+            /**
+             * @description 固定半开窗口。
+             * @constant
+             */
+            boundary: "[start,end)";
+            /**
+             * @description P0 业务时区。
+             * @constant
+             */
+            timezone: "Asia/Shanghai";
+        };
+        /** @enum {unknown} */
+        dimensionName: "completeness" | "uniqueness" | "referential_integrity" | "temporal_consistency" | "raw_traceability" | "sample_coverage" | "reproducibility" | "event_phase_coverage" | "fixed_window_bounds" | "unknown_missingness";
+        dimensionReport: {
+            dimension: components["schemas"]["dimensionName"];
+            /**
+             * @description 该维度聚合状态；不得折算为单一质量分。
+             * @enum {unknown}
+             */
+            status: "pass" | "fail" | "pending";
+            /** @description 该维度当前是否阻断所申请的数据身份等级。 */
+            blocking: boolean;
+            /** @description 构成此维度结论的检查 ID。 */
+            check_ids: string[];
+            /** @description 中文结论摘要，需说明限制而非仅给状态。 */
+            summary_zh: string;
+        };
+        scalar: number | string | boolean | null;
+        /** @enum {unknown} */
+        qualityUnit: "record_count" | "group_count" | "time_slot_count" | "file_count" | "byte" | "ratio_0_1" | "sha256_digest" | "boolean" | "identity_level" | "timestamp" | "version" | "none";
+        observed: {
+            value: components["schemas"]["scalar"];
+            unit: components["schemas"]["qualityUnit"];
+        };
+        expected: {
+            /**
+             * @description 冻结比较方法；classified_only 表示低覆盖可接受但缺口必须全部分类。
+             * @enum {unknown}
+             */
+            operator: "eq" | "lte" | "gte" | "one_of" | "classified_only";
+            value: components["schemas"]["scalar"] | components["schemas"]["scalar"][];
+            unit: components["schemas"]["qualityUnit"];
+        };
+        failureSample: {
+            /** @description 表、文件或制品定位符。 */
+            source_ref: string;
+            /** @description 可定位的主键；非表来源可为 null。 */
+            primary_key: string | null;
+            /** @description 失败字段；记录级失败可为 null。 */
+            field: string | null;
+            /**
+             * Format: date-time
+             * @description 涉及的业务时间。
+             */
+            event_time: string | null;
+            /** @description 稳定原因码，如 orphan_reference、source_fact_collision 或 legacy_window_contamination。 */
+            reason_codes: string[];
+        };
+        evidenceRef: {
+            /** @description 稳定证据 ID。 */
+            ref_id: string;
+            /** @description 可解析证据定位符。 */
+            locator: string;
+            /** @description 证据制品 SHA256；历史记录不可得时为 null。 */
+            sha256: string | null;
+        };
+        dataProfile: {
+            /** @description config/data-profile.json 中的数据档 ID。 */
+            profile_id: string;
+            /** @description 唯一数据档文件 SHA256。 */
+            profile_sha256: string;
+            window: components["schemas"]["$defs-window"];
+            /**
+             * Format: date-time
+             * @description 固定数据快照时钟。
+             */
+            snapshot_time: string;
+        };
+        sourceRelease: {
+            /** @description 数据来源发布 ID。 */
+            release_id: string;
+            /** @description 生成审计工具所对应的 Git 提交。 */
+            git_sha: string;
+            /** @description 存在不可变数据制品清单时填写；历史制品未知时为 null 并由 raw_traceability 检查解释。 */
+            data_artifact_sha256: string | null;
+            /** @description 只读 live probe 结果指纹。 */
+            probe_fingerprint_sha256: string;
+        };
+        generator: {
+            /** @description 报告生成器名称。 */
+            name: string;
+            /** @description 生成器语义版本。 */
+            version: string;
+            /** @description 生成器源文件 SHA256。 */
+            source_sha256: string;
+        };
+        execution: {
+            /**
+             * @description 质量检查必须在只读可重复读边界内执行。
+             * @constant
+             */
+            mode: "read_only_repeatable_read";
+            /**
+             * @description 质量检查产生的数据库写操作必须为 0。
+             * @constant
+             */
+            database_write_operations: 0;
+            /**
+             * Format: date-time
+             * @description 查询开始时间。
+             */
+            started_at: string;
+            /**
+             * Format: date-time
+             * @description 查询结束时间。
+             */
+            finished_at: string;
+        };
+        dimensions: {
+            completeness: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "completeness";
+            };
+            uniqueness: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "uniqueness";
+            };
+            referential_integrity: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "referential_integrity";
+            };
+            temporal_consistency: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "temporal_consistency";
+            };
+            raw_traceability: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "raw_traceability";
+            };
+            sample_coverage: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "sample_coverage";
+            };
+            reproducibility: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "reproducibility";
+            };
+            event_phase_coverage: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "event_phase_coverage";
+            };
+            fixed_window_bounds: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "fixed_window_bounds";
+            };
+            unknown_missingness: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "unknown_missingness";
+            };
+        };
+        check: {
+            /** @description 报告内唯一的检查 ID。 */
+            check_id: string;
+            dimension: components["schemas"]["dimensionName"];
+            /** @description 版本化门禁规则 ID。 */
+            rule_id: string;
+            /** @description 中文检查标题。 */
+            title_zh: string;
+            /**
+             * @description 检查状态。
+             * @enum {unknown}
+             */
+            status: "pass" | "fail" | "pending";
+            /**
+             * @description 对当前准入申请的严重度。
+             * @enum {unknown}
+             */
+            severity: "blocking" | "warning" | "info";
+            /** @description 被检查的表、列、制品、时间槽或事件类型范围。 */
+            scope_ref: string;
+            observed: components["schemas"]["observed"];
+            expected: components["schemas"]["expected"];
+            /** @description 本检查仍未分类的未知项数量。 */
+            unknown_count: number;
+            /** @description 可定位到来源、主键和字段的有限失败样本。 */
+            failure_samples: components["schemas"]["failureSample"][];
+            /** @description 支撑检查结论的机器证据。 */
+            evidence_refs: components["schemas"]["evidenceRef"][];
+            /** @description 中文结论与限制。 */
+            message_zh: string;
+            /**
+             * @description 失败或待定项的责任阶段。
+             * @enum {unknown}
+             */
+            remediation_stage: "none" | "D0" | "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "external";
+        };
+        /** @description 离散检查计数，不是质量总分；计数一致性由业务校验器复算。 */
+        checkSummary: {
+            total_check_count: number;
+            passed_check_count: number;
+            failed_check_count: number;
+            pending_check_count: number;
+            blocking_failed_check_count: number;
+            blocking_pending_check_count: number;
+        };
+        gate: {
+            /**
+             * @description P0 数据准入门禁状态。
+             * @enum {unknown}
+             */
+            status: "passed" | "failed" | "pending";
+            /**
+             * @description 通过后的数据身份；部分原始覆盖不得声明 raw_traceable。
+             * @enum {unknown}
+             */
+            admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+            blocking_failed_check_ids: string[];
+            blocking_pending_check_ids: string[];
+            warning_check_ids: string[];
+            /** @description 中文门禁理由和能力边界。 */
+            decision_reasons_zh: string[];
+        } & ({
+            /** @constant */
+            status?: "passed";
+            /** @enum {unknown} */
+            admission_level?: "legacy_compatible" | "raw_traceable";
+            blocking_failed_check_ids?: unknown[];
+            blocking_pending_check_ids?: unknown[];
+        } | {
+            /** @constant */
+            status?: "failed";
+            /** @constant */
+            admission_level?: "not_accepted";
+            blocking_failed_check_ids?: unknown[];
+        } | {
+            /** @constant */
+            status?: "pending";
+            /** @constant */
+            admission_level?: "not_accepted";
+            blocking_failed_check_ids?: unknown[];
+            blocking_pending_check_ids?: unknown[];
+        });
+        /**
+         * P0 Data Quality Report 数据质量报告合同
+         * @description 机器可读的 P0 数据质量报告。报告必须逐维度给出检查与门禁决定，禁止用单一总分替代完整性、唯一性、引用、时间、追溯、覆盖、复现、阶段、越界和未知缺失。
+         */
+        "data-quality-report.schema": {
+            /**
+             * @description 数据质量报告合同版本。
+             * @constant
+             */
+            schema_version: "data-quality-report/v1";
+            /** @description 稳定报告 ID。 */
+            report_id: string;
+            data_profile: components["schemas"]["dataProfile"];
+            source_release: components["schemas"]["sourceRelease"];
+            generator: components["schemas"]["generator"];
+            execution: components["schemas"]["execution"];
+            dimensions: components["schemas"]["dimensions"];
+            /** @description 逐规则检查；每个质量维度至少必须出现一项。跨字段校验器还需确认 dimension.check_ids 与本数组完全闭合。 */
+            checks: components["schemas"]["check"][] & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+            check_summary: components["schemas"]["checkSummary"];
+            gate: components["schemas"]["gate"];
+            /**
+             * Format: date-time
+             * @description 报告生成时间，必须带 UTC 偏移。
+             */
+            generated_at: string;
+            /** @description 按实现文档规定的规范序列化内容生成的报告指纹。 */
+            report_fingerprint_sha256: string;
+            $defs: {
+                window: {
+                    /**
+                     * Format: date-time
+                     * @description 包含的窗口起点。
+                     */
+                    start: string;
+                    /**
+                     * Format: date-time
+                     * @description 排除的窗口终点。
+                     */
+                    end: string;
+                    /**
+                     * @description 固定半开窗口。
+                     * @constant
+                     */
+                    boundary: "[start,end)";
+                    /**
+                     * @description P0 业务时区。
+                     * @constant
+                     */
+                    timezone: "Asia/Shanghai";
+                };
+                dataProfile: {
+                    /** @description config/data-profile.json 中的数据档 ID。 */
+                    profile_id: string;
+                    /** @description 唯一数据档文件 SHA256。 */
+                    profile_sha256: string;
+                    window: components["schemas"]["$defs-window"];
+                    /**
+                     * Format: date-time
+                     * @description 固定数据快照时钟。
+                     */
+                    snapshot_time: string;
+                };
+                sourceRelease: {
+                    /** @description 数据来源发布 ID。 */
+                    release_id: string;
+                    /** @description 生成审计工具所对应的 Git 提交。 */
+                    git_sha: string;
+                    /** @description 存在不可变数据制品清单时填写；历史制品未知时为 null 并由 raw_traceability 检查解释。 */
+                    data_artifact_sha256: string | null;
+                    /** @description 只读 live probe 结果指纹。 */
+                    probe_fingerprint_sha256: string;
+                };
+                generator: {
+                    /** @description 报告生成器名称。 */
+                    name: string;
+                    /** @description 生成器语义版本。 */
+                    version: string;
+                    /** @description 生成器源文件 SHA256。 */
+                    source_sha256: string;
+                };
+                execution: {
+                    /**
+                     * @description 质量检查必须在只读可重复读边界内执行。
+                     * @constant
+                     */
+                    mode: "read_only_repeatable_read";
+                    /**
+                     * @description 质量检查产生的数据库写操作必须为 0。
+                     * @constant
+                     */
+                    database_write_operations: 0;
+                    /**
+                     * Format: date-time
+                     * @description 查询开始时间。
+                     */
+                    started_at: string;
+                    /**
+                     * Format: date-time
+                     * @description 查询结束时间。
+                     */
+                    finished_at: string;
+                };
+                /** @enum {unknown} */
+                dimensionName: "completeness" | "uniqueness" | "referential_integrity" | "temporal_consistency" | "raw_traceability" | "sample_coverage" | "reproducibility" | "event_phase_coverage" | "fixed_window_bounds" | "unknown_missingness";
+                dimensionReport: {
+                    dimension: components["schemas"]["dimensionName"];
+                    /**
+                     * @description 该维度聚合状态；不得折算为单一质量分。
+                     * @enum {unknown}
+                     */
+                    status: "pass" | "fail" | "pending";
+                    /** @description 该维度当前是否阻断所申请的数据身份等级。 */
+                    blocking: boolean;
+                    /** @description 构成此维度结论的检查 ID。 */
+                    check_ids: string[];
+                    /** @description 中文结论摘要，需说明限制而非仅给状态。 */
+                    summary_zh: string;
+                };
+                dimensions: {
+                    completeness: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "completeness";
+                    };
+                    uniqueness: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "uniqueness";
+                    };
+                    referential_integrity: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "referential_integrity";
+                    };
+                    temporal_consistency: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "temporal_consistency";
+                    };
+                    raw_traceability: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "raw_traceability";
+                    };
+                    sample_coverage: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "sample_coverage";
+                    };
+                    reproducibility: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "reproducibility";
+                    };
+                    event_phase_coverage: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "event_phase_coverage";
+                    };
+                    fixed_window_bounds: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "fixed_window_bounds";
+                    };
+                    unknown_missingness: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "unknown_missingness";
+                    };
+                };
+                /** @enum {unknown} */
+                qualityUnit: "record_count" | "group_count" | "time_slot_count" | "file_count" | "byte" | "ratio_0_1" | "sha256_digest" | "boolean" | "identity_level" | "timestamp" | "version" | "none";
+                scalar: number | string | boolean | null;
+                observed: {
+                    value: components["schemas"]["scalar"];
+                    unit: components["schemas"]["qualityUnit"];
+                };
+                expected: {
+                    /**
+                     * @description 冻结比较方法；classified_only 表示低覆盖可接受但缺口必须全部分类。
+                     * @enum {unknown}
+                     */
+                    operator: "eq" | "lte" | "gte" | "one_of" | "classified_only";
+                    value: components["schemas"]["scalar"] | components["schemas"]["scalar"][];
+                    unit: components["schemas"]["qualityUnit"];
+                };
+                failureSample: {
+                    /** @description 表、文件或制品定位符。 */
+                    source_ref: string;
+                    /** @description 可定位的主键；非表来源可为 null。 */
+                    primary_key: string | null;
+                    /** @description 失败字段；记录级失败可为 null。 */
+                    field: string | null;
+                    /**
+                     * Format: date-time
+                     * @description 涉及的业务时间。
+                     */
+                    event_time: string | null;
+                    /** @description 稳定原因码，如 orphan_reference、source_fact_collision 或 legacy_window_contamination。 */
+                    reason_codes: string[];
+                };
+                evidenceRef: {
+                    /** @description 稳定证据 ID。 */
+                    ref_id: string;
+                    /** @description 可解析证据定位符。 */
+                    locator: string;
+                    /** @description 证据制品 SHA256；历史记录不可得时为 null。 */
+                    sha256: string | null;
+                };
+                check: {
+                    /** @description 报告内唯一的检查 ID。 */
+                    check_id: string;
+                    dimension: components["schemas"]["dimensionName"];
+                    /** @description 版本化门禁规则 ID。 */
+                    rule_id: string;
+                    /** @description 中文检查标题。 */
+                    title_zh: string;
+                    /**
+                     * @description 检查状态。
+                     * @enum {unknown}
+                     */
+                    status: "pass" | "fail" | "pending";
+                    /**
+                     * @description 对当前准入申请的严重度。
+                     * @enum {unknown}
+                     */
+                    severity: "blocking" | "warning" | "info";
+                    /** @description 被检查的表、列、制品、时间槽或事件类型范围。 */
+                    scope_ref: string;
+                    observed: components["schemas"]["observed"];
+                    expected: components["schemas"]["expected"];
+                    /** @description 本检查仍未分类的未知项数量。 */
+                    unknown_count: number;
+                    /** @description 可定位到来源、主键和字段的有限失败样本。 */
+                    failure_samples: components["schemas"]["failureSample"][];
+                    /** @description 支撑检查结论的机器证据。 */
+                    evidence_refs: components["schemas"]["evidenceRef"][];
+                    /** @description 中文结论与限制。 */
+                    message_zh: string;
+                    /**
+                     * @description 失败或待定项的责任阶段。
+                     * @enum {unknown}
+                     */
+                    remediation_stage: "none" | "D0" | "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "external";
+                };
+                /** @description 离散检查计数，不是质量总分；计数一致性由业务校验器复算。 */
+                checkSummary: {
+                    total_check_count: number;
+                    passed_check_count: number;
+                    failed_check_count: number;
+                    pending_check_count: number;
+                    blocking_failed_check_count: number;
+                    blocking_pending_check_count: number;
+                };
+                gate: {
+                    /**
+                     * @description P0 数据准入门禁状态。
+                     * @enum {unknown}
+                     */
+                    status: "passed" | "failed" | "pending";
+                    /**
+                     * @description 通过后的数据身份；部分原始覆盖不得声明 raw_traceable。
+                     * @enum {unknown}
+                     */
+                    admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+                    blocking_failed_check_ids: string[];
+                    blocking_pending_check_ids: string[];
+                    warning_check_ids: string[];
+                    /** @description 中文门禁理由和能力边界。 */
+                    decision_reasons_zh: string[];
+                } & ({
+                    /** @constant */
+                    status?: "passed";
+                    /** @enum {unknown} */
+                    admission_level?: "legacy_compatible" | "raw_traceable";
+                    blocking_failed_check_ids?: unknown[];
+                    blocking_pending_check_ids?: unknown[];
+                } | {
+                    /** @constant */
+                    status?: "failed";
+                    /** @constant */
+                    admission_level?: "not_accepted";
+                    blocking_failed_check_ids?: unknown[];
+                } | {
+                    /** @constant */
+                    status?: "pending";
+                    /** @constant */
+                    admission_level?: "not_accepted";
+                    blocking_failed_check_ids?: unknown[];
+                    blocking_pending_check_ids?: unknown[];
+                });
+            };
+        };
     };
     responses: {
         /** @description 中断时序 */
@@ -335,6 +3084,42 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["OutagePoint"][];
+            };
+        };
+        /** @description 标识符非法或尝试路径穿越 */
+        P0BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 合法资源未出现在当前已准入候选中 */
+        P0ResourceNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 候选制品 SHA、fingerprint、引用或跨组件身份不一致 */
+        P0ArtifactConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 候选仓库未配置或不可用 */
+        P0RepositoryUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
             };
         };
     };
@@ -370,6 +3155,102 @@ export interface operations {
                     "application/json": components["schemas"]["HealthPayload"];
                 };
             };
+        };
+    };
+    getP0DataStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 可信仓库状态，包括显式生产激活、门禁失败或样本限制 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0DataStatus"];
+                };
+            };
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
+        };
+    };
+    getP0MetricSeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                metric_name: "bgp_announce_record_count" | "bgp_withdraw_record_count" | "bgp_update_record_count" | "bgp_withdraw_ratio" | "ipv4_24_equivalent_count" | "ipv6_48_equivalent_count" | "ipv4_equivalent_address_count" | "anomaly_incident_count" | "prefix_outage_concurrent_count" | "as_outage_concurrent_count";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已准入指标和完整缺失语义 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0MetricResponse"];
+                };
+            };
+            400: components["responses"]["P0BadRequest"];
+            404: components["responses"]["P0ResourceNotFound"];
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
+        };
+    };
+    getP0EvidenceBundleV2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 引用闭合的 Evidence Bundle v2 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0EvidenceResponse"];
+                };
+            };
+            400: components["responses"]["P0BadRequest"];
+            404: components["responses"]["P0ResourceNotFound"];
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
+        };
+    };
+    getP0DataQualityReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完整 P0 数据质量报告 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0QualityResponse"];
+                };
+            };
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
         };
     };
     getEvents: {
@@ -420,6 +3301,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EventItem"][];
                 };
+            };
+        };
+    };
+    getEventEvidenceBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_type: "hijack" | "sub_hijack" | "prefix_outage" | "as_outage" | "country_outage" | "leak";
+                start_time: string;
+                problem: string;
+                event_id: number;
+                source: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 事件 Evidence Bundle */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceBundle"];
+                };
+            };
+            /** @description 业务事实记录不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -499,6 +3413,31 @@ export interface operations {
             };
         };
     };
+    getCountryWorkbenchOverview: {
+        parameters: {
+            query: {
+                country?: string;
+                limit?: number;
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 国家报文、资源和异常聚合 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOverview"];
+                };
+            };
+        };
+    };
     getAsFeatures: {
         parameters: {
             query: {
@@ -522,6 +3461,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsFeaturePage"];
+                };
+            };
+        };
+    };
+    getAsWorkbenchOverview: {
+        parameters: {
+            query: {
+                asn?: string;
+                limit?: number;
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 运维候选 ASN 的报文、资源、波动和异常聚合 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsOverview"];
+                };
+            };
+        };
+    };
+    getAsExactRecentEvents: {
+        parameters: {
+            query: {
+                asn: string;
+                page_size?: number;
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 数字边界精确匹配的 ASN 最近事件 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsExactEventPage"];
                 };
             };
         };
@@ -642,6 +3631,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TypeCount"];
+                };
+            };
+        };
+    };
+    getDashboardOverview: {
+        parameters: {
+            query: {
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 首页六类异常聚合 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOverview"];
                 };
             };
         };

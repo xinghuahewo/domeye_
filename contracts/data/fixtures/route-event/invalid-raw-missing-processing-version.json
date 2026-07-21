@@ -1,0 +1,52 @@
+{
+  "schema_version": "route_event_v1",
+  "record_kind": "route_event",
+  "route_event_id_schema": "route_event_id_v1",
+  "route_event_id": "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473",
+  "source": "ripe_ris",
+  "collector_id": "rrc25",
+  "source_timezone": "UTC",
+  "event_time_utc": "2026-03-04T11:35:43Z",
+  "ingest_time_utc": "2026-03-04T11:35:45Z",
+  "parse_time_utc": "2026-03-04T11:35:46Z",
+  "vp_id": "vp_v1_b922edb0eb37b2fe314cac6bae099f9b",
+  "vp_peer_ip": "192.0.2.10",
+  "vp_asn": 64500,
+  "action": "announce",
+  "afi_safi": "ipv4_unicast",
+  "prefix": "203.0.113.0/24",
+  "as_path": {
+    "semantics": "route_observation_path_snapshot",
+    "causal_conclusion": null,
+    "canonical": "64500 64496",
+    "segments": [
+      {
+        "segment_type": "as_sequence",
+        "asns": [
+          64500,
+          64496
+        ]
+      }
+    ]
+  },
+  "origin_asn": 64496,
+  "raw_ref": {
+    "artifact_id": "art_v1_0857b453b87d49f9c584d2caf302aa24",
+    "file_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "record_ordinal": 42,
+    "element_ordinal": 0,
+    "record_offset": 4096,
+    "record_length": 128,
+    "record_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "parser_name": "bgpdump",
+  "parser_version": null,
+  "importer_name": "domeye_route_ingest",
+  "importer_version": "1.0.0",
+  "import_run_id": "run_v1_c70b95a26810f49e649e472e1df53c1a",
+  "lineage_status": "raw_traceable",
+  "quality_flags": [],
+  "missing_reasons": {
+    "parser_version": "not_retained"
+  }
+}

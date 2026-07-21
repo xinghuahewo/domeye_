@@ -1,0 +1,343 @@
+{
+  "bundle_version": "evidence_bundle_v2",
+  "bundle_id": "eb_v2_33333333333333333333333333333333",
+  "compatibility": {
+    "previous_contract": "evidence_bundle_v1",
+    "incident_id_schema": "incident_id_v1",
+    "v1_fields_reinterpreted": false,
+    "v1_bundle_ref": null
+  },
+  "subject_kind": "quarantined_source_fact",
+  "incident": null,
+  "source_fact_mapping": {
+    "mapping_id": "sfm_v2_333333333333333333333333",
+    "mapping_status": "quarantined",
+    "incident_ids": [],
+    "source_facts": [
+      {
+        "source_fact_id": "sf_v1_333333333333333333333333",
+        "fact_type": "country_outage",
+        "table_name": "country_outage_202603",
+        "partition_month": "202603",
+        "fact_locator": "source=r,country=<empty>,outage_id=1",
+        "key_fields": [
+          {
+            "name": "source",
+            "value": "r"
+          },
+          {
+            "name": "country",
+            "value": ""
+          },
+          {
+            "name": "outage_id",
+            "value": 1
+          }
+        ],
+        "fact_role": "quarantined",
+        "start_time": "2026-03-10T08:24:31Z",
+        "end_time": null,
+        "record_hash": null
+      }
+    ],
+    "collision_group_id": null,
+    "quarantine_id": "qr_v1_33333333333333333333333333333333",
+    "quality_flags": [
+      "invalid_identity",
+      "legacy_window_contamination",
+      "source_fact_orphan"
+    ]
+  },
+  "disposition": {
+    "status": "quarantined",
+    "visibility": "hidden",
+    "reason_codes": [
+      "invalid_identity",
+      "legacy_window_contamination",
+      "source_fact_orphan"
+    ],
+    "collision": null,
+    "quarantine": {
+      "quarantine_id": "qr_v1_33333333333333333333333333333333",
+      "reason_codes": [
+        "invalid_identity",
+        "legacy_window_contamination",
+        "source_fact_orphan"
+      ],
+      "source_fact_ids": [
+        "sf_v1_333333333333333333333333"
+      ],
+      "review_status": "confirmed"
+    }
+  },
+  "data_snapshot": {
+    "profile_id": "fixed-feb-mar-2026",
+    "profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "window_start": "2026-01-31T16:00:00Z",
+    "window_end_exclusive": "2026-03-31T16:00:00Z",
+    "snapshot_time": "2026-03-31T15:59:59Z",
+    "business_timezone": "Asia/Shanghai",
+    "database_release_id": "p0-fixed-overlay-20260720",
+    "overlay_inventory_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "raw_source_status": "partial"
+  },
+  "route_event_refs": [],
+  "raw_record_refs": [],
+  "processing_lineage": {
+    "lineage_status": "quarantined",
+    "parser": null,
+    "importer": null,
+    "detector": null,
+    "normalizer": {
+      "name": "p0-incident-normalizer",
+      "version": "1.0.0",
+      "code_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "bundle_generator": {
+      "name": "p0-evidence-bundle-generator",
+      "version": "2.0.0",
+      "code_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "import_run_id": null,
+    "route_event_schema_version": null,
+    "incident_schema_version": "incident_id_v1",
+    "generated_at": "2026-07-20T08:10:00Z",
+    "quality_flags": [
+      "invalid_identity",
+      "legacy_window_contamination",
+      "source_fact_orphan"
+    ]
+  },
+  "metric_windows": [],
+  "field_quality": [
+    {
+      "field_path": "/source_fact_mapping/source_facts/0/key_fields/country",
+      "value_state": "invalid_identity",
+      "missing_reason": "invalid_identity",
+      "source_ref_ids": [
+        "sf_v1_333333333333333333333333"
+      ],
+      "correction_ref_ids": [],
+      "quality_flags": [
+        "invalid_identity"
+      ]
+    },
+    {
+      "field_path": "/source_fact_mapping/source_facts/0/event_info",
+      "value_state": "legacy_window_contamination",
+      "missing_reason": "legacy_window_contamination",
+      "source_ref_ids": [
+        "sf_v1_333333333333333333333333"
+      ],
+      "correction_ref_ids": [],
+      "quality_flags": [
+        "legacy_window_contamination"
+      ]
+    }
+  ],
+  "phase_coverage": {
+    "before": {
+      "status": "not_available",
+      "snapshot_count": 0,
+      "path_count": 0,
+      "evidence_ids": [
+        "ev_v2_66666666666666666666666666666666"
+      ],
+      "route_event_ref_ids": [],
+      "missing_reasons": [
+        "quarantined"
+      ],
+      "quality_flags": [
+        "invalid_identity",
+        "legacy_window_contamination"
+      ]
+    },
+    "during": {
+      "status": "not_available",
+      "snapshot_count": 0,
+      "path_count": 0,
+      "evidence_ids": [
+        "ev_v2_66666666666666666666666666666666"
+      ],
+      "route_event_ref_ids": [],
+      "missing_reasons": [
+        "quarantined"
+      ],
+      "quality_flags": [
+        "invalid_identity",
+        "legacy_window_contamination"
+      ]
+    },
+    "after": {
+      "status": "not_available",
+      "snapshot_count": 0,
+      "path_count": 0,
+      "evidence_ids": [
+        "ev_v2_77777777777777777777777777777777"
+      ],
+      "route_event_ref_ids": [],
+      "missing_reasons": [
+        "quarantined"
+      ],
+      "quality_flags": [
+        "invalid_identity",
+        "legacy_window_contamination"
+      ]
+    }
+  },
+  "evidence_registry": [
+    {
+      "evidence_id": "ev_v2_66666666666666666666666666666666",
+      "phase": "context",
+      "kind": "quality_finding",
+      "stance": "support",
+      "label": "国家身份无效",
+      "semantics": "quality_finding",
+      "observation_summary": "该国家中断源事实的国家代码和名称均为空。",
+      "observed_at": "2026-03-10T08:24:31Z",
+      "source_ref_ids": [
+        "sf_v1_333333333333333333333333"
+      ],
+      "field_paths": [
+        "/source_fact_mapping/source_facts/0/key_fields/country"
+      ]
+    },
+    {
+      "evidence_id": "ev_v2_77777777777777777777777777777777",
+      "phase": "context",
+      "kind": "quality_finding",
+      "stance": "counterevidence",
+      "label": "固定窗口污染",
+      "semantics": "quality_finding",
+      "observation_summary": "源事实描述文本包含固定二三月窗口之外的四月时间。",
+      "observed_at": null,
+      "source_ref_ids": [
+        "sf_v1_333333333333333333333333"
+      ],
+      "field_paths": [
+        "/source_fact_mapping/source_facts/0/event_info"
+      ]
+    }
+  ],
+  "supporting_evidence_refs": [
+    "ev_v2_66666666666666666666666666666666"
+  ],
+  "counterevidence_refs": [
+    "ev_v2_77777777777777777777777777777777"
+  ],
+  "coverage_summary": {
+    "admission_level": "not_accepted",
+    "raw_source": {
+      "expected_count": 16992,
+      "observed_count": 10272,
+      "coverage_ratio": 0.604519773,
+      "status": "partial"
+    },
+    "route_event": {
+      "expected_count": 0,
+      "observed_count": 0,
+      "coverage_ratio": null,
+      "status": "not_applicable"
+    },
+    "phase": {
+      "expected_count": 3,
+      "observed_count": 0,
+      "coverage_ratio": 0,
+      "status": "none"
+    },
+    "evidence_reference_closure": "passed",
+    "unexplained_source_fact_count": 0,
+    "collision_group_count": 0,
+    "quarantine_count": 1,
+    "unknown_missing_reason_count": 0,
+    "missing_counts": [
+      {
+        "reason": "invalid_identity",
+        "count": 1
+      },
+      {
+        "reason": "legacy_window_contamination",
+        "count": 1
+      },
+      {
+        "reason": "source_fact_orphan",
+        "count": 1
+      }
+    ]
+  },
+  "correction_refs": [],
+  "reproducibility": {
+    "schema_id": "https://domeye.example/contracts/data/evidence-bundle-v2.schema.json",
+    "schema_version": "2.0.0",
+    "generator": {
+      "name": "p0-evidence-bundle-generator",
+      "version": "2.0.0",
+      "code_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "config_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "input_snapshot_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "query_fingerprint_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "parameters": [
+      {
+        "name": "source_fact_id",
+        "value": "sf_v1_333333333333333333333333"
+      },
+      {
+        "name": "quarantine_id",
+        "value": "qr_v1_33333333333333333333333333333333"
+      }
+    ],
+    "output_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+    "generated_at": "2026-07-20T08:10:00Z",
+    "business_timezone": "Asia/Shanghai",
+    "reference_validation_status": "passed",
+    "source_hash_verification_status": "partial"
+  },
+  "limitations": [
+    {
+      "code": "invalid_identity",
+      "severity": "blocking",
+      "scope": "source_fact",
+      "description": "国家身份为空，不能作为未知国家中断正常展示。",
+      "affected_fields": [
+        "/source_fact_mapping/source_facts/0/key_fields/country"
+      ],
+      "evidence_refs": [
+        "ev_v2_66666666666666666666666666666666"
+      ]
+    },
+    {
+      "code": "legacy_window_contamination",
+      "severity": "blocking",
+      "scope": "source_fact",
+      "description": "描述文本含固定窗口外时间，记录已进入只读 quarantine。",
+      "affected_fields": [
+        "/source_fact_mapping/source_facts/0/event_info"
+      ],
+      "evidence_refs": [
+        "ev_v2_77777777777777777777777777777777"
+      ]
+    },
+    {
+      "code": "quarantined_source_fact",
+      "severity": "blocking",
+      "scope": "bundle",
+      "description": "该源事实仅用于质量对账，不生成可见 Incident。",
+      "affected_fields": [
+        "/incident",
+        "/disposition"
+      ],
+      "evidence_refs": [
+        "ev_v2_66666666666666666666666666666666",
+        "ev_v2_77777777777777777777777777777777"
+      ]
+    }
+  ],
+  "conclusion": {
+    "classification": "observation_only",
+    "observation_summary": "该反向孤儿已按 invalid_identity 和 legacy_window_contamination 隔离，不进入可见事件列表。",
+    "causal_conclusion": null
+  }
+}

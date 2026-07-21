@@ -1,0 +1,12 @@
+{
+  "schema_version": "data-quality-report/v1",
+  "report_id": "dqr-invalid-passed-gate-with-blocking-failure",
+  "gate": {
+    "status": "passed",
+    "admission_level": "legacy_compatible",
+    "blocking_failed_check_ids": ["references-reverse-orphan"],
+    "blocking_pending_check_ids": [],
+    "warning_check_ids": [],
+    "decision_reasons_zh": ["错误示例把仍有阻断失败的报告标成通过。"]
+  }
+}

@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/data-quality-report.schema.json",
+  "title": "P0 Data Quality Report 数据质量报告合同",
+  "description": "机器可读的 P0 数据质量报告。报告必须逐维度给出检查与门禁决定，禁止用单一总分替代完整性、唯一性、引用、时间、追溯、覆盖、复现、阶段、越界和未知缺失。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "data_profile",
+    "source_release",
+    "generator",
+    "execution",
+    "dimensions",
+    "checks",
+    "check_summary",
+    "gate",
+    "generated_at",
+    "report_fingerprint_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "data-quality-report/v1",
+      "description": "数据质量报告合同版本。"
+    },
+    "report_id": {
+      "type": "string",
+      "pattern": "^dqr-[a-z0-9][a-z0-9._-]*$",
+      "description": "稳定报告 ID。"
+    },
+    "data_profile": {
+      "$ref": "#/$defs/dataProfile"
+    },
+    "source_release": {
+      "$ref": "#/$defs/sourceRelease"
+    },
+    "generator": {
+      "$ref": "#/$defs/generator"
+    },
+    "execution": {
+      "$ref": "#/$defs/execution"
+    },
+    "dimensions": {
+      "$ref": "#/$defs/dimensions"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "description": "逐规则检查；每个质量维度至少必须出现一项。跨字段校验器还需确认 dimension.check_ids 与本数组完全闭合。",
+      "items": {
+        "$ref": "#/$defs/check"
+      },
+      "allOf": [
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "completeness"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "uniqueness"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "referential_integrity"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "temporal_consistency"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "raw_traceability"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "sample_coverage"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "reproducibility"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "event_phase_coverage"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "fixed_window_bounds"}}, "required": ["dimension"]}, "minContains": 1},
+        {"contains": {"type": "object", "properties": {"dimension": {"const": "unknown_missingness"}}, "required": ["dimension"]}, "minContains": 1}
+      ]
+    },
+    "check_summary": {
+      "$ref": "#/$defs/checkSummary"
+    },
+    "gate": {
+      "$ref": "#/$defs/gate"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "报告生成时间，必须带 UTC 偏移。"
+    },
+    "report_fingerprint_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "按实现文档规定的规范序列化内容生成的报告指纹。"
+    }
+  },
+  "$defs": {
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "boundary", "timezone"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time", "description": "包含的窗口起点。"},
+        "end": {"type": "string", "format": "date-time", "description": "排除的窗口终点。"},
+        "boundary": {"const": "[start,end)", "description": "固定半开窗口。"},
+        "timezone": {"const": "Asia/Shanghai", "description": "P0 业务时区。"}
+      }
+    },
+    "dataProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_sha256", "window", "snapshot_time"],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "config/data-profile.json 中的数据档 ID。"
+        },
+        "profile_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "唯一数据档文件 SHA256。"
+        },
+        "window": {"$ref": "#/$defs/window"},
+        "snapshot_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "固定数据快照时钟。"
+        }
+      }
+    },
+    "sourceRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_id", "git_sha", "data_artifact_sha256", "probe_fingerprint_sha256"],
+      "properties": {
+        "release_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "description": "数据来源发布 ID。"
+        },
+        "git_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "生成审计工具所对应的 Git 提交。"
+        },
+        "data_artifact_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "存在不可变数据制品清单时填写；历史制品未知时为 null 并由 raw_traceability 检查解释。"
+        },
+        "probe_fingerprint_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "只读 live probe 结果指纹。"
+        }
+      }
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "source_sha256"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "description": "报告生成器名称。"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "生成器语义版本。"},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "生成器源文件 SHA256。"}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "database_write_operations", "started_at", "finished_at"],
+      "properties": {
+        "mode": {
+          "const": "read_only_repeatable_read",
+          "description": "质量检查必须在只读可重复读边界内执行。"
+        },
+        "database_write_operations": {
+          "const": 0,
+          "description": "质量检查产生的数据库写操作必须为 0。"
+        },
+        "started_at": {"type": "string", "format": "date-time", "description": "查询开始时间。"},
+        "finished_at": {"type": "string", "format": "date-time", "description": "查询结束时间。"}
+      }
+    },
+    "dimensionName": {
+      "enum": [
+        "completeness",
+        "uniqueness",
+        "referential_integrity",
+        "temporal_consistency",
+        "raw_traceability",
+        "sample_coverage",
+        "reproducibility",
+        "event_phase_coverage",
+        "fixed_window_bounds",
+        "unknown_missingness"
+      ]
+    },
+    "dimensionReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dimension", "status", "blocking", "check_ids", "summary_zh"],
+      "properties": {
+        "dimension": {"$ref": "#/$defs/dimensionName"},
+        "status": {
+          "enum": ["pass", "fail", "pending"],
+          "description": "该维度聚合状态；不得折算为单一质量分。"
+        },
+        "blocking": {
+          "type": "boolean",
+          "description": "该维度当前是否阻断所申请的数据身份等级。"
+        },
+        "check_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"},
+          "description": "构成此维度结论的检查 ID。"
+        },
+        "summary_zh": {
+          "type": "string",
+          "minLength": 1,
+          "description": "中文结论摘要，需说明限制而非仅给状态。"
+        }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completeness",
+        "uniqueness",
+        "referential_integrity",
+        "temporal_consistency",
+        "raw_traceability",
+        "sample_coverage",
+        "reproducibility",
+        "event_phase_coverage",
+        "fixed_window_bounds",
+        "unknown_missingness"
+      ],
+      "properties": {
+        "completeness": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "completeness"}}}]},
+        "uniqueness": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "uniqueness"}}}]},
+        "referential_integrity": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "referential_integrity"}}}]},
+        "temporal_consistency": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "temporal_consistency"}}}]},
+        "raw_traceability": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "raw_traceability"}}}]},
+        "sample_coverage": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "sample_coverage"}}}]},
+        "reproducibility": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "reproducibility"}}}]},
+        "event_phase_coverage": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "event_phase_coverage"}}}]},
+        "fixed_window_bounds": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "fixed_window_bounds"}}}]},
+        "unknown_missingness": {"allOf": [{"$ref": "#/$defs/dimensionReport"}, {"type": "object", "properties": {"dimension": {"const": "unknown_missingness"}}}]}
+      }
+    },
+    "qualityUnit": {
+      "enum": [
+        "record_count",
+        "group_count",
+        "time_slot_count",
+        "file_count",
+        "byte",
+        "ratio_0_1",
+        "sha256_digest",
+        "boolean",
+        "identity_level",
+        "timestamp",
+        "version",
+        "none"
+      ]
+    },
+    "scalar": {
+      "type": ["number", "string", "boolean", "null"]
+    },
+    "observed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {"$ref": "#/$defs/scalar"},
+        "unit": {"$ref": "#/$defs/qualityUnit"}
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator", "value", "unit"],
+      "properties": {
+        "operator": {
+          "enum": ["eq", "lte", "gte", "one_of", "classified_only"],
+          "description": "冻结比较方法；classified_only 表示低覆盖可接受但缺口必须全部分类。"
+        },
+        "value": {
+          "oneOf": [
+            {"$ref": "#/$defs/scalar"},
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/scalar"}
+            }
+          ]
+        },
+        "unit": {"$ref": "#/$defs/qualityUnit"}
+      }
+    },
+    "failureSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_ref", "primary_key", "field", "event_time", "reason_codes"],
+      "properties": {
+        "source_ref": {"type": "string", "minLength": 1, "description": "表、文件或制品定位符。"},
+        "primary_key": {"type": ["string", "null"], "minLength": 1, "description": "可定位的主键；非表来源可为 null。"},
+        "field": {"type": ["string", "null"], "minLength": 1, "description": "失败字段；记录级失败可为 null。"},
+        "event_time": {"type": ["string", "null"], "format": "date-time", "description": "涉及的业务时间。"},
+        "reason_codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "description": "稳定原因码，如 orphan_reference、source_fact_collision 或 legacy_window_contamination。"
+        }
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_id", "locator", "sha256"],
+      "properties": {
+        "ref_id": {"type": "string", "minLength": 1, "description": "稳定证据 ID。"},
+        "locator": {"type": "string", "minLength": 1, "description": "可解析证据定位符。"},
+        "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "证据制品 SHA256；历史记录不可得时为 null。"}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_id",
+        "dimension",
+        "rule_id",
+        "title_zh",
+        "status",
+        "severity",
+        "scope_ref",
+        "observed",
+        "expected",
+        "unknown_count",
+        "failure_samples",
+        "evidence_refs",
+        "message_zh",
+        "remediation_stage"
+      ],
+      "properties": {
+        "check_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$", "description": "报告内唯一的检查 ID。"},
+        "dimension": {"$ref": "#/$defs/dimensionName"},
+        "rule_id": {"type": "string", "pattern": "^P0-[A-Z0-9-]+$", "description": "版本化门禁规则 ID。"},
+        "title_zh": {"type": "string", "minLength": 1, "description": "中文检查标题。"},
+        "status": {"enum": ["pass", "fail", "pending"], "description": "检查状态。"},
+        "severity": {"enum": ["blocking", "warning", "info"], "description": "对当前准入申请的严重度。"},
+        "scope_ref": {"type": "string", "minLength": 1, "description": "被检查的表、列、制品、时间槽或事件类型范围。"},
+        "observed": {"$ref": "#/$defs/observed"},
+        "expected": {"$ref": "#/$defs/expected"},
+        "unknown_count": {"type": "integer", "minimum": 0, "description": "本检查仍未分类的未知项数量。"},
+        "failure_samples": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/failureSample"},
+          "description": "可定位到来源、主键和字段的有限失败样本。"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/evidenceRef"},
+          "description": "支撑检查结论的机器证据。"
+        },
+        "message_zh": {"type": "string", "minLength": 1, "description": "中文结论与限制。"},
+        "remediation_stage": {"enum": ["none", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "external"], "description": "失败或待定项的责任阶段。"}
+      }
+    },
+    "checkSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_check_count", "passed_check_count", "failed_check_count", "pending_check_count", "blocking_failed_check_count", "blocking_pending_check_count"],
+      "properties": {
+        "total_check_count": {"type": "integer", "minimum": 10},
+        "passed_check_count": {"type": "integer", "minimum": 0},
+        "failed_check_count": {"type": "integer", "minimum": 0},
+        "pending_check_count": {"type": "integer", "minimum": 0},
+        "blocking_failed_check_count": {"type": "integer", "minimum": 0},
+        "blocking_pending_check_count": {"type": "integer", "minimum": 0}
+      },
+      "description": "离散检查计数，不是质量总分；计数一致性由业务校验器复算。"
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "admission_level", "blocking_failed_check_ids", "blocking_pending_check_ids", "warning_check_ids", "decision_reasons_zh"],
+      "properties": {
+        "status": {"enum": ["passed", "failed", "pending"], "description": "P0 数据准入门禁状态。"},
+        "admission_level": {"enum": ["not_accepted", "legacy_compatible", "raw_traceable"], "description": "通过后的数据身份；部分原始覆盖不得声明 raw_traceable。"},
+        "blocking_failed_check_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"}},
+        "blocking_pending_check_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"}},
+        "warning_check_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"}},
+        "decision_reasons_zh": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "description": "中文门禁理由和能力边界。"}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "status": {"const": "passed"},
+            "admission_level": {"enum": ["legacy_compatible", "raw_traceable"]},
+            "blocking_failed_check_ids": {"type": "array", "maxItems": 0},
+            "blocking_pending_check_ids": {"type": "array", "maxItems": 0}
+          }
+        },
+        {
+          "properties": {
+            "status": {"const": "failed"},
+            "admission_level": {"const": "not_accepted"},
+            "blocking_failed_check_ids": {"type": "array", "minItems": 1}
+          }
+        },
+        {
+          "properties": {
+            "status": {"const": "pending"},
+            "admission_level": {"const": "not_accepted"},
+            "blocking_failed_check_ids": {"type": "array", "maxItems": 0},
+            "blocking_pending_check_ids": {"type": "array", "minItems": 1}
+          }
+        }
+      ]
+    }
+  }
+}
