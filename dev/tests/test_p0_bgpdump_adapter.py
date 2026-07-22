@@ -7,6 +7,7 @@ import hashlib
 import ipaddress
 import os
 from pathlib import Path
+import queue
 import struct
 import subprocess
 import tempfile
@@ -30,6 +31,10 @@ from backend.data_pipeline.route_event import (
     derive_update_pilot_selection,
     route_event_id_v1,
     verify_update_pilot_selection,
+)
+from backend.data_pipeline.route_event.bgpdump import (
+    _BoundedOutputQueue,
+    _ParsedLine,
 )
 
 
@@ -436,6 +441,89 @@ class BgpdumpAdapterFixture(unittest.TestCase):
 
 
 class SuccessfulStreamTest(BgpdumpAdapterFixture):
+    def test_stdout_queue_enforces_source_byte_budget_independently_of_item_count(self):
+        outputs = _BoundedOutputQueue(max_items=4, max_source_bytes=10)
+        first = _ParsedLine(
+            0,
+            "2026-01-01T00:00:00Z",
+            0,
+            0,
+            "W",
+            None,
+            source_line_bytes=6,
+        )
+        second = _ParsedLine(
+            1,
+            "2026-01-01T00:00:00Z",
+            0,
+            0,
+            "W",
+            None,
+            source_line_bytes=5,
+        )
+        outputs.put(first, timeout=0.01)
+
+        with self.assertRaises(queue.Full):
+            outputs.put(second, timeout=0.01)
+        self.assertIs(outputs.get(timeout=0.01), first)
+        outputs.put(second, timeout=0.01)
+        self.assertEqual(outputs.source_bytes(), 5)
+        self.assertEqual(outputs.snapshot()["peak_source_bytes"], 6)
+
+    def test_open_and_notification_are_hashed_silent_controls(self):
+        first = mrt_frame(b"before-controls")
+        optional = b"\x02\x02\x02\x00"
+        open_body = struct.pack(
+            "!BHH4sB",
+            4,
+            23456,
+            90,
+            ipaddress.IPv4Address("172.23.0.0").packed,
+            len(optional),
+        ) + optional
+        open_frame = bgp_control_frame(
+            1, timestamp=MRT_TIMESTAMP + 1, body=open_body
+        )
+        notification = bgp_control_frame(
+            3, timestamp=MRT_TIMESTAMP + 2, body=b"\x06\x05\x06\x05"
+        )
+        last = mrt_frame(b"after-controls", timestamp=MRT_TIMESTAMP + 3)
+        artifact = self.write_artifact((first, open_frame, notification, last))
+
+        popen = FakePopenFactory(
+            FakeBehavior(
+                lambda ordinal, frame: []
+                if ordinal in {1, 2}
+                else [announce_line(ordinal, frame)]
+            )
+        )
+        stream = self.factory((artifact,), popen)(normalized_artifact(artifact))
+        records = list(stream)
+
+        self.assertEqual([record.record_ordinal for record in records], [0, 1, 2, 3])
+        self.assertEqual(records[1].elements, ())
+        self.assertEqual(records[2].elements, ())
+        self.assertEqual(stream.statistics["open_record_count"], 1)
+        self.assertEqual(stream.statistics["notification_record_count"], 1)
+        self.assertEqual(stream.statistics["route_record_count"], 2)
+        self.assertEqual(
+            stream.statistics["physical_record_count"],
+            sum(
+                stream.statistics[field]
+                for field in (
+                    "route_record_count",
+                    "state_change_record_count",
+                    "open_record_count",
+                    "notification_record_count",
+                    "keepalive_record_count",
+                )
+            ),
+        )
+        self.assertEqual(
+            bytes(popen.processes[0].received),
+            first + open_frame + notification + last,
+        )
+
     def test_keepalive_is_hashed_without_becoming_route_event(self):
         first = mrt_frame(b"before-keepalive")
         keepalive = bgp_control_frame(4, timestamp=MRT_TIMESTAMP + 1)
@@ -618,6 +706,51 @@ class SuccessfulStreamTest(BgpdumpAdapterFixture):
             stream.statistics["spool_persistence"], "anonymous_unlinked_fd"
         )
 
+    def test_large_explicit_stdout_queue_preserves_order_and_attests_memory_bounds(self):
+        frames = tuple(
+            mrt_frame(f"queue-{ordinal}".encode("ascii"))
+            for ordinal in range(512)
+        )
+        artifact = self.write_artifact(frames)
+        popen = FakePopenFactory(
+            FakeBehavior(lambda ordinal, raw: [announce_line(ordinal, raw)])
+        )
+        factory = self.factory(
+            (artifact,),
+            popen,
+            queue_capacity=4096,
+            max_stdout_queue_source_bytes=8 * 1024 * 1024,
+        )
+
+        records = list(factory(normalized_artifact(artifact)))
+
+        self.assertEqual(
+            [record.record_ordinal for record in records], list(range(512))
+        )
+        configuration = factory.parser_attestation["configuration"]
+        self.assertEqual(configuration["queue_capacity"], 4096)
+        self.assertEqual(
+            configuration["max_stdout_queue_source_bytes"], 8 * 1024 * 1024
+        )
+        self.assertEqual(
+            configuration["stdout_queue_retained_heap_upper_bound_bytes"],
+            528 * 1024 * 1024,
+        )
+
+    def test_stdout_queue_count_and_source_byte_hard_limits_fail_closed(self):
+        frame = mrt_frame(b"queue-bounds")
+        artifact = self.write_artifact((frame,))
+        for overrides in (
+            {"queue_capacity": 4097},
+            {"max_stdout_queue_source_bytes": 65_536},
+            {"max_stdout_queue_source_bytes": 8 * 1024 * 1024 + 1},
+        ):
+            with self.subTest(overrides=overrides):
+                with self.assertRaisesRegex(
+                    BgpdumpConfigurationError, "queue|source_bytes|硬上限"
+                ):
+                    self.factory((artifact,), FakePopenFactory(), **overrides)
+
     def test_replay_is_deterministic(self):
         frame = mrt_frame(b"deterministic")
         artifact = self.write_artifact((frame,))
@@ -744,13 +877,48 @@ class SuccessfulStreamTest(BgpdumpAdapterFixture):
 
 
 class FailureClosedTest(BgpdumpAdapterFixture):
-    def test_open_message_is_not_silently_skipped(self):
-        frame = bgp_control_frame(1)
-        artifact = self.write_artifact((frame,))
-        popen = FakePopenFactory(FakeBehavior(lambda _ordinal, _raw: []))
-
-        with self.assertRaisesRegex(BgpdumpIntegrityError, "message type=1"):
-            list(self.factory((artifact,), popen)(normalized_artifact(artifact)))
+    def test_malformed_open_and_notification_fail_closed(self):
+        valid_fixed = struct.pack(
+            "!BHH4sB",
+            4,
+            23456,
+            90,
+            ipaddress.IPv4Address("172.23.0.0").packed,
+            0,
+        )
+        cases = (
+            (bgp_control_frame(1), "OPEN body"),
+            (bgp_control_frame(1, body=valid_fixed[:-1]), "OPEN body"),
+            (
+                bgp_control_frame(1, body=b"\x03" + valid_fixed[1:]),
+                "version 必须为 4",
+            ),
+            (
+                bgp_control_frame(1, body=valid_fixed[:-1] + b"\x01"),
+                "optional parameters",
+            ),
+            (
+                bgp_control_frame(1, body=valid_fixed[:-1] + b"\x01\x02"),
+                "optional parameter header",
+            ),
+            (
+                bgp_control_frame(
+                    1,
+                    body=valid_fixed[:-1] + b"\x04\x02\x02\x02\x01",
+                ),
+                "capability value",
+            ),
+            (bgp_control_frame(3, body=b"\x06"), "NOTIFICATION body"),
+            (bgp_control_frame(5, body=b"\x00\x01\x00\x01"), "message type=5"),
+        )
+        for frame, message in cases:
+            with self.subTest(message=message):
+                artifact = self.write_artifact((frame,))
+                popen = FakePopenFactory(FakeBehavior(lambda _ordinal, _raw: []))
+                with self.assertRaisesRegex(BgpdumpIntegrityError, message):
+                    list(
+                        self.factory((artifact,), popen)(normalized_artifact(artifact))
+                    )
 
     def test_selection_spool_hard_limit_fails_closed_without_waiting(self):
         first = mrt_frame(b"spool-cap-first")

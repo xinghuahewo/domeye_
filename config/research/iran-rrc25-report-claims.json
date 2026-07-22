@@ -1,0 +1,162 @@
+{
+  "schema_version": "iran-rrc25-report-claim-inventory/v1",
+  "study_id": "iran-rrc25-country-outage-202602-v1",
+  "incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "scope": {
+    "collector_id": "rrc25",
+    "country_code": "IR",
+    "evidence_scope": "rrc25_only"
+  },
+  "sources": [
+    {
+      "source_id": "iran_outage_report_docx",
+      "title": "关于伊朗路由中断事件的报告",
+      "source_kind": "user_supplied_docx",
+      "basename": "关于伊朗路由中断事件的报告.docx",
+      "sha256": "59731ce2ac2d85562982341e5be049e8e2b9d2476d7cb1736d91644f8c64b910",
+      "size_bytes": 4110440,
+      "preserved_unmodified": true,
+      "extraction_basis": "docx_paragraph_and_table_xml",
+      "render_observation": {
+        "page_count": 6,
+        "content_page_count": 4,
+        "blank_page_count": 2,
+        "layout_state": "source_layout_overlap_not_used_as_claim_identity"
+      }
+    },
+    {
+      "source_id": "prior_gap_assessment_text",
+      "title": "此前关于报告能力与数据缺口的问答摘录",
+      "source_kind": "user_supplied_text",
+      "basename": "pasted-text.txt",
+      "sha256": "de7a9db80668de4ce027312acd8d1c9dfb3ad83b00cf044de7d8cfc74ee526ad",
+      "size_bytes": 12630,
+      "preserved_unmodified": true,
+      "extraction_basis": "utf8_text"
+    }
+  ],
+  "claims": [
+    {
+      "claim_key": "report_event_time",
+      "claim_type": "report_event_time",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraph:3",
+      "source_claim_zh": "报告称伊朗在北京时间2026年2月28日16:14发生路由中断事件。",
+      "reported_value": "2026-02-28T16:14:00+08:00",
+      "reported_unit": "event_time",
+      "recomputation_policy": "derive_from_rrc25_five_minute_state_series"
+    },
+    {
+      "claim_key": "ipv4_decline",
+      "claim_type": "ipv4_decline",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraphs:3,7;figure:2",
+      "source_claim_zh": "报告称RRC25可见IPv4地址由约1015万降至956万，约减少6%。",
+      "reported_value": 0.06,
+      "reported_unit": "baseline_fraction_decline",
+      "recomputation_policy": "same_snapshot_deduplicated_ipv4_address_union"
+    },
+    {
+      "claim_key": "recovery_state",
+      "claim_type": "recovery_state",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraph:7",
+      "source_claim_zh": "报告称北京时间3月3日08:35恢复到约99%，但截至3月6日16:40仍较起始值低约0.93%。",
+      "reported_value": "partially_recovered_not_fully_recovered",
+      "reported_unit": "recovery_state",
+      "recomputation_policy": "versioned_partial_and_full_recovery_rules"
+    },
+    {
+      "claim_key": "report_affected_asn_ratio",
+      "claim_type": "report_affected_asn_ratio",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraph:20",
+      "source_claim_zh": "报告称伊朗595个自治域中有199个地址宣告数量减少。",
+      "reported_value": {
+        "affected": 199,
+        "total": 595
+      },
+      "reported_unit": "asn_count_ratio_components",
+      "recomputation_policy": "same_snapshot_and_cumulative_membership_both_reported"
+    },
+    {
+      "claim_key": "report_visibility_class_counts",
+      "claim_type": "report_visibility_class_counts",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraph:20;table:22",
+      "source_claim_zh": "报告将199个受影响自治域分为73个地址全部不可见和126个地址部分可见。",
+      "reported_value": {
+        "fully_invisible": 73,
+        "partially_visible": 126
+      },
+      "reported_unit": "asn_count",
+      "recomputation_policy": "per_afi_visibility_then_dual_stack_classification"
+    },
+    {
+      "claim_key": "database_affected_asn_ratio",
+      "claim_type": "database_affected_asn_ratio",
+      "source_id": "prior_gap_assessment_text",
+      "source_locator": "database_ratio_discussion",
+      "source_claim_zh": "旧数据库摘要为176/556，即31.65%，需与同快照研究结果对账。",
+      "reported_value": {
+        "affected": 176,
+        "total": 556,
+        "ratio": 0.3165
+      },
+      "reported_unit": "legacy_database_asn_ratio",
+      "recomputation_policy": "legacy_source_fact_compared_without_forcing_match"
+    },
+    {
+      "claim_key": "active_withdrawal_intent",
+      "claim_type": "active_withdrawal_intent",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraphs:24,26",
+      "source_claim_zh": "报告认为部分可见只能由主动回撤前缀实现，并据此认定126个自治域主动回撤。",
+      "reported_value": true,
+      "reported_unit": "mechanism_claim",
+      "recomputation_policy": "route_withdraw_is_observation_not_intent_proof"
+    },
+    {
+      "claim_key": "physical_cut",
+      "claim_type": "physical_cut",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraphs:24,26",
+      "source_claim_zh": "报告将切断物理线路列为完全不可见自治域的可能机制，并在结论中称本次使用了该手段。",
+      "reported_value": true,
+      "reported_unit": "mechanism_claim",
+      "recomputation_policy": "unverifiable_from_rrc25_only"
+    },
+    {
+      "claim_key": "bgp_session_closed",
+      "claim_type": "bgp_session_closed",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraphs:24,26",
+      "source_claim_zh": "报告将关闭BGP会话列为完全不可见自治域的可能机制，并在结论中称本次使用了该手段。",
+      "reported_value": true,
+      "reported_unit": "mechanism_claim",
+      "recomputation_policy": "state_change_is_session_observation_not_global_mechanism_proof"
+    },
+    {
+      "claim_key": "traffic_impact",
+      "claim_type": "traffic_impact",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraphs:3,26",
+      "source_claim_zh": "报告称回撤IPv4和IPv6流量仅占境内与伊朗通信总流量3.5%，且总流量无明显减少。",
+      "reported_value": 0.035,
+      "reported_unit": "traffic_fraction",
+      "recomputation_policy": "unverifiable_without_traffic_telemetry"
+    },
+    {
+      "claim_key": "government_intent",
+      "claim_type": "government_intent",
+      "source_id": "iran_outage_report_docx",
+      "source_locator": "paragraphs:3,26",
+      "source_claim_zh": "报告初步判断事件是伊朗主动实施的全国性网络管制。",
+      "reported_value": true,
+      "reported_unit": "intent_claim",
+      "recomputation_policy": "hypothesis_only_from_rrc25_only"
+    }
+  ],
+  "immutability_policy": "source_files_are_hashed_and_never_modified",
+  "causal_policy": "rrc25_observations_do_not_confirm_physical_traffic_or_government_intent"
+}

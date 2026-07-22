@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/country-outage-episode.schema.json",
+  "title": "国家中断研究 Episode 合同",
+  "description": "表达由连续样本识别的异常 episode、恢复状态、持续时间边界和与旧 Incident 的非因果映射。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "episode_id",
+    "run_id",
+    "collector_id",
+    "country_code",
+    "cohort_view",
+    "algorithm_version",
+    "onset_at",
+    "detected_at",
+    "peak_at",
+    "trough_at",
+    "partial_recovery_at",
+    "full_recovery_at",
+    "observation_end_at",
+    "recovery_state",
+    "duration",
+    "supporting_sample_ids",
+    "wave_ids",
+    "split_evidence",
+    "incident_mappings"
+  ],
+  "properties": {
+    "schema_version": {"const": "country-outage-episode/v1"},
+    "episode_id": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+    "run_id": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "collector_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
+    "cohort_view": {"enum": ["compatible", "revised"]},
+    "algorithm_version": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "onset_at": {"type": "string", "format": "date-time"},
+    "detected_at": {"type": "string", "format": "date-time"},
+    "peak_at": {"type": "string", "format": "date-time"},
+    "trough_at": {"type": "string", "format": "date-time"},
+    "partial_recovery_at": {"type": ["string", "null"], "format": "date-time"},
+    "full_recovery_at": {"type": ["string", "null"], "format": "date-time"},
+    "observation_end_at": {"type": "string", "format": "date-time"},
+    "recovery_state": {"enum": ["ongoing", "recovering", "partially_recovered", "fully_recovered", "unknown"]},
+    "duration": {"$ref": "#/$defs/duration"},
+    "supporting_sample_ids": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"}
+    },
+    "wave_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^wave_v1_[0-9a-f]{24}$"}
+    },
+    "split_evidence": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/splitEvidence"}
+    },
+    "incident_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/incidentMapping"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"recovery_state": {"const": "fully_recovered"}}, "required": ["recovery_state"]},
+      "then": {
+        "properties": {
+          "partial_recovery_at": {"type": "string", "format": "date-time"},
+          "full_recovery_at": {"type": "string", "format": "date-time"},
+          "duration": {
+            "allOf": [
+              {"$ref": "#/$defs/duration"},
+              {"type": "object", "properties": {"duration_state": {"const": "exact"}}}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"recovery_state": {"const": "partially_recovered"}}, "required": ["recovery_state"]},
+      "then": {
+        "properties": {
+          "partial_recovery_at": {"type": "string", "format": "date-time"},
+          "full_recovery_at": {"type": "null"},
+          "duration": {
+            "allOf": [
+              {"$ref": "#/$defs/duration"},
+              {"type": "object", "properties": {"duration_state": {"const": "lower_bound"}}}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"recovery_state": {"enum": ["ongoing", "recovering"]}}, "required": ["recovery_state"]},
+      "then": {
+        "properties": {
+          "full_recovery_at": {"type": "null"},
+          "duration": {
+            "allOf": [
+              {"$ref": "#/$defs/duration"},
+              {"type": "object", "properties": {"duration_state": {"const": "lower_bound"}}}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "duration": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {
+            "duration_state": {"const": "exact"},
+            "seconds": {"type": "integer", "minimum": 0},
+            "minimum_seconds": {"type": "null"},
+            "maximum_seconds": {"type": "null"},
+            "measured_to": {"type": "string", "format": "date-time"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {
+            "duration_state": {"const": "lower_bound"},
+            "seconds": {"type": "null"},
+            "minimum_seconds": {"type": "integer", "minimum": 0},
+            "maximum_seconds": {"type": "null"},
+            "measured_to": {"type": "string", "format": "date-time"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {
+            "duration_state": {"const": "interval"},
+            "seconds": {"type": "null"},
+            "minimum_seconds": {"type": "integer", "minimum": 0},
+            "maximum_seconds": {"type": "integer", "minimum": 0},
+            "measured_to": {"type": "string", "format": "date-time"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {
+            "duration_state": {"const": "unknown"},
+            "seconds": {"type": "null"},
+            "minimum_seconds": {"type": "null"},
+            "maximum_seconds": {"type": "null"},
+            "measured_to": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "splitEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "left_sample_id", "right_sample_id", "full_recovery_confirmed", "reason_code"],
+      "properties": {
+        "decision": {"enum": ["same_episode_new_wave", "new_episode"]},
+        "left_sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "right_sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "full_recovery_confirmed": {"type": "boolean"},
+        "reason_code": {"enum": ["full_recovery_six_slots", "partial_rebound_only", "continuity_unknown"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"decision": {"const": "new_episode"}}, "required": ["decision"]},
+          "then": {"properties": {"full_recovery_confirmed": {"const": true}, "reason_code": {"const": "full_recovery_six_slots"}}}
+        },
+        {
+          "if": {"properties": {"decision": {"const": "same_episode_new_wave"}}, "required": ["decision"]},
+          "then": {"properties": {"full_recovery_confirmed": {"const": false}}}
+        }
+      ]
+    },
+    "incidentMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["incident_ref", "relation", "causal", "evidence_sample_ids"],
+      "properties": {
+        "incident_ref": {"type": "string", "minLength": 1},
+        "relation": {"enum": ["temporal_overlap", "legacy_reconciliation", "possible_correspondence", "no_correspondence"]},
+        "causal": {"const": false},
+        "evidence_sample_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"}
+        }
+      }
+    }
+  }
+}

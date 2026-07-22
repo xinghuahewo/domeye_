@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/research-evidence-sidecar.schema.json",
+  "title": "RRC25 国家中断研究 Evidence Bundle v2 Sidecar 合同",
+  "description": "不重解释 Evidence Bundle v2；补充 Incident 到 episode、wave、五分钟样本、RouteEvent、原始 MRT 坐标和制品哈希的研究引用闭环，并保留恢复候选、区间持续时间与连续性未知。所有结论均为观测，不表达因果。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sidecar_id",
+    "run_id",
+    "mapping",
+    "bundle_refs",
+    "legacy_source_fact_refs",
+    "incident_episode_links",
+    "episode_ref",
+    "wave_refs",
+    "sample_refs",
+    "sample_route_event_links",
+    "route_event_refs",
+    "raw_record_refs",
+    "artifact_refs",
+    "recovery_assessment",
+    "reference_closure",
+    "limitations_zh",
+    "conclusion"
+  ],
+  "properties": {
+    "schema_version": {"const": "research-evidence-sidecar/v1"},
+    "sidecar_id": {"type": "string", "pattern": "^research_sidecar_v1_[0-9a-f]{24}$"},
+    "run_id": {"$ref": "#/$defs/runId"},
+    "mapping": {"$ref": "#/$defs/mapping"},
+    "bundle_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/bundleRef"}
+    },
+    "legacy_source_fact_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/legacySourceFactRef"}
+    },
+    "incident_episode_links": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/incidentEpisodeLink"}
+    },
+    "episode_ref": {"$ref": "#/$defs/episodeRef"},
+    "wave_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/waveRef"}
+    },
+    "sample_refs": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sampleRef"}
+    },
+    "sample_route_event_links": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sampleRouteEventLink"}
+    },
+    "route_event_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/routeEventRef"}
+    },
+    "raw_record_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/rawRecordRef"}
+    },
+    "artifact_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/artifactRef"}
+    },
+    "recovery_assessment": {"$ref": "#/$defs/recoveryAssessment"},
+    "reference_closure": {"$ref": "#/$defs/referenceClosure"},
+    "limitations_zh": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "pattern": "[\\u3400-\\u4dbf\\u4e00-\\u9fff]"}
+    },
+    "conclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "causal_conclusion"],
+      "properties": {
+        "classification": {"const": "observation_only"},
+        "causal_conclusion": {"type": "null"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runId": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "incidentId": {"type": "string", "pattern": "^inc_v1_[0-9a-f]{24}$"},
+    "bundleId": {"type": "string", "pattern": "^eb_v2_[0-9a-f]{32}$"},
+    "episodeId": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+    "waveId": {"type": "string", "pattern": "^wave_v1_[0-9a-f]{24}$"},
+    "sampleId": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+    "routeEventId": {"type": "string", "pattern": "^rte_v1_[0-9a-f]{32}$"},
+    "rawRecordRefId": {"type": "string", "pattern": "^raw_v1_[0-9a-f]{32}$"},
+    "artifactId": {"type": "string", "pattern": "^art_v1_[0-9a-f]{32}$"},
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mapping_state", "incident_ids", "bundle_ids", "missing_reason_zh"],
+      "properties": {
+        "mapping_state": {"enum": ["unmapped", "exact", "multiple"]},
+        "incident_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/incidentId"}},
+        "bundle_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/bundleId"}},
+        "missing_reason_zh": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mapping_state": {"const": "unmapped"}}, "required": ["mapping_state"]},
+          "then": {
+            "properties": {
+              "incident_ids": {"type": "array", "maxItems": 0},
+              "bundle_ids": {"type": "array", "maxItems": 0},
+              "missing_reason_zh": {"type": "string", "pattern": "[\\u3400-\\u4dbf\\u4e00-\\u9fff]"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"mapping_state": {"const": "exact"}}, "required": ["mapping_state"]},
+          "then": {
+            "properties": {
+              "incident_ids": {"type": "array", "minItems": 1, "maxItems": 1},
+              "bundle_ids": {"type": "array", "minItems": 1, "maxItems": 1},
+              "missing_reason_zh": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"mapping_state": {"const": "multiple"}}, "required": ["mapping_state"]},
+          "then": {
+            "properties": {
+              "incident_ids": {"type": "array", "minItems": 2},
+              "bundle_ids": {"type": "array", "minItems": 2},
+              "missing_reason_zh": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "bundleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundle_id", "incident_id", "bundle_sha256"],
+      "properties": {
+        "bundle_id": {"$ref": "#/$defs/bundleId"},
+        "incident_id": {"$ref": "#/$defs/incidentId"},
+        "bundle_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "legacySourceFactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_fact_id", "bundle_id", "incident_id", "table_name", "fact_locator", "record_hash", "source_fact_sha256"],
+      "properties": {
+        "source_fact_id": {"type": "string", "pattern": "^sf_v1_[0-9a-f]{24}$"},
+        "bundle_id": {"$ref": "#/$defs/bundleId"},
+        "incident_id": {"$ref": "#/$defs/incidentId"},
+        "table_name": {"type": "string", "pattern": "^(hijack|sub_hijack|leak_event|prefix_outage|as_outage|country_outage)_20260[23]$"},
+        "fact_locator": {"type": "string", "minLength": 1},
+        "record_hash": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "source_fact_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "incidentEpisodeLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["incident_id", "bundle_id", "episode_id", "relation", "causal", "evidence_sample_ids"],
+      "properties": {
+        "incident_id": {"$ref": "#/$defs/incidentId"},
+        "bundle_id": {"$ref": "#/$defs/bundleId"},
+        "episode_id": {"$ref": "#/$defs/episodeId"},
+        "relation": {"enum": ["temporal_overlap", "legacy_reconciliation", "possible_correspondence"]},
+        "causal": {"const": false},
+        "evidence_sample_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/sampleId"}}
+      }
+    },
+    "episodeRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_id", "record_sha256", "wave_ids", "supporting_sample_ids"],
+      "properties": {
+        "episode_id": {"$ref": "#/$defs/episodeId"},
+        "record_sha256": {"$ref": "#/$defs/sha256"},
+        "wave_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/waveId"}},
+        "supporting_sample_ids": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/sampleId"}}
+      }
+    },
+    "waveRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wave_id", "record_sha256", "supporting_sample_ids"],
+      "properties": {
+        "wave_id": {"$ref": "#/$defs/waveId"},
+        "record_sha256": {"$ref": "#/$defs/sha256"},
+        "supporting_sample_ids": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"$ref": "#/$defs/sampleId"}}
+      }
+    },
+    "sampleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sample_id", "snapshot_id", "continuity_state", "record_sha256"],
+      "properties": {
+        "sample_id": {"$ref": "#/$defs/sampleId"},
+        "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+        "continuity_state": {"enum": ["continuous", "unknown_after_gap"]},
+        "record_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "sampleRouteEventLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sample_id", "link_state", "route_event_ids", "missing_reason_zh"],
+      "properties": {
+        "sample_id": {"$ref": "#/$defs/sampleId"},
+        "link_state": {"enum": ["linked", "unknown", "not_applicable"]},
+        "route_event_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/routeEventId"}},
+        "missing_reason_zh": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"link_state": {"const": "linked"}}, "required": ["link_state"]},
+          "then": {"properties": {"route_event_ids": {"type": "array", "minItems": 1}, "missing_reason_zh": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"link_state": {"enum": ["unknown", "not_applicable"]}}, "required": ["link_state"]},
+          "then": {"properties": {"route_event_ids": {"type": "array", "maxItems": 0}, "missing_reason_zh": {"type": "string", "pattern": "[\\u3400-\\u4dbf\\u4e00-\\u9fff]"}}}
+        }
+      ]
+    },
+    "routeEventRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route_event_id", "route_event_ref_sha256", "observed_at", "collector_id", "vp_id", "vp_asn", "semantics", "raw_record_ref_ids", "bundle_ids"],
+      "properties": {
+        "route_event_id": {"$ref": "#/$defs/routeEventId"},
+        "route_event_ref_sha256": {"$ref": "#/$defs/sha256"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "collector_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+        "vp_id": {"type": "string", "pattern": "^vp_v1_[0-9a-f]{32}$"},
+        "vp_asn": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "semantics": {"enum": ["route_observation", "path_snapshot"]},
+        "raw_record_ref_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/rawRecordRefId"}},
+        "bundle_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/bundleId"}}
+      }
+    },
+    "rawRecordRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_record_ref_id", "artifact_id", "file_sha256", "record_offset", "record_length", "record_hash", "record_ordinal", "element_ordinal", "verification_status"],
+      "properties": {
+        "raw_record_ref_id": {"$ref": "#/$defs/rawRecordRefId"},
+        "artifact_id": {"$ref": "#/$defs/artifactId"},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "record_offset": {"type": "integer", "minimum": 0},
+        "record_length": {"type": "integer", "minimum": 12},
+        "record_hash": {"$ref": "#/$defs/sha256"},
+        "record_ordinal": {"type": "integer", "minimum": 0},
+        "element_ordinal": {"type": "integer", "minimum": 0},
+        "verification_status": {"const": "verified"}
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "file_sha256", "raw_record_ref_ids"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/artifactId"},
+        "file_sha256": {"$ref": "#/$defs/sha256"},
+        "raw_record_ref_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/rawRecordRefId"}}
+      }
+    },
+    "duration": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {"duration_state": {"const": "exact"}, "seconds": {"type": "integer", "minimum": 0}, "minimum_seconds": {"type": "null"}, "maximum_seconds": {"type": "null"}, "measured_to": {"type": "string", "format": "date-time"}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {"duration_state": {"const": "lower_bound"}, "seconds": {"type": "null"}, "minimum_seconds": {"type": "integer", "minimum": 0}, "maximum_seconds": {"type": "null"}, "measured_to": {"type": "string", "format": "date-time"}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {"duration_state": {"const": "interval"}, "seconds": {"type": "null"}, "minimum_seconds": {"type": "integer", "minimum": 0}, "maximum_seconds": {"type": "integer", "minimum": 0}, "measured_to": {"type": "string", "format": "date-time"}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["duration_state", "seconds", "minimum_seconds", "maximum_seconds", "measured_to"],
+          "properties": {"duration_state": {"const": "unknown"}, "seconds": {"type": "null"}, "minimum_seconds": {"type": "null"}, "maximum_seconds": {"type": "null"}, "measured_to": {"type": "null"}}
+        }
+      ]
+    },
+    "recoveryCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "start_at", "supporting_sample_ids", "confirmed", "reason_code"],
+      "properties": {
+        "kind": {"enum": ["partial", "full"]},
+        "start_at": {"type": "string", "format": "date-time"},
+        "supporting_sample_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/sampleId"}},
+        "confirmed": {"type": "boolean"},
+        "reason_code": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"}
+      }
+    },
+    "recoveryAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recovery_state", "partial_recovery_at", "full_recovery_at", "duration", "continuity_status", "candidates"],
+      "properties": {
+        "recovery_state": {"enum": ["ongoing", "recovering", "partially_recovered", "fully_recovered", "unknown"]},
+        "partial_recovery_at": {"type": ["string", "null"], "format": "date-time"},
+        "full_recovery_at": {"type": ["string", "null"], "format": "date-time"},
+        "duration": {"$ref": "#/$defs/duration"},
+        "continuity_status": {"enum": ["continuous", "unknown"]},
+        "candidates": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/recoveryCandidate"}}
+      }
+    },
+    "referenceClosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["incident_episode", "episode_wave_sample", "sample_route_event", "route_raw_artifact", "overall", "unresolved_refs"],
+      "properties": {
+        "incident_episode": {"enum": ["passed", "not_applicable_unmapped"]},
+        "episode_wave_sample": {"const": "passed"},
+        "sample_route_event": {"enum": ["passed", "explicit_unknown", "not_applicable_unmapped"]},
+        "route_raw_artifact": {"enum": ["passed", "not_applicable_unmapped"]},
+        "overall": {"enum": ["passed", "passed_with_explicit_unknown", "passed_with_explicit_unmapped"]},
+        "unresolved_refs": {"type": "array", "maxItems": 0}
+      }
+    }
+  }
+}

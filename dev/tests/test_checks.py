@@ -34,6 +34,27 @@ class RiskClassificationTest(unittest.TestCase):
         self.assertEqual(CHECKS.classify("dev/checks.py"), 3)
         self.assertEqual(CHECKS.classify("config/data-profile.json"), 3)
 
+    def test_research_paths_have_explicit_risk_levels(self):
+        self.assertEqual(CHECKS.classify("config/research/iran-rrc25-202602.json"), 3)
+        self.assertEqual(
+            CHECKS.classify("contracts/research/research-profile.schema.json"),
+            3,
+        )
+        self.assertEqual(
+            CHECKS.classify("contracts/research/fixtures/research-run/valid-accepted.json"),
+            2,
+        )
+        self.assertEqual(
+            CHECKS.classify("backend/data_pipeline/research/resource_gate.py"),
+            2,
+        )
+        self.assertEqual(CHECKS.classify("openspec/config.yaml"), 2)
+        self.assertEqual(CHECKS.classify("openspec/specs/.gitkeep"), 0)
+
+    def test_unknown_research_config_type_still_fails_closed(self):
+        with self.assertRaisesRegex(CHECKS.ClassificationError, "未识别文件"):
+            CHECKS.classify("config/research/run-worker.sh")
+
     def test_unknown_file_fails_closed(self):
         with self.assertRaisesRegex(CHECKS.ClassificationError, "未识别文件"):
             CHECKS.classify("mystery/release-switch.conf")

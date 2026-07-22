@@ -1,0 +1,23 @@
+{
+  "schema_version": "research-run/v1",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "profile_ref": {"path": "config/research/iran-rrc25.json", "sha256": "1111111111111111111111111111111111111111111111111111111111111111"},
+  "input_manifest_ref": {"path": "manifest/input.json", "sha256": "2222222222222222222222222222222222222222222222222222222222222222"},
+  "mapping_refs": [{"view": "compatible", "path": "mapping/as-country.json", "sha256": "3333333333333333333333333333333333333333333333333333333333333333"}],
+  "code_identity": {"git_sha": "4444444444444444444444444444444444444444", "dirty": false, "source_sha256": "5555555555555555555555555555555555555555555555555555555555555555"},
+  "run_state": "completed",
+  "acceptance_state": "accepted",
+  "execution": {"database_write_operations": 0, "new_raw_bytes_read": 1000, "peak_temporary_bytes": 2000, "max_worker_seconds": 539.5, "started_at": "2026-07-22T00:00:00Z", "finished_at": "2026-07-22T00:09:00Z"},
+  "quality_gates": [{"gate_id": "state_continuity", "blocking": true, "status": "fail", "evidence_ref": "quality/state.json"}],
+  "outputs": [
+    {"kind": "samples", "path": "samples.jsonl.gz", "sha256": "6666666666666666666666666666666666666666666666666666666666666666", "record_count": 10},
+    {"kind": "episodes", "path": "episodes.jsonl.gz", "sha256": "7777777777777777777777777777777777777777777777777777777777777777", "record_count": 1},
+    {"kind": "waves", "path": "waves.jsonl.gz", "sha256": "8888888888888888888888888888888888888888888888888888888888888888", "record_count": 1},
+    {"kind": "episode_as", "path": "episode-as.jsonl.gz", "sha256": "9999999999999999999999999999999999999999999999999999999999999999", "record_count": 1},
+    {"kind": "reconciliation", "path": "reconciliation.json", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "record_count": 11},
+    {"kind": "manifest", "path": "manifest.json", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "record_count": 1}
+  ],
+  "semantic_fingerprint_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "runtime_metadata_excluded_from_semantic_fingerprint": true
+}

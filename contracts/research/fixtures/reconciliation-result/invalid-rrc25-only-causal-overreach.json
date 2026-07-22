@@ -1,0 +1,10 @@
+{
+  "schema_version": "reconciliation-result/v1",
+  "reconciliation_id": "reconciliation_v1_111111111111111111111111",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "report_source": {"title": "关于伊朗路由中断事件的报告", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "preserved_unmodified": true},
+  "evidence_registry": [{"evidence_id": "evidence_v1_111111111111111111111111", "kind": "sample", "ref": "sample.json", "sha256": "2222222222222222222222222222222222222222222222222222222222222222"}],
+  "claims": [{"claim_id": "claim_v1_000000000000000000000001", "claim_type": "physical_cut", "source_claim_zh": "物理断路", "original_value": {"value": true, "value_state": "reported", "unit": null, "snapshot_id": null, "missing_reason": null}, "recomputed_value": {"value": true, "value_state": "recomputed", "unit": null, "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "missing_reason": null}, "rating": "confirmed", "evidence_scope": "rrc25_only", "causal_level": "observation", "evidence_refs": ["evidence_v1_111111111111111111111111"], "counterevidence_refs": [], "limitations_zh": ["无外部物理证据"], "rationale_zh": "错误地从路由数据确认物理断路。"}],
+  "summary": {"confirmed": 1, "revised": 0, "unverifiable": 0, "hypothesis_only": 0}
+}

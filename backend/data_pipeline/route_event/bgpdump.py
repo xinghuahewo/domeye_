@@ -8,11 +8,11 @@
 
 安全边界刻意收紧：
 
-* 只接受 MRT BGP4MP/BGP4MP_ET（type 16/17）的 UPDATE message
-  subtype 1/4，以及单独统计的 STATE_CHANGE subtype 0/5；
-* RIB、local message、Add-Path、OPEN/NOTIFICATION/ROUTE-REFRESH 和未知
-  stdout 行全部失败关闭；合法 KEEPALIVE 只保留为有哈希的 ``raw_record``，
-  不伪造成 RouteEvent；
+* 只接受 MRT BGP4MP/BGP4MP_ET（type 16/17）的 MESSAGE subtype 1/4，
+  以及单独统计的 STATE_CHANGE subtype 0/5；
+* RIB、local message、Add-Path、ROUTE-REFRESH 和未知 stdout 行全部失败关闭；
+  结构完整的 OPEN/NOTIFICATION/KEEPALIVE 只保留为有哈希的 ``raw_record``，
+  不伪造成 RouteEvent，并按消息类型分别计数；
 * ``bgpdump -m`` 的 AS_PATH 按 1.6.2 固定文本语法保留 sequence、AS_SET、
   confederation sequence/set 四种 segment；空字符串、错误标记、截断或
   语法不完整文本均拒绝，绝不构造假的 ``AsPathSegment``；
@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import copy
@@ -68,8 +69,29 @@ _ALLOWED_MRT_TYPES = frozenset((16, 17))
 _ALLOWED_OUTPUT_FORMATS = frozenset(("BGP4MP", "BGP4MP_ET"))
 _PARSER_ATTESTATION_FINGERPRINT_SCHEMA = "parser_attestation_fingerprint_v1"
 _BGP_MARKER = b"\xff" * 16
+_BGP_MESSAGE_OPEN = 1
+_BGP_MESSAGE_UPDATE = 2
+_BGP_MESSAGE_NOTIFICATION = 3
+_BGP_MESSAGE_KEEPALIVE = 4
+_SILENT_CONTROL_MESSAGE_TYPES = frozenset(
+    (_BGP_MESSAGE_OPEN, _BGP_MESSAGE_NOTIFICATION, _BGP_MESSAGE_KEEPALIVE)
+)
 _SPOOL_ENTRY_MAGIC = b"DMRTSP01"
 _SPOOL_ENTRY_HEADER = struct.Struct("!8sQQQ32s")
+
+# stdout 队列只用于解析线程与消费线程之间的短暂解耦。默认容量保持 4，避免
+# 改变通用调用方既有的背压语义；研究型调用方可显式提高，但不能越过下面的
+# 双重硬上限。source byte 预算按读入行（含换行）的实际长度逐项扣减，而不是
+# 仅用 item 数推测内存。
+BGPDUMP_ABSOLUTE_MAX_STDOUT_QUEUE_CAPACITY = 4096
+BGPDUMP_ABSOLUTE_MAX_STDOUT_QUEUE_SOURCE_BYTES = 8 * 1024 * 1024
+
+# _parse_output_line 只保留定长字段、规范化字符串及由输入字符一一约束数量的
+# AS_PATH 整数/segment。按 CPython 对小对象、tuple 和 dataclass 的开销取 64x
+# source bytes，再为每项预留 4 KiB 固定开销，是刻意偏大的 retained-heap 上界。
+# 在两个绝对上限同时取满时，队列保留对象的估算硬上界为 528 MiB。
+_PARSED_LINE_MEMORY_EXPANSION_FACTOR = 64
+_PARSED_LINE_FIXED_OVERHEAD_BYTES = 4096
 
 
 @dataclass(frozen=True)
@@ -127,11 +149,89 @@ class _ParsedLine:
     state_peer_asn: Optional[int] = None
     old_state: Optional[int] = None
     new_state: Optional[int] = None
+    source_line_bytes: int = 0
 
 
 @dataclass(frozen=True)
 class _StdoutDone:
     group_count: int
+
+
+class _BoundedOutputQueue:
+    """同时按 item 数和原始 stdout 行字节数实施背压。"""
+
+    def __init__(self, *, max_items: int, max_source_bytes: int) -> None:
+        self._max_items = max_items
+        self._max_source_bytes = max_source_bytes
+        self._items: "deque[Any]" = deque()
+        self._source_bytes = 0
+        self._peak_items = 0
+        self._peak_source_bytes = 0
+        self._condition = threading.Condition()
+
+    @staticmethod
+    def _weight(item: Any) -> int:
+        if isinstance(item, _ParsedLine):
+            return item.source_line_bytes
+        return 0
+
+    def put(self, item: Any, timeout: Optional[float] = None) -> None:
+        weight = self._weight(item)
+        if weight < 0 or weight > self._max_source_bytes:
+            raise queue.Full
+        deadline = None if timeout is None else time.monotonic() + timeout
+        with self._condition:
+            while (
+                len(self._items) >= self._max_items
+                or self._source_bytes + weight > self._max_source_bytes
+            ):
+                if deadline is None:
+                    self._condition.wait()
+                    continue
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise queue.Full
+                self._condition.wait(remaining)
+            self._items.append(item)
+            self._source_bytes += weight
+            self._peak_items = max(self._peak_items, len(self._items))
+            self._peak_source_bytes = max(
+                self._peak_source_bytes, self._source_bytes
+            )
+            self._condition.notify_all()
+
+    def get(self, timeout: Optional[float] = None) -> Any:
+        deadline = None if timeout is None else time.monotonic() + timeout
+        with self._condition:
+            while not self._items:
+                if deadline is None:
+                    self._condition.wait()
+                    continue
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise queue.Empty
+                self._condition.wait(remaining)
+            item = self._items.popleft()
+            self._source_bytes -= self._weight(item)
+            self._condition.notify_all()
+            return item
+
+    def qsize(self) -> int:
+        with self._condition:
+            return len(self._items)
+
+    def source_bytes(self) -> int:
+        with self._condition:
+            return self._source_bytes
+
+    def snapshot(self) -> Dict[str, int]:
+        with self._condition:
+            return {
+                "current_items": len(self._items),
+                "current_source_bytes": self._source_bytes,
+                "peak_items": self._peak_items,
+                "peak_source_bytes": self._peak_source_bytes,
+            }
 
 
 class _FailureState:
@@ -177,6 +277,7 @@ class _ProgressState:
         self._last_event = "pipeline_initialized"
         self._last_detail: Dict[str, Any] = {}
         self._event_counts: Counter[str] = Counter()
+        self._compressed_bytes_read = 0
 
     def touch(self, event: str = "generic_progress", **detail: Any) -> None:
         with self._lock:
@@ -184,6 +285,11 @@ class _ProgressState:
             self._last_event = event
             self._last_detail = dict(sorted(detail.items()))
             self._event_counts[event] += 1
+            observed = detail.get("compressed_bytes_read")
+            if isinstance(observed, int) and not isinstance(observed, bool):
+                self._compressed_bytes_read = max(
+                    self._compressed_bytes_read, observed
+                )
 
     def idle_seconds(self) -> float:
         with self._lock:
@@ -195,6 +301,7 @@ class _ProgressState:
                 "last_event": self._last_event,
                 "last_detail": dict(self._last_detail),
                 "event_counts": dict(sorted(self._event_counts.items())),
+                "compressed_bytes_read": self._compressed_bytes_read,
             }
 
 
@@ -439,16 +546,24 @@ class _AnonymousFrameSpool:
 class _HashingReader:
     """在 gzip 首次读取压缩字节时同步计算 SHA256。"""
 
-    def __init__(self, stream: BinaryIO) -> None:
+    def __init__(
+        self, stream: BinaryIO, progress: Optional[_ProgressState] = None
+    ) -> None:
         self._stream = stream
         self._digest = hashlib.sha256()
         self.bytes_read = 0
+        self._progress = progress
 
     def read(self, size: int = -1) -> bytes:
         block = self._stream.read(size)
         if block:
             self._digest.update(block)
             self.bytes_read += len(block)
+            if self._progress is not None:
+                self._progress.touch(
+                    "compressed_bytes_read",
+                    compressed_bytes_read=self.bytes_read,
+                )
         return block
 
     def tell(self) -> int:
@@ -694,7 +809,7 @@ def _parse_as_path(value: str) -> Tuple[AsPathSegment, ...]:
     return tuple(segments)
 
 
-def _parse_output_line(text: str) -> _ParsedLine:
+def _parse_output_line(text: str, *, source_line_bytes: int) -> _ParsedLine:
     fields = text.split("|")
     if len(fields) < 4:
         raise BgpdumpOutputError("bgpdump stdout 行字段不足")
@@ -721,6 +836,7 @@ def _parse_output_line(text: str) -> _ParsedLine:
             state_peer_asn=_parse_uint(fields[5], "STATE peer_asn", 4_294_967_295),
             old_state=_parse_uint(fields[6], "STATE old_state", 65_535),
             new_state=_parse_uint(fields[7], "STATE new_state", 65_535),
+            source_line_bytes=source_line_bytes,
         )
 
     if kind == "W":
@@ -742,6 +858,7 @@ def _parse_output_line(text: str) -> _ParsedLine:
             microseconds,
             kind,
             element,
+            source_line_bytes=source_line_bytes,
         )
 
     if kind == "A":
@@ -765,6 +882,7 @@ def _parse_output_line(text: str) -> _ParsedLine:
             microseconds,
             kind,
             element,
+            source_line_bytes=source_line_bytes,
         )
 
     raise BgpdumpOutputError("bgpdump stdout 含未验收 action/record 行")
@@ -849,15 +967,55 @@ def _parse_path_attributes(
             _add_family_count(withdraw, afi, safi, count, "MP_UNREACH_NLRI")
 
 
+def _validate_open_body(body: bytes) -> None:
+    # RFC 4271 OPEN 固定体为 10 字节，最后一字节声明 optional parameters
+    # 的总长度。P0 只准入 BGP-4 并校验边界/闭合；能力码和协商结果不在
+    # 原始观测层被伪装成已接受会话。
+    if len(body) < 10:
+        raise BgpdumpIntegrityError("BGP OPEN body 被截断")
+    if body[0] != 4:
+        raise BgpdumpIntegrityError("BGP OPEN version 必须为 4")
+    optional_length = body[9]
+    if len(body) != 10 + optional_length:
+        raise BgpdumpIntegrityError("BGP OPEN optional parameters 长度不闭合")
+    offset = 10
+    while offset < len(body):
+        if len(body) - offset < 2:
+            raise BgpdumpIntegrityError("BGP OPEN optional parameter header 被截断")
+        parameter_type = body[offset]
+        parameter_length = body[offset + 1]
+        offset += 2
+        if offset + parameter_length > len(body):
+            raise BgpdumpIntegrityError("BGP OPEN optional parameter value 被截断")
+        parameter_end = offset + parameter_length
+        if parameter_type == 2:
+            capability_offset = offset
+            while capability_offset < parameter_end:
+                if parameter_end - capability_offset < 2:
+                    raise BgpdumpIntegrityError("BGP OPEN capability header 被截断")
+                capability_length = body[capability_offset + 1]
+                capability_offset += 2
+                if capability_offset + capability_length > parameter_end:
+                    raise BgpdumpIntegrityError("BGP OPEN capability value 被截断")
+                capability_offset += capability_length
+        offset += parameter_length
+
+
+def _validate_notification_body(body: bytes) -> None:
+    # Error Code + Error Subcode 为固定最短两字节；其余 Data 不解释但必须
+    # 已由 common BGP length 精确框定。
+    if len(body) < 2:
+        raise BgpdumpIntegrityError("BGP NOTIFICATION body 被截断")
+
+
 def _parse_bgp_message_shape(
     payload: bytes, mrt_subtype: int
 ) -> Tuple[int, Optional[_UpdateShape]]:
     """验证 BGP4MP message，并只把 UPDATE 提升为可路由元素 shape。
 
-    RIS 的 ``updates.*`` 制品会夹带合法 KEEPALIVE。它没有 ``bgpdump -p``
-    行，也没有可提升的路由元素，但仍属于必须进入 record hash-chain 的原始
-    physical record。P0 仅允许长度严格为 19 的 KEEPALIVE；其他非 UPDATE
-    消息继续失败关闭，避免把会话控制消息误解释为路由观测。
+    RIS 的 ``updates.*`` 制品会夹带会话控制消息。OPEN、NOTIFICATION 和
+    KEEPALIVE 没有 ``bgpdump -p`` 行，也没有可提升的路由元素，但仍属于必须
+    进入 record hash-chain 的原始 physical record。
     """
 
     asn_octets = 2 if mrt_subtype == 1 else 4 if mrt_subtype == 4 else None
@@ -880,15 +1038,21 @@ def _parse_bgp_message_shape(
     if message_length < 19 or message_length != len(message):
         raise BgpdumpIntegrityError("BGP message length 与 MRT payload 不一致")
     message_type = message[18]
-    if message_type == 4:
+    body = message[19:]
+    if message_type == _BGP_MESSAGE_OPEN:
+        _validate_open_body(body)
+        return message_type, None
+    if message_type == _BGP_MESSAGE_NOTIFICATION:
+        _validate_notification_body(body)
+        return message_type, None
+    if message_type == _BGP_MESSAGE_KEEPALIVE:
         if message_length != 19:
             raise BgpdumpIntegrityError("BGP KEEPALIVE 长度必须严格为 19")
         return message_type, None
-    if message_type != 2:
+    if message_type != _BGP_MESSAGE_UPDATE:
         raise BgpdumpIntegrityError(
             f"UPDATE artifact 含未获准 BGP message type={message_type}"
         )
-    body = message[19:]
     if len(body) < 4:
         raise BgpdumpIntegrityError("BGP UPDATE body 被截断")
     withdrawn_length = struct.unpack("!H", body[:2])[0]
@@ -1022,7 +1186,7 @@ def _producer_worker(
             raise BgpdumpIntegrityError("原始 MRT 制品大小与 artifact manifest 不一致")
         with os.fdopen(descriptor, "rb", buffering=0) as compressed:
             descriptor = None
-            hashing = _HashingReader(compressed)
+            hashing = _HashingReader(compressed, progress)
             record_count = 0
             offset = 0
             try:
@@ -1191,7 +1355,7 @@ def _stdout_worker(
                 text = raw[:-1].decode("utf-8", errors="strict")
                 if "\x00" in text or "\r" in text:
                     raise BgpdumpOutputError("bgpdump stdout 含非法控制字符")
-                parsed = _parse_output_line(text)
+                parsed = _parse_output_line(text, source_line_bytes=len(raw))
                 progress.touch(
                     "stdout_line_parsed",
                     ordinal=parsed.ordinal,
@@ -1386,6 +1550,7 @@ class BgpdumpRecordStream:
         popen_factory: Callable[..., Any],
         version_probe: Callable[..., str],
         queue_capacity: int,
+        max_stdout_queue_source_bytes: int,
         max_frame_bytes: int,
         max_spool_bytes: int,
         max_stdout_line_bytes: int,
@@ -1408,6 +1573,7 @@ class BgpdumpRecordStream:
         self._popen_factory = popen_factory
         self._version_probe = version_probe
         self._queue_capacity = queue_capacity
+        self._max_stdout_queue_source_bytes = max_stdout_queue_source_bytes
         self._max_frame_bytes = max_frame_bytes
         self._max_spool_bytes = max_spool_bytes
         self._max_stdout_line_bytes = max_stdout_line_bytes
@@ -1428,6 +1594,8 @@ class BgpdumpRecordStream:
             "physical_record_count": 0,
             "route_record_count": 0,
             "state_change_record_count": 0,
+            "open_record_count": 0,
+            "notification_record_count": 0,
             "keepalive_record_count": 0,
             "route_element_count": 0,
             "announce_count": 0,
@@ -1439,11 +1607,21 @@ class BgpdumpRecordStream:
             "compressed_read_passes": 0,
             "peak_spool_bytes": 0,
             "spool_persistence": "anonymous_unlinked_fd",
+            "stdout_queue_capacity": self._queue_capacity,
+            "stdout_queue_source_bytes_limit": self._max_stdout_queue_source_bytes,
         }
+        self._progress: Optional[_ProgressState] = None
 
     @property
     def statistics(self) -> Dict[str, Any]:
-        return copy.deepcopy(self._statistics)
+        result = copy.deepcopy(self._statistics)
+        if self._progress is not None:
+            result["compressed_bytes_read_observed"] = self._progress.snapshot()[
+                "compressed_bytes_read"
+            ]
+        else:
+            result["compressed_bytes_read_observed"] = 0
+        return result
 
     def __iter__(self) -> Iterable[ParsedMrtRecord]:
         if self._started:
@@ -1482,7 +1660,11 @@ class BgpdumpRecordStream:
         cancel = threading.Event()
         failure = _FailureState()
         progress = _ProgressState()
-        outputs: "queue.Queue[Any]" = queue.Queue(maxsize=self._queue_capacity)
+        self._progress = progress
+        outputs = _BoundedOutputQueue(
+            max_items=self._queue_capacity,
+            max_source_bytes=self._max_stdout_queue_source_bytes,
+        )
         spool: Optional[_AnonymousFrameSpool] = None
         stderr_done = threading.Event()
         stderr_capture = bytearray()
@@ -1574,10 +1756,15 @@ class BgpdumpRecordStream:
 
             def runtime_snapshot() -> Dict[str, Any]:
                 assert spool is not None
+                output_snapshot = outputs.snapshot()
                 return {
                     "process_returncode": process.poll(),
                     "spool": spool.snapshot(),
-                    "outputs_queue_size": outputs.qsize(),
+                    "outputs_queue_size": output_snapshot["current_items"],
+                    "outputs_queue_source_bytes": output_snapshot[
+                        "current_source_bytes"
+                    ],
+                    "outputs_queue": output_snapshot,
                     "producer_alive": producer.is_alive(),
                     "stdout_alive": stdout_reader.is_alive(),
                     "stderr_alive": stderr_reader.is_alive(),
@@ -1655,13 +1842,13 @@ class BgpdumpRecordStream:
                     ) + sum(
                         count for _family, count in frame_item.update_shape.withdraw_counts
                     )
-                elif frame_item.bgp_message_type == 4:
+                elif frame_item.bgp_message_type in _SILENT_CONTROL_MESSAGE_TYPES:
                     expected_output_line_count = 0
                 else:
                     raise BgpdumpOutputError("physical frame 缺少可验证的 stdout shape")
                 if (
                     expected_output_line_count == 0
-                    and frame_item.bgp_message_type != 4
+                    and frame_item.bgp_message_type not in _SILENT_CONTROL_MESSAGE_TYPES
                 ):
                     raise BgpdumpOutputError(
                         "存在无 bgpdump -p 输出的 physical record；raw UPDATE 没有可提升路由元素"
@@ -1716,13 +1903,18 @@ class BgpdumpRecordStream:
                 kinds = {line.kind for line in lines}
                 if expected_output_line_count == 0:
                     if (
-                        frame_item.bgp_message_type != 4
+                        frame_item.bgp_message_type not in _SILENT_CONTROL_MESSAGE_TYPES
                         or frame_item.update_shape is not None
                         or lines
                     ):
-                        raise BgpdumpOutputError("无输出 physical record 不是合法 KEEPALIVE")
+                        raise BgpdumpOutputError("无输出 physical record 不是合法控制消息")
                     elements = ()
-                    self._statistics["keepalive_record_count"] += 1
+                    counter_by_type = {
+                        _BGP_MESSAGE_OPEN: "open_record_count",
+                        _BGP_MESSAGE_NOTIFICATION: "notification_record_count",
+                        _BGP_MESSAGE_KEEPALIVE: "keepalive_record_count",
+                    }
+                    self._statistics[counter_by_type[frame_item.bgp_message_type]] += 1
                 elif kinds == {"STATE"}:
                     if frame_item.mrt_subtype not in _STATE_CHANGE_SUBTYPES:
                         raise BgpdumpOutputError(
@@ -1812,6 +2004,18 @@ class BgpdumpRecordStream:
                 )
             if producer_done.record_count != self._statistics["physical_record_count"]:
                 raise BgpdumpOutputError("适配器消费的 physical record 数不完整")
+            classified_record_count = sum(
+                self._statistics[field]
+                for field in (
+                    "route_record_count",
+                    "state_change_record_count",
+                    "open_record_count",
+                    "notification_record_count",
+                    "keepalive_record_count",
+                )
+            )
+            if classified_record_count != self._statistics["physical_record_count"]:
+                raise BgpdumpOutputError("physical record 分类计数不闭合")
 
             try:
                 return_code = process.wait(timeout=self._exit_timeout_seconds)
@@ -1915,6 +2119,7 @@ class BgpdumpRecordStreamFactory:
         popen_factory: Callable[..., Any] = subprocess.Popen,
         version_probe: Callable[..., str] = _default_version_probe,
         queue_capacity: int = 4,
+        max_stdout_queue_source_bytes: int = 8 * 1024 * 1024,
         max_frame_bytes: int = 64 * 1024 * 1024,
         max_stdout_line_bytes: int = 65_536,
         max_stderr_bytes: int = 1024 * 1024,
@@ -1952,6 +2157,18 @@ class BgpdumpRecordStreamFactory:
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
                 raise BgpdumpConfigurationError(f"{name} 不符合显式下限")
+        if queue_capacity > BGPDUMP_ABSOLUTE_MAX_STDOUT_QUEUE_CAPACITY:
+            raise BgpdumpConfigurationError("queue_capacity 超过 stdout 队列绝对硬上限")
+        if (
+            isinstance(max_stdout_queue_source_bytes, bool)
+            or not isinstance(max_stdout_queue_source_bytes, int)
+            or max_stdout_queue_source_bytes < max_stdout_line_bytes + 1
+            or max_stdout_queue_source_bytes
+            > BGPDUMP_ABSOLUTE_MAX_STDOUT_QUEUE_SOURCE_BYTES
+        ):
+            raise BgpdumpConfigurationError(
+                "max_stdout_queue_source_bytes 非法或超过绝对硬上限"
+            )
         if (
             isinstance(exit_timeout_seconds, bool)
             or not isinstance(exit_timeout_seconds, (int, float))
@@ -2069,6 +2286,7 @@ class BgpdumpRecordStreamFactory:
         self._popen_factory = popen_factory
         self._version_probe = version_probe
         self._queue_capacity = queue_capacity
+        self._max_stdout_queue_source_bytes = max_stdout_queue_source_bytes
         self._max_frame_bytes = max_frame_bytes
         self._max_spool_bytes = normalized_limits["max_spool_bytes"]
         self._max_stdout_line_bytes = max_stdout_line_bytes
@@ -2087,6 +2305,12 @@ class BgpdumpRecordStreamFactory:
         config = {
             "command_arguments": ["-m", "-p", "-v", "/dev/stdin"],
             "queue_capacity": queue_capacity,
+            "max_stdout_queue_source_bytes": max_stdout_queue_source_bytes,
+            "stdout_queue_retained_heap_upper_bound_bytes": (
+                max_stdout_queue_source_bytes
+                * _PARSED_LINE_MEMORY_EXPANSION_FACTOR
+                + queue_capacity * _PARSED_LINE_FIXED_OVERHEAD_BYTES
+            ),
             "max_frame_bytes": max_frame_bytes,
             "max_spool_bytes": self._max_spool_bytes,
             "max_stdout_line_bytes": max_stdout_line_bytes,
@@ -2191,6 +2415,7 @@ class BgpdumpRecordStreamFactory:
             popen_factory=self._popen_factory,
             version_probe=self._version_probe,
             queue_capacity=self._queue_capacity,
+            max_stdout_queue_source_bytes=self._max_stdout_queue_source_bytes,
             max_frame_bytes=self._max_frame_bytes,
             max_spool_bytes=self._max_spool_bytes,
             max_stdout_line_bytes=self._max_stdout_line_bytes,

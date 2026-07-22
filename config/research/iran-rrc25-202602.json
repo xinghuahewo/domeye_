@@ -1,0 +1,158 @@
+{
+  "$schema": "https://domeye.example/contracts/research/research-profile.schema.json",
+  "algorithms": {
+    "episode": {
+      "combine_rule": "any",
+      "confirm_consecutive_slots": 2,
+      "damaged_as_ratio_above": 0.03,
+      "detected_assignment": "confirmation_slot",
+      "ipv4_visible_ratio_below": 0.99,
+      "onset_assignment": "first_anomalous_slot",
+      "version": "country_outage_episode_v1"
+    },
+    "recovery": {
+      "duration_states": [
+        "exact",
+        "lower_bound",
+        "interval",
+        "unknown"
+      ],
+      "full_confirm_consecutive_slots": 6,
+      "full_rule": "within_versioned_baseline_normal_band",
+      "partial_confirm_consecutive_slots": 6,
+      "partial_visible_ratio_at_least": 0.99,
+      "recovery_states": [
+        "ongoing",
+        "recovering",
+        "partially_recovered",
+        "fully_recovered"
+      ],
+      "version": "country_outage_recovery_v1"
+    },
+    "wave": {
+      "baseline_ratio_floor": 0.005,
+      "inter_wave_relation": "unknown_not_causal",
+      "mad_multiplier": 3,
+      "new_episode_requires_full_recovery": true,
+      "significance_method": "max_baseline_ratio_or_scaled_mad",
+      "version": "country_outage_wave_v1"
+    }
+  },
+  "baseline": {
+    "membership": {
+      "dynamic_ir_origins": "include_during_window",
+      "mapping_view": "compatibility",
+      "source": "state_seed_rib"
+    },
+    "normal_band": {
+      "absolute_floor_ratio": 0.001,
+      "mad_multiplier": 3,
+      "method": "median_plus_minus_max_scaled_mad_and_absolute_floor",
+      "version": "robust_normal_band_v1"
+    },
+    "numeric": {
+      "candidate_start": "analysis_window_start",
+      "dispersion": "median_absolute_deviation",
+      "extension_direction": "forward",
+      "extension_step_seconds": 21600,
+      "initial_duration_seconds": 21600,
+      "max_duration_seconds": 86400,
+      "max_relative_mad": 0.001,
+      "metric": "ipv4_visible_unique_address_count",
+      "record_actual_window": true,
+      "statistic": "median",
+      "stop_before_confirmed_onset": true,
+      "unstable_exhausted_state": "incomplete"
+    }
+  },
+  "collector_id": "rrc25",
+  "country_code": "IR",
+  "country_mapping": {
+    "compatibility_view": "frozen_legacy_static_mapping",
+    "conflict_policy": "preserve_as_country_mapping_conflict",
+    "revised_view": "separate_non_overwriting_projection",
+    "source_binding": "resolver_manifest_path_and_sha256_required",
+    "unknown_policy": "preserve_as_country_mapping_unknown"
+  },
+  "input_selection": {
+    "analysis_ribs": {
+      "end_boundary": "window_end_exclusive",
+      "expected_slot_count": 21,
+      "slot_interval_seconds": 28800,
+      "start_boundary": "window_start_inclusive"
+    },
+    "analysis_updates": {
+      "end_boundary": "window_end_exclusive",
+      "expected_slot_count": 1928,
+      "slot_interval_seconds": 300,
+      "start_boundary": "window_start_inclusive"
+    },
+    "baseline_reference_rib": {
+      "complete_required": true,
+      "expected_count": 1,
+      "selection_policy": "nearest_complete_strictly_before_start",
+      "strictly_before_window_start": true
+    },
+    "catch_up_updates": {
+      "condition": "required_when_state_seed_precedes_window_start",
+      "end_boundary": "window_start_exclusive",
+      "start_boundary": "state_seed_time_inclusive"
+    },
+    "filename_timestamp_timezone": "UTC",
+    "state_seed_rib": {
+      "allow_at_window_start": true,
+      "complete_required": true,
+      "selection_policy": "complete_at_start_or_nearest_complete_before"
+    }
+  },
+  "measurement": {
+    "address_families": [
+      "ipv4",
+      "ipv6"
+    ],
+    "as_visibility_classification": "per_afi_then_dual_stack",
+    "country_prefix_aggregation": "deduplicated_address_union_per_afi",
+    "ipv4_metrics": [
+      "visible_unique_address_count",
+      "slash24_equivalent_count"
+    ],
+    "ipv6_metrics": [
+      "slash48_equivalent_count"
+    ],
+    "missing_value_policy": "preserve_value_state_never_coerce_to_zero",
+    "moas_policy": "preserve_all_origins_do_not_sum_as_totals_as_country_total",
+    "views": [
+      "compatibility",
+      "revised"
+    ]
+  },
+  "output_policy": {
+    "atomic_publish": true,
+    "frontend_changes": "forbidden",
+    "immutable_outputs": true,
+    "optional_projection": "parquet",
+    "overwrite_existing": false,
+    "production_deployment": "forbidden",
+    "required_format": "canonical_jsonl_gzip"
+  },
+  "profile_kind": "bounded_country_outage_research",
+  "resource_limits": {
+    "database_writes": "forbidden",
+    "max_new_raw_read_bytes": 50000000000,
+    "max_temporary_bytes": 5000000000,
+    "max_worker_runtime_seconds": 600,
+    "output_storage": "filesystem_only",
+    "worker_soft_stop_seconds": 540
+  },
+  "schema_version": "research_profile_v1",
+  "study_id": "iran-rrc25-country-outage-202602-v1",
+  "time_basis": "UTC",
+  "window": {
+    "end_boundary_role": "state_boundary_only_excluded_from_updates",
+    "end_exclusive_utc": "2026-03-06T08:40:00Z",
+    "granularity_seconds": 300,
+    "interval_semantics": "half_open",
+    "observation_end_utc": "2026-03-06T08:40:00Z",
+    "start_utc": "2026-02-27T16:00:00Z"
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/country-outage-episode-as.schema.json",
+  "title": "国家中断 Episode 逐 ASN 影响合同",
+  "description": "按 ASN 和地址族保存触发、峰值、累计、终点集合、损失计量、恢复状态和 RouteEvent/raw record 引用。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "episode_as_id",
+    "episode_id",
+    "run_id",
+    "asn",
+    "country_code",
+    "cohort_view",
+    "mapping_evidence",
+    "first_damaged_at",
+    "last_damaged_at",
+    "recovered_at",
+    "trigger_member",
+    "peak_member",
+    "cumulative_member",
+    "observation_end_member",
+    "address_families",
+    "overall_classification",
+    "evidence_links"
+  ],
+  "properties": {
+    "schema_version": {"const": "country-outage-episode-as/v1"},
+    "episode_as_id": {"type": "string", "pattern": "^episode_as_v1_[0-9a-f]{24}$"},
+    "episode_id": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+    "run_id": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "asn": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "country_code": {"const": "IR"},
+    "cohort_view": {"enum": ["compatible", "revised"]},
+    "mapping_evidence": {"$ref": "#/$defs/mappingEvidence"},
+    "first_damaged_at": {"type": ["string", "null"], "format": "date-time"},
+    "last_damaged_at": {"type": ["string", "null"], "format": "date-time"},
+    "recovered_at": {"type": ["string", "null"], "format": "date-time"},
+    "trigger_member": {"type": "boolean"},
+    "peak_member": {"type": "boolean"},
+    "cumulative_member": {"type": "boolean"},
+    "observation_end_member": {"type": "boolean"},
+    "address_families": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ipv4", "ipv6"],
+      "properties": {
+        "ipv4": {
+          "allOf": [
+            {"$ref": "#/$defs/familyImpact"},
+            {"type": "object", "properties": {"afi": {"const": "ipv4"}, "equivalent_unit": {"const": "ipv4_equivalent_address"}}}
+          ]
+        },
+        "ipv6": {
+          "allOf": [
+            {"$ref": "#/$defs/familyImpact"},
+            {"type": "object", "properties": {"afi": {"const": "ipv6"}, "equivalent_unit": {"const": "ipv6_48_equivalent"}}}
+          ]
+        }
+      }
+    },
+    "overall_classification": {"enum": ["dual_stack_fully_invisible", "ipv4_only_fully_invisible", "ipv6_only_fully_invisible", "partially_visible", "not_affected", "unknown"]},
+    "evidence_links": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/evidenceLink"}
+    }
+  },
+  "$defs": {
+    "mappingEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mapping_state", "mapping_view", "mapping_sha256", "source_ref"],
+      "properties": {
+        "mapping_state": {"enum": ["mapped", "unknown", "conflict"]},
+        "mapping_view": {"enum": ["compatible", "revised"]},
+        "mapping_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "source_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "measure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "value_state", "missing_reason"],
+          "properties": {
+            "value": {"type": "number", "exclusiveMinimum": 0},
+            "value_state": {"const": "observed"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "value_state", "missing_reason"],
+          "properties": {
+            "value": {"const": 0},
+            "value_state": {"const": "observed_zero"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "value_state", "missing_reason"],
+          "properties": {
+            "value": {"type": "null"},
+            "value_state": {"enum": ["unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"]},
+            "missing_reason": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._:-]*$"}
+          }
+        }
+      ]
+    },
+    "visibility": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fully_invisible", "visibility_state", "missing_reason"],
+          "properties": {
+            "fully_invisible": {"type": "boolean"},
+            "visibility_state": {"const": "observed"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fully_invisible", "visibility_state", "missing_reason"],
+          "properties": {
+            "fully_invisible": {"type": "null"},
+            "visibility_state": {"enum": ["unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"]},
+            "missing_reason": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "prefixSet": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "value_state", "missing_reason"],
+          "properties": {
+            "value": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[0-9A-Fa-f:.]+/[0-9]{1,3}$"}},
+            "value_state": {"const": "observed"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "value_state", "missing_reason"],
+          "properties": {
+            "value": {"type": "array", "maxItems": 0},
+            "value_state": {"const": "observed_empty"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "value_state", "missing_reason"],
+          "properties": {
+            "value": {"type": "null"},
+            "value_state": {"enum": ["unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"]},
+            "missing_reason": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "familyImpact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["afi", "baseline_prefix_count", "lost_prefix_count_at_peak", "lost_equivalent_at_peak", "equivalent_unit", "visibility", "trigger_prefixes", "peak_prefixes", "cumulative_prefixes", "observation_end_prefixes", "moas_semantics"],
+      "properties": {
+        "afi": {"enum": ["ipv4", "ipv6"]},
+        "baseline_prefix_count": {"$ref": "#/$defs/measure"},
+        "lost_prefix_count_at_peak": {"$ref": "#/$defs/measure"},
+        "lost_equivalent_at_peak": {"$ref": "#/$defs/measure"},
+        "equivalent_unit": {"enum": ["ipv4_equivalent_address", "ipv6_48_equivalent"]},
+        "visibility": {"$ref": "#/$defs/visibility"},
+        "trigger_prefixes": {"$ref": "#/$defs/prefixSet"},
+        "peak_prefixes": {"$ref": "#/$defs/prefixSet"},
+        "cumulative_prefixes": {"$ref": "#/$defs/prefixSet"},
+        "observation_end_prefixes": {"$ref": "#/$defs/prefixSet"},
+        "moas_semantics": {"const": "origin_relationship_retained_not_additive"}
+      }
+    },
+    "evidenceLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route_event_id", "raw_record_ref_id", "artifact_id", "artifact_sha256", "record_ordinal", "element_ordinal"],
+      "properties": {
+        "route_event_id": {"type": "string", "pattern": "^rte_v1_[0-9a-f]{32}$"},
+        "raw_record_ref_id": {"type": "string", "pattern": "^raw_v1_[0-9a-f]{32}$"},
+        "artifact_id": {"type": "string", "pattern": "^art_v1_[0-9a-f]{32}$"},
+        "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "record_ordinal": {"type": "integer", "minimum": 0},
+        "element_ordinal": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

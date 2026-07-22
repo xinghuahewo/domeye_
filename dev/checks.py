@@ -123,8 +123,14 @@ def classify(path):
         return 3
     if path == "config/data-profile.json":
         return 3
+    if path.startswith("config/research/") and path.endswith(".json"):
+        return 3
     if path == "config/performance-budget.json":
         return 2
+    if path == "openspec/config.yaml":
+        return 2
+    if path in ("openspec/changes/archive/.gitkeep", "openspec/specs/.gitkeep"):
+        return 0
     if path == "backend/core.sha256":
         return 3
     if path.startswith(("dev/database/", "dev/backend/")):

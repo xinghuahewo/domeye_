@@ -1,0 +1,25 @@
+{
+  "schema_version": "research-evidence-sidecar/v1",
+  "sidecar_id": "research_sidecar_v1_111111111111111111111111",
+  "run_id": "research_run_v1_aaaaaaaaaaaaaaaaaaaaaaaa",
+  "mapping": {
+    "mapping_state": "exact",
+    "incident_ids": ["inc_v1_111111111111111111111111"],
+    "bundle_ids": ["eb_v2_11111111111111111111111111111111"],
+    "missing_reason_zh": null
+  },
+  "bundle_refs": [{"bundle_id": "eb_v2_11111111111111111111111111111111", "incident_id": "inc_v1_111111111111111111111111", "bundle_sha256": "1111111111111111111111111111111111111111111111111111111111111111"}],
+  "legacy_source_fact_refs": [{"source_fact_id": "sf_v1_111111111111111111111111", "bundle_id": "eb_v2_11111111111111111111111111111111", "incident_id": "inc_v1_111111111111111111111111", "table_name": "country_outage_202602", "fact_locator": "country=\"IR\"", "record_hash": null, "source_fact_sha256": "2222222222222222222222222222222222222222222222222222222222222222"}],
+  "incident_episode_links": [{"incident_id": "inc_v1_111111111111111111111111", "bundle_id": "eb_v2_11111111111111111111111111111111", "episode_id": "episode_v1_111111111111111111111111", "relation": "legacy_reconciliation", "causal": false, "evidence_sample_ids": ["sample_v1_111111111111111111111111"]}],
+  "episode_ref": {"episode_id": "episode_v1_111111111111111111111111", "record_sha256": "3333333333333333333333333333333333333333333333333333333333333333", "wave_ids": ["wave_v1_111111111111111111111111"], "supporting_sample_ids": ["sample_v1_111111111111111111111111", "sample_v1_222222222222222222222222"]},
+  "wave_refs": [{"wave_id": "wave_v1_111111111111111111111111", "record_sha256": "4444444444444444444444444444444444444444444444444444444444444444", "supporting_sample_ids": ["sample_v1_111111111111111111111111", "sample_v1_222222222222222222222222"]}],
+  "sample_refs": [{"sample_id": "sample_v1_111111111111111111111111", "snapshot_id": "snapshot_v1_111111111111111111111111", "continuity_state": "continuous", "record_sha256": "5555555555555555555555555555555555555555555555555555555555555555"}, {"sample_id": "sample_v1_222222222222222222222222", "snapshot_id": "snapshot_v1_222222222222222222222222", "continuity_state": "continuous", "record_sha256": "6666666666666666666666666666666666666666666666666666666666666666"}],
+  "sample_route_event_links": [{"sample_id": "sample_v1_111111111111111111111111", "link_state": "linked", "route_event_ids": ["rte_v1_6cb891ab476e8f2c13c4285026da259e"], "missing_reason_zh": null}, {"sample_id": "sample_v1_222222222222222222222222", "link_state": "linked", "route_event_ids": ["rte_v1_6cb891ab476e8f2c13c4285026da259e"], "missing_reason_zh": null}],
+  "route_event_refs": [{"route_event_id": "rte_v1_6cb891ab476e8f2c13c4285026da259e", "route_event_ref_sha256": "7777777777777777777777777777777777777777777777777777777777777777", "observed_at": "2026-02-28T08:15:00Z", "collector_id": "rrc25", "vp_id": "vp_v1_11111111111111111111111111111111", "vp_asn": 64500, "semantics": "route_observation", "raw_record_ref_ids": ["raw_v1_2dbb8d145cd5fea008ce0b003eb85273"], "bundle_ids": ["eb_v2_11111111111111111111111111111111"]}],
+  "raw_record_refs": [{"raw_record_ref_id": "raw_v1_2dbb8d145cd5fea008ce0b003eb85273", "artifact_id": "art_v1_ffffffffffffffffffffffffffffffff", "file_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "record_offset": 12, "record_length": 64, "record_hash": "8888888888888888888888888888888888888888888888888888888888888888", "record_ordinal": 1, "element_ordinal": 0, "verification_status": "verified"}],
+  "artifact_refs": [{"artifact_id": "art_v1_623eca6651ec73910b01d66e3211de00", "file_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "raw_record_ref_ids": ["raw_v1_2dbb8d145cd5fea008ce0b003eb85273"]}],
+  "recovery_assessment": {"recovery_state": "ongoing", "partial_recovery_at": null, "full_recovery_at": null, "duration": {"duration_state": "lower_bound", "seconds": null, "minimum_seconds": 600, "maximum_seconds": null, "measured_to": "2026-02-28T08:25:00Z"}, "continuity_status": "continuous", "candidates": []},
+  "reference_closure": {"incident_episode": "passed", "episode_wave_sample": "passed", "sample_route_event": "passed", "route_raw_artifact": "passed", "overall": "passed", "unresolved_refs": []},
+  "limitations_zh": ["RouteEvent 与 AS_PATH 仅表示 RRC25 路由观测，不能证明因果。"],
+  "conclusion": {"classification": "observation_only", "causal_conclusion": null}
+}
