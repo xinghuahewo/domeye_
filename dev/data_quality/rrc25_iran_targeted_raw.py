@@ -113,7 +113,7 @@ DB_FIRST_FINGERPRINT_FIELDS = (
 MAX_UPDATE_SLOT_COUNT = 13
 MAX_RETAINED_ROUTE_EVENTS = 250_000
 MAX_SELECTED_COMPRESSED_BYTES = 512 * 1024 * 1024
-SOFT_RUNTIME_SECONDS = 540.0
+SOFT_RUNTIME_SECONDS = 1_800.0
 DEFAULT_MAX_FRAME_BYTES = 64 * 1024 * 1024
 DEFAULT_MAX_SPOOL_BYTES = 4_000_000_000
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -761,7 +761,8 @@ def execute_targeted_scan(
             raise TargetedRawError("运行时 clock 非法或倒退")
         if elapsed > SOFT_RUNTIME_SECONDS:
             raise TargetedRawError(
-                f"定向 raw 运行超过 540 秒软限：stage={stage}, "
+                f"定向 raw 运行超过 {SOFT_RUNTIME_SECONDS:.0f} 秒软限："
+                f"stage={stage}, "
                 f"elapsed_seconds={elapsed:.3f}"
             )
 

@@ -367,7 +367,7 @@ class TargetedRawTests(unittest.TestCase):
             [row["artifact_time_utc"] for row in plan["selected_artifacts"]],
             plan["requested_update_slots"],
         )
-        self.assertEqual(plan["limits"]["soft_runtime_seconds"], 540.0)
+        self.assertEqual(plan["limits"]["soft_runtime_seconds"], 1800.0)
         self.assertEqual(
             plan["limits"]["selected_compressed_bytes"],
             sum(row["size_bytes"] for row in plan["selected_artifacts"]),
@@ -480,8 +480,8 @@ class TargetedRawTests(unittest.TestCase):
             13,
         )
 
-    def test_worker_enforces_540_second_soft_limit_before_raw_factory(self):
-        values = iter((0.0, 541.0))
+    def test_worker_enforces_1800_second_soft_limit_before_raw_factory(self):
+        values = iter((0.0, 1801.0))
         factory_calls = []
 
         def forbidden_factory(*args, **kwargs):
@@ -491,7 +491,7 @@ class TargetedRawTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             raw_root = Path(directory) / "raw"
             raw_root.mkdir()
-            with self.assertRaisesRegex(target.TargetedRawError, "540 秒软限"):
+            with self.assertRaisesRegex(target.TargetedRawError, "1800 秒软限"):
                 target.execute_targeted_scan(
                     built_plan(),
                     raw_root,
