@@ -4334,6 +4334,7 @@ def run_bounded_pilot_worker(
                             raw_retention_membership(asn) is not False
                         ),
                         vp_observer=accumulator.observe,
+                        include_discarded_element_decisions=False,
                         checkpoint_observer=observe_seed_checkpoint,
                     )
                 else:
@@ -4350,6 +4351,7 @@ def run_bounded_pilot_worker(
                             raw_retention_membership(asn) is not False
                         ),
                         vp_observer=accumulator.observe,
+                        include_discarded_element_decisions=False,
                     )
 
                 for record in adapter:

@@ -7,8 +7,12 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
+from unittest import mock
 
 from backend.data_pipeline.route_event import artifact_id_v1, route_event_id_v1
+from backend.data_pipeline.research.rrc25_country_outage import (
+    rib_adapter as rib_adapter_module,
+)
 from backend.data_pipeline.research.rrc25_country_outage.rib_adapter import (
     DISCARDED_NON_TARGET,
     PEER_INDEX_RECORD,
@@ -214,6 +218,106 @@ class RibAdapterTests(unittest.TestCase):
         )
         self.assertIn(65001, predicate_calls)
         self.assertIn(65100, predicate_calls)
+
+    def test_discard_fast_path_skips_route_events_and_element_decisions(self):
+        raw, _physical = mixed_rib_bytes()
+        legacy = tuple(
+            iter_rib_artifact_records(
+                raw,
+                artifact=artifact(),
+                origin_asn_predicate=lambda asn: asn == 65001,
+            )
+        )
+        with mock.patch.object(
+            rib_adapter_module,
+            "build_research_route_event",
+            wraps=rib_adapter_module.build_research_route_event,
+        ) as builder:
+            adapted = tuple(
+                iter_rib_artifact_records(
+                    raw,
+                    artifact=artifact(),
+                    origin_asn_predicate=lambda asn: asn == 65001,
+                    include_discarded_element_decisions=False,
+                )
+            )
+
+        # mixed target prefix 的四个 retained element 仍走完整 builder；唯一
+        # non-target element 被明确丢弃，不再构造无消费者的 RouteEvent。
+        self.assertEqual(builder.call_count, 4)
+        self.assertEqual(
+            [row.route_events for row in adapted],
+            [row.route_events for row in legacy],
+        )
+        self.assertEqual(len(adapted[1].route_events), 4)
+        self.assertEqual(adapted[2].route_events, ())
+        self.assertEqual(adapted[2].source_element_count, 1)
+        self.assertEqual(adapted[2].discarded_element_count, 1)
+        self.assertEqual(adapted[2].element_decisions, ())
+
+    def test_predicate_pushdown_only_elides_resolved_non_target_prefixes(self):
+        peers = (
+            ("192.0.2.10", 64510),
+            ("192.0.2.20", 64520),
+        )
+        records = [mrt_record(peer_index_payload(*peers), subtype=1)]
+        paths = (
+            ("198.51.100.0/24", (0, as_path((2, (64510, 65100))))),
+            ("198.51.101.0/24", (1, as_path((1, (65100, 65101))))),
+            ("198.51.102.0/24", (0, as_path((3, (65100,))))),
+            ("198.51.103.0/24", (1, as_path())),
+        )
+        for sequence, (prefix, entry) in enumerate(paths, start=1):
+            subtype, payload = rib_payload(prefix, entry, sequence=sequence)
+            records.append(mrt_record(payload, subtype=subtype))
+
+        adapted = tuple(
+            iter_rib_artifact_records(
+                b"".join(records),
+                artifact=artifact(),
+                origin_asn_predicate=lambda asn: asn == 65001,
+                include_discarded_element_decisions=False,
+            )
+        )
+
+        self.assertEqual(
+            [row.discarded_element_count for row in adapted],
+            [0, 1, 1, 0, 0],
+        )
+        self.assertEqual(
+            [len(row.route_events) for row in adapted],
+            [0, 0, 0, 1, 1],
+        )
+        self.assertEqual(
+            adapted[3].element_decisions[0].filter_decision,
+            RETAINED_ORIGIN_UNKNOWN,
+        )
+        self.assertEqual(
+            adapted[4].element_decisions[0].filter_decision,
+            RETAINED_ORIGIN_UNKNOWN,
+        )
+
+    def test_vp_identity_is_computed_once_per_peer_key(self):
+        raw, _physical = mixed_rib_bytes()
+        observed = []
+        with mock.patch.object(
+            rib_adapter_module,
+            "vp_id_v1",
+            wraps=rib_adapter_module.vp_id_v1,
+        ) as stable_id:
+            tuple(
+                iter_rib_artifact_records(
+                    raw,
+                    artifact=artifact(),
+                    origin_asn_predicate=lambda asn: asn == 65001,
+                    vp_observer=lambda peer_ip, peer_asn, vp_id: observed.append(
+                        (peer_ip, peer_asn, vp_id)
+                    ),
+                )
+            )
+
+        self.assertEqual(len(observed), 5)
+        self.assertEqual(stable_id.call_count, 5)
 
     def test_vp_accumulator_observes_all_peers_before_ir_filter(self):
         raw, _physical = mixed_rib_bytes()

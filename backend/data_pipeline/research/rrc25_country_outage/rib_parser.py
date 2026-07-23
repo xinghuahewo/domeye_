@@ -29,7 +29,7 @@ import re
 import secrets
 import stat
 import struct
-from typing import Any, BinaryIO, Iterator, Mapping, Optional, Tuple, Union
+from typing import Any, BinaryIO, Callable, Iterator, Mapping, Optional, Tuple, Union
 import zlib
 
 from ...route_event.index import AsPathSegment, ParsedMrtRecord, ParsedRouteElement
@@ -82,6 +82,13 @@ class RibMrtSeekError(RibMrtParseError):
     def __init__(self, reason: str, message: str) -> None:
         super().__init__(message)
         self.reason = reason
+
+
+@dataclass(frozen=True)
+class ParsedNonTargetRibRecord(ParsedMrtRecord):
+    """完整解析并明确判为非目标、但未物化 element 对象的 V2 RIB record。"""
+
+    source_element_count: int
 
 
 @dataclass(frozen=True)
@@ -874,6 +881,129 @@ def _parse_bgp_attributes(
     return as_path
 
 
+def _origin_membership_from_as_path_bytes(
+    value: bytes | memoryview,
+    *,
+    asn_width: int,
+    origin_asn_predicate: Callable[[int], bool],
+) -> Optional[bool]:
+    """完整校验 AS_PATH 编码，只物化最后 segment 的 origin 候选。
+
+    ``False`` 表示所有可确定候选均明确为非目标；``None`` 表示空路径或
+    confederation origin，不能安全丢弃；``True`` 表示至少一个候选命中。
+    """
+
+    raw = memoryview(value)
+    offset = 0
+    segment_count = 0
+    total_asns = 0
+    last_segment_code: Optional[int] = None
+    last_origins: Tuple[int, ...] = ()
+    while offset < len(raw):
+        if offset + 2 > len(raw):
+            raise RibMrtParseError("AS_PATH segment header 截断")
+        segment_code = int(raw[offset])
+        asn_count = int(raw[offset + 1])
+        offset += 2
+        if segment_code not in _AS_PATH_SEGMENT_TYPES:
+            raise RibMrtParseError(
+                f"AS_PATH 含未知 segment type {segment_code}"
+            )
+        if asn_count == 0:
+            raise RibMrtParseError("AS_PATH segment 不得为空")
+        if segment_count >= 4096 or total_asns + asn_count > 4096:
+            raise RibMrtParseError("AS_PATH 超过 RouteEvent 合同上限 4096")
+        byte_count = asn_count * asn_width
+        end = offset + byte_count
+        if end > len(raw):
+            raise RibMrtParseError("AS_PATH ASN 列表截断")
+        if segment_code == 2:
+            last_origins = (
+                int.from_bytes(raw[end - asn_width : end], "big"),
+            )
+        elif segment_code == 1:
+            unpack_format = "!I" if asn_width == 4 else "!H"
+            last_origins = tuple(
+                sorted(
+                    {
+                        value
+                        for (value,) in struct.iter_unpack(
+                            unpack_format, raw[offset:end]
+                        )
+                    }
+                )
+            )
+        else:
+            last_origins = ()
+        last_segment_code = segment_code
+        segment_count += 1
+        total_asns += asn_count
+        offset = end
+
+    if last_segment_code is None or last_segment_code in {3, 4}:
+        return None
+    accepted = False
+    for origin_asn in last_origins:
+        try:
+            candidate = origin_asn_predicate(origin_asn)
+        except Exception as error:
+            raise RibMrtParseError("origin ASN predicate 执行失败") from error
+        if not isinstance(candidate, bool):
+            raise RibMrtParseError("origin ASN predicate 必须严格返回 bool")
+        accepted = accepted or candidate
+    return accepted
+
+
+def _bgp_attributes_all_origins_non_target(
+    value: bytes | memoryview,
+    *,
+    asn_width: int,
+    origin_asn_predicate: Callable[[int], bool],
+) -> bool:
+    """校验完整 attributes，并判断唯一 AS_PATH 是否可明确丢弃。"""
+
+    raw = memoryview(value)
+    offset = 0
+    membership: Optional[bool] = None
+    as_path_seen = False
+    while offset < len(raw):
+        if offset + 3 > len(raw):
+            raise RibMrtParseError("BGP attribute header 截断")
+        flags = int(raw[offset])
+        type_code = int(raw[offset + 1])
+        offset += 2
+        if flags & 0x0F:
+            raise RibMrtParseError("BGP attribute flags 含未定义低四位")
+        if flags & 0x10:
+            if offset + 2 > len(raw):
+                raise RibMrtParseError("BGP attribute extended length 截断")
+            length = int.from_bytes(raw[offset : offset + 2], "big")
+            offset += 2
+        else:
+            length = int(raw[offset])
+            offset += 1
+        end = offset + length
+        if end > len(raw):
+            raise RibMrtParseError(f"BGP attribute[{type_code}] 越界")
+        if type_code == _AS_PATH_ATTRIBUTE:
+            if as_path_seen:
+                raise RibMrtParseError("BGP attributes 含重复 AS_PATH")
+            if flags & 0xE0 != 0x40:
+                raise RibMrtParseError(
+                    "AS_PATH 必须使用 well-known transitive flags"
+                )
+            membership = _origin_membership_from_as_path_bytes(
+                raw[offset:end],
+                asn_width=asn_width,
+                origin_asn_predicate=origin_asn_predicate,
+            )
+            as_path_seen = True
+        offset = end
+    if not as_path_seen:
+        raise RibMrtParseError("RIB entry 缺少 AS_PATH 属性")
+    return membership is False
+
+
 def _path_quality_flags(
     path: Tuple[AsPathSegment, ...]
 ) -> Tuple[str, ...]:
@@ -1031,6 +1161,84 @@ def _parse_table_dump_v2_rib(
     return tuple(elements)
 
 
+def _v2_all_origins_non_target_entry_count(
+    payload: bytes,
+    subtype: int,
+    peers: Optional[Tuple[_Peer, ...]],
+    origin_asn_predicate: Callable[[int], bool],
+) -> Optional[int]:
+    """对 V2 RIB 做 predicate pushdown；仅明确全非目标时返回 entry 数。
+
+    命中目标或 origin 不确定时返回 ``None``，调用方随后走既有完整 parser，
+    因而 retained prefix 的 element、质量标记和失败关闭语义保持不变。
+    """
+
+    if peers is None:
+        raise RibMrtParseError("TABLE_DUMP_V2 RIB 缺少此前的 PEER_INDEX_TABLE")
+    if subtype == RIB_IPV4_UNICAST:
+        address_bytes = 4
+    elif subtype == RIB_IPV6_UNICAST:
+        address_bytes = 16
+    elif subtype in {RIB_IPV4_MULTICAST, RIB_IPV6_MULTICAST}:
+        raise RibMrtParseError("TABLE_DUMP_V2 multicast subtype 未获准")
+    elif subtype == RIB_GENERIC:
+        raise RibMrtParseError("TABLE_DUMP_V2 RIB_GENERIC 未获准")
+    else:
+        raise RibMrtParseError(f"TABLE_DUMP_V2 未获准 subtype {subtype}")
+
+    raw = memoryview(payload)
+    offset = 0
+
+    def take(length: int, field: str) -> memoryview:
+        nonlocal offset
+        end = offset + length
+        if length < 0 or end > len(raw):
+            raise RibMrtParseError(
+                f"TABLE_DUMP_V2 RIB.{field} 越界：需要 {length} 字节"
+            )
+        value = raw[offset:end]
+        offset = end
+        return value
+
+    take(4, "sequence_number")
+    prefix_length = int(take(1, "prefix_length")[0])
+    prefix_octets = (prefix_length + 7) // 8
+    prefix_raw = bytes(take(prefix_octets, "prefix"))
+    _normalize_compact_prefix(
+        prefix_raw, prefix_length, address_bytes, "prefix"
+    )
+    entry_count = int.from_bytes(take(2, "entry_count"), "big")
+    if entry_count == 0:
+        # 保持既有空 record 表达，不把它冒充为“明确丢弃人口”。
+        return None
+    for index in range(entry_count):
+        peer_index = int.from_bytes(
+            take(2, f"entry[{index}].peer_index"), "big"
+        )
+        if peer_index >= len(peers):
+            raise RibMrtParseError(
+                f"TABLE_DUMP_V2 entry[{index}] peer_index {peer_index} 越界"
+            )
+        take(4, f"entry[{index}].originated_time")
+        attributes_length = int.from_bytes(
+            take(2, f"entry[{index}].attributes_length"), "big"
+        )
+        attributes = take(
+            attributes_length, f"entry[{index}].attributes"
+        )
+        if not _bgp_attributes_all_origins_non_target(
+            attributes,
+            asn_width=4,
+            origin_asn_predicate=origin_asn_predicate,
+        ):
+            return None
+    if offset != len(raw):
+        raise RibMrtParseError(
+            f"TABLE_DUMP_V2 RIB 含 {len(raw) - offset} 字节未消费尾部"
+        )
+    return entry_count
+
+
 def _parse_supported_record(
     *,
     mrt_type: int,
@@ -1049,10 +1257,48 @@ def _parse_supported_record(
     raise RibMrtParseError(f"RIB 解析器不接受 MRT type {mrt_type}")
 
 
+def _parse_supported_record_with_non_target_elision(
+    *,
+    mrt_type: int,
+    subtype: int,
+    payload: bytes,
+    peers: Optional[Tuple[_Peer, ...]],
+    origin_asn_predicate: Optional[Callable[[int], bool]],
+    elide_non_target_elements: bool,
+) -> Tuple[
+    Tuple[ParsedRouteElement, ...],
+    Optional[Tuple[_Peer, ...]],
+    Optional[int],
+]:
+    if elide_non_target_elements:
+        if origin_asn_predicate is None or not callable(origin_asn_predicate):
+            raise RibMrtParseError(
+                "non-target element elision 必须绑定 origin ASN predicate"
+            )
+        if mrt_type == TABLE_DUMP_V2 and subtype != PEER_INDEX_TABLE:
+            discarded_count = _v2_all_origins_non_target_entry_count(
+                payload, subtype, peers, origin_asn_predicate
+            )
+            if discarded_count is not None:
+                return (), peers, discarded_count
+    elements, next_peers = _parse_supported_record(
+        mrt_type=mrt_type,
+        subtype=subtype,
+        payload=payload,
+        peers=peers,
+    )
+    return elements, next_peers, None
+
+
 MrtSource = Union[bytes, bytearray, memoryview, BinaryIO]
 
 
-def iter_rib_mrt_records(source: MrtSource) -> Iterator[ParsedMrtRecord]:
+def iter_rib_mrt_records(
+    source: MrtSource,
+    *,
+    origin_asn_predicate: Optional[Callable[[int], bool]] = None,
+    elide_non_target_elements: bool = False,
+) -> Iterator[ParsedMrtRecord]:
     """顺序解析一个解压后的 RIB MRT 字节流。
 
     ``record_ordinal`` 从 0 连续递增，``record_offset`` 覆盖完整解压字节流；
@@ -1085,19 +1331,30 @@ def iter_rib_mrt_records(source: MrtSource) -> Iterator[ParsedMrtRecord]:
         )
         raw_record = header + payload
 
-        elements, peers = _parse_supported_record(
-            mrt_type=mrt_type,
-            subtype=subtype,
-            payload=payload,
-            peers=peers,
+        elements, peers, discarded_count = (
+            _parse_supported_record_with_non_target_elision(
+                mrt_type=mrt_type,
+                subtype=subtype,
+                payload=payload,
+                peers=peers,
+                origin_asn_predicate=origin_asn_predicate,
+                elide_non_target_elements=elide_non_target_elements,
+            )
         )
 
-        yield ParsedMrtRecord(
-            record_ordinal=record_ordinal,
-            record_offset=record_offset,
-            raw_record=raw_record,
-            elements=elements,
-        )
+        record_fields = {
+            "record_ordinal": record_ordinal,
+            "record_offset": record_offset,
+            "raw_record": raw_record,
+            "elements": elements,
+        }
+        if discarded_count is None:
+            yield ParsedMrtRecord(**record_fields)
+        else:
+            yield ParsedNonTargetRibRecord(
+                **record_fields,
+                source_element_count=discarded_count,
+            )
         record_ordinal += 1
         record_offset += len(raw_record)
 
@@ -1431,6 +1688,8 @@ class RibMrtRecordSeekIterator(Iterator[ParsedMrtRecord]):
         peer_index_context: Optional[
             RibPeerIndexContext | Mapping[str, Any]
         ] = None,
+        origin_asn_predicate: Optional[Callable[[int], bool]] = None,
+        elide_non_target_elements: bool = False,
     ) -> None:
         if isinstance(source, (bytes, bytearray, memoryview)):
             self._stream: BinaryIO = io.BytesIO(bytes(source))
@@ -1452,6 +1711,8 @@ class RibMrtRecordSeekIterator(Iterator[ParsedMrtRecord]):
         self._record_offset = self.seek_context.next_record_offset
         self.previous_record_boundary = self.seek_context.previous_record_boundary
         self.current_peer_index_context = self.seek_context.peer_index
+        self._origin_asn_predicate = origin_asn_predicate
+        self._elide_non_target_elements = elide_non_target_elements
 
     def __iter__(self) -> "RibMrtRecordSeekIterator":
         return self
@@ -1471,18 +1732,29 @@ class RibMrtRecordSeekIterator(Iterator[ParsedMrtRecord]):
             f"MRT record[{self._record_ordinal}].payload",
         )
         raw_record = header + payload
-        elements, self._peers = _parse_supported_record(
-            mrt_type=mrt_type,
-            subtype=subtype,
-            payload=payload,
-            peers=self._peers,
+        elements, self._peers, discarded_count = (
+            _parse_supported_record_with_non_target_elision(
+                mrt_type=mrt_type,
+                subtype=subtype,
+                payload=payload,
+                peers=self._peers,
+                origin_asn_predicate=self._origin_asn_predicate,
+                elide_non_target_elements=self._elide_non_target_elements,
+            )
         )
-        result = ParsedMrtRecord(
-            record_ordinal=self._record_ordinal,
-            record_offset=self._record_offset,
-            raw_record=raw_record,
-            elements=elements,
-        )
+        record_fields = {
+            "record_ordinal": self._record_ordinal,
+            "record_offset": self._record_offset,
+            "raw_record": raw_record,
+            "elements": elements,
+        }
+        if discarded_count is None:
+            result = ParsedMrtRecord(**record_fields)
+        else:
+            result = ParsedNonTargetRibRecord(
+                **record_fields,
+                source_element_count=discarded_count,
+            )
         self.previous_record_boundary = RibRecordBoundary(
             record_ordinal=self._record_ordinal,
             record_offset=self._record_offset,
@@ -1518,6 +1790,8 @@ def iter_rib_mrt_records_from_offset(
     peer_index_context: Optional[
         RibPeerIndexContext | Mapping[str, Any]
     ] = None,
+    origin_asn_predicate: Optional[Callable[[int], bool]] = None,
+    elide_non_target_elements: bool = False,
 ) -> RibMrtRecordSeekIterator:
     """回读固定边界并直接 seek，绝不线性扫描到恢复目标。"""
 
@@ -1527,6 +1801,8 @@ def iter_rib_mrt_records_from_offset(
         next_record_offset=next_record_offset,
         previous_record_boundary=previous_record_boundary,
         peer_index_context=peer_index_context,
+        origin_asn_predicate=origin_asn_predicate,
+        elide_non_target_elements=elide_non_target_elements,
     )
 
 
@@ -1547,6 +1823,8 @@ class RibSpoolRecordIterator(Iterator[ParsedMrtRecord]):
         peer_index_context: Optional[
             RibPeerIndexContext | Mapping[str, Any]
         ] = None,
+        origin_asn_predicate: Optional[Callable[[int], bool]] = None,
+        elide_non_target_elements: bool = False,
     ) -> None:
         stream, identity = _open_verified_rib_spool(
             path,
@@ -1562,6 +1840,8 @@ class RibSpoolRecordIterator(Iterator[ParsedMrtRecord]):
                 next_record_offset=next_record_offset,
                 previous_record_boundary=previous_record_boundary,
                 peer_index_context=peer_index_context,
+                origin_asn_predicate=origin_asn_predicate,
+                elide_non_target_elements=elide_non_target_elements,
             )
         except Exception:
             self.close()
@@ -1616,6 +1896,8 @@ def iter_rib_spool_records(
     peer_index_context: Optional[
         RibPeerIndexContext | Mapping[str, Any]
     ] = None,
+    origin_asn_predicate: Optional[Callable[[int], bool]] = None,
+    elide_non_target_elements: bool = False,
 ) -> RibSpoolRecordIterator:
     """核验 spool 身份，并从 next physical-record 坐标继续解析。"""
 
@@ -1627,6 +1909,8 @@ def iter_rib_spool_records(
         next_record_offset=next_record_offset,
         previous_record_boundary=previous_record_boundary,
         peer_index_context=peer_index_context,
+        origin_asn_predicate=origin_asn_predicate,
+        elide_non_target_elements=elide_non_target_elements,
     )
 
 
@@ -1640,6 +1924,7 @@ def parse_rib_mrt_bytes(
 
 __all__ = (
     "MAX_MRT_PAYLOAD_BYTES",
+    "ParsedNonTargetRibRecord",
     "RIB_DECOMPRESSED_SPOOL_SCHEMA_VERSION",
     "RIB_PEER_INDEX_CONTEXT_SCHEMA_VERSION",
     "RibMrtRecordSeekIterator",

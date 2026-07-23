@@ -32,6 +32,7 @@ from ...route_event import (
 )
 from .country_impact import CONFLICT, RESOLVED, UNKNOWN, derive_origin_asns
 from .rib_parser import (
+    ParsedNonTargetRibRecord,
     RibMrtParseError,
     RibMrtSeekContext,
     RibPeerIndexContext,
@@ -455,6 +456,7 @@ def iter_adapted_rib_records(
     artifact: Mapping[str, Any],
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
+    include_discarded_element_decisions: bool = True,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
     start_record_ordinal: int = 0,
     start_record_offset: int = 0,
@@ -483,6 +485,10 @@ def iter_adapted_rib_records(
         raise RibAdapterError("origin_asn_predicate 必须可调用")
     if vp_observer is not None and not callable(vp_observer):
         raise RibAdapterError("vp_observer 必须可调用")
+    if not isinstance(include_discarded_element_decisions, bool):
+        raise RibAdapterError(
+            "include_discarded_element_decisions 必须严格为 bool"
+        )
     expected_hashes = _normalize_expected_hashes(
         expected_record_sha256_by_ordinal
     )
@@ -498,7 +504,7 @@ def iter_adapted_rib_records(
     processed_record_count = 0
     seen_expected_hashes = set()
     seen_route_event_ids = set()
-    notified_vp_ids = set()
+    notified_vp_keys: set[Tuple[str, int]] = set()
     v2_peer_keys: Optional[set[Tuple[str, int]]] = (
         set(initial_peer_identities)
         if initial_peer_identities is not None
@@ -506,13 +512,17 @@ def iter_adapted_rib_records(
     )
 
     def observe_vp(peer_ip: str, peer_asn: int) -> None:
+        # TABLE_DUMP_V2 的 peer table 已经给出完整 VP 人口。绝大多数后续
+        # element 会重复引用这些 peer；先按 parser 已规范化的稳定 key 去重，
+        # 避免为每个 element 重算一次 vp_id SHA256。
+        key = (peer_ip, peer_asn)
+        if key in notified_vp_keys:
+            return
         try:
             vp_id = vp_id_v1(identity.collector_id, peer_ip, peer_asn)
         except ValueError as error:
             raise RibAdapterError("RIB 含非法 peer 身份") from error
-        if vp_id in notified_vp_ids:
-            return
-        notified_vp_ids.add(vp_id)
+        notified_vp_keys.add(key)
         if vp_observer is None:
             return
         try:
@@ -578,6 +588,33 @@ def iter_adapted_rib_records(
         elif v2_peer_keys is None:
             raise RibAdapterError("TABLE_DUMP_V2 RIB 缺少 PEER_INDEX_TABLE")
 
+        if isinstance(record, ParsedNonTargetRibRecord):
+            if (
+                frame.mrt_type != _TABLE_DUMP_V2
+                or frame.record_kind != RIB_RECORD
+                or origin_asn_predicate is None
+                or include_discarded_element_decisions
+                or record.elements
+                or isinstance(record.source_element_count, bool)
+                or not isinstance(record.source_element_count, int)
+                or record.source_element_count <= 0
+            ):
+                raise RibAdapterError(
+                    "parser non-target elision record 与 adapter 合同不一致"
+                )
+            yield AdaptedRibRecord(
+                record_kind=frame.record_kind,
+                raw_record=raw_evidence,
+                source_element_count=record.source_element_count,
+                retained_element_count=0,
+                discarded_element_count=record.source_element_count,
+                element_decisions=(),
+                route_events=(),
+            )
+            expected_ordinal += 1
+            expected_offset += len(record.raw_record)
+            continue
+
         # 先只分析当前 physical record。TABLE_DUMP_V2 的一个 RIB record 是
         # 单个 prefix 的全部 peer entries；过滤必须以整个前缀为单位，避免命中
         # IR 的同时丢掉其非 IR MOAS origin 或其他 VP 观测。
@@ -609,6 +646,11 @@ def iter_adapted_rib_records(
         route_events = []
         decisions = []
         discarded = 0
+        if not retain_prefix and not include_discarded_element_decisions:
+            # assessments 已完整覆盖当前 prefix 的全部 entry，且每项 membership
+            # 都严格为 False。worker 不消费逐 element discard 决策时，直接按
+            # source 人口记账，避免再次遍历并分配短命对象。
+            discarded = len(assessments)
         for (
             element_ordinal,
             element,
@@ -617,8 +659,9 @@ def iter_adapted_rib_records(
             target_membership,
         ) in assessments:
             if not retain_prefix:
-                # 即便被过滤，也先用同一公共 builder 校验 element 的规范字段与
-                # 稳定坐标；对象随即丢弃，不进入状态或输出 RouteEvent 集合。
+                if not include_discarded_element_decisions:
+                    continue
+                discarded += 1
                 try:
                     discarded_event = build_research_route_event(
                         artifact_id=identity.artifact_id,
@@ -636,7 +679,6 @@ def iter_adapted_rib_records(
                 if discarded_event.route_event_id in seen_route_event_ids:
                     raise RibAdapterError("稳定 RouteEvent 身份重复")
                 seen_route_event_ids.add(discarded_event.route_event_id)
-                discarded += 1
                 decisions.append(
                     RibElementDecision(
                         element_ordinal=element_ordinal,
@@ -685,8 +727,11 @@ def iter_adapted_rib_records(
                 )
             )
 
-        for _ordinal, element, _state, _origins, _membership in assessments:
-            observe_vp(element.peer_ip, element.peer_asn)
+        if frame.mrt_type == _TABLE_DUMP:
+            # V2 的完整 VP 人口已由 PEER_INDEX_TABLE（或恢复 context）观察，
+            # 不再逐 element 做重复 key lookup。V1 没有 peer table，仍逐项观察。
+            for _ordinal, element, _state, _origins, _membership in assessments:
+                observe_vp(element.peer_ip, element.peer_asn)
 
         yield AdaptedRibRecord(
             record_kind=frame.record_kind,
@@ -716,6 +761,7 @@ def iter_rib_artifact_records(
     artifact: Mapping[str, Any],
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
+    include_discarded_element_decisions: bool = True,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
     start_record_ordinal: int = 0,
     start_record_offset: int = 0,
@@ -736,7 +782,14 @@ def iter_rib_artifact_records(
                 raise RibAdapterError(
                     "流开头不得携带 previous boundary 或 peer context"
                 )
-            parsed_records: Iterable[ParsedMrtRecord] = iter_rib_mrt_records(source)
+            parsed_records: Iterable[ParsedMrtRecord] = iter_rib_mrt_records(
+                source,
+                origin_asn_predicate=origin_asn_predicate,
+                elide_non_target_elements=(
+                    origin_asn_predicate is not None
+                    and not include_discarded_element_decisions
+                ),
+            )
             seek_context = None
         else:
             seek_records = iter_rib_mrt_records_from_offset(
@@ -745,6 +798,11 @@ def iter_rib_artifact_records(
                 next_record_offset=start_record_offset,
                 previous_record_boundary=previous_record_boundary,
                 peer_index_context=peer_index_context,
+                origin_asn_predicate=origin_asn_predicate,
+                elide_non_target_elements=(
+                    origin_asn_predicate is not None
+                    and not include_discarded_element_decisions
+                ),
             )
             parsed_records = seek_records
             seek_context = seek_records.seek_context
@@ -753,6 +811,9 @@ def iter_rib_artifact_records(
             artifact=artifact,
             origin_asn_predicate=origin_asn_predicate,
             vp_observer=vp_observer,
+            include_discarded_element_decisions=(
+                include_discarded_element_decisions
+            ),
             expected_record_sha256_by_ordinal=expected_record_sha256_by_ordinal,
             start_record_ordinal=start_record_ordinal,
             start_record_offset=start_record_offset,
@@ -778,6 +839,7 @@ def iter_rib_spool_artifact_records(
     artifact: Mapping[str, Any],
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
+    include_discarded_element_decisions: bool = True,
     checkpoint_observer: Optional[RibCheckpointObserver] = None,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
 ) -> Iterator[AdaptedRibRecord]:
@@ -803,12 +865,20 @@ def iter_rib_spool_artifact_records(
             next_record_offset=next_record_offset,
             previous_record_boundary=previous_record_boundary,
             peer_index_context=peer_index_context,
+            origin_asn_predicate=origin_asn_predicate,
+            elide_non_target_elements=(
+                origin_asn_predicate is not None
+                and not include_discarded_element_decisions
+            ),
         )
         adapted_records = iter_adapted_rib_records(
             records,
             artifact=artifact,
             origin_asn_predicate=origin_asn_predicate,
             vp_observer=vp_observer,
+            include_discarded_element_decisions=(
+                include_discarded_element_decisions
+            ),
             expected_record_sha256_by_ordinal=expected_record_sha256_by_ordinal,
             start_record_ordinal=next_record_ordinal,
             start_record_offset=next_record_offset,
