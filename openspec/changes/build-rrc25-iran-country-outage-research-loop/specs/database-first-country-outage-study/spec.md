@@ -57,3 +57,21 @@ IPv6 `/48` MUST 使用不同单位；ASN 活动稀疏表缺行 MUST NOT 解释�
 - **WHEN** 主张涉及前兆因果、物理断线、流量影响或政府意图
 - **THEN** 系统标记为 `unverifiable` 或 `hypothesis_only`，且 MUST NOT
   通过扩大 RRC25 重放窗口伪造可验证性
+
+### Requirement: 隔离数据库兼容指标代理与正式状态 Episode
+系统 MAY 使用完整的国家五分钟聚合曲线生成指标级 Episode/Wave 候选，但 MUST
+将其标记为 `database_metric_proxy`、`candidate_only=true`，并明确
+`ipv4_address_equivalent` 是旧 `/24` 等价值乘 256，而不是去重 IPv4 地址并集。
+代理结果 MUST NOT 序列化为 `country-outage-sample/v1`、
+`country-outage-episode/v1` 或逐 ASN 可见性分类，也 MUST NOT 将缺失的
+同快照 cohort、VP 覆盖、RIB 状态或受损 ASN 比例补零。
+
+#### Scenario: 数据库曲线满足冻结阈值
+- **WHEN** 旧 IPv4 等价值连续两个五分钟槽低于六小时中位数的 99%
+- **THEN** 系统输出带 metric basis、阈值、支持槽和限制的代理 onset/detected/
+  trough/recovery/wave 候选，并将正式状态 Episode 保留为未知
+
+#### Scenario: 定向 UPDATE 已提供消息证据
+- **WHEN** 代表前缀在固定 13 槽内形成带 VP 与 raw 坐标的 RouteEvent
+- **THEN** 系统只将其登记为 `message_observation_only` 旁证，MUST NOT
+  据此升级代理 Episode 为状态闭环或生成完整传播、恢复和因果结论
