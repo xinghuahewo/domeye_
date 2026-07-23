@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import replace
 import gzip
 import hashlib
+import io
 import ipaddress
 import json
 from pathlib import Path
@@ -24,7 +26,10 @@ from backend.data_pipeline.research.rrc25_country_outage.bounded_pilot_worker im
 from backend.data_pipeline.research.rrc25_country_outage import bounded_pilot_worker
 from backend.data_pipeline.research.rrc25_country_outage.country_impact import (
     MappingAssignment,
+    RevisedMappingDelta,
+    RevisedMappingLineage,
     build_country_mapping_view,
+    build_raw_retention_mapping_union,
 )
 from backend.data_pipeline.research.rrc25_country_outage.input_resolver import (
     resolve_research_inputs,
@@ -36,6 +41,130 @@ UTC = timezone.utc
 SLOT = "2026-02-27T16:00:00Z"
 END = "2026-02-27T16:05:00Z"
 TIMESTAMP = int(datetime(2026, 2, 27, 16, 0, tzinfo=UTC).timestamp())
+
+
+def _probe_accounting(selection, prior_raw_bytes, code_identity):
+    selection_id, selection_sha = bounded_pilot_worker._selection_identity(selection)
+    semantic = {
+        "schema_version": (
+            bounded_pilot_worker.PROBE_TERMINAL_ACCOUNTING_SCHEMA_VERSION
+        ),
+        "ledger_id": "probe_ledger_v1_fixture",
+        "prepared_directory": "/fixture/prepared",
+        "prepared_receipt_ref": {
+            "path": "PREPARATION.json",
+            "sha256": "1" * 64,
+            "size_bytes": 1,
+        },
+        "prepared_bindings": {
+            "profile_sha256": "2" * 64,
+            "input_selection_sha256": selection_sha,
+            "code_sha256": code_identity,
+            "mapping_sha256": "3" * 64,
+        },
+        "selection_id": selection_id,
+        "terminal_receipt_ref": {
+            "path": "probe-ledger/GENESIS.json",
+            "sha256": "4" * 64,
+            "size_bytes": 1,
+        },
+        "terminal_receipt_kind": (
+            "zero_genesis" if prior_raw_bytes == 0 else "imported_genesis"
+        ),
+        "attempt_count": 0,
+        "outcome_count": 0,
+        "prior_accounting": {
+            "kind": (
+                "explicit_new_task_zero_genesis"
+                if prior_raw_bytes == 0
+                else "imported_preexisting_accounting"
+            )
+        },
+        "initial_observed_lower_bound_new_raw_bytes": (
+            0 if prior_raw_bytes else 0
+        ),
+        "initial_reserved_upper_bound_new_raw_bytes": prior_raw_bytes,
+        "probe_observed_lower_bound_new_raw_bytes": 0,
+        "probe_observed_upper_bound_new_raw_bytes": 0,
+        "cumulative_reserved_new_raw_bytes": prior_raw_bytes,
+        "cumulative_semantics": "nonrefundable_reserved_upper_bound",
+        "reservation_refund_policy": (
+            "never_refund_even_on_failure_timeout_or_retry"
+        ),
+        "chain_refs_sha256": "5" * 64,
+    }
+    return {
+        **semantic,
+        "accounting_fingerprint_sha256": hashlib.sha256(
+            bounded_pilot_worker.canonical_json(
+                {
+                    "schema": (
+                        bounded_pilot_worker.
+                        PROBE_TERMINAL_ACCOUNTING_FINGERPRINT_SCHEMA
+                    ),
+                    "accounting": semantic,
+                }
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+
+
+def _seed_reservation(selection, prior_raw_bytes, code_identity):
+    probe = _probe_accounting(selection, prior_raw_bytes, code_identity)
+    selection_id, _selection_sha = bounded_pilot_worker._selection_identity(selection)
+    seed = selection["roles"]["state_seed_rib"]
+    seed_identity = {
+        field: seed[field]
+        for field in (
+            "artifact_id",
+            "file_sha256",
+            "size_bytes",
+            "relative_path",
+            "collector_id",
+            "artifact_time_utc",
+        )
+    }
+    semantic = {
+        "schema_version": bounded_pilot_worker.SEED_RAW_RESERVATION_SCHEMA_VERSION,
+        "ledger_id": probe["ledger_id"],
+        "prepared_directory": probe["prepared_directory"],
+        "prepared_bindings": probe["prepared_bindings"],
+        "selection_id": selection_id,
+        "probe_terminal_accounting_fingerprint_sha256": probe[
+            "accounting_fingerprint_sha256"
+        ],
+        "probe_terminal_receipt_ref": probe["terminal_receipt_ref"],
+        "attempt_ref": {
+            "path": "probe-ledger/seed-attempts/seed-attempt-fixture.json",
+            "sha256": "6" * 64,
+            "size_bytes": 1,
+        },
+        "attempt_id": "seed_v1_" + "7" * 32,
+        "sequence": 1,
+        "seed_artifact": seed_identity,
+        "previous_seed_terminal_ref": None,
+        "prior_cumulative_reserved_new_raw_bytes": prior_raw_bytes,
+        "reserved_new_raw_bytes": seed["size_bytes"],
+        "cumulative_reserved_new_raw_bytes": (
+            prior_raw_bytes + seed["size_bytes"]
+        ),
+        "reservation_refund_policy": (
+            "never_refund_even_on_failure_timeout_or_retry"
+        ),
+    }
+    return {
+        **semantic,
+        "reservation_fingerprint_sha256": hashlib.sha256(
+            bounded_pilot_worker.canonical_json(
+                {
+                    "schema": (
+                        bounded_pilot_worker.SEED_RAW_RESERVATION_FINGERPRINT_SCHEMA
+                    ),
+                    "reservation": semantic,
+                }
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
 
 
 def _mrt_record(payload, *, subtype, timestamp=TIMESTAMP):
@@ -134,6 +263,67 @@ def _artifact(kind, relative, compressed):
     }
 
 
+def _seed_spool_attestation(rib, decompressed):
+    semantic = {
+        "schema_version": "rrc25-seed-spool-attestation/v1",
+        "artifact_binding": {
+            "artifact_id": rib["artifact_id"],
+            "file_sha256": rib["file_sha256"],
+            "compressed_size_bytes": rib["size_bytes"],
+        },
+        "decompressed": {
+            "size_bytes": len(decompressed),
+            "sha256": hashlib.sha256(decompressed).hexdigest(),
+        },
+        "measurement": {
+            "method": "full_streaming_gzip_decompression_sha256_v1",
+            "measured_at_utc": "2026-07-22T10:11:14Z",
+            "raw_read_pass_count": 1,
+        },
+    }
+    return {
+        **semantic,
+        "semantic_fingerprint_sha256": hashlib.sha256(
+            bounded_pilot_worker.canonical_json(semantic).encode("utf-8")
+        ).hexdigest(),
+    }
+
+
+def _with_revised_lineage(revised, compatible):
+    assignment = revised.assignments[0]
+    base = compatible.assignment_for(assignment.asn)
+    base_country = base.countries[0] if base.countries else "ZZ"
+    delta = RevisedMappingDelta(
+        asn=assignment.asn,
+        countries=assignment.countries,
+        mapping_state=assignment.mapping_state,
+        delegated_date="20260227",
+        base_country=base_country,
+        override_reason="synthetic_test_delta",
+        registry="ripencc",
+        resource_type="asn",
+        status="allocated",
+        range_start=assignment.asn,
+        range_count=1,
+        provenance_sha256="9" * 64,
+        provenance_ref="synthetic://delegated",
+    )
+    return replace(
+        revised,
+        revised_lineage=RevisedMappingLineage(
+            compatible_snapshot_id="synthetic-compatible",
+            compatible_source_sha256=compatible.source_sha256,
+            compatible_semantic_fingerprint_sha256="8" * 64,
+            event_cutoff_date="20260227",
+            source_kind="synthetic_delegated",
+            source_size_bytes=1,
+            source_generated_on="2026-02-27",
+            upstream_artifact_state="retained",
+            excluded_after_cutoff_asns=(),
+            limitations_zh=("仅用于测试冻结 lineage。",),
+            delta_entries=(delta,),
+        ),
+    )
 class _SyntheticUpdateStream:
     def __init__(self, path, artifact, record):
         self.path = path
@@ -181,7 +371,8 @@ def _synthetic_worker_case(root):
     checkpoint = root / "checkpoints"
     checkpoint.mkdir()
 
-    rib_compressed = gzip.compress(_rib_bytes(), mtime=0)
+    rib_decompressed = _rib_bytes()
+    rib_compressed = gzip.compress(rib_decompressed, mtime=0)
     update_raw = _update_frame()
     update_compressed = gzip.compress(update_raw, mtime=0)
     rib_relative = "rrc25/2026.02/bview.20260227.1600.gz"
@@ -248,6 +439,9 @@ def _synthetic_worker_case(root):
         "checkpoint_directory": checkpoint,
         "mapping": mapping,
         "rib": rib,
+        "seed_spool_attestation": _seed_spool_attestation(
+            rib, rib_decompressed
+        ),
         "rib_path": root / rib_relative,
         "selection": selection,
         "update": update,
@@ -267,7 +461,979 @@ def _rewrite_checkpoint(path, mutate):
     )
 
 
+def _rewrite_full_seed_checkpoint(path, mutate):
+    payload = _read_full_seed_checkpoint(path)
+    payload.pop("checkpoint_fingerprint_sha256")
+    mutate(payload)
+    # 改写后 gzip 体积可小幅增大；保留足够的历史峰值，使本
+    # 夹具只测所指定的语义篡改，不被存储计量门提前截断。
+    payload["resources"]["peak_temporary_bytes"] += 1024 * 1024
+    rebuilt = bounded_pilot_worker._full_seed_checkpoint_payload(payload)
+    encoded = (
+        bounded_pilot_worker.canonical_json(rebuilt) + "\n"
+    ).encode("utf-8")
+    output = io.BytesIO()
+    with gzip.GzipFile(
+        filename="", mode="wb", compresslevel=1, fileobj=output, mtime=0
+    ) as stream:
+        stream.write(encoded)
+    path.write_bytes(output.getvalue())
+
+
+def _read_full_seed_checkpoint(path):
+    return dict(
+        bounded_pilot_worker._read_checkpoint(
+            Path(path),
+            fingerprint_schema=(
+                bounded_pilot_worker.FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA
+            ),
+        )
+    )
+
+
 class BoundedPilotWorkerTests(unittest.TestCase):
+    def test_seed_hot_path_materializes_evidence_only_at_checkpoint_boundaries(self):
+        class CountingBoundary:
+            def __init__(self):
+                self.binding_calls = 0
+
+            def checkpoint_binding(self):
+                self.binding_calls += 1
+                return {
+                    "record_ordinal": 999_999,
+                    "record_offset": 1_000_000,
+                    "record_length": 64,
+                    "record_sha256": "a" * 64,
+                }
+
+        class CountingPeerContext:
+            def __init__(self):
+                self.binding_calls = 0
+
+            def checkpoint_binding(self):
+                self.binding_calls += 1
+                return {
+                    "schema_version": "rrc25-rib-peer-index-context/v1",
+                    "record_ordinal": 0,
+                    "record_offset": 0,
+                    "record_length": 64,
+                    "record_sha256": "b" * 64,
+                    "peers": [
+                        {
+                            "peer_ip": f"192.0.2.{index + 1}",
+                            "peer_asn": 64_500 + index,
+                        }
+                        for index in range(118)
+                    ],
+                }
+
+        class CountingAccumulator:
+            def __init__(self):
+                self.sort_calls = 0
+                self._vp_ids = {
+                    f"rrc25:192.0.2.{index + 1}:as{64_500 + index}"
+                    for index in range(118)
+                }
+
+            @property
+            def observed_vp_ids(self):
+                self.sort_calls += 1
+                return tuple(sorted(self._vp_ids))
+
+        record_count = 1_000_000
+        checkpoint_count = 4
+        boundary = CountingBoundary()
+        peer_context = CountingPeerContext()
+        accumulators = []
+        observed_vps = set()
+
+        for segment in range(checkpoint_count):
+            deferred = bounded_pilot_worker._DeferredSeedEvidence()
+            accumulator = CountingAccumulator()
+            accumulators.append(accumulator)
+            deferred.attach_accumulator(accumulator)
+            segment_records = record_count // checkpoint_count
+            for _ in range(segment_records):
+                deferred.observe_boundary(boundary, peer_context)
+
+            self.assertEqual(boundary.binding_calls, segment)
+            self.assertEqual(peer_context.binding_calls, segment)
+            self.assertEqual(accumulator.sort_calls, 0)
+            previous, peers = deferred.checkpoint_bindings()
+            deferred.merge_observed_vps(observed_vps)
+            # 同一退出路径重复收口也不得再次排序 VP 人口。
+            deferred.merge_observed_vps(observed_vps)
+            self.assertEqual(previous["record_ordinal"], 999_999)
+            self.assertEqual(len(peers["peers"]), 118)
+
+        self.assertEqual(boundary.binding_calls, checkpoint_count)
+        self.assertEqual(peer_context.binding_calls, checkpoint_count)
+        self.assertEqual(
+            sum(accumulator.sort_calls for accumulator in accumulators),
+            checkpoint_count,
+        )
+        self.assertEqual(len(observed_vps), 118)
+
+    def test_seed_deferred_evidence_preserves_resume_mapping_input(self):
+        previous = {
+            "record_ordinal": 12,
+            "record_offset": 345,
+            "record_length": 67,
+            "record_sha256": "a" * 64,
+        }
+        peer_context = {
+            "schema_version": "rrc25-rib-peer-index-context/v1",
+            "record_ordinal": 0,
+            "record_offset": 0,
+            "record_length": 128,
+            "record_sha256": "b" * 64,
+            "peers": [{"peer_ip": "192.0.2.1", "peer_asn": 64_500}],
+        }
+        deferred = bounded_pilot_worker._DeferredSeedEvidence()
+        deferred.restore(previous, peer_context)
+
+        self.assertIs(deferred.previous_record_boundary, previous)
+        self.assertIs(deferred.peer_index_context, peer_context)
+        restored_previous, restored_peers = deferred.checkpoint_bindings()
+        self.assertEqual(restored_previous, previous)
+        self.assertEqual(restored_peers, peer_context)
+
+    def test_full_seed_checkpoint_storage_is_deterministic_gzip_and_legacy_plain_is_readable(self):
+        context = {
+            "resources": {"peak_temporary_bytes": 0},
+            "large_payload": "same-payload-" * 2048,
+        }
+        with tempfile.TemporaryDirectory() as first_directory, tempfile.TemporaryDirectory() as second_directory:
+            first_root = Path(first_directory)
+            second_root = Path(second_directory)
+            first, first_size, _first_peak = (
+                bounded_pilot_worker._publish_full_seed_checkpoint(
+                    first_root,
+                    selection_id="rsel_v1_fixture",
+                    sequence=1,
+                    context=context,
+                    maximum_temporary_bytes=10_000_000,
+                )
+            )
+            second, second_size, _second_peak = (
+                bounded_pilot_worker._publish_full_seed_checkpoint(
+                    second_root,
+                    selection_id="rsel_v1_fixture",
+                    sequence=1,
+                    context=context,
+                    maximum_temporary_bytes=10_000_000,
+                )
+            )
+            self.assertTrue(first.name.endswith(".json.gz"))
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            self.assertEqual(first_size, second_size)
+            self.assertLess(first_size, len(context["large_payload"]))
+            restored = bounded_pilot_worker._read_checkpoint(
+                first,
+                fingerprint_schema=(
+                    bounded_pilot_worker.FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA
+                ),
+            )
+            self.assertEqual(restored["large_payload"], context["large_payload"])
+
+            legacy_payload = bounded_pilot_worker._full_seed_checkpoint_payload(
+                context
+            )
+            legacy = first_root / "legacy-full-seed.json"
+            legacy.write_text(
+                bounded_pilot_worker.canonical_json(legacy_payload) + "\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                bounded_pilot_worker._read_checkpoint(
+                    legacy,
+                    fingerprint_schema=(
+                        bounded_pilot_worker.FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA
+                    ),
+                ),
+                legacy_payload,
+            )
+
+    def test_full_seed_checkpoint_rejects_corrupt_gzip_and_decompression_bomb(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            corrupt = root / "corrupt.json.gz"
+            corrupt.write_bytes(b"\x1f\x8bnot-a-complete-gzip")
+            with self.assertRaisesRegex(
+                BoundedPilotWorkerError, "gzip EOF/CRC"
+            ):
+                bounded_pilot_worker._read_checkpoint(
+                    corrupt,
+                    fingerprint_schema=(
+                        bounded_pilot_worker.FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA
+                    ),
+                )
+
+            payload = bounded_pilot_worker._full_seed_checkpoint_payload(
+                {"resources": {"peak_temporary_bytes": 0}, "value": "x" * 256}
+            )
+            encoded = (
+                bounded_pilot_worker.canonical_json(payload) + "\n"
+            ).encode("utf-8")
+            bomb = root / "bomb.json.gz"
+            bomb.write_bytes(gzip.compress(encoded, compresslevel=1, mtime=0))
+            with mock.patch.object(
+                bounded_pilot_worker, "_MAX_CHECKPOINT_UNCOMPRESSED_BYTES", 64
+            ), self.assertRaisesRegex(
+                BoundedPilotWorkerError, "解压后超过 2 GB"
+            ):
+                bounded_pilot_worker._read_checkpoint(
+                    bomb,
+                    fingerprint_schema=(
+                        bounded_pilot_worker.FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA
+                    ),
+                )
+
+    def test_full_seed_checkpoint_rejects_oversize_before_publish(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory)
+            context = {
+                "resources": {"peak_temporary_bytes": 0},
+                "large_payload": "x" * 512,
+            }
+            with mock.patch.object(
+                bounded_pilot_worker, "_MAX_CHECKPOINT_BYTES", 128
+            ), self.assertRaisesRegex(
+                BoundedPilotWorkerError, "超过 512 MiB"
+            ):
+                bounded_pilot_worker._publish_full_seed_checkpoint(
+                    checkpoint,
+                    selection_id="rsel_v1_fixture",
+                    sequence=1,
+                    context=context,
+                    maximum_temporary_bytes=10_000,
+                )
+            self.assertEqual(tuple(checkpoint.iterdir()), ())
+
+    def test_raw_retention_union_keeps_revised_only_asn_for_rib_and_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            compatible = build_country_mapping_view(
+                (
+                    MappingAssignment(65001, ("US",), "mapped"),
+                    MappingAssignment(65100, ("US",), "mapped"),
+                ),
+                view="compatible",
+                target_country="IR",
+                source_sha256="c" * 64,
+                source_ref="compatible-non-ir",
+            )
+            revised = build_country_mapping_view(
+                (
+                    MappingAssignment(65001, ("IR",), "mapped"),
+                    MappingAssignment(65100, ("US",), "mapped"),
+                ),
+                view="revised",
+                target_country="IR",
+                source_sha256="d" * 64,
+                source_ref="revised-ir",
+            )
+            revised = _with_revised_lineage(revised, compatible)
+            retention_union = build_raw_retention_mapping_union(
+                (compatible, revised)
+            )
+
+            def update_factory(artifact):
+                return _SyntheticUpdateStream(
+                    case["update_path"], artifact, case["update_record"]
+                )
+
+            without_union = run_bounded_pilot_worker(
+                case["selection"],
+                artifact_root=root,
+                country_mapping=compatible,
+                pilot_end_exclusive_utc=END,
+                update_record_stream_factory=update_factory,
+                checkpoint_directory=case["checkpoint_directory"],
+                clock=lambda: 0.0,
+            )
+            with_union = run_bounded_pilot_worker(
+                case["selection"],
+                artifact_root=root,
+                country_mapping=compatible,
+                raw_retention_mapping=retention_union,
+                pilot_end_exclusive_utc=END,
+                update_record_stream_factory=update_factory,
+                checkpoint_directory=case["checkpoint_directory"],
+                clock=lambda: 0.0,
+            )
+
+            self.assertFalse(
+                any(
+                    event.artifact_id == case["update"]["artifact_id"]
+                    for event in without_union.route_events
+                )
+            )
+            self.assertTrue(
+                any(
+                    event.artifact_id == case["rib"]["artifact_id"]
+                    and event.as_path is not None
+                    and event.as_path[-1].segment_type == "as_sequence"
+                    and event.as_path[-1].asns[-1] == 65001
+                    for event in with_union.route_events
+                )
+            )
+            self.assertTrue(
+                any(
+                    event.artifact_id == case["update"]["artifact_id"]
+                    and event.as_path is not None
+                    and event.as_path[-1].asns[-1] == 65001
+                    for event in with_union.route_events
+                )
+            )
+            self.assertEqual(with_union.slot_counts[0].retained_announce_count, 1)
+            self.assertIn("198.51.100.0/24", with_union.tracked_prefixes)
+            self.assertEqual(
+                with_union.ambiguity.mapped_compatible_cohort_state,
+                "unknown_no_mapped_target_relation",
+            )
+
+    def test_full_seed_checkpoint_rejects_raw_retention_union_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            compatible = build_country_mapping_view(
+                (MappingAssignment(65001, ("US",), "mapped"),),
+                view="compatible",
+                target_country="IR",
+                source_sha256="c" * 64,
+                source_ref="compatible",
+            )
+            revised_v1 = build_country_mapping_view(
+                (MappingAssignment(65001, ("IR",), "mapped"),),
+                view="revised",
+                target_country="IR",
+                source_sha256="d" * 64,
+                source_ref="revised-v1",
+            )
+            revised_v2 = build_country_mapping_view(
+                (
+                    MappingAssignment(65001, ("IR",), "mapped"),
+                    MappingAssignment(65002, ("IR",), "mapped"),
+                ),
+                view="revised",
+                target_country="IR",
+                source_sha256="e" * 64,
+                source_ref="revised-v2",
+            )
+            revised_v1 = _with_revised_lineage(revised_v1, compatible)
+            revised_v2 = _with_revised_lineage(revised_v2, compatible)
+            union_v1 = build_raw_retention_mapping_union(
+                (compatible, revised_v1)
+            )
+            union_v2 = build_raw_retention_mapping_union(
+                (compatible, revised_v2)
+            )
+
+            class MutableClock:
+                value = 0.0
+
+                def __call__(self):
+                    return self.value
+
+            clock = MutableClock()
+            real_rib_adapter = bounded_pilot_worker.iter_rib_spool_artifact_records
+
+            def pause_after_first_record(*args, **kwargs):
+                for index, record in enumerate(real_rib_adapter(*args, **kwargs)):
+                    if index == 0:
+                        clock.value = 420.0
+                    yield record
+
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "iter_rib_spool_artifact_records",
+                side_effect=pause_after_first_record,
+            ):
+                paused = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=compatible,
+                    raw_retention_mapping=union_v1,
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256="a" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    clock=clock,
+                )
+
+            checkpoint = _read_full_seed_checkpoint(paused.checkpoint_path)
+            self.assertEqual(
+                checkpoint["raw_retention_mapping_kind"],
+                "compatible_revised_raw_retention_union",
+            )
+            bounded_pilot_worker.verify_full_seed_checkpoint(
+                Path(paused.checkpoint_path),
+                selection=case["selection"],
+                country_mapping=compatible,
+                raw_retention_mapping=union_v1,
+                seed_spool_attestation=case["seed_spool_attestation"],
+                pilot_end_exclusive_utc=END,
+                code_identity_sha256="a" * 64,
+            )
+
+            with self.assertRaisesRegex(
+                BoundedPilotWorkerError, "raw-retention union 身份不一致"
+            ):
+                bounded_pilot_worker.verify_full_seed_checkpoint(
+                    Path(paused.checkpoint_path),
+                    selection=case["selection"],
+                    country_mapping=compatible,
+                    raw_retention_mapping=union_v2,
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    code_identity_sha256="a" * 64,
+                )
+            with self.assertRaisesRegex(
+                BoundedPilotWorkerError, "raw-retention union 身份不一致"
+            ), mock.patch.object(
+                bounded_pilot_worker,
+                "_open_rib_reader",
+                side_effect=AssertionError("union mismatch 后不得打开 MRT"),
+            ):
+                run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=compatible,
+                    raw_retention_mapping=union_v2,
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    resume_checkpoint_path=Path(paused.checkpoint_path),
+                    code_identity_sha256="a" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], 0, "a" * 64
+                    ),
+                )
+
+    def test_full_seed_resume_matches_one_pass_without_gap_and_raw_reread(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            code_identity = "a" * 64
+            prior_new_raw_bytes = 1_234
+
+            class MutableClock:
+                value = 0.0
+
+                def __call__(self):
+                    return self.value
+
+            clock = MutableClock()
+            real_rib_adapter = bounded_pilot_worker.iter_rib_spool_artifact_records
+
+            def pause_after_first_record(*args, **kwargs):
+                for index, record in enumerate(real_rib_adapter(*args, **kwargs)):
+                    if index == 0:
+                        clock.value = 420.0
+                    yield record
+
+            update_factory = mock.Mock(
+                side_effect=AssertionError("planned seed checkpoint 不得打开 UPDATE")
+            )
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "iter_rib_spool_artifact_records",
+                side_effect=pause_after_first_record,
+            ):
+                paused = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=update_factory,
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256=code_identity,
+                    prior_new_raw_read_bytes=prior_new_raw_bytes,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], prior_new_raw_bytes, code_identity
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], prior_new_raw_bytes, code_identity
+                    ),
+                    stop_after_seed=True,
+                    clock=clock,
+                )
+
+            self.assertEqual(paused.status, "incomplete")
+            self.assertEqual(paused.incomplete_reason, "planned_seed_checkpoint")
+            self.assertEqual(paused.gaps, ())
+            update_factory.assert_not_called()
+            first_checkpoint = _read_full_seed_checkpoint(paused.checkpoint_path)
+            self.assertEqual(
+                first_checkpoint["schema_version"],
+                "rrc25-bounded-pilot-worker-full-seed-checkpoint/v3",
+            )
+            self.assertEqual(first_checkpoint["position"]["phase"], "seed_rib")
+            self.assertEqual(
+                first_checkpoint["position"]["next_record_ordinal"], 1
+            )
+            self.assertFalse(
+                first_checkpoint["seed_progress"]["seed_parse_complete"]
+            )
+            self.assertEqual(
+                first_checkpoint["code_identity_sha256"], code_identity
+            )
+            self.assertEqual(
+                first_checkpoint["checkpoint_policy"][
+                    "active_root_retention_policy"
+                ],
+                "immutable_accumulate_no_automatic_reclamation_v1",
+            )
+            self.assertFalse(
+                first_checkpoint["checkpoint_policy"]["automatic_deletion"]
+            )
+            self.assertEqual(
+                first_checkpoint["checkpoint_policy"][
+                    "capacity_exhaustion_behavior"
+                ],
+                "fail_closed_before_publish",
+            )
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "_open_rib_reader",
+                side_effect=AssertionError("只读 verifier 不得打开 MRT"),
+            ):
+                verification = (
+                    bounded_pilot_worker.verify_full_seed_checkpoint(
+                        Path(paused.checkpoint_path),
+                        selection=case["selection"],
+                        country_mapping=case["mapping"],
+                        seed_spool_attestation=case["seed_spool_attestation"],
+                        pilot_end_exclusive_utc=END,
+                        code_identity_sha256=code_identity,
+                    )
+                )
+            self.assertTrue(verification["verified"])
+            self.assertEqual(verification["position"]["phase"], "seed_rib")
+            self.assertEqual(verification["seed_read_pass_count"], 1)
+
+            with self.assertRaisesRegex(
+                bounded_pilot_worker.BoundedPilotWorkerError,
+                "resources 非法",
+            ):
+                run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=lambda _artifact: (),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    resume_checkpoint_path=Path(paused.checkpoint_path),
+                    code_identity_sha256=code_identity,
+                    prior_new_raw_read_bytes=prior_new_raw_bytes + 1,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], prior_new_raw_bytes + 1, code_identity
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], prior_new_raw_bytes + 1, code_identity
+                    ),
+                    stop_after_seed=True,
+                    clock=lambda: 0.0,
+                )
+
+            resumed_update_factory = mock.Mock(
+                side_effect=AssertionError("stop_after_seed 不得打开 UPDATE")
+            )
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "_safe_artifact_path",
+                side_effect=AssertionError("resume 不得打开压缩 raw"),
+            ):
+                resumed = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=resumed_update_factory,
+                    checkpoint_directory=case["checkpoint_directory"],
+                    resume_checkpoint_path=Path(paused.checkpoint_path),
+                    code_identity_sha256=code_identity,
+                    prior_new_raw_read_bytes=prior_new_raw_bytes,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], prior_new_raw_bytes, code_identity
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], prior_new_raw_bytes, code_identity
+                    ),
+                    stop_after_seed=True,
+                    clock=lambda: 0.0,
+                )
+            resumed_update_factory.assert_not_called()
+            self.assertEqual(resumed.status, "incomplete")
+            self.assertEqual(resumed.incomplete_reason, "stop_after_seed")
+            self.assertEqual(resumed.gaps, ())
+
+            one_pass_update_factory = mock.Mock(
+                side_effect=AssertionError("stop_after_seed 不得打开 UPDATE")
+            )
+            one_pass_checkpoint_directory = root / "one-pass-checkpoints"
+            one_pass_checkpoint_directory.mkdir()
+            one_pass = run_bounded_pilot_worker(
+                case["selection"],
+                artifact_root=root,
+                country_mapping=case["mapping"],
+                seed_spool_attestation=case["seed_spool_attestation"],
+                pilot_end_exclusive_utc=END,
+                update_record_stream_factory=one_pass_update_factory,
+                checkpoint_directory=one_pass_checkpoint_directory,
+                code_identity_sha256=code_identity,
+                prior_new_raw_read_bytes=prior_new_raw_bytes,
+                prior_raw_accounting=_probe_accounting(
+                    case["selection"], prior_new_raw_bytes, code_identity
+                ),
+                seed_raw_reservation=_seed_reservation(
+                    case["selection"], prior_new_raw_bytes, code_identity
+                ),
+                stop_after_seed=True,
+                clock=lambda: 0.0,
+            )
+            one_pass_update_factory.assert_not_called()
+
+            self.assertEqual(resumed.state, one_pass.state)
+            self.assertEqual(
+                resumed.seed_state_at_window_start,
+                one_pass.seed_state_at_window_start,
+            )
+            self.assertEqual(resumed.route_events, one_pass.route_events)
+            self.assertEqual(resumed.raw_audits, one_pass.raw_audits)
+            self.assertEqual(resumed.tracked_prefixes, one_pass.tracked_prefixes)
+            self.assertEqual(resumed.observed_vp_ids, one_pass.observed_vp_ids)
+            self.assertEqual(resumed.ambiguity, one_pass.ambiguity)
+            self.assertEqual(resumed.gaps, one_pass.gaps)
+            self.assertEqual(
+                resumed.resources["new_raw_read_bytes"],
+                prior_new_raw_bytes + case["rib"]["size_bytes"],
+            )
+            self.assertEqual(
+                resumed.resources["prior_new_raw_read_bytes"],
+                prior_new_raw_bytes,
+            )
+            final_checkpoint = _read_full_seed_checkpoint(resumed.checkpoint_path)
+            self.assertEqual(final_checkpoint["position"]["phase"], "updates")
+            self.assertTrue(
+                final_checkpoint["seed_progress"]["seed_parse_complete"]
+            )
+            self.assertEqual(len(final_checkpoint["seed_read_ledger"]), 2)
+            self.assertEqual(
+                sum(
+                    row["new_compressed_raw_bytes_read"]
+                    for row in final_checkpoint["seed_read_ledger"]
+                ),
+                case["rib"]["size_bytes"],
+            )
+
+    def test_full_seed_resume_rejects_code_identity_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+
+            class BoundaryClock:
+                def __init__(self):
+                    self.value = 0.0
+
+                def __call__(self):
+                    current = self.value
+                    self.value = 420.0
+                    return current
+
+            paused = run_bounded_pilot_worker(
+                case["selection"],
+                artifact_root=root,
+                country_mapping=case["mapping"],
+                seed_spool_attestation=case["seed_spool_attestation"],
+                pilot_end_exclusive_utc=END,
+                update_record_stream_factory=mock.Mock(),
+                checkpoint_directory=case["checkpoint_directory"],
+                code_identity_sha256="a" * 64,
+                prior_raw_accounting=_probe_accounting(
+                    case["selection"], 0, "a" * 64
+                ),
+                seed_raw_reservation=_seed_reservation(
+                    case["selection"], 0, "a" * 64
+                ),
+                clock=BoundaryClock(),
+            )
+            with self.assertRaisesRegex(
+                BoundedPilotWorkerError, "code_identity_sha256 不一致"
+            ), mock.patch.object(
+                bounded_pilot_worker,
+                "_open_rib_reader",
+                side_effect=AssertionError("code mismatch 后不得打开 seed"),
+            ):
+                run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    resume_checkpoint_path=Path(paused.checkpoint_path),
+                    code_identity_sha256="b" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "b" * 64
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], 0, "b" * 64
+                    ),
+                )
+
+    def test_full_seed_resume_rejects_boundary_tampering_against_spool(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+
+            class MutableClock:
+                value = 0.0
+
+                def __call__(self):
+                    return self.value
+
+            clock = MutableClock()
+            real_adapter = bounded_pilot_worker.iter_rib_spool_artifact_records
+
+            def pause_after_first_record(*args, **kwargs):
+                for index, record in enumerate(real_adapter(*args, **kwargs)):
+                    if index == 0:
+                        clock.value = 420.0
+                    yield record
+
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "iter_rib_spool_artifact_records",
+                side_effect=pause_after_first_record,
+            ):
+                paused = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256="a" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    clock=clock,
+                )
+            checkpoint = Path(paused.checkpoint_path)
+            _rewrite_full_seed_checkpoint(
+                checkpoint,
+                lambda payload: payload["seed_progress"][
+                    "previous_record_boundary"
+                ].update({"record_sha256": "0" * 64}),
+            )
+            resumed = run_bounded_pilot_worker(
+                case["selection"],
+                artifact_root=root,
+                country_mapping=case["mapping"],
+                seed_spool_attestation=case["seed_spool_attestation"],
+                pilot_end_exclusive_utc=END,
+                update_record_stream_factory=mock.Mock(),
+                checkpoint_directory=case["checkpoint_directory"],
+                resume_checkpoint_path=checkpoint,
+                code_identity_sha256="a" * 64,
+                prior_raw_accounting=_probe_accounting(
+                    case["selection"], 0, "a" * 64
+                ),
+                seed_raw_reservation=_seed_reservation(
+                    case["selection"], 0, "a" * 64
+                ),
+                clock=lambda: 0.0,
+            )
+            self.assertEqual(
+                resumed.incomplete_reason, "seed_rib_parse_or_integrity_failure"
+            )
+            self.assertEqual(
+                resumed.errors[0]["reason"], "record_boundary_sha256_mismatch"
+            )
+
+    def test_full_seed_resume_reports_spool_integrity_reason_without_raw_reread(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+
+            class MutableClock:
+                value = 0.0
+
+                def __call__(self):
+                    return self.value
+
+            clock = MutableClock()
+            real_adapter = bounded_pilot_worker.iter_rib_spool_artifact_records
+
+            def pause_after_first_record(*args, **kwargs):
+                for index, record in enumerate(real_adapter(*args, **kwargs)):
+                    if index == 0:
+                        clock.value = 420.0
+                    yield record
+
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "iter_rib_spool_artifact_records",
+                side_effect=pause_after_first_record,
+            ):
+                paused = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256="a" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    clock=clock,
+                )
+            checkpoint = _read_full_seed_checkpoint(paused.checkpoint_path)
+            spool = case["checkpoint_directory"] / checkpoint["seed_spool"][
+                "file_name"
+            ]
+            spool.chmod(0o640)
+            corrupted = bytearray(spool.read_bytes())
+            corrupted[-1] ^= 0x01
+            spool.write_bytes(corrupted)
+            resumed = run_bounded_pilot_worker(
+                case["selection"],
+                artifact_root=root,
+                country_mapping=case["mapping"],
+                seed_spool_attestation=case["seed_spool_attestation"],
+                pilot_end_exclusive_utc=END,
+                update_record_stream_factory=mock.Mock(),
+                checkpoint_directory=case["checkpoint_directory"],
+                resume_checkpoint_path=Path(paused.checkpoint_path),
+                code_identity_sha256="a" * 64,
+                prior_raw_accounting=_probe_accounting(
+                    case["selection"], 0, "a" * 64
+                ),
+                seed_raw_reservation=_seed_reservation(
+                    case["selection"], 0, "a" * 64
+                ),
+                clock=lambda: 0.0,
+            )
+            self.assertEqual(
+                resumed.incomplete_reason, "seed_rib_parse_or_integrity_failure"
+            )
+            self.assertEqual(resumed.errors[0]["reason"], "spool_sha256_mismatch")
+            self.assertEqual(
+                resumed.resources["new_raw_read_bytes"], case["rib"]["size_bytes"]
+            )
+
+    def test_full_seed_planned_and_runtime_boundaries_include_checkpoint_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            with self.assertRaisesRegex(
+                BoundedPilotWorkerError, "严格小于 worker 软停"
+            ):
+                run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=case["seed_spool_attestation"],
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256="a" * 64,
+                    planned_seed_checkpoint_seconds=540.0,
+                )
+
+        for boundary, expected_decision in (
+            (540.0, "soft_stop"),
+            (600.0, "approval_required"),
+        ):
+            with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                case = _synthetic_worker_case(root)
+
+                class MutableClock:
+                    value = 0.0
+
+                    def __call__(self):
+                        return self.value
+
+                clock = MutableClock()
+                real_publish = bounded_pilot_worker._publish_full_seed_checkpoint
+                real_rib_adapter = bounded_pilot_worker.iter_rib_spool_artifact_records
+
+                def reach_planned_boundary(*args, **kwargs):
+                    for record in real_rib_adapter(*args, **kwargs):
+                        clock.value = 420.0
+                        yield record
+
+                def publish_then_advance(*args, **kwargs):
+                    published = real_publish(*args, **kwargs)
+                    clock.value = boundary
+                    return published
+
+                with mock.patch.object(
+                    bounded_pilot_worker,
+                    "_publish_full_seed_checkpoint",
+                    side_effect=publish_then_advance,
+                ), mock.patch.object(
+                    bounded_pilot_worker,
+                    "iter_rib_spool_artifact_records",
+                    side_effect=reach_planned_boundary,
+                ):
+                    result = run_bounded_pilot_worker(
+                        case["selection"],
+                        artifact_root=root,
+                        country_mapping=case["mapping"],
+                        seed_spool_attestation=case["seed_spool_attestation"],
+                        pilot_end_exclusive_utc=END,
+                        update_record_stream_factory=mock.Mock(),
+                        checkpoint_directory=case["checkpoint_directory"],
+                        code_identity_sha256="a" * 64,
+                        prior_raw_accounting=_probe_accounting(
+                            case["selection"], 0, "a" * 64
+                        ),
+                        seed_raw_reservation=_seed_reservation(
+                            case["selection"], 0, "a" * 64
+                        ),
+                        clock=clock,
+                    )
+
+                self.assertEqual(result.status, "incomplete")
+                self.assertEqual(result.incomplete_reason, expected_decision)
+                self.assertEqual(
+                    result.resources["resource_gate"]["decision"],
+                    expected_decision,
+                )
+                self.assertEqual(
+                    result.resources["process_runtime_seconds"], boundary
+                )
+                self.assertTrue(Path(result.checkpoint_path).is_file())
+
     def test_ir_selector_keeps_full_count_without_promoting_unrelated_event(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

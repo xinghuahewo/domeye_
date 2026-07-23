@@ -48,6 +48,18 @@ from .index import (
     route_event_id_v1,
     vp_id_v1,
 )
+from .native_update import (
+    NATIVE_UPDATE_COMMAND_TOKEN,
+    NATIVE_UPDATE_EXECUTION_POLICY,
+    NATIVE_UPDATE_PARSER_NAME,
+    NATIVE_UPDATE_PARSER_VERSION,
+    NativeUpdateConfigurationError,
+    NativeUpdateIntegrityError,
+    NativeUpdateParserError,
+    NativeUpdateRecordStream,
+    NativeUpdateRecordStreamFactory,
+    make_native_update_record_stream_factory,
+)
 
 __all__ = (
     "ARTIFACT_ID_SCHEMA",
@@ -72,6 +84,15 @@ __all__ = (
     "IncidentObservation",
     "IndexBuildResult",
     "MrtParserUnavailableError",
+    "NATIVE_UPDATE_COMMAND_TOKEN",
+    "NATIVE_UPDATE_EXECUTION_POLICY",
+    "NATIVE_UPDATE_PARSER_NAME",
+    "NATIVE_UPDATE_PARSER_VERSION",
+    "NativeUpdateConfigurationError",
+    "NativeUpdateIntegrityError",
+    "NativeUpdateParserError",
+    "NativeUpdateRecordStream",
+    "NativeUpdateRecordStreamFactory",
     "ParsedMrtRecord",
     "ParsedRouteElement",
     "RouteEventIndex",
@@ -86,6 +107,7 @@ __all__ = (
     "derive_update_pilot_selection",
     "import_run_id_v1",
     "make_bgpdump_record_stream_factory",
+    "make_native_update_record_stream_factory",
     "parse_mrt_artifact",
     "route_event_id_v1",
     "scan_mrt_artifacts",

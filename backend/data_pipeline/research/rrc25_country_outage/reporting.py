@@ -150,6 +150,7 @@ def build_research_report_zh(
     reconciliation: Mapping[str, Any],
     quality: Mapping[str, Any],
     reproduction_commands: Sequence[str],
+    source_temporal_evidence: Sequence[Mapping[str, Any]] = (),
 ) -> str:
     """返回可写入 Git 的确定性中文 Markdown 报告。"""
 
@@ -189,6 +190,62 @@ def build_research_report_zh(
         coverage.get("analysis_ribs"), "coverage.analysis_ribs"
     )
     execution = _required_mapping(run.get("execution"), "run.execution")
+
+    temporal_lines: list[str] = []
+    temporal_rows = _required_sequence(
+        source_temporal_evidence, "source_temporal_evidence"
+    )
+    if temporal_rows:
+        temporal_lines = [
+            "### 2.1 旧事实双时间锚点",
+            "",
+            "| Incident | Locator 身份时间 | 旧文案候选时间 | 关系 | 前兆因果 |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        for index, raw in enumerate(temporal_rows):
+            row = _required_mapping(raw, f"source_temporal_evidence[{index}]")
+            locator = _required_mapping(
+                row.get("locator_record_start"),
+                f"source_temporal_evidence[{index}].locator_record_start",
+            )
+            candidate = _required_mapping(
+                row.get("embedded_message_candidate"),
+                f"source_temporal_evidence[{index}].embedded_message_candidate",
+            )
+            locator_utc = _utc(
+                locator.get("utc"),
+                f"source_temporal_evidence[{index}].locator_record_start.utc",
+            )
+            candidate_utc = _utc(
+                candidate.get("utc"),
+                f"source_temporal_evidence[{index}].embedded_message_candidate.utc",
+            )
+            if (
+                locator.get("role") != "source_record_identity_only"
+                or candidate.get("role")
+                != "candidate_event_time_from_legacy_text"
+                or row.get("relationship_state") != "unresolved_not_causal"
+                or row.get("single_event_time_merge_allowed") is not False
+                or row.get("precursor_causality_state") != "undetermined"
+            ):
+                raise ResearchReportInputError(
+                    "旧事实双时间语义不得冒充确认事件时间或前兆因果"
+                )
+            temporal_lines.append(
+                "| `{}` | `{}`（仅源记录身份） | `{}`（候选） | "
+                "`unresolved_not_causal` | `undetermined` |".format(
+                    _text(row.get("incident_id"), f"source_temporal_evidence[{index}].incident_id"),
+                    locator_utc,
+                    candidate_utc,
+                )
+            )
+        temporal_lines.extend(
+            [
+                "",
+                "Locator 时间不代表已确认事件起点；文案候选时间也未获确认。两者不得合并为单一事件时间，当前不能据此认定前兆或因果关系。",
+                "",
+            ]
+        )
 
     lines = [
         "# RRC25 伊朗国家路由中断事件复算与对账报告",
@@ -230,6 +287,7 @@ def build_research_report_zh(
             f"| 最长 worker | {execution.get('max_worker_seconds', '未知')} 秒 |",
             f"| 数据库写操作 | {execution.get('database_write_operations', '未知')} |",
             "",
+            *temporal_lines,
             "## 3. 输入完整性与映射",
             "",
             "| 输入 | 期望 | 可用 | 缺失 |",
@@ -263,6 +321,23 @@ def build_research_report_zh(
         lines.extend(["基线：未知（未形成稳定数值基线）。", ""])
     else:
         baseline = _required_mapping(baseline, "baseline")
+        exclusion_boundary = _required_mapping(
+            baseline.get("exclusion_boundary"), "baseline.exclusion_boundary"
+        )
+        boundary_at = _utc(
+            exclusion_boundary.get("at_utc"),
+            "baseline.exclusion_boundary.at_utc",
+        )
+        if (
+            exclusion_boundary.get("role")
+            != "user_supplied_earliest_possible_precursor_boundary"
+            or exclusion_boundary.get("confirmation_state")
+            != "candidate_not_confirmed"
+            or exclusion_boundary.get("causal_claim_allowed") is not False
+        ):
+            raise ResearchReportInputError(
+                "基线排除边界不得冒充确认 onset 或授权因果结论"
+            )
         state = baseline.get("value_state", baseline.get("baseline_state"))
         if state in {"observed", "stable"}:
             lines.extend(
@@ -283,6 +358,17 @@ def build_research_report_zh(
                     "",
                 ]
             )
+        lines.extend(
+            [
+                (
+                    f"基线扩展排除边界为 `{boundary_at}`，角色为 "
+                    "`user_supplied_earliest_possible_precursor_boundary`，确认状态为 "
+                    "`candidate_not_confirmed`，因果授权为 `false`。该边界不是 "
+                    "Episode onset，也不构成前兆结论。"
+                ),
+                "",
+            ]
+        )
     lines.extend(
         [
             f"共生成 {len(samples)} 个五分钟样本、{len(episodes)} 个候选 Episode、"

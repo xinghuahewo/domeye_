@@ -374,6 +374,57 @@ def _entity_ref(value: Mapping[str, Any]) -> Dict[str, str]:
     return {"entity_type": entity_type, "entity_id": entity_id, "role": role}
 
 
+def _legacy_temporal_summary(
+    incident: Mapping[str, Any], *, default_summary: str
+) -> str:
+    """将 legacy 双时间冲突显式投影到 Bundle 摘要。
+
+    标准 Incident 合同仍需用 locator 时间维持稳定身份，但研究侧可以附加
+    ``legacy_temporal_evidence``。一旦附加，就必须完整保持“仅身份锚点、
+    文案候选、关系未解析且非因果”的失败关闭语义。
+    """
+
+    temporal_value = incident.get("legacy_temporal_evidence")
+    if temporal_value is None:
+        return default_summary
+    temporal = _require_mapping(
+        temporal_value, "incident.legacy_temporal_evidence"
+    )
+    locator = _require_mapping(
+        temporal.get("locator_record_start"),
+        "incident.legacy_temporal_evidence.locator_record_start",
+    )
+    candidate = _require_mapping(
+        temporal.get("embedded_message_candidate"),
+        "incident.legacy_temporal_evidence.embedded_message_candidate",
+    )
+    locator_utc = _utc_text(
+        locator.get("utc"),
+        "incident.legacy_temporal_evidence.locator_record_start.utc",
+    )
+    candidate_utc = _utc_text(
+        candidate.get("utc"),
+        "incident.legacy_temporal_evidence.embedded_message_candidate.utc",
+    )
+    if (
+        locator.get("role") != "source_record_identity_only"
+        or candidate.get("role") != "candidate_event_time_from_legacy_text"
+        or temporal.get("relationship_state") != "unresolved_not_causal"
+        or temporal.get("single_event_time_merge_allowed") is not False
+        or temporal.get("precursor_causality_state") != "undetermined"
+    ):
+        raise EvidenceBundleError(
+            "legacy 双时间证据不得把 locator 或文案候选冒充确认事件时间"
+        )
+    if incident.get("event_time_utc") != locator_utc:
+        raise EvidenceBundleError("Incident 身份时间与 legacy locator 锚点不一致")
+    return (
+        f"{default_summary}旧 locator 时间 {locator_utc} 仅用于源记录身份，"
+        f"不是已确认事件起点；旧文案候选时间为 {candidate_utc}。"
+        "两者关系未解析且非因果，不得合并为单一事件时间或据此确认前兆。"
+    )
+
+
 def _incident_payload(incident: Mapping[str, Any]) -> Dict[str, Any]:
     event_type = incident.get("event_type")
     if event_type not in EVENT_TYPES:
@@ -405,6 +456,9 @@ def _incident_payload(incident: Mapping[str, Any]) -> Dict[str, Any]:
         "as_outage": "AS 中断",
         "country_outage": "国家中断",
     }
+    default_summary = "固定数据窗口内记录到{} 类型的历史检测事实。".format(
+        labels[event_type]
+    )
     return {
         "incident_id": incident_id,
         "incident_id_schema": "incident_id_v1",
@@ -418,7 +472,9 @@ def _incident_payload(incident: Mapping[str, Any]) -> Dict[str, Any]:
         ),
         "source_timezone": "Asia/Shanghai",
         "affected_entities": entities,
-        "summary": "固定数据窗口内记录到{} 类型的历史检测事实。".format(labels[event_type]),
+        "summary": _legacy_temporal_summary(
+            incident, default_summary=default_summary
+        ),
         "detail_url": detail,
         "detection_version": incident.get("detector_version"),
     }

@@ -1,8 +1,11 @@
 from dataclasses import replace
 from datetime import datetime, timezone
+import gzip
 import hashlib
 import ipaddress
+from pathlib import Path
 import struct
+import tempfile
 import unittest
 
 from backend.data_pipeline.route_event import artifact_id_v1, route_event_id_v1
@@ -17,9 +20,12 @@ from backend.data_pipeline.research.rrc25_country_outage.rib_adapter import (
     RibAdapterError,
     iter_adapted_rib_records,
     iter_rib_artifact_records,
+    iter_rib_spool_artifact_records,
 )
 from backend.data_pipeline.research.rrc25_country_outage.rib_parser import (
+    build_rib_decompressed_spool,
     iter_rib_mrt_records,
+    iter_rib_mrt_records_from_offset,
     parse_rib_mrt_bytes,
 )
 from backend.data_pipeline.research.rrc25_country_outage.state_replay import (
@@ -340,6 +346,111 @@ class RibAdapterTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(RibAdapterError, "parser"):
             tuple(iter_rib_artifact_records(b"broken", artifact=artifact()))
+
+    def test_spool_resume_carries_peer_context_into_nonzero_adapter_start(self):
+        raw, physical = mixed_rib_bytes()
+        compressed = gzip.compress(raw, mtime=0)
+        bootstrap = iter_rib_mrt_records_from_offset(
+            raw, next_record_ordinal=0, next_record_offset=0
+        )
+        next(bootstrap)
+        previous_boundary = bootstrap.previous_record_boundary
+        peer_context = bootstrap.current_peer_index_context
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.gz"
+            spool = root / "seed-rib.mrt"
+            source.write_bytes(compressed)
+            built = build_rib_decompressed_spool(
+                source,
+                spool,
+                expected_compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                expected_compressed_size_bytes=len(compressed),
+                max_temporary_bytes=len(raw) + 1,
+            )
+            source.unlink()
+            accumulator = ObservedVpAccumulator("rrc25")
+            checkpoint_snapshots = []
+
+            def observe_checkpoint(boundary, current_peer_context):
+                checkpoint_snapshots.append((boundary, current_peer_context))
+
+            adapted = tuple(
+                iter_rib_spool_artifact_records(
+                    spool,
+                    expected_decompressed_sha256=built.spool.sha256,
+                    expected_decompressed_size_bytes=built.spool.size_bytes,
+                    next_record_ordinal=1,
+                    next_record_offset=len(physical[0]),
+                    previous_record_boundary=previous_boundary.checkpoint_binding(),
+                    peer_index_context=peer_context.checkpoint_binding(),
+                    artifact=artifact(),
+                    vp_observer=accumulator.observe,
+                    checkpoint_observer=observe_checkpoint,
+                )
+            )
+
+            self.assertEqual(
+                [record.raw_record.record_ordinal for record in adapted], [1, 2]
+            )
+            self.assertEqual(adapted[0].raw_record.record_offset, len(physical[0]))
+            self.assertEqual(accumulator.observed_vp_count, 5)
+            self.assertEqual(adapted[0].retained_element_count, 4)
+            self.assertEqual(
+                [boundary.record_ordinal for boundary, _context in checkpoint_snapshots],
+                [1, 2],
+            )
+            self.assertTrue(
+                all(context == peer_context for _boundary, context in checkpoint_snapshots)
+            )
+
+            start_snapshots = []
+            start_iterator = iter_rib_spool_artifact_records(
+                spool,
+                expected_decompressed_sha256=built.spool.sha256,
+                expected_decompressed_size_bytes=built.spool.size_bytes,
+                next_record_ordinal=0,
+                next_record_offset=0,
+                artifact=artifact(),
+                checkpoint_observer=lambda boundary, context: start_snapshots.append(
+                    (boundary, context)
+                ),
+            )
+            first = next(start_iterator)
+            self.assertEqual(first.raw_record.record_ordinal, 0)
+            # observer 在 yield 前执行，调用方拿到 record 时 context 已可持久化。
+            self.assertEqual(len(start_snapshots), 1)
+            self.assertEqual(start_snapshots[0][0].record_ordinal, 0)
+            self.assertIsNotNone(start_snapshots[0][1])
+            start_iterator.close()
+
+            def reject_checkpoint(_boundary, _context):
+                raise RuntimeError("checkpoint rejected")
+
+            rejected = iter_rib_spool_artifact_records(
+                spool,
+                expected_decompressed_sha256=built.spool.sha256,
+                expected_decompressed_size_bytes=built.spool.size_bytes,
+                next_record_ordinal=0,
+                next_record_offset=0,
+                artifact=artifact(),
+                checkpoint_observer=reject_checkpoint,
+            )
+            with self.assertRaisesRegex(RuntimeError, "checkpoint rejected"):
+                next(rejected)
+
+    def test_nonzero_v2_adapter_start_without_scanned_context_fails_closed(self):
+        raw, physical = mixed_rib_bytes(include_non_target_record=False)
+        parsed = parse_rib_mrt_bytes(raw)
+        with self.assertRaisesRegex(RibAdapterError, "PEER_INDEX_TABLE"):
+            tuple(
+                iter_adapted_rib_records(
+                    (parsed[1],),
+                    artifact=artifact(),
+                    start_record_ordinal=1,
+                    start_record_offset=len(physical[0]),
+                )
+            )
 
 
 if __name__ == "__main__":

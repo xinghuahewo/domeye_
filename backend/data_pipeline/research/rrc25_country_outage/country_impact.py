@@ -29,6 +29,11 @@ import re
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
 from ...route_event import AsPathSegment
+from .country_mapping import (
+    SNAPSHOT_ID_SCHEMA as COUNTRY_MAPPING_SNAPSHOT_ID_SCHEMA,
+    SNAPSHOT_SCHEMA_VERSION as COUNTRY_MAPPING_SNAPSHOT_SCHEMA_VERSION,
+    canonical_json as country_mapping_canonical_json,
+)
 from .state_replay import (
     CONTINUOUS,
     ReplaySnapshot,
@@ -59,10 +64,47 @@ _AFI_SAFI_TO_AFI = {
 _MAPPING_VIEWS = frozenset(("compatible", "revised"))
 _COUNTRY_RE = re.compile(r"^[A-Z]{2}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_DATE8_RE = re.compile(r"^[0-9]{8}$")
+_ISO_DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+REVISED_MAPPING_SNAPSHOT_SCHEMA_VERSION = (
+    "iran-revised-mapping-delta/v1"
+)
+RAW_RETENTION_UNION_SEMANTICS = (
+    "raw_retention_only_not_a_statistical_mapping_view"
+)
+MAPPING_BUNDLE_FINGERPRINT_SCHEMA = "rrc25_full_window_mapping_bundle_v1"
 
 
 class CountryImpactError(ValueError):
     """输入不能按冻结的国家影响语义安全计算。"""
+
+
+def mapping_snapshot_sha256(snapshot: Mapping[str, Any]) -> str:
+    """返回冻结映射 JSON 对象的规范内容哈希。"""
+
+    if not isinstance(snapshot, Mapping):
+        raise CountryImpactError("mapping snapshot 必须是对象")
+    return hashlib.sha256(
+        country_mapping_canonical_json(dict(snapshot)).encode("utf-8")
+    ).hexdigest()
+
+
+def mapping_bundle_sha256(
+    compatible_snapshot: Mapping[str, Any],
+    revised_snapshot: Mapping[str, Any],
+) -> str:
+    """绑定 compatible 与 revised 两个视图，供完整窗口运行身份复用。"""
+
+    semantic = {
+        "schema": MAPPING_BUNDLE_FINGERPRINT_SCHEMA,
+        "compatible_snapshot_sha256": mapping_snapshot_sha256(
+            compatible_snapshot
+        ),
+        "revised_snapshot_sha256": mapping_snapshot_sha256(revised_snapshot),
+    }
+    return hashlib.sha256(
+        country_mapping_canonical_json(semantic).encode("utf-8")
+    ).hexdigest()
 
 
 def _canonical_json(value: Any) -> str:
@@ -110,6 +152,26 @@ def _normalize_utc(value: object, field: str) -> str:
     if parsed.microsecond:
         raise CountryImpactError(f"{field} 必须精确到秒")
     return parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _normalize_date8(value: object, field: str) -> str:
+    if not isinstance(value, str) or _DATE8_RE.fullmatch(value) is None:
+        raise CountryImpactError(f"{field} 必须是 YYYYMMDD 日期")
+    try:
+        datetime.strptime(value, "%Y%m%d")
+    except ValueError as error:
+        raise CountryImpactError(f"{field} 不是合法日历日期") from error
+    return value
+
+
+def _normalize_iso_date(value: object, field: str) -> str:
+    if not isinstance(value, str) or _ISO_DATE_RE.fullmatch(value) is None:
+        raise CountryImpactError(f"{field} 必须是 YYYY-MM-DD 日期")
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as error:
+        raise CountryImpactError(f"{field} 不是合法日历日期") from error
+    return value
 
 
 def _time_key(value: str) -> int:
@@ -193,6 +255,180 @@ class MappingAssignment:
 
 
 @dataclass(frozen=True)
+class RevisedMappingDelta:
+    """一条由冻结 delegated 行派生的显式覆盖及其逐 ASN 来源证据。"""
+
+    asn: int
+    countries: Tuple[str, ...]
+    mapping_state: str
+    delegated_date: str
+    base_country: str
+    override_reason: str
+    registry: str
+    resource_type: str
+    status: str
+    range_start: int
+    range_count: int
+    provenance_sha256: str
+    provenance_ref: str
+
+    def __post_init__(self) -> None:
+        MappingAssignment(self.asn, self.countries, self.mapping_state)
+        _normalize_date8(self.delegated_date, "delegated_date")
+        _normalize_country(self.base_country)
+        if (
+            not isinstance(self.override_reason, str)
+            or not self.override_reason.strip()
+        ):
+            raise CountryImpactError("override_reason 必须是非空字符串")
+        if self.registry != "ripencc":
+            raise CountryImpactError("revised delta registry 必须是 ripencc")
+        if self.resource_type != "asn":
+            raise CountryImpactError("revised delta resource_type 必须是 asn")
+        if self.status != "allocated":
+            raise CountryImpactError("revised delta status 必须是 allocated")
+        if (
+            isinstance(self.range_start, bool)
+            or not isinstance(self.range_start, int)
+            or isinstance(self.range_count, bool)
+            or not isinstance(self.range_count, int)
+            or self.range_start != self.asn
+            or self.range_count != 1
+        ):
+            raise CountryImpactError("revised delta 仅允许单 ASN range")
+        if (
+            not isinstance(self.provenance_sha256, str)
+            or _SHA256_RE.fullmatch(self.provenance_sha256) is None
+        ):
+            raise CountryImpactError(
+                "provenance_sha256 必须是 64 位小写十六进制"
+            )
+        if (
+            not isinstance(self.provenance_ref, str)
+            or not self.provenance_ref.strip()
+        ):
+            raise CountryImpactError("provenance_ref 必须是非空字符串")
+
+    @property
+    def assignment(self) -> MappingAssignment:
+        return MappingAssignment(self.asn, self.countries, self.mapping_state)
+
+
+@dataclass(frozen=True)
+class RevisedMappingLineage:
+    """修订视图的 compatible 基底、delta 日期边界和质量限制。"""
+
+    compatible_snapshot_id: str
+    compatible_source_sha256: str
+    compatible_semantic_fingerprint_sha256: str
+    event_cutoff_date: str
+    source_kind: str
+    source_size_bytes: int
+    source_generated_on: str
+    upstream_artifact_state: str
+    excluded_after_cutoff_asns: Tuple[int, ...]
+    limitations_zh: Tuple[str, ...]
+    delta_entries: Tuple[RevisedMappingDelta, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.compatible_snapshot_id, str)
+            or not self.compatible_snapshot_id.strip()
+        ):
+            raise CountryImpactError("compatible_snapshot_id 必须是非空字符串")
+        if (
+            not isinstance(self.compatible_source_sha256, str)
+            or _SHA256_RE.fullmatch(self.compatible_source_sha256) is None
+        ):
+            raise CountryImpactError(
+                "compatible_source_sha256 必须是 64 位小写十六进制"
+            )
+        if (
+            not isinstance(self.compatible_semantic_fingerprint_sha256, str)
+            or _SHA256_RE.fullmatch(
+                self.compatible_semantic_fingerprint_sha256
+            )
+            is None
+        ):
+            raise CountryImpactError(
+                "compatible_semantic_fingerprint_sha256 必须是 64 位小写十六进制"
+            )
+        cutoff = _normalize_date8(self.event_cutoff_date, "event_cutoff_date")
+        if not isinstance(self.source_kind, str) or not self.source_kind.strip():
+            raise CountryImpactError("source_kind 必须是非空字符串")
+        if (
+            isinstance(self.source_size_bytes, bool)
+            or not isinstance(self.source_size_bytes, int)
+            or self.source_size_bytes <= 0
+        ):
+            raise CountryImpactError("source_size_bytes 必须是正整数")
+        generated = _normalize_iso_date(
+            self.source_generated_on,
+            "source_generated_on",
+        )
+        generated_date8 = generated.replace("-", "")
+        if (
+            not isinstance(self.upstream_artifact_state, str)
+            or not self.upstream_artifact_state.strip()
+        ):
+            raise CountryImpactError("upstream_artifact_state 必须是非空字符串")
+        if not isinstance(self.excluded_after_cutoff_asns, tuple) or any(
+            _normalize_asn(value, "excluded_after_cutoff_asn") != value
+            for value in self.excluded_after_cutoff_asns
+        ):
+            raise CountryImpactError("excluded_after_cutoff_asns 必须是 ASN 元组")
+        if tuple(sorted(set(self.excluded_after_cutoff_asns))) != (
+            self.excluded_after_cutoff_asns
+        ):
+            raise CountryImpactError(
+                "excluded_after_cutoff_asns 必须去重并按 ASN 排序"
+            )
+        if (
+            not isinstance(self.limitations_zh, tuple)
+            or not self.limitations_zh
+            or any(
+                not isinstance(value, str) or not value.strip()
+                for value in self.limitations_zh
+            )
+        ):
+            raise CountryImpactError("limitations_zh 必须是非空中文限制元组")
+        if len(self.limitations_zh) != len(set(self.limitations_zh)):
+            raise CountryImpactError("limitations_zh 不得重复")
+        if self.upstream_artifact_state != "retained" and not any(
+            "上游官方 delegated 原始文件未" in value
+            for value in self.limitations_zh
+        ):
+            raise CountryImpactError("上游 official delegated 原件限制未记录")
+        if generated_date8 > cutoff and not any(
+            self.source_generated_on in value for value in self.limitations_zh
+        ):
+            raise CountryImpactError("事件后生成的修订来源日期限制未记录")
+        if (
+            not isinstance(self.delta_entries, tuple)
+            or not self.delta_entries
+            or any(
+                not isinstance(value, RevisedMappingDelta)
+                for value in self.delta_entries
+            )
+        ):
+            raise CountryImpactError("delta_entries 必须是 RevisedMappingDelta 元组")
+        asns = tuple(value.asn for value in self.delta_entries)
+        if asns != tuple(sorted(asns)):
+            raise CountryImpactError("delta_entries 必须按 ASN 排序")
+        if len(asns) != len(set(asns)):
+            raise CountryImpactError("delta_entries 不得重复 ASN")
+        if any(value.delegated_date > cutoff for value in self.delta_entries):
+            raise CountryImpactError(
+                "delegated_date 晚于事件截止日期，存在未来信息泄漏"
+            )
+        if any(
+            value.asn in set(self.excluded_after_cutoff_asns)
+            for value in self.delta_entries
+        ):
+            raise CountryImpactError("cutoff 后排除 ASN 不得再次进入 revised delta")
+
+
+@dataclass(frozen=True)
 class CountryMappingView:
     """不访问文件的冻结 AS→国家映射投影。"""
 
@@ -201,6 +437,7 @@ class CountryMappingView:
     assignments: Tuple[MappingAssignment, ...]
     source_sha256: str
     source_ref: str
+    revised_lineage: Optional[RevisedMappingLineage] = None
 
     def __post_init__(self) -> None:
         if self.view not in _MAPPING_VIEWS:
@@ -215,6 +452,11 @@ class CountryMappingView:
         asns = tuple(row.asn for row in self.assignments)
         if len(asns) != len(set(asns)):
             raise CountryImpactError("assignments 不得重复 ASN")
+        if self.revised_lineage is not None:
+            if self.view != "revised":
+                raise CountryImpactError("compatible view 不得携带 revised lineage")
+            if not isinstance(self.revised_lineage, RevisedMappingLineage):
+                raise CountryImpactError("revised_lineage 类型非法")
 
     def assignment_for(self, asn: int) -> MappingAssignment:
         target = _normalize_asn(asn)
@@ -332,6 +574,507 @@ def mapping_view_from_frozen_snapshot(
         target_country=target,
         source_sha256=source_sha256,
         source_ref=str(snapshot.get("snapshot_id") or "mapping_snapshot"),
+    )
+
+
+def mapping_view_from_revised_snapshot(
+    snapshot: Mapping[str, Any],
+    compatible_snapshot: Mapping[str, Any],
+) -> CountryMappingView:
+    """在冻结 compatible 快照上严格应用独立 revised delta。
+
+    delta 不是全量替代映射：未列出的 ASN 原样继承 compatible；列出的 ASN
+    必须在 compatible 中已存在、记录原国家，并由不晚于研究截止日的 RIPE
+    delegated 单 ASN allocated 行显式覆盖为目标国家。来源、基底三重身份、
+    cutoff 后排除项、逐 ASN provenance 和质量限制均保留在 revised lineage。
+    """
+
+    if not isinstance(snapshot, Mapping):
+        raise CountryImpactError("revised mapping snapshot 必须是对象")
+    if not isinstance(compatible_snapshot, Mapping):
+        raise CountryImpactError("compatible mapping snapshot 必须是对象")
+    compatible_fields = {
+        "snapshot_id",
+        "schema_version",
+        "source_file_sha256",
+        "compatibility_policy",
+        "target_country",
+        "rows",
+        "conflicts",
+        "invalid",
+        "summary",
+        "source_metadata",
+        "semantic_fingerprint_sha256",
+    }
+    if set(compatible_snapshot) != compatible_fields:
+        raise CountryImpactError("compatible mapping snapshot 顶层字段不闭合")
+    semantic = {
+        field: compatible_snapshot[field]
+        for field in (
+            "schema_version",
+            "source_file_sha256",
+            "compatibility_policy",
+            "target_country",
+            "rows",
+            "conflicts",
+            "invalid",
+            "summary",
+        )
+    }
+    if semantic["schema_version"] != COUNTRY_MAPPING_SNAPSHOT_SCHEMA_VERSION:
+        raise CountryImpactError("compatible mapping snapshot schema_version 非法")
+    semantic_hash = hashlib.sha256(
+        country_mapping_canonical_json(semantic).encode("utf-8")
+    ).hexdigest()
+    if compatible_snapshot.get("semantic_fingerprint_sha256") != semantic_hash:
+        raise CountryImpactError("compatible mapping semantic fingerprint 不一致")
+    expected_snapshot_id = "asmap_v1_" + hashlib.sha256(
+        country_mapping_canonical_json(
+            {
+                "schema": COUNTRY_MAPPING_SNAPSHOT_ID_SCHEMA,
+                "mapping": semantic,
+            }
+        ).encode("utf-8")
+    ).hexdigest()[:32]
+    if compatible_snapshot.get("snapshot_id") != expected_snapshot_id:
+        raise CountryImpactError("compatible mapping snapshot_id 不一致")
+    expected_fields = {
+        "schema_version",
+        "target_country",
+        "compatible_base_binding",
+        "source",
+        "temporal_policy",
+        "rows",
+        "summary",
+        "compatible_override_audit",
+        "limitations_zh",
+    }
+    if set(snapshot) != expected_fields:
+        raise CountryImpactError("revised mapping snapshot 顶层字段不闭合")
+    if snapshot.get("schema_version") != REVISED_MAPPING_SNAPSHOT_SCHEMA_VERSION:
+        raise CountryImpactError("revised mapping snapshot schema_version 非法")
+    target_country = _normalize_country(snapshot.get("target_country"))
+    if target_country != "IR":
+        raise CountryImpactError("Iran revised delta 的 target_country 必须是 IR")
+    compatible = mapping_view_from_frozen_snapshot(compatible_snapshot)
+    if compatible.target_country != target_country:
+        raise CountryImpactError(
+            "revised delta 与 compatible 的目标国家不一致"
+        )
+
+    binding = snapshot.get("compatible_base_binding")
+    binding_fields = {
+        "snapshot_id",
+        "source_file_sha256",
+        "semantic_fingerprint_sha256",
+    }
+    if not isinstance(binding, Mapping) or set(binding) != binding_fields:
+        raise CountryImpactError("compatible_base_binding 字段不闭合")
+    for field in ("source_file_sha256", "semantic_fingerprint_sha256"):
+        value = binding.get(field)
+        if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+            raise CountryImpactError(f"compatible_base_binding.{field} 非法")
+    if (
+        binding.get("snapshot_id") != compatible_snapshot.get("snapshot_id")
+        or binding.get("source_file_sha256")
+        != compatible_snapshot.get("source_file_sha256")
+        or binding.get("semantic_fingerprint_sha256")
+        != compatible_snapshot.get("semantic_fingerprint_sha256")
+    ):
+        raise CountryImpactError("revised delta 的 compatible 基底身份不匹配")
+
+    source = snapshot.get("source")
+    source_fields = {
+        "path",
+        "sha256",
+        "size_bytes",
+        "source_kind",
+        "generated_on",
+        "upstream_artifact_state",
+    }
+    if not isinstance(source, Mapping) or set(source) != source_fields:
+        raise CountryImpactError("revised delta source 字段不闭合")
+    source_path = source.get("path")
+    if not isinstance(source_path, str) or not source_path.startswith("/"):
+        raise CountryImpactError("revised delta source.path 必须是绝对路径")
+    source_sha256 = source.get("sha256")
+    if (
+        not isinstance(source_sha256, str)
+        or _SHA256_RE.fullmatch(source_sha256) is None
+    ):
+        raise CountryImpactError(
+            "revised delta source.sha256 必须是 64 位小写十六进制"
+        )
+    source_size_bytes = source.get("size_bytes")
+    if (
+        isinstance(source_size_bytes, bool)
+        or not isinstance(source_size_bytes, int)
+        or source_size_bytes <= 0
+    ):
+        raise CountryImpactError("revised delta source.size_bytes 必须是正整数")
+    source_kind = source.get("source_kind")
+    if source_kind != "legacy_derived_official_delegate_missing_list":
+        raise CountryImpactError("revised delta source.source_kind 非法")
+    source_generated_on = source.get("generated_on")
+    _normalize_iso_date(source_generated_on, "revised delta source.generated_on")
+    upstream_artifact_state = source.get("upstream_artifact_state")
+    if upstream_artifact_state not in {
+        "retained",
+        "not_retained_in_discovered_directory",
+    }:
+        raise CountryImpactError("revised delta upstream_artifact_state 非法")
+
+    temporal = snapshot.get("temporal_policy")
+    temporal_fields = {
+        "delegated_date_on_or_before",
+        "interval_role",
+        "excluded_after_cutoff_count",
+        "excluded_after_cutoff_asns",
+    }
+    if not isinstance(temporal, Mapping) or set(temporal) != temporal_fields:
+        raise CountryImpactError("revised delta temporal_policy 字段不闭合")
+    cutoff = _normalize_date8(
+        temporal.get("delegated_date_on_or_before"),
+        "delegated_date_on_or_before",
+    )
+    if cutoff != "20260227":
+        raise CountryImpactError("Iran revised delta cutoff 必须固定为 20260227")
+    if temporal.get("interval_role") != (
+        "known_allocated_by_research_window_start_date"
+    ):
+        raise CountryImpactError("revised delta interval_role 非法")
+    excluded = temporal.get("excluded_after_cutoff_asns")
+    if not isinstance(excluded, list):
+        raise CountryImpactError("excluded_after_cutoff_asns 必须是数组")
+    excluded_asns = tuple(
+        _normalize_asn(value, "excluded_after_cutoff_asn") for value in excluded
+    )
+    if tuple(sorted(set(excluded_asns))) != excluded_asns:
+        raise CountryImpactError(
+            "excluded_after_cutoff_asns 必须去重并按 ASN 排序"
+        )
+    excluded_count = temporal.get("excluded_after_cutoff_count")
+    if (
+        isinstance(excluded_count, bool)
+        or not isinstance(excluded_count, int)
+        or excluded_count != len(excluded_asns)
+    ):
+        raise CountryImpactError("excluded_after_cutoff_count 与 ASN 列表不一致")
+
+    limitations = snapshot.get("limitations_zh")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(value, str) or not value.strip() for value in limitations
+    ):
+        raise CountryImpactError("limitations_zh 必须是非空字符串数组")
+    limitations_zh = tuple(limitations)
+    if len(limitations_zh) != len(set(limitations_zh)):
+        raise CountryImpactError("limitations_zh 不得重复")
+
+    rows = snapshot.get("rows")
+    if not isinstance(rows, list):
+        raise CountryImpactError("revised mapping rows 必须是数组")
+    row_fields = {
+        "asn",
+        "registry",
+        "country_code",
+        "resource_type",
+        "delegated_date",
+        "status",
+        "range_start",
+        "range_count",
+    }
+    compatible_by_asn = {value.asn: value for value in compatible.assignments}
+    deltas = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, Mapping) or set(row) != row_fields:
+            raise CountryImpactError(f"revised mapping rows[{index}] 字段不闭合")
+        asn = _normalize_asn(row.get("asn"), f"rows[{index}].asn")
+        base = compatible_by_asn.get(asn)
+        if base is None:
+            raise CountryImpactError("revised delta ASN 不存在于 compatible 快照")
+        if base.mapping_state != MAPPED:
+            raise CountryImpactError(
+                "revised delta 的 compatible 基值不是确定国家"
+            )
+        base_country = base.countries[0]
+        if base_country == target_country:
+            raise CountryImpactError(
+                "revised delta 不得包含 compatible 已属目标国的 ASN"
+            )
+        if _normalize_country(row.get("country_code")) != target_country:
+            raise CountryImpactError("revised delta country_code 必须等于目标国家")
+        override_reason = (
+            "compatible_zz_overridden_by_pre_cutoff_delegated_ir"
+            if base_country == "ZZ"
+            else "compatible_explicit_other_overridden_by_pre_cutoff_delegated_ir"
+        )
+        delta = RevisedMappingDelta(
+            asn=asn,
+            countries=(target_country,),
+            mapping_state=MAPPED,
+            delegated_date=row.get("delegated_date"),
+            base_country=base_country,
+            override_reason=override_reason,
+            registry=row.get("registry"),
+            resource_type=row.get("resource_type"),
+            status=row.get("status"),
+            range_start=row.get("range_start"),
+            range_count=row.get("range_count"),
+            provenance_sha256=source_sha256,
+            provenance_ref=f"{source_path}#asn={asn}",
+        )
+        if delta.delegated_date > cutoff:
+            raise CountryImpactError(
+                "delegated_date 晚于事件截止日期，存在未来信息泄漏"
+            )
+        deltas.append(delta)
+
+    delta_asns = tuple(value.asn for value in deltas)
+    if delta_asns != tuple(sorted(delta_asns)):
+        raise CountryImpactError("revised delta rows 必须按 ASN 排序")
+    if len(delta_asns) != len(set(delta_asns)):
+        raise CountryImpactError("revised delta rows 不得重复 ASN")
+    if set(delta_asns) & set(excluded_asns):
+        raise CountryImpactError("cutoff 后排除 ASN 不得再次进入 revised delta")
+
+    summary = snapshot.get("summary")
+    summary_fields = {
+        "source_row_count",
+        "included_row_count",
+        "excluded_after_cutoff_count",
+        "present_in_compatible_snapshot_count",
+        "compatible_zz_count",
+        "compatible_explicit_other_country_count",
+    }
+    if not isinstance(summary, Mapping) or set(summary) != summary_fields:
+        raise CountryImpactError("revised delta summary 字段不闭合")
+    if any(
+        isinstance(summary.get(field), bool)
+        or not isinstance(summary.get(field), int)
+        or summary.get(field) < 0
+        for field in summary_fields
+    ):
+        raise CountryImpactError("revised delta summary 计数必须是非负整数")
+    zz_count = sum(value.base_country == "ZZ" for value in deltas)
+    explicit_other = tuple(value for value in deltas if value.base_country != "ZZ")
+    expected_counts = {
+        "source_row_count": len(deltas) + excluded_count,
+        "included_row_count": len(deltas),
+        "excluded_after_cutoff_count": excluded_count,
+        "present_in_compatible_snapshot_count": len(deltas),
+        "compatible_zz_count": zz_count,
+        "compatible_explicit_other_country_count": len(explicit_other),
+    }
+    if any(summary.get(field) != value for field, value in expected_counts.items()):
+        raise CountryImpactError("revised delta summary 与 rows/temporal 不一致")
+
+    override_audit = snapshot.get("compatible_override_audit")
+    if not isinstance(override_audit, Mapping) or set(override_audit) != {
+        "policy",
+        "explicit_other_country_rows",
+    }:
+        raise CountryImpactError("compatible_override_audit 字段不闭合")
+    if override_audit.get("policy") != (
+        "revised_view_only_compatible_view_unchanged"
+    ):
+        raise CountryImpactError("compatible_override_audit.policy 非法")
+    audit_rows = override_audit.get("explicit_other_country_rows")
+    expected_audit_rows = [
+        {
+            "asn": value.asn,
+            "compatible_country": value.base_country,
+            "revised_country": target_country,
+        }
+        for value in explicit_other
+    ]
+    if audit_rows != expected_audit_rows:
+        raise CountryImpactError("explicit other-country override audit 不闭合")
+
+    lineage = RevisedMappingLineage(
+        compatible_snapshot_id=binding.get("snapshot_id"),
+        compatible_source_sha256=binding.get("source_file_sha256"),
+        compatible_semantic_fingerprint_sha256=binding.get(
+            "semantic_fingerprint_sha256"
+        ),
+        event_cutoff_date=cutoff,
+        source_kind=source_kind,
+        source_size_bytes=source_size_bytes,
+        source_generated_on=source_generated_on,
+        upstream_artifact_state=upstream_artifact_state,
+        excluded_after_cutoff_asns=excluded_asns,
+        limitations_zh=limitations_zh,
+        delta_entries=tuple(deltas),
+    )
+    assignments_by_asn = dict(compatible_by_asn)
+    assignments_by_asn.update(
+        {value.asn: value.assignment for value in lineage.delta_entries}
+    )
+    return CountryMappingView(
+        view="revised",
+        target_country=target_country,
+        assignments=tuple(
+            assignments_by_asn[asn] for asn in sorted(assignments_by_asn)
+        ),
+        source_sha256=source_sha256,
+        source_ref=source_path,
+        revised_lineage=lineage,
+    )
+
+
+@dataclass(frozen=True)
+class RawRetentionViewEvidence:
+    """一个统计映射视图对单 ASN 的只读保留判定证据。"""
+
+    view: str
+    mapping_state: str
+    countries: Tuple[str, ...]
+    target_membership: Optional[bool]
+    source_sha256: str
+    source_ref: str
+
+
+@dataclass(frozen=True)
+class RawRetentionDecision:
+    """双视图并集对单 ASN 的原始记录保留结论。"""
+
+    asn: int
+    target_country: str
+    retain: Optional[bool]
+    decision_state: str
+    view_evidence: Tuple[RawRetentionViewEvidence, ...]
+    semantics: str = RAW_RETENTION_UNION_SEMANTICS
+
+
+@dataclass(frozen=True)
+class RawRetentionMappingUnion:
+    """仅用于扩大 raw/RouteEvent 保留集合的 compatible+revised 并集。
+
+    本类型刻意不提供 ``target_membership``、``view`` 或 ``assignments``，因此
+    不能冒充 :class:`CountryMappingView` 进入 cohort/指标计算。统计时调用方
+    必须继续分别使用 compatible 与 revised 两个原始视图。
+    """
+
+    target_country: str
+    views: Tuple[CountryMappingView, ...]
+    semantics: str = RAW_RETENTION_UNION_SEMANTICS
+
+    def __post_init__(self) -> None:
+        target = _normalize_country(self.target_country)
+        if target != self.target_country:
+            raise CountryImpactError("raw retention target_country 非规范")
+        if self.semantics != RAW_RETENTION_UNION_SEMANTICS:
+            raise CountryImpactError("raw retention union semantics 非法")
+        if not isinstance(self.views, tuple) or any(
+            not isinstance(view, CountryMappingView) for view in self.views
+        ):
+            raise CountryImpactError("raw retention views 必须是 CountryMappingView 元组")
+        names = tuple(view.view for view in self.views)
+        if names != ("compatible", "revised"):
+            if len(names) != len(set(names)):
+                raise CountryImpactError("raw retention views 不得同名或重复")
+            raise CountryImpactError(
+                "raw retention views 必须按 compatible,revised 唯一配对"
+            )
+        if self.views[1].revised_lineage is None:
+            raise CountryImpactError(
+                "production raw retention revised view 必须携带 RevisedMappingLineage"
+            )
+        if any(view.target_country != target for view in self.views):
+            raise CountryImpactError("raw retention views 的目标国家不一致")
+
+    @property
+    def source_bindings(self) -> Tuple[Tuple[str, str, str], ...]:
+        """返回 view、source SHA、source ref 的稳定顺序绑定。"""
+
+        return tuple(
+            (view.view, view.source_sha256, view.source_ref) for view in self.views
+        )
+
+    @property
+    def explicit_target_asns(self) -> Tuple[int, ...]:
+        """返回至少一个视图明确映射到目标国的 ASN；不吞掉 unknown。"""
+
+        return tuple(
+            sorted(
+                {
+                    assignment.asn
+                    for view in self.views
+                    for assignment in view.assignments
+                    if assignment.mapping_state == MAPPED
+                    and assignment.countries[0] == self.target_country
+                }
+            )
+        )
+
+    def decision_for(self, asn: int) -> RawRetentionDecision:
+        target_asn = _normalize_asn(asn)
+        evidence = []
+        memberships = []
+        for view in self.views:
+            assignment = view.assignment_for(target_asn)
+            membership = (
+                assignment.countries[0] == self.target_country
+                if assignment.mapping_state == MAPPED
+                else None
+            )
+            memberships.append(membership)
+            evidence.append(
+                RawRetentionViewEvidence(
+                    view=view.view,
+                    mapping_state=assignment.mapping_state,
+                    countries=assignment.countries,
+                    target_membership=membership,
+                    source_sha256=view.source_sha256,
+                    source_ref=view.source_ref,
+                )
+            )
+        if any(value is True for value in memberships):
+            retain = True
+            decision_state = "target_in_at_least_one_view"
+        elif any(value is None for value in memberships):
+            retain = None
+            decision_state = "unknown_or_conflict_without_explicit_target"
+        else:
+            retain = False
+            decision_state = "non_target_in_all_views"
+        return RawRetentionDecision(
+            asn=target_asn,
+            target_country=self.target_country,
+            retain=retain,
+            decision_state=decision_state,
+            view_evidence=tuple(evidence),
+        )
+
+    def raw_retention_membership(self, asn: int) -> Optional[bool]:
+        """返回 raw 保留三值判定；绝不能用于统计口径。"""
+
+        return self.decision_for(asn).retain
+
+
+def build_raw_retention_mapping_union(
+    views: Iterable[CountryMappingView],
+) -> RawRetentionMappingUnion:
+    """构造唯一 compatible+revised 配对的原始保留并集。"""
+
+    if isinstance(views, (str, bytes, Mapping)):
+        raise CountryImpactError("raw retention views 必须是映射视图可迭代对象")
+    try:
+        values = tuple(views)
+    except TypeError as error:
+        raise CountryImpactError("raw retention views 必须可迭代") from error
+    if any(not isinstance(view, CountryMappingView) for view in values):
+        raise CountryImpactError("raw retention views 只能包含 CountryMappingView")
+    names = tuple(view.view for view in values)
+    if len(names) != len(set(names)):
+        raise CountryImpactError("raw retention views 不得同名或重复")
+    if set(names) != {"compatible", "revised"} or len(values) != 2:
+        raise CountryImpactError("raw retention views 必须恰含 compatible 与 revised")
+    targets = {view.target_country for view in values}
+    if len(targets) != 1:
+        raise CountryImpactError("raw retention views 的目标国家不一致")
+    return RawRetentionMappingUnion(
+        target_country=next(iter(targets)),
+        views=tuple(sorted(values, key=lambda view: view.view)),
     )
 
 
@@ -1408,6 +2151,7 @@ __all__ = (
     "CountryMetrics",
     "CountrySnapshotImpact",
     "MAPPED",
+    "MAPPING_BUNDLE_FINGERPRINT_SCHEMA",
     "MOAS_SEMANTICS",
     "MappingAssignment",
     "MeasuredAsnSet",
@@ -1415,7 +2159,14 @@ __all__ = (
     "OriginIssue",
     "OriginResolution",
     "PrefixOriginRelation",
+    "RAW_RETENTION_UNION_SEMANTICS",
+    "REVISED_MAPPING_SNAPSHOT_SCHEMA_VERSION",
     "RESOLVED",
+    "RawRetentionDecision",
+    "RawRetentionMappingUnion",
+    "RawRetentionViewEvidence",
+    "RevisedMappingDelta",
+    "RevisedMappingLineage",
     "SameSnapshotRatio",
     "SnapshotProjection",
     "UNKNOWN",
@@ -1423,10 +2174,14 @@ __all__ = (
     "VpOriginObservation",
     "build_country_cohort",
     "build_country_mapping_view",
+    "build_raw_retention_mapping_union",
     "compute_country_snapshot_impact",
     "derive_country_cohort_and_impacts",
     "derive_origin_asns",
     "mapping_view_from_frozen_snapshot",
+    "mapping_view_from_revised_snapshot",
+    "mapping_bundle_sha256",
+    "mapping_snapshot_sha256",
     "project_snapshot_origins",
     "project_snapshot_origins_series",
     "snapshot_id_v1",

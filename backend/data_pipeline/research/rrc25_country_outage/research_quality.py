@@ -595,6 +595,63 @@ def _validate_evidence_links(data: ResearchQualityInput) -> list[tuple[str, Qual
         file_hash, record, element = coordinate
         if raw_id != _raw_record_ref_id_v1(file_hash, record, element):
             findings.append(_violation("stable_identity", "raw_id_coordinate_mismatch", f"原始记录 {label} 的稳定 ID 与文件/record/element 坐标不一致。"))
+        verification_status = raw.get("verification_status")
+        closure_state = raw.get("raw_closure_state")
+        if verification_status == "verified":
+            record_offset = raw.get("record_offset")
+            record_length = raw.get("record_length")
+            record_hash = raw.get("record_hash")
+            if (
+                isinstance(record_offset, bool)
+                or not isinstance(record_offset, int)
+                or record_offset < 0
+                or isinstance(record_length, bool)
+                or not isinstance(record_length, int)
+                or record_length < 12
+                or not isinstance(record_hash, str)
+                or _SHA256_RE.fullmatch(record_hash) is None
+                or closure_state != "verified_raw_audit"
+                or raw.get("missing_reason_zh") is not None
+            ):
+                findings.append(
+                    _violation(
+                        "reference_closure",
+                        "raw_audit_metadata_invalid",
+                        f"原始记录 {label} 标记 verified，但缺少正式 raw audit 的字节范围、record hash 或闭合状态。",
+                    )
+                )
+        elif verification_status == "derived_coordinate_only":
+            if (
+                closure_state != "unverified"
+                or any(
+                    raw.get(field) is not None
+                    for field in ("record_offset", "record_length", "record_hash")
+                )
+                or not isinstance(raw.get("missing_reason_zh"), str)
+                or not raw.get("missing_reason_zh", "").strip()
+            ):
+                findings.append(
+                    _violation(
+                        "missing_semantics",
+                        "coordinate_only_state_invalid",
+                        f"原始记录 {label} 的 coordinate-only 缺失语义不完整。",
+                    )
+                )
+            findings.append(
+                _violation(
+                    "reference_closure",
+                    "raw_audit_unverified",
+                    f"原始记录 {label} 仅由坐标推导，正式 raw audit 前不得宣称 raw_traceable 或引用闭合。",
+                )
+            )
+        else:
+            findings.append(
+                _violation(
+                    "reference_closure",
+                    "raw_verification_status_invalid",
+                    f"原始记录 {label} 缺少 verified/derived_coordinate_only 验证状态。",
+                )
+            )
         artifact_id = raw.get("artifact_id")
         if artifact_id not in artifacts:
             findings.append(_violation("reference_closure", "raw_artifact_unresolved", f"原始记录 {label} 引用不存在的制品 {artifact_id}。"))
@@ -636,6 +693,28 @@ def _validate_evidence_links(data: ResearchQualityInput) -> list[tuple[str, Qual
                 findings.append(_violation("reference_closure", "route_raw_coordinate_mismatch", f"RouteEvent {label} 与 raw record 坐标不一致。"))
             elif raw.get("artifact_id") != artifact_id:
                 findings.append(_violation("reference_closure", "route_raw_artifact_mismatch", f"RouteEvent {label} 与 raw record 指向不同原始制品。"))
+            elif (
+                raw.get("verification_status") == "verified"
+                and route.get("raw_closure_state") != "verified_raw_audit"
+            ):
+                findings.append(
+                    _violation(
+                        "reference_closure",
+                        "route_raw_closure_state_mismatch",
+                        f"RouteEvent {label} 未声明 verified_raw_audit 闭合状态。",
+                    )
+                )
+            elif (
+                raw.get("verification_status") != "verified"
+                and route.get("raw_closure_state") != "derived_coordinate_only"
+            ):
+                findings.append(
+                    _violation(
+                        "reference_closure",
+                        "route_raw_closure_state_mismatch",
+                        f"RouteEvent {label} 对未验证 raw record 的闭合状态不一致。",
+                    )
+                )
 
     for index, episode_as in enumerate(data.episode_as_records):
         mapping = episode_as.get("mapping_evidence")

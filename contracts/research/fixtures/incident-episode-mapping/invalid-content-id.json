@@ -1,0 +1,12 @@
+{
+  "schema_version": "incident-episode-mapping/v1",
+  "mapping_id": "incident_episode_map_v1_000000000000000000000000",
+  "run_id": "research_run_v1_aaaaaaaaaaaaaaaaaaaaaaaa",
+  "incident_id": "inc_v1_111111111111111111111111",
+  "incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "source_fact_state": "unresolved",
+  "mapping_state": "no_research_episode",
+  "causal": false,
+  "episode_links": [],
+  "missing_reason_zh": "当前证据没有形成可关联的研究 Episode，未伪造事件边界。"
+}

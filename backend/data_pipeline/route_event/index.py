@@ -1,9 +1,9 @@
 """P0 RouteEvent 的不可变、可重放磁盘索引核心。
 
-本模块刻意不直接解析 MRT UPDATE/bview。P0 UPDATE 只能由同包中已证明二进制
-身份、AFI/SAFI 与 AS_PATH segment 保真的 ``bgpdump`` pilot 工厂注入；RIB
-ordinal/属性保真仍未验收。因此把任意文件路径直接提升为 ``raw_traceable``
-始终失败关闭。
+本模块刻意不直接解析 MRT UPDATE/bview。P0 UPDATE 只能由同包中已证明身份、
+AFI/SAFI 与 AS_PATH segment 保真的 ``bgpdump`` pilot 或冻结的原生 BGP4MP
+研究工厂注入；RIB ordinal/属性保真仍未验收。因此把任意文件路径直接提升为
+``raw_traceable`` 始终失败关闭。
 
 调用方只能注入已经由获准解析器展开的 :class:`ParsedMrtRecord` 流。本模块
 负责校验 MRT physical frame、生成稳定 ID、规范 RouteEvent、构建不可变
@@ -50,6 +50,11 @@ MANIFEST_FINGERPRINT_SCHEMA = "mrt_artifact_manifest_fingerprint_v1"
 PARSER_ATTESTATION_FINGERPRINT_SCHEMA = "parser_attestation_fingerprint_v1"
 PARSER_STATISTICS_FINGERPRINT_SCHEMA = "parser_statistics_fingerprint_v1"
 RAW_AUDIT_MAX_FRAME_BYTES = 64 * 1024 * 1024
+_BGPDUMP_PARSER_NAME = "bgpdump"
+_BGPDUMP_EXECUTION_POLICY = "verified_open_fd_exec"
+_NATIVE_UPDATE_PARSER_NAME = "native_bgp4mp_update"
+_NATIVE_UPDATE_EXECUTION_POLICY = "verified_in_process_source"
+_NATIVE_UPDATE_COMMAND_TOKEN = "in_process_native_bgp4mp_v1"
 
 ROUTE_EVENT_ID_RE = re.compile(r"^rte_v1_[0-9a-f]{32}$")
 INCIDENT_ID_RE = re.compile(r"^inc_v1_[0-9a-f]{24}$")
@@ -597,23 +602,48 @@ def _validate_parser_attestation(
     ):
         raise RouteEventInputError("ImportProvenance 与实际 parser attestation 不一致")
     if expected_pilot_limits is not None:
-        if execution_policy != "verified_open_fd_exec":
-            raise RouteEventInputError(
-                "UPDATE pilot parser 必须执行已打开并校验的 binary fd"
-            )
+        if parser_name == _BGPDUMP_PARSER_NAME:
+            if execution_policy != _BGPDUMP_EXECUTION_POLICY:
+                raise RouteEventInputError(
+                    "bgpdump UPDATE pilot parser 必须执行已打开并校验的 binary fd"
+                )
+        elif parser_name == _NATIVE_UPDATE_PARSER_NAME:
+            if execution_policy != _NATIVE_UPDATE_EXECUTION_POLICY:
+                raise RouteEventInputError(
+                    "native UPDATE pilot parser 必须使用已绑定 source/runtime SHA 的进程内执行"
+                )
+        else:
+            raise RouteEventInputError("UPDATE pilot parser_name 未在冻结 allowlist")
         if canonical_json(payload.get("pilot_limits")) != canonical_json(
             dict(expected_pilot_limits)
         ):
             raise RouteEventInputError(
                 "parser attestation pilot_limits 与 selection 不一致"
             )
-        if (
-            configuration.get("binary_execution_policy") != execution_policy
-            or canonical_json(configuration.get("pilot_limits"))
-            != canonical_json(dict(expected_pilot_limits))
-            or configuration.get("command_arguments")
-            != ["-m", "-p", "-v", "/dev/stdin"]
-        ):
+        common_configuration_valid = (
+            configuration.get("binary_execution_policy") == execution_policy
+            and canonical_json(configuration.get("pilot_limits"))
+            == canonical_json(dict(expected_pilot_limits))
+        )
+        if parser_name == _BGPDUMP_PARSER_NAME:
+            parser_configuration_valid = configuration.get("command_arguments") == [
+                "-m",
+                "-p",
+                "-v",
+                "/dev/stdin",
+            ]
+        else:
+            parser_configuration_valid = (
+                configuration.get("command_arguments")
+                == [_NATIVE_UPDATE_COMMAND_TOKEN]
+                and configuration.get("module_source_sha256")
+                == payload.get("adapter_source_sha256")
+                and configuration.get("python_runtime_sha256")
+                == payload.get("parser_binary_sha256")
+                and configuration.get("spool_mode") == "not_used_in_process"
+                and configuration.get("unknown_attribute_policy") == "fail_closed"
+            )
+        if not common_configuration_valid or not parser_configuration_valid:
             raise RouteEventInputError(
                 "parser attestation configuration 与 pilot 执行合同不一致"
             )
@@ -1864,17 +1894,27 @@ def build_route_event_index(
         _insert_metadata(connection, "build_scope", build_scope)
         if parser_attestation is not None:
             _insert_metadata(connection, "parser_attestation", parser_attestation)
-        parser_capability = (
-            "bgpdump_1_6_2_update_pilot"
-            if artifact_selection is not None and parser_attestation is not None
-            else "injected_record_stream_only"
+        attested_parser_name = (
+            parser_attestation.get("parser_name")
+            if isinstance(parser_attestation, Mapping)
+            else None
         )
+        if artifact_selection is None or parser_attestation is None:
+            parser_capability = "injected_record_stream_only"
+        elif attested_parser_name == _BGPDUMP_PARSER_NAME:
+            parser_capability = "bgpdump_1_6_2_update_pilot"
+        elif attested_parser_name == _NATIVE_UPDATE_PARSER_NAME:
+            parser_capability = "native_bgp4mp_update_v1_research_pilot"
+        else:  # pragma: no cover - attestation validator 已失败关闭。
+            raise RouteEventInputError("parser capability 缺少冻结映射")
         _insert_metadata(
             connection,
             "parser_capability",
             {
                 "capability": parser_capability,
-                "built_in_mrt_parser": False,
+                "built_in_mrt_parser": (
+                    attested_parser_name == _NATIVE_UPDATE_PARSER_NAME
+                ),
                 "parser_attested": parser_attestation is not None,
                 "pilot_only": artifact_selection is not None,
             },
@@ -2412,15 +2452,37 @@ class RouteEventIndex:
             attested_configuration_sha256 = attestation_payload.get(
                 "configuration_sha256"
             )
+            attested_parser_name = attestation_payload.get("parser_name")
+            execution_policy = attestation_payload.get("binary_execution_policy")
+            bgpdump_execution_valid = (
+                attested_parser_name == _BGPDUMP_PARSER_NAME
+                and execution_policy == _BGPDUMP_EXECUTION_POLICY
+                and isinstance(attested_configuration, Mapping)
+                and attested_configuration.get("command_arguments")
+                == ["-m", "-p", "-v", "/dev/stdin"]
+            )
+            native_execution_valid = (
+                attested_parser_name == _NATIVE_UPDATE_PARSER_NAME
+                and execution_policy == _NATIVE_UPDATE_EXECUTION_POLICY
+                and isinstance(attested_configuration, Mapping)
+                and attested_configuration.get("command_arguments")
+                == [_NATIVE_UPDATE_COMMAND_TOKEN]
+                and attested_configuration.get("module_source_sha256")
+                == attestation_payload.get("adapter_source_sha256")
+                and attested_configuration.get("python_runtime_sha256")
+                == attestation_payload.get("parser_binary_sha256")
+                and attested_configuration.get("spool_mode")
+                == "not_used_in_process"
+                and attested_configuration.get("unknown_attribute_policy")
+                == "fail_closed"
+            )
             if (
                 attestation_fingerprint
                 != _parser_attestation_fingerprint(attestation_payload)
-                or attestation_payload.get("parser_name")
-                != provenance.parser_name
+                or attested_parser_name != provenance.parser_name
                 or attestation_payload.get("parser_version")
                 != provenance.parser_version
-                or attestation_payload.get("binary_execution_policy")
-                != "verified_open_fd_exec"
+                or not (bgpdump_execution_valid or native_execution_valid)
                 or not isinstance(attested_configuration, Mapping)
                 or not isinstance(attested_configuration_sha256, str)
                 or hashlib.sha256(

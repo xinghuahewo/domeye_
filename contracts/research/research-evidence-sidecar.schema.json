@@ -45,22 +45,24 @@
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/incidentEpisodeLink"}
     },
-    "episode_ref": {"$ref": "#/$defs/episodeRef"},
+    "episode_ref": {
+      "oneOf": [
+        {"$ref": "#/$defs/episodeRef"},
+        {"type": "null"}
+      ]
+    },
     "wave_refs": {
       "type": "array",
-      "minItems": 1,
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/waveRef"}
     },
     "sample_refs": {
       "type": "array",
-      "minItems": 2,
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/sampleRef"}
     },
     "sample_route_event_links": {
       "type": "array",
-      "minItems": 2,
       "uniqueItems": true,
       "items": {"$ref": "#/$defs/sampleRouteEventLink"}
     },
@@ -97,6 +99,58 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {"properties": {"episode_ref": {"type": "null"}}, "required": ["episode_ref"]},
+      "then": {
+        "properties": {
+          "incident_episode_links": {"type": "array", "maxItems": 0},
+          "wave_refs": {"type": "array", "maxItems": 0},
+          "sample_refs": {"type": "array", "maxItems": 0},
+          "sample_route_event_links": {"type": "array", "maxItems": 0},
+          "route_event_refs": {"type": "array", "maxItems": 0},
+          "raw_record_refs": {"type": "array", "maxItems": 0},
+          "artifact_refs": {"type": "array", "maxItems": 0},
+          "recovery_assessment": {
+            "const": {
+              "recovery_state": "unknown",
+              "partial_recovery_at": null,
+              "full_recovery_at": null,
+              "duration": {
+                "duration_state": "unknown",
+                "seconds": null,
+                "minimum_seconds": null,
+                "maximum_seconds": null,
+                "measured_to": null
+              },
+              "continuity_status": "unknown",
+              "candidates": []
+            }
+          },
+          "reference_closure": {
+            "const": {
+              "incident_episode": "explicit_no_episode",
+              "episode_wave_sample": "not_applicable_no_episode",
+              "sample_route_event": "not_applicable_no_episode",
+              "route_raw_artifact": "not_applicable_no_episode",
+              "overall": "passed_with_explicit_no_episode",
+              "unresolved_refs": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"episode_ref": {"type": "object"}}, "required": ["episode_ref"]},
+      "then": {
+        "properties": {
+          "wave_refs": {"type": "array", "minItems": 1},
+          "sample_refs": {"type": "array", "minItems": 2},
+          "sample_route_event_links": {"type": "array", "minItems": 2}
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "runId": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
@@ -337,11 +391,11 @@
       "additionalProperties": false,
       "required": ["incident_episode", "episode_wave_sample", "sample_route_event", "route_raw_artifact", "overall", "unresolved_refs"],
       "properties": {
-        "incident_episode": {"enum": ["passed", "not_applicable_unmapped"]},
-        "episode_wave_sample": {"const": "passed"},
-        "sample_route_event": {"enum": ["passed", "explicit_unknown", "not_applicable_unmapped"]},
-        "route_raw_artifact": {"enum": ["passed", "not_applicable_unmapped"]},
-        "overall": {"enum": ["passed", "passed_with_explicit_unknown", "passed_with_explicit_unmapped"]},
+        "incident_episode": {"enum": ["passed", "not_applicable_unmapped", "explicit_no_episode"]},
+        "episode_wave_sample": {"enum": ["passed", "not_applicable_no_episode"]},
+        "sample_route_event": {"enum": ["passed", "explicit_unknown", "not_applicable_unmapped", "not_applicable_no_episode"]},
+        "route_raw_artifact": {"enum": ["passed", "not_applicable_unmapped", "not_applicable_no_episode"]},
+        "overall": {"enum": ["passed", "passed_with_explicit_unknown", "passed_with_explicit_unmapped", "passed_with_explicit_no_episode"]},
         "unresolved_refs": {"type": "array", "maxItems": 0}
       }
     }

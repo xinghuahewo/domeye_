@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: 冻结基线 cohort 与数值基线
-系统 MUST 使用窗口起点状态中由兼容映射标记为 IR 的实际可见 origin ASN 集合作为基线 cohort。成员基线来自 seed RIB 回放后的起点状态；数值基线来自异常前稳定六小时五分钟序列的中位数，若不稳定则按冻结规则向前扩展并记录实际窗口。
+系统 MUST 使用窗口起点状态中由兼容映射标记为 IR 的实际可见 origin ASN 集合作为基线 cohort。成员基线来自 seed RIB 回放后的起点状态；数值基线来自异常前稳定六小时五分钟序列的中位数，若不稳定则按冻结规则向前扩展并记录实际窗口。扩展不得跨过用户提供的最早可能前兆排除边界；该边界 MUST 标记为 `candidate_not_confirmed`，MUST NOT 被表达为已确认 onset 或因果/前兆结论。
 
 #### Scenario: 生成兼容与修订 cohort
 - **WHEN** 兼容映射和修订映射对 ASN 国家归属产生不同结果

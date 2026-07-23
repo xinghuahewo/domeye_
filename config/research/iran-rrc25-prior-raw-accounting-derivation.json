@@ -1,0 +1,58 @@
+{
+  "schema_version": "rrc25-prior-raw-accounting-derivation/v1",
+  "observed_lower_bound": {
+    "operation": "sum_source_json_integer_terms",
+    "terms": [
+      {
+        "label": "v6_pilot_observed_new_raw_bytes",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-p0/20260722T080402Z-main-slot-evidence-v6/metadata/pilot-result.json",
+        "source_sha256": "4b2be82a884a3792d2ef7b17ff6d28d725e7777965dcec6b6016aaa1a146c25d",
+        "json_pointer": "/resources/new_raw_read_bytes",
+        "multiplier": 1
+      }
+    ]
+  },
+  "reserved_upper_bound": {
+    "operation": "sum_source_json_integer_terms",
+    "conservative_attempt_count": 3,
+    "terms": [
+      {
+        "label": "v2_seed_attempt_conservative_full_artifact_reservation",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-p0/20260722T043848Z-bounded-pilot-v1/metadata/final-dry-run.json",
+        "source_sha256": "5676a529447765c00e61f4397b221b4a320bbb754774f8ef5113e2923936b9dd",
+        "json_pointer": "/worker_plan/chunks/1/artifacts/0/size_bytes",
+        "multiplier": 1,
+        "attempt_id": "pre_goal_v2_seed_checkpoint_attempt",
+        "artifact_id_json_pointer": "/worker_plan/chunks/1/artifacts/0/artifact_id",
+        "artifact_file_sha256_json_pointer": "/worker_plan/chunks/1/artifacts/0/file_sha256",
+        "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-p0/20260722T054119Z-sparse-evidence-v2/outputs/checkpoints/rsel_v1_dc0f9b76123895d1487cc553b6a0ad1b.worker.0001.a8ef13f79cbbc8b3.json",
+        "provenance_sha256": "78e236925e7681c7b8f8ae6fc08be022390e53b70555e2624c6ac98915"
+      },
+      {
+        "label": "v3_seed_continuation_conservative_full_artifact_reservation",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-p0/20260722T043848Z-bounded-pilot-v1/metadata/final-dry-run.json",
+        "source_sha256": "5676a529447765c00e61f4397b221b4a320bbb754774f8ef5113e2923936b9dd",
+        "json_pointer": "/worker_plan/chunks/1/artifacts/0/size_bytes",
+        "multiplier": 1,
+        "attempt_id": "pre_goal_v3_seed_continuation_attempt",
+        "artifact_id_json_pointer": "/worker_plan/chunks/1/artifacts/0/artifact_id",
+        "artifact_file_sha256_json_pointer": "/worker_plan/chunks/1/artifacts/0/file_sha256",
+        "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-p0/20260722T061130Z-seed-sample-continuation-v3/outputs/continuation-checkpoints/rsel_v1_dc0f9b76123895d1487cc553b6a0ad1b.worker.0002.82acc08987a4115c.json",
+        "provenance_sha256": "c6cd8d6ea124abbdfecb0b74e7674f8ffbeacb6762651c0a9674194f557d2c7a"
+      },
+      {
+        "label": "seed_spool_attestation_full_stream_read",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-worktrees/iran-rrc25-full-p0-code/config/research/iran-rrc25-seed-spool-attestation-20260227.json",
+        "source_sha256": "2124abe64a3d5e718cec2ee479c3e0dba87bd04b8bfd84930f216ec600727103",
+        "json_pointer": "/artifact_binding/compressed_size_bytes",
+        "multiplier": 1,
+        "attempt_id": "pre_goal_seed_spool_attestation_full_stream_read",
+        "artifact_id_json_pointer": "/artifact_binding/artifact_id",
+        "artifact_file_sha256_json_pointer": "/artifact_binding/file_sha256",
+        "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-worktrees/iran-rrc25-full-p0-code/config/research/iran-rrc25-seed-spool-attestation-20260227.json",
+        "provenance_sha256": "2124abe64a3d5e718cec2ee479c3e0dba87bd04b8bfd84930f216ec600727103"
+      }
+    ]
+  },
+  "upper_bound_semantics": "conservative_no_refund_pre_goal_reads"
+}

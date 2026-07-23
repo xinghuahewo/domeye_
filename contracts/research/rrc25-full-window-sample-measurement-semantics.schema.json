@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/rrc25-full-window-sample-measurement-semantics.schema.json",
+  "title": "RRC25 完整窗口样本部分观测语义旁路合同",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "sample_id", "snapshot_id", "cohort_view", "slot",
+    "source_value_state", "metric_value_states", "asn_set_value_states",
+    "carried_metrics", "carried_asn_sets", "measurement_semantics", "source_refs"
+  ],
+  "properties": {
+    "schema_version": {"const": "rrc25-full-window-sample-measurement-semantics/v1"},
+    "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+    "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+    "cohort_view": {"enum": ["compatible", "revised"]},
+    "slot": {"$ref": "country-outage-sample.schema.json#/$defs/slot"},
+    "source_value_state": {"$ref": "#/$defs/sourceState"},
+    "metric_value_states": {"$ref": "#/$defs/metricStates"},
+    "asn_set_value_states": {"$ref": "#/$defs/asnSetStates"},
+    "carried_metrics": {"$ref": "#/$defs/carriedMetrics"},
+    "carried_asn_sets": {"$ref": "#/$defs/carriedAsnSets"},
+    "measurement_semantics": {"$ref": "#/$defs/measurementSemantics"},
+    "source_refs": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sourceRef"}
+    }
+  },
+  "$defs": {
+    "sourceState": {
+      "enum": [
+        "observed", "observed_zero", "observed_route_state_partial_vp_coverage",
+        "unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"
+      ]
+    },
+    "metricState": {"$ref": "#/$defs/sourceState"},
+    "setState": {
+      "enum": [
+        "observed", "observed_empty", "observed_route_state_partial_vp_coverage",
+        "unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"
+      ]
+    },
+    "metricStates": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "visible_asn_count", "damaged_asn_count", "baseline_asn_count",
+        "visible_ipv4_prefix_count", "visible_ipv6_prefix_count",
+        "visible_ipv4_address_union", "visible_ipv4_24_equivalent",
+        "visible_ipv6_48_equivalent", "announce_count", "withdraw_count",
+        "vp_expected_count", "vp_observed_count", "damaged_asn_ratio"
+      ],
+      "properties": {
+        "visible_asn_count": {"$ref": "#/$defs/metricState"},
+        "damaged_asn_count": {"$ref": "#/$defs/metricState"},
+        "baseline_asn_count": {"$ref": "#/$defs/metricState"},
+        "visible_ipv4_prefix_count": {"$ref": "#/$defs/metricState"},
+        "visible_ipv6_prefix_count": {"$ref": "#/$defs/metricState"},
+        "visible_ipv4_address_union": {"$ref": "#/$defs/metricState"},
+        "visible_ipv4_24_equivalent": {"$ref": "#/$defs/metricState"},
+        "visible_ipv6_48_equivalent": {"$ref": "#/$defs/metricState"},
+        "announce_count": {"$ref": "#/$defs/metricState"},
+        "withdraw_count": {"$ref": "#/$defs/metricState"},
+        "vp_expected_count": {"$ref": "#/$defs/metricState"},
+        "vp_observed_count": {"$ref": "#/$defs/metricState"},
+        "damaged_asn_ratio": {"$ref": "#/$defs/metricState"}
+      }
+    },
+    "asnSetStates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["visible", "damaged", "baseline"],
+      "properties": {
+        "visible": {"$ref": "#/$defs/setState"},
+        "damaged": {"$ref": "#/$defs/setState"},
+        "baseline": {"$ref": "#/$defs/setState"}
+      }
+    },
+    "carriedMeasure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+      "properties": {
+        "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+        "value": {"type": ["number", "null"], "minimum": 0},
+        "value_state": {"$ref": "#/$defs/sourceState"},
+        "missing_reason": {"type": ["string", "null"]},
+        "numerator": {"type": ["object", "null"]},
+        "denominator": {"type": ["object", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"value_state": {"const": "observed_route_state_partial_vp_coverage"}}},
+          "then": {"properties": {"value": {"type": "number"}, "missing_reason": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "carriedMetrics": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "visible_asn_count", "damaged_asn_count", "baseline_asn_count",
+        "visible_ipv4_prefix_count", "visible_ipv6_prefix_count",
+        "visible_ipv4_address_union", "visible_ipv4_24_equivalent",
+        "visible_ipv6_48_equivalent", "announce_count", "withdraw_count",
+        "vp_expected_count", "vp_observed_count", "damaged_asn_ratio"
+      ],
+      "properties": {
+        "visible_asn_count": {"$ref": "#/$defs/carriedMeasure"},
+        "damaged_asn_count": {"$ref": "#/$defs/carriedMeasure"},
+        "baseline_asn_count": {"$ref": "#/$defs/carriedMeasure"},
+        "visible_ipv4_prefix_count": {"$ref": "#/$defs/carriedMeasure"},
+        "visible_ipv6_prefix_count": {"$ref": "#/$defs/carriedMeasure"},
+        "visible_ipv4_address_union": {"$ref": "#/$defs/carriedMeasure"},
+        "visible_ipv4_24_equivalent": {"$ref": "#/$defs/carriedMeasure"},
+        "visible_ipv6_48_equivalent": {"$ref": "#/$defs/carriedMeasure"},
+        "announce_count": {"$ref": "#/$defs/carriedMeasure"},
+        "withdraw_count": {"$ref": "#/$defs/carriedMeasure"},
+        "vp_expected_count": {"$ref": "#/$defs/carriedMeasure"},
+        "vp_observed_count": {"$ref": "#/$defs/carriedMeasure"},
+        "damaged_asn_ratio": {"$ref": "#/$defs/carriedMeasure"}
+      }
+    },
+    "carriedSet": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+      "properties": {
+        "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+        "value": {"type": ["array", "null"], "items": {"type": "integer", "minimum": 1}, "uniqueItems": true},
+        "value_state": {"$ref": "#/$defs/setState"},
+        "missing_reason": {"type": ["string", "null"]}
+      }
+    },
+    "carriedAsnSets": {
+      "type": "object", "additionalProperties": false,
+      "required": ["visible", "damaged", "baseline"],
+      "properties": {
+        "visible": {"$ref": "#/$defs/carriedSet"},
+        "damaged": {"$ref": "#/$defs/carriedSet"},
+        "baseline": {"$ref": "#/$defs/carriedSet"}
+      }
+    },
+    "measurementSemantics": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "curve", "vp_coverage_state", "source_value_state",
+        "down_vp_route_semantics", "down_vp_ids", "unknown_vp_ids",
+        "implicit_withdrawal_from_peer_state_change", "algorithm_numeric_policy",
+        "update_count_scope", "retained_announce_count", "retained_withdraw_count",
+        "collector_total_announce_count", "collector_total_withdraw_count"
+      ],
+      "properties": {
+        "curve": {"const": "carried_route_state"},
+        "vp_coverage_state": {"enum": ["complete", "partial", "unknown"]},
+        "source_value_state": {"$ref": "#/$defs/sourceState"},
+        "down_vp_route_semantics": {"const": "carried_state_not_implicit_withdrawal"},
+        "down_vp_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "unknown_vp_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "implicit_withdrawal_from_peer_state_change": {"const": false},
+        "algorithm_numeric_policy": {"const": "carried_state_value_used_with_partial_coverage_disclosed"},
+        "update_count_scope": {"const": "retained_tracked_prefix_set_not_country_intent"},
+        "retained_announce_count": {"type": "integer", "minimum": 0},
+        "retained_withdraw_count": {"type": "integer", "minimum": 0},
+        "collector_total_announce_count": {"type": "integer", "minimum": 0},
+        "collector_total_withdraw_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sourceRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ref_type", "ref_id", "sha256"],
+      "properties": {
+        "ref_type": {"const": "immutable_package_state_shard"},
+        "ref_id": {"type": "string", "pattern": "^journal-ancestry/shards/country_slots/[^/]+\\.jsonl\\.gz$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

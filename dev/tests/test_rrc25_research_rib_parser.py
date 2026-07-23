@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import io
 import ipaddress
+import os
+from pathlib import Path
 import struct
+import tempfile
 import unittest
 
 from backend.data_pipeline.research.rrc25_country_outage.rib_parser import (
+    RibMrtSeekError,
     RibMrtParseError,
+    RibSpoolError,
+    build_rib_decompressed_spool,
     iter_rib_mrt_records,
+    iter_rib_mrt_records_from_offset,
+    iter_rib_spool_records,
     parse_rib_mrt_bytes,
+    verify_rib_decompressed_spool,
 )
 from backend.data_pipeline.route_event.index import route_event_id_v1, vp_id_v1
 
@@ -106,6 +116,19 @@ class ShortReadStream(io.BytesIO):
         if size < 0:
             size = 3
         return super().read(min(size, 3))
+
+
+class CountingSeekStream(io.BytesIO):
+    def __init__(self, value: bytes):
+        super().__init__(value)
+        self.bytes_read = 0
+        self.read_calls = 0
+
+    def read(self, size: int = -1) -> bytes:
+        value = super().read(size)
+        self.bytes_read += len(value)
+        self.read_calls += 1
+        return value
 
 
 class Rrc25ResearchRibParserTest(unittest.TestCase):
@@ -409,6 +432,326 @@ class Rrc25ResearchRibParserTest(unittest.TestCase):
         ]
         self.assertEqual(replayed, record.raw_record)
         self.assertEqual(hashlib.sha256(replayed).hexdigest(), raw_ref["record_sha256"])
+
+    def test_build_and_verify_addressable_spool_with_checkpoint_binding(self):
+        peer_record = mrt_record(
+            peer_index_payload(("192.0.2.1", 64500, False)),
+            mrt_type=13,
+            subtype=1,
+        )
+        subtype, payload = v2_rib_payload(
+            "203.0.113.0/24",
+            (0, ORIGIN_TIME, attributes(as_path_value(4, (2, (64500, 44244))))),
+        )
+        raw = peer_record + mrt_record(payload, mrt_type=13, subtype=subtype)
+        compressed = gzip.compress(raw, mtime=0)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "bview.fixture.gz"
+            destination = root / "seed-rib.mrt"
+            source.write_bytes(compressed)
+
+            result = build_rib_decompressed_spool(
+                source,
+                destination,
+                expected_compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                expected_compressed_size_bytes=len(compressed),
+                expected_decompressed_sha256=hashlib.sha256(raw).hexdigest(),
+                expected_decompressed_size_bytes=len(raw),
+                max_temporary_bytes=len(raw) + 1,
+            )
+
+            self.assertEqual(destination.read_bytes(), raw)
+            self.assertTrue(destination.is_file())
+            self.assertFalse(destination.is_symlink())
+            self.assertEqual(result.compressed_size_bytes, len(compressed))
+            self.assertEqual(
+                result.checkpoint_binding(),
+                {
+                    "schema_version": "rrc25-seed-decompressed-spool/v1",
+                    "file_name": "seed-rib.mrt",
+                    "size_bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                },
+            )
+            verified = verify_rib_decompressed_spool(
+                destination,
+                expected_decompressed_sha256=hashlib.sha256(raw).hexdigest(),
+                expected_decompressed_size_bytes=len(raw),
+            )
+            self.assertEqual(verified.checkpoint_binding(), result.spool.checkpoint_binding())
+            self.assertFalse(any(".tmp-" in path.name for path in root.iterdir()))
+
+    def test_spool_limit_is_strict_and_failure_never_publishes(self):
+        raw = b"exact-temporary-limit"
+        compressed = gzip.compress(raw, mtime=0)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.gz"
+            destination = root / "spool.mrt"
+            source.write_bytes(compressed)
+
+            with self.assertRaises(RibSpoolError) as caught:
+                build_rib_decompressed_spool(
+                    source,
+                    destination,
+                    expected_compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                    expected_compressed_size_bytes=len(compressed),
+                    max_temporary_bytes=len(raw),
+                )
+            self.assertEqual(caught.exception.reason, "temporary_limit_reached")
+            self.assertFalse(destination.exists())
+            self.assertEqual(tuple(root.iterdir()), (source,))
+
+            with self.assertRaises(RibSpoolError) as caught:
+                build_rib_decompressed_spool(
+                    source,
+                    destination,
+                    expected_compressed_sha256="0" * 64,
+                    expected_compressed_size_bytes=len(compressed),
+                    max_temporary_bytes=len(raw) + 1,
+                )
+            self.assertEqual(caught.exception.reason, "compressed_sha256_mismatch")
+            self.assertFalse(destination.exists())
+            self.assertEqual(tuple(root.iterdir()), (source,))
+
+            destination.write_bytes(b"do-not-overwrite")
+            with self.assertRaises(RibSpoolError) as caught:
+                build_rib_decompressed_spool(
+                    source,
+                    destination,
+                    expected_compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                    expected_compressed_size_bytes=len(compressed),
+                    max_temporary_bytes=len(raw) + 1,
+                )
+            self.assertEqual(caught.exception.reason, "destination_exists")
+            self.assertEqual(destination.read_bytes(), b"do-not-overwrite")
+
+    def test_spool_verifier_rejects_symlink_size_and_hash_mismatch(self):
+        raw = b"verified-spool"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spool = root / "spool.mrt"
+            spool.write_bytes(raw)
+            link = root / "spool-link.mrt"
+            os.symlink(spool.name, link)
+
+            cases = (
+                (link, hashlib.sha256(raw).hexdigest(), len(raw), "spool_not_regular"),
+                (spool, hashlib.sha256(raw).hexdigest(), len(raw) + 1, "spool_size_mismatch"),
+                (spool, "0" * 64, len(raw), "spool_sha256_mismatch"),
+            )
+            for path, digest, size, reason in cases:
+                with self.subTest(reason=reason):
+                    with self.assertRaises(RibSpoolError) as caught:
+                        verify_rib_decompressed_spool(
+                            path,
+                            expected_decompressed_sha256=digest,
+                            expected_decompressed_size_bytes=size,
+                        )
+                    self.assertEqual(caught.exception.reason, reason)
+
+    def test_seek_iterator_restores_peer_context_from_spool_only(self):
+        peers = (
+            ("192.0.2.10", 64510, False),
+            ("2001:db8::20", 4_200_000_020, True),
+        )
+        peer_record = mrt_record(
+            peer_index_payload(*peers), mrt_type=13, subtype=1
+        )
+        first_subtype, first_payload = v2_rib_payload(
+            "198.51.100.0/24",
+            (0, ORIGIN_TIME, attributes(as_path_value(4, (2, (64510, 64496))))),
+        )
+        first_record = mrt_record(
+            first_payload, mrt_type=13, subtype=first_subtype
+        )
+        second_subtype, second_payload = v2_rib_payload(
+            "203.0.113.0/24",
+            (
+                1,
+                ORIGIN_TIME + 1,
+                attributes(as_path_value(4, (2, (4_200_000_020, 44244)))),
+            ),
+        )
+        second_record = mrt_record(
+            second_payload, mrt_type=13, subtype=second_subtype
+        )
+        raw = peer_record + first_record + second_record
+        compressed = gzip.compress(raw, mtime=0)
+        resume_offset = len(peer_record) + len(first_record)
+        bootstrap = iter_rib_mrt_records_from_offset(
+            raw, next_record_ordinal=0, next_record_offset=0
+        )
+        next(bootstrap)
+        peer_context = bootstrap.current_peer_index_context
+        next(bootstrap)
+        previous_boundary = bootstrap.previous_record_boundary
+        self.assertIsNotNone(peer_context)
+        self.assertIsNotNone(previous_boundary)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.gz"
+            spool = root / "spool.mrt"
+            source.write_bytes(compressed)
+            result = build_rib_decompressed_spool(
+                source,
+                spool,
+                expected_compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                expected_compressed_size_bytes=len(compressed),
+                max_temporary_bytes=len(raw) + 1,
+            )
+            # 恢复不再依赖 gzip；删除 fixture 压缩源后仍只读 spool 成功。
+            source.unlink()
+
+            with self.assertRaises(RibMrtSeekError) as missing_boundary:
+                iter_rib_spool_records(
+                    spool,
+                    expected_decompressed_sha256=result.spool.sha256,
+                    expected_decompressed_size_bytes=result.spool.size_bytes,
+                    next_record_ordinal=2,
+                    next_record_offset=resume_offset,
+                )
+            self.assertEqual(
+                missing_boundary.exception.reason,
+                "previous_record_boundary_required",
+            )
+
+            with iter_rib_spool_records(
+                spool,
+                expected_decompressed_sha256=result.spool.sha256,
+                expected_decompressed_size_bytes=result.spool.size_bytes,
+                next_record_ordinal=2,
+                next_record_offset=resume_offset,
+                previous_record_boundary=previous_boundary.checkpoint_binding(),
+                peer_index_context=peer_context.checkpoint_binding(),
+            ) as records:
+                context = records.seek_context
+                self.assertEqual(context.peer_index.record_ordinal, 0)
+                self.assertEqual(context.peer_index.record_offset, 0)
+                self.assertEqual(
+                    context.peer_index.peers,
+                    (("192.0.2.10", 64510), ("2001:db8::20", 4_200_000_020)),
+                )
+                resumed = tuple(records)
+            self.assertEqual(len(resumed), 1)
+            self.assertEqual(
+                (resumed[0].record_ordinal, resumed[0].record_offset),
+                (2, resume_offset),
+            )
+            self.assertEqual(
+                (resumed[0].elements[0].peer_ip, resumed[0].elements[0].peer_asn),
+                ("2001:db8::20", 4_200_000_020),
+            )
+
+            with self.assertRaises(RibMrtSeekError) as ordinal_error:
+                iter_rib_mrt_records_from_offset(
+                    raw,
+                    next_record_ordinal=1,
+                    next_record_offset=resume_offset,
+                    previous_record_boundary=previous_boundary,
+                    peer_index_context=peer_context,
+                )
+            self.assertEqual(ordinal_error.exception.reason, "seek_ordinal_mismatch")
+            with self.assertRaises(RibMrtSeekError) as offset_error:
+                iter_rib_mrt_records_from_offset(
+                    raw,
+                    next_record_ordinal=2,
+                    next_record_offset=len(peer_record) + 1,
+                    previous_record_boundary=previous_boundary,
+                    peer_index_context=peer_context,
+                )
+            self.assertEqual(
+                offset_error.exception.reason, "seek_offset_not_record_boundary"
+            )
+
+            bad_boundary = previous_boundary.checkpoint_binding()
+            bad_boundary["record_sha256"] = "0" * 64
+            with self.assertRaises(RibMrtSeekError) as hash_error:
+                iter_rib_mrt_records_from_offset(
+                    raw,
+                    next_record_ordinal=2,
+                    next_record_offset=resume_offset,
+                    previous_record_boundary=bad_boundary,
+                    peer_index_context=peer_context,
+                )
+            self.assertEqual(
+                hash_error.exception.reason, "record_boundary_sha256_mismatch"
+            )
+
+            bad_peer_context = peer_context.checkpoint_binding()
+            bad_peer_context["peers"][0]["peer_asn"] += 1
+            with self.assertRaises(RibMrtSeekError) as peer_error:
+                iter_rib_mrt_records_from_offset(
+                    raw,
+                    next_record_ordinal=2,
+                    next_record_offset=resume_offset,
+                    previous_record_boundary=previous_boundary,
+                    peer_index_context=bad_peer_context,
+                )
+            self.assertEqual(
+                peer_error.exception.reason, "peer_index_population_mismatch"
+            )
+
+    def test_direct_seek_read_volume_is_independent_of_target_distance(self):
+        peer_record = mrt_record(
+            peer_index_payload(("192.0.2.10", 64510, False)),
+            mrt_type=13,
+            subtype=1,
+        )
+        physical = [peer_record]
+        for sequence in range(1, 221):
+            subtype, payload = v2_rib_payload(
+                "198.51.100.0/24",
+                (
+                    0,
+                    ORIGIN_TIME,
+                    attributes(as_path_value(4, (2, (64510, 64496)))),
+                ),
+                sequence=sequence,
+            )
+            physical.append(mrt_record(payload, mrt_type=13, subtype=subtype))
+        offsets = [0]
+        for record in physical:
+            offsets.append(offsets[-1] + len(record))
+        raw = b"".join(physical)
+        bootstrap = iter_rib_mrt_records_from_offset(
+            raw, next_record_ordinal=0, next_record_offset=0
+        )
+        next(bootstrap)
+        peer_context = bootstrap.current_peer_index_context
+
+        def boundary_before(target_ordinal):
+            ordinal = target_ordinal - 1
+            record = physical[ordinal]
+            return {
+                "record_ordinal": ordinal,
+                "record_offset": offsets[ordinal],
+                "record_length": len(record),
+                "record_sha256": hashlib.sha256(record).hexdigest(),
+            }
+
+        read_totals = []
+        for target_ordinal in (2, 200):
+            stream = CountingSeekStream(raw)
+            iterator = iter_rib_mrt_records_from_offset(
+                stream,
+                next_record_ordinal=target_ordinal,
+                next_record_offset=offsets[target_ordinal],
+                previous_record_boundary=boundary_before(target_ordinal),
+                peer_index_context=peer_context.checkpoint_binding(),
+            )
+            self.assertEqual(stream.tell(), offsets[target_ordinal])
+            self.assertEqual(
+                iterator.seek_context.next_record_ordinal, target_ordinal
+            )
+            read_totals.append(stream.bytes_read)
+
+        # 定位阶段只读取 peer table 与上一条完整 record，不能随 target 线性增长。
+        self.assertEqual(read_totals[0], read_totals[1])
+        self.assertEqual(read_totals[1], len(peer_record) + len(physical[199]))
+        self.assertLess(read_totals[1] * 20, offsets[200])
 
 
 if __name__ == "__main__":

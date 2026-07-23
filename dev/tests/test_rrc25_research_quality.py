@@ -170,6 +170,7 @@ def valid_quality_input(**overrides: object) -> ResearchQualityInput:
                 "file_sha256": SHA,
                 "record_ordinal": 7,
                 "element_ordinal": 2,
+                "raw_closure_state": "verified_raw_audit",
             },
         ),
         "raw_refs": (
@@ -177,8 +178,14 @@ def valid_quality_input(**overrides: object) -> ResearchQualityInput:
                 "raw_record_ref_id": raw,
                 "artifact_id": artifact,
                 "file_sha256": SHA,
+                "record_offset": 4096,
+                "record_length": 128,
+                "record_hash": "2" * 64,
                 "record_ordinal": 7,
                 "element_ordinal": 2,
+                "verification_status": "verified",
+                "raw_closure_state": "verified_raw_audit",
+                "missing_reason_zh": None,
             },
         ),
         "artifacts": ({"artifact_id": artifact, "file_sha256": SHA},),
@@ -382,6 +389,27 @@ class ResearchQualityCrossStructureTest(unittest.TestCase):
         self.assertEqual(gate.status, "fail")
         self.assertIn("route_raw_ref_unresolved", codes)
         self.assertIn("episode_as_evidence_unresolved", codes)
+
+    def test_coordinate_only_raw_reference_blocks_reference_closure(self):
+        routes = list(deepcopy(valid_quality_input().route_events))
+        raw_refs = list(deepcopy(valid_quality_input().raw_refs))
+        routes[0]["raw_closure_state"] = "derived_coordinate_only"
+        raw_refs[0].update(
+            record_offset=None,
+            record_length=None,
+            record_hash=None,
+            verification_status="derived_coordinate_only",
+            raw_closure_state="unverified",
+            missing_reason_zh="仅由 RouteEvent 坐标推导，尚未执行正式 raw audit。",
+        )
+
+        result = evaluate_research_quality(
+            valid_quality_input(route_events=tuple(routes), raw_refs=tuple(raw_refs))
+        )
+        gate = gates_by_id(result)["reference_closure"]
+        self.assertEqual(gate.status, "fail")
+        self.assertIn("raw_audit_unverified", {item.code for item in gate.diagnostics})
+        self.assertEqual(result.acceptance_state, "not_accepted")
 
     def test_stable_route_id_must_match_raw_coordinates(self):
         routes = list(deepcopy(valid_quality_input().route_events))

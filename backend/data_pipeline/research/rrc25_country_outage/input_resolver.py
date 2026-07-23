@@ -307,6 +307,7 @@ def resolve_research_inputs(
 
 __all__ = [
     "ResearchInputError",
+    "SELECTION_ID_SCHEMA",
     "SELECTION_SCHEMA_VERSION",
     "canonical_json",
     "resolve_research_inputs",

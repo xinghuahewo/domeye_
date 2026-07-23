@@ -17,7 +17,13 @@ NUMERIC = {
     "extension_step_seconds": 21_600,
     "max_duration_seconds": 86_400,
     "max_relative_mad": 0.001,
-    "stop_before_confirmed_onset": True,
+    "stop_before_exclusion_boundary": True,
+    "exclusion_boundary": {
+        "at_utc": "2026-02-28T16:00:00Z",
+        "role": "user_supplied_earliest_possible_precursor_boundary",
+        "confirmation_state": "candidate_not_confirmed",
+        "causal_claim_allowed": False,
+    },
     "unstable_exhausted_state": "incomplete",
 }
 NORMAL_BAND = {
@@ -76,6 +82,17 @@ class Rrc25NumericBaselineTests(unittest.TestCase):
         self.assertEqual(result.normal_band_lower, 9_990_000)
         self.assertEqual(result.normal_band_upper, 10_010_000)
         self.assertEqual(result.actual_end_exclusive_utc, "2026-02-27T22:00:00Z")
+        changed_boundary = _derive(
+            [10_000_000] * 72,
+            numeric_policy={
+                **NUMERIC,
+                "exclusion_boundary": {
+                    **NUMERIC["exclusion_boundary"],
+                    "at_utc": "2026-02-28T15:55:00Z",
+                },
+            },
+        )
+        self.assertNotEqual(result.baseline_id, changed_boundary.baseline_id)
 
     def test_unstable_candidate_extends_by_six_hours_until_stable(self):
         first = [900.0, 1100.0] * 36
@@ -88,18 +105,31 @@ class Rrc25NumericBaselineTests(unittest.TestCase):
         self.assertEqual(result.median, 1000)
         self.assertEqual(result.mad, 0)
 
-    def test_confirmed_onset_prevents_extension_from_polluting_baseline(self):
+    def test_candidate_boundary_prevents_extension_without_claiming_onset(self):
+        policy = {
+            **NUMERIC,
+            "exclusion_boundary": {
+                **NUMERIC["exclusion_boundary"],
+                "at_utc": "2026-02-27T23:00:00Z",
+            },
+        }
         result = _derive(
             [900.0, 1100.0] * 72,
-            confirmed_onset_at="2026-02-27T23:00:00Z",
+            numeric_policy=policy,
         )
 
         self.assertFalse(result.resolved)
         self.assertEqual(
-            result.unresolved_reason, "confirmed_onset_before_stable_extension"
+            result.unresolved_reason,
+            "candidate_exclusion_boundary_before_stable_extension",
         )
         self.assertEqual(result.duration_seconds, 25_200)
         self.assertEqual(result.observation_count, 84)
+        self.assertEqual(
+            result.exclusion_boundary_confirmation_state,
+            "candidate_not_confirmed",
+        )
+        self.assertFalse(result.exclusion_boundary_causal_claim_allowed)
 
     def test_gap_and_insufficient_window_remain_unknown_not_zero(self):
         gap = _derive([1000.0] * 72, gap_at=10)

@@ -6,14 +6,19 @@ import hashlib
 import ipaddress
 import struct
 import unittest
+from unittest.mock import patch
+
+from backend.data_pipeline.research.rrc25_country_outage import update_adapter as update_adapter_module
 
 from backend.data_pipeline.route_event import (
     ParsedMrtRecord,
     ParsedRouteElement,
     artifact_id_v1,
     route_event_id_v1,
+    vp_id_v1,
 )
 from backend.data_pipeline.research.rrc25_country_outage.update_adapter import (
+    END_OF_RIB_RECORD,
     KEEPALIVE_RECORD,
     NOTIFICATION_RECORD,
     OPEN_RECORD,
@@ -277,9 +282,38 @@ class UpdateAdapterTests(unittest.TestCase):
         self.assertEqual(observed, [(announce, withdraw)])
         self.assertEqual(adapted[0].announce_count, 1)
         self.assertEqual(adapted[0].withdraw_count, 1)
+        self.assertEqual(
+            adapted[0].update_peer_observations,
+            ((vp_id_v1("rrc25", "192.0.2.10", 64500), "2026-02-27T16:00:01Z"),),
+        )
         self.assertEqual(len(adapted[0].route_events), 1)
         self.assertEqual(adapted[0].route_events[0].element_ordinal, 1)
         self.assertEqual(adapted[0].route_events[0].action, "withdraw")
+
+    def test_repeated_record_identity_fields_are_parsed_once_without_skipping_counts(self):
+        raw = update_frame()
+        announce = announce_element()
+        elements = (announce,) * 1000
+        original = update_adapter_module._parsed_event_epoch_microseconds
+
+        with patch.object(
+            update_adapter_module,
+            "_parsed_event_epoch_microseconds",
+            wraps=original,
+        ) as parse_time:
+            adapted = tuple(
+                iter_adapted_update_records(
+                    (ParsedMrtRecord(0, 0, raw, elements),),
+                    artifact=artifact(),
+                    route_element_retention_selector=lambda values: (False,)
+                    * len(values),
+                )
+            )
+
+        self.assertEqual(parse_time.call_count, 1)
+        self.assertEqual(adapted[0].announce_count, 1000)
+        self.assertEqual(adapted[0].withdraw_count, 0)
+        self.assertEqual(adapted[0].route_events, ())
 
     def test_retention_selector_cannot_hide_invalid_element_semantics(self):
         raw = update_frame()
@@ -418,6 +452,25 @@ class UpdateAdapterTests(unittest.TestCase):
             with self.subTest(record=record):
                 with self.assertRaises(UpdateAdapterError):
                     tuple(iter_adapted_update_records((record,), artifact=artifact()))
+
+    def test_end_of_rib_is_retained_as_control_without_route_event(self):
+        bodies = (
+            b"\x00\x00\x00\x00",
+            b"\x00\x00\x00\x06\x80\x0f\x03\x00\x02\x01",
+        )
+        records = []
+        offset = 0
+        for ordinal, body in enumerate(bodies):
+            raw = update_frame(
+                timestamp=SLOT_TIMESTAMP + ordinal + 1,
+                message_body=body,
+            )
+            records.append(ParsedMrtRecord(ordinal, offset, raw, ()))
+            offset += len(raw)
+        adapted = tuple(iter_adapted_update_records(tuple(records), artifact=artifact()))
+        self.assertEqual([row.record_kind for row in adapted], [END_OF_RIB_RECORD] * 2)
+        self.assertTrue(all(not row.route_events for row in adapted))
+        self.assertTrue(all(row.peer_session_observation is None for row in adapted))
 
     def test_state_change_and_control_messages_reject_route_elements(self):
         valid_open = struct.pack(

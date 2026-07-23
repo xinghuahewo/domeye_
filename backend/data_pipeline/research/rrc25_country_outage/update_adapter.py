@@ -4,7 +4,7 @@
 ``ParsedMrtRecord`` 流，把 UPDATE route elements 绑定为稳定的
 ``ResearchRouteEvent``，同时为每个 physical record 保留完整文件身份、
 record/element 坐标和原始记录 SHA256。STATE_CHANGE 交给冻结的
-``peer_session`` 解析器；结构完整的 OPEN、NOTIFICATION、KEEPALIVE 只形成
+``peer_session`` 解析器；结构完整的 OPEN、NOTIFICATION、KEEPALIVE、EOR 只形成
 原始记录引用，不生成路由事件。
 
 适配器不读取文件、数据库或真实 MRT。即使上游已做完整性检查，本层仍会对
@@ -28,6 +28,7 @@ from ...route_event import (
     ParsedMrtRecord,
     ParsedRouteElement,
     artifact_id_v1,
+    vp_id_v1,
 )
 from .peer_session import (
     BGP4MP_STATE_CHANGE,
@@ -51,6 +52,7 @@ STATE_CHANGE_RECORD = "state_change"
 OPEN_RECORD = "open"
 NOTIFICATION_RECORD = "notification"
 KEEPALIVE_RECORD = "keepalive"
+END_OF_RIB_RECORD = "end_of_rib"
 
 _MRT_HEADER_LENGTH = 12
 _BGP_HEADER_LENGTH = 19
@@ -124,6 +126,7 @@ class AdaptedUpdateRecord:
     # 稳定 RouteEvent 的前提下，仍保留全量 ANNOUNCE/WITHDRAW 槽计数。
     announce_count: int = 0
     withdraw_count: int = 0
+    update_peer_observations: Tuple[Tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -145,6 +148,7 @@ class _FrameEnvelope:
     peer_ip: Optional[str]
     peer_asn: Optional[int]
     bgp_message_type: Optional[int]
+    bgp_message_body: Optional[bytes]
 
 
 RecordStreamFactory = Callable[[Mapping[str, Any]], Iterable[ParsedMrtRecord]]
@@ -175,7 +179,11 @@ def _retention_mask(
     return mask
 
 
-def _validate_element_semantics(element: ParsedRouteElement) -> None:
+def _validate_element_semantics(
+    element: ParsedRouteElement,
+    *,
+    validated_as_path_ids: Optional[set[int]] = None,
+) -> None:
     """核验 selector 可能丢弃的元素仍满足研究 RouteEvent 语义。"""
 
     try:
@@ -191,22 +199,31 @@ def _validate_element_semantics(element: ParsedRouteElement) -> None:
     else:
         if not isinstance(element.as_path, tuple):
             raise UpdateAdapterError("announce route element 的 AS_PATH 必须是 tuple")
-        for segment in element.as_path:
-            if (
-                not isinstance(segment, AsPathSegment)
-                or segment.segment_type not in _AS_PATH_SEGMENT_TYPES
-                or not isinstance(segment.asns, tuple)
-                or not segment.asns
-            ):
-                raise UpdateAdapterError("route element AS_PATH segment 非法")
-            if any(
-                isinstance(asn, bool)
-                or not isinstance(asn, int)
-                or asn < 0
-                or asn > 4_294_967_295
-                for asn in segment.asns
-            ):
-                raise UpdateAdapterError("route element AS_PATH ASN 非法")
+        path_identity = id(element.as_path)
+        if validated_as_path_ids is None or path_identity not in validated_as_path_ids:
+            for segment in element.as_path:
+                if (
+                    not isinstance(segment, AsPathSegment)
+                    or segment.segment_type not in _AS_PATH_SEGMENT_TYPES
+                    or not isinstance(segment.asns, tuple)
+                    or not segment.asns
+                ):
+                    raise UpdateAdapterError("route element AS_PATH segment 非法")
+                if any(
+                    isinstance(asn, bool)
+                    or not isinstance(asn, int)
+                    or asn < 0
+                    or asn > 4_294_967_295
+                    for asn in segment.asns
+                ):
+                    raise UpdateAdapterError("route element AS_PATH ASN 非法")
+            if validated_as_path_ids is not None:
+                # ParsedRouteElement/AsPathSegment 均 frozen，内部又只准 tuple；同一
+                # tuple identity 在本 record 生命周期内不可能在验证后突变。集合
+                # 上限与上游单 artifact AS_PATH LRU 一致，避免 custom stream 用
+                # 全唯一 tuple 令辅助缓存无界增长；满后只是不再命中，不会跳过验证。
+                if len(validated_as_path_ids) < 4096:
+                    validated_as_path_ids.add(path_identity)
     flags = element.quality_flags
     if (
         not isinstance(flags, tuple)
@@ -352,6 +369,7 @@ def _decode_frame(raw_record: object) -> _FrameEnvelope:
             peer_ip=None,
             peer_asn=None,
             bgp_message_type=None,
+            bgp_message_body=None,
         )
 
     asn_width = _ASN_WIDTH_BY_UPDATE_SUBTYPE[mrt_subtype]
@@ -426,7 +444,35 @@ def _decode_frame(raw_record: object) -> _FrameEnvelope:
         peer_ip=peer_ip,
         peer_asn=peer_asn,
         bgp_message_type=message_type,
+        bgp_message_body=body,
     )
+
+
+def _is_end_of_rib_update_body(body: Any) -> bool:
+    """验证 IPv4 EOR 或只含空 MP_UNREACH_NLRI 的 MP EOR。"""
+
+    if body == b"\x00\x00\x00\x00":
+        return True
+    if not isinstance(body, bytes) or len(body) < 7 or body[:2] != b"\x00\x00":
+        return False
+    attribute_bytes = int.from_bytes(body[2:4], "big")
+    if len(body) != 4 + attribute_bytes or attribute_bytes == 0:
+        return False
+    attributes = body[4:]
+    flags, attribute_type = attributes[0], attributes[1]
+    if attribute_type != 15 or flags not in {0x80, 0x90}:
+        return False
+    if flags & 0x10:
+        if len(attributes) < 4:
+            return False
+        length = int.from_bytes(attributes[2:4], "big")
+        value = attributes[4:]
+    else:
+        length = attributes[2]
+        value = attributes[3:]
+    if length != 3 or len(value) != 3:
+        return False
+    return int.from_bytes(value[:2], "big") in _ADDRESS_WIDTH_BY_AFI and value[2] == 1
 
 
 def _raw_evidence(
@@ -552,29 +598,63 @@ def iter_adapted_update_records(
             )
         elif envelope.bgp_message_type == _BGP_MESSAGE_UPDATE:
             if not record.elements:
-                raise UpdateAdapterError("无 route element 的 UPDATE 不能在 P0 提升")
+                if not _is_end_of_rib_update_body(envelope.bgp_message_body):
+                    raise UpdateAdapterError(
+                        "无 route element 的非 EOR UPDATE 不能在 P0 提升"
+                    )
+                yield AdaptedUpdateRecord(
+                    record_kind=END_OF_RIB_RECORD,
+                    raw_record=raw_evidence,
+                    route_events=(),
+                    peer_session_observation=None,
+                )
+                expected_ordinal += 1
+                expected_offset += len(record.raw_record)
+                continue
             # selector 必须在完整 record 的所有元素完成 raw/time/peer/action
             # 核验之后才运行，避免 fake/custom stream 借过滤绕过输入合同。
-            for element_ordinal, element in enumerate(record.elements):
+            event_epoch_cache: dict[str, int] = {}
+            normalized_peer_ip_cache: dict[str, str] = {}
+            validated_as_path_ids: set[int] = set()
+            announce_count = 0
+            withdraw_count = 0
+            for element in record.elements:
                 if not isinstance(element, ParsedRouteElement):
                     raise UpdateAdapterError("UPDATE elements 含非 ParsedRouteElement")
                 if element.action not in {"announce", "withdraw"}:
                     raise UpdateAdapterError("UPDATE artifact 不接受 rib_snapshot action")
-                if (
-                    _parsed_event_epoch_microseconds(element.event_time_utc)
-                    != envelope.event_epoch_microseconds
-                ):
+                try:
+                    element_epoch = event_epoch_cache[element.event_time_utc]
+                except (KeyError, TypeError):
+                    element_epoch = _parsed_event_epoch_microseconds(
+                        element.event_time_utc
+                    )
+                    event_epoch_cache[element.event_time_utc] = element_epoch
+                if element_epoch != envelope.event_epoch_microseconds:
                     raise UpdateAdapterError("route element 时间与 MRT header 冲突")
                 try:
-                    element_peer_ip = ipaddress.ip_address(element.peer_ip).compressed
-                except ValueError as error:
-                    raise UpdateAdapterError("route element peer_ip 非法") from error
+                    element_peer_ip = normalized_peer_ip_cache[element.peer_ip]
+                except (KeyError, TypeError):
+                    try:
+                        element_peer_ip = ipaddress.ip_address(
+                            element.peer_ip
+                        ).compressed
+                    except ValueError as error:
+                        raise UpdateAdapterError("route element peer_ip 非法") from error
+                    normalized_peer_ip_cache[element.peer_ip] = element_peer_ip
                 if (
                     element_peer_ip != envelope.peer_ip
                     or element.peer_asn != envelope.peer_asn
                 ):
                     raise UpdateAdapterError("route element peer 身份与 raw BGP4MP 冲突")
-                _validate_element_semantics(element)
+                _validate_element_semantics(
+                    element,
+                    validated_as_path_ids=validated_as_path_ids,
+                )
+                if element.action == "announce":
+                    announce_count += 1
+                else:
+                    withdraw_count += 1
 
             retention_mask = _retention_mask(
                 route_element_retention_selector, record.elements
@@ -606,11 +686,17 @@ def iter_adapted_update_records(
                 raw_record=raw_evidence,
                 route_events=tuple(route_events),
                 peer_session_observation=None,
-                announce_count=sum(
-                    element.action == "announce" for element in record.elements
-                ),
-                withdraw_count=sum(
-                    element.action == "withdraw" for element in record.elements
+                announce_count=announce_count,
+                withdraw_count=withdraw_count,
+                update_peer_observations=(
+                    (
+                        vp_id_v1(
+                            identity.collector_id,
+                            str(envelope.peer_ip),
+                            int(envelope.peer_asn),
+                        ),
+                        envelope.event_time_utc,
+                    ),
                 ),
             )
         else:  # pragma: no cover - _decode_frame 已枚举全部合法消息类型。
@@ -644,6 +730,7 @@ def iter_bgpdump_artifact_records(
 
 __all__ = (
     "AdaptedUpdateRecord",
+    "END_OF_RIB_RECORD",
     "KEEPALIVE_RECORD",
     "NOTIFICATION_RECORD",
     "OPEN_RECORD",

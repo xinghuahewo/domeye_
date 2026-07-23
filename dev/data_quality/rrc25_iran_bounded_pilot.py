@@ -100,6 +100,10 @@ from backend.data_pipeline.research.rrc25_country_outage.sample_builder import (
     observed_slot_count,
     unknown_slot_count,
 )
+from backend.data_pipeline.research.rrc25_country_outage.source_fact import (
+    FrozenIncidentFact,
+    load_frozen_incident_fact,
+)
 from backend.data_pipeline.research.rrc25_country_outage.state_replay import (
     ReplaySnapshot,
     ResearchRouteEvent,
@@ -334,9 +338,20 @@ def build_code_identity(repository_root: str | Path = REPOSITORY_ROOT) -> Mappin
         raise SparsePilotError("代码仓库根必须是非符号链接目录")
     fixed = {
         "backend/data_pipeline/__init__.py",
+        # 本入口直接从 normalize 包导入 parse_detail_url。导入包时会先执行
+        # __init__.py，实际 Incident identity 算法位于 facts.py；两者必须与
+        # pilot 处理代码共同进入身份，不能只固定调用方。
+        "backend/data_pipeline/normalize/__init__.py",
+        "backend/data_pipeline/normalize/facts.py",
         "dev/data_quality/rrc25_iran_research.py",
         "dev/data_quality/rrc25_iran_bounded_pilot.py",
+        "dev/data_quality/rrc25_iran_execution_prep.py",
+        "dev/data_quality/rrc25_iran_full_window.py",
+        "dev/data_quality/rrc25_iran_finalize.py",
+        "dev/data_quality/rrc25_iran_analysis_ribs.py",
+        "dev/data_quality/rrc25_iran_acceptance.py",
         "dev/data_quality/validate_research_contracts.cjs",
+        "dev/data_quality/validate_rrc25_full_window_package_contracts.cjs",
     }
     patterns = (
         "backend/data_pipeline/evidence/**/*.py",
@@ -1235,6 +1250,251 @@ def _augmented_package(
     return dict(sorted(contents.items())), manifest
 
 
+def _matched_source_fact_evidence_parameters(
+    *,
+    profile: Mapping[str, Any],
+    run_id: str,
+    worker: BoundedPilotWorkerResult,
+    sparse_selection: Mapping[str, Any],
+    semantic_fingerprint: str,
+    package_bindings: Mapping[str, str],
+    incident_fact_snapshot: Mapping[str, Any],
+    incident_fact: FrozenIncidentFact,
+    generated_at_utc: str,
+) -> Mapping[str, Any] | None:
+    """为冻结 matched source fact 构造无因果、无恢复补造的 Bundle 参数。
+
+    零 Episode 时仅让 Evidence Bundle v2 保留旧事实与可复现的
+    profile/selection/worker 血缘；不把 worker 中未经 Episode 时间映射的
+    RouteEvent 塞进事件包。unresolved locator 继续由装配层输出
+    unavailable descriptor，因此返回 ``None``。
+    """
+
+    fact_link_status = incident_fact.incident.get("fact_link_status")
+    if fact_link_status == "unresolved":
+        return None
+    if fact_link_status != "matched":
+        raise SparsePilotError(
+            "bounded pilot 只能为 matched source fact 组装标准 Evidence Bundle"
+        )
+
+    snapshot_value = _jsonable(incident_fact_snapshot)
+    observed_snapshot_sha256 = _sha256_bytes(
+        canonical_json(snapshot_value).encode("utf-8")
+    )
+    if observed_snapshot_sha256 != incident_fact.snapshot_sha256:
+        raise SparsePilotError("Evidence 参数的冻结 source-fact 快照哈希不一致")
+    payload = incident_fact_snapshot.get("payload")
+    retrieval = incident_fact_snapshot.get("retrieval")
+    if not isinstance(payload, Mapping) or not isinstance(retrieval, Mapping):
+        raise SparsePilotError("Evidence 参数缺少冻结 source-fact payload/retrieval")
+    source_snapshot = payload.get("data_snapshot")
+    fact_record = payload.get("fact_record")
+    if not isinstance(source_snapshot, Mapping) or not isinstance(
+        fact_record, Mapping
+    ):
+        raise SparsePilotError("Evidence 参数缺少冻结数据快照或事实记录")
+
+    profile_hash = profile_sha256(profile)
+    selection_hash = sparse_selection.get("semantic_fingerprint_sha256")
+    code_hash = package_bindings.get("code")
+    worker_hash = semantic_fingerprint
+    for field, value in (
+        ("selection semantic fingerprint", selection_hash),
+        ("code identity", code_hash),
+        ("worker semantic fingerprint", worker_hash),
+        ("source-fact snapshot", incident_fact.snapshot_sha256),
+    ):
+        if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+            raise SparsePilotError(f"Evidence {field} 不是 64 位小写 SHA256")
+
+    coverage = sparse_selection.get("coverage")
+    analysis_updates = (
+        coverage.get("analysis_updates")
+        if isinstance(coverage, Mapping)
+        else None
+    )
+    if not isinstance(analysis_updates, Mapping):
+        raise SparsePilotError("Evidence 参数缺少 selection analysis_updates 覆盖")
+    expected_update_count = analysis_updates.get("expected_count")
+    observed_update_count = sum(
+        row.input_state == "observed" for row in worker.slot_counts
+    )
+    if (
+        isinstance(expected_update_count, bool)
+        or not isinstance(expected_update_count, int)
+        or expected_update_count <= 0
+        or observed_update_count > expected_update_count
+    ):
+        raise SparsePilotError("Evidence raw source 覆盖人口非法")
+
+    locator_identity_time = incident_fact.incident.get("event_time_utc")
+    profile_window = profile.get("window")
+    if not isinstance(profile_window, Mapping):
+        raise SparsePilotError("Evidence 参数缺少 profile 时间窗")
+    profile_start = profile_window.get("start_utc")
+    profile_end = profile_window.get("end_exclusive_utc")
+    snapshot_time = source_snapshot.get("snapshot_time_utc")
+    business_timezone = source_snapshot.get("timezone")
+    source_fact_retrieved_at = retrieval.get("retrieved_at_utc")
+    if any(
+        not isinstance(value, str) or not value
+        for value in (
+            profile_start,
+            profile_end,
+            snapshot_time,
+            business_timezone,
+            source_fact_retrieved_at,
+            generated_at_utc,
+        )
+    ):
+        raise SparsePilotError("Evidence 参数的冻结时间或时区非法")
+    try:
+        retrieved_at = datetime.strptime(
+            source_fact_retrieved_at, "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=UTC)
+        generated_at = datetime.strptime(
+            generated_at_utc, "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=UTC)
+    except ValueError as error:
+        raise SparsePilotError("Evidence generated/retrieved 时间必须是 UTC 秒精度") from error
+    if generated_at <= retrieved_at:
+        raise SparsePilotError(
+            "Evidence generated_at 必须晚于 source-fact retrieved_at，禁止借用检索时间冒充生成时间"
+        )
+    temporal = incident_fact.temporal_evidence
+    if (
+        locator_identity_time != temporal.locator_record_start.utc
+        or temporal.locator_record_start.role != "source_record_identity_only"
+        or temporal.single_event_time_merge_allowed is not False
+    ):
+        raise SparsePilotError("Evidence 参数未保持 locator 身份时间的非事件语义")
+    data_envelope = {
+        "schema": "iran_rrc25_source_fact_research_envelope_v1",
+        "source_fact_locator_identity_time_utc": locator_identity_time,
+        "source_fact_locator_time_role": temporal.locator_record_start.role,
+        "research_profile_id": profile["study_id"],
+        "research_profile_sha256": profile_hash,
+        "research_window": {
+            "start_utc": profile_start,
+            "end_exclusive_utc": profile_end,
+            "interval_semantics": "half_open",
+        },
+        "single_event_time_merge_allowed": False,
+    }
+    data_envelope_sha256 = _sha256_bytes(
+        canonical_json(data_envelope).encode("utf-8")
+    )
+
+    input_identity = {
+        "schema": "rrc25_matched_source_fact_evidence_input_v1",
+        "source_fact_snapshot_sha256": incident_fact.snapshot_sha256,
+        "profile_sha256": profile_hash,
+        "data_envelope_sha256": data_envelope_sha256,
+        "selection_semantic_fingerprint_sha256": selection_hash,
+        "worker_semantic_fingerprint_sha256": worker_hash,
+        "code_identity_sha256": code_hash,
+    }
+    query_identity = {
+        "schema": "rrc25_matched_source_fact_evidence_query_v1",
+        "incident_id": incident_fact.incident.get("incident_id"),
+        "detail_reference": incident_fact.incident.get("detail_reference"),
+        "profile_id": profile.get("study_id"),
+        "selection_id": sparse_selection.get("selection_id"),
+    }
+
+    def program(
+        name: str, version: str, config_sha256: str
+    ) -> Mapping[str, Any]:
+        return {
+            "name": name,
+            "version": version,
+            "code_sha256": code_hash,
+            "config_sha256": config_sha256,
+        }
+
+    return {
+        "data_snapshot": {
+            # Evidence Bundle v2 要求固定数据档窗口包含旧 Incident 的
+            # identity start；这里使用显式 envelope，而不把它冒充为研究
+            # Profile 窗口。真正研究窗单独绑定在 data_envelope 与复现参数中。
+            "profile_id": "iran-rrc25-source-fact-research-envelope-v1",
+            "profile_sha256": data_envelope_sha256,
+            "window_start": min(locator_identity_time, profile_start),
+            "window_end_exclusive": profile_end,
+            "snapshot_time": snapshot_time,
+            "business_timezone": business_timezone,
+            "database_release_id": (
+                "not-retained-frozen-source-fact-"
+                + incident_fact.snapshot_sha256[:16]
+            ),
+            "overlay_inventory_sha256": incident_fact.snapshot_sha256,
+            "raw_source_status": (
+                "full"
+                if observed_update_count == expected_update_count
+                else "partial"
+            ),
+        },
+        "processing_lineage": {
+            # 未建立 Episode→RouteEvent 关系时不把 parser 声明为事件证据链。
+            "parser": None,
+            "importer": program(
+                "rrc25-bounded-pilot-worker",
+                worker.schema_version,
+                selection_hash,
+            ),
+            "detector": program(
+                "country-outage-research-detector",
+                profile["algorithms"]["episode"]["version"],
+                profile_hash,
+            ),
+            "normalizer": program(
+                "p0-incident-normalizer",
+                str(incident_fact.incident.get("schema_version")),
+                incident_fact.snapshot_sha256,
+            ),
+            "bundle_generator": program(
+                "research-evidence-bundle-generator",
+                "evidence_bundle_v2",
+                profile_hash,
+            ),
+            "import_run_id": None,
+        },
+        "raw_source_coverage": {
+            "expected_count": expected_update_count,
+            "observed_count": observed_update_count,
+        },
+        # generated_at 表示本次 Evidence Bundle 的真实生成时间；A/B 复算
+        # 由调用方显式共享同一时间戳，不能借用 source-fact 的取得时间。
+        "generated_at": generated_at_utc,
+        "input_snapshot_sha256": _sha256_bytes(
+            canonical_json(input_identity).encode("utf-8")
+        ),
+        "query_fingerprint_sha256": _sha256_bytes(
+            canonical_json(query_identity).encode("utf-8")
+        ),
+        # source fact 已冻结验哈希，但未经 Episode 映射的 raw RouteEvent
+        # 不纳入该事件包，因此不宣称 verified/raw_traceable。
+        "source_hash_verification_status": "partial",
+        "source_fact_record_hash": _sha256_bytes(
+            canonical_json(_jsonable(fact_record)).encode("utf-8")
+        ),
+        "reproducibility_parameters": {
+            "run_id": run_id,
+            "source_fact_snapshot_sha256": incident_fact.snapshot_sha256,
+            "source_fact_retrieved_at_utc": source_fact_retrieved_at,
+            "profile_sha256": profile_hash,
+            "research_window_start_utc": profile_start,
+            "research_window_end_exclusive_utc": profile_end,
+            "source_fact_locator_time_role": temporal.locator_record_start.role,
+            "data_envelope_sha256": data_envelope_sha256,
+            "selection_semantic_fingerprint_sha256": selection_hash,
+            "worker_semantic_fingerprint_sha256": worker_hash,
+            "route_event_admission": "not_linked_without_research_episode",
+        },
+    }
+
+
 def _assemble_once(
     *,
     profile: Mapping[str, Any],
@@ -1248,7 +1508,21 @@ def _assemble_once(
     sparse_selection: Mapping[str, Any],
     semantic_fingerprint: str,
     package_bindings: Mapping[str, str],
+    incident_fact_snapshot: Mapping[str, Any],
+    incident_fact: FrozenIncidentFact,
+    generated_at_utc: str,
 ) -> DerivedResearchAssembly:
+    evidence_bundle_parameters = _matched_source_fact_evidence_parameters(
+        profile=profile,
+        run_id=run_id,
+        worker=worker,
+        sparse_selection=sparse_selection,
+        semantic_fingerprint=semantic_fingerprint,
+        package_bindings=package_bindings,
+        incident_fact_snapshot=incident_fact_snapshot,
+        incident_fact=incident_fact,
+        generated_at_utc=generated_at_utc,
+    )
     return assemble_derived_research(
         profile=profile,
         run_id=run_id,
@@ -1257,7 +1531,7 @@ def _assemble_once(
         snapshots=snapshots,
         mapping=mapping,
         slot_metadata=slot_metadata,
-        incidents=(_incident_source_fact(str(claims["incident_ref"])),),
+        incidents=(incident_fact.incident,),
         claim_inventory=claims,
         reconciliation_assessments="auto",
         quality_facts=_quality_facts(worker),
@@ -1273,9 +1547,10 @@ def _assemble_once(
             "python3 dev/data_quality/rrc25_iran_bounded_pilot.py verify --package <研究包目录>",
         ),
         route_events_by_id={row.route_event_id: row for row in worker.route_events},
-        confirmed_onset_at="2026-02-28T08:14:00Z",
+        evidence_bundle_parameters=evidence_bundle_parameters,
         limitations_zh=(
             "这是五个 UPDATE 槽的稀疏真实取证 pilot，不是连续事件人口复算。",
+            "报告中的 2026-02-28T08:14:00Z 仅是待复算候选时间，未作为 confirmed onset 或基线截断事实。",
             "前兆与主事件的因果关系在当前样本中不可判定。",
             "缺少流量、物理链路与政府意图遥测，因果主张不能确认。",
         ),
@@ -1397,6 +1672,17 @@ def _run(
     verification = load_json_metadata(args.manifest_verification)
     mapping_snapshot = load_json_metadata(args.mapping, maximum_bytes=64 * 1024 * 1024)
     claims = load_json_metadata(args.claim_inventory)
+    incident_fact_snapshot = load_json_metadata(
+        args.incident_fact_snapshot, maximum_bytes=16 * 1024 * 1024
+    )
+    incident_fact = load_frozen_incident_fact(incident_fact_snapshot)
+    if (
+        claims.get("incident_ref")
+        != incident_fact.incident.get("detail_reference")
+    ):
+        raise SparsePilotError(
+            "claim inventory 与冻结 source-fact Incident 不一致"
+        )
     worker_plan = load_json_metadata(args.worker_plan, maximum_bytes=64 * 1024 * 1024)
     code_identity = _load_code_identity(args.code_identity, args.code_sha256)
 
@@ -1545,9 +1831,13 @@ def _run(
         "seed-producer-worker-plan": seed_provenance["producer_worker_plan"][
             "worker_plan_sha256"
         ],
+        "source-fact-snapshot": incident_fact.snapshot_sha256,
     }
     run_id = worker_plan["run_id"]
     require_runtime("before_assembly_a")
+    # 此刻才真正开始生成 Evidence Bundle；同一时间戳显式共享给 A/B，
+    # 既避免把 source-fact 检索时间冒充 generated_at，也保持同次纯派生确定性。
+    generated_at_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     assembly_a = _assemble_once(
         profile=profile,
         run_id=run_id,
@@ -1560,6 +1850,9 @@ def _run(
         sparse_selection=sparse_selection,
         semantic_fingerprint=semantic_fingerprint,
         package_bindings=package_bindings,
+        incident_fact_snapshot=incident_fact_snapshot,
+        incident_fact=incident_fact,
+        generated_at_utc=generated_at_utc,
     )
     require_runtime("after_assembly_a")
     require_runtime("before_assembly_b")
@@ -1575,6 +1868,9 @@ def _run(
         sparse_selection=sparse_selection,
         semantic_fingerprint=semantic_fingerprint,
         package_bindings=package_bindings,
+        incident_fact_snapshot=incident_fact_snapshot,
+        incident_fact=incident_fact,
+        generated_at_utc=generated_at_utc,
     )
     require_runtime("after_assembly_b")
     if (
@@ -1621,6 +1917,11 @@ def _run(
             "mapping",
             _json_bytes(mapping_snapshot),
             len(mapping_snapshot.get("rows", [])),
+        ),
+        "inputs/source-fact-snapshot.json": (
+            "source-fact-snapshot",
+            _json_bytes(incident_fact_snapshot),
+            1,
         ),
         "inputs/seed-sample-checkpoint.json": (
             "seed-sample-checkpoint",
@@ -1739,6 +2040,13 @@ def _run(
         "package_b_verified": True,
         "database_connections": 0,
         "database_write_operations": 0,
+        "source_fact": {
+            "incident_id": incident_fact.incident["incident_id"],
+            "fact_link_status": incident_fact.incident["fact_link_status"],
+            "legacy_affected_asn_count": incident_fact.legacy_affected_asn_count,
+            "legacy_total_asn_count": incident_fact.legacy_total_asn_count,
+            "snapshot_sha256": incident_fact.snapshot_sha256,
+        },
     }
 
 
@@ -1754,6 +2062,7 @@ def build_parser() -> argparse.ArgumentParser:
         "manifest-verification",
         "mapping",
         "claim-inventory",
+        "incident-fact-snapshot",
         "worker-plan",
         "code-identity",
         "code-sha256",

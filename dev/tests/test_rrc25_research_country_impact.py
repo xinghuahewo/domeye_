@@ -1,4 +1,6 @@
+import copy
 from datetime import datetime, timedelta, timezone
+import hashlib
 import unittest
 from unittest import mock
 
@@ -10,21 +12,31 @@ from backend.data_pipeline.research.rrc25_country_outage.country_impact import (
     CONFLICT,
     CONFLICT_MAPPING,
     MAPPED,
+    RAW_RETENTION_UNION_SEMANTICS,
+    REVISED_MAPPING_SNAPSHOT_SCHEMA_VERSION,
     RESOLVED,
     UNKNOWN,
     UNKNOWN_MAPPING,
     CountryImpactError,
+    CountryMappingView,
     MappingAssignment,
     build_country_cohort,
     build_country_mapping_view,
+    build_raw_retention_mapping_union,
     compute_country_snapshot_impact,
     derive_country_cohort_and_impacts,
     derive_origin_asns,
     mapping_view_from_frozen_snapshot,
+    mapping_view_from_revised_snapshot,
     project_snapshot_origins,
     project_snapshot_origins_series,
     snapshot_id_v1,
     snapshot_ids_v1,
+)
+from backend.data_pipeline.research.rrc25_country_outage.country_mapping import (
+    SNAPSHOT_ID_SCHEMA as COUNTRY_MAPPING_SNAPSHOT_ID_SCHEMA,
+    SNAPSHOT_SCHEMA_VERSION as COUNTRY_MAPPING_SNAPSHOT_SCHEMA_VERSION,
+    canonical_json as country_mapping_canonical_json,
 )
 from backend.data_pipeline.research.rrc25_country_outage.state_replay import (
     CONTINUOUS,
@@ -157,6 +169,366 @@ class OriginDerivationTests(unittest.TestCase):
 
 
 class MappingAndCohortTests(unittest.TestCase):
+    def _compatible_mapping_snapshot(self):
+        semantic = {
+            "schema_version": COUNTRY_MAPPING_SNAPSHOT_SCHEMA_VERSION,
+            "source_file_sha256": "a" * 64,
+            "compatibility_policy": "first_valid_row_wins",
+            "target_country": "IR",
+            "rows": [
+                {
+                    "asn": 65001,
+                    "country_code": "ZZ",
+                    "value_state": "observed",
+                    "source_line_number": 2,
+                },
+                {
+                    "asn": 65002,
+                    "country_code": "US",
+                    "value_state": "observed",
+                    "source_line_number": 3,
+                },
+                {
+                    "asn": 65003,
+                    "country_code": "IR",
+                    "value_state": "observed",
+                    "source_line_number": 4,
+                },
+                {
+                    "asn": 65004,
+                    "country_code": None,
+                    "value_state": "missing",
+                    "source_line_number": 5,
+                },
+                {
+                    "asn": 65005,
+                    "country_code": "IR",
+                    "value_state": "observed",
+                    "source_line_number": 6,
+                },
+                {
+                    "asn": 65006,
+                    "country_code": "US",
+                    "value_state": "observed",
+                    "source_line_number": 7,
+                },
+            ],
+            "conflicts": [
+                {
+                    "asn": 65005,
+                    "kept_country": "IR",
+                    "conflicting_country": "US",
+                }
+            ],
+            "invalid": {"count": 0, "samples": [], "samples_truncated": False},
+            "summary": {
+                "unique_asn_count": 6,
+                "target_country_asn_count": 2,
+                "missing_country_count": 1,
+                "duplicate_same_count": 0,
+                "conflict_record_count": 1,
+                "conflict_asn_count": 1,
+            },
+        }
+        snapshot_id = "asmap_v1_" + hashlib.sha256(
+            country_mapping_canonical_json(
+                {
+                    "schema": COUNTRY_MAPPING_SNAPSHOT_ID_SCHEMA,
+                    "mapping": semantic,
+                }
+            ).encode("utf-8")
+        ).hexdigest()[:32]
+        return {
+            "snapshot_id": snapshot_id,
+            **semantic,
+            "source_metadata": {"size_bytes": 123, "basename": "as_entity.csv"},
+            "semantic_fingerprint_sha256": hashlib.sha256(
+                country_mapping_canonical_json(semantic).encode("utf-8")
+            ).hexdigest(),
+        }
+
+    def _revised_delta_snapshot(self):
+        compatible = self._compatible_mapping_snapshot()
+        return {
+            "schema_version": REVISED_MAPPING_SNAPSHOT_SCHEMA_VERSION,
+            "target_country": "IR",
+            "compatible_base_binding": {
+                "snapshot_id": compatible["snapshot_id"],
+                "source_file_sha256": compatible["source_file_sha256"],
+                "semantic_fingerprint_sha256": compatible[
+                    "semantic_fingerprint_sha256"
+                ],
+            },
+            "source": {
+                "path": "/evidence/revised-source.csv",
+                "sha256": "b" * 64,
+                "size_bytes": 1234,
+                "source_kind": "legacy_derived_official_delegate_missing_list",
+                "generated_on": "2026-04-07",
+                "upstream_artifact_state": "not_retained_in_discovered_directory",
+            },
+            "temporal_policy": {
+                "delegated_date_on_or_before": "20260227",
+                "interval_role": "known_allocated_by_research_window_start_date",
+                "excluded_after_cutoff_count": 1,
+                "excluded_after_cutoff_asns": [65009],
+            },
+            "rows": [
+                {
+                    "asn": 65001,
+                    "registry": "ripencc",
+                    "country_code": "IR",
+                    "resource_type": "asn",
+                    "delegated_date": "20260220",
+                    "status": "allocated",
+                    "range_start": 65001,
+                    "range_count": 1,
+                },
+                {
+                    "asn": 65002,
+                    "registry": "ripencc",
+                    "country_code": "IR",
+                    "resource_type": "asn",
+                    "delegated_date": "20260221",
+                    "status": "allocated",
+                    "range_start": 65002,
+                    "range_count": 1,
+                },
+            ],
+            "summary": {
+                "source_row_count": 3,
+                "included_row_count": 2,
+                "excluded_after_cutoff_count": 1,
+                "present_in_compatible_snapshot_count": 2,
+                "compatible_zz_count": 1,
+                "compatible_explicit_other_country_count": 1,
+            },
+            "compatible_override_audit": {
+                "policy": "revised_view_only_compatible_view_unchanged",
+                "explicit_other_country_rows": [
+                    {
+                        "asn": 65002,
+                        "compatible_country": "US",
+                        "revised_country": "IR",
+                    }
+                ],
+            },
+            "limitations_zh": [
+                "该增量文件由旧项目在2026-04-07生成。",
+                "上游官方 delegated 原始文件未在发现目录中保留。",
+                "delegated 国家归属不等同于路由运营位置。",
+            ],
+        }
+
+    def test_revised_delta_parser_overrides_explicit_rows_and_keeps_base(self):
+        compatible_snapshot = self._compatible_mapping_snapshot()
+        compatible_before = copy.deepcopy(compatible_snapshot)
+        frozen_delta = self._revised_delta_snapshot()
+
+        first = mapping_view_from_revised_snapshot(
+            frozen_delta,
+            compatible_snapshot,
+        )
+        second = mapping_view_from_revised_snapshot(
+            frozen_delta,
+            compatible_snapshot,
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first.view, "revised")
+        self.assertEqual(first.target_country, "IR")
+        self.assertEqual(first.source_sha256, "b" * 64)
+        self.assertEqual(first.source_ref, "/evidence/revised-source.csv")
+        self.assertTrue(first.target_membership(65001))
+        self.assertTrue(first.target_membership(65002))
+        self.assertTrue(first.target_membership(65003))
+        compatible = mapping_view_from_frozen_snapshot(compatible_snapshot)
+        self.assertFalse(compatible.target_membership(65001))
+        self.assertFalse(compatible.target_membership(65002))
+        union = build_raw_retention_mapping_union((compatible, first))
+        self.assertTrue(union.raw_retention_membership(65001))
+        self.assertTrue(union.raw_retention_membership(65002))
+        self.assertEqual(union.explicit_target_asns, (65001, 65002, 65003))
+        self.assertEqual(compatible_snapshot, compatible_before)
+        self.assertIsNotNone(first.revised_lineage)
+        self.assertEqual(
+            tuple(
+                (value.asn, value.base_country, value.override_reason)
+                for value in first.revised_lineage.delta_entries
+            ),
+            (
+                (
+                    65001,
+                    "ZZ",
+                    "compatible_zz_overridden_by_pre_cutoff_delegated_ir",
+                ),
+                (
+                    65002,
+                    "US",
+                    "compatible_explicit_other_overridden_by_pre_cutoff_delegated_ir",
+                ),
+            ),
+        )
+        for value in first.revised_lineage.delta_entries:
+            self.assertEqual(value.provenance_sha256, "b" * 64)
+            self.assertEqual(
+                value.provenance_ref,
+                f"/evidence/revised-source.csv#asn={value.asn}",
+            )
+
+    def test_revised_delta_rejects_open_future_or_mismatched_inputs(self):
+        compatible = self._compatible_mapping_snapshot()
+        revised = self._revised_delta_snapshot()
+
+        with self.assertRaisesRegex(CountryImpactError, "顶层字段不闭合"):
+            mapping_view_from_revised_snapshot(
+                {**revised, "extra": True},
+                compatible,
+            )
+
+        mismatched = copy.deepcopy(revised)
+        mismatched["compatible_base_binding"]["snapshot_id"] = "other"
+        with self.assertRaisesRegex(CountryImpactError, "基底身份不匹配"):
+            mapping_view_from_revised_snapshot(mismatched, compatible)
+
+        tampered_compatible = copy.deepcopy(compatible)
+        tampered_compatible["rows"][0]["country_code"] = "IR"
+        with self.assertRaisesRegex(CountryImpactError, "fingerprint 不一致"):
+            mapping_view_from_revised_snapshot(revised, tampered_compatible)
+
+        future = copy.deepcopy(revised)
+        future["rows"][1]["delegated_date"] = "20260313"
+        with self.assertRaisesRegex(CountryImpactError, "未来信息泄漏"):
+            mapping_view_from_revised_snapshot(future, compatible)
+
+        moved_cutoff = copy.deepcopy(revised)
+        moved_cutoff["temporal_policy"][
+            "delegated_date_on_or_before"
+        ] = "20260407"
+        with self.assertRaisesRegex(CountryImpactError, "固定为 20260227"):
+            mapping_view_from_revised_snapshot(moved_cutoff, compatible)
+
+        unsorted = copy.deepcopy(revised)
+        unsorted["rows"].reverse()
+        with self.assertRaisesRegex(CountryImpactError, "按 ASN 排序"):
+            mapping_view_from_revised_snapshot(unsorted, compatible)
+
+        missing_base = copy.deepcopy(revised)
+        missing_base["rows"][1]["asn"] = 65007
+        missing_base["rows"][1]["range_start"] = 65007
+        with self.assertRaisesRegex(CountryImpactError, "不存在于 compatible"):
+            mapping_view_from_revised_snapshot(missing_base, compatible)
+
+        bad_audit = copy.deepcopy(revised)
+        bad_audit["compatible_override_audit"][
+            "explicit_other_country_rows"
+        ] = []
+        with self.assertRaisesRegex(CountryImpactError, "override audit"):
+            mapping_view_from_revised_snapshot(bad_audit, compatible)
+
+        missing_upstream_limit = copy.deepcopy(revised)
+        missing_upstream_limit["limitations_zh"] = [
+            value
+            for value in missing_upstream_limit["limitations_zh"]
+            if "上游官方" not in value
+        ]
+        with self.assertRaisesRegex(CountryImpactError, "上游 official delegated"):
+            mapping_view_from_revised_snapshot(missing_upstream_limit, compatible)
+
+        missing_generated_date_limit = copy.deepcopy(revised)
+        missing_generated_date_limit["limitations_zh"] = [
+            value
+            for value in missing_generated_date_limit["limitations_zh"]
+            if "2026-04-07" not in value
+        ]
+        with self.assertRaisesRegex(CountryImpactError, "来源日期限制"):
+            mapping_view_from_revised_snapshot(
+                missing_generated_date_limit,
+                compatible,
+            )
+
+    def test_raw_retention_union_truth_table_and_source_binding(self):
+        compatible_snapshot = self._compatible_mapping_snapshot()
+        compatible = mapping_view_from_frozen_snapshot(compatible_snapshot)
+        revised = mapping_view_from_revised_snapshot(
+            self._revised_delta_snapshot(),
+            compatible_snapshot,
+        )
+
+        union = build_raw_retention_mapping_union((revised, compatible))
+
+        self.assertEqual(union.raw_retention_membership(65001), True)
+        self.assertEqual(union.raw_retention_membership(65002), True)
+        self.assertEqual(union.raw_retention_membership(65003), True)
+        self.assertIsNone(union.raw_retention_membership(65004))
+        self.assertIsNone(union.raw_retention_membership(65005))
+        self.assertEqual(union.raw_retention_membership(65006), False)
+        self.assertIsNone(union.raw_retention_membership(65007))
+        self.assertEqual(
+            union.decision_for(65005).decision_state,
+            "unknown_or_conflict_without_explicit_target",
+        )
+        self.assertEqual(
+            union.source_bindings,
+            (
+                (
+                    "compatible",
+                    "a" * 64,
+                    compatible_snapshot["snapshot_id"],
+                ),
+                ("revised", "b" * 64, "/evidence/revised-source.csv"),
+            ),
+        )
+        self.assertEqual(union.semantics, RAW_RETENTION_UNION_SEMANTICS)
+        self.assertNotIsInstance(union, CountryMappingView)
+        self.assertFalse(hasattr(union, "target_membership"))
+        self.assertFalse(hasattr(union, "view"))
+        self.assertFalse(hasattr(union, "assignments"))
+        with self.assertRaisesRegex(CountryImpactError, "CountryMappingView"):
+            build_country_cohort(seed(), (), union)
+        evidence = union.decision_for(65001).view_evidence
+        self.assertEqual(
+            tuple((row.view, row.source_sha256, row.source_ref) for row in evidence),
+            union.source_bindings,
+        )
+
+    def test_raw_retention_union_rejects_duplicate_views_and_target_mismatch(self):
+        compatible_snapshot = self._compatible_mapping_snapshot()
+        compatible_ir = mapping_view_from_frozen_snapshot(compatible_snapshot)
+        revised_ir = mapping_view_from_revised_snapshot(
+            self._revised_delta_snapshot(),
+            compatible_snapshot,
+        )
+        revised_us = build_country_mapping_view(
+            (),
+            view="revised",
+            target_country="US",
+            source_sha256="c" * 64,
+            source_ref="revised-us",
+        )
+
+        with self.assertRaisesRegex(CountryImpactError, "同名或重复"):
+            build_raw_retention_mapping_union((compatible_ir, compatible_ir))
+        with self.assertRaisesRegex(CountryImpactError, "目标国家不一致"):
+            build_raw_retention_mapping_union((compatible_ir, revised_us))
+        with self.assertRaisesRegex(CountryImpactError, "恰含"):
+            build_raw_retention_mapping_union((revised_ir,))
+
+    def test_raw_retention_union_rejects_hand_built_revised_without_lineage(self):
+        compatible = mapping_view_from_frozen_snapshot(
+            self._compatible_mapping_snapshot()
+        )
+        hand_built_revised = build_country_mapping_view(
+            compatible.assignments,
+            view="revised",
+            target_country="IR",
+            source_sha256="b" * 64,
+            source_ref="hand-built-revised",
+        )
+
+        with self.assertRaisesRegex(CountryImpactError, "RevisedMappingLineage"):
+            build_raw_retention_mapping_union((compatible, hand_built_revised))
+
     def test_shared_population_batch_is_semantically_equal_and_scanned_once(self):
         shared_entries = tuple(
             entry(

@@ -294,7 +294,12 @@ def _validate_country_mapping(profile: Mapping[str, Any]) -> None:
     _text(mapping["source_binding"], "country_mapping.source_binding", choices=("resolver_manifest_path_and_sha256_required",))
 
 
-def _validate_baseline(profile: Mapping[str, Any], granularity: int) -> None:
+def _validate_baseline(
+    profile: Mapping[str, Any],
+    start: datetime,
+    end: datetime,
+    granularity: int,
+) -> None:
     baseline = _keys(profile["baseline"], "baseline", ("membership", "numeric", "normal_band"))
     membership = _keys(
         baseline["membership"],
@@ -318,7 +323,8 @@ def _validate_baseline(profile: Mapping[str, Any], granularity: int) -> None:
             "extension_direction",
             "extension_step_seconds",
             "max_duration_seconds",
-            "stop_before_confirmed_onset",
+            "stop_before_exclusion_boundary",
+            "exclusion_boundary",
             "unstable_exhausted_state",
             "record_actual_window",
         ),
@@ -335,8 +341,43 @@ def _validate_baseline(profile: Mapping[str, Any], granularity: int) -> None:
     _text(numeric["dispersion"], "baseline.numeric.dispersion", choices=("median_absolute_deviation",))
     _number(numeric["max_relative_mad"], "baseline.numeric.max_relative_mad", minimum=0.0, maximum=1.0)
     _text(numeric["extension_direction"], "baseline.numeric.extension_direction", choices=("forward",))
-    if not _boolean(numeric["stop_before_confirmed_onset"], "baseline.numeric.stop_before_confirmed_onset"):
-        raise ResearchProfileError("基线扩展必须在确认的 onset 前停止")
+    if not _boolean(
+        numeric["stop_before_exclusion_boundary"],
+        "baseline.numeric.stop_before_exclusion_boundary",
+    ):
+        raise ResearchProfileError("基线扩展必须在候选排除边界前停止")
+    boundary = _keys(
+        numeric["exclusion_boundary"],
+        "baseline.numeric.exclusion_boundary",
+        ("at_utc", "role", "confirmation_state", "causal_claim_allowed"),
+    )
+    boundary_at = _utc(
+        boundary["at_utc"], "baseline.numeric.exclusion_boundary.at_utc"
+    )
+    _text(
+        boundary["role"],
+        "baseline.numeric.exclusion_boundary.role",
+        choices=("user_supplied_earliest_possible_precursor_boundary",),
+    )
+    _text(
+        boundary["confirmation_state"],
+        "baseline.numeric.exclusion_boundary.confirmation_state",
+        choices=("candidate_not_confirmed",),
+    )
+    if _boolean(
+        boundary["causal_claim_allowed"],
+        "baseline.numeric.exclusion_boundary.causal_claim_allowed",
+    ):
+        raise ResearchProfileError("候选排除边界不得授权因果或前兆结论")
+    boundary_offset = int((boundary_at - start).total_seconds())
+    if boundary_at <= start or boundary_at > end:
+        raise ResearchProfileError(
+            "基线候选排除边界必须位于研究窗口起点之后且不晚于观察边界"
+        )
+    if boundary_offset % granularity:
+        raise ResearchProfileError("基线候选排除边界必须与研究粒度整槽对齐")
+    if boundary_offset < initial:
+        raise ResearchProfileError("基线候选排除边界必须容纳完整初始基线窗口")
     _text(numeric["unstable_exhausted_state"], "baseline.numeric.unstable_exhausted_state", choices=("incomplete",))
     if not _boolean(numeric["record_actual_window"], "baseline.numeric.record_actual_window"):
         raise ResearchProfileError("必须记录实际使用的基线窗口")
@@ -538,7 +579,7 @@ def validate_research_profile(value: Mapping[str, Any]) -> Dict[str, Any]:
     start, end, granularity = _validate_window(profile)
     _validate_input_selection(profile, start, end, granularity)
     _validate_country_mapping(profile)
-    _validate_baseline(profile, granularity)
+    _validate_baseline(profile, start, end, granularity)
     _validate_measurement(profile)
     _validate_algorithms(profile)
     _validate_resource_limits(profile)

@@ -218,7 +218,11 @@ research_profile
 | `extension_direction` | `forward` | 不稳定时向后扩展 |
 | `extension_step_seconds` | 正整数 | 21,600 |
 | `max_duration_seconds` | 正整数 | 86,400 |
-| `stop_before_confirmed_onset` | const `true` | 不让已确认异常污染基线 |
+| `stop_before_exclusion_boundary` | const `true` | 基线扩展不得跨过候选排除边界 |
+| `exclusion_boundary.at_utc` | 规范 UTC | 本次为 `2026-02-27T22:00:00Z` |
+| `exclusion_boundary.role` | `user_supplied_earliest_possible_precursor_boundary` | 用户提供的最早可能前兆边界 |
+| `exclusion_boundary.confirmation_state` | `candidate_not_confirmed` | 不是已确认 onset |
+| `exclusion_boundary.causal_claim_allowed` | const `false` | 不授权前兆或因果结论 |
 | `unstable_exhausted_state` | `incomplete` | 达上限仍不稳定则运行不完整 |
 | `record_actual_window` | const `true` | 必须记录实际使用的基线窗口 |
 
@@ -794,3 +798,29 @@ AS_PATH、RouteEvent 和 peer session 状态都是观测证据，不是数据包
 10. 输出不可变、原子发布、不覆盖已有制品，不修改前端、不部署生产。
 
 任何条件失败都应产出 `incomplete` 或 `not_accepted` 的运行记录和失败证据，不得把未知填为 0、把旧峰值摘要包装成同快照事实，或为通过合同伪造 Evidence 引用。
+
+## 13. 完整窗口 UPDATE 计数与 partial VP 投影
+
+- `country-outage-sample/v1.metrics.announce_count` 与 `withdraw_count` 只表示当前 carried-state 工作集实际保留的 tracked-prefix UPDATE 数，即 `retained_announce` / `retained_withdraw`；它们不是采集器全量报文数，也不表示 IR 或任何主体的主动宣告、主动撤回或意图。
+- 采集器全量槽级计数使用 `collector_total_announce_count` / `collector_total_withdraw_count`，只发布在 `rrc25-full-window-sample-measurement-semantics/v1` sidecar，不能与 retained 计数混用。
+- 当 VP 覆盖不完整时，v1 样本中的受影响数值与 ASN 集合必须投影为 `unknown_state_gap + null`；实际 carried-state 部分观测值、原始 partial value state、down VP 和计数 scope 仅保存在由相同 `sample_id`、`snapshot_id` 与不可变 shard 引用绑定的 sidecar。
+- peer session down 不是隐式 WITHDRAW。partial carried-state 可供显式披露的研究算法使用，但不得在 Evidence Bundle 的 v1 样本中伪装为完整 observed 人口。
+- 双目录复现仅证明同一冻结 journal 的纯派生业务语义一致；若没有重放真实 MRT，必须标记 `raw_replay_reproduction=not_performed_by_user_choice`，不得称为原始全链 A/B。
+
+## 14. 完整窗口原始读取账本与 seed 离线闭包
+
+- 原始读取硬门按 `genesis + 全部 attempt reservation` 的不退款累计上界核验；失败、重试和发布后失败均不得从 50 GB 累计中扣回。
+- 正常完成或可在同进程精确观测的失败使用 `observed_compressed_bytes_state=exact`，并要求实测值与上下界相等。进程被强制终止且无法可信取得 gzip 已读量时，必须使用 `unknown_after_process_termination`，精确值为 `null`，区间保守记为 `[0, artifact.size_bytes]`。
+- 只要存在上述未知终止，汇总 `observed_compressed_bytes_sum` 与 `new_raw_bytes_read` 必须为 `null`；同时发布 `observed_compressed_bytes_lower_bound_sum` / `observed_compressed_bytes_upper_bound_sum` 与对应读取上下界，不能把 reservation 或上界伪装成实测值。资源准入仍以不退款 reservation 上界为准。
+- `ACCUMULATOR` 只用于 attempt 热路径的滚动累计；最终化与离线验包必须扫描完整 create-only attempt ledger 重算，并与其指纹、attempt 数、genesis 引用和累计 reservation 对账。`ACTIVE` 是可变执行租约状态，不是证据；存在时必须先在执行锁内完成 reconcile，最终化不得收录或绕过。
+- seed bootstrap 包含 full-seed v2 checkpoint 的身份哈希、完整 seed RouteEvent/raw 引用投影、可离线重放的 route state、初始 compact state、spool attestation、parser 身份和退役收据。checkpoint 原字节未封包，因此离线范围固定为 `checkpoint_identity_and_seed_evidence_projection_without_checkpoint_bytes`，不得描述为 checkpoint 字节级复现。
+- seed 退役成功收据与 raw verification attempt 必须分别验证自身 schema 和 fingerprint，并闭合到同一 selection、checkpoint、spool、压缩 seed 原件及 genesis raw accounting；只重算外层 attestation fingerprint 不能替代这些内层证明。
+
+## 15. Evidence provenance 包络、物理记录流与最终化软停止门
+
+- 旧 Incident 的 locator `2026-02-27T01:12:32Z` 只用于稳定源记录身份，不能冒充研究事件起点。由于 Evidence Bundle v2 要求 Incident 身份时间落在其数据档窗口内，Bundle 使用独立的 provenance 包络：起点取 `min(locator, Profile.start)`，结束仍取 `Profile.end_exclusive`。
+- provenance 包络不改变研究窗口。`MetricWindow`、五分钟样本、Episode、Wave 和恢复判断仍严格限定在 Profile 半开窗口 `[2026-02-27T16:00:00Z, Profile.end_exclusive)`；`[2026-02-27T01:12:32Z,2026-02-27T16:00:00Z)` 明确标记为不属于本次 RRC25 MRT 研究覆盖。因此 Bundle 的 `raw_source_status` 必须保持 `partial`，不能因 Profile 窗口内 RouteEvent 已闭合就改写为 `full`。
+- `record_observations` 是逐物理 MRT record 的完整观测流，真实全窗可能达到百万或千万行。最终化只能逐 receipt、逐 shard 流式校验，并保存总记录数和有域分隔的有序 shard 语义哈希链；`_JournalData` 不得长期持有全窗 observation tuple。原始不可变 shard 仍按原字节复制进最终包，离线验包使用同一流式算法重算 count 与语义链。
+- 每个 retained `raw_record_ref` 必须按 `(artifact_id, record_ordinal)` 与对应 `record_observation` 的 `raw_record_sha256`、`record_offset`、`record_length` 精确一致，且 `record_hash` 必须等于该物理 record SHA-256。每个 retained RouteEvent 只能指向 `record_kind=update` 的 observation；合法格式但内容伪造的 64 位哈希同样失败关闭。
+- BGP4MP_ET 的事件时间可带规范小数秒，例如 `2026-02-27T16:00:01.123456Z`。RouteEvent、control record 与 record observation 使用事件时间规范器保留该精度；Profile、槽起止和输入制品时间仍必须是秒级 UTC。
+- 最终化在 journal load、独立逐槽复算、ancestry inventory、复制、fsync 和发布前核验的长循环中执行 540 秒合作式软停止检查。达到软门即正常失败且不得进入原子发布；600 秒仍是不可突破的资源硬边界。本阶段不实现最终化断点续跑。

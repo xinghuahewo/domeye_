@@ -36,6 +36,10 @@ class ResearchProfileTest(unittest.TestCase):
         self.assertEqual(profile["window"]["granularity_seconds"], 300)
         self.assertEqual(profile["measurement"]["address_families"], ["ipv4", "ipv6"])
         self.assertEqual(profile["resource_limits"]["database_writes"], "forbidden")
+        boundary = profile["baseline"]["numeric"]["exclusion_boundary"]
+        self.assertEqual(boundary["at_utc"], "2026-02-27T22:00:00Z")
+        self.assertEqual(boundary["confirmation_state"], "candidate_not_confirmed")
+        self.assertFalse(boundary["causal_claim_allowed"])
 
     def test_half_open_window_has_1928_updates_and_excludes_end_boundary(self):
         slots = list(iter_update_slots(self.profile))
@@ -89,6 +93,17 @@ class ResearchProfileTest(unittest.TestCase):
         self.assertRegex(first, r"^research_run_v1_[0-9a-f]{24}$")
         self.assertNotEqual(first, research_run_id_v1(changed, **values))
 
+        changed_boundary = deepcopy(self.profile)
+        changed_boundary["baseline"]["numeric"]["exclusion_boundary"][
+            "at_utc"
+        ] = "2026-02-27T22:05:00Z"
+        self.assertNotEqual(
+            profile_sha256(self.profile), profile_sha256(changed_boundary)
+        )
+        self.assertNotEqual(
+            first, research_run_id_v1(changed_boundary, **values)
+        )
+
     def test_missing_and_unknown_fields_are_not_defaulted(self):
         missing = deepcopy(self.profile)
         del missing["algorithms"]["episode"]["confirm_consecutive_slots"]
@@ -110,6 +125,21 @@ class ResearchProfileTest(unittest.TestCase):
         inclusive["input_selection"]["analysis_updates"]["expected_slot_count"] = 1929
         with self.assertRaisesRegex(ResearchProfileError, "推导值 1928"):
             validate_research_profile(inclusive)
+
+    def test_candidate_exclusion_boundary_cannot_be_promoted_to_causal_onset(self):
+        causal = deepcopy(self.profile)
+        causal["baseline"]["numeric"]["exclusion_boundary"][
+            "causal_claim_allowed"
+        ] = True
+        with self.assertRaisesRegex(ResearchProfileError, "不得授权因果"):
+            validate_research_profile(causal)
+
+        confirmed = deepcopy(self.profile)
+        confirmed["baseline"]["numeric"]["exclusion_boundary"][
+            "confirmation_state"
+        ] = "confirmed_onset"
+        with self.assertRaisesRegex(ResearchProfileError, "candidate_not_confirmed"):
+            validate_research_profile(confirmed)
 
     def test_incomplete_seed_or_relaxed_readonly_boundary_is_rejected(self):
         incomplete_seed = deepcopy(self.profile)

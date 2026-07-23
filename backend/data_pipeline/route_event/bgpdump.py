@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections import OrderedDict
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -85,6 +86,19 @@ _SPOOL_ENTRY_HEADER = struct.Struct("!8sQQQ32s")
 # 仅用 item 数推测内存。
 BGPDUMP_ABSOLUTE_MAX_STDOUT_QUEUE_CAPACITY = 4096
 BGPDUMP_ABSOLUTE_MAX_STDOUT_QUEUE_SOURCE_BYTES = 8 * 1024 * 1024
+
+# stdout 热路径按一次 pipe read 得到的完整行成批移交。该上限不会改变队列的
+# logical item/source-byte 双重硬门：batch 入队仍按其中每一行精确计数；它只把
+# 原来每行一次的 Condition acquire/notify 降为每批一次。64 KiB 与 pipe 读取
+# 上限一致，因此 worker 不会为了凑批而等待下一次 I/O/ordinal/EOF。
+_STDOUT_READ_CHUNK_BYTES = 64 * 1024
+_STDOUT_BATCH_MAX_LINES = 1024
+
+# AS_PATH/peer IP 规范化结果仅在单个 stdout worker 生命周期内缓存。缓存同时受
+# entry 数和原始 key 字节数约束；parsed 对象继续沿用上方 64x+4KiB 的保守内存
+# 模型，最坏 retained heap 小于 80 MiB，且不会跨 artifact 累积。
+_LINE_PARSE_CACHE_MAX_ENTRIES = 4096
+_LINE_PARSE_CACHE_MAX_KEY_BYTES = 1024 * 1024
 
 # _parse_output_line 只保留定长字段、规范化字符串及由输入字符一一约束数量的
 # AS_PATH 整数/segment。按 CPython 对小对象、tuple 和 dataclass 的开销取 64x
@@ -157,16 +171,31 @@ class _StdoutDone:
     group_count: int
 
 
+@dataclass(frozen=True)
+class _QueueEntry:
+    items: Tuple[Any, ...]
+    source_bytes: int
+
+
 class _BoundedOutputQueue:
-    """同时按 item 数和原始 stdout 行字节数实施背压。"""
+    """同时按 logical item 数和原始 stdout 行字节数实施背压。
+
+    内部 entry 可以包含多行，但 ``max_items``、``qsize`` 和 peak 统计始终按
+    ``_ParsedLine`` 的 logical 数量计算；sentinel 仍占一个 item。批处理因此不
+    会放宽既有内存/元素硬上限。
+    """
 
     def __init__(self, *, max_items: int, max_source_bytes: int) -> None:
         self._max_items = max_items
         self._max_source_bytes = max_source_bytes
-        self._items: "deque[Any]" = deque()
+        self._entries: "deque[_QueueEntry]" = deque()
+        self._item_count = 0
         self._source_bytes = 0
         self._peak_items = 0
         self._peak_source_bytes = 0
+        self._entry_put_count = 0
+        self._entry_get_count = 0
+        self._peak_entry_items = 0
         self._condition = threading.Condition()
 
     @staticmethod
@@ -175,14 +204,23 @@ class _BoundedOutputQueue:
             return item.source_line_bytes
         return 0
 
-    def put(self, item: Any, timeout: Optional[float] = None) -> None:
-        weight = self._weight(item)
-        if weight < 0 or weight > self._max_source_bytes:
+    def _put_items(
+        self, items: Tuple[Any, ...], timeout: Optional[float] = None
+    ) -> None:
+        if not items:
+            raise ValueError("stdout queue batch 不得为空")
+        if len(items) > self._max_items:
+            raise queue.Full
+        weights = tuple(self._weight(item) for item in items)
+        if any(weight < 0 for weight in weights):
+            raise queue.Full
+        weight = sum(weights)
+        if weight > self._max_source_bytes:
             raise queue.Full
         deadline = None if timeout is None else time.monotonic() + timeout
         with self._condition:
             while (
-                len(self._items) >= self._max_items
+                self._item_count + len(items) > self._max_items
                 or self._source_bytes + weight > self._max_source_bytes
             ):
                 if deadline is None:
@@ -192,18 +230,29 @@ class _BoundedOutputQueue:
                 if remaining <= 0:
                     raise queue.Full
                 self._condition.wait(remaining)
-            self._items.append(item)
+            self._entries.append(_QueueEntry(items, weight))
+            self._item_count += len(items)
             self._source_bytes += weight
-            self._peak_items = max(self._peak_items, len(self._items))
+            self._entry_put_count += 1
+            self._peak_entry_items = max(self._peak_entry_items, len(items))
+            self._peak_items = max(self._peak_items, self._item_count)
             self._peak_source_bytes = max(
                 self._peak_source_bytes, self._source_bytes
             )
             self._condition.notify_all()
 
+    def put(self, item: Any, timeout: Optional[float] = None) -> None:
+        self._put_items((item,), timeout)
+
+    def put_many(
+        self, items: Sequence[Any], timeout: Optional[float] = None
+    ) -> None:
+        self._put_items(tuple(items), timeout)
+
     def get(self, timeout: Optional[float] = None) -> Any:
         deadline = None if timeout is None else time.monotonic() + timeout
         with self._condition:
-            while not self._items:
+            while not self._entries:
                 if deadline is None:
                     self._condition.wait()
                     continue
@@ -211,14 +260,40 @@ class _BoundedOutputQueue:
                 if remaining <= 0:
                     raise queue.Empty
                 self._condition.wait(remaining)
-            item = self._items.popleft()
-            self._source_bytes -= self._weight(item)
+            entry = self._entries.popleft()
+            item = entry.items[0]
+            item_weight = self._weight(item)
+            if len(entry.items) > 1:
+                self._entries.appendleft(
+                    _QueueEntry(entry.items[1:], entry.source_bytes - item_weight)
+                )
+            self._item_count -= 1
+            self._source_bytes -= item_weight
+            self._entry_get_count += 1
             self._condition.notify_all()
             return item
 
+    def get_many(self, timeout: Optional[float] = None) -> Tuple[Any, ...]:
+        deadline = None if timeout is None else time.monotonic() + timeout
+        with self._condition:
+            while not self._entries:
+                if deadline is None:
+                    self._condition.wait()
+                    continue
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise queue.Empty
+                self._condition.wait(remaining)
+            entry = self._entries.popleft()
+            self._item_count -= len(entry.items)
+            self._source_bytes -= entry.source_bytes
+            self._entry_get_count += 1
+            self._condition.notify_all()
+            return entry.items
+
     def qsize(self) -> int:
         with self._condition:
-            return len(self._items)
+            return self._item_count
 
     def source_bytes(self) -> int:
         with self._condition:
@@ -227,11 +302,22 @@ class _BoundedOutputQueue:
     def snapshot(self) -> Dict[str, int]:
         with self._condition:
             return {
-                "current_items": len(self._items),
+                "current_items": self._item_count,
                 "current_source_bytes": self._source_bytes,
                 "peak_items": self._peak_items,
                 "peak_source_bytes": self._peak_source_bytes,
+                "entry_put_count": self._entry_put_count,
+                "entry_get_count": self._entry_get_count,
+                "peak_entry_items": self._peak_entry_items,
             }
+
+    @property
+    def max_items(self) -> int:
+        return self._max_items
+
+    @property
+    def max_source_bytes(self) -> int:
+        return self._max_source_bytes
 
 
 class _FailureState:
@@ -283,7 +369,9 @@ class _ProgressState:
         with self._lock:
             self._last = time.monotonic()
             self._last_event = event
-            self._last_detail = dict(sorted(detail.items()))
+            # 调用点的 keyword 顺序在 Python 3.7+ 已稳定；热路径无需为每次
+            # I/O 进展重新排序并分配 item 列表。
+            self._last_detail = dict(detail)
             self._event_counts[event] += 1
             observed = detail.get("compressed_bytes_read")
             if isinstance(observed, int) and not isinstance(observed, bool):
@@ -303,6 +391,41 @@ class _ProgressState:
                 "event_counts": dict(sorted(self._event_counts.items())),
                 "compressed_bytes_read": self._compressed_bytes_read,
             }
+
+
+class _BoundedLineParseCache:
+    """单 artifact、双硬上限的 stdout 规范化 LRU。"""
+
+    def __init__(self) -> None:
+        self._entries: "OrderedDict[Tuple[str, str], Tuple[int, Any]]" = (
+            OrderedDict()
+        )
+        self._key_bytes = 0
+
+    def get_or_compute(
+        self,
+        namespace: str,
+        value: str,
+        compute: Callable[[], Any],
+    ) -> Any:
+        key = (namespace, value)
+        cached = self._entries.pop(key, None)
+        if cached is not None:
+            self._entries[key] = cached
+            return cached[1]
+        result = compute()
+        key_bytes = len(namespace.encode("utf-8")) + len(value.encode("utf-8"))
+        if key_bytes > _LINE_PARSE_CACHE_MAX_KEY_BYTES:
+            return result
+        while self._entries and (
+            len(self._entries) >= _LINE_PARSE_CACHE_MAX_ENTRIES
+            or self._key_bytes + key_bytes > _LINE_PARSE_CACHE_MAX_KEY_BYTES
+        ):
+            _old_key, (old_bytes, _old_value) = self._entries.popitem(last=False)
+            self._key_bytes -= old_bytes
+        self._entries[key] = (key_bytes, result)
+        self._key_bytes += key_bytes
+        return result
 
 
 def _pwrite_all(descriptor: int, payload: bytes, offset: int) -> None:
@@ -581,7 +704,7 @@ def _adapter_error(error: BaseException, message: str) -> BgpdumpAdapterError:
 
 
 def _put_bounded(
-    target: "queue.Queue[Any]", item: Any, cancel: threading.Event
+    target: Any, item: Any, cancel: threading.Event
 ) -> bool:
     while not cancel.is_set():
         try:
@@ -592,8 +715,22 @@ def _put_bounded(
     return False
 
 
+def _put_many_bounded(
+    target: _BoundedOutputQueue,
+    items: Sequence[Any],
+    cancel: threading.Event,
+) -> bool:
+    while not cancel.is_set():
+        try:
+            target.put_many(items, timeout=0.1)
+            return True
+        except queue.Full:
+            continue
+    return False
+
+
 def _get_bounded(
-    source: "queue.Queue[Any]",
+    source: Any,
     *,
     failure: _FailureState,
     cancel: threading.Event,
@@ -608,6 +745,41 @@ def _get_bounded(
             raise error
         try:
             return source.get(timeout=0.1)
+        except queue.Empty:
+            if progress.idle_seconds() > idle_timeout_seconds:
+                diagnostics = progress.snapshot()
+                if runtime_snapshot is not None:
+                    try:
+                        diagnostics["runtime"] = dict(runtime_snapshot())
+                    except BaseException as error:
+                        diagnostics["runtime_snapshot_error"] = type(error).__name__
+                raise BgpdumpOutputError(
+                    f"bgpdump 超过 {idle_timeout_seconds:g} 秒无 frame/stdout 进展；"
+                    f"wait_stage={wait_stage}；diagnostics={diagnostics!r}"
+                )
+            if cancel.is_set():
+                error = failure.get()
+                if error is not None:
+                    raise error
+                raise BgpdumpAdapterError("bgpdump 流水线在完成前被取消")
+
+
+def _get_many_bounded(
+    source: _BoundedOutputQueue,
+    *,
+    failure: _FailureState,
+    cancel: threading.Event,
+    progress: _ProgressState,
+    idle_timeout_seconds: float,
+    wait_stage: str,
+    runtime_snapshot: Optional[Callable[[], Mapping[str, Any]]] = None,
+) -> Tuple[Any, ...]:
+    while True:
+        error = failure.get()
+        if error is not None:
+            raise error
+        try:
+            return source.get_many(timeout=0.1)
         except queue.Empty:
             if progress.idle_seconds() > idle_timeout_seconds:
                 diagnostics = progress.snapshot()
@@ -653,7 +825,35 @@ def _write_all(stream: BinaryIO, payload: bytes) -> None:
         view = view[written:]
 
 
-def _normalize_epoch_time(value: str, output_format: str) -> Tuple[str, int, int]:
+def _read_available_stdout(stream: BinaryIO, maximum: int) -> bytes:
+    """最多执行一次底层 pipe read，不等待凑满 ``maximum``。
+
+    ``BufferedReader.read(n)`` 可以等待更多字节，不能用于 producer/stdout
+    并行流水线。优先 ``read1``；真实/测试 pipe 则直接 ``os.read(fileno)``。
+    无 fd 的内存 fixture 才退回普通 ``read``，其 EOF/可用字节语义是确定的。
+    """
+
+    read1 = getattr(stream, "read1", None)
+    if callable(read1):
+        return read1(maximum)
+    try:
+        descriptor = stream.fileno()
+    except (AttributeError, OSError):
+        return stream.read(maximum)
+    return os.read(descriptor, maximum)
+
+
+def _normalize_epoch_time(
+    value: str,
+    output_format: str,
+    cache: Optional[_BoundedLineParseCache] = None,
+) -> Tuple[str, int, int]:
+    if cache is not None:
+        return cache.get_or_compute(
+            f"time:{output_format}",
+            value,
+            lambda: _normalize_epoch_time(value, output_format),
+        )
     matched = _TIMESTAMP_RE.fullmatch(value)
     if matched is None:
         raise BgpdumpOutputError("bgpdump time 必须是十进制 Unix 秒或六位微秒")
@@ -701,28 +901,50 @@ def _parse_uint(value: str, field: str, maximum: int) -> int:
     return parsed
 
 
-def _normalize_ip(value: str, field: str) -> str:
+def _normalize_ip(
+    value: str,
+    field: str,
+    cache: Optional[_BoundedLineParseCache] = None,
+) -> str:
+    if cache is not None:
+        return cache.get_or_compute(
+            "ip",
+            value,
+            lambda: _normalize_ip(value, field),
+        )
     try:
         return ipaddress.ip_address(value).compressed
     except ValueError as error:
         raise BgpdumpOutputError(f"{field} 不是有效 IP") from error
 
 
-def _normalize_prefix(value: str) -> str:
+def _normalize_prefix_and_afi(
+    value: str,
+    cache: Optional[_BoundedLineParseCache] = None,
+) -> Tuple[str, str]:
+    if cache is not None:
+        return cache.get_or_compute(
+            "prefix_afi",
+            value,
+            lambda: _normalize_prefix_and_afi(value),
+        )
     try:
         network = ipaddress.ip_network(value, strict=False)
     except ValueError as error:
         raise BgpdumpOutputError("bgpdump prefix 不是有效 CIDR") from error
-    # RouteEvent 核心也会规范化；适配器先规范一次，避免文本差异进入候选流。
-    return network.compressed
+    return (
+        network.compressed,
+        "ipv4_unicast" if network.version == 4 else "ipv6_unicast",
+    )
+
+
+def _normalize_prefix(value: str) -> str:
+    # 兼容模块内既有私有测试/诊断入口；热路径使用组合函数避免重复解析。
+    return _normalize_prefix_and_afi(value)[0]
 
 
 def _prefix_afi_safi(value: str) -> str:
-    try:
-        version = ipaddress.ip_network(value, strict=False).version
-    except ValueError as error:
-        raise BgpdumpOutputError("bgpdump prefix 不是有效 CIDR") from error
-    return "ipv4_unicast" if version == 4 else "ipv6_unicast"
+    return _normalize_prefix_and_afi(value)[1]
 
 
 def _parse_asn_token(value: str) -> int:
@@ -734,7 +956,16 @@ def _parse_asn_token(value: str) -> int:
     return asn
 
 
-def _parse_as_path(value: str) -> Tuple[AsPathSegment, ...]:
+def _parse_as_path(
+    value: str,
+    cache: Optional[_BoundedLineParseCache] = None,
+) -> Tuple[AsPathSegment, ...]:
+    if cache is not None:
+        return cache.get_or_compute(
+            "as_path",
+            value,
+            lambda: _parse_as_path(value),
+        )
     if not value:
         raise BgpdumpOutputError(
             "bgpdump 空 AS_PATH 无法区分合法空路径与属性缺失，拒绝提升"
@@ -809,7 +1040,12 @@ def _parse_as_path(value: str) -> Tuple[AsPathSegment, ...]:
     return tuple(segments)
 
 
-def _parse_output_line(text: str, *, source_line_bytes: int) -> _ParsedLine:
+def _parse_output_line(
+    text: str,
+    *,
+    source_line_bytes: int,
+    parse_cache: Optional[_BoundedLineParseCache] = None,
+) -> _ParsedLine:
     fields = text.split("|")
     if len(fields) < 4:
         raise BgpdumpOutputError("bgpdump stdout 行字段不足")
@@ -818,7 +1054,7 @@ def _parse_output_line(text: str, *, source_line_bytes: int) -> _ParsedLine:
         raise BgpdumpOutputError("bgpdump stdout 含未验收 format")
     ordinal = _parse_uint(fields[1], "bgpdump -p ordinal", 2**63 - 1)
     event_time, epoch_seconds, microseconds = _normalize_epoch_time(
-        fields[2], output_format
+        fields[2], output_format, parse_cache
     )
     kind = fields[3]
 
@@ -832,7 +1068,7 @@ def _parse_output_line(text: str, *, source_line_bytes: int) -> _ParsedLine:
             microseconds=microseconds,
             kind=kind,
             element=None,
-            state_peer_ip=_normalize_ip(fields[4], "STATE peer_ip"),
+            state_peer_ip=_normalize_ip(fields[4], "STATE peer_ip", parse_cache),
             state_peer_asn=_parse_uint(fields[5], "STATE peer_asn", 4_294_967_295),
             old_state=_parse_uint(fields[6], "STATE old_state", 65_535),
             new_state=_parse_uint(fields[7], "STATE new_state", 65_535),
@@ -842,13 +1078,14 @@ def _parse_output_line(text: str, *, source_line_bytes: int) -> _ParsedLine:
     if kind == "W":
         if len(fields) != 7:
             raise BgpdumpOutputError("bgpdump withdraw 行字段数不符合 1.6.2 -m -p")
+        prefix, afi_safi = _normalize_prefix_and_afi(fields[6], parse_cache)
         element = ParsedRouteElement(
             event_time_utc=event_time,
-            peer_ip=_normalize_ip(fields[4], "withdraw peer_ip"),
+            peer_ip=_normalize_ip(fields[4], "withdraw peer_ip", parse_cache),
             peer_asn=_parse_uint(fields[5], "withdraw peer_asn", 4_294_967_295),
             action="withdraw",
-            prefix=_normalize_prefix(fields[6]),
-            afi_safi=_prefix_afi_safi(fields[6]),
+            prefix=prefix,
+            afi_safi=afi_safi,
             as_path=None,
         )
         return _ParsedLine(
@@ -866,14 +1103,15 @@ def _parse_output_line(text: str, *, source_line_bytes: int) -> _ParsedLine:
         # 结束，共 16 列。严格字段数可以阻止未来输出漂移被静默错位解析。
         if len(fields) != 16 or fields[-1] != "":
             raise BgpdumpOutputError("bgpdump announce 行字段数不符合 1.6.2 -m -p")
+        prefix, afi_safi = _normalize_prefix_and_afi(fields[6], parse_cache)
         element = ParsedRouteElement(
             event_time_utc=event_time,
-            peer_ip=_normalize_ip(fields[4], "announce peer_ip"),
+            peer_ip=_normalize_ip(fields[4], "announce peer_ip", parse_cache),
             peer_asn=_parse_uint(fields[5], "announce peer_asn", 4_294_967_295),
             action="announce",
-            prefix=_normalize_prefix(fields[6]),
-            afi_safi=_prefix_afi_safi(fields[6]),
-            as_path=_parse_as_path(fields[7]),
+            prefix=prefix,
+            afi_safi=afi_safi,
+            as_path=_parse_as_path(fields[7], parse_cache),
         )
         return _ParsedLine(
             ordinal,
@@ -1327,7 +1565,7 @@ def _producer_worker(
 def _stdout_worker(
     *,
     stdout: BinaryIO,
-    outputs: "queue.Queue[Any]",
+    outputs: _BoundedOutputQueue,
     cancel: threading.Event,
     failure: _FailureState,
     progress: _ProgressState,
@@ -1338,60 +1576,107 @@ def _stdout_worker(
     group_count = 0
     output_line_count = 0
     parsing = True
+    pending_bytes = bytearray()
+    parse_cache = _BoundedLineParseCache()
+    batch: list[_ParsedLine] = []
+    batch_source_bytes = 0
+    batch_line_limit = min(_STDOUT_BATCH_MAX_LINES, outputs.max_items)
+
+    def flush_batch() -> bool:
+        nonlocal batch, batch_source_bytes
+        if not batch:
+            return True
+        first_ordinal = batch[0].ordinal
+        last_ordinal = batch[-1].ordinal
+        line_count = len(batch)
+        source_bytes = batch_source_bytes
+        if not _put_many_bounded(outputs, batch, cancel):
+            return False
+        # 批成功入队后才清空本地引用；失败/取消不伪报进度。
+        batch = []
+        batch_source_bytes = 0
+        progress.touch(
+            "stdout_batch_enqueued",
+            first_ordinal=first_ordinal,
+            last_ordinal=last_ordinal,
+            line_count=line_count,
+            source_bytes=source_bytes,
+        )
+        return True
+
     try:
         progress.touch("stdout_worker_started")
         while True:
-            raw = stdout.readline(max_stdout_line_bytes + 1)
-            if not raw:
+            block = _read_available_stdout(stdout, _STDOUT_READ_CHUNK_BYTES)
+            if not block:
                 break
-            progress.touch("stdout_line_read", line_bytes=len(raw))
+            progress.touch("stdout_chunk_read", chunk_bytes=len(block))
             if not parsing:
                 continue
+            pending_bytes.extend(block)
             try:
-                if len(raw) > max_stdout_line_bytes:
-                    raise BgpdumpOutputError("bgpdump stdout 单行超过显式上限")
-                if not raw.endswith(b"\n"):
-                    raise BgpdumpOutputError("bgpdump stdout 末行缺少换行")
-                text = raw[:-1].decode("utf-8", errors="strict")
-                if "\x00" in text or "\r" in text:
-                    raise BgpdumpOutputError("bgpdump stdout 含非法控制字符")
-                parsed = _parse_output_line(text, source_line_bytes=len(raw))
-                progress.touch(
-                    "stdout_line_parsed",
-                    ordinal=parsed.ordinal,
-                    kind=parsed.kind,
-                )
-                output_line_count += 1
-                if output_line_count > max_output_lines:
-                    raise BgpdumpOutputError(
-                        "bgpdump stdout 超过 pilot route/state 行硬上限"
+                start = 0
+                while True:
+                    newline = pending_bytes.find(b"\n", start)
+                    if newline < 0:
+                        break
+                    source_line_bytes = newline - start + 1
+                    if source_line_bytes > max_stdout_line_bytes:
+                        raise BgpdumpOutputError("bgpdump stdout 单行超过显式上限")
+                    raw_line = bytes(pending_bytes[start:newline])
+                    text = raw_line.decode("utf-8", errors="strict")
+                    if "\x00" in text or "\r" in text:
+                        raise BgpdumpOutputError("bgpdump stdout 含非法控制字符")
+                    parsed = _parse_output_line(
+                        text,
+                        source_line_bytes=source_line_bytes,
+                        parse_cache=parse_cache,
                     )
-                if current_ordinal is None:
-                    current_ordinal = parsed.ordinal
-                    group_count = 1
-                elif parsed.ordinal < current_ordinal:
-                    raise BgpdumpOutputError("bgpdump -p ordinal 发生回退")
-                elif parsed.ordinal > current_ordinal:
-                    # 合法 KEEPALIVE 没有 -p 输出，因此输出 ordinal 可以跳过
-                    # physical record。main 线程仍按 raw frame 精确匹配每个有
-                    # 输出的 ordinal；未获准的跳号或多余行会在那里失败关闭。
-                    group_count += 1
-                    current_ordinal = parsed.ordinal
-                # 不等待下一个 ordinal 或 stdout EOF：逐行进入有界队列，主线程
-                # 依据 raw UPDATE shape 的精确元素数完成同 ordinal 组装。这样
-                # 高基数单 frame 不会因组边界迟迟未出现而阻塞 frame 匹配。
-                if not _put_bounded(outputs, parsed, cancel):
+                    output_line_count += 1
+                    if output_line_count > max_output_lines:
+                        raise BgpdumpOutputError(
+                            "bgpdump stdout 超过 pilot route/state 行硬上限"
+                        )
+                    if current_ordinal is None:
+                        current_ordinal = parsed.ordinal
+                        group_count = 1
+                    elif parsed.ordinal < current_ordinal:
+                        raise BgpdumpOutputError("bgpdump -p ordinal 发生回退")
+                    elif parsed.ordinal > current_ordinal:
+                        # 合法控制消息没有 -p 行，所以 ordinal 可跳过；
+                        # raw shape 匹配仍由 main 线程逐 frame 失败关闭。
+                        group_count += 1
+                        current_ordinal = parsed.ordinal
+                    if (
+                        batch
+                        and (
+                            len(batch) >= batch_line_limit
+                            or batch_source_bytes + source_line_bytes
+                            > outputs.max_source_bytes
+                        )
+                        and not flush_batch()
+                    ):
+                        return
+                    batch.append(parsed)
+                    batch_source_bytes += source_line_bytes
+                    start = newline + 1
+                if start:
+                    del pending_bytes[:start]
+                if len(pending_bytes) > max_stdout_line_bytes:
+                    raise BgpdumpOutputError("bgpdump stdout 单行超过显式上限")
+                # 不跨 blocking read 等待凑批，保证单行/高基数单 frame 在子进程
+                # 暂不 EOF 时仍立即可消费；一次 pipe read 内仍可合并数百行。
+                if not flush_batch():
                     return
-                progress.touch(
-                    "stdout_line_enqueued",
-                    ordinal=parsed.ordinal,
-                    kind=parsed.kind,
-                )
             except (UnicodeDecodeError, BgpdumpAdapterError) as error:
                 failure.set(_adapter_error(error, "解析 bgpdump stdout 失败"))
                 cancel.set()
                 parsing = False
         if parsing:
+            if pending_bytes:
+                raise BgpdumpOutputError("bgpdump stdout 末行缺少换行")
+            if not flush_batch():
+                return
             _put_bounded(outputs, _StdoutDone(group_count), cancel)
             progress.touch(
                 "stdout_done_enqueued",
@@ -1771,6 +2056,32 @@ class BgpdumpRecordStream:
                     "stderr_done": stderr_done.is_set(),
                 }
 
+            pending_outputs: "deque[Any]" = deque()
+
+            def next_output(wait_stage: str) -> Any:
+                if pending_outputs:
+                    return pending_outputs.popleft()
+                batch_items = _get_many_bounded(
+                    outputs,
+                    failure=failure,
+                    cancel=cancel,
+                    progress=progress,
+                    idle_timeout_seconds=self._idle_timeout_seconds,
+                    wait_stage=wait_stage,
+                    runtime_snapshot=runtime_snapshot,
+                )
+                if not batch_items:
+                    raise BgpdumpAdapterError("内部 stdout batch 为空")
+                pending_outputs.extend(batch_items[1:])
+                first = batch_items[0]
+                progress.touch(
+                    "stdout_batch_dequeued",
+                    batch_items=len(batch_items),
+                    first_type=type(first).__name__,
+                    pending_items=len(pending_outputs),
+                )
+                return first
+
             producer_done: Optional[_ProducerDone] = None
             stdout_done: Optional[_StdoutDone] = None
             expected_stdout_group_count = 0
@@ -1795,19 +2106,7 @@ class BgpdumpRecordStream:
                         "producer_done_dequeued",
                         record_count=producer_done.record_count,
                     )
-                    output_item = _get_bounded(
-                        outputs,
-                        failure=failure,
-                        cancel=cancel,
-                        progress=progress,
-                        idle_timeout_seconds=self._idle_timeout_seconds,
-                        wait_stage="stdout_done",
-                        runtime_snapshot=runtime_snapshot,
-                    )
-                    progress.touch(
-                        "stdout_dequeued",
-                        item_type=type(output_item).__name__,
-                    )
+                    output_item = next_output("stdout_done")
                     if not isinstance(output_item, _StdoutDone):
                         raise BgpdumpOutputError(
                             "bgpdump 输出行多于 raw UPDATE/STATE shape 或 physical frame"
@@ -1862,24 +2161,15 @@ class BgpdumpRecordStream:
                     > self._max_route_events
                 ):
                     raise BgpdumpOutputError("UPDATE pilot 超过 route event 硬上限")
-                lines_list: list[_ParsedLine] = []
+                elements_list: list[ParsedRouteElement] = []
+                kinds: set[str] = set()
+                observed_announce: Counter[str] = Counter()
+                observed_withdraw: Counter[str] = Counter()
+                route_announce_count = 0
+                route_withdraw_count = 0
+                state_line: Optional[_ParsedLine] = None
                 for _line_index in range(expected_output_line_count):
-                    output_item = _get_bounded(
-                        outputs,
-                        failure=failure,
-                        cancel=cancel,
-                        progress=progress,
-                        idle_timeout_seconds=self._idle_timeout_seconds,
-                        wait_stage="stdout_line",
-                        runtime_snapshot=runtime_snapshot,
-                    )
-                    progress.touch(
-                        "stdout_dequeued",
-                        item_type=type(output_item).__name__,
-                        ordinal=output_item.ordinal
-                        if isinstance(output_item, _ParsedLine)
-                        else None,
-                    )
+                    output_item = next_output("stdout_line")
                     if isinstance(output_item, _StdoutDone):
                         raise BgpdumpOutputError(
                             "physical record 的 bgpdump -p stdout 在满足 raw UPDATE/STATE shape 前结束"
@@ -1890,22 +2180,34 @@ class BgpdumpRecordStream:
                         raise BgpdumpOutputError(
                             "bgpdump -p ordinal 与 Python MRT framer/raw shape 不一致"
                         )
-                    lines_list.append(output_item)
-                lines = tuple(lines_list)
-                for line in lines:
                     if (
-                        line.epoch_seconds != frame_item.mrt_timestamp
-                        or line.microseconds != frame_item.microseconds
+                        output_item.epoch_seconds != frame_item.mrt_timestamp
+                        or output_item.microseconds != frame_item.microseconds
                     ):
                         raise BgpdumpOutputError(
                             "bgpdump 行时间与 MRT common/extended header 不一致"
                         )
-                kinds = {line.kind for line in lines}
+                    kinds.add(output_item.kind)
+                    if output_item.kind == "STATE":
+                        state_line = output_item
+                    else:
+                        element = output_item.element
+                        if element is None:
+                            raise BgpdumpOutputError(
+                                "UPDATE group 含无法生成的 route element"
+                            )
+                        elements_list.append(element)
+                        if output_item.kind == "A":
+                            observed_announce[element.afi_safi] += 1
+                            route_announce_count += 1
+                        elif output_item.kind == "W":
+                            observed_withdraw[element.afi_safi] += 1
+                            route_withdraw_count += 1
                 if expected_output_line_count == 0:
                     if (
                         frame_item.bgp_message_type not in _SILENT_CONTROL_MESSAGE_TYPES
                         or frame_item.update_shape is not None
-                        or lines
+                        or kinds
                     ):
                         raise BgpdumpOutputError("无输出 physical record 不是合法控制消息")
                     elements = ()
@@ -1920,9 +2222,11 @@ class BgpdumpRecordStream:
                         raise BgpdumpOutputError(
                             "STATE 行与 MRT BGP4MP subtype 不一致"
                         )
-                    if len(lines) != 1:
+                    if expected_output_line_count != 1:
                         raise BgpdumpOutputError("一个 STATE_CHANGE frame 只能有一行")
-                    line = lines[0]
+                    if state_line is None:
+                        raise BgpdumpOutputError("STATE_CHANGE frame 缺少 STATE 行")
+                    line = state_line
                     assert line.old_state is not None and line.new_state is not None
                     transitions[(line.old_state, line.new_state)] = (
                         transitions.get((line.old_state, line.new_state), 0) + 1
@@ -1934,23 +2238,11 @@ class BgpdumpRecordStream:
                         raise BgpdumpOutputError(
                             "announce/withdraw 行与 MRT BGP4MP subtype 不一致"
                         )
-                    elements = tuple(
-                        line.element for line in lines if line.element is not None
-                    )
-                    if len(elements) != len(lines):
+                    elements = tuple(elements_list)
+                    if len(elements) != expected_output_line_count:
                         raise BgpdumpOutputError("UPDATE group 含无法生成的 route element")
                     if frame_item.update_shape is None:
                         raise BgpdumpOutputError("UPDATE frame 缺少 raw BGP shape 验证")
-                    observed_announce = Counter(
-                        line.element.afi_safi
-                        for line in lines
-                        if line.kind == "A" and line.element is not None
-                    )
-                    observed_withdraw = Counter(
-                        line.element.afi_safi
-                        for line in lines
-                        if line.kind == "W" and line.element is not None
-                    )
                     if (
                         tuple(sorted(observed_announce.items()))
                         != frame_item.update_shape.announce_counts
@@ -1967,12 +2259,8 @@ class BgpdumpRecordStream:
                         raise BgpdumpOutputError("UPDATE pilot 超过 route event 硬上限")
                     self._statistics["route_record_count"] += 1
                     self._statistics["route_element_count"] += len(elements)
-                    self._statistics["announce_count"] += sum(
-                        1 for line in lines if line.kind == "A"
-                    )
-                    self._statistics["withdraw_count"] += sum(
-                        1 for line in lines if line.kind == "W"
-                    )
+                    self._statistics["announce_count"] += route_announce_count
+                    self._statistics["withdraw_count"] += route_withdraw_count
                 else:
                     raise BgpdumpOutputError(
                         "同一 physical record 混合 STATE 与路由元素"
@@ -2311,6 +2599,16 @@ class BgpdumpRecordStreamFactory:
                 * _PARSED_LINE_MEMORY_EXPANSION_FACTOR
                 + queue_capacity * _PARSED_LINE_FIXED_OVERHEAD_BYTES
             ),
+            "stdout_read_chunk_bytes": _STDOUT_READ_CHUNK_BYTES,
+            "stdout_batch_max_lines": _STDOUT_BATCH_MAX_LINES,
+            "line_parse_cache_max_entries": _LINE_PARSE_CACHE_MAX_ENTRIES,
+            "line_parse_cache_max_key_bytes": _LINE_PARSE_CACHE_MAX_KEY_BYTES,
+            "line_parse_cache_retained_heap_upper_bound_bytes": (
+                _LINE_PARSE_CACHE_MAX_KEY_BYTES
+                * _PARSED_LINE_MEMORY_EXPANSION_FACTOR
+                + _LINE_PARSE_CACHE_MAX_ENTRIES
+                * _PARSED_LINE_FIXED_OVERHEAD_BYTES
+            ),
             "max_frame_bytes": max_frame_bytes,
             "max_spool_bytes": self._max_spool_bytes,
             "max_stdout_line_bytes": max_stdout_line_bytes,
@@ -2330,7 +2628,7 @@ class BgpdumpRecordStreamFactory:
             "parser_version": expected_version,
             "parser_binary_sha256": attested_binary_sha256,
             "adapter_name": "domeye_bgpdump_adapter",
-            "adapter_version": "1.1.0",
+            "adapter_version": "1.2.0",
             "adapter_source_sha256": adapter_source_sha256,
             "binary_execution_policy": "verified_open_fd_exec",
             "configuration": copy.deepcopy(config),

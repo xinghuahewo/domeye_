@@ -28,10 +28,12 @@ from .baseline import BaselineObservation, NumericBaselineResult, derive_numeric
 from .country_impact import (
     CONFLICT_MAPPING,
     MAPPED,
+    RESOLVED,
     UNKNOWN_MAPPING,
     CountryCohort,
     CountryMappingView,
     CountrySnapshotImpact,
+    derive_origin_asns,
     derive_country_cohort_and_impacts,
     snapshot_ids_v1,
 )
@@ -41,7 +43,10 @@ from .package_manifest import build_package_manifest, canonical_json as package_
 from .profile import profile_sha256, validate_research_profile
 from .reconciliation import build_reconciliation_result, canonical_json as reconciliation_canonical_json
 from .reporting import build_research_report_zh
-from .research_evidence import build_research_evidence_package
+from .research_evidence import (
+    build_research_evidence_package,
+    build_unavailable_research_evidence_package,
+)
 from .research_quality import (
     DiagnosticFact,
     DiagnosticViolation,
@@ -56,7 +61,10 @@ _RUN_ID_RE = re.compile(r"^research_run_v1_[0-9a-f]{24}$")
 _SNAPSHOT_ID_RE = re.compile(r"^snapshot_v1_[0-9a-f]{24}$")
 _EPISODE_ID_RE = re.compile(r"^episode_v1_[0-9a-f]{24}$")
 _ROUTE_ID_RE = re.compile(r"^rte_v1_[0-9a-f]{32}$")
+_SAMPLE_ID_RE = re.compile(r"^sample_v1_[0-9a-f]{24}$")
+_MAPPING_ID_RE = re.compile(r"^incident_episode_map_v1_[0-9a-f]{24}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_HAN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 _OBSERVED_STATES = frozenset(("observed", "observed_zero"))
 _OBSERVATION_CLAIM_TYPES = frozenset(
     (
@@ -76,6 +84,15 @@ _CAUSAL_MISSING_REASONS = {
     "government_intent": "RRC25单源不能观测政府意图",
 }
 _BOUNDED_PILOT_CODE = "bounded_pilot_not_full_profile"
+_INCIDENT_EPISODE_RELATIONS = frozenset(
+    {"temporal_overlap", "legacy_reconciliation", "possible_correspondence"}
+)
+_PREFIX_ATTRIBUTION_REASON_ZH = {
+    "withdraw_origin_unavailable": "withdraw 不携带可核验 origin，未分摊给 cohort ASN",
+    "origin_conflict": "AS_SET 等 origin 冲突，未把候选 ASN 当作确定归因",
+    "origin_unknown": "announce origin 无法确定，未建立 ASN 级 raw proof",
+    "resolved_origin_not_in_cohort": "唯一 origin 不属于该前缀的冻结 cohort ASN",
+}
 
 
 class DerivedAssemblyError(ValueError):
@@ -109,6 +126,7 @@ class DerivedResearchAssembly:
     detection: Optional[DetectionResult]
     episodes: Tuple[Mapping[str, Any], ...]
     waves: Tuple[Mapping[str, Any], ...]
+    incident_episode_mappings: Tuple[Mapping[str, Any], ...]
     episode_as_records: Tuple[Mapping[str, Any], ...]
     evidence_packages: Tuple[Mapping[str, Any], ...]
     reconciliation: Mapping[str, Any]
@@ -224,7 +242,8 @@ def _sample_baseline_observation(sample: Mapping[str, Any]) -> BaselineObservati
 def _automatic_incident_mappings(
     incidents: Sequence[Mapping[str, Any]], episode: EpisodeDetection
 ) -> Tuple[Mapping[str, Any], ...]:
-    first_sample = episode.supporting_sample_ids[0]
+    """缺少显式证据时只输出 no_correspondence，绝不猜测对应关系。"""
+
     if not incidents:
         return (
             {
@@ -244,12 +263,462 @@ def _automatic_incident_mappings(
         mappings.append(
             {
                 "incident_ref": detail_reference,
-                "relation": "possible_correspondence",
+                "relation": "no_correspondence",
                 "causal": False,
-                "evidence_sample_ids": [first_sample],
+                "evidence_sample_ids": [],
             }
         )
     return tuple(mappings)
+
+
+def _incident_episode_mapping_records(
+    *,
+    run_id: str,
+    incidents: Sequence[Mapping[str, Any]],
+    episodes: Sequence[Mapping[str, Any]],
+) -> Tuple[Mapping[str, Any], ...]:
+    """反向输出一等的 Incident→0/1/N research episode 映射。"""
+
+    records = []
+    seen_incident_ids = set()
+    seen_detail_refs = set()
+    for index, incident in enumerate(incidents):
+        incident_id = incident.get("incident_id")
+        detail_ref = incident.get("detail_reference")
+        if (
+            not isinstance(incident_id, str)
+            or not re.fullmatch(r"^inc_v1_[0-9a-f]{24}$", incident_id)
+        ):
+            raise DerivedAssemblyError(f"incidents[{index}].incident_id 非法")
+        if not isinstance(detail_ref, str) or not detail_ref.strip():
+            raise DerivedAssemblyError(f"incidents[{index}].detail_reference 非法")
+        if incident_id in seen_incident_ids or detail_ref in seen_detail_refs:
+            raise DerivedAssemblyError("incidents 不得重复 incident_id 或 detail_reference")
+        seen_incident_ids.add(incident_id)
+        seen_detail_refs.add(detail_ref)
+
+        links = []
+        for episode in episodes:
+            matches = [
+                mapping
+                for mapping in _sequence(
+                    episode.get("incident_mappings"), "episode.incident_mappings"
+                )
+                if isinstance(mapping, Mapping)
+                and mapping.get("incident_ref") == detail_ref
+                and mapping.get("relation") != "no_correspondence"
+            ]
+            if len(matches) > 1:
+                raise DerivedAssemblyError(
+                    f"episode {episode.get('episode_id')} 重复映射同一 Incident"
+                )
+            if not matches:
+                continue
+            mapping = matches[0]
+            if mapping.get("causal") is not False:
+                raise DerivedAssemblyError("Incident→episode 映射必须 causal=false")
+            sample_ids = sorted(
+                set(
+                    _sequence(
+                        mapping.get("evidence_sample_ids"),
+                        "incident_mapping.evidence_sample_ids",
+                    )
+                )
+            )
+            links.append(
+                {
+                    "episode_id": episode["episode_id"],
+                    "relation": mapping.get("relation"),
+                    "causal": False,
+                    "evidence_sample_ids": sample_ids,
+                }
+            )
+        links.sort(key=lambda item: item["episode_id"])
+        count = len(links)
+        state = (
+            "no_research_episode"
+            if count == 0
+            else "single_research_episode"
+            if count == 1
+            else "multiple_research_episodes"
+        )
+        missing_reason = (
+            "当前连续状态证据没有形成可关联的 research episode，未伪造事件边界。"
+            if count == 0
+            else None
+        )
+        semantic = {
+            "schema_version": "incident-episode-mapping/v1",
+            "run_id": run_id,
+            "incident_id": incident_id,
+            "incident_ref": detail_ref,
+            "source_fact_state": incident.get("fact_link_status"),
+            "mapping_state": state,
+            "causal": False,
+            "episode_links": links,
+            "missing_reason_zh": missing_reason,
+        }
+        record = {
+            **semantic,
+            "mapping_id": "incident_episode_map_v1_"
+            + hashlib.sha256(
+                _canonical_json(semantic).encode("utf-8")
+            ).hexdigest()[:24],
+        }
+        validate_incident_episode_mapping_record(record, episodes=episodes)
+        records.append(record)
+    return tuple(sorted(records, key=lambda item: item["incident_id"]))
+
+
+def validate_incident_episode_mapping_record(
+    record: Mapping[str, Any], *, episodes: Sequence[Mapping[str, Any]] = ()
+) -> None:
+    """验证一等 Incident→0/1/N Episode 映射及 sample→Episode 闭合。"""
+
+    if not isinstance(record, Mapping):
+        raise DerivedAssemblyError("incident episode mapping 必须是对象")
+    required = {
+        "schema_version",
+        "mapping_id",
+        "run_id",
+        "incident_id",
+        "incident_ref",
+        "source_fact_state",
+        "mapping_state",
+        "causal",
+        "episode_links",
+        "missing_reason_zh",
+    }
+    if set(record) != required:
+        raise DerivedAssemblyError(
+            f"incident episode mapping 字段必须精确为 {sorted(required)}"
+        )
+    if record.get("schema_version") != "incident-episode-mapping/v1":
+        raise DerivedAssemblyError("incident episode mapping schema_version 非法")
+    if not isinstance(record.get("run_id"), str) or _RUN_ID_RE.fullmatch(
+        str(record.get("run_id"))
+    ) is None:
+        raise DerivedAssemblyError("incident episode mapping run_id 非法")
+    incident_id = record.get("incident_id")
+    if not isinstance(incident_id, str) or re.fullmatch(
+        r"^inc_v1_[0-9a-f]{24}$", incident_id
+    ) is None:
+        raise DerivedAssemblyError("incident episode mapping incident_id 非法")
+    if not isinstance(record.get("incident_ref"), str) or not str(
+        record.get("incident_ref")
+    ).strip():
+        raise DerivedAssemblyError("incident episode mapping incident_ref 非法")
+    if record.get("source_fact_state") not in {
+        "matched",
+        "legacy_collision",
+        "unresolved",
+    }:
+        raise DerivedAssemblyError("incident episode mapping source_fact_state 非法")
+    if record.get("causal") is not False:
+        raise DerivedAssemblyError("Incident→Episode 映射必须 causal=false")
+    mapping_id = record.get("mapping_id")
+    if not isinstance(mapping_id, str) or _MAPPING_ID_RE.fullmatch(mapping_id) is None:
+        raise DerivedAssemblyError("incident episode mapping mapping_id 非法")
+    semantic = dict(record)
+    semantic.pop("mapping_id")
+    expected_id = "incident_episode_map_v1_" + hashlib.sha256(
+        _canonical_json(semantic).encode("utf-8")
+    ).hexdigest()[:24]
+    if mapping_id != expected_id:
+        raise DerivedAssemblyError("mapping_id 与规范内容不一致")
+
+    episode_index = {}
+    expected_links_by_episode = {}
+    for episode in episodes:
+        if not isinstance(episode, Mapping):
+            raise DerivedAssemblyError("episodes 只能包含对象")
+        episode_id = episode.get("episode_id")
+        if not isinstance(episode_id, str) or _EPISODE_ID_RE.fullmatch(episode_id) is None:
+            raise DerivedAssemblyError("episode_id 非法")
+        if episode_id in episode_index:
+            raise DerivedAssemblyError("episodes 不得重复 episode_id")
+        if episode.get("run_id") != record.get("run_id"):
+            raise DerivedAssemblyError(
+                f"episode {episode_id}.run_id 与 incident mapping.run_id 不一致"
+            )
+        episode_index[episode_id] = episode
+        incident_mappings = _sequence(
+            episode.get("incident_mappings"),
+            f"episode {episode_id}.incident_mappings",
+        )
+        matching = [
+            item
+            for item in incident_mappings
+            if isinstance(item, Mapping)
+            and item.get("incident_ref") == record.get("incident_ref")
+        ]
+        if len(matching) > 1:
+            raise DerivedAssemblyError(
+                f"episode {episode_id} 重复映射 incident_ref"
+            )
+        if not matching:
+            continue
+        episode_mapping = matching[0]
+        relation = episode_mapping.get("relation")
+        if episode_mapping.get("causal") is not False:
+            raise DerivedAssemblyError("Episode 内 Incident 映射必须 causal=false")
+        episode_sample_ids = _sequence(
+            episode_mapping.get("evidence_sample_ids"),
+            f"episode {episode_id}.incident_mapping.evidence_sample_ids",
+        )
+        if relation == "no_correspondence":
+            if episode_sample_ids:
+                raise DerivedAssemblyError("no_correspondence 不得引用支持样本")
+            continue
+        if relation not in _INCIDENT_EPISODE_RELATIONS:
+            raise DerivedAssemblyError("Episode 内 incident_mapping.relation 非法")
+        if (
+            not episode_sample_ids
+            or list(episode_sample_ids) != sorted(set(episode_sample_ids))
+        ):
+            raise DerivedAssemblyError(
+                "Episode 内 incident_mapping.evidence_sample_ids 必须非空、去重并排序"
+            )
+        supporting = set(
+            _sequence(
+                episode.get("supporting_sample_ids"),
+                f"episode {episode_id}.supporting_sample_ids",
+            )
+        )
+        if not set(episode_sample_ids) <= supporting:
+            raise DerivedAssemblyError(
+                "Episode 内 incident_mapping 的 sample 不属于目标 Episode"
+            )
+        expected_links_by_episode[episode_id] = {
+            "episode_id": episode_id,
+            "relation": relation,
+            "causal": False,
+            "evidence_sample_ids": list(episode_sample_ids),
+        }
+
+    raw_links = _sequence(record.get("episode_links"), "episode_links")
+    links = []
+    for raw_link in raw_links:
+        if not isinstance(raw_link, Mapping):
+            raise DerivedAssemblyError("episode_links 只能包含对象")
+        if set(raw_link) != {
+            "episode_id",
+            "relation",
+            "causal",
+            "evidence_sample_ids",
+        }:
+            raise DerivedAssemblyError("episode_link 字段不闭合")
+        episode_id = raw_link.get("episode_id")
+        if not isinstance(episode_id, str) or _EPISODE_ID_RE.fullmatch(episode_id) is None:
+            raise DerivedAssemblyError("episode_link.episode_id 非法")
+        if raw_link.get("relation") not in _INCIDENT_EPISODE_RELATIONS:
+            raise DerivedAssemblyError("episode_link.relation 非法")
+        if raw_link.get("causal") is not False:
+            raise DerivedAssemblyError("episode_link 必须 causal=false")
+        sample_ids = _sequence(
+            raw_link.get("evidence_sample_ids"), "episode_link.evidence_sample_ids"
+        )
+        invalid_sample_id = any(
+            not isinstance(value, str) or _SAMPLE_ID_RE.fullmatch(value) is None
+            for value in sample_ids
+        )
+        if (
+            not sample_ids
+            or invalid_sample_id
+            or list(sample_ids) != sorted(set(sample_ids))
+        ):
+            raise DerivedAssemblyError(
+                "episode_link.evidence_sample_ids 必须非空、去重排序且格式合法"
+            )
+        episode = episode_index.get(episode_id)
+        if episode is None:
+            raise DerivedAssemblyError(f"episode_link 引用不存在的 Episode {episode_id}")
+        supporting = set(
+            _sequence(
+                episode.get("supporting_sample_ids"),
+                f"episode {episode_id}.supporting_sample_ids",
+            )
+        )
+        if not set(sample_ids) <= supporting:
+            raise DerivedAssemblyError("episode_link 的 sample 引用不属于目标 Episode")
+        links.append(raw_link)
+    link_ids = [item["episode_id"] for item in links]
+    if link_ids != sorted(set(link_ids)):
+        raise DerivedAssemblyError("episode_links 必须按 episode_id 去重排序")
+    expected_state = (
+        "no_research_episode"
+        if not links
+        else "single_research_episode"
+        if len(links) == 1
+        else "multiple_research_episodes"
+    )
+    if record.get("mapping_state") != expected_state:
+        raise DerivedAssemblyError("mapping_state 与 Episode 链接基数不一致")
+    expected_links = [
+        expected_links_by_episode[episode_id]
+        for episode_id in sorted(expected_links_by_episode)
+    ]
+    if [_canonical_json(item) for item in links] != [
+        _canonical_json(item) for item in expected_links
+    ]:
+        raise DerivedAssemblyError(
+            "Incident→Episode 映射与 Episode.incident_mappings 反向内容不一致"
+        )
+    reason = record.get("missing_reason_zh")
+    if not links:
+        if (
+            not isinstance(reason, str)
+            or not reason.strip()
+            or _HAN_RE.search(reason) is None
+        ):
+            raise DerivedAssemblyError("零 Episode 映射必须提供中文缺失原因")
+    elif reason is not None:
+        raise DerivedAssemblyError("已关联 Episode 的映射不得携带缺失原因")
+
+
+def _automatic_prefix_change_event_ids(
+    *,
+    episode: EpisodeDetection,
+    cohort: CountryCohort,
+    route_events_by_id: Mapping[str, ResearchRouteEvent],
+) -> Tuple[
+    Mapping[Tuple[int, str, str], Tuple[str, ...]],
+    Mapping[str, int],
+]:
+    """从当前 Episode 时间段内的 RouteEvent 建立逐 ASN/前缀变化索引。
+
+    只有 announce 的 origin 已解析为唯一 ASN，且该 ASN 精确属于冻结 cohort
+    的同一 AFI/prefix 时才建立硬链接。withdraw、AS_SET/conflict 与 unknown
+    只计入未归因诊断，绝不分摊成 ASN 级 raw proof。
+    """
+
+    asns_by_prefix: dict[Tuple[str, str], set[int]] = {}
+    for reference in cohort.prefix_references:
+        asns_by_prefix.setdefault((reference.afi, reference.prefix), set()).add(
+            reference.asn
+        )
+    result: dict[Tuple[int, str, str], set[str]] = {}
+    unattributed: dict[str, int] = {}
+
+    def mark(reason: str, count: int = 1) -> None:
+        unattributed[reason] = unattributed.get(reason, 0) + count
+
+    for route_id, event in sorted(route_events_by_id.items()):
+        if event.action not in {"announce", "withdraw"}:
+            continue
+        if not (
+            episode.onset_at
+            <= event.event_time_utc
+            < episode.observation_end_at
+        ):
+            continue
+        if event.afi_safi == "ipv4_unicast":
+            afi = "ipv4"
+        elif event.afi_safi == "ipv6_unicast":
+            afi = "ipv6"
+        else:
+            continue
+        candidates = set(asns_by_prefix.get((afi, event.prefix), ()))
+        if not candidates:
+            continue
+        if event.action == "withdraw":
+            mark("withdraw_origin_unavailable", len(candidates))
+            continue
+        resolution = derive_origin_asns(event.as_path or ())
+        if resolution.state != RESOLVED:
+            mark(
+                "origin_conflict" if resolution.state == "conflict" else "origin_unknown",
+                len(candidates),
+            )
+            continue
+        if len(resolution.origins) != 1 or resolution.origins[0] not in candidates:
+            mark("resolved_origin_not_in_cohort")
+            continue
+        asn = resolution.origins[0]
+        result.setdefault((asn, afi, event.prefix), set()).add(route_id)
+    return (
+        {
+            key: tuple(sorted(values))
+            for key, values in sorted(result.items())
+        },
+        dict(sorted(unattributed.items())),
+    )
+
+
+def _merge_prefix_change_event_ids(
+    automatic: Mapping[Tuple[int, str, str], Sequence[str]],
+    supplied: Optional[Mapping[Tuple[int, str, str], Sequence[str]]],
+    *,
+    episode: EpisodeDetection,
+    cohort: CountryCohort,
+    route_events_by_id: Mapping[str, ResearchRouteEvent],
+) -> Mapping[Tuple[int, str, str], Tuple[str, ...]]:
+    merged = {key: set(values) for key, values in automatic.items()}
+    if supplied is not None:
+        for key, values in supplied.items():
+            if (
+                not isinstance(key, tuple)
+                or len(key) != 3
+                or isinstance(key[0], bool)
+                or not isinstance(key[0], int)
+                or key[1] not in {"ipv4", "ipv6"}
+                or not isinstance(key[2], str)
+            ):
+                raise DerivedAssemblyError(
+                    "显式 prefix_change_event_ids 的键必须是 (asn, afi, prefix)"
+                )
+            if isinstance(values, (str, bytes, Mapping)):
+                raise DerivedAssemblyError("prefix_change_event_ids 的值必须是 ID 序列")
+            route_ids = tuple(values)
+            invalid_route_id = any(
+                not isinstance(route_id, str)
+                or _ROUTE_ID_RE.fullmatch(route_id) is None
+                for route_id in route_ids
+            )
+            if (
+                not route_ids
+                or invalid_route_id
+                or len(route_ids) != len(set(route_ids))
+            ):
+                raise DerivedAssemblyError(
+                    "显式 prefix_change_event_ids 必须非空且不得重复 RouteEvent ID"
+                )
+            asn, afi, prefix = key
+            cohort_match = any(
+                reference.asn == asn
+                and reference.afi == afi
+                and reference.prefix == prefix
+                for reference in cohort.prefix_references
+            )
+            if not cohort_match:
+                raise DerivedAssemblyError(
+                    "显式 prefix change 目标不属于冻结 cohort 的精确 ASN/AFI/prefix"
+                )
+            expected_afi_safi = "ipv4_unicast" if afi == "ipv4" else "ipv6_unicast"
+            for route_id in route_ids:
+                event = route_events_by_id.get(route_id)
+                if not isinstance(event, ResearchRouteEvent):
+                    raise DerivedAssemblyError(
+                        f"显式 prefix change 引用不存在的 RouteEvent {route_id}"
+                    )
+                resolution = derive_origin_asns(event.as_path or ())
+                if (
+                    event.action != "announce"
+                    or event.afi_safi != expected_afi_safi
+                    or event.prefix != prefix
+                    or not (
+                        episode.onset_at
+                        <= event.event_time_utc
+                        < episode.observation_end_at
+                    )
+                    or resolution.state != RESOLVED
+                    or resolution.origins != (asn,)
+                ):
+                    raise DerivedAssemblyError(
+                        "显式 prefix change 只有唯一 resolved origin 精确命中的 announce 才可作为 ASN 级 raw proof"
+                    )
+            merged.setdefault(key, set()).update(route_ids)
+    return {key: tuple(sorted(values)) for key, values in sorted(merged.items())}
 
 
 def _episode_record(
@@ -258,6 +727,13 @@ def _episode_record(
     explicit_mappings: Optional[Mapping[str, Sequence[Mapping[str, Any]]]],
 ) -> Mapping[str, Any]:
     if explicit_mappings is None:
+        if any(
+            incident.get("fact_link_status") in {"matched", "legacy_collision"}
+            for incident in incidents
+        ):
+            raise DerivedAssemblyError(
+                "检测到 research Episode 与 matched legacy Incident；必须显式提供逐 Episode incident mapping，禁止自动 possible_correspondence"
+            )
         mappings = _automatic_incident_mappings(incidents, episode)
     else:
         raw = explicit_mappings.get(episode.episode_id)
@@ -268,7 +744,90 @@ def _episode_record(
         mappings = _sequence(raw, f"incident_mappings[{episode.episode_id}]")
         if any(not isinstance(item, Mapping) for item in mappings):
             raise DerivedAssemblyError("incident mapping 只能包含对象")
+        expected_ref_values = [
+            incident.get("detail_reference") for incident in incidents
+        ]
+        if any(
+            not isinstance(reference, str) or not reference.strip()
+            for reference in expected_ref_values
+        ):
+            raise DerivedAssemblyError("incident.detail_reference 不能为空")
+        expected_refs = set(expected_ref_values)
+        actual_refs = [mapping.get("incident_ref") for mapping in mappings]
+        if expected_refs and (
+            any(
+                not isinstance(reference, str) or not reference.strip()
+                for reference in actual_refs
+            )
+            or set(actual_refs) != expected_refs
+            or len(actual_refs) != len(set(actual_refs))
+        ):
+            raise DerivedAssemblyError(
+                "显式逐 Episode incident mapping 必须用关联或 no_correspondence 精确覆盖全部 Incident"
+            )
     return episode.to_contract_record(mappings)
+
+
+def _linked_incident_refs(episode: Mapping[str, Any]) -> Tuple[str, ...]:
+    """返回当前 Episode 明确关联的 Incident ref，排除 no_correspondence。"""
+
+    refs = []
+    for index, raw in enumerate(
+        _sequence(episode.get("incident_mappings"), "episode.incident_mappings")
+    ):
+        if not isinstance(raw, Mapping):
+            raise DerivedAssemblyError(
+                f"episode.incident_mappings[{index}] 必须是对象"
+            )
+        ref = raw.get("incident_ref")
+        if not isinstance(ref, str) or not ref.strip():
+            raise DerivedAssemblyError("episode incident_ref 非法")
+        if raw.get("causal") is not False:
+            raise DerivedAssemblyError("Episode 内 Incident 映射必须 causal=false")
+        if raw.get("relation") == "no_correspondence":
+            continue
+        if raw.get("relation") not in _INCIDENT_EPISODE_RELATIONS:
+            raise DerivedAssemblyError("episode incident mapping relation 非法")
+        refs.append(ref)
+    if len(refs) != len(set(refs)):
+        raise DerivedAssemblyError("Episode 不得重复关联同一 Incident ref")
+    return tuple(sorted(refs))
+
+
+def _no_episode_evidence_parameters(
+    parameters: Optional[Mapping[str, Any]],
+) -> Optional[Mapping[str, Any]]:
+    """移除不能归属于零 Episode Incident 的 RouteEvent/raw 证据。"""
+
+    if parameters is None:
+        return None
+    if not isinstance(parameters, Mapping):
+        raise DerivedAssemblyError("evidence_bundle_parameters 必须是对象")
+    normalized = deepcopy(dict(parameters))
+    normalized.pop("route_event_refs", None)
+    normalized.pop("raw_record_refs", None)
+    coverage = normalized.get("raw_source_coverage")
+    if isinstance(coverage, Mapping):
+        normalized["raw_source_coverage"] = {
+            **dict(coverage),
+            "observed_count": 0,
+        }
+    snapshot = normalized.get("data_snapshot")
+    if isinstance(snapshot, Mapping):
+        normalized["data_snapshot"] = {
+            **dict(snapshot),
+            "raw_source_status": "partial",
+        }
+    lineage = normalized.get("processing_lineage")
+    if isinstance(lineage, Mapping):
+        normalized["processing_lineage"] = {
+            **dict(lineage),
+            "parser": None,
+            "importer": None,
+            "import_run_id": None,
+        }
+    normalized["source_hash_verification_status"] = "partial"
+    return normalized
 
 
 def _recovery_candidates(episode: EpisodeDetection) -> Tuple[Mapping[str, Any], ...]:
@@ -322,7 +881,22 @@ def _sample_route_links(
 def _quality_evidence_projection(
     route_events_by_id: Mapping[str, ResearchRouteEvent],
     used_route_ids: Iterable[str],
+    verified_raw_refs: Iterable[Mapping[str, Any]] = (),
 ) -> Tuple[Tuple[Mapping[str, Any], ...], Tuple[Mapping[str, Any], ...], Tuple[Mapping[str, Any], ...]]:
+    verified_by_id = {}
+    for raw in verified_raw_refs:
+        if not isinstance(raw, Mapping):
+            raise DerivedAssemblyError("verified_raw_refs 只能包含对象")
+        raw_id = raw.get("raw_record_ref_id")
+        if not isinstance(raw_id, str):
+            raise DerivedAssemblyError("verified raw record 缺少稳定 ID")
+        if raw.get("verification_status") != "verified":
+            raise DerivedAssemblyError("verified_raw_refs 不得包含未验证记录")
+        normalized = dict(raw)
+        previous = verified_by_id.get(raw_id)
+        if previous is not None and previous != normalized:
+            raise DerivedAssemblyError("同一 verified raw record 对应冲突内容")
+        verified_by_id[raw_id] = normalized
     route_rows = []
     raw_rows = {}
     artifact_rows = {}
@@ -335,6 +909,17 @@ def _quality_evidence_projection(
         raw_id = _raw_record_ref_id(
             event.file_sha256, event.record_ordinal, event.element_ordinal
         )
+        verified = verified_by_id.get(raw_id)
+        if verified is not None and (
+            verified.get("artifact_id") != event.artifact_id
+            or verified.get("file_sha256") != event.file_sha256
+            or verified.get("record_ordinal") != event.record_ordinal
+            or verified.get("element_ordinal") != event.element_ordinal
+        ):
+            raise DerivedAssemblyError("verified raw audit 与 RouteEvent 坐标不一致")
+        closure_state = (
+            "verified_raw_audit" if verified is not None else "derived_coordinate_only"
+        )
         route_rows.append(
             {
                 "route_event_id": event.route_event_id,
@@ -343,15 +928,30 @@ def _quality_evidence_projection(
                 "record_ordinal": event.record_ordinal,
                 "element_ordinal": event.element_ordinal,
                 "raw_record_ref_id": raw_id,
+                "raw_closure_state": closure_state,
             }
         )
-        raw_row = {
-            "raw_record_ref_id": raw_id,
-            "artifact_id": event.artifact_id,
-            "file_sha256": event.file_sha256,
-            "record_ordinal": event.record_ordinal,
-            "element_ordinal": event.element_ordinal,
-        }
+        raw_row = (
+            {
+                **verified,
+                "raw_closure_state": "verified_raw_audit",
+                "missing_reason_zh": None,
+            }
+            if verified is not None
+            else {
+                "raw_record_ref_id": raw_id,
+                "artifact_id": event.artifact_id,
+                "file_sha256": event.file_sha256,
+                "record_offset": None,
+                "record_length": None,
+                "record_hash": None,
+                "record_ordinal": event.record_ordinal,
+                "element_ordinal": event.element_ordinal,
+                "verification_status": "derived_coordinate_only",
+                "raw_closure_state": "unverified",
+                "missing_reason_zh": "仅由 RouteEvent 坐标推导，尚未由正式 raw audit 核验 record hash 与字节范围。",
+            }
+        )
         previous = raw_rows.get(raw_id)
         if previous is not None and previous != raw_row:
             raise DerivedAssemblyError("同一 raw record 稳定 ID 对应冲突坐标")
@@ -417,12 +1017,22 @@ def _evidence_registry(
             _record_ref("route_event", f"route_event:{value['route_event_id']}", value)
         )
     for value in raw_refs:
+        if value.get("verification_status") != "verified":
+            # 坐标推导记录可用于暴露缺口，但不能登记成 raw evidence。
+            continue
         rows.append(
             _record_ref("raw_record", f"raw_record:{value['raw_record_ref_id']}", value)
         )
     source_facts = {}
     for package in evidence_packages:
         sidecar = package.get("sidecar")
+        if sidecar is None and package.get("evidence_package_state") == (
+            "unavailable_source_fact_unresolved"
+        ):
+            # An unavailable descriptor is retained in the package output for
+            # auditability, but by definition cannot satisfy a claim's evidence
+            # reference.  Do not admit it into the evidence registry.
+            continue
         if not isinstance(sidecar, Mapping):
             raise DerivedAssemblyError("研究证据包缺少 sidecar")
         for fact in sidecar.get("legacy_source_fact_refs", ()):
@@ -769,6 +1379,7 @@ def _quality_violations(
     baseline: NumericBaselineResult,
     supplied: Sequence[DiagnosticViolation],
     facts: Sequence[DiagnosticFact],
+    prefix_change_unattributed: Mapping[str, int],
 ) -> Tuple[DiagnosticViolation, ...]:
     used_codes = {(item.gate_id, item.code) for item in tuple(facts) + tuple(supplied)}
     additions = []
@@ -798,10 +1409,42 @@ def _quality_violations(
                 blocking=True,
             )
         )
+    if prefix_change_unattributed:
+        reserved = ("reference_closure", "prefix_change.asn_unattributed")
+        if reserved in used_codes:
+            raise DerivedAssemblyError(
+                "prefix_change.asn_unattributed 诊断 code 由装配器保留"
+            )
+        total = sum(prefix_change_unattributed.values())
+        details = "；".join(
+            "{}={}（{}）".format(
+                reason,
+                prefix_change_unattributed[reason],
+                _PREFIX_ATTRIBUTION_REASON_ZH.get(reason, "未定义归因原因"),
+            )
+            for reason in sorted(prefix_change_unattributed)
+        )
+        additions.append(
+            DiagnosticViolation(
+                gate_id="reference_closure",
+                code="prefix_change.asn_unattributed",
+                details_zh=(
+                    f"共有 {total} 条 Episode 窗口内前缀变化未建立 ASN 级 raw proof：{details}。"
+                ),
+                severity="fail",
+                blocking=True,
+            )
+        )
     return tuple(supplied) + tuple(additions)
 
 
 def _baseline_report_record(baseline: NumericBaselineResult) -> Mapping[str, Any]:
+    exclusion_boundary = {
+        "at_utc": baseline.exclusion_boundary_at_utc,
+        "role": baseline.exclusion_boundary_role,
+        "confirmation_state": baseline.exclusion_boundary_confirmation_state,
+        "causal_claim_allowed": baseline.exclusion_boundary_causal_claim_allowed,
+    }
     if baseline.resolved:
         return {
             "baseline_id": baseline.baseline_id,
@@ -813,6 +1456,7 @@ def _baseline_report_record(baseline: NumericBaselineResult) -> Mapping[str, Any
             "actual_start_utc": baseline.candidate_start_utc,
             "actual_end_exclusive_utc": baseline.actual_end_exclusive_utc,
             "supporting_sample_ids": list(baseline.supporting_sample_ids),
+            "exclusion_boundary": exclusion_boundary,
         }
     return {
         "baseline_id": baseline.baseline_id,
@@ -824,8 +1468,32 @@ def _baseline_report_record(baseline: NumericBaselineResult) -> Mapping[str, Any
         "actual_start_utc": baseline.candidate_start_utc,
         "actual_end_exclusive_utc": baseline.actual_end_exclusive_utc,
         "supporting_sample_ids": list(baseline.supporting_sample_ids),
+        "exclusion_boundary": exclusion_boundary,
         "missing_reason": baseline.unresolved_reason,
     }
+
+
+def _source_temporal_report_records(
+    incidents: Sequence[Mapping[str, Any]],
+) -> Tuple[Mapping[str, Any], ...]:
+    """投影供中文报告呈现的 legacy 双时间语义。"""
+
+    records = []
+    for index, incident in enumerate(incidents):
+        temporal = incident.get("legacy_temporal_evidence")
+        if temporal is None:
+            continue
+        if not isinstance(temporal, Mapping):
+            raise DerivedAssemblyError(
+                f"incidents[{index}].legacy_temporal_evidence 必须是对象"
+            )
+        records.append(
+            {
+                "incident_id": incident.get("incident_id"),
+                **deepcopy(dict(temporal)),
+            }
+        )
+    return tuple(sorted(records, key=lambda item: str(item["incident_id"])))
 
 
 def _json_content(value: Any) -> bytes:
@@ -874,7 +1542,6 @@ def assemble_derived_research(
         Mapping[str, Sequence[Mapping[str, Any]]]
     ] = None,
     primary_episode_id: Optional[str] = None,
-    confirmed_onset_at: Optional[str] = None,
     quality_violations: Sequence[DiagnosticViolation] = (),
     limitations_zh: Sequence[str] = (),
     package_bindings: Optional[Mapping[str, str]] = None,
@@ -903,7 +1570,10 @@ def assemble_derived_research(
         if any(entry.key.collector_id != collector_id for entry in snapshot.entries):
             raise DerivedAssemblyError("快照含有 Profile 之外的 collector")
     metadata_by_snapshot = _slot_metadata_index(snapshot_values, slot_metadata)
-    incident_values = _sequence(incidents, "incidents")
+    incident_values = tuple(
+        dict(item) if isinstance(item, Mapping) else item
+        for item in _sequence(incidents, "incidents")
+    )
     if any(not isinstance(item, Mapping) for item in incident_values):
         raise DerivedAssemblyError("incidents 只能包含对象")
     route_index = {} if route_events_by_id is None else dict(route_events_by_id)
@@ -946,7 +1616,6 @@ def assemble_derived_research(
         candidate_start_utc=str(normalized_profile["window"]["start_utc"]),
         numeric_policy=normalized_profile["baseline"]["numeric"],
         normal_band_policy=normalized_profile["baseline"]["normal_band"],
-        confirmed_onset_at=confirmed_onset_at,
     )
     detection: Optional[DetectionResult]
     episode_objects: Tuple[EpisodeDetection, ...]
@@ -979,9 +1648,23 @@ def assemble_derived_research(
         )
         for episode in episode_objects
     )
+    incident_by_ref = {
+        incident["detail_reference"]: incident for incident in incident_values
+    }
+    for episode_record in episode_records:
+        unknown_refs = set(_linked_incident_refs(episode_record)) - set(incident_by_ref)
+        if unknown_refs:
+            raise DerivedAssemblyError(
+                "Episode 引用不存在的 Incident：{}".format(sorted(unknown_refs))
+            )
     detected_episode_ids = {item.episode_id for item in episode_objects}
     if incident_mappings_by_episode_id is not None and set(incident_mappings_by_episode_id) != detected_episode_ids:
         raise DerivedAssemblyError("incident_mappings_by_episode_id 必须精确覆盖检测结果")
+    incident_episode_mappings = _incident_episode_mapping_records(
+        run_id=run_id,
+        incidents=incident_values,
+        episodes=episode_records,
+    )
     if primary_episode_id is not None:
         if not isinstance(primary_episode_id, str) or _EPISODE_ID_RE.fullmatch(primary_episode_id) is None:
             raise DerivedAssemblyError("primary_episode_id 非法")
@@ -994,14 +1677,33 @@ def assemble_derived_research(
         selected_primary = None
 
     episode_as_values = []
+    prefix_change_unattributed: dict[str, int] = {}
     for episode in episode_objects:
-        changes = prefix_change_event_ids
+        supplied_changes = prefix_change_event_ids
         if prefix_change_event_ids_by_episode_id is not None:
-            changes = prefix_change_event_ids_by_episode_id.get(episode.episode_id)
-            if changes is None:
+            supplied_changes = prefix_change_event_ids_by_episode_id.get(
+                episode.episode_id
+            )
+            if supplied_changes is None:
                 raise DerivedAssemblyError(
                     f"逐 Episode 前缀变化索引缺少 {episode.episode_id}"
                 )
+        automatic_changes, automatic_unattributed = _automatic_prefix_change_event_ids(
+            episode=episode,
+            cohort=cohort,
+            route_events_by_id=route_index,
+        )
+        for reason, count in automatic_unattributed.items():
+            prefix_change_unattributed[reason] = (
+                prefix_change_unattributed.get(reason, 0) + count
+            )
+        changes = _merge_prefix_change_event_ids(
+            automatic_changes,
+            supplied_changes,
+            episode=episode,
+            cohort=cohort,
+            route_events_by_id=route_index,
+        )
         episode_as_values.extend(
             build_episode_as_records(
                 episode,
@@ -1019,6 +1721,19 @@ def assemble_derived_research(
         raise DerivedAssemblyError("prefix_change_event_ids_by_episode_id 必须精确覆盖检测结果")
     episode_as_records = tuple(episode_as_values)
 
+    standard_incidents = tuple(
+        incident
+        for incident in incident_values
+        if incident.get("fact_link_status") in {"matched", "legacy_collision"}
+    )
+    unresolved_incidents = tuple(
+        incident
+        for incident in incident_values
+        if incident.get("fact_link_status") == "unresolved"
+    )
+    if len(standard_incidents) + len(unresolved_incidents) != len(incident_values):
+        raise DerivedAssemblyError("Incident fact_link_status 不支持研究证据组装")
+
     evidence_packages = []
     for episode, episode_record in zip(episode_objects, episode_records):
         parameters = evidence_bundle_parameters
@@ -1034,21 +1749,78 @@ def assemble_derived_research(
         samples_for_episode = tuple(
             samples_by_id[sample_id] for sample_id in episode.supporting_sample_ids
         )
+        linked_refs = set(_linked_incident_refs(episode_record))
+        mapped_standard_incidents = tuple(
+            incident
+            for incident in standard_incidents
+            if incident["detail_reference"] in linked_refs
+        )
+        if mapped_standard_incidents:
+            evidence_packages.append(
+                build_research_evidence_package(
+                    incidents=mapped_standard_incidents,
+                    episode=episode_record,
+                    waves=waves_for_episode,
+                    samples=samples_for_episode,
+                    recovery_candidates=_recovery_candidates(episode),
+                    sample_route_event_links=_sample_route_links(
+                        episode,
+                        samples_by_id,
+                        metadata_by_snapshot,
+                        mapped=True,
+                    ),
+                    evidence_bundle_parameters=parameters,
+                    mapping_missing_reason_zh="没有可关联的 legacy Incident，未伪造事件身份。",
+                    limitations_zh=limitations_zh,
+                )
+            )
+        elif not linked_refs:
+            evidence_packages.append(
+                build_research_evidence_package(
+                    incidents=(),
+                    episode=episode_record,
+                    waves=waves_for_episode,
+                    samples=samples_for_episode,
+                    recovery_candidates=_recovery_candidates(episode),
+                    sample_route_event_links=(),
+                    evidence_bundle_parameters=None,
+                    mapping_missing_reason_zh="没有可关联的 legacy Incident，未伪造事件身份。",
+                    limitations_zh=limitations_zh,
+                )
+            )
+    linked_episode_ids_by_incident = {
+        row["incident_id"]: tuple(
+            link["episode_id"] for link in row["episode_links"]
+        )
+        for row in incident_episode_mappings
+    }
+    unmapped_standard_incidents = tuple(
+        incident
+        for incident in standard_incidents
+        if not linked_episode_ids_by_incident[incident["incident_id"]]
+    )
+    if unmapped_standard_incidents:
         evidence_packages.append(
             build_research_evidence_package(
-                incidents=incident_values,
-                episode=episode_record,
-                waves=waves_for_episode,
-                samples=samples_for_episode,
-                recovery_candidates=_recovery_candidates(episode),
-                sample_route_event_links=_sample_route_links(
-                    episode,
-                    samples_by_id,
-                    metadata_by_snapshot,
-                    mapped=bool(incident_values),
+                incidents=unmapped_standard_incidents,
+                episode=None,
+                run_id=run_id,
+                waves=(),
+                samples=(),
+                recovery_candidates=(),
+                sample_route_event_links=(),
+                evidence_bundle_parameters=_no_episode_evidence_parameters(
+                    evidence_bundle_parameters
                 ),
-                evidence_bundle_parameters=parameters,
-                mapping_missing_reason_zh="没有可关联的 legacy Incident，未伪造事件身份。",
+                limitations_zh=limitations_zh,
+            )
+        )
+    for incident in unresolved_incidents:
+        evidence_packages.append(
+            build_unavailable_research_evidence_package(
+                run_id=run_id,
+                incident=incident,
+                episode_ids=linked_episode_ids_by_incident[incident["incident_id"]],
                 limitations_zh=limitations_zh,
             )
         )
@@ -1057,6 +1829,37 @@ def assemble_derived_research(
     ) != detected_episode_ids:
         raise DerivedAssemblyError("evidence_bundle_parameters_by_episode_id 必须精确覆盖检测结果")
     evidence_package_values = tuple(evidence_packages)
+    expected_incident_episode_pairs = {
+        (row["incident_id"], link["episode_id"])
+        for row in incident_episode_mappings
+        for link in row["episode_links"]
+    }
+    actual_incident_episode_pairs = {
+        (incident_id, episode_id)
+        for package in evidence_package_values
+        for incident_id in package.get("incident_ids", ())
+        for episode_id in package.get("episode_ids", ())
+    }
+    if actual_incident_episode_pairs != expected_incident_episode_pairs:
+        raise DerivedAssemblyError(
+            "Evidence package 的 Incident→Episode 集合与一等映射记录不闭合"
+        )
+    package_incident_ids = {
+        incident_id
+        for package in evidence_package_values
+        for incident_id in package.get("incident_ids", ())
+    }
+    if package_incident_ids != {
+        incident["incident_id"] for incident in incident_values
+    }:
+        raise DerivedAssemblyError("Evidence package 未精确覆盖全部 Incident")
+    package_episode_ids = {
+        episode_id
+        for package in evidence_package_values
+        for episode_id in package.get("episode_ids", ())
+    }
+    if package_episode_ids != detected_episode_ids:
+        raise DerivedAssemblyError("Evidence package 未精确覆盖全部 research Episode")
 
     used_route_ids = {
         link["route_event_id"]
@@ -1065,12 +1868,22 @@ def assemble_derived_research(
         if isinstance(link, Mapping) and isinstance(link.get("route_event_id"), str)
     }
     for package in evidence_package_values:
-        sidecar = package["sidecar"]
+        sidecar = package.get("sidecar")
+        if sidecar is None:
+            continue
         used_route_ids.update(
             row["route_event_id"] for row in sidecar.get("route_event_refs", ())
         )
+    verified_raw_refs = tuple(
+        raw
+        for package in evidence_package_values
+        for sidecar in (package.get("sidecar"),)
+        if isinstance(sidecar, Mapping)
+        for raw in sidecar.get("raw_record_refs", ())
+        if isinstance(raw, Mapping) and raw.get("verification_status") == "verified"
+    )
     quality_routes, quality_raw, quality_artifacts = _quality_evidence_projection(
-        route_index, used_route_ids
+        route_index, used_route_ids, verified_raw_refs
     )
 
     registry = _evidence_registry(
@@ -1123,6 +1936,7 @@ def assemble_derived_research(
                 baseline=baseline,
                 supplied=supplied_violations,
                 facts=facts,
+                prefix_change_unattributed=prefix_change_unattributed,
             ),
             samples=sample_values,
             episodes=episode_records,
@@ -1166,6 +1980,9 @@ def assemble_derived_research(
         reconciliation=reconciliation,
         quality=quality,
         reproduction_commands=reproduction_commands,
+        source_temporal_evidence=_source_temporal_report_records(
+            incident_values
+        ),
     )
 
     content_payloads = {
@@ -1173,6 +1990,9 @@ def assemble_derived_research(
         "data/samples.json": _json_content(sample_values),
         "data/episodes.json": _json_content(episode_records),
         "data/waves.json": _json_content(wave_records),
+        "data/incident-episode-mappings.json": _json_content(
+            incident_episode_mappings
+        ),
         "data/episode-as.json": _json_content(episode_as_records),
         "evidence/research-evidence-packages.json": _json_content(
             evidence_package_values
@@ -1186,6 +2006,9 @@ def assemble_derived_research(
         "data/samples.json": len(sample_values),
         "data/episodes.json": len(episode_records),
         "data/waves.json": len(wave_records),
+        "data/incident-episode-mappings.json": len(
+            incident_episode_mappings
+        ),
         "data/episode-as.json": len(episode_as_records),
         "evidence/research-evidence-packages.json": len(evidence_package_values),
         "reconciliation.json": 1,
@@ -1197,6 +2020,7 @@ def assemble_derived_research(
         "data/samples.json": "samples",
         "data/episodes.json": "episodes",
         "data/waves.json": "waves",
+        "data/incident-episode-mappings.json": "incident-episode-mappings",
         "data/episode-as.json": "episode-as",
         "evidence/research-evidence-packages.json": "research-evidence",
         "reconciliation.json": "reconciliation",
@@ -1241,6 +2065,7 @@ def assemble_derived_research(
         detection=detection,
         episodes=episode_records,
         waves=wave_records,
+        incident_episode_mappings=incident_episode_mappings,
         episode_as_records=episode_as_records,
         evidence_packages=evidence_package_values,
         reconciliation=reconciliation,
@@ -1256,4 +2081,5 @@ __all__ = (
     "DerivedResearchAssembly",
     "SlotResearchMetadata",
     "assemble_derived_research",
+    "validate_incident_episode_mapping_record",
 )

@@ -47,6 +47,11 @@ def small_profile() -> dict[str, object]:
     profile["window"]["start_utc"] = utc_text(start)
     profile["window"]["end_exclusive_utc"] = utc_text(end)
     profile["window"]["observation_end_utc"] = utc_text(end)
+    numeric = profile["baseline"]["numeric"]
+    numeric["initial_duration_seconds"] = 300
+    numeric["extension_step_seconds"] = 300
+    numeric["max_duration_seconds"] = 300
+    numeric["exclusion_boundary"]["at_utc"] = utc_text(end)
     profile["input_selection"]["analysis_updates"]["expected_slot_count"] = 2
     profile["input_selection"]["analysis_ribs"]["expected_slot_count"] = 1
     profile["study_id"] = "iran-rrc25-coordinator-fixture-v1"

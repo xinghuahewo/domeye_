@@ -1,8 +1,9 @@
 """RRC25 国家中断研究的稳健数值基线纯函数。
 
 基线从冻结研究窗口起点开始，先使用连续六小时五分钟观测；若相对 MAD
-超过阈值，则按 profile 的固定步长向前扩展，但不会跨过调用方提供的已确认
-episode onset，也不会跳过缺测槽。达到最大时长仍不稳定时返回
+超过阈值，则按 profile 的固定步长向前扩展，但不会跨过冻结的候选排除边界，
+也不会跳过缺测槽。该边界只是用户提供的最早可能前兆边界，不是已确认的
+episode onset，也不授权因果结论。达到最大时长仍不稳定时返回
 ``baseline_unresolved``，调用方必须停止 episode 定论。
 """
 
@@ -53,6 +54,10 @@ class NumericBaselineResult:
     normal_band_lower: Optional[float]
     normal_band_upper: Optional[float]
     supporting_sample_ids: Tuple[str, ...]
+    exclusion_boundary_at_utc: str
+    exclusion_boundary_role: str
+    exclusion_boundary_confirmation_state: str
+    exclusion_boundary_causal_claim_allowed: bool
 
     @property
     def resolved(self) -> bool:
@@ -117,6 +122,7 @@ def _unresolved(
     observations: Sequence[BaselineObservation],
     duration_seconds: int,
     extension_count: int,
+    exclusion_boundary: Mapping[str, object],
 ) -> NumericBaselineResult:
     sample_ids = tuple(item.sample_id for item in observations)
     identity = {
@@ -125,6 +131,7 @@ def _unresolved(
         "resolution_state": "baseline_unresolved",
         "unresolved_reason": reason,
         "supporting_sample_ids": list(sample_ids),
+        "exclusion_boundary": dict(exclusion_boundary),
     }
     return NumericBaselineResult(
         baseline_id=_stable_id(identity),
@@ -143,6 +150,12 @@ def _unresolved(
         normal_band_lower=None,
         normal_band_upper=None,
         supporting_sample_ids=sample_ids,
+        exclusion_boundary_at_utc=str(exclusion_boundary["at_utc"]),
+        exclusion_boundary_role=str(exclusion_boundary["role"]),
+        exclusion_boundary_confirmation_state=str(
+            exclusion_boundary["confirmation_state"]
+        ),
+        exclusion_boundary_causal_claim_allowed=False,
     )
 
 
@@ -204,7 +217,6 @@ def derive_numeric_baseline(
     candidate_start_utc: str,
     numeric_policy: Mapping[str, object],
     normal_band_policy: Mapping[str, object],
-    confirmed_onset_at: Optional[str] = None,
 ) -> NumericBaselineResult:
     """按冻结六小时/扩展/MAD 规则计算数值基线。"""
 
@@ -223,8 +235,8 @@ def derive_numeric_baseline(
         raise BaselineInputError("基线只能按冻结规则向前扩展")
     if numeric_policy.get("unstable_exhausted_state") != "incomplete":
         raise BaselineInputError("不稳定耗尽状态必须是 incomplete")
-    if numeric_policy.get("stop_before_confirmed_onset") is not True:
-        raise BaselineInputError("基线必须在 confirmed onset 前停止")
+    if numeric_policy.get("stop_before_exclusion_boundary") is not True:
+        raise BaselineInputError("基线必须在候选排除边界前停止")
     initial = _positive_integer(
         numeric_policy.get("initial_duration_seconds"), "initial_duration_seconds"
     )
@@ -251,11 +263,40 @@ def derive_numeric_baseline(
     if normal_band_policy.get("method") != "median_plus_minus_max_scaled_mad_and_absolute_floor":
         raise BaselineInputError("normal_band.method 不受支持")
 
-    onset = None
-    if confirmed_onset_at is not None:
-        _onset_text, onset = _utc(confirmed_onset_at, "confirmed_onset_at")
-        if onset <= candidate_start:
-            raise BaselineInputError("confirmed onset 必须晚于基线候选起点")
+    boundary_value = numeric_policy.get("exclusion_boundary")
+    if not isinstance(boundary_value, Mapping):
+        raise BaselineInputError("exclusion_boundary 必须是显式对象")
+    required_boundary_keys = {
+        "at_utc",
+        "role",
+        "confirmation_state",
+        "causal_claim_allowed",
+    }
+    if set(boundary_value) != required_boundary_keys:
+        raise BaselineInputError("exclusion_boundary 字段必须完整且不得扩展")
+    boundary_text, boundary_at = _utc(
+        boundary_value["at_utc"], "exclusion_boundary.at_utc"
+    )
+    if (
+        boundary_value["role"]
+        != "user_supplied_earliest_possible_precursor_boundary"
+        or boundary_value["confirmation_state"] != "candidate_not_confirmed"
+        or boundary_value["causal_claim_allowed"] is not False
+    ):
+        raise BaselineInputError("候选排除边界不得冒充确认 onset 或授权因果结论")
+    boundary_offset_seconds = int((boundary_at - candidate_start).total_seconds())
+    if boundary_offset_seconds <= 0:
+        raise BaselineInputError("候选排除边界必须晚于基线候选起点")
+    if boundary_offset_seconds % 300:
+        raise BaselineInputError("候选排除边界必须与五分钟槽对齐")
+    if boundary_offset_seconds < initial:
+        raise BaselineInputError("候选排除边界必须容纳完整初始基线窗口")
+    exclusion_boundary = {
+        "at_utc": boundary_text,
+        "role": boundary_value["role"],
+        "confirmation_state": boundary_value["confirmation_state"],
+        "causal_claim_allowed": False,
+    }
     values = _validated_observations(observations, candidate_start=candidate_start)
 
     duration = initial
@@ -264,13 +305,19 @@ def derive_numeric_baseline(
         required = duration // 300
         selected = values[: min(required, len(values))]
         desired_end = candidate_start + timedelta(seconds=duration)
-        if onset is not None and desired_end > onset:
+        if desired_end > boundary_at:
             return _unresolved(
-                reason="confirmed_onset_before_stable_extension",
+                reason="candidate_exclusion_boundary_before_stable_extension",
                 candidate_start=candidate_text,
-                observations=tuple(item for item in values if _utc(item.slot_end_exclusive_utc, "slot.end")[1] <= onset),
-                duration_seconds=int((onset - candidate_start).total_seconds()),
+                observations=tuple(
+                    item
+                    for item in values
+                    if _utc(item.slot_end_exclusive_utc, "slot.end")[1]
+                    <= boundary_at
+                ),
+                duration_seconds=boundary_offset_seconds,
                 extension_count=extension_count,
+                exclusion_boundary=exclusion_boundary,
             )
         if len(selected) < required:
             return _unresolved(
@@ -279,6 +326,7 @@ def derive_numeric_baseline(
                 observations=selected,
                 duration_seconds=len(selected) * 300,
                 extension_count=extension_count,
+                exclusion_boundary=exclusion_boundary,
             )
         unknown = next(
             (
@@ -296,6 +344,7 @@ def derive_numeric_baseline(
                 observations=selected,
                 duration_seconds=duration,
                 extension_count=extension_count,
+                exclusion_boundary=exclusion_boundary,
             )
         numeric_values = [float(item.value) for item in selected if item.value is not None]
         median = float(statistics.median(numeric_values))
@@ -307,6 +356,7 @@ def derive_numeric_baseline(
                 observations=selected,
                 duration_seconds=duration,
                 extension_count=extension_count,
+                exclusion_boundary=exclusion_boundary,
             )
         relative_mad = mad / median
         if relative_mad <= max_relative_mad:
@@ -320,6 +370,7 @@ def derive_numeric_baseline(
                 "median": median,
                 "mad": mad,
                 "supporting_sample_ids": list(sample_ids),
+                "exclusion_boundary": exclusion_boundary,
             }
             return NumericBaselineResult(
                 baseline_id=_stable_id(identity),
@@ -336,6 +387,12 @@ def derive_numeric_baseline(
                 normal_band_lower=max(0.0, median - width),
                 normal_band_upper=median + width,
                 supporting_sample_ids=sample_ids,
+                exclusion_boundary_at_utc=boundary_text,
+                exclusion_boundary_role=str(boundary_value["role"]),
+                exclusion_boundary_confirmation_state=str(
+                    boundary_value["confirmation_state"]
+                ),
+                exclusion_boundary_causal_claim_allowed=False,
             )
         if duration >= maximum:
             return _unresolved(
@@ -344,6 +401,7 @@ def derive_numeric_baseline(
                 observations=selected,
                 duration_seconds=duration,
                 extension_count=extension_count,
+                exclusion_boundary=exclusion_boundary,
             )
         duration = min(duration + step, maximum)
         extension_count += 1

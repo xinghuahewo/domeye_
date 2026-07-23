@@ -25,11 +25,13 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 import gzip
 import hashlib
+import io
 import ipaddress
 import json
 import math
 import os
 from pathlib import Path, PurePosixPath
+import re
 import stat
 import time
 from typing import Any, Callable, Iterable, Mapping, Optional, Sequence, Tuple
@@ -46,6 +48,7 @@ from .country_impact import (
     RESOLVED,
     UNKNOWN,
     CountryMappingView,
+    RawRetentionMappingUnion,
     derive_origin_asns,
 )
 from .file_artifacts import canonical_json, write_canonical_json
@@ -59,6 +62,12 @@ from .rib_adapter import (
     AdaptedRibRecord,
     ObservedVpAccumulator,
     iter_rib_artifact_records,
+    iter_rib_spool_artifact_records,
+)
+from .rib_parser import (
+    RibPeerIndexContext,
+    RibRecordBoundary,
+    build_rib_decompressed_spool,
 )
 from .state_replay import (
     InputGap,
@@ -89,6 +98,21 @@ CHECKPOINT_SCHEMA_VERSION = "rrc25-bounded-pilot-worker-checkpoint/v1"
 CHECKPOINT_FINGERPRINT_SCHEMA = (
     "rrc25_bounded_pilot_worker_checkpoint_fingerprint_v1"
 )
+FULL_SEED_CHECKPOINT_SCHEMA_VERSION = (
+    "rrc25-bounded-pilot-worker-full-seed-checkpoint/v3"
+)
+FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA = (
+    "rrc25_bounded_pilot_worker_full_seed_checkpoint_fingerprint_v3"
+)
+SEED_SPOOL_ATTESTATION_SCHEMA_VERSION = "rrc25-seed-spool-attestation/v1"
+PROBE_TERMINAL_ACCOUNTING_SCHEMA_VERSION = (
+    "rrc25-native-probe-terminal-accounting/v1"
+)
+PROBE_TERMINAL_ACCOUNTING_FINGERPRINT_SCHEMA = (
+    "rrc25_native_probe_terminal_accounting_v1"
+)
+SEED_RAW_RESERVATION_SCHEMA_VERSION = "rrc25-seed-raw-reservation/v1"
+SEED_RAW_RESERVATION_FINGERPRINT_SCHEMA = "rrc25_seed_raw_reservation_v1"
 DIAGNOSTIC_CHECKPOINT_SCHEMA_VERSION = (
     "rrc25-bounded-pilot-worker-diagnostic-checkpoint/v1"
 )
@@ -97,8 +121,63 @@ DIAGNOSTIC_CHECKPOINT_FINGERPRINT_SCHEMA = (
 )
 SELECTION_ID_SCHEMA = "rrc25_country_outage_input_selection_id_v1"
 _SHA256 = frozenset("0123456789abcdef")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _FIVE_MINUTES = timedelta(minutes=5)
+# full-seed checkpoint 的磁盘文件采用 deterministic gzip；512 MiB 约束因此
+# 作用于真正占用 checkpoint 临时根的压缩字节。解压后的规范 JSON 另设独立
+# 2 GB 硬上限，既给完整 IR seed 留出空间，也拒绝 gzip bomb。
 _MAX_CHECKPOINT_BYTES = 512 * 1024 * 1024
+_MAX_CHECKPOINT_UNCOMPRESSED_BYTES = 2_000_000_000
+_FULL_SEED_CHECKPOINT_GZIP_LEVEL = 1
+_DEFAULT_PLANNED_SEED_CHECKPOINT_SECONDS = 420.0
+_FULL_SEED_CHECKPOINT_POLICY_FIELDS = frozenset(
+    {
+        "planned_seed_checkpoint_seconds",
+        "worker_soft_stop_seconds",
+        "max_worker_runtime_seconds",
+        "active_root_retention_policy",
+        "automatic_deletion",
+        "archive_before_reclamation_required",
+        "archive_hash_and_receipt_required",
+        "capacity_exhaustion_behavior",
+    }
+)
+_FULL_SEED_ACTIVE_ROOT_RETENTION_POLICY = (
+    "immutable_accumulate_no_automatic_reclamation_v1"
+)
+_FULL_SEED_CAPACITY_EXHAUSTION_BEHAVIOR = "fail_closed_before_publish"
+_FULL_SEED_CHECKPOINT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "checkpoint_fingerprint_sha256",
+        "code_identity_sha256",
+        "selection_id",
+        "selection_semantic_fingerprint_sha256",
+        "mapping_fingerprint_sha256",
+        "raw_retention_mapping_kind",
+        "raw_retention_mapping_fingerprint_sha256",
+        "seed_spool_attestation_fingerprint_sha256",
+        "pilot_start_utc",
+        "pilot_end_exclusive_utc",
+        "checkpoint_sequence",
+        "position",
+        "seed_progress",
+        "seed_spool",
+        "state",
+        "seed_state_at_window_start",
+        "resume_policy",
+        "route_events",
+        "raw_audits",
+        "tracked_prefixes",
+        "ambiguity",
+        "observed_vp_ids",
+        "gaps",
+        "errors",
+        "resources",
+        "seed_read_ledger",
+        "checkpoint_policy",
+    }
+)
 # seed RIB 的状态合并成本与当前状态规模相关。按完整 physical-record 批量合并，
 # 既避免对大量过滤后空记录反复重建全量状态，又给 540 秒软停预留可控的 flush
 # 尾延迟；单个 physical record 始终保持原子性，即使它本身超过事件阈值。
@@ -108,6 +187,229 @@ _SEED_BATCH_MAX_RECORDS = 256
 
 class BoundedPilotWorkerError(ValueError):
     """worker 输入、原始制品或恢复检查点不能安全执行。"""
+
+
+def _verified_probe_terminal_accounting(
+    value: Any,
+    *,
+    expected_prior_raw_bytes: int,
+    selection_id: str,
+    selection_sha256: str,
+    code_identity_sha256: Optional[str],
+) -> Mapping[str, Any]:
+    required = {
+        "schema_version",
+        "ledger_id",
+        "prepared_directory",
+        "prepared_receipt_ref",
+        "prepared_bindings",
+        "selection_id",
+        "terminal_receipt_ref",
+        "terminal_receipt_kind",
+        "attempt_count",
+        "outcome_count",
+        "prior_accounting",
+        "initial_observed_lower_bound_new_raw_bytes",
+        "initial_reserved_upper_bound_new_raw_bytes",
+        "probe_observed_lower_bound_new_raw_bytes",
+        "probe_observed_upper_bound_new_raw_bytes",
+        "cumulative_reserved_new_raw_bytes",
+        "cumulative_semantics",
+        "reservation_refund_policy",
+        "chain_refs_sha256",
+        "accounting_fingerprint_sha256",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        raise BoundedPilotWorkerError(
+            "prior_raw_accounting 必须是已核验 probe terminal 的闭合摘要"
+        )
+    semantic = dict(value)
+    supplied = semantic.pop("accounting_fingerprint_sha256", None)
+    expected_fingerprint = hashlib.sha256(
+        canonical_json(
+            {
+                "schema": PROBE_TERMINAL_ACCOUNTING_FINGERPRINT_SCHEMA,
+                "accounting": semantic,
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    bindings = value.get("prepared_bindings")
+    initial_lower = value.get("initial_observed_lower_bound_new_raw_bytes")
+    initial_upper = value.get("initial_reserved_upper_bound_new_raw_bytes")
+    probe_lower = value.get("probe_observed_lower_bound_new_raw_bytes")
+    probe_upper = value.get("probe_observed_upper_bound_new_raw_bytes")
+    cumulative = value.get("cumulative_reserved_new_raw_bytes")
+    counts = (value.get("attempt_count"), value.get("outcome_count"))
+    if (
+        value.get("schema_version") != PROBE_TERMINAL_ACCOUNTING_SCHEMA_VERSION
+        or supplied != expected_fingerprint
+        or value.get("selection_id") != selection_id
+        or not isinstance(bindings, Mapping)
+        or bindings.get("input_selection_sha256") != selection_sha256
+        or (
+            code_identity_sha256 is not None
+            and bindings.get("code_sha256") != code_identity_sha256
+        )
+        or value.get("terminal_receipt_kind")
+        not in {"zero_genesis", "imported_genesis", "outcome"}
+        or value.get("cumulative_semantics")
+        != "nonrefundable_reserved_upper_bound"
+        or value.get("reservation_refund_policy")
+        != "never_refund_even_on_failure_timeout_or_retry"
+        or any(
+            isinstance(item, bool) or not isinstance(item, int) or item < 0
+            for item in (
+                initial_lower,
+                initial_upper,
+                probe_lower,
+                probe_upper,
+                cumulative,
+                *counts,
+            )
+        )
+        or initial_lower > initial_upper
+        or probe_lower > probe_upper
+        or cumulative < initial_upper
+        or cumulative != expected_prior_raw_bytes
+        or counts[1] != counts[0]
+    ):
+        raise BoundedPilotWorkerError(
+            "probe terminal accounting 身份、上下界或累计值不闭合"
+        )
+    for name in ("prepared_receipt_ref", "terminal_receipt_ref"):
+        ref = value.get(name)
+        if (
+            not isinstance(ref, Mapping)
+            or set(ref) != {"path", "sha256", "size_bytes"}
+            or not isinstance(ref.get("path"), str)
+            or not isinstance(ref.get("sha256"), str)
+            or len(ref["sha256"]) != 64
+            or isinstance(ref.get("size_bytes"), bool)
+            or not isinstance(ref.get("size_bytes"), int)
+            or ref["size_bytes"] <= 0
+        ):
+            raise BoundedPilotWorkerError(f"probe accounting {name} 非法")
+    return dict(value)
+
+
+def _verified_seed_raw_reservation(
+    value: Any,
+    *,
+    probe_accounting: Mapping[str, Any],
+    expected_prior_raw_bytes: int,
+    selection_id: str,
+    seed_artifact: Mapping[str, Any],
+    code_identity_sha256: Optional[str],
+) -> Mapping[str, Any]:
+    """验证 seed raw 在首次 open 前已 create-only 预留整份压缩制品。"""
+
+    required = {
+        "schema_version",
+        "ledger_id",
+        "prepared_directory",
+        "prepared_bindings",
+        "selection_id",
+        "probe_terminal_accounting_fingerprint_sha256",
+        "probe_terminal_receipt_ref",
+        "attempt_ref",
+        "attempt_id",
+        "sequence",
+        "seed_artifact",
+        "previous_seed_terminal_ref",
+        "prior_cumulative_reserved_new_raw_bytes",
+        "reserved_new_raw_bytes",
+        "cumulative_reserved_new_raw_bytes",
+        "reservation_refund_policy",
+        "reservation_fingerprint_sha256",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        raise BoundedPilotWorkerError("seed_raw_reservation 字段不闭合")
+    semantic = dict(value)
+    supplied = semantic.pop("reservation_fingerprint_sha256", None)
+    expected_fingerprint = hashlib.sha256(
+        canonical_json(
+            {
+                "schema": SEED_RAW_RESERVATION_FINGERPRINT_SCHEMA,
+                "reservation": semantic,
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    bindings = value.get("prepared_bindings")
+    reserved = value.get("reserved_new_raw_bytes")
+    prior = value.get("prior_cumulative_reserved_new_raw_bytes")
+    cumulative = value.get("cumulative_reserved_new_raw_bytes")
+    sequence = value.get("sequence")
+    seed_fields = (
+        "artifact_id",
+        "file_sha256",
+        "size_bytes",
+        "relative_path",
+        "collector_id",
+        "artifact_time_utc",
+    )
+    expected_seed = {field: seed_artifact.get(field) for field in seed_fields}
+    if (
+        value.get("schema_version") != SEED_RAW_RESERVATION_SCHEMA_VERSION
+        or supplied != expected_fingerprint
+        or value.get("ledger_id") != probe_accounting.get("ledger_id")
+        or value.get("selection_id") != selection_id
+        or not isinstance(value.get("prepared_directory"), str)
+        or not value["prepared_directory"]
+        or not isinstance(bindings, Mapping)
+        or bindings != probe_accounting.get("prepared_bindings")
+        or (
+            code_identity_sha256 is not None
+            and bindings.get("code_sha256") != code_identity_sha256
+        )
+        or value.get("probe_terminal_accounting_fingerprint_sha256")
+        != probe_accounting.get("accounting_fingerprint_sha256")
+        or value.get("probe_terminal_receipt_ref")
+        != probe_accounting.get("terminal_receipt_ref")
+        or value.get("seed_artifact") != expected_seed
+        or isinstance(prior, bool)
+        or not isinstance(prior, int)
+        or prior != expected_prior_raw_bytes
+        or isinstance(reserved, bool)
+        or not isinstance(reserved, int)
+        or reserved != seed_artifact.get("size_bytes")
+        or reserved <= 0
+        or isinstance(cumulative, bool)
+        or not isinstance(cumulative, int)
+        or cumulative != prior + reserved
+        or isinstance(sequence, bool)
+        or not isinstance(sequence, int)
+        or sequence <= 0
+        or not isinstance(value.get("attempt_id"), str)
+        or re.fullmatch(r"seed_v1_[0-9a-f]{32}", value["attempt_id"]) is None
+        or value.get("reservation_refund_policy")
+        != "never_refund_even_on_failure_timeout_or_retry"
+    ):
+        raise BoundedPilotWorkerError(
+            "seed raw reservation 与 probe/selection/code/artifact/cumulative 不闭合"
+        )
+    for name in ("probe_terminal_receipt_ref", "attempt_ref"):
+        ref = value.get(name)
+        if (
+            not isinstance(ref, Mapping)
+            or set(ref) != {"path", "sha256", "size_bytes"}
+            or not isinstance(ref.get("path"), str)
+            or _SHA256_RE.fullmatch(str(ref.get("sha256"))) is None
+            or isinstance(ref.get("size_bytes"), bool)
+            or not isinstance(ref.get("size_bytes"), int)
+            or ref["size_bytes"] <= 0
+        ):
+            raise BoundedPilotWorkerError(f"seed reservation {name} 非法")
+    previous = value.get("previous_seed_terminal_ref")
+    if previous is not None and (
+        not isinstance(previous, Mapping)
+        or set(previous) != {"path", "sha256", "size_bytes"}
+        or _SHA256_RE.fullmatch(str(previous.get("sha256"))) is None
+        or isinstance(previous.get("size_bytes"), bool)
+        or not isinstance(previous.get("size_bytes"), int)
+        or previous["size_bytes"] <= 0
+    ):
+        raise BoundedPilotWorkerError("seed reservation previous terminal ref 非法")
+    return dict(value)
 
 
 @dataclass(frozen=True)
@@ -198,6 +500,81 @@ class _CompressedHashReader:
             self._closed = True
 
 
+class _DeferredSeedEvidence:
+    """只在真正发布 checkpoint 时物化 seed 边界与 VP 人口。
+
+    RRC25 的 peer index 通常在整个 RIB 中保持不变。若每个 physical record
+    都调用 ``RibPeerIndexContext.checkpoint_binding()``，会反复重建完整 peer
+    列表；同理，逐 record 读取 ``ObservedVpAccumulator.observed_vp_ids`` 会
+    重复排序同一人口。本对象在 record 热路径只替换不可变对象引用，并把两类
+    物化推迟到一次 worker 退出或 checkpoint 构造边界。
+
+    从 checkpoint 恢复时保留既有 mapping，不改变 parser 的 resume 输入合同。
+    """
+
+    def __init__(self) -> None:
+        self.previous_record_boundary: Optional[
+            Mapping[str, Any] | RibRecordBoundary
+        ] = None
+        self.peer_index_context: Optional[
+            Mapping[str, Any] | RibPeerIndexContext
+        ] = None
+        self._accumulator: Optional[ObservedVpAccumulator] = None
+
+    def restore(
+        self,
+        previous_record_boundary: Mapping[str, Any],
+        peer_index_context: Optional[Mapping[str, Any]],
+    ) -> None:
+        self.previous_record_boundary = previous_record_boundary
+        self.peer_index_context = peer_index_context
+
+    def attach_accumulator(self, accumulator: ObservedVpAccumulator) -> None:
+        self._accumulator = accumulator
+
+    def observe_boundary(
+        self,
+        boundary: RibRecordBoundary,
+        peer_context: Optional[RibPeerIndexContext],
+    ) -> None:
+        # 热路径只保存 frozen dataclass 引用；不得在这里调用 checkpoint_binding。
+        self.previous_record_boundary = boundary
+        self.peer_index_context = peer_context
+
+    @staticmethod
+    def _binding(value: Any) -> dict[str, Any]:
+        if isinstance(value, Mapping):
+            return dict(value)
+        binding = value.checkpoint_binding()
+        if not isinstance(binding, Mapping):  # pragma: no cover - parser 合同保护
+            raise BoundedPilotWorkerError("seed checkpoint binding 必须是 mapping")
+        return dict(binding)
+
+    def checkpoint_bindings(
+        self,
+    ) -> Tuple[dict[str, Any], Optional[dict[str, Any]]]:
+        if self.previous_record_boundary is None:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 缺少 previous record boundary"
+            )
+        previous = self._binding(self.previous_record_boundary)
+        peer = (
+            self._binding(self.peer_index_context)
+            if self.peer_index_context is not None
+            else None
+        )
+        return previous, peer
+
+    def merge_observed_vps(self, target: set[str]) -> None:
+        """每个 worker segment 至多读取并排序一次 accumulator 人口。"""
+
+        accumulator = self._accumulator
+        if accumulator is None:
+            return
+        target.update(accumulator.observed_vp_ids)
+        self._accumulator = None
+
+
 def _utc(value: Any, field: str) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
         raise BoundedPilotWorkerError(f"{field} 必须是秒级 UTC Z 时间")
@@ -220,6 +597,296 @@ def _sha256(value: Any, field: str) -> str:
     ):
         raise BoundedPilotWorkerError(f"{field} 必须是 64 位小写 SHA256")
     return value
+
+
+def _full_seed_checkpoint_policy(
+    *,
+    planned_seed_checkpoint_seconds: float,
+    worker_soft_stop_seconds: float,
+    max_worker_runtime_seconds: float,
+) -> Mapping[str, Any]:
+    """返回 checkpoint 内冻结的主动保留与显式归档政策。"""
+
+    return {
+        "planned_seed_checkpoint_seconds": planned_seed_checkpoint_seconds,
+        "worker_soft_stop_seconds": worker_soft_stop_seconds,
+        "max_worker_runtime_seconds": max_worker_runtime_seconds,
+        "active_root_retention_policy": (
+            _FULL_SEED_ACTIVE_ROOT_RETENTION_POLICY
+        ),
+        "automatic_deletion": False,
+        "archive_before_reclamation_required": True,
+        "archive_hash_and_receipt_required": True,
+        "capacity_exhaustion_behavior": (
+            _FULL_SEED_CAPACITY_EXHAUSTION_BEHAVIOR
+        ),
+    }
+
+
+def _validate_full_seed_checkpoint_policy(value: Any) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != (
+        _FULL_SEED_CHECKPOINT_POLICY_FIELDS
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint checkpoint_policy 字段不闭合"
+        )
+    for name in (
+        "planned_seed_checkpoint_seconds",
+        "worker_soft_stop_seconds",
+        "max_worker_runtime_seconds",
+    ):
+        item = value[name]
+        if (
+            isinstance(item, bool)
+            or not isinstance(item, (int, float))
+            or not math.isfinite(float(item))
+            or float(item) <= 0
+        ):
+            raise BoundedPilotWorkerError(
+                f"完整 seed checkpoint checkpoint_policy.{name} 非法"
+            )
+    if not (
+        float(value["planned_seed_checkpoint_seconds"])
+        < float(value["worker_soft_stop_seconds"])
+        < float(value["max_worker_runtime_seconds"])
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint checkpoint_policy 边界非法"
+        )
+    expected_lifecycle = {
+        "active_root_retention_policy": (
+            _FULL_SEED_ACTIVE_ROOT_RETENTION_POLICY
+        ),
+        "automatic_deletion": False,
+        "archive_before_reclamation_required": True,
+        "archive_hash_and_receipt_required": True,
+        "capacity_exhaustion_behavior": (
+            _FULL_SEED_CAPACITY_EXHAUSTION_BEHAVIOR
+        ),
+    }
+    if any(value.get(name) != item for name, item in expected_lifecycle.items()):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint checkpoint_policy 生命周期政策非法"
+        )
+    return dict(value)
+
+
+def validate_seed_spool_attestation(
+    attestation: Mapping[str, Any],
+    *,
+    seed_artifact: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """严格验证冻结的单-pass seed 解压身份与 manifest 绑定。
+
+    attestation 仅提供容量与内容身份；首次构建 spool 时仍必须重新流式
+    核验压缩与解压 SHA/size，不能用冻结文件替代真实完整读取。
+    """
+
+    if not isinstance(attestation, Mapping) or set(attestation) != {
+        "schema_version",
+        "artifact_binding",
+        "decompressed",
+        "measurement",
+        "semantic_fingerprint_sha256",
+    }:
+        raise BoundedPilotWorkerError("seed spool attestation 顶层字段不闭合")
+    if attestation.get("schema_version") != SEED_SPOOL_ATTESTATION_SCHEMA_VERSION:
+        raise BoundedPilotWorkerError("seed spool attestation schema_version 不支持")
+    artifact = attestation.get("artifact_binding")
+    decompressed = attestation.get("decompressed")
+    measurement = attestation.get("measurement")
+    if not all(
+        isinstance(value, Mapping)
+        for value in (artifact, decompressed, measurement)
+    ):
+        raise BoundedPilotWorkerError("seed spool attestation 结构不闭合")
+    if (
+        set(artifact)
+        != {"artifact_id", "file_sha256", "compressed_size_bytes"}
+        or set(decompressed) != {"size_bytes", "sha256"}
+        or set(measurement)
+        != {"method", "measured_at_utc", "raw_read_pass_count"}
+    ):
+        raise BoundedPilotWorkerError("seed spool attestation 子字段不闭合")
+    expected_artifact = {
+        "artifact_id": seed_artifact.get("artifact_id"),
+        "file_sha256": seed_artifact.get("file_sha256"),
+        "compressed_size_bytes": seed_artifact.get("size_bytes"),
+    }
+    if dict(artifact) != expected_artifact:
+        raise BoundedPilotWorkerError(
+            "seed spool attestation 与 state_seed_rib 制品身份不一致"
+        )
+    _sha256(
+        artifact.get("file_sha256"),
+        "attestation.artifact_binding.file_sha256",
+    )
+    decompressed_size = decompressed.get("size_bytes")
+    if (
+        isinstance(decompressed_size, bool)
+        or not isinstance(decompressed_size, int)
+        or decompressed_size <= 0
+    ):
+        raise BoundedPilotWorkerError(
+            "attestation.decompressed.size_bytes 必须为正整数"
+        )
+    _sha256(decompressed.get("sha256"), "attestation.decompressed.sha256")
+    if (
+        measurement.get("method")
+        != "full_streaming_gzip_decompression_sha256_v1"
+        or measurement.get("raw_read_pass_count") != 1
+    ):
+        raise BoundedPilotWorkerError("seed spool attestation measurement 非法")
+    _utc(
+        measurement.get("measured_at_utc"),
+        "attestation.measurement.measured_at_utc",
+    )
+    semantic = {
+        "schema_version": attestation["schema_version"],
+        "artifact_binding": dict(artifact),
+        "decompressed": dict(decompressed),
+        "measurement": dict(measurement),
+    }
+    expected_fingerprint = hashlib.sha256(
+        canonical_json(semantic).encode("utf-8")
+    ).hexdigest()
+    fingerprint = _sha256(
+        attestation.get("semantic_fingerprint_sha256"),
+        "attestation.semantic_fingerprint_sha256",
+    )
+    if fingerprint != expected_fingerprint:
+        raise BoundedPilotWorkerError("seed spool attestation 内容指纹不一致")
+    return {**semantic, "semantic_fingerprint_sha256": fingerprint}
+
+
+def _validate_seed_spool_binding(
+    value: Any,
+    *,
+    attestation: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "schema_version",
+        "file_name",
+        "size_bytes",
+        "sha256",
+    }:
+        raise BoundedPilotWorkerError("完整 seed checkpoint seed_spool 字段不闭合")
+    file_name = value.get("file_name")
+    if (
+        value.get("schema_version") != "rrc25-seed-decompressed-spool/v1"
+        or not isinstance(file_name, str)
+        or not file_name
+        or Path(file_name).name != file_name
+        or file_name in {".", ".."}
+    ):
+        raise BoundedPilotWorkerError("完整 seed checkpoint seed_spool 身份非法")
+    expected = attestation["decompressed"]
+    if (
+        value.get("size_bytes") != expected["size_bytes"]
+        or value.get("sha256") != expected["sha256"]
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint seed_spool 与 attestation 不一致"
+        )
+    return dict(value)
+
+
+def _validate_previous_record_boundary(
+    value: Any,
+    *,
+    next_record_ordinal: int,
+    next_record_offset: int,
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "record_ordinal",
+        "record_offset",
+        "record_length",
+        "record_sha256",
+    }:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint previous_record_boundary 字段不闭合"
+        )
+    ordinal = value.get("record_ordinal")
+    offset = value.get("record_offset")
+    length = value.get("record_length")
+    if (
+        any(
+            isinstance(item, bool) or not isinstance(item, int) or item < 0
+            for item in (ordinal, offset, length)
+        )
+        or length < 12
+        or ordinal + 1 != next_record_ordinal
+        or offset + length != next_record_offset
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint previous_record_boundary 与 next 坐标不闭合"
+        )
+    _sha256(value.get("record_sha256"), "previous_record_boundary.record_sha256")
+    return dict(value)
+
+
+def _validate_peer_index_context(
+    value: Any,
+    *,
+    next_record_offset: int,
+) -> Optional[Mapping[str, Any]]:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping) or set(value) != {
+        "schema_version",
+        "record_ordinal",
+        "record_offset",
+        "record_length",
+        "record_sha256",
+        "peers",
+    }:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint peer_index_context 字段不闭合"
+        )
+    ordinal = value.get("record_ordinal")
+    offset = value.get("record_offset")
+    length = value.get("record_length")
+    peers = value.get("peers")
+    if (
+        value.get("schema_version") != "rrc25-rib-peer-index-context/v1"
+        or any(
+            isinstance(item, bool) or not isinstance(item, int) or item < 0
+            for item in (ordinal, offset, length)
+        )
+        or length < 12
+        or offset + length > next_record_offset
+        or not isinstance(peers, list)
+        or not peers
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint peer_index_context 非法"
+        )
+    _sha256(value.get("record_sha256"), "peer_index_context.record_sha256")
+    for row in peers:
+        if not isinstance(row, Mapping) or set(row) != {"peer_ip", "peer_asn"}:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint peer_index_context.peers 非法"
+            )
+        try:
+            peer_ip = ipaddress.ip_address(row.get("peer_ip")).compressed
+        except (TypeError, ValueError) as error:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint peer_index_context.peer_ip 非法"
+            ) from error
+        peer_asn = row.get("peer_asn")
+        if (
+            peer_ip != row.get("peer_ip")
+            or isinstance(peer_asn, bool)
+            or not isinstance(peer_asn, int)
+            or not 0 <= peer_asn <= 0xFFFFFFFF
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint peer_index_context.peers 非法"
+            )
+    return {
+        **dict(value),
+        "peers": [dict(row) for row in peers],
+    }
 
 
 def _selection_identity(selection: Mapping[str, Any]) -> Tuple[str, str]:
@@ -253,6 +920,11 @@ def _mapping_identity(mapping: CountryMappingView) -> str:
         "target_country": mapping.target_country,
         "source_sha256": mapping.source_sha256,
         "source_ref": mapping.source_ref,
+        "revised_lineage": (
+            asdict(mapping.revised_lineage)
+            if mapping.revised_lineage is not None
+            else None
+        ),
         "assignments": [
             {
                 "asn": row.asn,
@@ -263,6 +935,67 @@ def _mapping_identity(mapping: CountryMappingView) -> str:
         ],
     }
     return hashlib.sha256(canonical_json(semantic).encode("utf-8")).hexdigest()
+
+
+def _raw_retention_identity(
+    raw_retention_mapping: Optional[RawRetentionMappingUnion],
+    *,
+    statistical_mapping: CountryMappingView,
+    statistical_mapping_hash: str,
+) -> Tuple[str, str]:
+    """返回 raw 保留口径的类型与身份，绝不把 union 当统计视图。"""
+
+    if raw_retention_mapping is None:
+        kind = "single_statistical_mapping_legacy"
+        semantic = {
+            "kind": kind,
+            "target_country": statistical_mapping.target_country,
+            "statistical_mapping_fingerprint_sha256": statistical_mapping_hash,
+        }
+    else:
+        if not isinstance(raw_retention_mapping, RawRetentionMappingUnion):
+            raise BoundedPilotWorkerError(
+                "raw_retention_mapping 必须是 RawRetentionMappingUnion"
+            )
+        if raw_retention_mapping.target_country != statistical_mapping.target_country:
+            raise BoundedPilotWorkerError(
+                "raw-retention union 与 statistical mapping 目标国家不一致"
+            )
+        view_bindings = tuple(
+            {
+                "view": view.view,
+                "mapping_fingerprint_sha256": _mapping_identity(view),
+                "source_sha256": view.source_sha256,
+                "source_ref": view.source_ref,
+            }
+            for view in raw_retention_mapping.views
+        )
+        matching_statistical_views = tuple(
+            row
+            for row in view_bindings
+            if row["view"] == statistical_mapping.view
+            and row["mapping_fingerprint_sha256"] == statistical_mapping_hash
+        )
+        if len(matching_statistical_views) != 1:
+            raise BoundedPilotWorkerError(
+                "raw-retention union 未绑定当前 statistical mapping 视图"
+            )
+        kind = "compatible_revised_raw_retention_union"
+        semantic = {
+            "kind": kind,
+            "semantics": raw_retention_mapping.semantics,
+            "target_country": raw_retention_mapping.target_country,
+            "views": view_bindings,
+        }
+    fingerprint = hashlib.sha256(
+        canonical_json(
+            {
+                "schema": "rrc25_bounded_pilot_raw_retention_identity_v1",
+                "raw_retention_mapping": semantic,
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    return kind, fingerprint
 
 
 def _artifact_relative(artifact: Mapping[str, Any]) -> PurePosixPath:
@@ -609,6 +1342,22 @@ def _origin_relevance(
     return possible, ambiguous, mapped_target
 
 
+def _raw_retention_possible(
+    event: ResearchRouteEvent | ParsedRouteElement,
+    membership: Callable[[int], Optional[bool]],
+) -> bool:
+    """仅决定 raw/RouteEvent 是否保留，不产生任何统计归属。"""
+
+    if event.action == "withdraw":
+        return False
+    if event.as_path is None:
+        return True
+    resolution = derive_origin_asns(event.as_path)
+    if resolution.state == UNKNOWN:
+        return True
+    return any(membership(asn) is not False for asn in resolution.origins)
+
+
 def _raw_record_ref(raw: RawRecordEvidence) -> dict[str, Any]:
     return {
         "artifact_id": raw.artifact_id,
@@ -676,7 +1425,52 @@ def _assert_checkpoint_directory(path: Path) -> None:
         raise BoundedPilotWorkerError("checkpoint_directory 必须是非符号链接目录")
 
 
-def _read_checkpoint(path: Path) -> Mapping[str, Any]:
+def _checkpoint_directory_bytes(path: Path) -> int:
+    """统计 checkpoint 临时根的当前逻辑字节并拒绝不可分类条目。"""
+
+    _assert_checkpoint_directory(path)
+    total = 0
+    try:
+        entries = tuple(path.iterdir())
+    except OSError as error:
+        raise BoundedPilotWorkerError("checkpoint_directory 无法扫描") from error
+    for entry in entries:
+        try:
+            metadata = entry.lstat()
+        except OSError as error:
+            raise BoundedPilotWorkerError(
+                "checkpoint_directory 条目不可读"
+            ) from error
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+            raise BoundedPilotWorkerError(
+                "checkpoint_directory 只能包含非符号链接普通文件"
+            )
+        total += metadata.st_size
+    return total
+
+
+def _seed_spool_destination(
+    checkpoint_directory: Path,
+    attestation: Mapping[str, Any],
+) -> Path:
+    fingerprint = _sha256(
+        attestation.get("semantic_fingerprint_sha256"),
+        "attestation.semantic_fingerprint_sha256",
+    )
+    decompressed_sha256 = _sha256(
+        attestation["decompressed"].get("sha256"),
+        "attestation.decompressed.sha256",
+    )
+    return checkpoint_directory / (
+        f"seed-spool.{fingerprint[:16]}.{decompressed_sha256[:16]}.mrt"
+    )
+
+
+def _read_checkpoint(
+    path: Path,
+    *,
+    fingerprint_schema: str = CHECKPOINT_FINGERPRINT_SCHEMA,
+) -> Mapping[str, Any]:
     try:
         metadata = path.lstat()
     except OSError as error:
@@ -705,7 +1499,28 @@ def _read_checkpoint(path: Path) -> Mapping[str, Any]:
     identity = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
     if any(getattr(before, key) != getattr(after, key) for key in identity):
         raise BoundedPilotWorkerError("resume checkpoint 在读取期间发生变化")
-    payload_bytes = b"".join(chunks)
+    stored_bytes = b"".join(chunks)
+    if stored_bytes.startswith(b"\x1f\x8b"):
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(stored_bytes), mode="rb") as stream:
+                payload_bytes = stream.read(_MAX_CHECKPOINT_UNCOMPRESSED_BYTES + 1)
+                if len(payload_bytes) > _MAX_CHECKPOINT_UNCOMPRESSED_BYTES:
+                    raise BoundedPilotWorkerError(
+                        "resume checkpoint 解压后超过 2 GB 硬上限"
+                    )
+                if stream.read(1):
+                    raise BoundedPilotWorkerError(
+                        "resume checkpoint 解压后超过 2 GB 硬上限"
+                    )
+        except (OSError, EOFError) as error:
+            raise BoundedPilotWorkerError(
+                "resume checkpoint gzip EOF/CRC 校验失败"
+            ) from error
+    else:
+        # 向后兼容已经发布的 v1/v2 plain canonical JSON checkpoint。
+        payload_bytes = stored_bytes
+        if len(payload_bytes) > _MAX_CHECKPOINT_UNCOMPRESSED_BYTES:
+            raise BoundedPilotWorkerError("resume checkpoint JSON 超过 2 GB 硬上限")
     if not payload_bytes.endswith(b"\n") or payload_bytes.count(b"\n") != 1:
         raise BoundedPilotWorkerError("resume checkpoint 必须是一行规范 JSON")
     try:
@@ -718,7 +1533,7 @@ def _read_checkpoint(path: Path) -> Mapping[str, Any]:
     fingerprint = semantic.pop("checkpoint_fingerprint_sha256", None)
     expected = hashlib.sha256(
         canonical_json(
-            {"schema": CHECKPOINT_FINGERPRINT_SCHEMA, "checkpoint": semantic}
+            {"schema": fingerprint_schema, "checkpoint": semantic}
         ).encode("utf-8")
     ).hexdigest()
     if fingerprint != expected:
@@ -726,6 +1541,20 @@ def _read_checkpoint(path: Path) -> Mapping[str, Any]:
     if canonical_json(dict(payload)).encode("utf-8") + b"\n" != payload_bytes:
         raise BoundedPilotWorkerError("resume checkpoint 不是规范 JSON 编码")
     return payload
+
+
+def _checkpoint_storage_bytes(path: Path) -> int:
+    """返回 checkpoint 临时根中实际占用的逻辑字节。"""
+
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise BoundedPilotWorkerError("checkpoint 文件不可读") from error
+    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+        raise BoundedPilotWorkerError("checkpoint 必须是非符号链接普通文件")
+    if metadata.st_size <= 0 or metadata.st_size > _MAX_CHECKPOINT_BYTES:
+        raise BoundedPilotWorkerError("checkpoint 存储字节越界")
+    return metadata.st_size
 
 
 def _checkpoint_payload(context: Mapping[str, Any]) -> dict[str, Any]:
@@ -754,6 +1583,126 @@ def _publish_checkpoint(
         target, payload, kind="bounded_pilot_worker_checkpoint"
     )
     return published.path, published.size_bytes
+
+
+def _full_seed_checkpoint_payload(context: Mapping[str, Any]) -> dict[str, Any]:
+    semantic = dict(context)
+    semantic["schema_version"] = FULL_SEED_CHECKPOINT_SCHEMA_VERSION
+    fingerprint = hashlib.sha256(
+        canonical_json(
+            {
+                "schema": FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA,
+                "checkpoint": semantic,
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    return {**semantic, "checkpoint_fingerprint_sha256": fingerprint}
+
+
+def _publish_full_seed_checkpoint(
+    directory: Path,
+    *,
+    selection_id: str,
+    sequence: int,
+    context: Mapping[str, Any],
+    maximum_temporary_bytes: int,
+) -> Tuple[Path, int, int]:
+    if (
+        isinstance(maximum_temporary_bytes, bool)
+        or not isinstance(maximum_temporary_bytes, int)
+        or maximum_temporary_bytes <= 0
+    ):
+        raise BoundedPilotWorkerError("maximum_temporary_bytes 必须为正整数")
+    current_directory_bytes = _checkpoint_directory_bytes(directory)
+    prepared = dict(context)
+    resources = dict(prepared.get("resources", {}))
+    prepared["resources"] = resources
+    compressed_payload: bytes | None = None
+    encoded_size = 0
+    for _iteration in range(16):
+        payload = _full_seed_checkpoint_payload(prepared)
+        encoded = (canonical_json(payload) + "\n").encode("utf-8")
+        encoded_size = len(encoded)
+        if encoded_size > _MAX_CHECKPOINT_UNCOMPRESSED_BYTES:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 规范 JSON 超过 2 GB，拒绝发布"
+            )
+        compressed_buffer = io.BytesIO()
+        with gzip.GzipFile(
+            filename="",
+            mode="wb",
+            compresslevel=_FULL_SEED_CHECKPOINT_GZIP_LEVEL,
+            fileobj=compressed_buffer,
+            mtime=0,
+        ) as compressed:
+            compressed.write(encoded)
+        candidate = compressed_buffer.getvalue()
+        if len(candidate) > _MAX_CHECKPOINT_BYTES:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 压缩文件超过 512 MiB，拒绝发布"
+            )
+        projected_total = current_directory_bytes + len(candidate)
+        if projected_total >= maximum_temporary_bytes:
+            raise BoundedPilotWorkerError(
+                "checkpoint 目录写入瞬间总量达到临时空间审批边界"
+            )
+        prior_peak = resources.get("peak_temporary_bytes", 0)
+        if (
+            isinstance(prior_peak, bool)
+            or not isinstance(prior_peak, int)
+            or prior_peak < 0
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint peak_temporary_bytes 非法"
+            )
+        actual_peak = max(prior_peak, projected_total)
+        if resources.get("peak_temporary_bytes") == actual_peak:
+            compressed_payload = candidate
+            break
+        resources["peak_temporary_bytes"] = actual_peak
+    else:
+        raise BoundedPilotWorkerError("完整 seed checkpoint 大小计算未收敛")
+    fingerprint = payload["checkpoint_fingerprint_sha256"]
+    name = (
+        f"{selection_id}.worker.{sequence:04d}.full-seed."
+        f"{fingerprint[:16]}.json.gz"
+    )
+    if compressed_payload is None:  # pragma: no cover - 上方收敛或抛错。
+        raise BoundedPilotWorkerError("完整 seed checkpoint 压缩结果缺失")
+    target = directory / name
+    if target.exists() or target.is_symlink():
+        raise FileExistsError("完整 seed checkpoint 已存在，拒绝覆盖")
+    temporary = directory / f".{name}.tmp-{os.getpid()}-{time.time_ns()}"
+    descriptor = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+        0o640,
+    )
+    try:
+        view = memoryview(compressed_payload)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise OSError("完整 seed checkpoint 写入未取得进展")
+            view = view[written:]
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    try:
+        os.link(temporary, target, follow_symlinks=False)
+        directory_fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
+    if target.stat().st_size != len(compressed_payload):
+        raise BoundedPilotWorkerError("完整 seed checkpoint 实际压缩字节与预计算不一致")
+    observed_total = _checkpoint_directory_bytes(directory)
+    if observed_total != projected_total:
+        raise BoundedPilotWorkerError("checkpoint 目录在发布期间发生变化")
+    return target, len(compressed_payload), actual_peak
 
 
 def _diagnostic_checkpoint_payload(context: Mapping[str, Any]) -> dict[str, Any]:
@@ -809,16 +1758,578 @@ def _expected_slots(start: datetime, end: datetime) -> Tuple[datetime, ...]:
     return tuple(values)
 
 
+def verify_full_seed_checkpoint(
+    checkpoint_path: os.PathLike[str] | str,
+    *,
+    selection: Mapping[str, Any],
+    country_mapping: CountryMappingView,
+    raw_retention_mapping: Optional[RawRetentionMappingUnion] = None,
+    seed_spool_attestation: Mapping[str, Any],
+    pilot_end_exclusive_utc: str,
+    code_identity_sha256: str,
+) -> Mapping[str, Any]:
+    """只读验证完整 seed checkpoint，不打开任何 MRT 制品。"""
+
+    selection_id, selection_hash = _selection_identity(selection)
+    mapping_hash = _mapping_identity(country_mapping)
+    raw_retention_kind, raw_retention_hash = _raw_retention_identity(
+        raw_retention_mapping,
+        statistical_mapping=country_mapping,
+        statistical_mapping_hash=mapping_hash,
+    )
+    if selection.get("country_code") != country_mapping.target_country:
+        raise BoundedPilotWorkerError("selection 国家与冻结 mapping target 不一致")
+    window = selection.get("window")
+    roles = selection.get("roles")
+    if not isinstance(window, Mapping) or not isinstance(roles, Mapping):
+        raise BoundedPilotWorkerError("selection 缺少 window/roles")
+    start = _utc(window.get("start_utc"), "selection.window.start_utc")
+    end = _utc(window.get("end_exclusive_utc"), "selection.window.end_exclusive_utc")
+    pilot_end = _utc(pilot_end_exclusive_utc, "pilot_end_exclusive_utc")
+    if (
+        window.get("interval_semantics") != "half_open"
+        or window.get("granularity_seconds") != 300
+        or start >= pilot_end
+        or pilot_end > end
+        or (pilot_end - start) % _FIVE_MINUTES
+        or start.minute % 5
+        or pilot_end.minute % 5
+    ):
+        raise BoundedPilotWorkerError(
+            "pilot 必须位于 selection 内并对齐五分钟半开边界"
+        )
+    code_hash = _sha256(code_identity_sha256, "code_identity_sha256")
+    seed = roles.get("state_seed_rib")
+    if not isinstance(seed, Mapping):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint 必须绑定 state_seed_rib"
+        )
+    normalized_attestation = validate_seed_spool_attestation(
+        seed_spool_attestation,
+        seed_artifact=seed,
+    )
+
+    restored = _read_checkpoint(
+        Path(checkpoint_path),
+        fingerprint_schema=FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA,
+    )
+    if restored.get("schema_version") != FULL_SEED_CHECKPOINT_SCHEMA_VERSION:
+        raise BoundedPilotWorkerError(
+            "checkpoint 不是完整 seed checkpoint schema"
+        )
+    if set(restored) != _FULL_SEED_CHECKPOINT_FIELDS:
+        raise BoundedPilotWorkerError("完整 seed checkpoint 顶层字段不闭合")
+    required_bindings = {
+        "code_identity_sha256": code_hash,
+        "selection_id": selection_id,
+        "selection_semantic_fingerprint_sha256": selection_hash,
+        "mapping_fingerprint_sha256": mapping_hash,
+        "raw_retention_mapping_kind": raw_retention_kind,
+        "raw_retention_mapping_fingerprint_sha256": raw_retention_hash,
+        "seed_spool_attestation_fingerprint_sha256": normalized_attestation[
+            "semantic_fingerprint_sha256"
+        ],
+        "pilot_start_utc": _utc_text(start),
+        "pilot_end_exclusive_utc": _utc_text(pilot_end),
+    }
+    if any(restored.get(key) != value for key, value in required_bindings.items()):
+        if restored.get("code_identity_sha256") != code_hash:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint code_identity_sha256 不一致"
+            )
+        if (
+            restored.get("raw_retention_mapping_kind") != raw_retention_kind
+            or restored.get("raw_retention_mapping_fingerprint_sha256")
+            != raw_retention_hash
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint raw-retention union 身份不一致"
+            )
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint 与 selection/mapping/pilot 不绑定"
+        )
+    if restored.get("resume_policy") != "worker_full_seed_record_offset_v2":
+        raise BoundedPilotWorkerError("完整 seed checkpoint resume_policy 非法")
+
+    position = restored.get("position")
+    progress = restored.get("seed_progress")
+    resources = restored.get("resources")
+    ambiguity = restored.get("ambiguity")
+    policy = restored.get("checkpoint_policy")
+    if not all(
+        isinstance(value, Mapping)
+        for value in (position, progress, resources, ambiguity, policy)
+    ):
+        raise BoundedPilotWorkerError("完整 seed checkpoint 结构不闭合")
+    if set(position) != {
+        "phase",
+        "update_index",
+        "next_record_ordinal",
+        "boundary",
+    }:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint position 字段不闭合"
+        )
+    phase = position.get("phase")
+    position_next = position.get("next_record_ordinal")
+    if (
+        phase not in {"seed_rib", "updates"}
+        or position.get("update_index") != 0
+        or isinstance(position_next, bool)
+        or not isinstance(position_next, int)
+        or position_next < 0
+        or position.get("boundary") != "after_complete_physical_record"
+        or (phase == "updates" and position_next != 0)
+    ):
+        raise BoundedPilotWorkerError("完整 seed checkpoint position 非法")
+    if set(progress) != {
+        "artifact_id",
+        "file_sha256",
+        "collector_id",
+        "artifact_time_utc",
+        "size_bytes",
+        "next_record_ordinal",
+        "next_record_offset",
+        "seed_parse_complete",
+        "previous_record_boundary",
+        "peer_index_context",
+    }:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint seed_progress 字段不闭合"
+        )
+    for key in (
+        "artifact_id",
+        "file_sha256",
+        "collector_id",
+        "artifact_time_utc",
+        "size_bytes",
+    ):
+        if progress.get(key) != seed.get(key):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed 制品绑定不一致"
+            )
+    progress_next = progress.get("next_record_ordinal")
+    progress_offset = progress.get("next_record_offset")
+    seed_parse_complete = progress.get("seed_parse_complete")
+    spool = _validate_seed_spool_binding(
+        restored.get("seed_spool"),
+        attestation=normalized_attestation,
+    )
+    if (
+        isinstance(progress_next, bool)
+        or not isinstance(progress_next, int)
+        or progress_next < 0
+        or isinstance(progress_offset, bool)
+        or not isinstance(progress_offset, int)
+        or progress_offset < 0
+        or progress_offset > spool["size_bytes"]
+        or not isinstance(seed_parse_complete, bool)
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint seed_progress 非法"
+        )
+    previous_record_boundary = _validate_previous_record_boundary(
+        progress.get("previous_record_boundary"),
+        next_record_ordinal=progress_next,
+        next_record_offset=progress_offset,
+    )
+    peer_index_context = _validate_peer_index_context(
+        progress.get("peer_index_context"),
+        next_record_offset=progress_offset,
+    )
+    if (
+        (
+            phase == "seed_rib"
+            and (
+                seed_parse_complete
+                or position_next != progress_next
+                or progress_offset >= spool["size_bytes"]
+            )
+        )
+        or (
+            phase == "updates"
+            and (
+                not seed_parse_complete
+                or progress_offset != spool["size_bytes"]
+            )
+        )
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint seed_progress 非法"
+        )
+
+    try:
+        state = route_replay_state_from_payload(restored["state"])
+        baseline_payload = restored["seed_state_at_window_start"]
+        baseline = (
+            route_replay_state_from_payload(baseline_payload)
+            if baseline_payload is not None
+            else None
+        )
+        events = tuple(_event_from_payload(row) for row in restored["route_events"])
+        audits = tuple(_raw_from_payload(row) for row in restored["raw_audits"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint state/event/raw 无法恢复"
+        ) from error
+    if (
+        state.continuity_state != "continuous"
+        or state.missing_reasons
+        or restored.get("gaps") != []
+        or restored.get("errors") != []
+        or (phase == "seed_rib" and baseline is not None)
+        or (phase == "updates" and baseline != state)
+        or any(event.action != "rib_snapshot" for event in events)
+        or len({event.route_event_id for event in events}) != len(events)
+        or state.processed_route_event_ids
+        != frozenset(event.route_event_id for event in events)
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint state/phase/RouteEvent 不闭合"
+        )
+
+    expected_seed_identity = (
+        seed.get("artifact_id"),
+        seed.get("file_sha256"),
+        seed.get("collector_id"),
+        seed.get("artifact_time_utc"),
+    )
+    audit_index: dict[Tuple[str, int], RawRecordEvidence] = {}
+    prior_record = -1
+    prior_end = -1
+    for raw in audits:
+        key = (raw.artifact_id, raw.record_ordinal)
+        numeric = (
+            raw.record_ordinal,
+            raw.record_offset,
+            raw.record_length,
+            raw.event_epoch_microseconds,
+            raw.mrt_type,
+            raw.mrt_subtype,
+        )
+        if (
+            key in audit_index
+            or (
+                raw.artifact_id,
+                raw.file_sha256,
+                raw.collector_id,
+                raw.artifact_slot_utc,
+            )
+            != expected_seed_identity
+            or raw.record_ordinal >= progress_next
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+                for value in numeric
+            )
+            or raw.record_length < 12
+            or raw.record_ordinal <= prior_record
+            or raw.record_offset < prior_end
+            or raw.record_offset + raw.record_length > progress_offset
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint raw audit 越出已完成记录边界"
+            )
+        _sha256(
+            raw.raw_record_sha256,
+            "完整 seed checkpoint raw_audit.raw_record_sha256",
+        )
+        audit_index[key] = raw
+        prior_record = raw.record_ordinal
+        prior_end = raw.record_offset + raw.record_length
+    if any(
+        (
+            event.artifact_id,
+            event.file_sha256,
+            event.collector_id,
+            event.artifact_slot_utc,
+        )
+        != expected_seed_identity
+        or event.record_ordinal >= progress_next
+        or (event.artifact_id, event.record_ordinal) not in audit_index
+        for event in events
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint RouteEvent 缺少 raw/seed 证据"
+        )
+
+    def sorted_strings(value: Any, name: str) -> set[str]:
+        if (
+            not isinstance(value, list)
+            or any(not isinstance(item, str) or not item for item in value)
+            or value != sorted(set(value))
+        ):
+            raise BoundedPilotWorkerError(f"完整 seed checkpoint {name} 非法")
+        return set(value)
+
+    prefixes = sorted_strings(restored.get("tracked_prefixes"), "tracked_prefixes")
+    vps = sorted_strings(restored.get("observed_vp_ids"), "observed_vp_ids")
+    try:
+        canonical_prefixes = all(
+            ipaddress.ip_network(prefix, strict=True).compressed == prefix
+            for prefix in prefixes
+        )
+    except ValueError:
+        canonical_prefixes = False
+    if (
+        not canonical_prefixes
+        or prefixes != {event.prefix for event in events}
+        or {event.vp_id for event in events} - vps
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint prefix/VP 与 RouteEvent 不闭合"
+        )
+
+    if set(ambiguity) != {
+        "element_count",
+        "prefixes",
+        "record_refs",
+        "vp_ids",
+        "mapped_target_relation_count",
+    }:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint ambiguity 字段不闭合"
+        )
+    ambiguous_events = []
+    mapped_count = 0
+    for event in events:
+        _possible, is_ambiguous, is_mapped = _origin_relevance(
+            event, country_mapping
+        )
+        mapped_count += int(is_mapped)
+        if is_ambiguous:
+            ambiguous_events.append(event)
+    ambiguous_prefixes = sorted_strings(
+        ambiguity.get("prefixes"), "ambiguity.prefixes"
+    )
+    ambiguous_vps = sorted_strings(ambiguity.get("vp_ids"), "ambiguity.vp_ids")
+    ambiguous_refs = ambiguity.get("record_refs")
+    if (
+        ambiguity.get("element_count") != len(ambiguous_events)
+        or ambiguity.get("mapped_target_relation_count") != mapped_count
+        or ambiguous_prefixes != {event.prefix for event in ambiguous_events}
+        or ambiguous_vps != {event.vp_id for event in ambiguous_events}
+        or not isinstance(ambiguous_refs, list)
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint ambiguity 与 RouteEvent 不闭合"
+        )
+    seen_ambiguous_records = set()
+    for row in ambiguous_refs:
+        if not isinstance(row, Mapping):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity raw ref 非法"
+            )
+        key = (row.get("artifact_id"), row.get("record_ordinal"))
+        if (
+            key in seen_ambiguous_records
+            or key not in audit_index
+            or dict(row) != _raw_record_ref(audit_index[key])
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity raw ref 不闭合"
+            )
+        seen_ambiguous_records.add(key)
+
+    expected_resource_fields = {
+        "prior_new_raw_read_bytes",
+        "prior_raw_accounting",
+        "seed_raw_reservation",
+        "new_raw_read_bytes",
+        "peak_temporary_bytes",
+        "database_writes",
+        "cumulative_worker_runtime_seconds",
+        "max_worker_elapsed_seconds",
+    }
+    if set(resources) != expected_resource_fields or resources.get("database_writes") != 0:
+        raise BoundedPilotWorkerError("完整 seed checkpoint resources 非法")
+    prior_raw_bytes = resources.get("prior_new_raw_read_bytes")
+    raw_bytes = resources.get("new_raw_read_bytes")
+    peak_temp = resources.get("peak_temporary_bytes")
+    cumulative_runtime = resources.get("cumulative_worker_runtime_seconds")
+    max_runtime = resources.get("max_worker_elapsed_seconds")
+    if (
+        any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in (prior_raw_bytes, raw_bytes, peak_temp)
+        )
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or float(value) < 0
+            for value in (cumulative_runtime, max_runtime)
+        )
+        or raw_bytes < prior_raw_bytes
+        or float(max_runtime) > float(cumulative_runtime)
+        or peak_temp
+        < spool["size_bytes"]
+        + _checkpoint_storage_bytes(Path(checkpoint_path))
+    ):
+        raise BoundedPilotWorkerError("完整 seed checkpoint resources 非法")
+    prior_accounting_value = resources.get("prior_raw_accounting")
+    if prior_accounting_value is None:
+        raise BoundedPilotWorkerError(
+            "full seed checkpoint 缺少 probe terminal accounting"
+        )
+    else:
+        probe_base = prior_accounting_value.get(
+            "cumulative_reserved_new_raw_bytes"
+        )
+        if isinstance(probe_base, bool) or not isinstance(probe_base, int):
+            raise BoundedPilotWorkerError("checkpoint probe cumulative 非法")
+        normalized_probe = _verified_probe_terminal_accounting(
+            prior_accounting_value,
+            expected_prior_raw_bytes=probe_base,
+            selection_id=selection_id,
+            selection_sha256=selection_hash,
+            code_identity_sha256=code_identity_sha256,
+        )
+        normalized_reservation = _verified_seed_raw_reservation(
+            resources.get("seed_raw_reservation"),
+            probe_accounting=normalized_probe,
+            expected_prior_raw_bytes=int(prior_raw_bytes),
+            selection_id=selection_id,
+            seed_artifact=seed,
+            code_identity_sha256=code_identity_sha256,
+        )
+        if normalized_reservation["cumulative_reserved_new_raw_bytes"] != raw_bytes:
+            raise BoundedPilotWorkerError(
+                "checkpoint raw cumulative 与 durable seed reservation 不闭合"
+            )
+
+    ledger = restored.get("seed_read_ledger")
+    if not isinstance(ledger, list) or not ledger:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint seed_read_ledger 非法"
+        )
+    prior_sequence = 0
+    prior_completed = 0
+    prior_completed_offset = 0
+    ledger_bytes = 0
+    for index, row in enumerate(ledger):
+        if not isinstance(row, Mapping) or set(row) != {
+            "checkpoint_sequence",
+            "resume_from_record_ordinal",
+            "resume_from_record_offset",
+            "completed_through_record_ordinal_exclusive",
+            "completed_through_record_offset",
+            "new_compressed_raw_bytes_read",
+            "seed_parse_complete",
+        }:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_read_ledger 字段不闭合"
+            )
+        sequence = row.get("checkpoint_sequence")
+        resume_from = row.get("resume_from_record_ordinal")
+        resume_offset = row.get("resume_from_record_offset")
+        completed = row.get("completed_through_record_ordinal_exclusive")
+        completed_offset = row.get("completed_through_record_offset")
+        read_bytes = row.get("new_compressed_raw_bytes_read")
+        complete_pass = row.get("seed_parse_complete")
+        if (
+            any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+                for value in (
+                    sequence,
+                    resume_from,
+                    resume_offset,
+                    completed,
+                    completed_offset,
+                    read_bytes,
+                )
+            )
+            or sequence <= prior_sequence
+            or resume_from != prior_completed
+            or resume_offset != prior_completed_offset
+            or completed < resume_from
+            or completed_offset < resume_offset
+            or completed_offset > spool["size_bytes"]
+            or read_bytes > seed["size_bytes"]
+            or not isinstance(complete_pass, bool)
+            or (complete_pass and index != len(ledger) - 1)
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_read_ledger 非法"
+            )
+        prior_sequence = sequence
+        prior_completed = completed
+        prior_completed_offset = completed_offset
+        ledger_bytes += read_bytes
+    if (
+        prior_completed != progress_next
+        or prior_completed_offset != progress_offset
+        or ledger_bytes != raw_bytes - prior_raw_bytes
+        or ledger[-1]["seed_parse_complete"] != seed_parse_complete
+        or raw_bytes - prior_raw_bytes != seed["size_bytes"]
+        or any(
+            row["new_compressed_raw_bytes_read"] != (seed["size_bytes"] if index == 0 else 0)
+            for index, row in enumerate(ledger)
+        )
+    ):
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint seed_read_ledger 与资源/进度不闭合"
+        )
+
+    normalized_policy = _validate_full_seed_checkpoint_policy(policy)
+    sequence = restored.get("checkpoint_sequence")
+    if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence <= 0:
+        raise BoundedPilotWorkerError(
+            "完整 seed checkpoint checkpoint_sequence 非法"
+        )
+
+    return {
+        "schema_version": "rrc25-bounded-pilot-worker-full-seed-verification/v2",
+        "verified": True,
+        "checkpoint_schema_version": FULL_SEED_CHECKPOINT_SCHEMA_VERSION,
+        "checkpoint_fingerprint_sha256": restored[
+            "checkpoint_fingerprint_sha256"
+        ],
+        "checkpoint_sequence": sequence,
+        "bindings": dict(required_bindings),
+        "position": dict(position),
+        "seed_progress": dict(progress),
+        "seed_spool": dict(spool),
+        "previous_record_boundary": dict(previous_record_boundary),
+        "peer_index_context": (
+            dict(peer_index_context) if peer_index_context is not None else None
+        ),
+        "resources": dict(resources),
+        "seed_read_pass_count": len(ledger),
+        "checkpoint_policy": normalized_policy,
+        "seed_spool_reclamation_eligibility": {
+            "eligible": phase == "updates" and seed_parse_complete,
+            "requires_explicit_archive_or_reclamation_command": True,
+            "explicit_command": "seed-retire-spool",
+            "automatic_deletion": False,
+            "current_command_handles_spool": False,
+        },
+    }
+
+
 def run_bounded_pilot_worker(
     selection: Mapping[str, Any],
     *,
     artifact_root: os.PathLike[str] | str,
     country_mapping: CountryMappingView,
+    raw_retention_mapping: Optional[RawRetentionMappingUnion] = None,
+    seed_spool_attestation: Optional[Mapping[str, Any]] = None,
     pilot_end_exclusive_utc: str,
     update_record_stream_factory: Callable[[Mapping[str, Any]], Iterable[Any]],
     checkpoint_directory: os.PathLike[str] | str,
     resume_checkpoint_path: Optional[os.PathLike[str] | str] = None,
     seed_sample_checkpoint_path: Optional[os.PathLike[str] | str] = None,
+    code_identity_sha256: Optional[str] = None,
+    planned_seed_checkpoint_seconds: float = (
+        _DEFAULT_PLANNED_SEED_CHECKPOINT_SECONDS
+    ),
+    prior_new_raw_read_bytes: int = 0,
+    prior_raw_accounting: Optional[Mapping[str, Any]] = None,
+    seed_raw_reservation: Optional[Mapping[str, Any]] = None,
+    stop_after_seed: bool = False,
     analysis_update_artifact_ids: Optional[Sequence[str]] = None,
     resource_limits: Optional[ResourceLimits] = None,
     clock: Callable[[], float] = time.monotonic,
@@ -829,11 +2340,21 @@ def run_bounded_pilot_worker(
     运行时门禁按本次 worker/CLI 进程的同一 wall-clock 起点累计，不能在
     chunk 或 artifact 边界重置。coordinator 与 worker 同进程时应传入
     ``process_started_at``，从而把 worker 启动前的输入核验也计入 540/600
-    秒边界；独立调用时则从进入本函数开始计时。
+    秒边界；独立调用时则从进入本函数开始计时。``prior_new_raw_read_bytes``
+    是同一研究任务在本次 seed 前已发生的读取累计，只进入资源门与 resources，
+    不进入仅描述本次压缩 seed pass 的 ``seed_read_ledger``。
     """
 
     if not callable(update_record_stream_factory) or not callable(clock):
         raise BoundedPilotWorkerError("stream factory/clock 必须可调用")
+    if (
+        isinstance(prior_new_raw_read_bytes, bool)
+        or not isinstance(prior_new_raw_read_bytes, int)
+        or prior_new_raw_read_bytes < 0
+    ):
+        raise BoundedPilotWorkerError(
+            "prior_new_raw_read_bytes 必须是非负整数"
+        )
     observed_start = clock()
     if isinstance(observed_start, bool) or not isinstance(
         observed_start, (int, float)
@@ -856,7 +2377,40 @@ def run_bounded_pilot_worker(
             )
 
     selection_id, selection_hash = _selection_identity(selection)
+    if prior_raw_accounting is None:
+        if stop_after_seed:
+            raise BoundedPilotWorkerError(
+                "stop_after_seed 必须提供已核验 probe terminal accounting，"
+                "不得只传 prior_new_raw_read_bytes"
+            )
+        normalized_prior_raw_accounting = None
+    else:
+        probe_base = prior_raw_accounting.get(
+            "cumulative_reserved_new_raw_bytes"
+        )
+        if isinstance(probe_base, bool) or not isinstance(probe_base, int):
+            raise BoundedPilotWorkerError(
+                "probe terminal accounting cumulative 非法"
+            )
+        normalized_prior_raw_accounting = _verified_probe_terminal_accounting(
+            prior_raw_accounting,
+            expected_prior_raw_bytes=probe_base,
+            selection_id=selection_id,
+            selection_sha256=selection_hash,
+            code_identity_sha256=code_identity_sha256,
+        )
+    normalized_seed_raw_reservation: Optional[Mapping[str, Any]] = None
     mapping_hash = _mapping_identity(country_mapping)
+    raw_retention_kind, raw_retention_hash = _raw_retention_identity(
+        raw_retention_mapping,
+        statistical_mapping=country_mapping,
+        statistical_mapping_hash=mapping_hash,
+    )
+    raw_retention_membership = (
+        country_mapping.target_membership
+        if raw_retention_mapping is None
+        else raw_retention_mapping.raw_retention_membership
+    )
     if selection.get("country_code") != country_mapping.target_country:
         raise BoundedPilotWorkerError("selection 国家与冻结 mapping target 不一致")
     window = selection.get("window")
@@ -882,6 +2436,44 @@ def run_bounded_pilot_worker(
     limits = resource_limits or ResourceLimits()
     if not isinstance(limits, ResourceLimits):
         raise BoundedPilotWorkerError("resource_limits 必须是 ResourceLimits")
+    if not isinstance(stop_after_seed, bool):
+        raise BoundedPilotWorkerError("stop_after_seed 必须是布尔值")
+    if isinstance(planned_seed_checkpoint_seconds, bool) or not isinstance(
+        planned_seed_checkpoint_seconds, (int, float)
+    ):
+        raise BoundedPilotWorkerError(
+            "planned_seed_checkpoint_seconds 必须是有限正数"
+        )
+    planned_seed_checkpoint_seconds = float(planned_seed_checkpoint_seconds)
+    if (
+        not math.isfinite(planned_seed_checkpoint_seconds)
+        or planned_seed_checkpoint_seconds <= 0
+    ):
+        raise BoundedPilotWorkerError(
+            "planned_seed_checkpoint_seconds 必须是有限正数"
+        )
+    full_seed_checkpoint_enabled = (
+        code_identity_sha256 is not None
+        or resume_checkpoint_path is not None
+        or stop_after_seed
+    )
+    if full_seed_checkpoint_enabled:
+        if planned_seed_checkpoint_seconds >= limits.worker_soft_stop_seconds:
+            raise BoundedPilotWorkerError(
+                "planned_seed_checkpoint_seconds 必须严格小于 worker 软停"
+            )
+        if code_identity_sha256 is None:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 必须显式提供 code_identity_sha256；"
+                "旧 worker 软停文件仍由 coordinator/replay_persistence 负责"
+            )
+        code_identity_sha256 = _sha256(
+            code_identity_sha256, "code_identity_sha256"
+        )
+    if resume_checkpoint_path is not None and seed_sample_checkpoint_path is not None:
+        raise BoundedPilotWorkerError(
+            "resume_checkpoint_path 与 seed_sample_checkpoint_path 互斥"
+        )
 
     updates_raw = roles.get("analysis_updates")
     if not isinstance(updates_raw, list) or any(
@@ -934,8 +2526,44 @@ def run_bounded_pilot_worker(
     slot_times = _expected_slots(start, pilot_end)
 
     seed = roles.get("state_seed_rib")
+    if full_seed_checkpoint_enabled:
+        if not isinstance(seed, Mapping) or seed_raw_reservation is None:
+            raise BoundedPilotWorkerError(
+                "full seed 必须提供 pre-open durable seed raw reservation"
+            )
+        if normalized_prior_raw_accounting is None:
+            raise BoundedPilotWorkerError("seed reservation 缺少 probe terminal 锚点")
+        normalized_seed_raw_reservation = _verified_seed_raw_reservation(
+            seed_raw_reservation,
+            probe_accounting=normalized_prior_raw_accounting,
+            expected_prior_raw_bytes=prior_new_raw_read_bytes,
+            selection_id=selection_id,
+            seed_artifact=seed,
+            code_identity_sha256=code_identity_sha256,
+        )
+    elif seed_raw_reservation is not None:
+        if not isinstance(seed, Mapping) or normalized_prior_raw_accounting is None:
+            raise BoundedPilotWorkerError("seed reservation 不得脱离 seed/probe 身份")
+        normalized_seed_raw_reservation = _verified_seed_raw_reservation(
+            seed_raw_reservation,
+            probe_accounting=normalized_prior_raw_accounting,
+            expected_prior_raw_bytes=prior_new_raw_read_bytes,
+            selection_id=selection_id,
+            seed_artifact=seed,
+            code_identity_sha256=code_identity_sha256,
+        )
     if seed is not None and not isinstance(seed, Mapping):
         raise BoundedPilotWorkerError("state_seed_rib 必须是对象或 null")
+    normalized_seed_spool_attestation: Optional[Mapping[str, Any]] = None
+    if full_seed_checkpoint_enabled:
+        if seed is None or seed_spool_attestation is None:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 必须提供 state_seed_rib 与 seed spool attestation"
+            )
+        normalized_seed_spool_attestation = validate_seed_spool_attestation(
+            seed_spool_attestation,
+            seed_artifact=seed,
+        )
 
     # 可恢复上下文。只保存 IR 研究子集和 raw 元数据，不保存全量解析对象。
     phase = "seed_rib"
@@ -961,16 +2589,560 @@ def run_bounded_pilot_worker(
     observed_vps: set[str] = set()
     gaps: list[InputGap] = []
     errors: list[Mapping[str, Any]] = []
-    raw_bytes = 0
+    raw_bytes = prior_new_raw_read_bytes
     peak_temp = 0
     checkpoint_sequence = 1
     restored_cumulative_worker_runtime = 0.0
     restored_max_worker_elapsed = 0.0
     seed_sample_next_record_ordinal: Optional[int] = None
+    seed_progress_next_record_ordinal = 0
+    seed_progress_next_record_offset = 0
+    seed_spool_binding: Optional[Mapping[str, Any]] = None
+    deferred_seed_evidence = _DeferredSeedEvidence()
+    seed_read_ledger: list[Mapping[str, Any]] = []
 
     if resume_checkpoint_path is not None:
-        raise BoundedPilotWorkerError(
-            "worker 软停文件只记录轻量边界；恢复由 coordinator/replay_persistence 负责"
+        restored = _read_checkpoint(
+            Path(resume_checkpoint_path),
+            fingerprint_schema=FULL_SEED_CHECKPOINT_FINGERPRINT_SCHEMA,
+        )
+        required_bindings = {
+            "code_identity_sha256": code_identity_sha256,
+            "selection_id": selection_id,
+            "selection_semantic_fingerprint_sha256": selection_hash,
+            "mapping_fingerprint_sha256": mapping_hash,
+            "raw_retention_mapping_kind": raw_retention_kind,
+            "raw_retention_mapping_fingerprint_sha256": raw_retention_hash,
+            "seed_spool_attestation_fingerprint_sha256": (
+                normalized_seed_spool_attestation[
+                    "semantic_fingerprint_sha256"
+                ]
+            ),
+            "pilot_start_utc": _utc_text(start),
+            "pilot_end_exclusive_utc": _utc_text(pilot_end),
+        }
+        if any(restored.get(key) != value for key, value in required_bindings.items()):
+            if restored.get("code_identity_sha256") != code_identity_sha256:
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint code_identity_sha256 不一致"
+                )
+            if (
+                restored.get("raw_retention_mapping_kind")
+                != raw_retention_kind
+                or restored.get("raw_retention_mapping_fingerprint_sha256")
+                != raw_retention_hash
+            ):
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint raw-retention union 身份不一致"
+                )
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 与 selection/mapping/pilot 不绑定"
+            )
+        if restored.get("schema_version") != FULL_SEED_CHECKPOINT_SCHEMA_VERSION:
+            raise BoundedPilotWorkerError("resume_checkpoint_path 不是完整 seed checkpoint")
+        if set(restored) != _FULL_SEED_CHECKPOINT_FIELDS:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 顶层字段不闭合"
+            )
+        if restored.get("resume_policy") != "worker_full_seed_record_offset_v2":
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint resume_policy 非法"
+            )
+        position = restored.get("position")
+        seed_progress = restored.get("seed_progress")
+        resources = restored.get("resources")
+        ambiguity = restored.get("ambiguity")
+        checkpoint_policy = restored.get("checkpoint_policy")
+        if not all(
+            isinstance(value, Mapping)
+            for value in (
+                position,
+                seed_progress,
+                resources,
+                ambiguity,
+                checkpoint_policy,
+            )
+        ):
+            raise BoundedPilotWorkerError("完整 seed checkpoint 结构不闭合")
+        if set(position) != {
+            "phase",
+            "update_index",
+            "next_record_ordinal",
+            "boundary",
+        }:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint position 字段不闭合"
+            )
+        phase = position.get("phase")
+        update_index = position.get("update_index")
+        next_record_ordinal = position.get("next_record_ordinal")
+        if (
+            phase not in {"seed_rib", "updates"}
+            or update_index != 0
+            or isinstance(next_record_ordinal, bool)
+            or not isinstance(next_record_ordinal, int)
+            or next_record_ordinal < 0
+            or position.get("boundary") != "after_complete_physical_record"
+            or (phase == "updates" and next_record_ordinal != 0)
+        ):
+            raise BoundedPilotWorkerError("完整 seed checkpoint position 非法")
+        if set(seed_progress) != {
+            "artifact_id",
+            "file_sha256",
+            "collector_id",
+            "artifact_time_utc",
+            "size_bytes",
+            "next_record_ordinal",
+            "next_record_offset",
+            "seed_parse_complete",
+            "previous_record_boundary",
+            "peer_index_context",
+        }:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_progress 字段不闭合"
+            )
+        if seed is None:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 与缺失的 state_seed_rib 不闭合"
+            )
+        expected_seed_progress = {
+            "artifact_id": seed.get("artifact_id"),
+            "file_sha256": seed.get("file_sha256"),
+            "collector_id": seed.get("collector_id"),
+            "artifact_time_utc": seed.get("artifact_time_utc"),
+            "size_bytes": seed.get("size_bytes"),
+        }
+        if any(
+            seed_progress.get(key) != value
+            for key, value in expected_seed_progress.items()
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed 制品绑定不一致"
+            )
+        seed_progress_next_record_ordinal = seed_progress.get(
+            "next_record_ordinal"
+        )
+        seed_progress_next_record_offset = seed_progress.get(
+            "next_record_offset"
+        )
+        seed_complete = seed_progress.get("seed_parse_complete")
+        seed_spool_binding = _validate_seed_spool_binding(
+            restored.get("seed_spool"),
+            attestation=normalized_seed_spool_attestation,
+        )
+        if (
+            isinstance(seed_progress_next_record_ordinal, bool)
+            or not isinstance(seed_progress_next_record_ordinal, int)
+            or seed_progress_next_record_ordinal < 0
+            or isinstance(seed_progress_next_record_offset, bool)
+            or not isinstance(seed_progress_next_record_offset, int)
+            or seed_progress_next_record_offset < 0
+            or seed_progress_next_record_offset > seed_spool_binding["size_bytes"]
+            or not isinstance(seed_complete, bool)
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_progress 非法"
+            )
+        seed_previous_record_boundary = _validate_previous_record_boundary(
+            seed_progress.get("previous_record_boundary"),
+            next_record_ordinal=seed_progress_next_record_ordinal,
+            next_record_offset=seed_progress_next_record_offset,
+        )
+        seed_peer_index_context = _validate_peer_index_context(
+            seed_progress.get("peer_index_context"),
+            next_record_offset=seed_progress_next_record_offset,
+        )
+        deferred_seed_evidence.restore(
+            seed_previous_record_boundary, seed_peer_index_context
+        )
+        if (
+            (phase == "seed_rib" and seed_complete)
+            or (phase == "seed_rib" and next_record_ordinal != seed_progress_next_record_ordinal)
+            or (
+                phase == "seed_rib"
+                and seed_progress_next_record_offset
+                >= seed_spool_binding["size_bytes"]
+            )
+            or (
+                phase == "updates"
+                and (
+                    not seed_complete
+                    or seed_progress_next_record_offset
+                    != seed_spool_binding["size_bytes"]
+                )
+            )
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_progress 非法"
+            )
+        _validate_full_seed_checkpoint_policy(checkpoint_policy)
+
+        try:
+            state = route_replay_state_from_payload(restored["state"])
+            baseline_payload = restored["seed_state_at_window_start"]
+            baseline_state = (
+                route_replay_state_from_payload(baseline_payload)
+                if baseline_payload is not None
+                else None
+            )
+            route_events = [
+                _event_from_payload(row) for row in restored["route_events"]
+            ]
+            raw_audits = [
+                _raw_from_payload(row) for row in restored["raw_audits"]
+            ]
+        except (KeyError, TypeError, ValueError) as error:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint state/event/raw 无法恢复"
+            ) from error
+        if (
+            state.continuity_state != "continuous"
+            or state.missing_reasons
+            or (phase == "seed_rib" and baseline_state is not None)
+            or (phase == "updates" and baseline_state != state)
+            or restored.get("gaps") != []
+            or restored.get("errors") != []
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 不得携带 gap/error 或不闭合 baseline"
+            )
+        gaps = []
+        errors = []
+        if (
+            any(event.action != "rib_snapshot" for event in route_events)
+            or len({event.route_event_id for event in route_events})
+            != len(route_events)
+            or state.processed_route_event_ids
+            != frozenset(event.route_event_id for event in route_events)
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint RouteEvent 与 state 不闭合"
+            )
+
+        def restored_sorted_strings(name: str) -> set[str]:
+            value = restored.get(name)
+            if (
+                not isinstance(value, list)
+                or any(not isinstance(item, str) or not item for item in value)
+                or value != sorted(set(value))
+            ):
+                raise BoundedPilotWorkerError(
+                    f"完整 seed checkpoint {name} 非法"
+                )
+            return set(value)
+
+        tracked_prefixes = restored_sorted_strings("tracked_prefixes")
+        observed_vps = restored_sorted_strings("observed_vp_ids")
+        try:
+            prefixes_are_canonical = all(
+                ipaddress.ip_network(prefix, strict=True).compressed == prefix
+                for prefix in tracked_prefixes
+            )
+        except ValueError:
+            prefixes_are_canonical = False
+        if (
+            not prefixes_are_canonical
+            or tracked_prefixes != {event.prefix for event in route_events}
+            or {event.vp_id for event in route_events} - observed_vps
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint prefix/VP 与 RouteEvent 不闭合"
+            )
+
+        if set(ambiguity) != {
+            "element_count",
+            "prefixes",
+            "record_refs",
+            "vp_ids",
+            "mapped_target_relation_count",
+        }:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity 字段不闭合"
+            )
+        ambiguous_element_count = ambiguity.get("element_count")
+        mapped_target_relation_count = ambiguity.get(
+            "mapped_target_relation_count"
+        )
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in (
+                ambiguous_element_count,
+                mapped_target_relation_count,
+            )
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity 计数非法"
+            )
+        ambiguous_prefix_values = ambiguity.get("prefixes")
+        ambiguous_record_values = ambiguity.get("record_refs")
+        ambiguous_vp_values = ambiguity.get("vp_ids")
+        if not all(
+            isinstance(value, list)
+            for value in (
+                ambiguous_prefix_values,
+                ambiguous_record_values,
+                ambiguous_vp_values,
+            )
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity 人口非法"
+            )
+        ambiguous_prefixes = set(ambiguous_prefix_values)
+        ambiguous_vps = set(ambiguous_vp_values)
+        if (
+            ambiguous_prefix_values != sorted(ambiguous_prefixes)
+            or ambiguous_vp_values != sorted(ambiguous_vps)
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity 人口必须去重排序"
+            )
+        ambiguous_records = {}
+        for row in ambiguous_record_values:
+            if not isinstance(row, Mapping):
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint ambiguity raw ref 非法"
+                )
+            key = (row.get("artifact_id"), row.get("record_ordinal"))
+            if key in ambiguous_records:
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint ambiguity raw ref 重复"
+                )
+            ambiguous_records[key] = dict(row)
+        computed_ambiguous_events = []
+        computed_mapped_target_relation_count = 0
+        for event in route_events:
+            _possible, is_ambiguous, is_mapped_target = _origin_relevance(
+                event, country_mapping
+            )
+            computed_mapped_target_relation_count += int(is_mapped_target)
+            if is_ambiguous:
+                computed_ambiguous_events.append(event)
+        if (
+            ambiguous_element_count != len(computed_ambiguous_events)
+            or mapped_target_relation_count
+            != computed_mapped_target_relation_count
+            or ambiguous_prefixes
+            != {event.prefix for event in computed_ambiguous_events}
+            or ambiguous_vps != {event.vp_id for event in computed_ambiguous_events}
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity 与 RouteEvent 不闭合"
+            )
+
+        def nonnegative_resource(name: str, *, integer: bool) -> int | float:
+            value = resources.get(name)
+            expected_types = (int,) if integer else (int, float)
+            if isinstance(value, bool) or not isinstance(value, expected_types):
+                raise BoundedPilotWorkerError(
+                    f"完整 seed checkpoint resources.{name} 非法"
+                )
+            normalized = int(value) if integer else float(value)
+            if normalized < 0 or (not integer and not math.isfinite(normalized)):
+                raise BoundedPilotWorkerError(
+                    f"完整 seed checkpoint resources.{name} 非法"
+                )
+            return normalized
+
+        restored_prior_new_raw_read_bytes = int(
+            nonnegative_resource("prior_new_raw_read_bytes", integer=True)
+        )
+        raw_bytes = int(nonnegative_resource("new_raw_read_bytes", integer=True))
+        peak_temp = int(nonnegative_resource("peak_temporary_bytes", integer=True))
+        restored_cumulative_worker_runtime = float(
+            nonnegative_resource(
+                "cumulative_worker_runtime_seconds", integer=False
+            )
+        )
+        restored_max_worker_elapsed = float(
+            nonnegative_resource("max_worker_elapsed_seconds", integer=False)
+        )
+        if (
+            set(resources)
+            != {
+                "prior_new_raw_read_bytes",
+                "prior_raw_accounting",
+                "seed_raw_reservation",
+                "new_raw_read_bytes",
+                "peak_temporary_bytes",
+                "database_writes",
+                "cumulative_worker_runtime_seconds",
+                "max_worker_elapsed_seconds",
+            }
+            or resources.get("database_writes") != 0
+            or restored_prior_new_raw_read_bytes != prior_new_raw_read_bytes
+            or resources.get("prior_raw_accounting")
+            != normalized_prior_raw_accounting
+            or resources.get("seed_raw_reservation")
+            != normalized_seed_raw_reservation
+            or (
+                normalized_seed_raw_reservation is not None
+                and normalized_seed_raw_reservation[
+                    "cumulative_reserved_new_raw_bytes"
+                ]
+                != raw_bytes
+            )
+            or raw_bytes < restored_prior_new_raw_read_bytes
+            or restored_max_worker_elapsed > restored_cumulative_worker_runtime
+            or peak_temp
+            < seed_spool_binding["size_bytes"]
+            + _checkpoint_storage_bytes(Path(resume_checkpoint_path))
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint resources 非法"
+            )
+        sequence = restored.get("checkpoint_sequence")
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence <= 0:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint checkpoint_sequence 非法"
+            )
+        checkpoint_sequence = sequence + 1
+
+        ledger = restored.get("seed_read_ledger")
+        if not isinstance(ledger, list) or not ledger:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_read_ledger 非法"
+            )
+        normalized_ledger = []
+        prior_sequence = 0
+        prior_completed = 0
+        prior_completed_offset = 0
+        for index, row in enumerate(ledger):
+            if not isinstance(row, Mapping) or set(row) != {
+                "checkpoint_sequence",
+                "resume_from_record_ordinal",
+                "resume_from_record_offset",
+                "completed_through_record_ordinal_exclusive",
+                "completed_through_record_offset",
+                "new_compressed_raw_bytes_read",
+                "seed_parse_complete",
+            }:
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint seed_read_ledger 字段不闭合"
+                )
+            row_sequence = row.get("checkpoint_sequence")
+            resume_from = row.get("resume_from_record_ordinal")
+            resume_offset = row.get("resume_from_record_offset")
+            completed_through = row.get(
+                "completed_through_record_ordinal_exclusive"
+            )
+            completed_offset = row.get("completed_through_record_offset")
+            compressed_bytes = row.get("new_compressed_raw_bytes_read")
+            parse_complete = row.get("seed_parse_complete")
+            if (
+                any(
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or value < 0
+                    for value in (
+                        row_sequence,
+                        resume_from,
+                        resume_offset,
+                        completed_through,
+                        completed_offset,
+                        compressed_bytes,
+                    )
+                )
+                or row_sequence <= prior_sequence
+                or resume_from != prior_completed
+                or resume_offset != prior_completed_offset
+                or completed_through < resume_from
+                or completed_offset < resume_offset
+                or completed_offset > seed_spool_binding["size_bytes"]
+                or compressed_bytes > seed["size_bytes"]
+                or not isinstance(parse_complete, bool)
+                or (parse_complete and index != len(ledger) - 1)
+            ):
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint seed_read_ledger 非法"
+                )
+            prior_sequence = row_sequence
+            prior_completed = completed_through
+            prior_completed_offset = completed_offset
+            normalized_ledger.append(dict(row))
+        if (
+            sum(
+                row["new_compressed_raw_bytes_read"]
+                for row in normalized_ledger
+            )
+            != raw_bytes - restored_prior_new_raw_read_bytes
+            or prior_completed != seed_progress_next_record_ordinal
+            or prior_completed_offset != seed_progress_next_record_offset
+            or normalized_ledger[-1]["seed_parse_complete"] != seed_complete
+            or raw_bytes - restored_prior_new_raw_read_bytes
+            != seed["size_bytes"]
+            or any(
+                row["new_compressed_raw_bytes_read"]
+                != (seed["size_bytes"] if index == 0 else 0)
+                for index, row in enumerate(normalized_ledger)
+            )
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint seed_read_ledger 与资源/进度不闭合"
+            )
+        seed_read_ledger = normalized_ledger
+
+        raw_index_for_validation: dict[Tuple[str, int], RawRecordEvidence] = {}
+        prior_record_ordinal = -1
+        prior_record_end = -1
+        expected_seed_identity = (
+            seed.get("artifact_id"),
+            seed.get("file_sha256"),
+            seed.get("collector_id"),
+            seed.get("artifact_time_utc"),
+        )
+        for raw in raw_audits:
+            key = (raw.artifact_id, raw.record_ordinal)
+            if (
+                key in raw_index_for_validation
+                or (
+                    raw.artifact_id,
+                    raw.file_sha256,
+                    raw.collector_id,
+                    raw.artifact_slot_utc,
+                )
+                != expected_seed_identity
+                or raw.record_ordinal >= seed_progress_next_record_ordinal
+                or raw.record_ordinal <= prior_record_ordinal
+                or raw.record_offset < prior_record_end
+                or raw.record_offset + raw.record_length
+                > seed_progress_next_record_offset
+            ):
+                raise BoundedPilotWorkerError(
+                    "完整 seed checkpoint raw audit 越出已完成记录边界"
+                )
+            _sha256(
+                raw.raw_record_sha256,
+                "完整 seed checkpoint raw_audit.raw_record_sha256",
+            )
+            raw_index_for_validation[key] = raw
+            prior_record_ordinal = raw.record_ordinal
+            prior_record_end = raw.record_offset + raw.record_length
+        if any(
+            (
+                event.artifact_id,
+                event.file_sha256,
+                event.collector_id,
+                event.artifact_slot_utc,
+            )
+            != expected_seed_identity
+            or event.record_ordinal >= seed_progress_next_record_ordinal
+            or (event.artifact_id, event.record_ordinal)
+            not in raw_index_for_validation
+            for event in route_events
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint RouteEvent 缺少 raw/seed 证据"
+            )
+        if any(
+            key not in raw_index_for_validation
+            or row != _raw_record_ref(raw_index_for_validation[key])
+            for key, row in ambiguous_records.items()
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint ambiguity raw ref 不闭合"
+            )
+        next_record_ordinal = (
+            seed_progress_next_record_ordinal if phase == "seed_rib" else 0
         )
 
     if seed_sample_checkpoint_path is not None:
@@ -1628,6 +3800,131 @@ def run_bounded_pilot_worker(
             },
         }
 
+    def full_seed_checkpoint_context() -> dict[str, Any]:
+        """构造仅供完整 seed record-boundary 续跑的闭合 checkpoint。"""
+
+        if (
+            code_identity_sha256 is None
+            or seed is None
+            or normalized_seed_spool_attestation is None
+            or seed_spool_binding is None
+            or deferred_seed_evidence.previous_record_boundary is None
+        ):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 缺少 code identity 或 seed 制品"
+            )
+        if phase not in {"seed_rib", "updates"}:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 只能发布 seed_rib/updates 边界"
+            )
+        if pending_seed_events:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 发布前必须合并 pending seed batch"
+            )
+        if snapshots or slot_counts or pending_update_events or pre_discovery:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 不得包含 UPDATE 阶段输出"
+            )
+        if gaps or errors:
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint 不得携带 gap/error"
+            )
+        current_state = state if state is not None else extend_streaming_rib_seed(None, ())
+        complete = phase == "updates"
+        if complete != (baseline_state is not None):
+            raise BoundedPilotWorkerError(
+                "完整 seed checkpoint phase 与 baseline 不闭合"
+            )
+        previous_record_boundary, peer_index_context = (
+            deferred_seed_evidence.checkpoint_bindings()
+        )
+        refresh_runtime_evidence()
+        return {
+            "code_identity_sha256": code_identity_sha256,
+            "selection_id": selection_id,
+            "selection_semantic_fingerprint_sha256": selection_hash,
+            "mapping_fingerprint_sha256": mapping_hash,
+            "raw_retention_mapping_kind": raw_retention_kind,
+            "raw_retention_mapping_fingerprint_sha256": raw_retention_hash,
+            "seed_spool_attestation_fingerprint_sha256": (
+                normalized_seed_spool_attestation[
+                    "semantic_fingerprint_sha256"
+                ]
+            ),
+            "pilot_start_utc": _utc_text(start),
+            "pilot_end_exclusive_utc": _utc_text(pilot_end),
+            "checkpoint_sequence": checkpoint_sequence,
+            "position": {
+                "phase": phase,
+                "update_index": 0,
+                "next_record_ordinal": (
+                    seed_progress_next_record_ordinal if phase == "seed_rib" else 0
+                ),
+                "boundary": "after_complete_physical_record",
+            },
+            "seed_progress": {
+                "artifact_id": seed["artifact_id"],
+                "file_sha256": seed["file_sha256"],
+                "collector_id": seed["collector_id"],
+                "artifact_time_utc": seed["artifact_time_utc"],
+                "size_bytes": seed["size_bytes"],
+                "next_record_ordinal": seed_progress_next_record_ordinal,
+                "next_record_offset": seed_progress_next_record_offset,
+                "seed_parse_complete": complete,
+                "previous_record_boundary": previous_record_boundary,
+                "peer_index_context": peer_index_context,
+            },
+            "seed_spool": dict(seed_spool_binding),
+            "state": route_replay_state_to_payload(current_state),
+            "seed_state_at_window_start": (
+                route_replay_state_to_payload(baseline_state)
+                if baseline_state is not None
+                else None
+            ),
+            "resume_policy": "worker_full_seed_record_offset_v2",
+            "route_events": [_event_to_payload(row) for row in route_events],
+            "raw_audits": [_raw_to_payload(row) for row in raw_audits],
+            "tracked_prefixes": sorted(tracked_prefixes),
+            "ambiguity": {
+                "element_count": ambiguous_element_count,
+                "prefixes": sorted(ambiguous_prefixes),
+                "record_refs": [
+                    ambiguous_records[key] for key in sorted(ambiguous_records)
+                ],
+                "vp_ids": sorted(ambiguous_vps),
+                "mapped_target_relation_count": mapped_target_relation_count,
+            },
+            "observed_vp_ids": sorted(observed_vps),
+            "gaps": [],
+            "errors": [],
+            "resources": {
+                "prior_new_raw_read_bytes": prior_new_raw_read_bytes,
+                "prior_raw_accounting": (
+                    dict(normalized_prior_raw_accounting)
+                    if normalized_prior_raw_accounting is not None
+                    else None
+                ),
+                "seed_raw_reservation": (
+                    dict(normalized_seed_raw_reservation)
+                    if normalized_seed_raw_reservation is not None
+                    else None
+                ),
+                "new_raw_read_bytes": raw_bytes,
+                "peak_temporary_bytes": peak_temp,
+                "database_writes": 0,
+                "cumulative_worker_runtime_seconds": cumulative_worker_runtime,
+                "max_worker_elapsed_seconds": max_worker_elapsed,
+            },
+            "seed_read_ledger": [dict(row) for row in seed_read_ledger],
+            "checkpoint_policy": _full_seed_checkpoint_policy(
+                planned_seed_checkpoint_seconds=(
+                    planned_seed_checkpoint_seconds
+                ),
+                worker_soft_stop_seconds=limits.worker_soft_stop_seconds,
+                max_worker_runtime_seconds=limits.max_worker_runtime_seconds,
+            ),
+        }
+
     def update_diagnostic_context(
         *,
         artifact: Mapping[str, Any],
@@ -1644,6 +3941,8 @@ def run_bounded_pilot_worker(
             "selection_id": selection_id,
             "selection_semantic_fingerprint_sha256": selection_hash,
             "mapping_fingerprint_sha256": mapping_hash,
+            "raw_retention_mapping_kind": raw_retention_kind,
+            "raw_retention_mapping_fingerprint_sha256": raw_retention_hash,
             "pilot_start_utc": _utc_text(start),
             "pilot_end_exclusive_utc": _utc_text(pilot_end),
             "checkpoint_sequence": checkpoint_sequence,
@@ -1731,10 +4030,13 @@ def run_bounded_pilot_worker(
         reason: Optional[str],
         *,
         published_checkpoint: Optional[Tuple[str, int]] = None,
+        full_seed_checkpoint: bool = False,
+        suppress_checkpoint: bool = False,
     ) -> BoundedPilotWorkerResult:
-        nonlocal last_gate
+        nonlocal last_gate, peak_temp
         if pending_seed_events:
             raise BoundedPilotWorkerError("seed RIB pending batch 未在结束前并入状态")
+        deferred_seed_evidence.merge_observed_vps(observed_vps)
         end_chunk()
         elapsed = refresh_runtime_evidence()
         last_gate = _resource_result(
@@ -1751,16 +4053,26 @@ def run_bounded_pilot_worker(
         checkpoint_path: Optional[str] = None
         output_bytes = 0
         if published_checkpoint is not None:
-            if status == "complete":
+            if status == "complete" or full_seed_checkpoint:
                 raise BoundedPilotWorkerError("完整 worker 不得引用诊断检查点")
             checkpoint_path, output_bytes = published_checkpoint
-        elif status != "complete":
-            path, output_bytes = _publish_checkpoint(
-                checkpoint_root,
-                selection_id=selection_id,
-                sequence=checkpoint_sequence,
-                context=checkpoint_context(),
-            )
+        elif status != "complete" and not suppress_checkpoint:
+            if full_seed_checkpoint:
+                path, output_bytes, observed_peak = _publish_full_seed_checkpoint(
+                    checkpoint_root,
+                    selection_id=selection_id,
+                    sequence=checkpoint_sequence,
+                    context=full_seed_checkpoint_context(),
+                    maximum_temporary_bytes=limits.max_temporary_bytes,
+                )
+                peak_temp = max(peak_temp, observed_peak)
+            else:
+                path, output_bytes = _publish_checkpoint(
+                    checkpoint_root,
+                    selection_id=selection_id,
+                    sequence=checkpoint_sequence,
+                    context=checkpoint_context(),
+                )
             checkpoint_path = str(path)
         elapsed = refresh_runtime_evidence()
         last_gate = _resource_result(
@@ -1771,6 +4083,9 @@ def run_bounded_pilot_worker(
             limits=limits,
             checkpoint_directory=checkpoint_root,
         )
+        if full_seed_checkpoint and last_gate.decision != "allowed":
+            status = "incomplete"
+            reason = last_gate.decision
         current_state = state if state is not None else extend_streaming_rib_seed(None, ())
         strict_state = "unknown" if ambiguous_element_count else "measurable"
         compatible_state = (
@@ -1817,6 +4132,17 @@ def run_bounded_pilot_worker(
             gaps=tuple(gaps),
             errors=tuple(errors),
             resources={
+                "prior_new_raw_read_bytes": prior_new_raw_read_bytes,
+                "prior_raw_accounting": (
+                    dict(normalized_prior_raw_accounting)
+                    if normalized_prior_raw_accounting is not None
+                    else None
+                ),
+                "seed_raw_reservation": (
+                    dict(normalized_seed_raw_reservation)
+                    if normalized_seed_raw_reservation is not None
+                    else None
+                ),
                 "new_raw_read_bytes": raw_bytes,
                 "process_runtime_seconds": elapsed,
                 "cumulative_worker_runtime_seconds": cumulative_worker_runtime,
@@ -1880,29 +4206,157 @@ def run_bounded_pilot_worker(
             seed_time = _utc(seed.get("artifact_time_utc"), "state_seed_rib time")
             if seed_time > start:
                 raise BoundedPilotWorkerError("state_seed_rib 晚于研究窗口")
+            seed_pass_resume_ordinal = next_record_ordinal
+            seed_pass_resume_offset = seed_progress_next_record_offset
             begin_chunk()
-            early = preflight_artifact(seed)
-            if early is not None:
-                return early
-            path = _safe_artifact_path(raw_root, seed)
-            reader = _open_rib_reader(path, seed)
             accumulator = ObservedVpAccumulator(seed["collector_id"])
-            pass_base = raw_bytes
+            deferred_seed_evidence.attach_accumulator(accumulator)
+
+            def observe_seed_checkpoint(
+                boundary: RibRecordBoundary,
+                peer_context: Optional[RibPeerIndexContext],
+            ) -> None:
+                deferred_seed_evidence.observe_boundary(boundary, peer_context)
+
             stopped = False
             adapter = None
+            reader = None
             decoded = None
+            compressed_raw_bytes_this_segment = 0
+            pass_base = raw_bytes
             try:
-                decoded = gzip.GzipFile(fileobj=reader, mode="rb")
-                adapter = iter_rib_artifact_records(
-                    decoded,
-                    artifact=seed,
-                    origin_asn_predicate=lambda asn: (
-                        country_mapping.target_membership(asn) is not False
-                    ),
-                    vp_observer=accumulator.observe,
-                )
+                if full_seed_checkpoint_enabled:
+                    if normalized_seed_spool_attestation is None:
+                        raise BoundedPilotWorkerError(
+                            "完整 seed spool 缺少冻结 attestation"
+                        )
+                    expected_spool = _seed_spool_destination(
+                        checkpoint_root, normalized_seed_spool_attestation
+                    )
+                    if resume_checkpoint_path is None:
+                        compressed_path = _safe_artifact_path(raw_root, seed)
+                        current_directory_bytes = _checkpoint_directory_bytes(
+                            checkpoint_root
+                        )
+                        projected_temporary_bytes = (
+                            current_directory_bytes
+                            + normalized_seed_spool_attestation["decompressed"][
+                                "size_bytes"
+                            ]
+                            + _MAX_CHECKPOINT_BYTES
+                        )
+                        projected_gate = _resource_result(
+                            raw_bytes=raw_bytes + seed["size_bytes"],
+                            elapsed=current_process_elapsed(),
+                            temporary_bytes=projected_temporary_bytes,
+                            output_bytes=_MAX_CHECKPOINT_BYTES,
+                            limits=limits,
+                            checkpoint_directory=checkpoint_root,
+                        )
+                        if projected_gate.decision != "allowed":
+                            last_gate = projected_gate
+                            return finish(
+                                "incomplete",
+                                projected_gate.decision,
+                                suppress_checkpoint=True,
+                            )
+                        compressed_raw_bytes_this_segment = seed["size_bytes"]
+                        # 失败路径保守按完整 source pass 计数，绝不低估审批量。
+                        raw_bytes += compressed_raw_bytes_this_segment
+                        spool_result = build_rib_decompressed_spool(
+                            compressed_path,
+                            expected_spool,
+                            expected_compressed_sha256=seed["file_sha256"],
+                            expected_compressed_size_bytes=seed["size_bytes"],
+                            max_temporary_bytes=(
+                                limits.max_temporary_bytes
+                                - current_directory_bytes
+                                - _MAX_CHECKPOINT_BYTES
+                            ),
+                            expected_decompressed_sha256=(
+                                normalized_seed_spool_attestation[
+                                    "decompressed"
+                                ]["sha256"]
+                            ),
+                            expected_decompressed_size_bytes=(
+                                normalized_seed_spool_attestation[
+                                    "decompressed"
+                                ]["size_bytes"]
+                            ),
+                        )
+                        seed_spool_binding = spool_result.checkpoint_binding()
+                    else:
+                        if (
+                            seed_spool_binding is None
+                            or seed_spool_binding["file_name"]
+                            != expected_spool.name
+                        ):
+                            raise BoundedPilotWorkerError(
+                                "完整 seed checkpoint spool 文件名身份不一致"
+                            )
+                    spool_path = checkpoint_root / seed_spool_binding["file_name"]
+                    current_directory_bytes = _checkpoint_directory_bytes(
+                        checkpoint_root
+                    )
+                    reserved_temporary_bytes = (
+                        current_directory_bytes + _MAX_CHECKPOINT_BYTES
+                    )
+                    reserved_gate = _resource_result(
+                        raw_bytes=raw_bytes,
+                        elapsed=current_process_elapsed(),
+                        temporary_bytes=reserved_temporary_bytes,
+                        output_bytes=_MAX_CHECKPOINT_BYTES,
+                        limits=limits,
+                        checkpoint_directory=checkpoint_root,
+                    )
+                    if reserved_gate.decision != "allowed":
+                        last_gate = reserved_gate
+                        return finish(
+                            "incomplete",
+                            reserved_gate.decision,
+                            suppress_checkpoint=True,
+                        )
+                    peak_temp = max(peak_temp, current_directory_bytes)
+                    adapter = iter_rib_spool_artifact_records(
+                        spool_path,
+                        expected_decompressed_sha256=seed_spool_binding["sha256"],
+                        expected_decompressed_size_bytes=seed_spool_binding[
+                            "size_bytes"
+                        ],
+                        next_record_ordinal=seed_pass_resume_ordinal,
+                        next_record_offset=seed_pass_resume_offset,
+                        previous_record_boundary=(
+                            deferred_seed_evidence.previous_record_boundary
+                        ),
+                        peer_index_context=deferred_seed_evidence.peer_index_context,
+                        artifact=seed,
+                        origin_asn_predicate=lambda asn: (
+                            raw_retention_membership(asn) is not False
+                        ),
+                        vp_observer=accumulator.observe,
+                        checkpoint_observer=observe_seed_checkpoint,
+                    )
+                else:
+                    early = preflight_artifact(seed)
+                    if early is not None:
+                        return early
+                    path = _safe_artifact_path(raw_root, seed)
+                    reader = _open_rib_reader(path, seed)
+                    decoded = gzip.GzipFile(fileobj=reader, mode="rb")
+                    adapter = iter_rib_artifact_records(
+                        decoded,
+                        artifact=seed,
+                        origin_asn_predicate=lambda asn: (
+                            raw_retention_membership(asn) is not False
+                        ),
+                        vp_observer=accumulator.observe,
+                    )
+
                 for record in adapter:
-                    skipped = record.raw_record.record_ordinal < next_record_ordinal
+                    skipped = (
+                        not full_seed_checkpoint_enabled
+                        and record.raw_record.record_ordinal < next_record_ordinal
+                    )
                     unknown_decisions = tuple(
                         decision
                         for decision in record.element_decisions
@@ -1936,18 +4390,65 @@ def run_bounded_pilot_worker(
                                 )
                             ] = _raw_record_ref(record.raw_record)
                         next_record_ordinal = record.raw_record.record_ordinal + 1
+                        seed_progress_next_record_ordinal = next_record_ordinal
+                        seed_progress_next_record_offset = (
+                            record.raw_record.record_offset
+                            + record.raw_record.record_length
+                        )
                         if (
                             len(pending_seed_events) >= _SEED_BATCH_MAX_ROUTE_EVENTS
                             or pending_seed_record_count >= _SEED_BATCH_MAX_RECORDS
                         ):
                             flush_seed_batch()
-                    observed_vps.update(accumulator.observed_vp_ids)
-                    raw_bytes = pass_base + reader.bytes_read
+                    if not full_seed_checkpoint_enabled:
+                        raw_bytes = pass_base + reader.bytes_read
                     elapsed = current_process_elapsed()
+                    if (
+                        full_seed_checkpoint_enabled
+                        and elapsed >= planned_seed_checkpoint_seconds
+                    ):
+                        flush_seed_batch()
+                        if (
+                            seed_progress_next_record_ordinal
+                            <= seed_pass_resume_ordinal
+                            or seed_progress_next_record_offset
+                            <= seed_pass_resume_offset
+                        ):
+                            return finish(
+                                "incomplete",
+                                "seed_rib_zero_progress",
+                                suppress_checkpoint=True,
+                            )
+                        seed_read_ledger.append(
+                            {
+                                "checkpoint_sequence": checkpoint_sequence,
+                                "resume_from_record_ordinal": seed_pass_resume_ordinal,
+                                "resume_from_record_offset": seed_pass_resume_offset,
+                                "completed_through_record_ordinal_exclusive": (
+                                    seed_progress_next_record_ordinal
+                                ),
+                                "completed_through_record_offset": (
+                                    seed_progress_next_record_offset
+                                ),
+                                "new_compressed_raw_bytes_read": (
+                                    compressed_raw_bytes_this_segment
+                                ),
+                                "seed_parse_complete": False,
+                            }
+                        )
+                        return finish(
+                            "incomplete",
+                            "planned_seed_checkpoint",
+                            full_seed_checkpoint=True,
+                        )
                     last_gate = _resource_result(
                         raw_bytes=raw_bytes,
                         elapsed=elapsed,
-                        temporary_bytes=peak_temp,
+                        temporary_bytes=(
+                            reserved_temporary_bytes
+                            if full_seed_checkpoint_enabled
+                            else peak_temp
+                        ),
                         output_bytes=0,
                         limits=limits,
                         checkpoint_directory=checkpoint_root,
@@ -1957,34 +4458,72 @@ def run_bounded_pilot_worker(
                         stopped = True
                         break
                 if stopped:
-                    return finish("incomplete", last_gate.decision)
-                reader.verify_complete(seed["file_sha256"])
-                raw_bytes = pass_base + reader.bytes_read
-                flush_seed_batch()
+                    return finish(
+                        "incomplete",
+                        last_gate.decision,
+                        suppress_checkpoint=full_seed_checkpoint_enabled,
+                    )
+                if full_seed_checkpoint_enabled:
+                    if seed_progress_next_record_offset != seed_spool_binding[
+                        "size_bytes"
+                    ]:
+                        raise BoundedPilotWorkerError(
+                            "seed spool 完整解析结束 offset 与解压大小不一致"
+                        )
+                    flush_seed_batch()
+                    seed_read_ledger.append(
+                        {
+                            "checkpoint_sequence": checkpoint_sequence,
+                            "resume_from_record_ordinal": seed_pass_resume_ordinal,
+                            "resume_from_record_offset": seed_pass_resume_offset,
+                            "completed_through_record_ordinal_exclusive": (
+                                seed_progress_next_record_ordinal
+                            ),
+                            "completed_through_record_offset": (
+                                seed_progress_next_record_offset
+                            ),
+                            "new_compressed_raw_bytes_read": (
+                                compressed_raw_bytes_this_segment
+                            ),
+                            "seed_parse_complete": True,
+                        }
+                    )
+                else:
+                    reader.verify_complete(seed["file_sha256"])
+                    raw_bytes = pass_base + reader.bytes_read
+                    flush_seed_batch()
             except (OSError, EOFError, gzip.BadGzipFile, ValueError) as error:
+                if not full_seed_checkpoint_enabled and reader is not None:
+                    raw_bytes = pass_base + reader.bytes_read
                 if pending_seed_events:
                     if seed_batch_flush_failed:
                         raise BoundedPilotWorkerError(
                             "seed RIB 批量状态合并失败，拒绝写出不闭合 checkpoint"
                         ) from error
                     flush_seed_batch()
-                raw_bytes = pass_base + reader.bytes_read
-                errors.append(
-                    {
-                        "phase": "seed_rib",
-                        "artifact_id": seed.get("artifact_id"),
-                        "error_type": type(error).__name__,
-                        "message": str(error),
-                    }
-                )
+                error_row = {
+                    "phase": "seed_rib",
+                    "artifact_id": seed.get("artifact_id"),
+                    "error_type": type(error).__name__,
+                    "message": str(error),
+                }
+                error_reason = getattr(error, "reason", None)
+                cause = getattr(error, "__cause__", None)
+                if error_reason is None and cause is not None:
+                    error_reason = getattr(cause, "reason", None)
+                if isinstance(error_reason, str) and error_reason:
+                    error_row["reason"] = error_reason
+                errors.append(error_row)
                 return finish("incomplete", "seed_rib_parse_or_integrity_failure")
             finally:
-                if adapter is not None:
+                if adapter is not None and hasattr(adapter, "close"):
                     adapter.close()
-                if decoded is not None:
-                    decoded.close()
-                reader.close()
-            observed_vps.update(accumulator.observed_vp_ids)
+                if not full_seed_checkpoint_enabled:
+                    if decoded is not None:
+                        decoded.close()
+                    if reader is not None:
+                        reader.close()
+            deferred_seed_evidence.merge_observed_vps(observed_vps)
             if seed_time < start:
                 gap = InputGap(
                     _utc_text(seed_time),
@@ -1997,6 +4536,13 @@ def run_bounded_pilot_worker(
             end_chunk()
             phase = "updates"
             next_record_ordinal = 0
+
+    if stop_after_seed and phase == "updates":
+        return finish(
+            "incomplete",
+            "stop_after_seed",
+            full_seed_checkpoint=True,
+        )
 
     if state is None:  # pragma: no cover - 上述分支总会初始化。
         state = extend_streaming_rib_seed(None, ())
@@ -2030,7 +4576,7 @@ def run_bounded_pilot_worker(
         newly_tracked: set[str] = set()
         for prefix, prefix_elements in grouped.items():
             possible = any(
-                _origin_relevance(element, country_mapping)[0]
+                _raw_retention_possible(element, raw_retention_membership)
                 for element in prefix_elements
                 if element.action == "announce"
             )
@@ -2121,12 +4667,14 @@ def run_bounded_pilot_worker(
                         by_prefix.setdefault(event.prefix, []).append(event)
                     for prefix, prefix_events in sorted(by_prefix.items()):
                         already_tracked = prefix in tracked_prefixes
-                        assessments = [
-                            _origin_relevance(event, country_mapping)
+                        raw_retention_assessments = [
+                            _raw_retention_possible(
+                                event, raw_retention_membership
+                            )
                             for event in prefix_events
                             if event.action == "announce"
                         ]
-                        possible = any(row[0] for row in assessments)
+                        possible = any(raw_retention_assessments)
                         if not already_tracked and possible:
                             tracked_prefixes.add(prefix)
                             pre_discovery.append(
@@ -2348,7 +4896,11 @@ __all__ = (
     "BoundedPilotWorkerError",
     "BoundedPilotWorkerResult",
     "CHECKPOINT_SCHEMA_VERSION",
+    "FULL_SEED_CHECKPOINT_SCHEMA_VERSION",
+    "SEED_SPOOL_ATTESTATION_SCHEMA_VERSION",
     "SlotCount",
     "WORKER_SCHEMA_VERSION",
     "run_bounded_pilot_worker",
+    "validate_seed_spool_attestation",
+    "verify_full_seed_checkpoint",
 )

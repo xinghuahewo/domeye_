@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import gzip
 import hashlib
+import io
 import ipaddress
 import os
 from pathlib import Path
@@ -34,7 +35,11 @@ from backend.data_pipeline.route_event import (
 )
 from backend.data_pipeline.route_event.bgpdump import (
     _BoundedOutputQueue,
+    _FailureState,
     _ParsedLine,
+    _ProgressState,
+    _StdoutDone,
+    _stdout_worker,
 )
 
 
@@ -470,6 +475,73 @@ class SuccessfulStreamTest(BgpdumpAdapterFixture):
         self.assertEqual(outputs.source_bytes(), 5)
         self.assertEqual(outputs.snapshot()["peak_source_bytes"], 6)
 
+    def test_stdout_batch_keeps_logical_item_and_source_byte_hard_limits(self):
+        outputs = _BoundedOutputQueue(max_items=4, max_source_bytes=10)
+        first = _ParsedLine(
+            0,
+            "2026-01-01T00:00:00Z",
+            0,
+            0,
+            "W",
+            None,
+            source_line_bytes=4,
+        )
+        second = _ParsedLine(
+            1,
+            "2026-01-01T00:00:00Z",
+            0,
+            0,
+            "W",
+            None,
+            source_line_bytes=5,
+        )
+        outputs.put_many((first, second), timeout=0.01)
+        self.assertEqual(outputs.qsize(), 2)
+        self.assertEqual(outputs.source_bytes(), 9)
+        self.assertEqual(outputs.snapshot()["peak_entry_items"], 2)
+        with self.assertRaises(queue.Full):
+            outputs.put_many((first, second, first), timeout=0.01)
+        self.assertEqual(outputs.get_many(timeout=0.01), (first, second))
+        self.assertEqual(outputs.qsize(), 0)
+        self.assertEqual(outputs.source_bytes(), 0)
+
+    def test_stdout_hot_path_transfers_by_bounded_chunk_not_per_line(self):
+        frame = mrt_frame(b"batch-complexity")
+        lines = tuple(announce_line(0, frame) for _ in range(1000))
+        outputs = _BoundedOutputQueue(
+            max_items=4096,
+            max_source_bytes=8 * 1024 * 1024,
+        )
+        cancel = threading.Event()
+        failure = _FailureState()
+        progress = _ProgressState()
+
+        _stdout_worker(
+            stdout=io.BytesIO(b"".join(lines)),
+            outputs=outputs,
+            cancel=cancel,
+            failure=failure,
+            progress=progress,
+            max_stdout_line_bytes=65_536,
+            max_output_lines=1000,
+        )
+
+        self.assertIsNone(failure.get())
+        transferred = []
+        while True:
+            batch = outputs.get_many(timeout=0.01)
+            if isinstance(batch[0], _StdoutDone):
+                self.assertEqual(len(batch), 1)
+                break
+            transferred.extend(batch)
+        self.assertEqual(len(transferred), 1000)
+        self.assertTrue(all(value.ordinal == 0 for value in transferred))
+        snapshot = outputs.snapshot()
+        # 1000 行约 100 KiB；按 64 KiB read chunk 移交只需少量 entry，
+        # 而旧实现固定需要 1000 个 Condition put/get entry。
+        self.assertLessEqual(snapshot["entry_put_count"], 4)
+        self.assertGreater(snapshot["peak_entry_items"], 100)
+
     def test_open_and_notification_are_hashed_silent_controls(self):
         first = mrt_frame(b"before-controls")
         optional = b"\x02\x02\x02\x00"
@@ -668,6 +740,30 @@ class SuccessfulStreamTest(BgpdumpAdapterFixture):
             self.assertTrue(
                 all(element.action == "withdraw" for element in record.elements)
             )
+            self.assertIsNone(popen.processes[0].poll())
+        finally:
+            iterator.close()
+
+    def test_single_stdout_line_is_available_while_child_keeps_pipe_open(self):
+        frame = mrt_frame(b"single-line-open-pipe")
+        artifact = self.write_artifact((frame,))
+        popen = FakePopenFactory(
+            FakeBehavior(
+                lambda ordinal, raw: [announce_line(ordinal, raw)],
+                hang_after_eof=True,
+            )
+        )
+        stream = self.factory(
+            (artifact,),
+            popen,
+            queue_capacity=4096,
+            idle_timeout_seconds=0.2,
+        )(normalized_artifact(artifact))
+        iterator = iter(stream)
+        try:
+            record = next(iterator)
+            self.assertEqual(record.record_ordinal, 0)
+            self.assertEqual(len(record.elements), 1)
             self.assertIsNone(popen.processes[0].poll())
         finally:
             iterator.close()

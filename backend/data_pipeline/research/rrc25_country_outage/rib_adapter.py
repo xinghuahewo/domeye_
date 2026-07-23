@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import ipaddress
+import os
 import re
 import struct
 from pathlib import PurePosixPath
@@ -30,7 +31,15 @@ from ...route_event import (
     vp_id_v1,
 )
 from .country_impact import CONFLICT, RESOLVED, UNKNOWN, derive_origin_asns
-from .rib_parser import RibMrtParseError, iter_rib_mrt_records
+from .rib_parser import (
+    RibMrtParseError,
+    RibMrtSeekContext,
+    RibPeerIndexContext,
+    RibRecordBoundary,
+    iter_rib_mrt_records,
+    iter_rib_mrt_records_from_offset,
+    iter_rib_spool_records,
+)
 from .state_replay import (
     ResearchRouteEvent,
     StateReplayError,
@@ -109,6 +118,9 @@ class _Frame:
 
 OriginAsnPredicate = Callable[[int], bool]
 VpObserver = Callable[[str, int, str], None]
+RibCheckpointObserver = Callable[
+    [RibRecordBoundary, Optional[RibPeerIndexContext]], None
+]
 
 
 class ObservedVpAccumulator:
@@ -324,6 +336,66 @@ def _normalize_expected_hashes(
     return normalized
 
 
+def _nonnegative_coordinate(value: object, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise RibAdapterError(f"{field} 必须是非负整数")
+    return value
+
+
+def _normalize_initial_peer_context(
+    value: Optional[RibMrtSeekContext],
+    *,
+    start_record_ordinal: int,
+    start_record_offset: int,
+    collector_id: str,
+) -> Optional[Tuple[Tuple[str, int], ...]]:
+    if value is None:
+        return None
+    if not isinstance(value, RibMrtSeekContext):
+        raise RibAdapterError("initial_seek_context 必须由 RIB seek scanner 产生")
+    if (
+        value.next_record_ordinal != start_record_ordinal
+        or value.next_record_offset != start_record_offset
+    ):
+        raise RibAdapterError("initial_seek_context 与 record 恢复坐标不一致")
+    peer_index = value.peer_index
+    if peer_index is None:
+        return None
+    if not isinstance(peer_index, RibPeerIndexContext):  # pragma: no cover
+        raise RibAdapterError("initial_seek_context.peer_index 非法")
+    if (
+        peer_index.record_ordinal >= start_record_ordinal
+        or peer_index.record_offset >= start_record_offset
+    ):
+        raise RibAdapterError("peer index context 必须严格位于恢复点之前")
+    if _SHA256_RE.fullmatch(peer_index.record_sha256) is None:
+        raise RibAdapterError("peer index context raw SHA256 非法")
+    if (
+        isinstance(peer_index.record_length, bool)
+        or not isinstance(peer_index.record_length, int)
+        or peer_index.record_length < _MRT_HEADER_LENGTH
+        or peer_index.record_offset + peer_index.record_length > start_record_offset
+    ):
+        raise RibAdapterError("peer index context record_length 非法")
+    if not isinstance(peer_index.peers, tuple):
+        raise RibAdapterError("peer index context peers 必须是确定顺序 tuple")
+    normalized = []
+    for index, peer in enumerate(peer_index.peers):
+        if not isinstance(peer, tuple) or len(peer) != 2:
+            raise RibAdapterError(f"peer index context peers[{index}] 非法")
+        peer_ip, peer_asn = peer
+        try:
+            canonical_ip = ipaddress.ip_address(peer_ip).compressed
+            vp_id_v1(collector_id, canonical_ip, peer_asn)
+        except (TypeError, ValueError) as error:
+            raise RibAdapterError(
+                f"peer index context peers[{index}] 身份非法"
+            ) from error
+        key = (canonical_ip, peer_asn)
+        normalized.append(key)
+    return tuple(normalized)
+
+
 def _raw_evidence(
     identity: _ArtifactIdentity,
     record: ParsedMrtRecord,
@@ -384,10 +456,29 @@ def iter_adapted_rib_records(
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
+    start_record_ordinal: int = 0,
+    start_record_offset: int = 0,
+    initial_seek_context: Optional[RibMrtSeekContext] = None,
 ) -> Iterator[AdaptedRibRecord]:
-    """逐 physical record 提升 RIB parser 流，不物化整个 RIB。"""
+    """逐 physical record 提升 RIB parser 流，不物化整个 RIB。
+
+    非零起点必须与 seek scanner 产出的 context 一致；若起点是
+    TABLE_DUMP_V2 RIB，context 会恢复其此前 peer table 人口与成员校验。
+    """
 
     identity = _normalize_artifact(artifact)
+    initial_ordinal = _nonnegative_coordinate(
+        start_record_ordinal, "start_record_ordinal"
+    )
+    initial_offset = _nonnegative_coordinate(
+        start_record_offset, "start_record_offset"
+    )
+    initial_peer_identities = _normalize_initial_peer_context(
+        initial_seek_context,
+        start_record_ordinal=initial_ordinal,
+        start_record_offset=initial_offset,
+        collector_id=identity.collector_id,
+    )
     if origin_asn_predicate is not None and not callable(origin_asn_predicate):
         raise RibAdapterError("origin_asn_predicate 必须可调用")
     if vp_observer is not None and not callable(vp_observer):
@@ -402,12 +493,17 @@ def iter_adapted_rib_records(
     except TypeError as error:
         raise RibAdapterError("record stream 不可迭代") from error
 
-    expected_ordinal = 0
-    expected_offset = 0
+    expected_ordinal = initial_ordinal
+    expected_offset = initial_offset
+    processed_record_count = 0
     seen_expected_hashes = set()
     seen_route_event_ids = set()
     notified_vp_ids = set()
-    v2_peer_keys: Optional[set[Tuple[str, int]]] = None
+    v2_peer_keys: Optional[set[Tuple[str, int]]] = (
+        set(initial_peer_identities)
+        if initial_peer_identities is not None
+        else None
+    )
 
     def observe_vp(peer_ip: str, peer_asn: int) -> None:
         try:
@@ -426,7 +522,12 @@ def iter_adapted_rib_records(
                 raise
             raise RibAdapterError("vp_observer 执行失败") from error
 
+    if initial_peer_identities is not None:
+        for peer_ip, peer_asn in initial_peer_identities:
+            observe_vp(peer_ip, peer_asn)
+
     for record in iterator:
+        processed_record_count += 1
         if not isinstance(record, ParsedMrtRecord):
             raise RibAdapterError("record stream 含非 ParsedMrtRecord")
         if (
@@ -442,9 +543,9 @@ def iter_adapted_rib_records(
         ):
             raise RibAdapterError("record_offset 必须是非负整数")
         if record.record_ordinal != expected_ordinal:
-            raise RibAdapterError("record_ordinal 必须从 0 连续递增")
+            raise RibAdapterError("record_ordinal 必须从声明恢复起点连续递增")
         if record.record_offset != expected_offset:
-            raise RibAdapterError("record_offset 必须覆盖连续解压字节流")
+            raise RibAdapterError("record_offset 必须从声明恢复起点连续覆盖解压字节流")
         if not isinstance(record.elements, tuple):
             raise RibAdapterError("ParsedMrtRecord.elements 必须是确定顺序 tuple")
 
@@ -599,7 +700,7 @@ def iter_adapted_rib_records(
         expected_ordinal += 1
         expected_offset += len(record.raw_record)
 
-    if expected_ordinal == 0:
+    if processed_record_count == 0:
         raise RibAdapterError("RIB record stream 为空")
     missing_expected = sorted(set(expected_hashes) - seen_expected_hashes)
     if missing_expected:
@@ -616,21 +717,127 @@ def iter_rib_artifact_records(
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
+    start_record_ordinal: int = 0,
+    start_record_offset: int = 0,
+    previous_record_boundary: Optional[
+        RibRecordBoundary | Mapping[str, Any]
+    ] = None,
+    peer_index_context: Optional[
+        RibPeerIndexContext | Mapping[str, Any]
+    ] = None,
 ) -> Iterator[AdaptedRibRecord]:
-    """从解压后的 bytes/stream 调用冻结 parser 并流式提升研究事件。"""
+    """从解压 bytes/stream 的声明 physical-record 起点流式提升事件。"""
 
     # 在 parser 读取任何字节之前先失败关闭 artifact 身份与槽位。
     _normalize_artifact(artifact)
     try:
+        if start_record_ordinal == 0 and start_record_offset == 0:
+            if previous_record_boundary is not None or peer_index_context is not None:
+                raise RibAdapterError(
+                    "流开头不得携带 previous boundary 或 peer context"
+                )
+            parsed_records: Iterable[ParsedMrtRecord] = iter_rib_mrt_records(source)
+            seek_context = None
+        else:
+            seek_records = iter_rib_mrt_records_from_offset(
+                source,
+                next_record_ordinal=start_record_ordinal,
+                next_record_offset=start_record_offset,
+                previous_record_boundary=previous_record_boundary,
+                peer_index_context=peer_index_context,
+            )
+            parsed_records = seek_records
+            seek_context = seek_records.seek_context
         yield from iter_adapted_rib_records(
-            iter_rib_mrt_records(source),
+            parsed_records,
             artifact=artifact,
             origin_asn_predicate=origin_asn_predicate,
             vp_observer=vp_observer,
             expected_record_sha256_by_ordinal=expected_record_sha256_by_ordinal,
+            start_record_ordinal=start_record_ordinal,
+            start_record_offset=start_record_offset,
+            initial_seek_context=seek_context,
         )
     except RibMrtParseError as error:
         raise RibAdapterError("RIB MRT parser 失败") from error
+
+
+def iter_rib_spool_artifact_records(
+    spool_path: os.PathLike[str] | str,
+    *,
+    expected_decompressed_sha256: str,
+    expected_decompressed_size_bytes: int,
+    next_record_ordinal: int,
+    next_record_offset: int,
+    previous_record_boundary: Optional[
+        RibRecordBoundary | Mapping[str, Any]
+    ] = None,
+    peer_index_context: Optional[
+        RibPeerIndexContext | Mapping[str, Any]
+    ] = None,
+    artifact: Mapping[str, Any],
+    origin_asn_predicate: Optional[OriginAsnPredicate] = None,
+    vp_observer: Optional[VpObserver] = None,
+    checkpoint_observer: Optional[RibCheckpointObserver] = None,
+    expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
+) -> Iterator[AdaptedRibRecord]:
+    """核验 spool，并在同一 descriptor 上恢复 peer context 后提升事件。
+
+    每个 physical record 完成 parser 与 adapter 处理后，先调用
+    ``checkpoint_observer(boundary, current_peer_context)``，再把对应 adapted
+    record 交给调用方。因此调用方收到 record 时，持久化坐标已与之对齐；
+    observer 异常直接传播且该 record 不会被 yield。
+    """
+
+    # artifact 失败必须发生在打开、核验 spool 之前。
+    _normalize_artifact(artifact)
+    if checkpoint_observer is not None and not callable(checkpoint_observer):
+        raise RibAdapterError("checkpoint_observer 必须可调用")
+    records = None
+    try:
+        records = iter_rib_spool_records(
+            spool_path,
+            expected_decompressed_sha256=expected_decompressed_sha256,
+            expected_decompressed_size_bytes=expected_decompressed_size_bytes,
+            next_record_ordinal=next_record_ordinal,
+            next_record_offset=next_record_offset,
+            previous_record_boundary=previous_record_boundary,
+            peer_index_context=peer_index_context,
+        )
+        adapted_records = iter_adapted_rib_records(
+            records,
+            artifact=artifact,
+            origin_asn_predicate=origin_asn_predicate,
+            vp_observer=vp_observer,
+            expected_record_sha256_by_ordinal=expected_record_sha256_by_ordinal,
+            start_record_ordinal=next_record_ordinal,
+            start_record_offset=next_record_offset,
+            initial_seek_context=records.seek_context,
+        )
+        for adapted in adapted_records:
+            boundary = records.previous_record_boundary
+            if (
+                boundary is None
+                or boundary.record_ordinal
+                != adapted.raw_record.record_ordinal
+                or boundary.record_offset != adapted.raw_record.record_offset
+                or boundary.record_length != adapted.raw_record.record_length
+                or boundary.record_sha256
+                != adapted.raw_record.raw_record_sha256
+            ):
+                raise RibAdapterError(
+                    "RIB parser checkpoint boundary 与 adapted record 不一致"
+                )
+            if checkpoint_observer is not None:
+                checkpoint_observer(
+                    boundary, records.current_peer_index_context
+                )
+            yield adapted
+    except RibMrtParseError as error:
+        raise RibAdapterError("RIB spool MRT parser 失败") from error
+    finally:
+        if records is not None:
+            records.close()
 
 
 __all__ = (
@@ -644,7 +851,9 @@ __all__ = (
     "RETAINED_UNFILTERED",
     "RIB_RECORD",
     "RibAdapterError",
+    "RibCheckpointObserver",
     "RibElementDecision",
     "iter_adapted_rib_records",
     "iter_rib_artifact_records",
+    "iter_rib_spool_artifact_records",
 )

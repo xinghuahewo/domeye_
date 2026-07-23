@@ -1,0 +1,16 @@
+{
+  "schema_version": "rrc25-iran-incident-episode-link-policy/v1",
+  "incident_id": "inc_v1_ab52ddcad8926f8882fed33a",
+  "incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "target_selector": "all_detected_compatible_episodes",
+  "relation": "possible_correspondence",
+  "causal": false,
+  "evidence_selection": "all_episode_supporting_samples",
+  "relationship_state": "unresolved_not_causal",
+  "precursor_causality_state": "undetermined",
+  "limitations_zh": [
+    "该策略只建立旧 Incident 与 compatible 主曲线 Episode 的可能对应关系，不确认两者属于同一现实事件。",
+    "2026-02-27 16:00Z 是用户给定的最早研究边界，不是确认的前兆起点或因果起点。",
+    "仅凭 RRC25 路由观测不能判断前一 Episode 是否为后一 Episode 的前兆，也不能证明物理机制、流量影响或政府意图。"
+  ]
+}

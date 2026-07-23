@@ -56,6 +56,12 @@ def _inputs():
         "mad": 10,
         "actual_start_utc": "2026-02-27T16:00:00Z",
         "actual_end_exclusive_utc": "2026-02-27T22:00:00Z",
+        "exclusion_boundary": {
+            "at_utc": "2026-02-27T22:00:00Z",
+            "role": "user_supplied_earliest_possible_precursor_boundary",
+            "confirmation_state": "candidate_not_confirmed",
+            "causal_claim_allowed": False,
+        },
     }
     episode = {
         "episode_id": "episode_v1_" + "b" * 24,
@@ -110,6 +116,22 @@ def _inputs():
         "reconciliation": reconciliation,
         "quality": quality,
         "reproduction_commands": ("python3 dev/data_quality/rrc25_iran_research.py verify",),
+        "source_temporal_evidence": (
+            {
+                "incident_id": "inc_v1_" + "d" * 24,
+                "locator_record_start": {
+                    "utc": "2026-02-27T01:12:32Z",
+                    "role": "source_record_identity_only",
+                },
+                "embedded_message_candidate": {
+                    "utc": "2026-02-28T14:34:40Z",
+                    "role": "candidate_event_time_from_legacy_text",
+                },
+                "relationship_state": "unresolved_not_causal",
+                "single_event_time_merge_allowed": False,
+                "precursor_causality_state": "undetermined",
+            },
+        ),
     }
 
 
@@ -126,6 +148,12 @@ class ResearchReportingTest(unittest.TestCase):
         self.assertIn("至少 900 秒", first)
         self.assertIn("数据库写操作 | 0", first)
         self.assertNotIn("生成时间", first)
+        self.assertIn("2026-02-27T01:12:32Z`（仅源记录身份）", first)
+        self.assertIn("2026-02-28T14:34:40Z`（候选）", first)
+        self.assertIn("不得合并为单一事件时间", first)
+        self.assertIn("基线扩展排除边界为 `2026-02-27T22:00:00Z`", first)
+        self.assertIn("`candidate_not_confirmed`", first)
+        self.assertIn("该边界不是 Episode onset", first)
 
     def test_full_profile_omits_pilot_warning(self):
         inputs = _inputs()
@@ -143,6 +171,25 @@ class ResearchReportingTest(unittest.TestCase):
         report = build_research_report_zh(**inputs)
 
         self.assertIn("输入 selection 不完整", report)
+
+    def test_report_rejects_promoted_boundary_or_merged_legacy_times(self):
+        promoted = _inputs()
+        promoted["baseline"] = {
+            **promoted["baseline"],
+            "exclusion_boundary": {
+                **promoted["baseline"]["exclusion_boundary"],
+                "confirmation_state": "confirmed_onset",
+            },
+        }
+        with self.assertRaisesRegex(ResearchReportInputError, "不得冒充确认 onset"):
+            build_research_report_zh(**promoted)
+
+        merged = _inputs()
+        temporal = dict(merged["source_temporal_evidence"][0])
+        temporal["single_event_time_merge_allowed"] = True
+        merged["source_temporal_evidence"] = (temporal,)
+        with self.assertRaisesRegex(ResearchReportInputError, "不得冒充确认事件时间"):
+            build_research_report_zh(**merged)
 
     def test_requires_reproduction_command(self):
         inputs = _inputs()

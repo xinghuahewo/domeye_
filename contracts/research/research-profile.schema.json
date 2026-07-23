@@ -130,13 +130,24 @@
             "dispersion": {"const": "median_absolute_deviation"},
             "extension_direction": {"const": "forward"},
             "extension_step_seconds": {"minimum": 1, "type": "integer"},
+            "exclusion_boundary": {
+              "additionalProperties": false,
+              "properties": {
+                "at_utc": {"format": "date-time", "pattern": "Z$", "type": "string"},
+                "causal_claim_allowed": {"const": false},
+                "confirmation_state": {"const": "candidate_not_confirmed"},
+                "role": {"const": "user_supplied_earliest_possible_precursor_boundary"}
+              },
+              "required": ["at_utc", "role", "confirmation_state", "causal_claim_allowed"],
+              "type": "object"
+            },
             "initial_duration_seconds": {"minimum": 1, "type": "integer"},
             "max_duration_seconds": {"minimum": 1, "type": "integer"},
             "max_relative_mad": {"maximum": 1, "minimum": 0, "type": "number"},
             "metric": {"const": "ipv4_visible_unique_address_count"},
             "record_actual_window": {"const": true},
             "statistic": {"const": "median"},
-            "stop_before_confirmed_onset": {"const": true},
+            "stop_before_exclusion_boundary": {"const": true},
             "unstable_exhausted_state": {"const": "incomplete"}
           },
           "required": [
@@ -149,7 +160,8 @@
             "extension_direction",
             "extension_step_seconds",
             "max_duration_seconds",
-            "stop_before_confirmed_onset",
+            "stop_before_exclusion_boundary",
+            "exclusion_boundary",
             "unstable_exhausted_state",
             "record_actual_window"
           ],

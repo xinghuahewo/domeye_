@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
+from typing import Mapping
 import unittest
 from unittest.mock import patch
 
@@ -37,11 +38,23 @@ from backend.data_pipeline.research.rrc25_country_outage.country_impact import (
 from backend.data_pipeline.research.rrc25_country_outage.mapped_compatible_projection import (
     build_mapped_compatible_projection,
 )
+from backend.data_pipeline.research.rrc25_country_outage.profile import (
+    profile_sha256,
+    validate_research_profile,
+)
+from backend.data_pipeline.research.rrc25_country_outage.research_evidence import (
+    build_research_evidence_package,
+)
+from backend.data_pipeline.research.rrc25_country_outage.source_fact import (
+    FrozenIncidentFact,
+    load_frozen_incident_fact,
+)
 from backend.data_pipeline.research.rrc25_country_outage.update_adapter import (
     RawRecordEvidence,
 )
 from dev.data_quality.rrc25_iran_bounded_pilot import (
     SparsePilotError,
+    _assemble_once,
     _assert_research_write_targets,
     _build_slot_metadata,
     _evidence_rows,
@@ -49,6 +62,7 @@ from dev.data_quality.rrc25_iran_bounded_pilot import (
     _gzip_jsonl,
     _incident_source_fact,
     _load_code_identity,
+    _matched_source_fact_evidence_parameters,
     _preflight_output_directories,
     _publish_ab_with_runtime_gate,
     _require_cumulative_runtime_budget,
@@ -58,7 +72,302 @@ from dev.data_quality.rrc25_iran_bounded_pilot import (
 )
 
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _lineage_worker() -> BoundedPilotWorkerResult:
+    state = RouteReplayState((), (), CONTINUOUS, (), frozenset(), None)
+    slots = tuple(
+        WorkerSlotCount(
+            slot_start_utc=start,
+            slot_end_exclusive_utc=end,
+            input_state="observed",
+            announce_count=0,
+            withdraw_count=0,
+            retained_announce_count=0,
+            retained_withdraw_count=0,
+            physical_record_count=0,
+            missing_reasons=(),
+        )
+        for start, end in (
+            ("2026-02-27T16:00:00Z", "2026-02-27T16:05:00Z"),
+            ("2026-02-27T16:05:00Z", "2026-02-27T16:10:00Z"),
+        )
+    )
+    return BoundedPilotWorkerResult(
+        schema_version="rrc25-bounded-pilot-worker-result/v1",
+        selection_id="rsel_v1_" + "1" * 32,
+        pilot_start_utc="2026-02-27T16:00:00Z",
+        pilot_end_exclusive_utc="2026-02-27T16:10:00Z",
+        status="complete",
+        incomplete_reason=None,
+        state=state,
+        seed_state_at_window_start=state,
+        snapshots=(),
+        route_events=(),
+        raw_audits=(),
+        slot_counts=slots,
+        observed_vp_ids=(),
+        tracked_prefixes=(),
+        pre_discovery_context_unknown=(),
+        ambiguity=AmbiguityPopulation(
+            0, (), (), (), "measurable", "measurable", ()
+        ),
+        gaps=(),
+        errors=(),
+        resources={
+            "new_raw_read_bytes": 0,
+            "peak_temporary_bytes": 0,
+            "max_worker_elapsed_seconds": 0.1,
+            "database_writes": 0,
+            "resource_gate": {"decision": "allowed"},
+        },
+        checkpoint_path=None,
+    )
+
+
+def _lineage_selection() -> Mapping[str, object]:
+    return {
+        "selection_id": "rsel_v1_" + "2" * 32,
+        "semantic_fingerprint_sha256": "3" * 64,
+        "coverage": {
+            "analysis_updates": {
+                "expected_count": 1928,
+                "observed_count": 5,
+                "missing_count": 1923,
+            }
+        },
+    }
+
+
 class IranBoundedPilotCliTests(unittest.TestCase):
+    def _matched_source_fact_inputs(self):
+        profile = validate_research_profile(
+            json.loads(
+                (ROOT / "config/research/iran-rrc25-202602.json").read_text(
+                    "utf-8"
+                )
+            )
+        )
+        snapshot = json.loads(
+            (
+                ROOT
+                / "config/research/iran-country-outage-source-fact-20260227.json"
+            ).read_text("utf-8")
+        )
+        return profile, snapshot, load_frozen_incident_fact(snapshot)
+
+    def test_matched_source_fact_parameters_close_standard_zero_episode_bundle(self):
+        profile, snapshot, incident_fact = self._matched_source_fact_inputs()
+        worker = _lineage_worker()
+        selection = _lineage_selection()
+        run_id = "research_run_v1_" + "4" * 24
+        worker_hash = "5" * 64
+        bindings = {"code": "6" * 64}
+
+        parameters = _matched_source_fact_evidence_parameters(
+            profile=profile,
+            run_id=run_id,
+            worker=worker,
+            sparse_selection=selection,
+            semantic_fingerprint=worker_hash,
+            package_bindings=bindings,
+            incident_fact_snapshot=snapshot,
+            incident_fact=incident_fact,
+            generated_at_utc="2026-07-22T10:30:00Z",
+        )
+
+        self.assertIsNotNone(parameters)
+        assert parameters is not None
+        self.assertEqual(
+            parameters["data_snapshot"]["profile_id"],
+            "iran-rrc25-source-fact-research-envelope-v1",
+        )
+        self.assertNotEqual(
+            parameters["data_snapshot"]["profile_sha256"],
+            profile_sha256(profile),
+        )
+        self.assertEqual(
+            parameters["data_snapshot"]["window_start"],
+            incident_fact.incident["event_time_utc"],
+        )
+        self.assertEqual(
+            parameters["data_snapshot"]["snapshot_time"],
+            snapshot["payload"]["data_snapshot"]["snapshot_time_utc"],
+        )
+        self.assertEqual(
+            parameters["data_snapshot"]["overlay_inventory_sha256"],
+            incident_fact.snapshot_sha256,
+        )
+        self.assertEqual(
+            parameters["raw_source_coverage"],
+            {"expected_count": 1928, "observed_count": 2},
+        )
+        self.assertEqual(
+            parameters["processing_lineage"]["importer"]["config_sha256"],
+            selection["semantic_fingerprint_sha256"],
+        )
+        self.assertIsNone(parameters["processing_lineage"]["parser"])
+        self.assertEqual(
+            parameters["source_fact_record_hash"],
+            hashlib.sha256(
+                json.dumps(
+                    snapshot["payload"]["fact_record"],
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode("utf-8")
+            ).hexdigest(),
+        )
+        self.assertEqual(
+            parameters["reproducibility_parameters"][
+                "worker_semantic_fingerprint_sha256"
+            ],
+            worker_hash,
+        )
+        self.assertEqual(
+            parameters["reproducibility_parameters"]["profile_sha256"],
+            profile_sha256(profile),
+        )
+        self.assertEqual(parameters["generated_at"], "2026-07-22T10:30:00Z")
+        self.assertEqual(
+            parameters["reproducibility_parameters"][
+                "source_fact_retrieved_at_utc"
+            ],
+            snapshot["retrieval"]["retrieved_at_utc"],
+        )
+        self.assertEqual(
+            parameters["reproducibility_parameters"][
+                "research_window_start_utc"
+            ],
+            profile["window"]["start_utc"],
+        )
+        self.assertEqual(
+            parameters["reproducibility_parameters"][
+                "source_fact_locator_time_role"
+            ],
+            "source_record_identity_only",
+        )
+
+        package = build_research_evidence_package(
+            incidents=(incident_fact.incident,),
+            episode=None,
+            run_id=run_id,
+            waves=(),
+            samples=(),
+            recovery_candidates=(),
+            evidence_bundle_parameters=parameters,
+        )
+        self.assertEqual(package["evidence_package_state"], "available_no_episode")
+        self.assertEqual(
+            package["bundles"][0]["coverage_summary"]["admission_level"],
+            "legacy_compatible",
+        )
+        self.assertEqual(package["bundles"][0]["route_event_refs"], [])
+        self.assertIsNone(package["sidecar"]["episode_ref"])
+        bundle_summary = package["bundles"][0]["incident"]["summary"]
+        self.assertIn("2026-02-27T01:12:32Z 仅用于源记录身份", bundle_summary)
+        self.assertIn("旧文案候选时间为 2026-02-28T14:34:40Z", bundle_summary)
+        self.assertIn("关系未解析且非因果", bundle_summary)
+        self.assertTrue(
+            any(
+                "locator 时间 2026-02-27T01:12:32Z 仅用于源记录身份"
+                in limitation
+                for limitation in package["limitations_zh"]
+            )
+        )
+        self.assertTrue(
+            any(
+                "2026-02-28T14:34:40Z" in limitation
+                and "unresolved_not_causal" in limitation
+                for limitation in package["limitations_zh"]
+            )
+        )
+
+        with self.assertRaisesRegex(
+            SparsePilotError, "禁止借用检索时间冒充生成时间"
+        ):
+            _matched_source_fact_evidence_parameters(
+                profile=profile,
+                run_id=run_id,
+                worker=worker,
+                sparse_selection=selection,
+                semantic_fingerprint=worker_hash,
+                package_bindings=bindings,
+                incident_fact_snapshot=snapshot,
+                incident_fact=incident_fact,
+                generated_at_utc=snapshot["retrieval"]["retrieved_at_utc"],
+            )
+
+        with patch(
+            "dev.data_quality.rrc25_iran_bounded_pilot.assemble_derived_research"
+        ) as assembler:
+            expected = object()
+            assembler.return_value = expected
+            result = _assemble_once(
+                profile=profile,
+                run_id=run_id,
+                baseline_state=object(),
+                snapshots=(),
+                mapping=object(),
+                slot_metadata=(),
+                claims={},
+                worker=worker,
+                sparse_selection=selection,
+                semantic_fingerprint=worker_hash,
+                package_bindings=bindings,
+                incident_fact_snapshot=snapshot,
+                incident_fact=incident_fact,
+                generated_at_utc="2026-07-22T10:30:00Z",
+            )
+        self.assertIs(result, expected)
+        self.assertEqual(
+            assembler.call_args.kwargs["evidence_bundle_parameters"],
+            parameters,
+        )
+
+    def test_unresolved_locator_keeps_evidence_parameters_unavailable(self):
+        profile, _snapshot, matched = self._matched_source_fact_inputs()
+        incident = _incident_source_fact(
+            "country_outage/2026-02-27 09:12:32/IR/1/r"
+        )
+        unresolved = FrozenIncidentFact(
+            incident=incident,
+            snapshot_sha256="7" * 64,
+            affected_asns=(),
+            legacy_affected_asn_count=0,
+            legacy_total_asn_count=0,
+            temporal_evidence=matched.temporal_evidence,
+        )
+        worker = _lineage_worker()
+        selection = _lineage_selection()
+
+        with patch(
+            "dev.data_quality.rrc25_iran_bounded_pilot.assemble_derived_research"
+        ) as assembler:
+            assembler.return_value = object()
+            _assemble_once(
+                profile=profile,
+                run_id="research_run_v1_" + "8" * 24,
+                baseline_state=object(),
+                snapshots=(),
+                mapping=object(),
+                slot_metadata=(),
+                claims={},
+                worker=worker,
+                sparse_selection=selection,
+                semantic_fingerprint="9" * 64,
+                package_bindings={"code": "a" * 64},
+                incident_fact_snapshot={},
+                incident_fact=unresolved,
+                generated_at_utc="2026-07-22T10:30:00Z",
+            )
+
+        self.assertIsNone(
+            assembler.call_args.kwargs["evidence_bundle_parameters"]
+        )
+
     def test_cumulative_runtime_gate_keeps_soft_and_hard_limits_exclusive(self):
         limits = ResourceLimits()
         allowed = _require_cumulative_runtime_budget(
@@ -331,12 +640,17 @@ class IranBoundedPilotCliTests(unittest.TestCase):
     def test_code_identity_recomputes_and_checks_current_files(self):
         identity = build_code_identity()
         self.assertGreater(len(identity["files"]), 10)
+        included = {row["path"] for row in identity["files"]}
         self.assertTrue(
-            any(
-                row["path"]
-                == "dev/data_quality/rrc25_iran_bounded_pilot.py"
-                for row in identity["files"]
-            )
+            {
+                "backend/data_pipeline/normalize/__init__.py",
+                "backend/data_pipeline/normalize/facts.py",
+                "dev/data_quality/rrc25_iran_bounded_pilot.py",
+                "dev/data_quality/rrc25_iran_execution_prep.py",
+                "dev/data_quality/rrc25_iran_full_window.py",
+                "dev/data_quality/rrc25_iran_finalize.py",
+            }
+            <= included
         )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "code-identity.json"
@@ -346,6 +660,58 @@ class IranBoundedPilotCliTests(unittest.TestCase):
             )
             loaded = _load_code_identity(path, identity["identity_sha256"])
         self.assertEqual(loaded, identity)
+
+    def test_code_identity_closes_normalize_dependencies_deterministically(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            required = (
+                "backend/data_pipeline/__init__.py",
+                "backend/data_pipeline/normalize/__init__.py",
+                "backend/data_pipeline/normalize/facts.py",
+                "dev/data_quality/rrc25_iran_research.py",
+                "dev/data_quality/rrc25_iran_bounded_pilot.py",
+                "dev/data_quality/rrc25_iran_execution_prep.py",
+                "dev/data_quality/rrc25_iran_full_window.py",
+                "dev/data_quality/rrc25_iran_finalize.py",
+                "dev/data_quality/rrc25_iran_analysis_ribs.py",
+                "dev/data_quality/rrc25_iran_acceptance.py",
+                "dev/data_quality/validate_research_contracts.cjs",
+                "dev/data_quality/validate_rrc25_full_window_package_contracts.cjs",
+            )
+            for relative in required:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(relative + "\n", encoding="utf-8")
+            unrelated = root / "backend/data_pipeline/normalize/unrelated.py"
+            unrelated.write_text("not imported by the pilot\n", encoding="utf-8")
+            cache = root / "backend/data_pipeline/normalize/__pycache__/facts.pyc"
+            cache.parent.mkdir(parents=True)
+            cache.write_bytes(b"cache")
+
+            baseline = build_code_identity(root)
+            repeated = build_code_identity(root)
+            paths = [row["path"] for row in baseline["files"]]
+
+            self.assertEqual(baseline, repeated)
+            self.assertEqual(paths, sorted(paths))
+            self.assertEqual(set(paths), set(required))
+            self.assertNotIn(unrelated.relative_to(root).as_posix(), paths)
+            self.assertFalse(any("__pycache__" in path for path in paths))
+
+            for relative in (
+                "backend/data_pipeline/normalize/__init__.py",
+                "backend/data_pipeline/normalize/facts.py",
+            ):
+                with self.subTest(relative=relative):
+                    dependency = root / relative
+                    original = dependency.read_bytes()
+                    dependency.write_bytes(original + b"# identity change\n")
+                    changed = build_code_identity(root)
+                    self.assertNotEqual(
+                        changed["identity_sha256"], baseline["identity_sha256"]
+                    )
+                    dependency.write_bytes(original)
+                    self.assertEqual(build_code_identity(root), baseline)
 
     def test_missing_raw_audit_fails_closed(self):
         file_hash = "c" * 64

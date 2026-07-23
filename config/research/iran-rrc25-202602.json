@@ -61,7 +61,13 @@
       "metric": "ipv4_visible_unique_address_count",
       "record_actual_window": true,
       "statistic": "median",
-      "stop_before_confirmed_onset": true,
+      "stop_before_exclusion_boundary": true,
+      "exclusion_boundary": {
+        "at_utc": "2026-02-27T22:00:00Z",
+        "causal_claim_allowed": false,
+        "confirmation_state": "candidate_not_confirmed",
+        "role": "user_supplied_earliest_possible_precursor_boundary"
+      },
       "unstable_exhausted_state": "incomplete"
     }
   },

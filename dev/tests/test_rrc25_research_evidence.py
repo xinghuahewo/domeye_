@@ -9,7 +9,9 @@ from backend.data_pipeline.route_event import artifact_id_v1, route_event_id_v1,
 from backend.data_pipeline.research.rrc25_country_outage.research_evidence import (
     ResearchEvidenceError,
     build_research_evidence_package,
+    build_unavailable_research_evidence_package,
     canonical_research_sidecar_bytes,
+    validate_research_evidence_package,
     validate_research_sidecar_reference_closure,
 )
 from dev.tests.test_rrc25_research_episodes import _sample
@@ -314,11 +316,13 @@ def _assert_schema_valid(test_case, package):
     ajv_module = ROOT / "frontend" / "node_modules" / "@redocly" / "ajv" / "dist" / "2020"
     bundle_schema = ROOT / "contracts" / "data" / "evidence-bundle-v2.schema.json"
     sidecar_schema = ROOT / "contracts" / "research" / "research-evidence-sidecar.schema.json"
+    package_schema = ROOT / "contracts" / "research" / "research-evidence-package.schema.json"
     script = r"""
 const fs = require('fs')
 const Ajv2020 = require(process.argv[1]).default
 const bundleSchema = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
 const sidecarSchema = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))
+const packageSchema = JSON.parse(fs.readFileSync(process.argv[4], 'utf8'))
 const payload = JSON.parse(fs.readFileSync(0, 'utf8'))
 const ajv = new Ajv2020({allErrors: true, allowUnionTypes: true, strict: true, validateFormats: true})
 ajv.addFormat('date-time', {
@@ -329,8 +333,11 @@ ajv.addFormat('date-time', {
     return Number.isFinite(time) && new Date(time).toISOString().replace('.000Z', 'Z') === value
   },
 })
-const validateBundle = ajv.compile(bundleSchema)
-const validateSidecar = ajv.compile(sidecarSchema)
+ajv.addSchema(bundleSchema)
+ajv.addSchema(sidecarSchema)
+const validateBundle = ajv.getSchema(bundleSchema.$id)
+const validateSidecar = ajv.getSchema(sidecarSchema.$id)
+const validatePackage = ajv.compile(packageSchema)
 for (const bundle of payload.bundles) {
   if (!validateBundle(bundle)) {
     process.stderr.write(ajv.errorsText(validateBundle.errors, {separator: '; '}))
@@ -341,9 +348,21 @@ if (!validateSidecar(payload.sidecar)) {
   process.stderr.write(ajv.errorsText(validateSidecar.errors, {separator: '; '}))
   process.exit(1)
 }
+if (!validatePackage(payload)) {
+  process.stderr.write(ajv.errorsText(validatePackage.errors, {separator: '; '}))
+  process.exit(1)
+}
 """
     result = subprocess.run(
-        ["node", "-e", script, str(ajv_module), str(bundle_schema), str(sidecar_schema)],
+        [
+            "node",
+            "-e",
+            script,
+            str(ajv_module),
+            str(bundle_schema),
+            str(sidecar_schema),
+            str(package_schema),
+        ],
         input=json.dumps(package, ensure_ascii=False, allow_nan=False),
         text=True,
         stdout=subprocess.PIPE,
@@ -355,6 +374,126 @@ if (!validateSidecar(payload.sidecar)) {
 
 
 class ResearchEvidencePackageTest(unittest.TestCase):
+    def test_matched_incident_without_episode_keeps_source_fact_and_empty_chain(self):
+        package = build_research_evidence_package(
+            incidents=[_incident()],
+            episode=None,
+            run_id=RUN_ID,
+            waves=(),
+            samples=(),
+            recovery_candidates=(),
+            evidence_bundle_parameters=_bundle_parameters(include_raw=False),
+            limitations_zh=["本测试验证零 Episode 的事件级证据包。"],
+        )
+        bundle = package["bundles"][0]
+        sidecar = package["sidecar"]
+
+        self.assertEqual(package["evidence_package_state"], "available_no_episode")
+        self.assertRegex(package["package_id"], r"^research_package_v1_[0-9a-f]{24}$")
+        self.assertEqual(package["run_id"], RUN_ID)
+        self.assertEqual(package["episode_ids"], [])
+        self.assertEqual(bundle["coverage_summary"]["admission_level"], "legacy_compatible")
+        self.assertIsNone(sidecar["episode_ref"])
+        self.assertEqual(sidecar["incident_episode_links"], [])
+        self.assertEqual(sidecar["wave_refs"], [])
+        self.assertEqual(sidecar["sample_refs"], [])
+        self.assertEqual(sidecar["sample_route_event_links"], [])
+        self.assertTrue(sidecar["legacy_source_fact_refs"])
+        self.assertEqual(
+            sidecar["reference_closure"]["overall"],
+            "passed_with_explicit_no_episode",
+        )
+        self.assertTrue(any("未伪造 episode" in text for text in sidecar["limitations_zh"]))
+        validate_reference_closure(bundle)
+        validate_research_sidecar_reference_closure(sidecar, bundles=package["bundles"])
+        validate_research_evidence_package(package)
+        _assert_schema_valid(self, package)
+
+    def test_unresolved_source_fact_yields_unavailable_descriptor_not_fake_bundle(self):
+        incident = _incident()
+        incident["fact_link_status"] = "unresolved"
+
+        package = build_unavailable_research_evidence_package(
+            run_id=RUN_ID,
+            incident=incident,
+        )
+
+        self.assertEqual(
+            package["evidence_package_state"],
+            "unavailable_source_fact_unresolved",
+        )
+        self.assertEqual(package["incident_ids"], [incident["incident_id"]])
+        self.assertEqual(package["episode_ids"], [])
+        self.assertEqual(package["incident_locators"], [incident])
+        self.assertEqual(package["bundles"], [])
+        self.assertIsNone(package["sidecar"])
+        self.assertRegex(package["package_id"], r"^research_package_v1_[0-9a-f]{24}$")
+        self.assertTrue(any("unresolved" in text for text in package["limitations_zh"]))
+        validate_research_evidence_package(package)
+
+    def test_unresolved_descriptor_rejects_causal_root_cause_and_precursor_assertions(self):
+        cases = (
+            ("causal_conclusion", "错误的因果结论"),
+            ("root_cause", "物理链路中断"),
+            ("precursor_assertion", "该事件是后续中断的前兆"),
+        )
+        for field, value in cases:
+            with self.subTest(field=field):
+                incident = _incident()
+                incident["fact_link_status"] = "unresolved"
+                incident[field] = value
+                with self.assertRaisesRegex(
+                    ResearchEvidenceError, "因果|根因|前兆"
+                ):
+                    build_unavailable_research_evidence_package(
+                        run_id=RUN_ID,
+                        incident=incident,
+                    )
+
+    def test_unresolved_descriptor_rejects_generic_nested_causal_text_but_allows_explicit_unknown(self):
+        incident = _incident()
+        incident["fact_link_status"] = "unresolved"
+        incident["analysis"] = {
+            "assessment": "该事件是后续中断的前兆，根因是物理链路中断。"
+        }
+        with self.assertRaisesRegex(ResearchEvidenceError, "因果|根因|前兆"):
+            build_unavailable_research_evidence_package(
+                run_id=RUN_ID,
+                incident=incident,
+            )
+
+        incident["analysis"] = {
+            "assessment": "目前无法判断是否为前兆，根因尚未确定。"
+        }
+        package = build_unavailable_research_evidence_package(
+            run_id=RUN_ID,
+            incident=incident,
+        )
+        self.assertEqual(
+            package["evidence_package_state"],
+            "unavailable_source_fact_unresolved",
+        )
+
+    def test_no_episode_fabricated_recovery_fails_after_content_id_recomputed(self):
+        from backend.data_pipeline.research.rrc25_country_outage import research_evidence
+
+        fixture = json.loads(
+            (
+                ROOT
+                / "contracts/research/fixtures/research-evidence-sidecar"
+                / "invalid-no-episode-fabricated-recovery-with-valid-content-id.json"
+            ).read_text("utf-8")
+        )
+        self.assertEqual(
+            fixture["sidecar_id"],
+            research_evidence._stable_id(
+                "research_sidecar_v1_",
+                research_evidence._sidecar_identity_payload(fixture),
+            ),
+        )
+        with self.assertRaisesRegex(ResearchEvidenceError, "恢复|unknown"):
+            validate_research_sidecar_reference_closure(fixture)
+
     def test_single_incident_closes_full_chain_and_preserves_legacy_fact(self):
         package = _build()
         bundle = package["bundles"][0]
@@ -510,7 +649,7 @@ class ResearchEvidencePackageTest(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
-        self.assertIn("8 个 Schema", result.stdout)
+        self.assertIn("13 个 Schema", result.stdout)
 
 
 if __name__ == "__main__":

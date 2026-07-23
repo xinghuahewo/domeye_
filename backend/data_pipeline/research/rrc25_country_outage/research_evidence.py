@@ -28,6 +28,7 @@ from ...evidence.bundle import (
 
 
 SIDECAR_SCHEMA_VERSION = "research-evidence-sidecar/v1"
+PACKAGE_SCHEMA_VERSION = "research-evidence-package/v1"
 
 _SIDECAR_ID_RE = re.compile(r"^research_sidecar_v1_[0-9a-f]{24}$")
 _RUN_ID_RE = re.compile(r"^research_run_v1_[0-9a-f]{24}$")
@@ -41,9 +42,67 @@ _ROUTE_ID_RE = re.compile(r"^rte_v1_[0-9a-f]{32}$")
 _RAW_ID_RE = re.compile(r"^raw_v1_[0-9a-f]{32}$")
 _ARTIFACT_ID_RE = re.compile(r"^art_v1_[0-9a-f]{32}$")
 _VP_ID_RE = re.compile(r"^vp_v1_[0-9a-f]{32}$")
+_PACKAGE_ID_RE = re.compile(r"^research_package_v1_[0-9a-f]{24}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _REASON_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _HAN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
+_INCIDENT_EPISODE_RELATIONS = frozenset(
+    {"temporal_overlap", "legacy_reconciliation", "possible_correspondence"}
+)
+_NON_ASSERTIVE_CAUSAL_STATES = frozenset(
+    {"unknown", "undetermined", "not_assessed", "not_available", "observation_only"}
+)
+_CAUSAL_TEXT_TOKENS = (
+    "因果",
+    "根因",
+    "前兆",
+    "causal",
+    "causality",
+    "root cause",
+    "root_cause",
+    "rootcause",
+    "precursor",
+)
+_NON_ASSERTIVE_TEXT_MARKERS = (
+    "未知",
+    "未确定",
+    "未评估",
+    "未提供",
+    "未验证",
+    "尚未",
+    "不确定",
+    "无法",
+    "不能",
+    "不得",
+    "禁止",
+    "不可用",
+    "待验证",
+    "仅为假设",
+    "假设",
+    "unknown",
+    "undetermined",
+    "not assessed",
+    "not_assessed",
+    "not available",
+    "not_available",
+    "unresolved",
+    "not_causal",
+    "noncausal",
+    "non-causal",
+    "not proven",
+    "unverified",
+    "cannot",
+    "unable",
+    "hypothesis",
+)
+_ASSERTIVE_CAUSAL_TEXT_RE = re.compile(
+    r"(?:"
+    r"(?:根因|root[ _]?cause)\s*(?:就是|是|为|在于|来自|系|=|:|：)"
+    r"|(?:事件|异常|中断|incident|outage).{0,16}(?:是|为|属于|构成|is|was).{0,16}(?:前兆|precursor)"
+    r"|(?:前兆|precursor)\s*(?:就是|是|为|已确认|confirmed|=|:|：)"
+    r")",
+    re.IGNORECASE,
+)
 
 
 class ResearchEvidenceError(ValueError):
@@ -99,6 +158,84 @@ def _stable_id(prefix: str, identity: Mapping[str, Any], length: int = 24) -> st
     return prefix + _record_sha256(identity)[:length]
 
 
+def _package_identity_payload(package: Mapping[str, Any]) -> Dict[str, Any]:
+    payload = dict(package)
+    payload.pop("package_id", None)
+    return payload
+
+
+def _assert_observation_only_locator(locator: Mapping[str, Any]) -> None:
+    """拒绝 unresolved locator 中任何因果、根因或前兆断言。"""
+
+    if locator.get("classification") != "observation_only":
+        raise ResearchEvidenceError(
+            "unresolved Incident classification 必须为 observation_only"
+        )
+    if "causal_conclusion" not in locator or locator.get("causal_conclusion") is not None:
+        raise ResearchEvidenceError("unresolved Incident 禁止携带因果结论")
+
+    def assert_text(value: str, path: str) -> None:
+        normalized = value.strip().lower()
+        if not any(token in normalized for token in _CAUSAL_TEXT_TOKENS):
+            return
+        if _ASSERTIVE_CAUSAL_TEXT_RE.search(normalized) is not None:
+            raise ResearchEvidenceError(
+                f"unresolved Incident 的 {path} 不得包含因果、根因或前兆断言"
+            )
+        if not any(marker in normalized for marker in _NON_ASSERTIVE_TEXT_MARKERS):
+            raise ResearchEvidenceError(
+                f"unresolved Incident 的 {path} 含因果、根因或前兆语义，但没有显式未知或非断言限定"
+            )
+
+    def walk(value: object, path: str) -> None:
+        if isinstance(value, Mapping):
+            for raw_key, nested in value.items():
+                key = str(raw_key).lower()
+                normalized_key = re.sub(r"[\s-]+", "_", key)
+                nested_path = f"{path}.{raw_key}" if path else str(raw_key)
+                if key == "classification":
+                    if nested != "observation_only":
+                        raise ResearchEvidenceError(
+                            f"unresolved Incident 的 {nested_path} 必须为 observation_only"
+                        )
+                    continue
+                if key == "causal_conclusion":
+                    if nested is not None:
+                        raise ResearchEvidenceError(
+                            f"unresolved Incident 的 {nested_path} 禁止携带因果结论"
+                        )
+                    continue
+                if any(
+                    token in normalized_key
+                    for token in (
+                        "causal",
+                        "causality",
+                        "root_cause",
+                        "rootcause",
+                        "precursor",
+                        "因果",
+                        "根因",
+                        "前兆",
+                    )
+                ):
+                    safe = nested is None or (
+                        isinstance(nested, str)
+                        and nested.strip().lower() in _NON_ASSERTIVE_CAUSAL_STATES
+                    )
+                    if not safe:
+                        raise ResearchEvidenceError(
+                            f"unresolved Incident 的 {nested_path} 不得包含因果、根因或前兆断言"
+                        )
+                walk(nested, nested_path)
+        elif isinstance(value, (list, tuple)):
+            for index, nested in enumerate(value):
+                walk(nested, f"{path}[{index}]")
+        elif isinstance(value, str):
+            assert_text(value, path)
+
+    walk(locator, "incident")
+
+
 def _mapping(value: object, field: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ResearchEvidenceError(f"{field} 必须是对象")
@@ -149,6 +286,53 @@ def _utc(value: object, field: str) -> str:
     return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _legacy_temporal_limitations(
+    incident: Mapping[str, Any],
+) -> Tuple[str, ...]:
+    """把 legacy 双时间冲突固定为研究包的强制限制声明。"""
+
+    temporal_value = incident.get("legacy_temporal_evidence")
+    if temporal_value is None:
+        return ()
+    temporal = _mapping(
+        temporal_value, "incident.legacy_temporal_evidence"
+    )
+    locator = _mapping(
+        temporal.get("locator_record_start"),
+        "incident.legacy_temporal_evidence.locator_record_start",
+    )
+    candidate = _mapping(
+        temporal.get("embedded_message_candidate"),
+        "incident.legacy_temporal_evidence.embedded_message_candidate",
+    )
+    locator_utc = _utc(
+        locator.get("utc"),
+        "incident.legacy_temporal_evidence.locator_record_start.utc",
+    )
+    candidate_utc = _utc(
+        candidate.get("utc"),
+        "incident.legacy_temporal_evidence.embedded_message_candidate.utc",
+    )
+    if (
+        locator.get("role") != "source_record_identity_only"
+        or candidate.get("role") != "candidate_event_time_from_legacy_text"
+        or temporal.get("relationship_state") != "unresolved_not_causal"
+        or temporal.get("single_event_time_merge_allowed") is not False
+        or temporal.get("precursor_causality_state") != "undetermined"
+        or incident.get("event_time_utc") != locator_utc
+    ):
+        raise ResearchEvidenceError(
+            "legacy 双时间证据不得把 locator 或文案候选冒充确认事件时间"
+        )
+    return (
+        f"旧事实 locator 时间 {locator_utc} 仅用于源记录身份，不是已确认事件起点。",
+        (
+            f"旧文案候选事件时间为 {candidate_utc}；其与 locator 的关系为 "
+            "unresolved_not_causal（未解析且非因果），不得合并为单一事件时间或据此确认前兆。"
+        ),
+    )
+
+
 def _unique_records(
     values: Iterable[Mapping[str, Any]], *, id_field: str, field: str
 ) -> Dict[str, Dict[str, Any]]:
@@ -194,6 +378,11 @@ def _normalize_research_records(
         episode_value.get("incident_mappings"), "episode.incident_mappings"
     ):
         item = dict(_mapping(raw_mapping, "episode.incident_mappings[]"))
+        relation = item.get("relation")
+        if relation not in _INCIDENT_EPISODE_RELATIONS | {"no_correspondence"}:
+            raise ResearchEvidenceError("incident_mapping.relation 非法")
+        if item.get("causal") is not False:
+            raise ResearchEvidenceError("Incident 与 episode 的映射必须显式 causal=false")
         evidence_ids = tuple(
             _pattern(value, _SAMPLE_ID_RE, "incident_mapping.evidence_sample_ids[]")
             for value in _sequence(
@@ -203,6 +392,10 @@ def _normalize_research_records(
         )
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ResearchEvidenceError("incident_mapping.evidence_sample_ids 不得重复")
+        if relation == "no_correspondence" and evidence_ids:
+            raise ResearchEvidenceError("no_correspondence 不得引用支持样本")
+        if relation != "no_correspondence" and not evidence_ids:
+            raise ResearchEvidenceError("已关联 Incident 必须至少引用一个支持样本")
         item["evidence_sample_ids"] = sorted(evidence_ids)
         normalized_incident_mappings.append(_json_ready(item))
     incident_mapping_input = tuple(normalized_incident_mappings)
@@ -443,6 +636,63 @@ def _sidecar_identity_payload(sidecar: Mapping[str, Any]) -> Dict[str, Any]:
     return payload
 
 
+def build_unavailable_research_evidence_package(
+    *,
+    run_id: str,
+    incident: Mapping[str, Any],
+    episode_ids: Iterable[str] = (),
+    limitations_zh: Iterable[str] = (),
+) -> Dict[str, Any]:
+    """保留未解析旧 Incident locator，但不伪造标准 Evidence Bundle v2。
+
+    ``fact_link_status=unresolved`` 表示调用方没有提供只读冻结事实快照。此时
+    标准 Bundle v2 的 exact/collision 映射前提不成立；本函数输出内容寻址的
+    unavailable package，完整保留 locator 与显式空 Bundle/sidecar。
+    """
+
+    normalized_run_id = _pattern(run_id, _RUN_ID_RE, "run_id")
+    locator = dict(_mapping(incident, "incident"))
+    incident_id = _pattern(locator.get("incident_id"), _INCIDENT_ID_RE, "incident_id")
+    _text(locator.get("detail_reference"), "incident.detail_reference")
+    if locator.get("fact_link_status") != "unresolved":
+        raise ResearchEvidenceError(
+            "unavailable source-fact package 只接受 fact_link_status=unresolved"
+        )
+    _assert_observation_only_locator(locator)
+    normalized_episode_ids = sorted(
+        {
+            _pattern(value, _EPISODE_ID_RE, "episode_ids[]")
+            for value in _sequence(episode_ids, "episode_ids")
+        }
+    )
+    limitations = sorted(
+        {
+            _chinese(value, "limitations_zh[]")
+            for value in _sequence(limitations_zh, "limitations_zh")
+        }
+        | {
+            "未提供旧事实表的只读冻结快照，source fact 仍为 unresolved；因此没有把 locator 伪造成 matched，也没有生成标准 Evidence Bundle v2。"
+        }
+    )
+    payload = {
+        "schema_version": PACKAGE_SCHEMA_VERSION,
+        "evidence_package_state": "unavailable_source_fact_unresolved",
+        "run_id": normalized_run_id,
+        "incident_ids": [incident_id],
+        "episode_ids": normalized_episode_ids,
+        "incident_locators": [_json_ready(locator)],
+        "bundles": [],
+        "sidecar": None,
+        "limitations_zh": limitations,
+    }
+    package = {
+        **payload,
+        "package_id": _stable_id("research_package_v1_", payload),
+    }
+    validate_research_evidence_package(package)
+    return package
+
+
 def validate_research_sidecar_reference_closure(
     sidecar: Mapping[str, Any], *, bundles: Iterable[Mapping[str, Any]] = ()
 ) -> None:
@@ -484,23 +734,34 @@ def validate_research_sidecar_reference_closure(
     )
     if mapping_state != expected_mapping_state or len(bundle_ids) != len(incident_ids):
         raise ResearchEvidenceError("mapping_state 或 Incident/Bundle 基数不一致")
-    if incident_ids != set(incident_links) or bundle_ids != set(bundle_refs):
-        raise ResearchEvidenceError("mapping 与 bundle/incident link 集合不一致")
+    episode_ref_value = payload.get("episode_ref")
+    no_episode = episode_ref_value is None
+    if bundle_ids != set(bundle_refs):
+        raise ResearchEvidenceError("mapping 与 bundle 集合不一致")
+    if no_episode:
+        if incident_links:
+            raise ResearchEvidenceError("零 episode sidecar 不得伪造 Incident→episode 引用")
+    elif incident_ids != set(incident_links):
+        raise ResearchEvidenceError("mapping 与 incident link 集合不一致")
     if {item["incident_id"] for item in bundle_refs.values()} != incident_ids:
         raise ResearchEvidenceError("bundle_refs.incident_id 未闭合")
-    if {item["bundle_id"] for item in incident_links.values()} != bundle_ids:
+    if not no_episode and {item["bundle_id"] for item in incident_links.values()} != bundle_ids:
         raise ResearchEvidenceError("incident_episode_links.bundle_id 未闭合")
 
-    episode_ref = _mapping(payload.get("episode_ref"), "episode_ref")
-    if set(episode_ref.get("wave_ids", ())) != set(wave_refs):
-        raise ResearchEvidenceError("episode→wave 引用未闭合")
-    if set(episode_ref.get("supporting_sample_ids", ())) != set(sample_refs):
-        raise ResearchEvidenceError("episode→sample 引用未闭合")
-    if any(item.get("episode_id") != episode_ref.get("episode_id") for item in incident_links.values()):
-        raise ResearchEvidenceError("Incident→episode 引用未闭合")
-    for wave in wave_refs.values():
-        if not set(wave.get("supporting_sample_ids", ())) <= set(sample_refs):
-            raise ResearchEvidenceError("wave→sample 引用未闭合")
+    if no_episode:
+        if wave_refs or sample_refs:
+            raise ResearchEvidenceError("零 episode sidecar 不得伪造 wave/sample 引用")
+    else:
+        episode_ref = _mapping(episode_ref_value, "episode_ref")
+        if set(episode_ref.get("wave_ids", ())) != set(wave_refs):
+            raise ResearchEvidenceError("episode→wave 引用未闭合")
+        if set(episode_ref.get("supporting_sample_ids", ())) != set(sample_refs):
+            raise ResearchEvidenceError("episode→sample 引用未闭合")
+        if any(item.get("episode_id") != episode_ref.get("episode_id") for item in incident_links.values()):
+            raise ResearchEvidenceError("Incident→episode 引用未闭合")
+        for wave in wave_refs.values():
+            if not set(wave.get("supporting_sample_ids", ())) <= set(sample_refs):
+                raise ResearchEvidenceError("wave→sample 引用未闭合")
 
     link_by_sample = _unique_records(
         payload.get("sample_route_event_links", ()),
@@ -512,8 +773,10 @@ def validate_research_sidecar_reference_closure(
     linked_route_ids = {
         route_id for item in link_by_sample.values() for route_id in item.get("route_event_ids", ())
     }
-    if linked_route_ids != set(route_refs):
+    if not no_episode and linked_route_ids != set(route_refs):
         raise ResearchEvidenceError("sample→RouteEvent 引用未闭合")
+    if no_episode and link_by_sample:
+        raise ResearchEvidenceError("零 episode sidecar 不得伪造 sample→RouteEvent 引用")
     for item in link_by_sample.values():
         state = item.get("link_state")
         route_ids_for_sample = item.get("route_event_ids", ())
@@ -531,12 +794,18 @@ def validate_research_sidecar_reference_closure(
     linked_raw_ids = {
         raw_id for item in route_refs.values() for raw_id in item.get("raw_record_ref_ids", ())
     }
+    if no_episode and (route_refs or raw_refs or artifact_refs):
+        raise ResearchEvidenceError(
+            "零 episode sidecar 不得把 RouteEvent/raw/artifact 硬归因到旧 Incident"
+        )
     if linked_raw_ids != set(raw_refs):
         raise ResearchEvidenceError("RouteEvent→raw 引用未闭合")
     linked_artifact_ids = {item.get("artifact_id") for item in raw_refs.values()}
     if linked_artifact_ids != set(artifact_refs):
         raise ResearchEvidenceError("raw→artifact 引用未闭合")
     for raw_id, raw in raw_refs.items():
+        if raw.get("verification_status") != "verified":
+            raise ResearchEvidenceError("研究 sidecar 的 raw record 必须由正式 raw audit 验证")
         file_hash = _sha256(raw.get("file_sha256"), f"{raw_id}.file_sha256")
         expected_artifact = _stable_id(
             "art_v1_",
@@ -588,6 +857,25 @@ def validate_research_sidecar_reference_closure(
             raise ResearchEvidenceError("artifact.file_sha256 与 raw 引用不一致")
 
     recovery = _mapping(payload.get("recovery_assessment"), "recovery_assessment")
+    if no_episode:
+        expected_recovery = {
+            "recovery_state": "unknown",
+            "partial_recovery_at": None,
+            "full_recovery_at": None,
+            "duration": {
+                "duration_state": "unknown",
+                "seconds": None,
+                "minimum_seconds": None,
+                "maximum_seconds": None,
+                "measured_to": None,
+            },
+            "continuity_status": "unknown",
+            "candidates": [],
+        }
+        if dict(recovery) != expected_recovery:
+            raise ResearchEvidenceError(
+                "零 episode 的恢复、持续时间和连续性必须全部显式为 unknown"
+            )
     for candidate in recovery.get("candidates", ()):
         if not set(candidate.get("supporting_sample_ids", ())) <= set(sample_refs):
             raise ResearchEvidenceError("恢复候选的 sample 引用未闭合")
@@ -603,7 +891,16 @@ def validate_research_sidecar_reference_closure(
     has_unknown_link = any(
         item.get("link_state") == "unknown" for item in link_by_sample.values()
     )
-    if mapping_state == "unmapped":
+    if no_episode:
+        expected_closure = {
+            "incident_episode": "explicit_no_episode",
+            "episode_wave_sample": "not_applicable_no_episode",
+            "sample_route_event": "not_applicable_no_episode",
+            "route_raw_artifact": "not_applicable_no_episode",
+            "overall": "passed_with_explicit_no_episode",
+            "unresolved_refs": [],
+        }
+    elif mapping_state == "unmapped":
         expected_closure = {
             "incident_episode": "not_applicable_unmapped",
             "episode_wave_sample": "passed",
@@ -661,13 +958,122 @@ def validate_research_sidecar_reference_closure(
             raise ResearchEvidenceError("legacy source fact 未完整保留")
 
 
+def validate_research_evidence_package(package: Mapping[str, Any]) -> None:
+    """验证 research-evidence-package/v1 的状态、内容身份与引用闭合。"""
+
+    payload = _mapping(package, "research_evidence_package")
+    required_common = {
+        "schema_version",
+        "package_id",
+        "evidence_package_state",
+        "run_id",
+        "incident_ids",
+        "episode_ids",
+        "bundles",
+        "sidecar",
+        "limitations_zh",
+    }
+    state = payload.get("evidence_package_state")
+    required = set(required_common)
+    if state == "unavailable_source_fact_unresolved":
+        required.add("incident_locators")
+    if set(payload) != required:
+        raise ResearchEvidenceError(
+            "research evidence package 字段必须精确为 {}".format(sorted(required))
+        )
+    if payload.get("schema_version") != PACKAGE_SCHEMA_VERSION:
+        raise ResearchEvidenceError("research evidence package schema_version 非法")
+    _pattern(payload.get("package_id"), _PACKAGE_ID_RE, "package_id")
+    expected_package_id = _stable_id(
+        "research_package_v1_", _package_identity_payload(payload)
+    )
+    if payload.get("package_id") != expected_package_id:
+        raise ResearchEvidenceError("package_id 与规范内容不一致")
+    run_id = _pattern(payload.get("run_id"), _RUN_ID_RE, "run_id")
+    incident_ids = tuple(
+        _pattern(value, _INCIDENT_ID_RE, "incident_ids[]")
+        for value in _sequence(payload.get("incident_ids"), "incident_ids")
+    )
+    episode_ids = tuple(
+        _pattern(value, _EPISODE_ID_RE, "episode_ids[]")
+        for value in _sequence(payload.get("episode_ids"), "episode_ids")
+    )
+    if list(incident_ids) != sorted(set(incident_ids)):
+        raise ResearchEvidenceError("incident_ids 必须去重排序")
+    if list(episode_ids) != sorted(set(episode_ids)):
+        raise ResearchEvidenceError("episode_ids 必须去重排序")
+    limitations = tuple(
+        _chinese(value, "limitations_zh[]")
+        for value in _sequence(payload.get("limitations_zh"), "limitations_zh")
+    )
+    if not limitations or list(limitations) != sorted(set(limitations)):
+        raise ResearchEvidenceError("limitations_zh 必须非空、去重并排序")
+    bundles = tuple(
+        _mapping(value, "bundles[]")
+        for value in _sequence(payload.get("bundles"), "bundles")
+    )
+
+    if state == "unavailable_source_fact_unresolved":
+        if len(incident_ids) != 1 or bundles or payload.get("sidecar") is not None:
+            raise ResearchEvidenceError(
+                "unavailable package 必须精确保留一个 Incident，且 Bundle/sidecar 为空"
+            )
+        locators = tuple(
+            _mapping(value, "incident_locators[]")
+            for value in _sequence(
+                payload.get("incident_locators"), "incident_locators"
+            )
+        )
+        if len(locators) != 1 or locators[0].get("incident_id") != incident_ids[0]:
+            raise ResearchEvidenceError("unavailable package 的 Incident locator 未闭合")
+        if locators[0].get("fact_link_status") != "unresolved":
+            raise ResearchEvidenceError("unavailable locator 必须保持 unresolved")
+        _assert_observation_only_locator(locators[0])
+        return
+
+    if state not in {"available_no_episode", "available_with_episode"}:
+        raise ResearchEvidenceError("evidence_package_state 非法")
+    if "incident_locators" in payload:
+        raise ResearchEvidenceError("available package 不得携带 unresolved locator")
+    sidecar = _mapping(payload.get("sidecar"), "sidecar")
+    if sidecar.get("run_id") != run_id:
+        raise ResearchEvidenceError("package.run_id 与 sidecar.run_id 不一致")
+    bundle_incident_ids = []
+    for bundle in bundles:
+        validate_reference_closure(bundle)
+        incident = _mapping(bundle.get("incident"), "bundle.incident")
+        bundle_incident_ids.append(
+            _pattern(incident.get("incident_id"), _INCIDENT_ID_RE, "bundle.incident_id")
+        )
+    if sorted(bundle_incident_ids) != list(incident_ids):
+        raise ResearchEvidenceError("package Incident 与 Bundle 集合不闭合")
+    sidecar_mapping = _mapping(sidecar.get("mapping"), "sidecar.mapping")
+    if set(sidecar_mapping.get("incident_ids", ())) != set(incident_ids):
+        raise ResearchEvidenceError("package Incident 与 sidecar mapping 不闭合")
+    episode_ref = sidecar.get("episode_ref")
+    expected_episode_ids = (
+        [] if episode_ref is None else [_mapping(episode_ref, "episode_ref")["episode_id"]]
+    )
+    if list(episode_ids) != expected_episode_ids:
+        raise ResearchEvidenceError("package Episode 与 sidecar episode_ref 不闭合")
+    expected_state = (
+        "available_no_episode" if episode_ref is None else "available_with_episode"
+    )
+    if state != expected_state:
+        raise ResearchEvidenceError("evidence_package_state 与 sidecar Episode 状态不一致")
+    if list(limitations) != list(sidecar.get("limitations_zh", ())):
+        raise ResearchEvidenceError("package limitations_zh 与 sidecar 不一致")
+    validate_research_sidecar_reference_closure(sidecar, bundles=bundles)
+
+
 def build_research_evidence_package(
     *,
     incidents: Iterable[Mapping[str, Any]],
-    episode: Mapping[str, Any],
+    episode: Optional[Mapping[str, Any]],
     waves: Iterable[Mapping[str, Any]],
     samples: Iterable[Mapping[str, Any]],
     recovery_candidates: Iterable[Mapping[str, Any]],
+    run_id: Optional[str] = None,
     sample_route_event_links: Iterable[Mapping[str, Any]] = (),
     evidence_bundle_parameters: Optional[Mapping[str, Any]] = None,
     mapping_missing_reason_zh: Optional[str] = None,
@@ -675,18 +1081,40 @@ def build_research_evidence_package(
 ) -> Dict[str, Any]:
     """组装零、一个或多个 Incident 对应的 Bundle v2 与研究 sidecar。
 
-    有 Incident 时，每个 Incident 都通过既有 ``build_evidence_bundle_v2``
-    独立组装，并要求达到 ``raw_traceable``，从而形成 RouteEvent、原始 MRT
-    坐标和制品 SHA256 闭环。零 Incident 时不伪造 Bundle，sidecar 以
+    有 Episode 且有 Incident 时，每个 Incident 都通过既有
+    ``build_evidence_bundle_v2`` 独立组装，并要求达到
+    ``raw_traceable``，从而形成 RouteEvent、原始 MRT 坐标和制品
+    SHA256 闭环。有 Incident 但没有 Episode 时仍生成标准 Bundle，
+    允许只保留 ``legacy_compatible`` 源事实，同时显式置空
+    Episode/Wave/Sample 链。零 Incident 时不伪造 Bundle，sidecar 以
     ``unmapped`` 和 ``not_applicable`` 显式保留。
     """
 
-    episode_value, wave_values, sample_values = _normalize_research_records(
-        episode=episode, waves=waves, samples=samples
-    )
-    run_id = episode_value["run_id"]
-    sample_ids = {sample["sample_id"] for sample in sample_values}
-    candidates = _normalize_candidates(recovery_candidates, sample_ids)
+    no_episode = episode is None
+    if no_episode:
+        normalized_run_id = _pattern(run_id, _RUN_ID_RE, "run_id")
+        if _sequence(waves, "waves"):
+            raise ResearchEvidenceError("零 episode package 不得伪造 wave")
+        if _sequence(samples, "samples"):
+            raise ResearchEvidenceError("零 episode package 不得伪造 supporting sample")
+        if _sequence(recovery_candidates, "recovery_candidates"):
+            raise ResearchEvidenceError("零 episode package 不得伪造恢复候选")
+        if _sequence(sample_route_event_links, "sample_route_event_links"):
+            raise ResearchEvidenceError("零 episode package 不得伪造 sample→RouteEvent 引用")
+        episode_value = None
+        wave_values: List[Dict[str, Any]] = []
+        sample_values: List[Dict[str, Any]] = []
+        sample_ids: set[str] = set()
+        candidates: List[Dict[str, Any]] = []
+    else:
+        episode_value, wave_values, sample_values = _normalize_research_records(
+            episode=episode, waves=waves, samples=samples
+        )
+        normalized_run_id = episode_value["run_id"]
+        if run_id is not None and run_id != normalized_run_id:
+            raise ResearchEvidenceError("显式 run_id 与 episode.run_id 不一致")
+        sample_ids = {sample["sample_id"] for sample in sample_values}
+        candidates = _normalize_candidates(recovery_candidates, sample_ids)
 
     incident_values = [dict(_mapping(item, "incidents[]")) for item in _sequence(incidents, "incidents")]
     incident_values.sort(key=lambda item: str(item.get("incident_id", "")))
@@ -697,6 +1125,8 @@ def build_research_evidence_package(
         detail_refs.append(_text(incident.get("detail_reference"), "incident.detail_reference"))
     if len(incident_ids) != len(set(incident_ids)) or len(detail_refs) != len(set(detail_refs)):
         raise ResearchEvidenceError("incidents 不得重复 incident_id 或 detail_reference")
+    if no_episode and not incident_values:
+        raise ResearchEvidenceError("零 episode package 至少需要一个真实旧 Incident")
 
     parameters = {} if evidence_bundle_parameters is None else dict(
         _mapping(evidence_bundle_parameters, "evidence_bundle_parameters")
@@ -713,24 +1143,35 @@ def build_research_evidence_package(
         except (EvidenceBundleError, TypeError) as error:
             raise ResearchEvidenceError("Evidence Bundle v2 组装失败：{}".format(error)) from error
         validate_reference_closure(bundle)
-        if bundle["coverage_summary"]["admission_level"] != "raw_traceable":
+        if (
+            not no_episode
+            and bundle["coverage_summary"]["admission_level"] != "raw_traceable"
+        ):
             raise ResearchEvidenceError("研究型映射 Bundle 必须达到 raw_traceable")
         bundles.append(bundle)
     bundles.sort(key=lambda item: item["incident"]["incident_id"])
 
-    incident_links = _incident_episode_links(
-        incident_values, bundles, episode_value, sample_ids
+    incident_links = (
+        []
+        if no_episode
+        else _incident_episode_links(
+            incident_values, bundles, episode_value, sample_ids
+        )
     )
     route_by_id = _merge_bundle_records(bundles, "route_event_refs", "route_event_id")
     raw_by_id = _merge_bundle_records(bundles, "raw_record_refs", "raw_record_ref_id")
-    if incident_values and (not route_by_id or not raw_by_id):
+    if incident_values and not no_episode and (not route_by_id or not raw_by_id):
         raise ResearchEvidenceError("已映射研究必须具有 RouteEvent→raw MRT 完整链")
 
-    sample_links = _normalize_sample_route_links(
-        sample_route_event_links,
-        sample_ids=sample_ids,
-        route_ids=set(route_by_id),
-        mapped=bool(incident_values),
+    sample_links = (
+        []
+        if no_episode
+        else _normalize_sample_route_links(
+            sample_route_event_links,
+            sample_ids=sample_ids,
+            route_ids=set(route_by_id),
+            mapped=bool(incident_values),
+        )
     )
 
     bundle_refs = [
@@ -757,12 +1198,16 @@ def build_research_evidence_package(
             )
     legacy_refs.sort(key=_canonical_json)
 
-    episode_ref = {
-        "episode_id": episode_value["episode_id"],
-        "record_sha256": _record_sha256(episode_value),
-        "wave_ids": sorted(episode_value["wave_ids"]),
-        "supporting_sample_ids": sorted(episode_value["supporting_sample_ids"]),
-    }
+    episode_ref = (
+        None
+        if no_episode
+        else {
+            "episode_id": episode_value["episode_id"],
+            "record_sha256": _record_sha256(episode_value),
+            "wave_ids": sorted(episode_value["wave_ids"]),
+            "supporting_sample_ids": sorted(episode_value["supporting_sample_ids"]),
+        }
+    )
     wave_refs = [
         {
             "wave_id": wave["wave_id"],
@@ -853,17 +1298,35 @@ def build_research_evidence_package(
 
     continuity_status = (
         "unknown"
-        if any(sample["continuity_state"] == "unknown_after_gap" for sample in sample_values)
+        if no_episode
+        or any(sample["continuity_state"] == "unknown_after_gap" for sample in sample_values)
         else "continuous"
     )
-    recovery = {
-        "recovery_state": episode_value["recovery_state"],
-        "partial_recovery_at": episode_value["partial_recovery_at"],
-        "full_recovery_at": episode_value["full_recovery_at"],
-        "duration": deepcopy(episode_value["duration"]),
-        "continuity_status": continuity_status,
-        "candidates": candidates,
-    }
+    recovery = (
+        {
+            "recovery_state": "unknown",
+            "partial_recovery_at": None,
+            "full_recovery_at": None,
+            "duration": {
+                "duration_state": "unknown",
+                "seconds": None,
+                "minimum_seconds": None,
+                "maximum_seconds": None,
+                "measured_to": None,
+            },
+            "continuity_status": "unknown",
+            "candidates": [],
+        }
+        if no_episode
+        else {
+            "recovery_state": episode_value["recovery_state"],
+            "partial_recovery_at": episode_value["partial_recovery_at"],
+            "full_recovery_at": episode_value["full_recovery_at"],
+            "duration": deepcopy(episode_value["duration"]),
+            "continuity_status": continuity_status,
+            "candidates": candidates,
+        }
+    )
 
     supplied_limitations = [
         _chinese(value, "limitations_zh[]") for value in _sequence(limitations_zh, "limitations_zh")
@@ -871,14 +1334,29 @@ def build_research_evidence_package(
     mandatory = [
         "RouteEvent 与 AS_PATH 仅表示 RRC25 路由观测，不能证明全网传播、物理机制、根因或意图。"
     ]
-    if not incident_values:
+    for incident in incident_values:
+        mandatory.extend(_legacy_temporal_limitations(incident))
+    if no_episode:
+        mandatory.append(
+            "当前证据没有形成 research episode；事件级 Evidence Bundle 只保留旧事实和现有观测，未伪造 episode、持续时间或恢复结论。"
+        )
+    if not no_episode and not incident_values:
         mandatory.append("研究 episode 未关联 legacy Incident，因此没有伪造 Evidence Bundle v2。")
     if continuity_status == "unknown":
         mandatory.append("输入存在连续性缺口，持续时间与恢复判断必须保留未知或区间语义。")
     limitations = sorted(set(supplied_limitations + mandatory))
 
     has_unknown_link = any(item["link_state"] == "unknown" for item in sample_links)
-    if not incident_values:
+    if no_episode:
+        closure = {
+            "incident_episode": "explicit_no_episode",
+            "episode_wave_sample": "not_applicable_no_episode",
+            "sample_route_event": "not_applicable_no_episode",
+            "route_raw_artifact": "not_applicable_no_episode",
+            "overall": "passed_with_explicit_no_episode",
+            "unresolved_refs": [],
+        }
+    elif not incident_values:
         closure = {
             "incident_episode": "not_applicable_unmapped",
             "episode_wave_sample": "passed",
@@ -899,7 +1377,7 @@ def build_research_evidence_package(
 
     payload = {
         "schema_version": SIDECAR_SCHEMA_VERSION,
-        "run_id": run_id,
+        "run_id": normalized_run_id,
         "mapping": {
             "mapping_state": mapping_state,
             "incident_ids": sorted(incident_ids),
@@ -931,13 +1409,33 @@ def build_research_evidence_package(
     }
     validate_research_sidecar_reference_closure(sidecar, bundles=bundles)
     canonical_research_sidecar_bytes(sidecar)
-    return {"bundles": bundles, "sidecar": sidecar}
+    package_payload = {
+        "schema_version": PACKAGE_SCHEMA_VERSION,
+        "evidence_package_state": (
+            "available_no_episode" if no_episode else "available_with_episode"
+        ),
+        "run_id": normalized_run_id,
+        "incident_ids": sorted(incident_ids),
+        "episode_ids": [] if no_episode else [episode_value["episode_id"]],
+        "bundles": bundles,
+        "sidecar": sidecar,
+        "limitations_zh": limitations,
+    }
+    package = {
+        **package_payload,
+        "package_id": _stable_id("research_package_v1_", package_payload),
+    }
+    validate_research_evidence_package(package)
+    return package
 
 
 __all__ = (
     "ResearchEvidenceError",
+    "PACKAGE_SCHEMA_VERSION",
     "SIDECAR_SCHEMA_VERSION",
     "build_research_evidence_package",
+    "build_unavailable_research_evidence_package",
     "canonical_research_sidecar_bytes",
+    "validate_research_evidence_package",
     "validate_research_sidecar_reference_closure",
 )
