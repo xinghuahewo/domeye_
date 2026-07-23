@@ -150,9 +150,10 @@ JSON 文件字节哈希不同是预期结果，因为运行时间和只读事务
 | `main_wave_1` | `[2026-02-28T10:35Z, 11:00Z)` | 5 |
 | `main_wave_2` | `[2026-02-28T14:20Z, 14:45Z)` | 5 |
 
-状态仍为 `not_executed`。第一轮不读取 RIB、不建立 seed；若 raw UPDATE 命中后仍需
-前后状态，必须再以具体字段缺口说明 RIB 和 catch-up 范围，不能静默扩大为 1,928
-槽全窗口回放。
+DB-first 不可变包内的请求状态仍为 `not_executed`，它记录的是数据库导出完成时点，
+不随之后的原始证据执行而改写。后续执行结果见 5.2。第一轮不读取 RIB、不建立
+seed；若 UPDATE 命中后仍需前后状态，必须再以具体字段缺口说明 RIB 和 catch-up
+范围，不能静默扩大为 1,928 槽全窗口回放。
 
 ### 5.1 三个精确锚点的 Native 探针
 
@@ -178,7 +179,79 @@ JSON 文件字节哈希不同是预期结果，因为运行时间和只读事务
 - 收据指纹：
   `3c0d1561476d6681c2f66c836225934ed3ef4f1130c8584c05734ca5f9bf14af`。
 
-下一步仍是对 4 个配对前缀生成带 VP 和 raw 坐标的定向消息证据，而不是读取更多槽。
+该探针之后已按相同边界执行 13 槽定向消息证据提取，见下一节。
+
+### 5.2 十三槽定向消息证据
+
+执行入口：
+
+`dev/data_quality/rrc25_iran_targeted_raw.py`
+
+正式目录：
+
+`/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/targeted-raw-final-v1`
+
+执行 Git commit 为
+`29a270b83d92ccad4bc53fabb9a852eadf594f18`，plan ID 为
+`traw_v1_9f4412297b7327c65bf3a5167c3f797e`，执行器源码 SHA256 为
+`7cbf6e979bf058d26ef0f17138572eb0257f1a50908d9a30b2486e5a498e3ac4`。
+
+执行保持四个数据库选定前缀、三个半开窗口和 13 个 UPDATE 槽不变。第一次执行在
+第 9 个文件内触发 540 秒软停，未发布半成品；随后只把软停放宽为 1,800 秒，
+压缩字节硬限、实体集合和槽集合均未改变。最终结果：
+
+| 项目 | 结果 |
+| --- | ---: |
+| UPDATE artifact | `13/13`，全部 `complete_single_pass` |
+| 压缩读取 | `56,393,248` 字节 |
+| 实际耗时 | `786.388` 秒 |
+| MRT physical record | `2,161,426` |
+| 前缀过滤前 route element | `5,874,362` |
+| 保留 RouteEvent/raw ref | `1,923 / 1,923` |
+| ANNOUNCE/WITHDRAW | `1,678 / 245` |
+| 唯一 VP | `89` |
+| 数据库连接/写入 | `0 / 0` |
+| RIB/seed/状态回放 | `0 / false / false` |
+
+RouteEvent 与 raw ref 的稳定 ID、artifact、文件 SHA、record ordinal 和 element
+ordinal 已逐条一一闭合，1,923 个 RouteEvent ID 与 1,923 个 raw ref ID 均唯一。
+
+| ASN / Prefix | 观测数 | A / W | ANNOUNCE origin 结果 |
+| --- | ---: | ---: | --- |
+| `AS48715 / 78.110.120.0/22` | `0` | `0 / 0` | 固定窗口无报文观测 |
+| `AS42337 / 2.188.40.0/24` | `3` | `2 / 1` | 2 条均匹配目标 origin |
+| `AS39501 / 85.204.30.0/23` | `146` | `93 / 53` | 93 条均匹配目标 origin |
+| `AS61008 / 2a05:a380::/29` | `1,774` | `1,583 / 191` | 1,583 条均匹配目标 origin |
+
+WITHDRAW 没有 AS_PATH，因此 origin 状态固定为 `not_applicable`。AS48715 的零命中
+只表示“固定 13 槽内没有该前缀的 UPDATE 报文”，不等于不可见、恢复、数据缺失，
+也未据此自动扩窗。其余三组结果同样只是消息级观测，不能替代 RIB 状态或证明前兆
+因果、完整传播范围和恢复过程。
+
+定向包文件哈希：
+
+| 文件 | SHA256 |
+| --- | --- |
+| `route-events.jsonl.gz` | `a61f6121319c491e08bd98e274402102ab3919aeef85c17937967e1682567532` |
+| `raw-record-refs.jsonl.gz` | `05d434cca0ab51ba0cdd9acb484711fb2701f37b03b46f1ae5bf54cec9b0ba15` |
+| `parser-stats.json` | `a681f9a299a1e4094437cbd0410cd9cd82ae618f16c3515278feba01aab329c5` |
+| `MANIFEST.json` | `0c33098c8077249de367bf434cb764b91df1f5a716ff9c55a0d146faf770ca7b` |
+| `SHA256SUMS` | `12076b75c7882c96561074d2a6e9591e84026a1fbc38314ecd5778fc93d76fde` |
+
+包内四个数据文件已通过 `sha256sum -c SHA256SUMS`，两个 gzip 文件也通过完整性
+检查；五个文件权限均为只读 `0440`。
+
+复现时必须使用新输出目录，不能覆盖正式包：
+
+```bash
+cd /home/bgpdata/Domeye-Core-dev-data/research-worktrees/iran-rrc25-full-p0-code
+/home/bgpdata/Domeye-Core-dev-data/api/.venv/bin/python3 \
+  dev/data_quality/rrc25_iran_targeted_raw.py run \
+  --db-first-json /home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/db-first-final-v1/iran-db-first.json \
+  --prepared-directory /home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared-final \
+  --raw-root /home/bgpdata/data/ripe \
+  --output-directory /home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/targeted-raw-repro-v1
+```
 
 ## 6. 制品哈希
 
