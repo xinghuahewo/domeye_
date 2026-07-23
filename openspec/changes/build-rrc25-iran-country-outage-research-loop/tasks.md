@@ -5,6 +5,12 @@
 > 执行策略修订（2026-07-23）：只读实库已确认伊朗国家指标研究窗
 > `1,928/1,928` 槽完整。数据库改为研究主体和定位索引；未勾选的 raw 任务只针对
 > 字段缺口、三个关键槽和代表实体，不再要求先完成 1,928 UPDATE 全窗口重放。
+>
+> 数据库代理最终化（2026-07-23）：固定 13 槽消息证据、数据库指标代理、
+> 11 项主张对账和两空目录 v2 复现已完成，评级为
+> `1 confirmed / 3 revised / 4 unverifiable / 3 hypothesis_only`，发布状态为
+> `workflow_state=completed/acceptance_state=not_accepted`。未勾选的状态回放、
+> 正式 Episode/Evidence v2 和状态级四类 ASN 验收明确延后，不能由代理结果替代。
 
 ## 0. 数据库优先研究主体
 
@@ -56,8 +62,8 @@
 
 ## 6. Episode、Wave 与恢复
 
-- [ ] 6.1 先在数据库曲线上实现版本化开始、部分恢复、完全恢复和正常波动带规则
-- [ ] 6.2 用数据库识别 episode/wave 与 `split_evidence`，raw 仅补代表证据
+- [x] 6.1 先在数据库曲线上实现版本化代理开始、部分恢复、完全恢复和正常波动带规则
+- [x] 6.2 用数据库识别 metric-only episode/wave 与 `split_evidence`，raw 仅补代表消息证据
 - [ ] 6.3 实现 `exact/lower_bound/interval/unknown` 持续时间与四类恢复状态
 - [ ] 6.4 增加短暂跨99%、两波间完全恢复、未完全恢复、二次下降和数据缺口测试
 - [ ] 6.5 输出旧 Incident 到零个/一个/多个研究 episode 的非因果映射
@@ -65,9 +71,9 @@
 ## 7. Evidence、质量门与报告
 
 - [x] 7.1 先组装 source fact、数据库 MetricWindow 和缺口矩阵；再按代表样本补 RouteEvent/raw refs
-- [ ] 7.2 扩展质量门以校验状态连续性、同快照分子分母、mapping覆盖、episode证据和引用闭合
-- [ ] 7.3 实现主张级 `confirmed/revised/unverifiable/hypothesis_only` 对账生成器
-- [ ] 7.4 生成独立《RRC25 伊朗国家路由中断事件复算与对账报告》及机器可读对账 JSON
+- [x] 7.2 发布数据库代理质量门，校验输入哈希、曲线和消息引用闭合，并将状态连续性、同快照人口和 mapping 缺失列为验收阻断项
+- [x] 7.3 实现主张级 `confirmed/revised/unverifiable/hypothesis_only` 对账生成器
+- [x] 7.4 生成独立《RRC25 伊朗国家路由中断事件复算与对账报告》及机器可读对账 JSON
 - [x] 7.5 生成研究包 manifest、语义指纹、文件 inventory、`SHA256SUMS` 和中文验收摘要
 
 ## 8. 伊朗单事件执行与验收
@@ -75,9 +81,9 @@
 - [ ] 8.1 为统一入口增加 DB-first、缺口计划、定向 raw dry-run、固定压缩字节硬限、可调整软限和只读发布
 - [x] 8.2 对三个关键槽运行 dry-run，确认新增原始读取、临时空间和每分块时间未越界
 - [x] 8.3 仅处理 06:35、18:45、22:30 关键槽与代表实体，不运行其他事件或全窗口重放
-- [ ] 8.4 从数据库复算国家曲线、episode/wave、ASN/前缀影响和恢复状态
-- [ ] 8.5 对账报告时间、IPv4降幅、`199/595`、`73/126` 与数据库 `176/556`
+- [x] 8.4 从数据库复算国家曲线、metric-only episode/wave、ASN/前缀影响和恢复候选
+- [x] 8.5 对账报告时间、IPv4降幅、`199/595`、`73/126` 与数据库 `176/556`
 - [ ] 8.6 抽查至少一个 IPv4 完全不可见、一个部分不可见、一个 IPv6仍可见和一个未恢复 ASN 的完整 raw ref
-- [ ] 8.7 在两个空输出目录执行语义复现，验证稳定身份、记录顺序和语义指纹一致
+- [x] 8.7 在两个空输出目录执行语义复现，验证稳定身份、记录顺序和语义指纹一致
 - [x] 8.8 执行定向测试、OpenSpec 严格校验、`git diff --check` 与 `cd backend && sha256sum -c core.sha256`
 - [x] 8.9 将轻量中文报告、制品路径、release ID、SHA256 和复现命令写入 Git，不提交大型数据文件

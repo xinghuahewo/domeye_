@@ -270,3 +270,30 @@ cd /home/bgpdata/Domeye-Core-dev-data/research-worktrees/iran-rrc25-full-p0-code
 | `iran-db-first.json` | `febebf9614643d5bff0be65b87a3bba88ecd28eae6e4dfe1ee199fd90c1a89e3` |
 | `伊朗数据库先行复算摘要.md` | `51a2675be24bac2904d48facf9d363a4d007359de128083637860107c979278c` |
 | `SHA256SUMS` | `b0a8f0bfec18073f168aba985d42ebdda6904b94348c2eb0ff1119575c90dec1` |
+
+## 7. 数据库指标代理最终化
+
+数据库曲线、13 槽消息证据和 11 项主张已由
+`dev/data_quality/rrc25_iran_db_proxy_finalize.py` 完成最终装配。正式目录与独立
+复现目录逐字节一致：
+
+```text
+/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/db-proxy-final-v2
+/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/db-proxy-final-v2-repro
+```
+
+运行 ID 为 `research_run_v1_84d1096fa441de59d1f9dc9a`，语义指纹为
+`af2c1e6c72573ad41dae8e4d839b68ebecb55ecd0d703d4d4637660e0e03ce81`。
+最终状态是 `workflow_state=completed/acceptance_state=not_accepted`：数据库优先
+流程已经完成，但没有把缺少 RIB/seed/逐 VP 状态的结果冒充状态级验收。
+
+该结果依赖生产数据 release `20260717T124354Z`；它只是 DB-first 的数据基础身份，
+不表示本研究包已经部署为生产服务。v2 同时把“IPv4 约下降 6%”从
+`confirmed` 修正为 `revised`：5.691% 只由旧 `/24 × 256` 等价值复算，未满足
+同快照去重 IPv4 地址并集口径。
+
+早期 `db-proxy-final-v1` 目录按不可变策略保留作审计，但已经被 v2 取代，不得作为
+当前主张评级或交付入口。
+
+完整结论、11 项对账、缺口和复现命令见
+[《RRC25 伊朗国家路由中断事件复算与对账报告》](RRC25伊朗国家路由中断事件复算与对账报告.md)。
