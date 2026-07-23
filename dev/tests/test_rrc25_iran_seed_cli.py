@@ -748,6 +748,69 @@ class SeedCliTests(unittest.TestCase):
         self.assertFalse(result["meaningful_progress"])
         self.assertEqual(result["worker_reason"], "zero_progress_checkpoint_rejected")
 
+    def test_seed_resume_fast_path_verifies_input_once_and_defers_output_verify(self):
+        context = self.segment_context(prior=None)
+        context["resume_checkpoint"] = self.checkpoints / "prior.json.gz"
+        context["resume_checkpoint_verification_deferred"] = True
+        context["seed_raw_reservation"] = self.seed_reservation()
+        worker_result = SimpleNamespace(
+            checkpoint_path=str(self.checkpoints / "next.json.gz"),
+            incomplete_reason="planned_seed_checkpoint",
+            status="incomplete",
+            errors=(),
+            resources={"new_raw_read_bytes": 10, "database_writes": 0},
+        )
+        with mock.patch.object(
+            cli, "_seed_context", return_value=context
+        ), mock.patch.object(
+            cli, "run_bounded_pilot_worker", return_value=worker_result
+        ) as worker, mock.patch.object(
+            cli,
+            "verify_full_seed_checkpoint",
+            side_effect=AssertionError("快速 resume 不得再次解压新 checkpoint"),
+        ):
+            result, exit_code = cli._run_seed_segment(
+                self.args(), resume=True, clock=lambda: 0.0
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["segment_state"],
+            "checkpoint_published_verification_deferred",
+        )
+        self.assertFalse(result["checkpoint_verification"]["verified"])
+        self.assertTrue(
+            result["checkpoint_verification"][
+                "resume_input_was_strictly_verified_by_worker"
+            ]
+        )
+        self.assertIsNone(result["meaningful_progress"])
+        self.assertEqual(
+            worker.call_args.kwargs["resume_checkpoint_path"],
+            context["resume_checkpoint"],
+        )
+
+    def test_seed_resume_fast_path_propagates_worker_checkpoint_tamper(self):
+        context = self.segment_context(prior=None)
+        context["resume_checkpoint"] = self.checkpoints / "tampered.json.gz"
+        context["resume_checkpoint_verification_deferred"] = True
+        context["seed_raw_reservation"] = self.seed_reservation()
+        with mock.patch.object(
+            cli, "_seed_context", return_value=context
+        ), mock.patch.object(
+            cli,
+            "run_bounded_pilot_worker",
+            side_effect=cli.BoundedPilotWorkerError("内容指纹不一致"),
+        ), mock.patch.object(
+            cli,
+            "verify_full_seed_checkpoint",
+            side_effect=AssertionError("篡改必须由 worker 的唯一读取拒绝"),
+        ), self.assertRaisesRegex(
+            cli.BoundedPilotWorkerError, "内容指纹不一致"
+        ):
+            cli._run_seed_segment(self.args(), resume=True, clock=lambda: 0.0)
+
     def test_seed_segment_preserves_parse_failure_without_verifier_masking(self):
         context = self.segment_context()
         worker_result = SimpleNamespace(

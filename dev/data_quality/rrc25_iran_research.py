@@ -1207,41 +1207,75 @@ def _seed_context(
     worker_prior_new_raw_bytes = prior_raw_read_bytes
     seed_raw_reservation = None
     prior_verification = None
+    resume_checkpoint_verification_deferred = False
     if resume_checkpoint_path is not None:
         checkpoint = _checked_resume_checkpoint(
             resume_checkpoint_path, checkpoint_directory
         )
-        prior_verification = verify_full_seed_checkpoint(
-            checkpoint,
-            selection=selection,
-            country_mapping=compatible,
-            raw_retention_mapping=raw_retention,
-            seed_spool_attestation=seed_spool_attestation,
-            pilot_end_exclusive_utc=args.pilot_end_exclusive,
-            code_identity_sha256=args.code_sha256,
+        resume_checkpoint_verification_deferred = bool(
+            getattr(args, "defer_checkpoint_verification", False)
         )
-        prior_raw_read_bytes = int(
-            prior_verification["resources"]["new_raw_read_bytes"]
-        )
-        worker_prior_new_raw_bytes = int(
-            prior_verification["resources"]["prior_new_raw_read_bytes"]
-        )
-        seed_raw_reservation = prior_verification["resources"].get(
-            "seed_raw_reservation"
-        )
-        if (
-            prior_verification["resources"].get("prior_raw_accounting")
-            != prior_raw_accounting
-            or seed_raw_ledger.get("latest_reservation")
-            != seed_raw_reservation
-            or seed_raw_ledger.get(
-                "current_cumulative_reserved_new_raw_bytes"
+        if resume_checkpoint_verification_deferred:
+            # resume 的 worker 会在恢复任何状态前完整读取、验指纹并核验
+            # selection/mapping/code/spool/ledger 身份。显式快速路径只使用已独立
+            # 核验并闭合的 durable seed ledger 做 preflight，避免同一进程先把
+            # 数 GB 解压 JSON 重复验证一遍；严格 checkpoint 核验仍 fail-closed。
+            seed_raw_reservation = seed_raw_ledger.get("latest_reservation")
+            if seed_raw_reservation is None:
+                worker_prior_new_raw_bytes = int(prior_new_raw_bytes)
+            elif isinstance(seed_raw_reservation, Mapping):
+                reservation_prior = seed_raw_reservation.get(
+                    "prior_cumulative_reserved_new_raw_bytes"
+                )
+                reservation_cumulative = seed_raw_reservation.get(
+                    "cumulative_reserved_new_raw_bytes"
+                )
+                if (
+                    isinstance(reservation_prior, bool)
+                    or not isinstance(reservation_prior, int)
+                    or reservation_prior < 0
+                    or reservation_cumulative != prior_raw_read_bytes
+                ):
+                    raise SeedWorkflowError(
+                        "seed durable ledger 的恢复累计与最新 reservation 不闭合"
+                    )
+                worker_prior_new_raw_bytes = reservation_prior
+            else:
+                raise SeedWorkflowError(
+                    "seed durable ledger latest_reservation 非法"
+                )
+        else:
+            prior_verification = verify_full_seed_checkpoint(
+                checkpoint,
+                selection=selection,
+                country_mapping=compatible,
+                raw_retention_mapping=raw_retention,
+                seed_spool_attestation=seed_spool_attestation,
+                pilot_end_exclusive_utc=args.pilot_end_exclusive,
+                code_identity_sha256=args.code_sha256,
             )
-            != prior_raw_read_bytes
-        ):
-            raise SeedWorkflowError(
-                "probe/seed durable ledger 与恢复 checkpoint 冻结累计不一致"
+            prior_raw_read_bytes = int(
+                prior_verification["resources"]["new_raw_read_bytes"]
             )
+            worker_prior_new_raw_bytes = int(
+                prior_verification["resources"]["prior_new_raw_read_bytes"]
+            )
+            seed_raw_reservation = prior_verification["resources"].get(
+                "seed_raw_reservation"
+            )
+            if (
+                prior_verification["resources"].get("prior_raw_accounting")
+                != prior_raw_accounting
+                or seed_raw_ledger.get("latest_reservation")
+                != seed_raw_reservation
+                or seed_raw_ledger.get(
+                    "current_cumulative_reserved_new_raw_bytes"
+                )
+                != prior_raw_read_bytes
+            ):
+                raise SeedWorkflowError(
+                    "probe/seed durable ledger 与恢复 checkpoint 冻结累计不一致"
+                )
     resource_gate = _seed_write_gate(
         profile=profile,
         checkpoint_directory=checkpoint_directory,
@@ -1272,6 +1306,9 @@ def _seed_context(
         "raw_root": raw_root,
         "resume_checkpoint": checkpoint,
         "prior_checkpoint_verification": prior_verification,
+        "resume_checkpoint_verification_deferred": (
+            resume_checkpoint_verification_deferred
+        ),
         "probe_terminal_prior_new_raw_read_bytes": prior_new_raw_bytes,
         "prior_new_raw_read_bytes": worker_prior_new_raw_bytes,
         "prior_raw_accounting": prior_raw_accounting,
@@ -1878,6 +1915,59 @@ def _run_seed_segment_locked(
             ),
             "seed_raw_ledger_outcome": seed_ledger_outcome,
         }, worker_runtime_exit
+    if resume and context.get("resume_checkpoint_verification_deferred"):
+        # 旧 checkpoint 已由 worker 在恢复状态前完整核验；新 checkpoint 是本
+        # 进程刚刚原子发布的结果。不要在同一 600 秒进程内再次解压数 GB JSON，
+        # 将发布后只读核验显式交给 seed-verify（或下一次 seed-resume 的 worker）。
+        after_publish = _process_runtime_observation(
+            clock=clock,
+            process_started_at=process_started_at,
+            planned_seconds=args.planned_seed_checkpoint_seconds,
+            limits=limits,
+        )
+        runtime_exit = _runtime_exit_code(after_publish)
+        controlled = worker.incomplete_reason in controlled_reasons
+        result = {
+            "ok": controlled and runtime_exit == 0,
+            "schema_version": "rrc25-iran-full-seed-segment-result/v2",
+            "segment_state": "checkpoint_published_verification_deferred",
+            "worker_status": worker.status,
+            "worker_reason": worker.incomplete_reason,
+            "checkpoint_path": worker.checkpoint_path,
+            "checkpoint_verification": {
+                "verified": False,
+                "verification_state": "deferred_to_explicit_seed_verify",
+                "required_command": "seed-verify",
+                "resume_input_was_strictly_verified_by_worker": True,
+            },
+            "selection_id": context["selection"]["selection_id"],
+            "code_identity_sha256": args.code_sha256,
+            "database_connections": 0,
+            "database_write_operations": 0,
+            "opens_raw_mrt": False,
+            "opens_update_mrt": False,
+            "resource_observation": dict(worker.resources),
+            "meaningful_progress": None,
+            "meaningful_progress_state": "pending_checkpoint_verification",
+            "process_runtime": after_publish,
+            "prior_new_raw_read_bytes": context["prior_new_raw_read_bytes"],
+            "seed_raw_reservation": (
+                dict(active_seed_reservation)
+                if active_seed_reservation is not None
+                else None
+            ),
+            "seed_raw_ledger_outcome": None,
+            "checkpoint_lifecycle": _seed_checkpoint_lifecycle_policy(),
+            "seed_spool_reclamation_eligibility": {
+                "eligible": False,
+                "state": "unknown_until_seed_verify",
+                "requires_explicit_archive_or_reclamation_command": True,
+                "explicit_command": "seed-retire-spool",
+                "automatic_deletion": False,
+                "current_command_handles_spool": False,
+            },
+        }
+        return result, (runtime_exit or (0 if controlled else 4))
     try:
         verified = verify_full_seed_checkpoint(
             worker.checkpoint_path,
@@ -2152,6 +2242,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_seed_execution_arguments(seed_resume)
     seed_resume.add_argument("--resume-checkpoint", required=True)
+    seed_resume.add_argument(
+        "--defer-checkpoint-verification",
+        action="store_true",
+        help=(
+            "快速恢复：由 worker 在恢复前仅完整验证输入 checkpoint 一次，"
+            "新发布 checkpoint 标记为待 seed-verify，避免同进程重复解压验证"
+        ),
+    )
     seed_reconcile = subparsers.add_parser(
         "seed-reconcile-workspace",
         help=(
