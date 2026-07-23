@@ -26,7 +26,7 @@
         "artifact_id_json_pointer": "/worker_plan/chunks/1/artifacts/0/artifact_id",
         "artifact_file_sha256_json_pointer": "/worker_plan/chunks/1/artifacts/0/file_sha256",
         "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-p0/20260722T054119Z-sparse-evidence-v2/outputs/checkpoints/rsel_v1_dc0f9b76123895d1487cc553b6a0ad1b.worker.0001.a8ef13f79cbbc8b3.json",
-        "provenance_sha256": "78e236925e7681c7b8f8ae6fc08be022390e53b70555e2624c6ac98915"
+        "provenance_sha256": "78e236925e7681c7b8f8ae6fc08be022390e53b7050ae70555e2624c6ac98915"
       },
       {
         "label": "v3_seed_continuation_conservative_full_artifact_reservation",
