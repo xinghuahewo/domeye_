@@ -106,6 +106,7 @@ _ATTR_AS4_PATH = 17
 _ATTR_AS4_AGGREGATOR = 18
 _ATTR_LARGE_COMMUNITIES = 32
 _ATTR_ONLY_TO_CUSTOMER = 35
+_ATTR_DEVELOPMENT = 255
 _KNOWN_ATTRIBUTES = frozenset(
     (
         _ATTR_ORIGIN,
@@ -125,6 +126,7 @@ _KNOWN_ATTRIBUTES = frozenset(
         _ATTR_AS4_AGGREGATOR,
         _ATTR_LARGE_COMMUNITIES,
         _ATTR_ONLY_TO_CUSTOMER,
+        _ATTR_DEVELOPMENT,
     )
 )
 
@@ -148,6 +150,7 @@ _ATTRIBUTE_BASE_FLAGS = {
     _ATTR_AS4_AGGREGATOR: frozenset((0xC0, 0xE0)),
     _ATTR_LARGE_COMMUNITIES: frozenset((0xC0, 0xE0)),
     _ATTR_ONLY_TO_CUSTOMER: frozenset((0xC0, 0xE0)),
+    _ATTR_DEVELOPMENT: frozenset((0x80, 0xC0, 0xE0)),
 }
 
 _FSM_STATES = frozenset(range(1, 7))

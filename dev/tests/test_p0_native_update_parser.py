@@ -377,6 +377,31 @@ class NativeUpdateParserTests(BgpdumpAdapterFixture):
             [("announce", "203.0.113.0/24")],
         )
 
+    def test_optional_development_attribute_is_opaque_but_well_known_form_is_rejected(self):
+        frame = update_frame(
+            announces=("203.0.113.0/24",),
+            extra_attributes=(attribute(0x80, 255, b"rrc25"),),
+        )
+        artifact = self.write_artifact((frame,))
+        record = tuple(
+            self.native_factory((artifact,))(normalized_artifact(artifact))
+        )[0]
+        self.assertEqual(record.elements[0].prefix, "203.0.113.0/24")
+
+        malformed = update_frame(
+            announces=("203.0.113.0/24",),
+            extra_attributes=(attribute(0x40, 255, b"rrc25"),),
+        )
+        malformed_artifact = self.write_artifact(
+            (malformed,), name="updates.20260227.1645.gz"
+        )
+        with self.assertRaisesRegex(NativeUpdateIntegrityError, "flags"):
+            tuple(
+                self.native_factory((malformed_artifact,))(
+                    normalized_artifact(malformed_artifact)
+                )
+            )
+
     def test_unknown_duplicate_addpath_and_ambiguous_attributes_fail_closed(self):
         valid_path = path_payload((("as_sequence", (64500, 64496)),), 4)
         cases = (
