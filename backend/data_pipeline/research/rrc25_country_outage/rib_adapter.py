@@ -496,6 +496,7 @@ def iter_adapted_rib_records(
     start_record_ordinal: int = 0,
     start_record_offset: int = 0,
     initial_seek_context: Optional[RibMrtSeekContext] = None,
+    sparse_physical_coordinates: bool = False,
 ) -> Iterator[AdaptedRibRecord]:
     """逐 physical record 提升 RIB parser 流，不物化整个 RIB。
 
@@ -524,6 +525,8 @@ def iter_adapted_rib_records(
         raise RibAdapterError(
             "include_discarded_element_decisions 必须严格为 bool"
         )
+    if not isinstance(sparse_physical_coordinates, bool):
+        raise RibAdapterError("sparse_physical_coordinates 必须严格为 bool")
     expected_hashes = _normalize_expected_hashes(
         expected_record_sha256_by_ordinal
     )
@@ -587,10 +590,18 @@ def iter_adapted_rib_records(
             or record.record_offset < 0
         ):
             raise RibAdapterError("record_offset 必须是非负整数")
-        if record.record_ordinal != expected_ordinal:
-            raise RibAdapterError("record_ordinal 必须从声明恢复起点连续递增")
-        if record.record_offset != expected_offset:
-            raise RibAdapterError("record_offset 必须从声明恢复起点连续覆盖解压字节流")
+        if sparse_physical_coordinates:
+            if record.record_ordinal < expected_ordinal:
+                raise RibAdapterError("sparse record_ordinal 必须严格单调递增")
+            if record.record_offset < expected_offset:
+                raise RibAdapterError("sparse record_offset 必须严格单调递增")
+        else:
+            if record.record_ordinal != expected_ordinal:
+                raise RibAdapterError("record_ordinal 必须从声明恢复起点连续递增")
+            if record.record_offset != expected_offset:
+                raise RibAdapterError(
+                    "record_offset 必须从声明恢复起点连续覆盖解压字节流"
+                )
         if not isinstance(record.elements, tuple):
             raise RibAdapterError("ParsedMrtRecord.elements 必须是确定顺序 tuple")
 
@@ -777,10 +788,14 @@ def iter_adapted_rib_records(
             element_decisions=tuple(decisions),
             route_events=tuple(route_events),
         )
-        expected_ordinal += 1
-        expected_offset += len(record.raw_record)
+        if sparse_physical_coordinates:
+            expected_ordinal = record.record_ordinal + 1
+            expected_offset = record.record_offset + len(record.raw_record)
+        else:
+            expected_ordinal += 1
+            expected_offset += len(record.raw_record)
 
-    if processed_record_count == 0:
+    if processed_record_count == 0 and not sparse_physical_coordinates:
         raise RibAdapterError("RIB record stream 为空")
     missing_expected = sorted(set(expected_hashes) - seen_expected_hashes)
     if missing_expected:
@@ -892,6 +907,7 @@ def iter_rib_spool_artifact_records(
     vp_observer: Optional[VpObserver] = None,
     include_discarded_element_decisions: bool = True,
     prefilter_materialize_rib_ordinals: Optional[FrozenSet[int]] = None,
+    sparse_physical_record_count: Optional[int] = None,
     checkpoint_observer: Optional[RibCheckpointObserver] = None,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
 ) -> Iterator[AdaptedRibRecord]:
@@ -914,6 +930,13 @@ def iter_rib_spool_artifact_records(
     )
     if checkpoint_observer is not None and not callable(checkpoint_observer):
         raise RibAdapterError("checkpoint_observer 必须可调用")
+    if (
+        sparse_physical_record_count is not None
+        and prefilter_materialize_rib_ordinals is None
+    ):
+        raise RibAdapterError(
+            "sparse physical population 必须绑定 prefilter ordinals"
+        )
     records = None
     try:
         records = iter_rib_spool_records(
@@ -933,6 +956,7 @@ def iter_rib_spool_artifact_records(
             materialize_rib_record_ordinals=(
                 prefilter_materialize_rib_ordinals
             ),
+            sparse_physical_record_count=sparse_physical_record_count,
         )
         adapted_records = iter_adapted_rib_records(
             records,
@@ -946,7 +970,11 @@ def iter_rib_spool_artifact_records(
             start_record_ordinal=next_record_ordinal,
             start_record_offset=next_record_offset,
             initial_seek_context=records.seek_context,
+            sparse_physical_coordinates=(
+                sparse_physical_record_count is not None
+            ),
         )
+        last_observed_boundary = None
         for adapted in adapted_records:
             boundary = records.previous_record_boundary
             if (
@@ -965,7 +993,18 @@ def iter_rib_spool_artifact_records(
                 checkpoint_observer(
                     boundary, records.current_peer_index_context
                 )
+            last_observed_boundary = boundary
             yield adapted
+        if sparse_physical_record_count is not None:
+            final_boundary = records.previous_record_boundary
+            if (
+                final_boundary is not None
+                and final_boundary != last_observed_boundary
+                and checkpoint_observer is not None
+            ):
+                checkpoint_observer(
+                    final_boundary, records.current_peer_index_context
+                )
     except RibMrtParseError as error:
         raise RibAdapterError("RIB spool MRT parser 失败") from error
     finally:

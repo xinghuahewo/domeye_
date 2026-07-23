@@ -1956,6 +1956,238 @@ class RibSpoolRecordIterator(Iterator[ParsedMrtRecord]):
             self._stream = None
 
 
+class SparseRibSpoolRecordIterator(Iterator[ParsedMrtRecord]):
+    """只物化 prefilter allowlist 的 seek iterator。
+
+    spool 已由 SHA256/size 核验；明确非目标的 V2 RIB record 只读取 12-byte
+    common header 并 seek 越过 payload。V1 与 PEER_INDEX_TABLE 仍完整解析，
+    从而保持旧路径的 VP 人口和 peer context 语义。公开 checkpoint 只落在
+    已物化 record 边界；完整扫描结束时额外绑定最后一个 physical record。
+    """
+
+    def __init__(
+        self,
+        path: os.PathLike[str] | str,
+        *,
+        expected_decompressed_sha256: str,
+        expected_decompressed_size_bytes: int,
+        next_record_ordinal: int,
+        next_record_offset: int,
+        previous_record_boundary: Optional[
+            RibRecordBoundary | Mapping[str, Any]
+        ] = None,
+        peer_index_context: Optional[
+            RibPeerIndexContext | Mapping[str, Any]
+        ] = None,
+        materialize_rib_record_ordinals: FrozenSet[int],
+        expected_physical_record_count: int,
+    ) -> None:
+        if (
+            not isinstance(materialize_rib_record_ordinals, frozenset)
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+                for value in materialize_rib_record_ordinals
+            )
+        ):
+            raise RibMrtSeekError(
+                "invalid_seek_coordinate",
+                "sparse materialize ordinals 必须是非负整数 frozenset",
+            )
+        physical_count = _positive_integer(
+            expected_physical_record_count,
+            "expected_physical_record_count",
+        )
+        stream, identity = _open_verified_rib_spool(
+            path,
+            expected_decompressed_sha256=expected_decompressed_sha256,
+            expected_decompressed_size_bytes=expected_decompressed_size_bytes,
+        )
+        self._stream: Optional[BinaryIO] = stream
+        self.spool_identity = identity
+        try:
+            self.seek_context, self._peers = (
+                _prepare_direct_rib_mrt_seek_context(
+                    stream,
+                    next_record_ordinal=next_record_ordinal,
+                    next_record_offset=next_record_offset,
+                    previous_record_boundary=previous_record_boundary,
+                    peer_index_context=peer_index_context,
+                )
+            )
+        except Exception:
+            self.close()
+            raise
+        if next_record_ordinal > physical_count:
+            self.close()
+            raise RibMrtSeekError(
+                "invalid_seek_coordinate",
+                "sparse 恢复 ordinal 超过 sidecar physical population",
+            )
+        self._record_ordinal = next_record_ordinal
+        self._record_offset = next_record_offset
+        self._expected_physical_record_count = physical_count
+        self._materialize = materialize_rib_record_ordinals
+        self.previous_record_boundary = self.seek_context.previous_record_boundary
+        self.current_peer_index_context = self.seek_context.peer_index
+
+    def __enter__(self) -> "SparseRibSpoolRecordIterator":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self.close()
+
+    def __iter__(self) -> "SparseRibSpoolRecordIterator":
+        return self
+
+    def _read_payload(self, length: int, ordinal: int) -> bytes:
+        assert self._stream is not None
+        return _read_exact(
+            self._stream,
+            length,
+            f"MRT record[{ordinal}].payload",
+        )
+
+    def _finish_skipped_tail_boundary(
+        self,
+        *,
+        header: bytes,
+        payload_length: int,
+        record_offset: int,
+        record_ordinal: int,
+    ) -> None:
+        """只在 EOF 最后一个被跳过 record 上回读 raw hash 供完成 checkpoint。"""
+
+        assert self._stream is not None
+        self._stream.seek(record_offset + MRT_HEADER_LENGTH, os.SEEK_SET)
+        payload = self._read_payload(payload_length, record_ordinal)
+        raw_record = header + payload
+        self.previous_record_boundary = RibRecordBoundary(
+            record_ordinal=record_ordinal,
+            record_offset=record_offset,
+            record_length=len(raw_record),
+            record_sha256=hashlib.sha256(raw_record).hexdigest(),
+        )
+
+    def __next__(self) -> ParsedMrtRecord:
+        stream = self._stream
+        if stream is None:
+            raise StopIteration
+        try:
+            while self._record_offset < self.spool_identity.size_bytes:
+                record_ordinal = self._record_ordinal
+                record_offset = self._record_offset
+                header = _read_header_or_eof(stream)
+                if header is None:  # pragma: no cover - size binding 已防护
+                    raise RibMrtParseError("sparse spool 在声明大小前提前 EOF")
+                _timestamp, mrt_type, subtype, payload_length = struct.unpack(
+                    "!IHHI", header
+                )
+                if payload_length > MAX_MRT_PAYLOAD_BYTES:
+                    raise RibMrtParseError("MRT payload 超过 64 MiB 安全上限")
+                record_length = MRT_HEADER_LENGTH + payload_length
+                next_offset = record_offset + record_length
+                if next_offset > self.spool_identity.size_bytes:
+                    raise RibMrtParseError(
+                        f"MRT record[{record_ordinal}] payload 截断"
+                    )
+                materialize = (
+                    mrt_type == TABLE_DUMP
+                    or (
+                        mrt_type == TABLE_DUMP_V2
+                        and subtype == PEER_INDEX_TABLE
+                    )
+                    or record_ordinal in self._materialize
+                )
+                self._record_ordinal += 1
+                self._record_offset = next_offset
+                if not materialize:
+                    if (
+                        mrt_type != TABLE_DUMP_V2
+                        or subtype
+                        not in {RIB_IPV4_UNICAST, RIB_IPV6_UNICAST}
+                    ):
+                        raise RibMrtParseError(
+                            "sparse allowlist 只能跳过 TABLE_DUMP_V2 unicast RIB"
+                        )
+                    if next_offset == self.spool_identity.size_bytes:
+                        self._finish_skipped_tail_boundary(
+                            header=header,
+                            payload_length=payload_length,
+                            record_offset=record_offset,
+                            record_ordinal=record_ordinal,
+                        )
+                    else:
+                        stream.seek(payload_length, os.SEEK_CUR)
+                    continue
+
+                payload = self._read_payload(payload_length, record_ordinal)
+                raw_record = header + payload
+                elements, self._peers = _parse_supported_record(
+                    mrt_type=mrt_type,
+                    subtype=subtype,
+                    payload=payload,
+                    peers=self._peers,
+                )
+                boundary = RibRecordBoundary(
+                    record_ordinal=record_ordinal,
+                    record_offset=record_offset,
+                    record_length=record_length,
+                    record_sha256=hashlib.sha256(raw_record).hexdigest(),
+                )
+                self.previous_record_boundary = boundary
+                if mrt_type == TABLE_DUMP_V2 and subtype == PEER_INDEX_TABLE:
+                    assert self._peers is not None
+                    self.current_peer_index_context = RibPeerIndexContext(
+                        record_ordinal=record_ordinal,
+                        record_offset=record_offset,
+                        record_length=record_length,
+                        record_sha256=boundary.record_sha256,
+                        peers=tuple(
+                            (peer.peer_ip, peer.peer_asn)
+                            for peer in self._peers
+                        ),
+                    )
+                elif mrt_type == TABLE_DUMP:
+                    self.current_peer_index_context = None
+                return ParsedMrtRecord(
+                    record_ordinal=record_ordinal,
+                    record_offset=record_offset,
+                    raw_record=raw_record,
+                    elements=elements,
+                )
+
+            if (
+                self._record_offset != self.spool_identity.size_bytes
+                or self._record_ordinal
+                != self._expected_physical_record_count
+            ):
+                raise RibMrtParseError(
+                    "sparse 扫描结果与 sidecar physical population 不闭合"
+                )
+            missing = tuple(
+                value
+                for value in self._materialize
+                if value >= self.seek_context.next_record_ordinal
+                and value >= self._record_ordinal
+            )
+            if missing:
+                raise RibMrtParseError("sparse allowlist ordinal 越出 spool")
+            self.close()
+            raise StopIteration
+        except StopIteration:
+            raise
+        except Exception:
+            self.close()
+            raise
+
+    def close(self) -> None:
+        if self._stream is not None:
+            self._stream.close()
+            self._stream = None
+
+
 def iter_rib_spool_records(
     path: os.PathLike[str] | str,
     *,
@@ -1972,9 +2204,27 @@ def iter_rib_spool_records(
     origin_asn_predicate: Optional[Callable[[int], bool]] = None,
     elide_non_target_elements: bool = False,
     materialize_rib_record_ordinals: Optional[FrozenSet[int]] = None,
-) -> RibSpoolRecordIterator:
+    sparse_physical_record_count: Optional[int] = None,
+) -> Iterator[ParsedMrtRecord]:
     """核验 spool 身份，并从 next physical-record 坐标继续解析。"""
 
+    if sparse_physical_record_count is not None:
+        if materialize_rib_record_ordinals is None:
+            raise RibMrtSeekError(
+                "invalid_seek_coordinate",
+                "sparse replay 必须提供 materialize ordinals",
+            )
+        return SparseRibSpoolRecordIterator(
+            path,
+            expected_decompressed_sha256=expected_decompressed_sha256,
+            expected_decompressed_size_bytes=expected_decompressed_size_bytes,
+            next_record_ordinal=next_record_ordinal,
+            next_record_offset=next_record_offset,
+            previous_record_boundary=previous_record_boundary,
+            peer_index_context=peer_index_context,
+            materialize_rib_record_ordinals=materialize_rib_record_ordinals,
+            expected_physical_record_count=sparse_physical_record_count,
+        )
     return RibSpoolRecordIterator(
         path,
         expected_decompressed_sha256=expected_decompressed_sha256,
@@ -2012,6 +2262,7 @@ __all__ = (
     "RibSpoolError",
     "RibSpoolIdentity",
     "RibSpoolRecordIterator",
+    "SparseRibSpoolRecordIterator",
     "build_rib_decompressed_spool",
     "iter_rib_mrt_records",
     "iter_rib_mrt_records_from_offset",

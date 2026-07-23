@@ -2630,6 +2630,7 @@ def run_bounded_pilot_worker(
         raise BoundedPilotWorkerError("state_seed_rib 必须是对象或 null")
     normalized_seed_spool_attestation: Optional[Mapping[str, Any]] = None
     prefilter_materialize_rib_ordinals: Optional[FrozenSet[int]] = None
+    prefilter_physical_record_count: Optional[int] = None
     if full_seed_checkpoint_enabled:
         if seed is None or seed_spool_attestation is None:
             raise BoundedPilotWorkerError(
@@ -2662,6 +2663,9 @@ def run_bounded_pilot_worker(
                         else raw_retention_mapping
                     ),
                 )
+                prefilter_physical_record_count = seed_rib_prefilter[
+                    "population"
+                ]["physical_record_count"]
             except RibPrefilterError as error:
                 raise BoundedPilotWorkerError(
                     "seed RIB prefilter sidecar 验证失败"
@@ -4327,7 +4331,16 @@ def run_bounded_pilot_worker(
                 boundary: RibRecordBoundary,
                 peer_context: Optional[RibPeerIndexContext],
             ) -> None:
+                nonlocal next_record_ordinal
+                nonlocal seed_progress_next_record_ordinal
+                nonlocal seed_progress_next_record_offset
                 deferred_seed_evidence.observe_boundary(boundary, peer_context)
+                if prefilter_physical_record_count is not None:
+                    next_record_ordinal = boundary.record_ordinal + 1
+                    seed_progress_next_record_ordinal = next_record_ordinal
+                    seed_progress_next_record_offset = (
+                        boundary.record_offset + boundary.record_length
+                    )
 
             stopped = False
             adapter = None
@@ -4476,6 +4489,9 @@ def run_bounded_pilot_worker(
                         include_discarded_element_decisions=False,
                         prefilter_materialize_rib_ordinals=(
                             prefilter_materialize_rib_ordinals
+                        ),
+                        sparse_physical_record_count=(
+                            prefilter_physical_record_count
                         ),
                         checkpoint_observer=observe_seed_checkpoint,
                     )

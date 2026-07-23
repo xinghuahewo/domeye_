@@ -436,6 +436,32 @@ class RibAdapterTests(unittest.TestCase):
                 )
             )
 
+    def test_sparse_coordinates_reject_regression_after_gap(self):
+        raw, _physical = mixed_rib_bytes()
+        parsed = parse_rib_mrt_bytes(raw)
+        first_gap_offset = parsed[1].record_offset + 100
+        records = (
+            parsed[0],
+            replace(
+                parsed[1],
+                record_ordinal=2,
+                record_offset=first_gap_offset,
+            ),
+            replace(
+                parsed[2],
+                record_ordinal=1,
+                record_offset=first_gap_offset - 1,
+            ),
+        )
+        with self.assertRaisesRegex(RibAdapterError, "严格单调"):
+            tuple(
+                iter_adapted_rib_records(
+                    records,
+                    artifact=artifact(),
+                    sparse_physical_coordinates=True,
+                )
+            )
+
     def test_empty_stream_predicate_and_parser_fail_closed(self):
         with self.assertRaisesRegex(RibAdapterError, "为空"):
             tuple(iter_adapted_rib_records((), artifact=artifact()))
