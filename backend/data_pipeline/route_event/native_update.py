@@ -105,6 +105,7 @@ _ATTR_EXT_COMMUNITIES = 16
 _ATTR_AS4_PATH = 17
 _ATTR_AS4_AGGREGATOR = 18
 _ATTR_LARGE_COMMUNITIES = 32
+_ATTR_ONLY_TO_CUSTOMER = 35
 _KNOWN_ATTRIBUTES = frozenset(
     (
         _ATTR_ORIGIN,
@@ -123,6 +124,7 @@ _KNOWN_ATTRIBUTES = frozenset(
         _ATTR_AS4_PATH,
         _ATTR_AS4_AGGREGATOR,
         _ATTR_LARGE_COMMUNITIES,
+        _ATTR_ONLY_TO_CUSTOMER,
     )
 )
 
@@ -145,6 +147,7 @@ _ATTRIBUTE_BASE_FLAGS = {
     _ATTR_AS4_PATH: frozenset((0xC0, 0xE0)),
     _ATTR_AS4_AGGREGATOR: frozenset((0xC0, 0xE0)),
     _ATTR_LARGE_COMMUNITIES: frozenset((0xC0, 0xE0)),
+    _ATTR_ONLY_TO_CUSTOMER: frozenset((0xC0, 0xE0)),
 }
 
 _FSM_STATES = frozenset(range(1, 7))
@@ -505,6 +508,7 @@ def _validate_attribute_value(attribute_type: int, value: bytes, asn_width: int)
         _ATTR_AGGREGATOR: asn_width + 4,
         _ATTR_ORIGINATOR_ID: 4,
         _ATTR_AS4_AGGREGATOR: 8,
+        _ATTR_ONLY_TO_CUSTOMER: 4,
     }
     if attribute_type in exact and len(value) != exact[attribute_type]:
         raise NativeUpdateIntegrityError("BGP path attribute 长度不符合类型")

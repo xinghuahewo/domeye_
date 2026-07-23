@@ -363,6 +363,20 @@ class NativeUpdateParserTests(BgpdumpAdapterFixture):
             ],
         )
 
+    def test_only_to_customer_attribute_is_validated_and_ignored_for_route_semantics(self):
+        frame = update_frame(
+            announces=("203.0.113.0/24",),
+            extra_attributes=(attribute(0xC0, 35, struct.pack("!I", 64500)),),
+        )
+        artifact = self.write_artifact((frame,))
+        record = tuple(
+            self.native_factory((artifact,))(normalized_artifact(artifact))
+        )[0]
+        self.assertEqual(
+            [(element.action, element.prefix) for element in record.elements],
+            [("announce", "203.0.113.0/24")],
+        )
+
     def test_unknown_duplicate_addpath_and_ambiguous_attributes_fail_closed(self):
         valid_path = path_payload((("as_sequence", (64500, 64496)),), 4)
         cases = (
