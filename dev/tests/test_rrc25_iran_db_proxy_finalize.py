@@ -602,8 +602,8 @@ class IranDbProxyFinalizeTest(unittest.TestCase):
             self.assertEqual(
                 reconciliation["summary"],
                 {
-                    "confirmed": 2,
-                    "revised": 2,
+                    "confirmed": 1,
+                    "revised": 3,
                     "unverifiable": 4,
                     "hypothesis_only": 3,
                 },
@@ -613,7 +613,7 @@ class IranDbProxyFinalizeTest(unittest.TestCase):
                 for row in reconciliation["claims"]
             }
             self.assertEqual(ratings["report_event_time"], "revised")
-            self.assertEqual(ratings["ipv4_decline"], "confirmed")
+            self.assertEqual(ratings["ipv4_decline"], "revised")
             self.assertEqual(ratings["recovery_state"], "revised")
             self.assertEqual(
                 ratings["report_affected_asn_ratio"], "unverifiable"
@@ -797,18 +797,57 @@ class IranDbProxyFinalizeTest(unittest.TestCase):
             ):
                 finalize.finalize(**arguments)
 
-    def test_large_decline_cannot_keep_the_frozen_confirmed_rating(self):
+    def test_large_legacy_decline_remains_revised_for_metric_mismatch(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             values = [256_000] * 1928
             values[100] = 128_000
             values[101] = 102_400
             fixture = ProxyFinalizationFixture(root, values=values)
+            output = root / "out"
+
+            finalize.finalize(**fixture.arguments(output))
+            reconciliation = json.loads(
+                (output / "reconciliation-result.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            ipv4_claim = next(
+                row
+                for row in reconciliation["claims"]
+                if row["claim_type"] == "ipv4_decline"
+            )
+            self.assertEqual(ipv4_claim["rating"], "revised")
+            self.assertEqual(
+                ipv4_claim["recomputed_value"]["unit"],
+                "legacy_ipv4_equivalent_baseline_fraction_decline",
+            )
+
+    def test_ipv4_claim_policy_cannot_be_changed_to_legacy_equivalent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = ProxyFinalizationFixture(root)
+            changed_inventory = json.loads(
+                INVENTORY_PATH.read_text(encoding="utf-8")
+            )
+            ipv4_claim = next(
+                row
+                for row in changed_inventory["claims"]
+                if row["claim_key"] == "ipv4_decline"
+            )
+            ipv4_claim["recomputation_policy"] = (
+                "legacy_v4ip_num_slash24_equivalent_times_256"
+            )
+            changed_path = root / "changed-inventory.json"
+            _write_json(changed_path, changed_inventory)
+            arguments = fixture.arguments(root / "out")
+            arguments["claim_inventory_path"] = changed_path
+            arguments["claim_inventory_sha256"] = _sha(changed_path)
 
             with self.assertRaisesRegex(
-                finalize.ProxyFinalizeError, "评级数量偏离"
+                finalize.ProxyFinalizeError, "复算策略偏离冻结合同"
             ):
-                finalize.finalize(**fixture.arguments(root / "out"))
+                finalize.finalize(**arguments)
             self.assertFalse((root / "out").exists())
 
     def test_output_cannot_be_nested_inside_targeted_input(self):

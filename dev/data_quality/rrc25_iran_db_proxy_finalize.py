@@ -59,6 +59,9 @@ TARGETED_EVIDENCE_SCOPE = "message_observation_only"
 PROXY_SCHEMA_VERSION = "rrc25-iran-db-metric-proxy-analysis/v1"
 QUALITY_SCHEMA_VERSION = "rrc25-iran-db-proxy-quality/v1"
 MANIFEST_SCHEMA_VERSION = "rrc25-iran-db-proxy-finalization-manifest/v1"
+RECONCILIATION_DECISION_VERSION = (
+    "rrc25-iran-db-proxy-reconciliation-decision/v2"
+)
 EXPECTED_INCIDENT_REF = "country_outage/2026-02-27 09:12:32/IR/1/r"
 EXPECTED_STUDY_ID = "iran-rrc25-country-outage-202602-v1"
 EXPECTED_TARGETED_FILES = frozenset(
@@ -1679,12 +1682,18 @@ def _build_assessments(
         or not math.isfinite(float(reported_decline))
     ):
         raise ProxyFinalizeError("报告 IPv4 降幅主张非法")
-    decline_tolerance = 0.005
-    decline_outcome = (
-        "consistent"
-        if abs(decline - float(reported_decline)) <= decline_tolerance
-        else "different"
+    decline_policy = claim_by_key["ipv4_decline"].get(
+        "recomputation_policy"
     )
+    if decline_policy != "same_snapshot_deduplicated_ipv4_address_union":
+        raise ProxyFinalizeError("报告 IPv4 降幅复算策略偏离冻结合同")
+    decline_tolerance = 0.005
+    decline_is_numerically_close = (
+        abs(decline - float(reported_decline)) <= decline_tolerance
+    )
+    # 当前输入只能复算旧 v4ip_num × 256 等价值。即使数值接近，也没有
+    # 满足冻结主张要求的同快照去重 IPv4 地址并集口径，不能标为 confirmed。
+    decline_outcome = "different"
 
     reported_recovery_state = claim_by_key["recovery_state"].get(
         "reported_value"
@@ -1771,13 +1780,19 @@ def _build_assessments(
         ),
         "ipv4_decline": _assessment(
             decline_outcome,
-            _known(round(decline, 5), "baseline_fraction_decline"),
+            _known(
+                round(decline, 5),
+                "legacy_ipv4_equivalent_baseline_fraction_decline",
+            ),
             evidence=(db_ref,),
             limitations=common_proxy_limit,
             rationale=(
                 f"旧等价值基线至{trough['observed_at_local']}低谷下降"
                 f"{decline * 100:.3f}%；与报告{float(reported_decline) * 100:.3f}%"
-                f"按±{decline_tolerance * 100:.1f}个百分点近似容差比较。"
+                f"按±{decline_tolerance * 100:.1f}个百分点近似容差比较，"
+                f"数值接近={str(decline_is_numerically_close).lower()}；"
+                "但冻结策略要求同快照去重IPv4地址并集，当前只有旧等价值，"
+                "因此口径不同。"
             ),
         ),
         "recovery_state": _assessment(
@@ -2293,6 +2308,7 @@ def finalize(
             "schema": MANIFEST_SCHEMA_VERSION,
             "inputs": input_bindings,
             "proxy_semantics": PROXY_SCHEMA_VERSION,
+            "reconciliation_decision": RECONCILIATION_DECISION_VERSION,
         },
     )
     reconciliation = build_reconciliation_result(
@@ -2308,8 +2324,8 @@ def finalize(
         ),
     )
     expected_summary = {
-        "confirmed": 2,
-        "revised": 2,
+        "confirmed": 1,
+        "revised": 3,
         "unverifiable": 4,
         "hypothesis_only": 3,
     }
