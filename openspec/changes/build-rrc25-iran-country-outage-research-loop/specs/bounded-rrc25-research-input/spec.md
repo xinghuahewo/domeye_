@@ -11,8 +11,12 @@
 - **WHEN** 任一窗口、口径、阈值或映射版本发生变化
 - **THEN** 系统生成新的配置哈希和研究运行身份，且 MUST NOT 覆盖旧制品
 
-### Requirement: 解析状态 Seed、基线参考与 UPDATE 输入范围
-系统 MUST 选择研究窗口起点时刻或此前最近一张完整 RIB 作为 `state_seed_rib`，并额外记录严格早于起点的最近一张完整 RIB 作为 `baseline_reference_rib`。若 seed 早于起点，系统 MUST 包含从 seed 时刻到研究窗口起点之间为构造起点状态所需的 catch-up UPDATE。研究统计窗口仍 MUST 保持为冻结的半开区间。
+### Requirement: 状态回放被请求时解析 Seed、基线参考与 UPDATE 输入范围
+当 `state_replay_requested=true` 时，系统 MUST 选择研究窗口起点时刻或此前最近一张
+完整 RIB 作为 `state_seed_rib`，并额外记录严格早于起点的最近一张完整 RIB 作为
+`baseline_reference_rib`。若 seed 早于起点，系统 MUST 包含从 seed 时刻到研究
+窗口起点之间为构造起点状态所需的 catch-up UPDATE。研究统计窗口仍 MUST 保持为
+冻结的半开区间。
 
 #### Scenario: 状态 Seed 与基线参考可用
 - **WHEN** 起点时刻或此前最近 RIB、严格早于起点的参考 RIB，以及必要 catch-up UPDATE 均完整
@@ -25,6 +29,11 @@
 #### Scenario: 基线链不完整
 - **WHEN** state seed、baseline reference、catch-up UPDATE 或窗口内任一关键槽不可用或校验失败
 - **THEN** 系统将运行标记为 `incomplete`，记录 `missing_reason`，且 MUST NOT 宣称连续状态、恢复或完整影响人口已经生成
+
+#### Scenario: 数据库代理阶段不请求状态回放
+- **WHEN** `state_replay_requested=false` 且流程只生成数据库兼容指标代理候选
+- **THEN** 系统 MAY 只盘点 RIB/UPDATE 库存而不读取 seed、RIB、catch-up 或
+  1,928 个 UPDATE，并 MUST 将连续状态、正式 Episode、逐 VP 人口和完整恢复标为未知
 
 ### Requirement: 固定原始制品身份与完整性
 系统 MUST 为每个 RIB/UPDATE 保存 `artifact_id`、相对路径、UTC 槽、压缩字节数、文件 SHA256、压缩流 EOF/CRC 状态和解析状态。所有原始输入 MUST 只读打开并拒绝符号链接替换、读取期间变化和未列入清单的文件。
@@ -58,3 +67,9 @@
 #### Scenario: 检测到数据库写入目标
 - **WHEN** 命令参数、连接配置或代码路径会写入 PostgreSQL、SQLite 或其他数据库
 - **THEN** 系统在写入前拒绝执行并报告审批需求
+
+#### Scenario: 用户在软停后明确批准同范围延长
+- **WHEN** 固定 artifact、总压缩字节、临时空间和零数据库写入边界均未变化，运行仅因
+  时间软限停止，且用户明确批准无错误时继续
+- **THEN** 系统 MAY 为同一有界请求记录新的时间上限并重新执行；该批准 MUST 写入
+  执行记录，且不得授权扩大 artifact、实体或数据库写入范围

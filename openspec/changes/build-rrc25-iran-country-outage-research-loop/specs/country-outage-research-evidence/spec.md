@@ -1,7 +1,13 @@
 ## ADDED Requirements
 
 ### Requirement: 发布确定性研究制品包
-系统 MUST 将研究结果发布为新建、只读、内容寻址的文件制品包，至少包含运行 manifest、输入清单、配置、国家映射摘要、RouteEvent、raw refs、五分钟样本、episode、wave、逐 ASN/前缀影响、Evidence Bundle v2、质量报告、对账结果、中文报告和 `SHA256SUMS`。
+系统 MUST 将研究结果发布为新建、只读、内容寻址的文件制品包。当
+`state_replay_requested=true` 时，包至少包含运行 manifest、输入清单、配置、
+国家映射摘要、RouteEvent、raw refs、五分钟状态样本、episode、wave、逐
+ASN/前缀影响、Evidence Bundle v2、质量报告、对账结果、中文报告和
+`SHA256SUMS`。当 `state_replay_requested=false` 且只完成数据库代理阶段时，
+包 MUST 至少包含输入哈希绑定、数据库指标代理、消息证据摘要、质量报告、
+对账结果、中文报告、manifest 和 `SHA256SUMS`，并明确不得冒充前述状态制品。
 
 #### Scenario: 成功发布研究包
 - **WHEN** 所有阻断质量门通过且输出目录尚不存在
@@ -11,8 +17,19 @@
 - **WHEN** 目标研究运行目录已经存在
 - **THEN** 系统拒绝覆盖；相同运行只允许验证或续跑未发布分块
 
-### Requirement: Evidence v2 引用闭合
-系统 MUST 为旧 Incident `country_outage/2026-02-27 09:12:32/IR/1/r` 生成事件级 Evidence Bundle v2，并将其与新 episode/wave 映射、五分钟 MetricWindow、相关 RouteEvent、raw record refs、处理版本、输入哈希和质量限制闭合。旧 Incident 时间 MUST 保留为来源事实，不能被静默改写为新 onset。
+#### Scenario: 数据库代理包发布
+- **WHEN** 数据库曲线、定向消息证据和十一项对账均已完成，但未请求 RIB/seed/
+  状态回放
+- **THEN** 系统原子发布 `workflow_state=completed`、
+  `acceptance_state=not_accepted` 的代理包，并将正式 Sample/Episode/Wave、
+  逐 ASN 状态和 Evidence Bundle v2 标为未生成
+
+### Requirement: 状态回放被请求时 Evidence v2 引用闭合
+当 `state_replay_requested=true` 时，系统 MUST 为旧 Incident
+`country_outage/2026-02-27 09:12:32/IR/1/r` 生成事件级 Evidence Bundle v2，
+并将其与新 episode/wave 映射、五分钟 MetricWindow、相关 RouteEvent、raw
+record refs、处理版本、输入哈希和质量限制闭合。旧 Incident 时间 MUST 保留为
+来源事实，不能被静默改写为新 onset。
 
 #### Scenario: 原始证据完整
 - **WHEN** RouteEvent 可精确定位到已验证制品的 record 和 element
@@ -21,6 +38,11 @@
 #### Scenario: 研究 episode 与旧 Incident 时间冲突
 - **WHEN** 新识别的 onset、peak 或 wave 与旧 `s_time/event_info` 不一致
 - **THEN** Evidence 包同时保留 source fact 和 research result，以 reconciliation evidence 表达差异，MUST NOT 覆盖来源字段
+
+#### Scenario: 数据库代理阶段没有状态映射
+- **WHEN** `state_replay_requested=false`，定向 RouteEvent/raw ref 仅为消息观测
+- **THEN** 系统 MUST NOT 生成伪 Evidence Bundle v2 或把消息 ref 映射成状态样本；
+  代理包只登记消息引用闭合与缺失原因
 
 ### Requirement: 结论分级与原报告对账
 系统 MUST 对报告中的时间、IPv4 降幅、恢复状态、`199/595`、`73/126`、数据库 `176/556`、主动撤回、物理断路、BGP 会话关闭、流量影响和政府意图逐项输出 `confirmed`、`revised`、`unverifiable` 或 `hypothesis_only`，并为每项提供口径、证据引用、反向证据与限制。
@@ -34,7 +56,12 @@
 - **THEN** 系统标记为 `unverifiable` 或 `hypothesis_only`，MUST NOT 生成因果结论
 
 ### Requirement: 质量门失败关闭
-系统 MUST 分别报告输入完整性、解析完整性、状态连续性、VP 覆盖、映射覆盖、稳定身份、引用闭合、缺失语义、资源使用和复现性。任一阻断项失败时，制品包 MUST 标为 `incomplete/not_accepted`，且报告不得声称研究闭环完成。
+系统 MUST 分别报告输入完整性、解析完整性、状态连续性、VP 覆盖、映射覆盖、
+稳定身份、引用闭合、缺失语义、资源使用和复现性。执行错误或当前请求步骤未完成时，
+制品包 MUST 标为 `workflow_state=incomplete`。当前请求步骤均成功但状态验收阻断项
+仍缺失时，系统 MAY 标为 `workflow_state=completed`，但 MUST 同时标为
+`acceptance_state=not_accepted`；报告只能声称“数据库优先工作流完成”，不得声称
+“状态证据闭环完成”或“研究验收通过”。
 
 #### Scenario: raw ref 无法解析
 - **WHEN** 任一声称 raw_traceable 的 RouteEvent 没有可验证 raw ref
