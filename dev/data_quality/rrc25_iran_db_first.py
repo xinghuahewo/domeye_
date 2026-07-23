@@ -49,13 +49,14 @@ BASELINE_END_EXCLUSIVE = datetime(2026, 2, 28, 6, 0, 0)
 AS_HISTORY_START = datetime(2026, 2, 1, 0, 0, 0)
 GRANULARITY = timedelta(minutes=5)
 EXPECTED_SLOT_COUNT = 1_928
+EXPECTED_TARGET_UPDATE_SLOT_COUNT = 13
 EXPECTED_LEGACY_AFFECTED_ASN = 176
 EXPECTED_LEGACY_TOTAL_ASN = 556
 TIMEZONE = ZoneInfo("Asia/Shanghai")
 PHASE_ANCHORS = (
-    ("第一段起点", datetime(2026, 2, 28, 6, 35, 0)),
-    ("第二段起点", datetime(2026, 2, 28, 18, 45, 0)),
-    ("第三段起点", datetime(2026, 2, 28, 22, 30, 0)),
+    ("候选扰动集中桶", datetime(2026, 2, 28, 6, 35, 0)),
+    ("第一显著波次集中桶", datetime(2026, 2, 28, 18, 45, 0)),
+    ("第二显著波次集中桶", datetime(2026, 2, 28, 22, 30, 0)),
 )
 REPRESENTATIVE_ASN_RULES = (
     ("48715", "旧事实历史峰值为 76/76，用于完全中断候选样本", 4),
@@ -1443,6 +1444,12 @@ def _minimal_raw_request(event_facts: Mapping[str, Any]) -> dict[str, Any]:
                 "update_slot_count": len(slots),
             }
         )
+    unique_update_slots = {item["utc"] for item in update_slots}
+    if (
+        len(update_slots) != EXPECTED_TARGET_UPDATE_SLOT_COUNT
+        or len(unique_update_slots) != EXPECTED_TARGET_UPDATE_SLOT_COUNT
+    ):
+        raise DBFirstError("定向 raw 请求必须精确包含 13 个唯一 UPDATE 槽")
     return {
         "status": (
             "not_executed"
@@ -1484,7 +1491,7 @@ def _minimal_raw_request(event_facts: Mapping[str, Any]) -> dict[str, Any]:
             "full_window_replay": False,
             "all_asn_population": False,
             "only_key_slots_and_representative_entities": True,
-            "maximum_update_slot_count": len(update_slots),
+            "maximum_update_slot_count": EXPECTED_TARGET_UPDATE_SLOT_COUNT,
             "initial_rib_read_requested": False,
             "state_seed_requires_separate_gap_justification": True,
         },
@@ -1891,7 +1898,9 @@ def _markdown(payload: Mapping[str, Any]) -> str:
             "",
             "## 最小 raw 请求",
             "",
-            "- 状态：`not_executed`",
+            "- 状态：`{}`".format(
+                payload["minimal_raw_request"]["status"]
+            ),
             "- 关键槽数：{}".format(
                 len(payload["minimal_raw_request"]["critical_slots"])
             ),
