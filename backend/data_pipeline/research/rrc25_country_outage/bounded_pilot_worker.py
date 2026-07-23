@@ -34,7 +34,16 @@ from pathlib import Path, PurePosixPath
 import re
 import stat
 import time
-from typing import Any, Callable, Iterable, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    FrozenSet,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from ...route_event import AsPathSegment, ParsedRouteElement
 from ..resource_gate import (
@@ -69,6 +78,7 @@ from .rib_parser import (
     RibRecordBoundary,
     build_rib_decompressed_spool,
 )
+from .rib_prefilter import RibPrefilterError, validate_rib_prefilter
 from .state_replay import (
     InputGap,
     RawRecordRef,
@@ -2317,6 +2327,7 @@ def run_bounded_pilot_worker(
     country_mapping: CountryMappingView,
     raw_retention_mapping: Optional[RawRetentionMappingUnion] = None,
     seed_spool_attestation: Optional[Mapping[str, Any]] = None,
+    seed_rib_prefilter: Optional[Mapping[str, Any]] = None,
     pilot_end_exclusive_utc: str,
     update_record_stream_factory: Callable[[Mapping[str, Any]], Iterable[Any]],
     checkpoint_directory: os.PathLike[str] | str,
@@ -2555,6 +2566,7 @@ def run_bounded_pilot_worker(
     if seed is not None and not isinstance(seed, Mapping):
         raise BoundedPilotWorkerError("state_seed_rib 必须是对象或 null")
     normalized_seed_spool_attestation: Optional[Mapping[str, Any]] = None
+    prefilter_materialize_rib_ordinals: Optional[FrozenSet[int]] = None
     if full_seed_checkpoint_enabled:
         if seed is None or seed_spool_attestation is None:
             raise BoundedPilotWorkerError(
@@ -2563,6 +2575,37 @@ def run_bounded_pilot_worker(
         normalized_seed_spool_attestation = validate_seed_spool_attestation(
             seed_spool_attestation,
             seed_artifact=seed,
+        )
+        if seed_rib_prefilter is not None:
+            try:
+                prefilter_materialize_rib_ordinals = validate_rib_prefilter(
+                    seed_rib_prefilter,
+                    expected_spool_sha256=(
+                        normalized_seed_spool_attestation["decompressed"][
+                            "sha256"
+                        ]
+                    ),
+                    expected_spool_size_bytes=(
+                        normalized_seed_spool_attestation["decompressed"][
+                            "size_bytes"
+                        ]
+                    ),
+                    seed_artifact_id=seed["artifact_id"],
+                    seed_file_sha256=seed["file_sha256"],
+                    artifact_slot_utc=seed["artifact_time_utc"],
+                    raw_retention_mapping=(
+                        country_mapping
+                        if raw_retention_mapping is None
+                        else raw_retention_mapping
+                    ),
+                )
+            except RibPrefilterError as error:
+                raise BoundedPilotWorkerError(
+                    "seed RIB prefilter sidecar 验证失败"
+                ) from error
+    elif seed_rib_prefilter is not None:
+        raise BoundedPilotWorkerError(
+            "seed RIB prefilter 只能用于完整 seed checkpoint 模式"
         )
 
     # 可恢复上下文。只保存 IR 研究子集和 raw 元数据，不保存全量解析对象。
@@ -4335,6 +4378,9 @@ def run_bounded_pilot_worker(
                         ),
                         vp_observer=accumulator.observe,
                         include_discarded_element_decisions=False,
+                        prefilter_materialize_rib_ordinals=(
+                            prefilter_materialize_rib_ordinals
+                        ),
                         checkpoint_observer=observe_seed_checkpoint,
                     )
                 else:
@@ -4352,6 +4398,9 @@ def run_bounded_pilot_worker(
                         ),
                         vp_observer=accumulator.observe,
                         include_discarded_element_decisions=False,
+                        prefilter_materialize_rib_ordinals=(
+                            prefilter_materialize_rib_ordinals
+                        ),
                     )
 
                 for record in adapter:

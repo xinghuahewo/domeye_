@@ -29,7 +29,17 @@ import re
 import secrets
 import stat
 import struct
-from typing import Any, BinaryIO, Callable, Iterator, Mapping, Optional, Tuple, Union
+from typing import (
+    Any,
+    BinaryIO,
+    Callable,
+    FrozenSet,
+    Iterator,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 import zlib
 
 from ...route_event.index import AsPathSegment, ParsedMrtRecord, ParsedRouteElement
@@ -1239,6 +1249,39 @@ def _v2_all_origins_non_target_entry_count(
     return entry_count
 
 
+def _v2_prefiltered_entry_count(
+    payload: bytes,
+    subtype: int,
+    peers: Optional[Tuple[_Peer, ...]],
+) -> Optional[int]:
+    """从已绑定完整 prefilter 的 V2 record 只复核 prefix framing 与人口。"""
+
+    if peers is None:
+        raise RibMrtParseError("TABLE_DUMP_V2 RIB 缺少此前的 PEER_INDEX_TABLE")
+    address_bytes = (
+        4
+        if subtype == RIB_IPV4_UNICAST
+        else 16 if subtype == RIB_IPV6_UNICAST else None
+    )
+    if address_bytes is None:
+        # unsupported subtype 仍交给既有 parser 失败关闭。
+        return None
+    if len(payload) < 7:
+        raise RibMrtParseError("TABLE_DUMP_V2 RIB prefix framing 截断")
+    prefix_length = payload[4]
+    maximum = address_bytes * 8
+    if prefix_length > maximum:
+        raise RibMrtParseError(
+            f"prefix 长度 {prefix_length} 超过地址族上限 {maximum}"
+        )
+    prefix_octets = (prefix_length + 7) // 8
+    count_offset = 5 + prefix_octets
+    if count_offset + 2 > len(payload):
+        raise RibMrtParseError("TABLE_DUMP_V2 RIB entry_count 截断")
+    entry_count = int.from_bytes(payload[count_offset : count_offset + 2], "big")
+    return entry_count or None
+
+
 def _parse_supported_record(
     *,
     mrt_type: int,
@@ -1263,14 +1306,25 @@ def _parse_supported_record_with_non_target_elision(
     subtype: int,
     payload: bytes,
     peers: Optional[Tuple[_Peer, ...]],
+    record_ordinal: int,
     origin_asn_predicate: Optional[Callable[[int], bool]],
     elide_non_target_elements: bool,
+    materialize_rib_record_ordinals: Optional[FrozenSet[int]],
 ) -> Tuple[
     Tuple[ParsedRouteElement, ...],
     Optional[Tuple[_Peer, ...]],
     Optional[int],
 ]:
-    if elide_non_target_elements:
+    if (
+        materialize_rib_record_ordinals is not None
+        and mrt_type == TABLE_DUMP_V2
+        and subtype != PEER_INDEX_TABLE
+        and record_ordinal not in materialize_rib_record_ordinals
+    ):
+        discarded_count = _v2_prefiltered_entry_count(payload, subtype, peers)
+        if discarded_count is not None:
+            return (), peers, discarded_count
+    elif elide_non_target_elements:
         if origin_asn_predicate is None or not callable(origin_asn_predicate):
             raise RibMrtParseError(
                 "non-target element elision 必须绑定 origin ASN predicate"
@@ -1298,6 +1352,7 @@ def iter_rib_mrt_records(
     *,
     origin_asn_predicate: Optional[Callable[[int], bool]] = None,
     elide_non_target_elements: bool = False,
+    materialize_rib_record_ordinals: Optional[FrozenSet[int]] = None,
 ) -> Iterator[ParsedMrtRecord]:
     """顺序解析一个解压后的 RIB MRT 字节流。
 
@@ -1337,8 +1392,12 @@ def iter_rib_mrt_records(
                 subtype=subtype,
                 payload=payload,
                 peers=peers,
+                record_ordinal=record_ordinal,
                 origin_asn_predicate=origin_asn_predicate,
                 elide_non_target_elements=elide_non_target_elements,
+                materialize_rib_record_ordinals=(
+                    materialize_rib_record_ordinals
+                ),
             )
         )
 
@@ -1690,6 +1749,7 @@ class RibMrtRecordSeekIterator(Iterator[ParsedMrtRecord]):
         ] = None,
         origin_asn_predicate: Optional[Callable[[int], bool]] = None,
         elide_non_target_elements: bool = False,
+        materialize_rib_record_ordinals: Optional[FrozenSet[int]] = None,
     ) -> None:
         if isinstance(source, (bytes, bytearray, memoryview)):
             self._stream: BinaryIO = io.BytesIO(bytes(source))
@@ -1713,6 +1773,9 @@ class RibMrtRecordSeekIterator(Iterator[ParsedMrtRecord]):
         self.current_peer_index_context = self.seek_context.peer_index
         self._origin_asn_predicate = origin_asn_predicate
         self._elide_non_target_elements = elide_non_target_elements
+        self._materialize_rib_record_ordinals = (
+            materialize_rib_record_ordinals
+        )
 
     def __iter__(self) -> "RibMrtRecordSeekIterator":
         return self
@@ -1738,8 +1801,12 @@ class RibMrtRecordSeekIterator(Iterator[ParsedMrtRecord]):
                 subtype=subtype,
                 payload=payload,
                 peers=self._peers,
+                record_ordinal=self._record_ordinal,
                 origin_asn_predicate=self._origin_asn_predicate,
                 elide_non_target_elements=self._elide_non_target_elements,
+                materialize_rib_record_ordinals=(
+                    self._materialize_rib_record_ordinals
+                ),
             )
         )
         record_fields = {
@@ -1792,6 +1859,7 @@ def iter_rib_mrt_records_from_offset(
     ] = None,
     origin_asn_predicate: Optional[Callable[[int], bool]] = None,
     elide_non_target_elements: bool = False,
+    materialize_rib_record_ordinals: Optional[FrozenSet[int]] = None,
 ) -> RibMrtRecordSeekIterator:
     """回读固定边界并直接 seek，绝不线性扫描到恢复目标。"""
 
@@ -1803,6 +1871,7 @@ def iter_rib_mrt_records_from_offset(
         peer_index_context=peer_index_context,
         origin_asn_predicate=origin_asn_predicate,
         elide_non_target_elements=elide_non_target_elements,
+        materialize_rib_record_ordinals=materialize_rib_record_ordinals,
     )
 
 
@@ -1825,6 +1894,7 @@ class RibSpoolRecordIterator(Iterator[ParsedMrtRecord]):
         ] = None,
         origin_asn_predicate: Optional[Callable[[int], bool]] = None,
         elide_non_target_elements: bool = False,
+        materialize_rib_record_ordinals: Optional[FrozenSet[int]] = None,
     ) -> None:
         stream, identity = _open_verified_rib_spool(
             path,
@@ -1842,6 +1912,9 @@ class RibSpoolRecordIterator(Iterator[ParsedMrtRecord]):
                 peer_index_context=peer_index_context,
                 origin_asn_predicate=origin_asn_predicate,
                 elide_non_target_elements=elide_non_target_elements,
+                materialize_rib_record_ordinals=(
+                    materialize_rib_record_ordinals
+                ),
             )
         except Exception:
             self.close()
@@ -1898,6 +1971,7 @@ def iter_rib_spool_records(
     ] = None,
     origin_asn_predicate: Optional[Callable[[int], bool]] = None,
     elide_non_target_elements: bool = False,
+    materialize_rib_record_ordinals: Optional[FrozenSet[int]] = None,
 ) -> RibSpoolRecordIterator:
     """核验 spool 身份，并从 next physical-record 坐标继续解析。"""
 
@@ -1911,6 +1985,7 @@ def iter_rib_spool_records(
         peer_index_context=peer_index_context,
         origin_asn_predicate=origin_asn_predicate,
         elide_non_target_elements=elide_non_target_elements,
+        materialize_rib_record_ordinals=materialize_rib_record_ordinals,
     )
 
 

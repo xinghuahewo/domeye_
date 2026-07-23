@@ -1086,6 +1086,14 @@ def _seed_context(
         revised_snapshot, compatible_snapshot
     )
     raw_retention = build_raw_retention_mapping_union((compatible, revised))
+    seed_rib_prefilter = (
+        None
+        if getattr(args, "seed_rib_prefilter", None) is None
+        else load_json_metadata(
+            args.seed_rib_prefilter,
+            maximum_bytes=128 * 1024 * 1024,
+        )
+    )
 
     checkpoint_directory = _checked_directory(
         args.checkpoint_directory,
@@ -1230,6 +1238,7 @@ def _seed_context(
         "compatible_mapping": compatible,
         "revised_mapping": revised,
         "raw_retention_mapping": raw_retention,
+        "seed_rib_prefilter": seed_rib_prefilter,
         "code_identity": code_identity,
         "seed_spool_attestation": seed_spool_attestation,
         "checkpoint_directory": checkpoint_directory,
@@ -1700,6 +1709,7 @@ def _run_seed_segment_locked(
             country_mapping=context["compatible_mapping"],
             raw_retention_mapping=context["raw_retention_mapping"],
             seed_spool_attestation=context["seed_spool_attestation"],
+            seed_rib_prefilter=context.get("seed_rib_prefilter"),
             pilot_end_exclusive_utc=args.pilot_end_exclusive,
             update_record_stream_factory=_reject_update_stream,
             checkpoint_directory=context["checkpoint_directory"],
@@ -1987,6 +1997,13 @@ def _add_seed_execution_arguments(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=DEFAULT_SEED_CHECKPOINT_SECONDS,
         help="主动保存 seed checkpoint 的秒数，默认且最大 420",
+    )
+    parser.add_argument(
+        "--seed-rib-prefilter",
+        help=(
+            "可选：与完整解压 spool、seed artifact 和 raw-retention mapping "
+            "绑定的并行 native prefilter sidecar"
+        ),
     )
 
 

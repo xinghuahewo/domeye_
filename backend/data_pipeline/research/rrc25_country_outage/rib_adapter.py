@@ -22,7 +22,17 @@ import os
 import re
 import struct
 from pathlib import PurePosixPath
-from typing import Any, BinaryIO, Callable, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import (
+    Any,
+    BinaryIO,
+    Callable,
+    FrozenSet,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Tuple,
+)
 
 from ...route_event import (
     ParsedMrtRecord,
@@ -341,6 +351,31 @@ def _nonnegative_coordinate(value: object, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise RibAdapterError(f"{field} 必须是非负整数")
     return value
+
+
+def _validate_prefilter_ordinals(
+    value: Optional[FrozenSet[int]],
+    *,
+    origin_asn_predicate: Optional[OriginAsnPredicate],
+    include_discarded_element_decisions: bool,
+) -> None:
+    if value is None:
+        return
+    if (
+        not isinstance(value, frozenset)
+        or any(
+            isinstance(ordinal, bool)
+            or not isinstance(ordinal, int)
+            or ordinal < 0
+            for ordinal in value
+        )
+        or origin_asn_predicate is None
+        or include_discarded_element_decisions
+    ):
+        raise RibAdapterError(
+            "prefilter ordinals 必须绑定 predicate、关闭 discard decisions "
+            "且为非负整数 frozenset"
+        )
 
 
 def _normalize_initial_peer_context(
@@ -762,6 +797,7 @@ def iter_rib_artifact_records(
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
     include_discarded_element_decisions: bool = True,
+    prefilter_materialize_rib_ordinals: Optional[FrozenSet[int]] = None,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
     start_record_ordinal: int = 0,
     start_record_offset: int = 0,
@@ -776,6 +812,13 @@ def iter_rib_artifact_records(
 
     # 在 parser 读取任何字节之前先失败关闭 artifact 身份与槽位。
     _normalize_artifact(artifact)
+    _validate_prefilter_ordinals(
+        prefilter_materialize_rib_ordinals,
+        origin_asn_predicate=origin_asn_predicate,
+        include_discarded_element_decisions=(
+            include_discarded_element_decisions
+        ),
+    )
     try:
         if start_record_ordinal == 0 and start_record_offset == 0:
             if previous_record_boundary is not None or peer_index_context is not None:
@@ -788,6 +831,10 @@ def iter_rib_artifact_records(
                 elide_non_target_elements=(
                     origin_asn_predicate is not None
                     and not include_discarded_element_decisions
+                    and prefilter_materialize_rib_ordinals is None
+                ),
+                materialize_rib_record_ordinals=(
+                    prefilter_materialize_rib_ordinals
                 ),
             )
             seek_context = None
@@ -802,6 +849,10 @@ def iter_rib_artifact_records(
                 elide_non_target_elements=(
                     origin_asn_predicate is not None
                     and not include_discarded_element_decisions
+                    and prefilter_materialize_rib_ordinals is None
+                ),
+                materialize_rib_record_ordinals=(
+                    prefilter_materialize_rib_ordinals
                 ),
             )
             parsed_records = seek_records
@@ -840,6 +891,7 @@ def iter_rib_spool_artifact_records(
     origin_asn_predicate: Optional[OriginAsnPredicate] = None,
     vp_observer: Optional[VpObserver] = None,
     include_discarded_element_decisions: bool = True,
+    prefilter_materialize_rib_ordinals: Optional[FrozenSet[int]] = None,
     checkpoint_observer: Optional[RibCheckpointObserver] = None,
     expected_record_sha256_by_ordinal: Optional[Mapping[int, str]] = None,
 ) -> Iterator[AdaptedRibRecord]:
@@ -853,6 +905,13 @@ def iter_rib_spool_artifact_records(
 
     # artifact 失败必须发生在打开、核验 spool 之前。
     _normalize_artifact(artifact)
+    _validate_prefilter_ordinals(
+        prefilter_materialize_rib_ordinals,
+        origin_asn_predicate=origin_asn_predicate,
+        include_discarded_element_decisions=(
+            include_discarded_element_decisions
+        ),
+    )
     if checkpoint_observer is not None and not callable(checkpoint_observer):
         raise RibAdapterError("checkpoint_observer 必须可调用")
     records = None
@@ -869,6 +928,10 @@ def iter_rib_spool_artifact_records(
             elide_non_target_elements=(
                 origin_asn_predicate is not None
                 and not include_discarded_element_decisions
+                and prefilter_materialize_rib_ordinals is None
+            ),
+            materialize_rib_record_ordinals=(
+                prefilter_materialize_rib_ordinals
             ),
         )
         adapted_records = iter_adapted_rib_records(
