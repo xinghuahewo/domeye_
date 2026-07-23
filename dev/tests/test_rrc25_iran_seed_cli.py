@@ -667,6 +667,55 @@ class SeedCliTests(unittest.TestCase):
         with self.assertRaisesRegex(cli.SeedWorkflowError, "禁止打开 UPDATE"):
             called["update_record_stream_factory"]({})
 
+    def test_seed_start_reuses_spool_without_raw_reservation(self):
+        context = self.segment_context()
+        context["reuse_existing_seed_spool"] = True
+        worker_result = SimpleNamespace(
+            checkpoint_path=str(self.checkpoints / "checkpoint.json"),
+            incomplete_reason="planned_seed_checkpoint",
+            status="incomplete",
+            errors=(),
+            resources={"new_raw_read_bytes": 0, "database_writes": 0},
+        )
+        verification = {
+            "position": {"phase": "seed_rib"},
+            "seed_progress": {"next_record_ordinal": 1},
+            "checkpoint_sequence": 1,
+            "checkpoint_fingerprint_sha256": "f" * 64,
+        }
+        args = self.args()
+        args.reuse_existing_seed_spool = True
+        with mock.patch.object(
+            cli, "_seed_context", return_value=context
+        ), mock.patch.object(
+            cli,
+            "reserve_seed_raw_attempt",
+            side_effect=AssertionError("复用 spool 不得预留压缩 raw"),
+        ), mock.patch.object(
+            cli,
+            "close_seed_raw_attempt",
+            side_effect=AssertionError("复用 spool 不得闭合不存在的 raw attempt"),
+        ), mock.patch.object(
+            cli, "run_bounded_pilot_worker", return_value=worker_result
+        ) as worker, mock.patch.object(
+            cli, "verify_full_seed_checkpoint", return_value=verification
+        ):
+            result, exit_code = cli._run_seed_segment(
+                args, resume=False, clock=lambda: 0.0
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["opens_raw_mrt"])
+        self.assertIsNone(result["seed_raw_reservation"])
+        called = worker.call_args.kwargs
+        self.assertTrue(called["reuse_existing_seed_spool"])
+        self.assertIsNone(called["seed_raw_reservation"])
+        self.assertEqual(
+            called["seed_batch_max_route_events"], 1_048_576
+        )
+        self.assertEqual(called["seed_batch_max_records"], 65_536)
+
     def test_seed_segment_rejects_zero_progress_checkpoint(self):
         prior = {
             "checkpoint_fingerprint_sha256": "1" * 64,

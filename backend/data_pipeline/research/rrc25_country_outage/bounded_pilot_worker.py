@@ -77,6 +77,7 @@ from .rib_parser import (
     RibPeerIndexContext,
     RibRecordBoundary,
     build_rib_decompressed_spool,
+    verify_rib_decompressed_spool,
 )
 from .rib_prefilter import RibPrefilterError, validate_rib_prefilter
 from .state_replay import (
@@ -191,8 +192,10 @@ _FULL_SEED_CHECKPOINT_FIELDS = frozenset(
 # seed RIB 的状态合并成本与当前状态规模相关。按完整 physical-record 批量合并，
 # 既避免对大量过滤后空记录反复重建全量状态，又给 540 秒软停预留可控的 flush
 # 尾延迟；单个 physical record 始终保持原子性，即使它本身超过事件阈值。
-_SEED_BATCH_MAX_ROUTE_EVENTS = 8_192
-_SEED_BATCH_MAX_RECORDS = 256
+_DEFAULT_SEED_BATCH_MAX_ROUTE_EVENTS = 1_048_576
+_DEFAULT_SEED_BATCH_MAX_RECORDS = 65_536
+_MAX_SEED_BATCH_MAX_ROUTE_EVENTS = 2_097_152
+_MAX_SEED_BATCH_MAX_RECORDS = 262_144
 
 
 class BoundedPilotWorkerError(ValueError):
@@ -2196,18 +2199,28 @@ def verify_full_seed_checkpoint(
             selection_sha256=selection_hash,
             code_identity_sha256=code_identity_sha256,
         )
-        normalized_reservation = _verified_seed_raw_reservation(
-            resources.get("seed_raw_reservation"),
-            probe_accounting=normalized_probe,
-            expected_prior_raw_bytes=int(prior_raw_bytes),
-            selection_id=selection_id,
-            seed_artifact=seed,
-            code_identity_sha256=code_identity_sha256,
-        )
-        if normalized_reservation["cumulative_reserved_new_raw_bytes"] != raw_bytes:
-            raise BoundedPilotWorkerError(
-                "checkpoint raw cumulative 与 durable seed reservation 不闭合"
+        reservation_value = resources.get("seed_raw_reservation")
+        if reservation_value is None:
+            if raw_bytes != prior_raw_bytes:
+                raise BoundedPilotWorkerError(
+                    "复用 seed spool 的 checkpoint 不得增加压缩 raw 字节"
+                )
+        else:
+            normalized_reservation = _verified_seed_raw_reservation(
+                reservation_value,
+                probe_accounting=normalized_probe,
+                expected_prior_raw_bytes=int(prior_raw_bytes),
+                selection_id=selection_id,
+                seed_artifact=seed,
+                code_identity_sha256=code_identity_sha256,
             )
+            if (
+                normalized_reservation["cumulative_reserved_new_raw_bytes"]
+                != raw_bytes
+            ):
+                raise BoundedPilotWorkerError(
+                    "checkpoint raw cumulative 与 durable seed reservation 不闭合"
+                )
 
     ledger = restored.get("seed_read_ledger")
     if not isinstance(ledger, list) or not ledger:
@@ -2269,14 +2282,18 @@ def verify_full_seed_checkpoint(
         prior_completed = completed
         prior_completed_offset = completed_offset
         ledger_bytes += read_bytes
+    expected_compressed_raw_bytes = (
+        0 if resources.get("seed_raw_reservation") is None else seed["size_bytes"]
+    )
     if (
         prior_completed != progress_next
         or prior_completed_offset != progress_offset
         or ledger_bytes != raw_bytes - prior_raw_bytes
         or ledger[-1]["seed_parse_complete"] != seed_parse_complete
-        or raw_bytes - prior_raw_bytes != seed["size_bytes"]
+        or raw_bytes - prior_raw_bytes != expected_compressed_raw_bytes
         or any(
-            row["new_compressed_raw_bytes_read"] != (seed["size_bytes"] if index == 0 else 0)
+            row["new_compressed_raw_bytes_read"]
+            != (expected_compressed_raw_bytes if index == 0 else 0)
             for index, row in enumerate(ledger)
         )
     ):
@@ -2340,6 +2357,9 @@ def run_bounded_pilot_worker(
     prior_new_raw_read_bytes: int = 0,
     prior_raw_accounting: Optional[Mapping[str, Any]] = None,
     seed_raw_reservation: Optional[Mapping[str, Any]] = None,
+    reuse_existing_seed_spool: bool = False,
+    seed_batch_max_route_events: int = _DEFAULT_SEED_BATCH_MAX_ROUTE_EVENTS,
+    seed_batch_max_records: int = _DEFAULT_SEED_BATCH_MAX_RECORDS,
     stop_after_seed: bool = False,
     analysis_update_artifact_ids: Optional[Sequence[str]] = None,
     resource_limits: Optional[ResourceLimits] = None,
@@ -2449,6 +2469,35 @@ def run_bounded_pilot_worker(
         raise BoundedPilotWorkerError("resource_limits 必须是 ResourceLimits")
     if not isinstance(stop_after_seed, bool):
         raise BoundedPilotWorkerError("stop_after_seed 必须是布尔值")
+    if not isinstance(reuse_existing_seed_spool, bool):
+        raise BoundedPilotWorkerError(
+            "reuse_existing_seed_spool 必须是布尔值"
+        )
+    if reuse_existing_seed_spool and resume_checkpoint_path is not None:
+        raise BoundedPilotWorkerError(
+            "reuse_existing_seed_spool 只适用于 seed-start，不适用于 resume"
+        )
+    for value, label, maximum in (
+        (
+            seed_batch_max_route_events,
+            "seed_batch_max_route_events",
+            _MAX_SEED_BATCH_MAX_ROUTE_EVENTS,
+        ),
+        (
+            seed_batch_max_records,
+            "seed_batch_max_records",
+            _MAX_SEED_BATCH_MAX_RECORDS,
+        ),
+    ):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value <= 0
+            or value > maximum
+        ):
+            raise BoundedPilotWorkerError(
+                f"{label} 必须位于 [1,{maximum}]"
+            )
     if isinstance(planned_seed_checkpoint_seconds, bool) or not isinstance(
         planned_seed_checkpoint_seconds, (int, float)
     ):
@@ -2538,20 +2587,34 @@ def run_bounded_pilot_worker(
 
     seed = roles.get("state_seed_rib")
     if full_seed_checkpoint_enabled:
-        if not isinstance(seed, Mapping) or seed_raw_reservation is None:
+        if not isinstance(seed, Mapping):
             raise BoundedPilotWorkerError(
-                "full seed 必须提供 pre-open durable seed raw reservation"
+                "full seed 必须提供 state_seed_rib"
             )
         if normalized_prior_raw_accounting is None:
             raise BoundedPilotWorkerError("seed reservation 缺少 probe terminal 锚点")
-        normalized_seed_raw_reservation = _verified_seed_raw_reservation(
-            seed_raw_reservation,
-            probe_accounting=normalized_prior_raw_accounting,
-            expected_prior_raw_bytes=prior_new_raw_read_bytes,
-            selection_id=selection_id,
-            seed_artifact=seed,
-            code_identity_sha256=code_identity_sha256,
-        )
+        if seed_raw_reservation is None:
+            if (
+                not reuse_existing_seed_spool
+                and resume_checkpoint_path is None
+            ):
+                raise BoundedPilotWorkerError(
+                    "full seed 首次构建必须提供 pre-open durable seed raw "
+                    "reservation；只有显式复用已核验 spool 时可省略"
+                )
+        else:
+            if reuse_existing_seed_spool:
+                raise BoundedPilotWorkerError(
+                    "复用既有 seed spool 不得发布压缩 raw reservation"
+                )
+            normalized_seed_raw_reservation = _verified_seed_raw_reservation(
+                seed_raw_reservation,
+                probe_accounting=normalized_prior_raw_accounting,
+                expected_prior_raw_bytes=prior_new_raw_read_bytes,
+                selection_id=selection_id,
+                seed_artifact=seed,
+                code_identity_sha256=code_identity_sha256,
+            )
     elif seed_raw_reservation is not None:
         if not isinstance(seed, Mapping) or normalized_prior_raw_accounting is None:
             raise BoundedPilotWorkerError("seed reservation 不得脱离 seed/probe 身份")
@@ -3102,6 +3165,11 @@ def run_bounded_pilot_worker(
             prior_completed = completed_through
             prior_completed_offset = completed_offset
             normalized_ledger.append(dict(row))
+        expected_compressed_raw_bytes = (
+            0
+            if normalized_seed_raw_reservation is None
+            else seed["size_bytes"]
+        )
         if (
             sum(
                 row["new_compressed_raw_bytes_read"]
@@ -3112,10 +3180,10 @@ def run_bounded_pilot_worker(
             or prior_completed_offset != seed_progress_next_record_offset
             or normalized_ledger[-1]["seed_parse_complete"] != seed_complete
             or raw_bytes - restored_prior_new_raw_read_bytes
-            != seed["size_bytes"]
+            != expected_compressed_raw_bytes
             or any(
                 row["new_compressed_raw_bytes_read"]
-                != (seed["size_bytes"] if index == 0 else 0)
+                != (expected_compressed_raw_bytes if index == 0 else 0)
                 for index, row in enumerate(normalized_ledger)
             )
         ):
@@ -4277,19 +4345,26 @@ def run_bounded_pilot_worker(
                         checkpoint_root, normalized_seed_spool_attestation
                     )
                     if resume_checkpoint_path is None:
-                        compressed_path = _safe_artifact_path(raw_root, seed)
                         current_directory_bytes = _checkpoint_directory_bytes(
                             checkpoint_root
                         )
                         projected_temporary_bytes = (
                             current_directory_bytes
-                            + normalized_seed_spool_attestation["decompressed"][
-                                "size_bytes"
-                            ]
+                            + (
+                                0
+                                if reuse_existing_seed_spool
+                                else normalized_seed_spool_attestation[
+                                    "decompressed"
+                                ]["size_bytes"]
+                            )
                             + _MAX_CHECKPOINT_BYTES
                         )
                         projected_gate = _resource_result(
-                            raw_bytes=raw_bytes + seed["size_bytes"],
+                            raw_bytes=(
+                                raw_bytes
+                                if reuse_existing_seed_spool
+                                else raw_bytes + seed["size_bytes"]
+                            ),
                             elapsed=current_process_elapsed(),
                             temporary_bytes=projected_temporary_bytes,
                             output_bytes=_MAX_CHECKPOINT_BYTES,
@@ -4303,31 +4378,52 @@ def run_bounded_pilot_worker(
                                 projected_gate.decision,
                                 suppress_checkpoint=True,
                             )
-                        compressed_raw_bytes_this_segment = seed["size_bytes"]
-                        # 失败路径保守按完整 source pass 计数，绝不低估审批量。
-                        raw_bytes += compressed_raw_bytes_this_segment
-                        spool_result = build_rib_decompressed_spool(
-                            compressed_path,
-                            expected_spool,
-                            expected_compressed_sha256=seed["file_sha256"],
-                            expected_compressed_size_bytes=seed["size_bytes"],
-                            max_temporary_bytes=(
-                                limits.max_temporary_bytes
-                                - current_directory_bytes
-                                - _MAX_CHECKPOINT_BYTES
-                            ),
-                            expected_decompressed_sha256=(
-                                normalized_seed_spool_attestation[
-                                    "decompressed"
-                                ]["sha256"]
-                            ),
-                            expected_decompressed_size_bytes=(
-                                normalized_seed_spool_attestation[
-                                    "decompressed"
-                                ]["size_bytes"]
-                            ),
-                        )
-                        seed_spool_binding = spool_result.checkpoint_binding()
+                        if reuse_existing_seed_spool:
+                            spool_identity = verify_rib_decompressed_spool(
+                                expected_spool,
+                                expected_decompressed_sha256=(
+                                    normalized_seed_spool_attestation[
+                                        "decompressed"
+                                    ]["sha256"]
+                                ),
+                                expected_decompressed_size_bytes=(
+                                    normalized_seed_spool_attestation[
+                                        "decompressed"
+                                    ]["size_bytes"]
+                                ),
+                            )
+                            seed_spool_binding = (
+                                spool_identity.checkpoint_binding()
+                            )
+                        else:
+                            compressed_path = _safe_artifact_path(raw_root, seed)
+                            compressed_raw_bytes_this_segment = seed["size_bytes"]
+                            # 失败路径保守按完整 source pass 计数，绝不低估审批量。
+                            raw_bytes += compressed_raw_bytes_this_segment
+                            spool_result = build_rib_decompressed_spool(
+                                compressed_path,
+                                expected_spool,
+                                expected_compressed_sha256=seed["file_sha256"],
+                                expected_compressed_size_bytes=seed["size_bytes"],
+                                max_temporary_bytes=(
+                                    limits.max_temporary_bytes
+                                    - current_directory_bytes
+                                    - _MAX_CHECKPOINT_BYTES
+                                ),
+                                expected_decompressed_sha256=(
+                                    normalized_seed_spool_attestation[
+                                        "decompressed"
+                                    ]["sha256"]
+                                ),
+                                expected_decompressed_size_bytes=(
+                                    normalized_seed_spool_attestation[
+                                        "decompressed"
+                                    ]["size_bytes"]
+                                ),
+                            )
+                            seed_spool_binding = (
+                                spool_result.checkpoint_binding()
+                            )
                     else:
                         if (
                             seed_spool_binding is None
@@ -4447,8 +4543,10 @@ def run_bounded_pilot_worker(
                             + record.raw_record.record_length
                         )
                         if (
-                            len(pending_seed_events) >= _SEED_BATCH_MAX_ROUTE_EVENTS
-                            or pending_seed_record_count >= _SEED_BATCH_MAX_RECORDS
+                            len(pending_seed_events)
+                            >= seed_batch_max_route_events
+                            or pending_seed_record_count
+                            >= seed_batch_max_records
                         ):
                             flush_seed_batch()
                     if not full_seed_checkpoint_enabled:

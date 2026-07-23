@@ -61,6 +61,8 @@ from backend.data_pipeline.research.resource_gate import (
     evaluate_resource_gate,
 )
 from backend.data_pipeline.research.rrc25_country_outage.bounded_pilot_worker import (
+    _DEFAULT_SEED_BATCH_MAX_RECORDS,
+    _DEFAULT_SEED_BATCH_MAX_ROUTE_EVENTS,
     BoundedPilotWorkerError,
     run_bounded_pilot_worker,
     validate_seed_spool_attestation,
@@ -939,6 +941,7 @@ def _seed_write_gate(
     prior_raw_read_bytes: int,
     planned_seed_checkpoint_seconds: float,
     resume: bool,
+    reuse_existing_seed_spool: bool = False,
     already_complete: bool = False,
     prior_checkpoint_size_bytes: int = 0,
 ) -> Mapping[str, Any]:
@@ -963,6 +966,12 @@ def _seed_write_gate(
             f"planned seed checkpoint 必须位于 (0,{MAX_SEED_CHECKPOINT_SECONDS:g}] 秒"
         )
     limits = effective_resource_limits(profile)
+    if not isinstance(reuse_existing_seed_spool, bool):
+        raise SeedWorkflowError("reuse existing seed spool 必须是布尔值")
+    if resume and reuse_existing_seed_spool:
+        raise SeedWorkflowError(
+            "reuse existing seed spool 只适用于 seed-start"
+        )
     spool_size_bytes = int(seed_spool_attestation["decompressed"]["size_bytes"])
     current_directory_bytes = _checkpoint_directory_bytes(checkpoint_directory)
     if (
@@ -972,7 +981,11 @@ def _seed_write_gate(
     ):
         raise SeedWorkflowError("prior checkpoint size 必须是非负整数")
     projected_new_raw_bytes = prior_raw_read_bytes
-    if not resume and not already_complete:
+    if (
+        not resume
+        and not already_complete
+        and not reuse_existing_seed_spool
+    ):
         projected_new_raw_bytes += seed_size_bytes
     # 420 秒解析预算之外为 batch flush、checkpoint 原子写入与只读复核保留
     # 60 秒；临时空间使用冻结的完整解压实测量，并为 checkpoint 实际字节
@@ -991,6 +1004,12 @@ def _seed_write_gate(
             current_directory_bytes + projected_output_bytes
         )
         projection_method = "conservative_estimate_with_runtime_exact_gate"
+    elif reuse_existing_seed_spool:
+        projected_output_bytes = MAX_SEED_CHECKPOINT_BYTES
+        projected_temporary_bytes = (
+            current_directory_bytes + projected_output_bytes
+        )
+        projection_method = "verified_existing_spool_plus_checkpoint"
     else:
         projected_temporary_bytes = (
             current_directory_bytes
@@ -1094,6 +1113,13 @@ def _seed_context(
             maximum_bytes=128 * 1024 * 1024,
         )
     )
+    reuse_existing_seed_spool = bool(
+        getattr(args, "reuse_existing_seed_spool", False)
+    )
+    if reuse_existing_seed_spool and resume_checkpoint_path is not None:
+        raise SeedWorkflowError(
+            "--reuse-existing-seed-spool 只适用于 seed-start"
+        )
 
     checkpoint_directory = _checked_directory(
         args.checkpoint_directory,
@@ -1224,6 +1250,7 @@ def _seed_context(
         prior_raw_read_bytes=prior_raw_read_bytes,
         planned_seed_checkpoint_seconds=args.planned_seed_checkpoint_seconds,
         resume=resume_checkpoint_path is not None,
+        reuse_existing_seed_spool=reuse_existing_seed_spool,
         already_complete=(
             prior_verification is not None
             and prior_verification["position"]["phase"] == "updates"
@@ -1251,6 +1278,7 @@ def _seed_context(
         "seed_raw_reservation": seed_raw_reservation,
         "seed_raw_ledger": seed_raw_ledger,
         "seed_reconciliation": seed_reconciliation,
+        "reuse_existing_seed_spool": reuse_existing_seed_spool,
         "resource_gate": resource_gate,
     }
 
@@ -1271,6 +1299,9 @@ def _seed_public_plan(context: Mapping[str, Any]) -> Mapping[str, Any]:
         "ok": bool(gate["execution_allowed"]),
         "schema_version": "rrc25-iran-full-seed-plan/v1",
         "opens_raw_mrt": False,
+        "reuse_existing_seed_spool": bool(
+            context.get("reuse_existing_seed_spool", False)
+        ),
         "already_complete": already_complete,
         "database_connections": 0,
         "database_write_operations": 0,
@@ -1592,9 +1623,18 @@ def _run_seed_segment_locked(
     clock: Any = time.monotonic,
 ) -> tuple[Mapping[str, Any], int]:
     process_started_at = _process_clock_start(clock=clock)
+    reuse_existing_seed_spool = bool(
+        getattr(args, "reuse_existing_seed_spool", False)
+    )
+    if resume and reuse_existing_seed_spool:
+        raise SeedWorkflowError(
+            "--reuse-existing-seed-spool 只适用于 seed-start"
+        )
     context = _seed_context(
         args,
-        require_empty_checkpoint_directory=not resume,
+        require_empty_checkpoint_directory=(
+            not resume and not reuse_existing_seed_spool
+        ),
         resume_checkpoint_path=(args.resume_checkpoint if resume else None),
         reconcile_abandoned_seed=True,
     )
@@ -1651,7 +1691,7 @@ def _run_seed_segment_locked(
         }, exit_code
     seed_artifact = context["selection"]["roles"]["state_seed_rib"]
     active_seed_reservation = context.get("seed_raw_reservation")
-    if not resume:
+    if not resume and not reuse_existing_seed_spool:
         try:
             active_seed_reservation = reserve_seed_raw_attempt(
                 args.prepared_directory,
@@ -1682,13 +1722,20 @@ def _run_seed_segment_locked(
             )
             raise SeedWorkflowError("seed reservation 与 pre-open cumulative 不一致")
 
-    if not isinstance(active_seed_reservation, Mapping):
+    if (
+        not reuse_existing_seed_spool
+        and not isinstance(active_seed_reservation, Mapping)
+    ):
         raise SeedWorkflowError("seed worker 缺少 durable raw reservation")
+    if reuse_existing_seed_spool and active_seed_reservation is not None:
+        raise SeedWorkflowError(
+            "显式复用 seed spool 时不得携带压缩 raw reservation"
+        )
 
     def close_unknown_seed_reservation(
         *, failure_type: str, failure_message: str
     ) -> Mapping[str, Any] | None:
-        if resume:
+        if resume or reuse_existing_seed_spool:
             return None
         return close_seed_raw_attempt(
             args.prepared_directory,
@@ -1719,6 +1766,17 @@ def _run_seed_segment_locked(
             prior_new_raw_read_bytes=context["prior_new_raw_read_bytes"],
             prior_raw_accounting=context["prior_raw_accounting"],
             seed_raw_reservation=active_seed_reservation,
+            reuse_existing_seed_spool=reuse_existing_seed_spool,
+            seed_batch_max_route_events=getattr(
+                args,
+                "seed_batch_max_route_events",
+                _DEFAULT_SEED_BATCH_MAX_ROUTE_EVENTS,
+            ),
+            seed_batch_max_records=getattr(
+                args,
+                "seed_batch_max_records",
+                _DEFAULT_SEED_BATCH_MAX_RECORDS,
+            ),
             stop_after_seed=True,
             resource_limits=limits,
             clock=clock,
@@ -1760,12 +1818,18 @@ def _run_seed_segment_locked(
             "code_identity_sha256": args.code_sha256,
             "database_connections": 0,
             "database_write_operations": 0,
-            "opens_raw_mrt": not resume,
+            "opens_raw_mrt": (
+                not resume and not reuse_existing_seed_spool
+            ),
             "opens_update_mrt": False,
             "resource_observation": dict(worker.resources),
             "process_runtime": after_failure,
             "prior_new_raw_read_bytes": context["prior_new_raw_read_bytes"],
-            "seed_raw_reservation": dict(active_seed_reservation),
+            "seed_raw_reservation": (
+                dict(active_seed_reservation)
+                if active_seed_reservation is not None
+                else None
+            ),
             "seed_raw_ledger_outcome": seed_ledger_outcome,
         }, (_runtime_exit_code(after_failure) or 4)
     if worker.checkpoint_path is None:
@@ -1800,12 +1864,18 @@ def _run_seed_segment_locked(
             "code_identity_sha256": args.code_sha256,
             "database_connections": 0,
             "database_write_operations": 0,
-            "opens_raw_mrt": not resume,
+            "opens_raw_mrt": (
+                not resume and not reuse_existing_seed_spool
+            ),
             "opens_update_mrt": False,
             "resource_observation": dict(worker.resources),
             "process_runtime": after_worker,
             "prior_new_raw_read_bytes": context["prior_new_raw_read_bytes"],
-            "seed_raw_reservation": dict(active_seed_reservation),
+            "seed_raw_reservation": (
+                dict(active_seed_reservation)
+                if active_seed_reservation is not None
+                else None
+            ),
             "seed_raw_ledger_outcome": seed_ledger_outcome,
         }, worker_runtime_exit
     try:
@@ -1830,7 +1900,7 @@ def _run_seed_segment_locked(
             ) from close_error
         raise
     seed_ledger_outcome = None
-    if not resume:
+    if not resume and not reuse_existing_seed_spool:
         seed_ledger_outcome = close_seed_raw_attempt(
             args.prepared_directory,
             args.probe_ledger_terminal,
@@ -1874,12 +1944,19 @@ def _run_seed_segment_locked(
         "code_identity_sha256": args.code_sha256,
         "database_connections": 0,
         "database_write_operations": 0,
+        "opens_raw_mrt": (
+            not resume and not reuse_existing_seed_spool
+        ),
         "opens_update_mrt": False,
         "resource_observation": dict(worker.resources),
         "meaningful_progress": made_progress,
         "process_runtime": after_verify,
         "prior_new_raw_read_bytes": context["prior_new_raw_read_bytes"],
-        "seed_raw_reservation": dict(active_seed_reservation),
+        "seed_raw_reservation": (
+            dict(active_seed_reservation)
+            if active_seed_reservation is not None
+            else None
+        ),
         "seed_raw_ledger_outcome": seed_ledger_outcome,
         "checkpoint_lifecycle": _seed_checkpoint_lifecycle_policy(),
         "seed_spool_reclamation_eligibility": (
@@ -2005,6 +2082,24 @@ def _add_seed_execution_arguments(parser: argparse.ArgumentParser) -> None:
             "绑定的并行 native prefilter sidecar"
         ),
     )
+    parser.add_argument(
+        "--seed-batch-max-route-events",
+        type=int,
+        default=_DEFAULT_SEED_BATCH_MAX_ROUTE_EVENTS,
+        help=(
+            "seed 状态归并前最多暂存的 RouteEvent；默认 1048576，"
+            "用于避免反复重建完整状态"
+        ),
+    )
+    parser.add_argument(
+        "--seed-batch-max-records",
+        type=int,
+        default=_DEFAULT_SEED_BATCH_MAX_RECORDS,
+        help=(
+            "seed 状态归并前最多暂存的含目标事件 physical record；"
+            "默认 65536"
+        ),
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2044,6 +2139,14 @@ def build_parser() -> argparse.ArgumentParser:
         "seed-start", help="从 record ordinal 0 执行一个有界 seed 分段"
     )
     _add_seed_execution_arguments(seed_start)
+    seed_start.add_argument(
+        "--reuse-existing-seed-spool",
+        action="store_true",
+        help=(
+            "显式复用 checkpoint-directory 中与 attestation SHA/size "
+            "一致的完整解压 spool；不打开压缩 raw，seed-resume 不适用"
+        ),
+    )
     seed_resume = subparsers.add_parser(
         "seed-resume", help="从已验证 record-boundary checkpoint 续跑 seed"
     )

@@ -1349,6 +1349,222 @@ class BoundedPilotWorkerTests(unittest.TestCase):
                 resumed.resources["new_raw_read_bytes"], case["rib"]["size_bytes"]
             )
 
+    def test_full_seed_start_reuses_verified_spool_without_opening_raw(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            attestation = case["seed_spool_attestation"]
+            spool = bounded_pilot_worker._seed_spool_destination(
+                case["checkpoint_directory"], attestation
+            )
+            spool.write_bytes(gzip.decompress(case["rib_path"].read_bytes()))
+            case["rib_path"].unlink()
+            update_factory = mock.Mock(
+                side_effect=AssertionError("stop_after_seed 不得打开 UPDATE")
+            )
+
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "build_rib_decompressed_spool",
+                side_effect=AssertionError("复用模式不得重建 spool"),
+            ), mock.patch.object(
+                bounded_pilot_worker,
+                "_safe_artifact_path",
+                side_effect=AssertionError("复用模式不得打开压缩 raw"),
+            ):
+                result = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=attestation,
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=update_factory,
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256="a" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    seed_raw_reservation=None,
+                    reuse_existing_seed_spool=True,
+                    stop_after_seed=True,
+                    clock=lambda: 0.0,
+                )
+
+            update_factory.assert_not_called()
+            self.assertEqual(result.incomplete_reason, "stop_after_seed")
+            self.assertEqual(result.resources["new_raw_read_bytes"], 0)
+            checkpoint = _read_full_seed_checkpoint(result.checkpoint_path)
+            self.assertIsNone(
+                checkpoint["resources"]["seed_raw_reservation"]
+            )
+            self.assertEqual(
+                [
+                    row["new_compressed_raw_bytes_read"]
+                    for row in checkpoint["seed_read_ledger"]
+                ],
+                [0],
+            )
+            verified = bounded_pilot_worker.verify_full_seed_checkpoint(
+                result.checkpoint_path,
+                selection=case["selection"],
+                country_mapping=case["mapping"],
+                seed_spool_attestation=attestation,
+                pilot_end_exclusive_utc=END,
+                code_identity_sha256="a" * 64,
+            )
+            self.assertTrue(verified["verified"])
+            self.assertEqual(
+                verified["resources"]["new_raw_read_bytes"], 0
+            )
+
+    def test_full_seed_start_rejects_reused_spool_identity_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            attestation = case["seed_spool_attestation"]
+            spool = bounded_pilot_worker._seed_spool_destination(
+                case["checkpoint_directory"], attestation
+            )
+            expected_size = attestation["decompressed"]["size_bytes"]
+            spool.write_bytes(b"\x00" * expected_size)
+            case["rib_path"].unlink()
+
+            with mock.patch.object(
+                bounded_pilot_worker,
+                "_safe_artifact_path",
+                side_effect=AssertionError("身份失败不得回退打开压缩 raw"),
+            ):
+                result = run_bounded_pilot_worker(
+                    case["selection"],
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=attestation,
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=case["checkpoint_directory"],
+                    code_identity_sha256="a" * 64,
+                    prior_raw_accounting=_probe_accounting(
+                        case["selection"], 0, "a" * 64
+                    ),
+                    seed_raw_reservation=None,
+                    reuse_existing_seed_spool=True,
+                    stop_after_seed=True,
+                    clock=lambda: 0.0,
+                )
+
+            self.assertEqual(
+                result.incomplete_reason,
+                "seed_rib_parse_or_integrity_failure",
+            )
+            self.assertEqual(
+                result.errors[0]["reason"], "spool_sha256_mismatch"
+            )
+            self.assertEqual(result.resources["new_raw_read_bytes"], 0)
+
+    def test_seed_batch_thresholds_preserve_legacy_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = _synthetic_worker_case(root)
+            peers = (
+                ("192.0.2.10", 64510),
+                ("192.0.2.20", 64520),
+                ("192.0.2.30", 64530),
+            )
+            rib_decompressed = b"".join(
+                (
+                    _mrt_record(_peer_index_payload(*peers), subtype=1),
+                    _rib_payload(
+                        "203.0.113.0/24",
+                        ((0, _path_bytes(2, 64510, 65001)),),
+                    ),
+                    _rib_payload(
+                        "198.51.100.0/24",
+                        ((1, _path_bytes(2, 64520, 65001)),),
+                    ),
+                    _rib_payload(
+                        "192.0.2.0/24",
+                        ((2, _path_bytes(2, 64530, 65001)),),
+                    ),
+                )
+            )
+            rib_compressed = gzip.compress(rib_decompressed, mtime=0)
+            case["rib_path"].write_bytes(rib_compressed)
+            rib = _artifact(
+                "rib",
+                case["rib"]["relative_path"],
+                rib_compressed,
+            )
+            manifest = {
+                "schema_version": 1,
+                "manifest_kind": "mrt_artifact_manifest",
+                "artifacts": [rib, case["update"]],
+                "manifest_fingerprint_sha256": hashlib.sha256(
+                    b"batch-equivalence-manifest"
+                ).hexdigest(),
+            }
+            verification = {
+                "verified": True,
+                "manifest_fingerprint_sha256": manifest[
+                    "manifest_fingerprint_sha256"
+                ],
+                "artifact_count": 2,
+            }
+            profile = {
+                "study_id": "iran-batch-equivalence-test",
+                "collector_id": "rrc25",
+                "country_code": "IR",
+                "window": {
+                    "start_utc": SLOT,
+                    "end_exclusive_utc": END,
+                    "granularity_seconds": 300,
+                },
+            }
+            selection = resolve_research_inputs(
+                manifest, verification, profile
+            )
+            attestation = _seed_spool_attestation(rib, rib_decompressed)
+            large_checkpoint = root / "large-batch-checkpoints"
+            large_checkpoint.mkdir()
+            code_identity = "a" * 64
+
+            def execute(checkpoint, *, events, records):
+                return run_bounded_pilot_worker(
+                    selection,
+                    artifact_root=root,
+                    country_mapping=case["mapping"],
+                    seed_spool_attestation=attestation,
+                    pilot_end_exclusive_utc=END,
+                    update_record_stream_factory=mock.Mock(),
+                    checkpoint_directory=checkpoint,
+                    code_identity_sha256=code_identity,
+                    prior_raw_accounting=_probe_accounting(
+                        selection, 0, code_identity
+                    ),
+                    seed_raw_reservation=_seed_reservation(
+                        selection, 0, code_identity
+                    ),
+                    seed_batch_max_route_events=events,
+                    seed_batch_max_records=records,
+                    stop_after_seed=True,
+                    clock=lambda: 0.0,
+                )
+
+            legacy = execute(
+                case["checkpoint_directory"], events=1, records=1
+            )
+            accelerated = execute(
+                large_checkpoint,
+                events=1_048_576,
+                records=65_536,
+            )
+            self.assertEqual(legacy.state, accelerated.state)
+            self.assertEqual(legacy.route_events, accelerated.route_events)
+            self.assertEqual(legacy.raw_audits, accelerated.raw_audits)
+            self.assertEqual(
+                legacy.tracked_prefixes, accelerated.tracked_prefixes
+            )
+            self.assertEqual(legacy.ambiguity, accelerated.ambiguity)
+
     def test_full_seed_planned_and_runtime_boundaries_include_checkpoint_write(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
