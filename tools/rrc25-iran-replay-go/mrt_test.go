@@ -52,8 +52,11 @@ func peerIndexFixture() []byte {
 	return mrtRecord(uint32(catchUpStart.Unix()), mrtTableDumpV2, peerIndexTable, payload.Bytes())
 }
 
-func ribFixture(prefix netip.Prefix, origin uint32) []byte {
-	attributes := attribute(0x40, 2, asPath(origin, 4))
+func ribFixtureWithExtra(prefix netip.Prefix, origin uint32, extra []byte) []byte {
+	attributes := bytes.Join([][]byte{
+		attribute(0x40, 2, asPath(origin, 4)),
+		extra,
+	}, nil)
 	payload := bytes.NewBuffer(nil)
 	_ = binary.Write(payload, binary.BigEndian, uint32(1))
 	payload.WriteByte(uint8(prefix.Bits()))
@@ -69,6 +72,10 @@ func ribFixture(prefix netip.Prefix, origin uint32) []byte {
 		subtype = ribIPv6Unicast
 	}
 	return mrtRecord(uint32(catchUpStart.Unix()), mrtTableDumpV2, subtype, payload.Bytes())
+}
+
+func ribFixture(prefix netip.Prefix, origin uint32) []byte {
+	return ribFixtureWithExtra(prefix, origin, nil)
 }
 
 func writeGzipArtifact(t *testing.T, rawRoot, relative string, content []byte, artifactTime, artifactType string) Artifact {
@@ -108,7 +115,11 @@ func TestSeedRIBRetainsOnlyDefiniteIRState(t *testing.T) {
 	rawRoot := t.TempDir()
 	stream := bytes.Join([][]byte{
 		peerIndexFixture(),
-		ribFixture(netip.MustParsePrefix("203.0.113.0/24"), 64500),
+		ribFixtureWithExtra(
+			netip.MustParsePrefix("203.0.113.0/24"),
+			64500,
+			attribute(0x80, 14, []byte{0x10, 0x2a}),
+		),
 		ribFixture(netip.MustParsePrefix("198.51.100.0/24"), 64496),
 		ribFixture(netip.MustParsePrefix("192.0.2.0/24"), 64497),
 	}, nil)

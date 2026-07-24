@@ -507,6 +507,59 @@ func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
 	return result, nil
 }
 
+func parseRIBOrigin(raw []byte) (originResult, error) {
+	var origin originResult
+	seen := false
+	for at := 0; at < len(raw); {
+		if at+3 > len(raw) {
+			return originResult{}, fmt.Errorf("RIB path attribute header truncated")
+		}
+		flags := raw[at]
+		attributeType := raw[at+1]
+		at += 2
+		if flags&0x0f != 0 {
+			return originResult{}, fmt.Errorf("RIB path attribute reserved flags set")
+		}
+		var length int
+		if flags&0x10 != 0 {
+			if at+2 > len(raw) {
+				return originResult{}, fmt.Errorf("RIB extended attribute length truncated")
+			}
+			length = int(binary.BigEndian.Uint16(raw[at : at+2]))
+			at += 2
+		} else {
+			length = int(raw[at])
+			at++
+		}
+		if at+length > len(raw) {
+			return originResult{}, fmt.Errorf("RIB path attribute %d out of bounds", attributeType)
+		}
+		value := raw[at : at+length]
+		at += length
+		if attributeType != 2 {
+			// RIB cohort 只消费 AS_PATH；其余属性仍严格校验 framing，
+			// 但不把 UPDATE 的 MP_REACH 语义错误套用到历史 RIB 属性。
+			continue
+		}
+		if seen {
+			return originResult{}, fmt.Errorf("duplicate RIB AS_PATH")
+		}
+		if flags&0xe0 != 0x40 {
+			return originResult{}, fmt.Errorf("invalid RIB AS_PATH flags")
+		}
+		parsed, err := parseASPath(value, 4)
+		if err != nil {
+			return originResult{}, err
+		}
+		origin = parsed
+		seen = true
+	}
+	if !seen {
+		return originResult{}, fmt.Errorf("RIB entry missing AS_PATH")
+	}
+	return origin, nil
+}
+
 func parseRIBRecord(
 	payload []byte,
 	subtype uint16,
@@ -564,15 +617,15 @@ func parseRIBRecord(
 			return err
 		}
 		quality.RIBEntries++
-		parsed, err := parseAttributes(attributes, 4)
+		origin, err := parseRIBOrigin(attributes)
 		if err != nil {
 			return err
 		}
-		if !parsed.OriginSeen || !parsed.Origin.Known {
+		if !origin.Known {
 			quality.RIBUnknownOrigins++
 			continue
 		}
-		switch mapping.Membership(parsed.Origin.ASN) {
+		switch mapping.Membership(origin.ASN) {
 		case MembershipIR:
 			key := RouteKey{
 				PeerIP:  peers[peerIndex].IP,
@@ -580,7 +633,7 @@ func parseRIBRecord(
 				AFI:     afi,
 				Prefix:  prefix,
 			}
-			baseline[key] = parsed.Origin.ASN
+			baseline[key] = origin.ASN
 			quality.RIBRetainedMembers++
 		case MembershipOther:
 			quality.RIBExplicitNonIR++
