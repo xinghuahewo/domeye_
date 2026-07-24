@@ -550,12 +550,12 @@ func buildChineseReport(state *ReplayState, incident Incident, quality Quality) 
 		quality.Status, quality.UpdateRouteEvents,
 	))
 	builder.WriteString("\n## 事件模型\n\n")
-	builder.WriteString(fmt.Sprintf("- onset：`%v`\n", incident.OnsetAt))
-	builder.WriteString(fmt.Sprintf("- detected：`%v`\n", incident.DetectedAt))
-	builder.WriteString(fmt.Sprintf("- peak：`%v`\n", incident.PeakAt))
-	builder.WriteString(fmt.Sprintf("- trough：`%v`\n", incident.TroughAt))
-	builder.WriteString(fmt.Sprintf("- partial recovery：`%v`\n", incident.PartialRecoveryAt))
-	builder.WriteString(fmt.Sprintf("- full recovery：`%v`\n", incident.FullRecoveryAt))
+	builder.WriteString(fmt.Sprintf("- onset：`%s`\n", optionalTime(incident.OnsetAt)))
+	builder.WriteString(fmt.Sprintf("- detected：`%s`\n", optionalTime(incident.DetectedAt)))
+	builder.WriteString(fmt.Sprintf("- peak：`%s`\n", optionalTime(incident.PeakAt)))
+	builder.WriteString(fmt.Sprintf("- trough：`%s`\n", optionalTime(incident.TroughAt)))
+	builder.WriteString(fmt.Sprintf("- partial recovery：`%s`\n", optionalTime(incident.PartialRecoveryAt)))
+	builder.WriteString(fmt.Sprintf("- full recovery：`%s`\n", optionalTime(incident.FullRecoveryAt)))
 	builder.WriteString(fmt.Sprintf("- recovery state：`%s`\n", incident.RecoveryState))
 	builder.WriteString("\n## 解释边界\n\n")
 	builder.WriteString("- 本报告只代表 RRC25 的控制面观测，不代表全球路由器或实际用户流量。\n")
@@ -563,6 +563,13 @@ func buildChineseReport(state *ReplayState, incident Incident, quality Quality) 
 	builder.WriteString("- 观察窗口止于北京时间 23:00，窗口外恢复不回填本次事件。\n")
 	builder.WriteString("- 时间先后不证明前兆导致主事件，也不支持政治、物理线路或行为意图归因。\n")
 	return builder.String()
+}
+
+func optionalTime(value *string) string {
+	if value == nil {
+		return "unknown"
+	}
+	return *value
 }
 
 func hashDeliverables(root string) (map[string]string, error) {
