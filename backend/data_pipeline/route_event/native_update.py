@@ -54,7 +54,7 @@ from .index import (
 
 
 NATIVE_UPDATE_PARSER_NAME = "native_bgp4mp_update"
-NATIVE_UPDATE_PARSER_VERSION = "1.1.0"
+NATIVE_UPDATE_PARSER_VERSION = "1.1.1"
 NATIVE_UPDATE_COMMAND_TOKEN = "in_process_native_bgp4mp_v1"
 NATIVE_UPDATE_EXECUTION_POLICY = "verified_in_process_source"
 
@@ -104,6 +104,7 @@ _ATTR_MP_UNREACH = 15
 _ATTR_EXT_COMMUNITIES = 16
 _ATTR_AS4_PATH = 17
 _ATTR_AS4_AGGREGATOR = 18
+_ATTR_AS_PATHLIMIT = 21
 _ATTR_LARGE_COMMUNITIES = 32
 _ATTR_ONLY_TO_CUSTOMER = 35
 _ATTR_DEVELOPMENT = 255
@@ -124,6 +125,7 @@ _KNOWN_ATTRIBUTES = frozenset(
         _ATTR_EXT_COMMUNITIES,
         _ATTR_AS4_PATH,
         _ATTR_AS4_AGGREGATOR,
+        _ATTR_AS_PATHLIMIT,
         _ATTR_LARGE_COMMUNITIES,
         _ATTR_ONLY_TO_CUSTOMER,
         _ATTR_DEVELOPMENT,
@@ -148,6 +150,7 @@ _ATTRIBUTE_BASE_FLAGS = {
     _ATTR_EXT_COMMUNITIES: frozenset((0xC0, 0xE0)),
     _ATTR_AS4_PATH: frozenset((0xC0, 0xE0)),
     _ATTR_AS4_AGGREGATOR: frozenset((0xC0, 0xE0)),
+    _ATTR_AS_PATHLIMIT: frozenset((0xC0, 0xE0)),
     _ATTR_LARGE_COMMUNITIES: frozenset((0xC0, 0xE0)),
     _ATTR_ONLY_TO_CUSTOMER: frozenset((0xC0, 0xE0)),
     _ATTR_DEVELOPMENT: frozenset((0x80, 0xC0, 0xE0)),
@@ -511,6 +514,7 @@ def _validate_attribute_value(attribute_type: int, value: bytes, asn_width: int)
         _ATTR_AGGREGATOR: asn_width + 4,
         _ATTR_ORIGINATOR_ID: 4,
         _ATTR_AS4_AGGREGATOR: 8,
+        _ATTR_AS_PATHLIMIT: 5,
         _ATTR_ONLY_TO_CUSTOMER: 4,
     }
     if attribute_type in exact and len(value) != exact[attribute_type]:

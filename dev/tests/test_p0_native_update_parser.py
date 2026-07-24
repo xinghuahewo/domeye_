@@ -377,6 +377,43 @@ class NativeUpdateParserTests(BgpdumpAdapterFixture):
             [("announce", "203.0.113.0/24")],
         )
 
+    def test_deprecated_as_pathlimit_is_strictly_validated_and_route_opaque(self):
+        frame = update_frame(
+            announces=("203.0.113.0/24",),
+            extra_attributes=(
+                attribute(0xE0, 21, b"\x14" + struct.pack("!I", 64867)),
+            ),
+        )
+        artifact = self.write_artifact((frame,))
+        record = tuple(
+            self.native_factory((artifact,))(normalized_artifact(artifact))
+        )[0]
+        self.assertEqual(
+            [(element.action, element.prefix) for element in record.elements],
+            [("announce", "203.0.113.0/24")],
+        )
+
+        malformed_cases = (
+            attribute(0x80, 21, b"\x14" + struct.pack("!I", 64867)),
+            attribute(0xE0, 21, b"\x14\x00\x00\xfd"),
+        )
+        for index, malformed_attribute in enumerate(malformed_cases):
+            with self.subTest(index=index):
+                malformed = update_frame(
+                    announces=("203.0.113.0/24",),
+                    extra_attributes=(malformed_attribute,),
+                )
+                malformed_artifact = self.write_artifact(
+                    (malformed,),
+                    name=f"updates.20260227.163{index}.gz",
+                )
+                with self.assertRaises(NativeUpdateIntegrityError):
+                    tuple(
+                        self.native_factory((malformed_artifact,))(
+                            normalized_artifact(malformed_artifact)
+                        )
+                    )
+
     def test_optional_development_attribute_is_opaque_but_well_known_form_is_rejected(self):
         frame = update_frame(
             announces=("203.0.113.0/24",),
