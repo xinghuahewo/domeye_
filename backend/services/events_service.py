@@ -16,7 +16,10 @@ from dateutil.relativedelta import relativedelta
 from config.data_window import resolve_query_now
 from config.database import conn_11, conn_13, conn_15
 from database.as_outage import get_as_outage_de
-from database.country_outage import get_country_outage_de
+from database.country_outage import (
+    get_country_outage_de,
+    get_country_outage_v2,
+)
 from database.hijack import get_hijack_de
 from database.leak_event import get_leak_de
 from database.prefix_outage import get_pre_outage_de
@@ -223,7 +226,7 @@ def _get_country_outage_detail(start_time, problem, event_id, source):
     if row is None:
         return {}
     country_name = row['country_chinese_name']
-    return {
+    detail = {
         'outage_country': country_name,
         'attacked_country': country_name,
         'total_as_num': row['total_as_num'],
@@ -234,6 +237,33 @@ def _get_country_outage_detail(start_time, problem, event_id, source):
         'event_info': row['event_info'],
         **_base_times(row),
     }
+    incident_id_v2 = _row_value(row, 'incident_id_v2')
+    if not incident_id_v2:
+        return detail
+    incident = get_country_outage_v2(
+        conn_15, incident_id=incident_id_v2
+    )
+    if not incident:
+        return detail
+    detail['event_model_v2'] = {
+        'incident_id': incident['incident_id'],
+        'detected_at': incident['detected_at'],
+        'onset_at': incident.get('onset_at'),
+        'peak_at': incident.get('peak_at'),
+        'trough_at': incident.get('trough_at'),
+        'partial_recovery_at': incident.get('partial_recovery_at'),
+        'full_recovery_at': incident.get('full_recovery_at'),
+        'observation_end_at': incident['observation_end_at'],
+        'duration_state': incident['duration_state'],
+        'recovery_state': incident['recovery_state'],
+        'cohort_id': incident['cohort_id'],
+        'peak_snapshot_id': incident.get('peak_snapshot_id'),
+        'trough_snapshot_id': incident.get('trough_snapshot_id'),
+        'algorithm_version': incident['algorithm_version'],
+        'milestones': incident.get('milestones', {}),
+        'legacy_ref': incident.get('legacy_ref'),
+    }
+    return detail
 
 
 def _get_hijack_detail(start_time, problem, event_id, source):

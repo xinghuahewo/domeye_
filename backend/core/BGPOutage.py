@@ -15,7 +15,7 @@ from utils.get_as_info import (
     get_as_descr,
     get_as_admin,
     get_as_country_cn
-    
+
 )
 from utils.get_other_info import get_private_as_city
 from utils.get_country_info import get_country_chinese_name
@@ -25,7 +25,13 @@ from utils.mail import send_outage_alert
 
 from database.prefix_outage import get_prefix_outage_id, prefix_outage_start, prefix_outage_end
 from database.as_outage import get_as_outage_id, as_outage_start, as_outage_end, as_outage_update
-from database.country_outage import get_country_outage_id, country_outage_start, country_outage_end, country_outage_update
+from database.country_outage import (
+    get_country_outage_id,
+    country_outage_start,
+    country_outage_end,
+    country_outage_update,
+    persist_country_outage_v2,
+)
 from database.event import event_start, event_end, event_as_outage_update, event_country_outage_update
 from database.utils import if_table_exist
 
@@ -39,6 +45,12 @@ from config.config import (
     COUNTRY_RESTORE_THRESHOLD
 )
 from config.logger import outage_logger
+from core.country_outage_v2 import (
+    build_live_observation,
+    legacy_peak_projection,
+    new_runtime_state,
+    reduce_live_observation,
+)
 
 prefix_blacklist = [
     "2607:fcd0:fa82::/127",
@@ -1161,6 +1173,7 @@ class BGPOutage:
         self.prefix_outage_event = {}
         self.as_outage_event = {}
         self.country_outage_event = {}
+        self.country_outage_v2_runtime = {}
 
         self.prefix_table = ""
         self.as_table = ""
@@ -1441,7 +1454,11 @@ class BGPOutage:
                 as_outage_id = list(self.as_outage_event[AS].keys())[0]
                 if self.as_outage_event[AS][as_outage_id]['if_change'] is True:
                     table = self.as_outage_event[AS][as_outage_id]['table']
-                    if if_table_exist(conn=self.conn, table_name=table):
+                    if (
+                        not self.country_outage_event[country][country_outage_id]
+                        .get("structured_v2", False)
+                        and if_table_exist(conn=self.conn, table_name=table)
+                    ):
                         as_outage_update(as_outage_event=self.as_outage_event, 
                                          source=SOURCE, 
                                          origin=AS,
@@ -2047,13 +2064,14 @@ class BGPOutage:
                         self.as_outage_event[origin][as_outage_id]['event_info'] = event_info
 
 
-    def __check_country_outage(self, country, t):
+    def __check_country_outage_legacy_disabled(self, country, t):
         """
-        检查国家中断
+        旧私有入口仅转发到 v2，原单槽恢复/独立峰值覆盖逻辑不可执行。
         Params:
             country: str
             t: str
         """
+        return self.__check_country_outage(country, t)
 
         if country in self.country_as.keys():
             outage_as_num = len(self.country_as[country]["outage_as_set"])
@@ -2223,6 +2241,222 @@ class BGPOutage:
                         self.country_outage_event[country][country_outage_id]['total_as_num'] = total_as_num
                         self.country_outage_event[country][country_outage_id]['if_change'] = True
 
+    def __check_country_outage(self, country, t):
+        """用结构化 Observation 驱动国家中断。
+
+        旧 Core 没有 Prefix×VP 人口，所以这里只能确认 ASN 层 onset/peak；
+        Prefix×VP 恢复证据缺失时 recovery 保持 unknown，不再单槽直接结束。
+        """
+
+        if country not in self.country_as:
+            return
+        outage_asns = sorted(
+            int(value)
+            for value in self.country_as[country]["outage_as_set"]
+        )
+        normal_asns = sorted(
+            int(value)
+            for value in self.country_as[country]["normal_as_set"]
+        )
+        current_population = sorted(set(outage_asns) | set(normal_asns))
+        if not current_population:
+            return
+
+        prior_runtime = self.country_outage_v2_runtime.get(country)
+        if prior_runtime is None:
+            prior_runtime = new_runtime_state(
+                source=SOURCE,
+                country_code=country,
+                collector_id="legacy_live",
+                baseline_asns=current_population,
+            )
+        observation = build_live_observation(
+            source=SOURCE,
+            country_code=country,
+            observed_at_local=t,
+            outage_asns=outage_asns,
+            normal_asns=normal_asns,
+            baseline_asns=prior_runtime["baseline_asns"],
+            collector_id="legacy_live",
+        )
+        reduced = reduce_live_observation(
+            prior_runtime,
+            observation,
+            damaged_ratio_threshold=COUNTRY_OUTAGE_THRESHOLD,
+            detection_confirm_slots=2,
+            recovery_confirm_slots=6,
+        )
+        next_runtime = reduced["state"]
+        incident = next_runtime.get("incident")
+        if incident is None:
+            self.country_outage_v2_runtime[country] = next_runtime
+            return
+
+        lifecycle_action = reduced["lifecycle_action"]
+        if lifecycle_action == "started":
+            started = time.time()
+            if self.country_as[country]["last_start_time"] != "":
+                last_start_time = datetime.datetime.strptime(
+                    self.country_as[country]["last_start_time"],
+                    "%Y-%m-%d %H:%M:%S",
+                )
+                start_time = datetime.datetime.strptime(
+                    t, "%Y-%m-%d %H:%M:%S"
+                )
+                if start_time.month != last_start_time.month:
+                    self.country_as[country]["country_outage_id"] = 0
+            country_outage_id = (
+                self.country_as[country]["country_outage_id"] + 1
+            )
+        else:
+            country_outage_id = self.country_as[country][
+                "country_outage_id"
+            ]
+            if country_outage_id <= 0:
+                raise RuntimeError("结构化 Incident 缺少旧 outage_id 投影")
+
+        country_chinese_name = get_country_chinese_name(
+            self.bgp_info.country, country
+        )
+        peak_observation = next_runtime["peak_observation"]
+        provisional = {
+            "total_as_num": peak_observation["cohort"][
+                "baseline_asn_count"
+            ],
+            "max_outage_as_num": peak_observation["asn_state"][
+                "affected_asn_count"
+            ],
+            "max_outage_as_ratio": peak_observation["asn_state"][
+                "affected_asn_ratio"
+            ],
+            "outage_level": "",
+        }
+        prior_event = self.country_outage_event.get(country, {}).get(
+            country_outage_id
+        )
+        if prior_event is not None:
+            provisional["outage_level"] = prior_event.get(
+                "outage_level", ""
+            )
+        self.country_outage_event.setdefault(country, {})[
+            country_outage_id
+        ] = provisional
+        outage_level, outage_level_descr = self.__country_outage_level(
+            country, country_outage_id
+        )
+        projection = legacy_peak_projection(
+            incident=incident,
+            peak_observation=peak_observation,
+            country_chinese_name=country_chinese_name,
+            outage_level=outage_level,
+            outage_level_descr=outage_level_descr,
+            outage_id=country_outage_id,
+        )
+        projection.update(
+            {
+                "if_change": lifecycle_action == "peak_updated",
+                "table": self.country_table,
+                "event_table": self.event_table,
+                "structured_v2": True,
+            }
+        )
+
+        # Repository 成功后才切换 Core 运行状态。任何半写失败都会 rollback
+        # 并抛出，不再被记录成“成功”。
+        persist_country_outage_v2(
+            conn=self.conn,
+            incident=incident,
+            episodes=[next_runtime["episode"]],
+            observations=reduced["persist_observations"],
+            legacy_table=self.country_table,
+            legacy_projection=projection,
+            legacy_source=SOURCE,
+            legacy_country=country,
+            legacy_outage_id=country_outage_id,
+        )
+        self.country_outage_v2_runtime[country] = next_runtime
+        self.country_outage_event[country][country_outage_id] = projection
+        self.country_as[country]["country_outage_id"] = country_outage_id
+        self.country_as[country]["is_outage_now"] = (
+            incident["recovery_state"] != "fully_recovered"
+        )
+
+        if lifecycle_action == "started":
+            event_info = projection["event_info"]
+            s_time = projection["s_time"]
+            detail_url = "{}/{}/{}/{}/{}".format(
+                "country_outage",
+                s_time,
+                country,
+                country_outage_id,
+                SOURCE,
+            )
+            is_domestic = country_chinese_name in ["中国"]
+            event_state = "judge" if is_domestic else "abroad"
+            outage_members = projection["outage_ases"]
+            attacked_as = (
+                "{} 等 {} 个AS发生路由状态异常，占固定 cohort 的 {:.2%}"
+            ).format(
+                outage_members[0],
+                projection["max_outage_as_num"],
+                projection["max_outage_as_ratio"],
+            )
+            event_start(
+                source=SOURCE,
+                event_type="国家中断",
+                level=projection["outage_level"],
+                s_time=s_time,
+                e_time=None,
+                duration=None,
+                attacker_as=attacked_as,
+                affected_prefix=None,
+                event_info=event_info,
+                detail_url=detail_url,
+                attacker_org=None,
+                attacked_org=None,
+                attacker_country=country_chinese_name,
+                attacked_country=country_chinese_name,
+                state=event_state,
+                is_domestic=is_domestic,
+                conn=self.conn,
+                table=self.event_table,
+            )
+            outage_logger.info(
+                "成功定位结构化国家级路由中断事件:{}, 耗时{}秒".format(
+                    event_info, time.time() - started
+                )
+            )
+            send_outage_alert(
+                event_type="国家中断",
+                event_info=event_info,
+                detail_url=detail_url,
+                level=projection["outage_level"],
+                source=SOURCE,
+            )
+
+        if lifecycle_action == "fully_recovered":
+            detail_url = "{}/{}/{}/{}/{}".format(
+                "country_outage",
+                projection["s_time"],
+                country,
+                country_outage_id,
+                SOURCE,
+            )
+            if if_table_exist(
+                conn=self.conn, table_name=self.event_table
+            ):
+                event_end(
+                    detail_url=detail_url,
+                    e_time=projection["e_time"],
+                    duration=projection["duration"],
+                    conn=self.conn,
+                    table=self.event_table,
+                )
+            self.country_as[country]["last_start_time"] = projection[
+                "s_time"
+            ]
+            del self.country_outage_event[country][country_outage_id]
+
     def __prefix_outage_level(self, prefix):
         """
         评定前缀中断的级别
@@ -2321,4 +2555,3 @@ class BGPOutage:
             level = 'low'
             descr_info = '仅仅是一个可能的中断或者轻微的中断。'
         return level, descr_info
-    

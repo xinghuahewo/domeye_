@@ -7,6 +7,39 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.logger import database_logger
 from database.utils import if_table_exist, time_cost
+from psycopg2 import sql
+from database.country_outage_v2_repository import (
+    CountryOutageV2RepositoryError,
+    create_v2_tables,
+    get_v2,
+    identifier,
+    persist_v2,
+)
+
+
+COUNTRY_OUTAGE_INCIDENT_V2_TABLE = "country_outage_incident_v2"
+COUNTRY_OUTAGE_EPISODE_V2_TABLE = "country_outage_episode_v2"
+COUNTRY_OUTAGE_OBSERVATION_V2_TABLE = "country_outage_observation_v2"
+CountryOutageRepositoryError = CountryOutageV2RepositoryError
+_identifier = identifier
+
+
+def create_country_outage_v2_tables(conn):
+    """兼容入口：创建全局 Incident/Episode/Observation v2 表。"""
+
+    return create_v2_tables(conn)
+
+
+def persist_country_outage_v2(**kwargs):
+    """兼容入口：单事务持久化 v2 和旧字段投影。"""
+
+    return persist_v2(**kwargs)
+
+
+def get_country_outage_v2(conn, *, incident_id=None, legacy_ref=None):
+    """兼容入口：读取结构化 Incident v2。"""
+
+    return get_v2(conn, incident_id=incident_id, legacy_ref=legacy_ref)
 
 @time_cost
 def create_country_outage_table(conn, country_outage_table):
@@ -16,8 +49,9 @@ def create_country_outage_table(conn, country_outage_table):
     :param country_outage_table: country outage table name
     :return:
     """
+    table_identifier = _identifier(country_outage_table)
     cursor = conn.cursor()
-    sql = """
+    create_sql = sql.SQL("""
         CREATE TABLE if not exists {}(
         source                  varchar(8), 
         country		            varchar(100),
@@ -32,26 +66,53 @@ def create_country_outage_table(conn, country_outage_table):
         max_outage_as_num		int not NULL,
         total_as_num	        int not NULL,
         outage_ases	            jsonb,
-        event_info              text, 
+        event_info              text,
+        incident_id_v2          text,
+        peak_snapshot_id        text,
+        legacy_semantics        jsonb,
         primary key(source, country, outage_id)
         );
-        """.format(country_outage_table)
-    cursor.execute(sql)
+        """).format(table_identifier)
+    cursor.execute(create_sql)
+    cursor.execute(
+        sql.SQL("ALTER TABLE {} ADD COLUMN IF NOT EXISTS incident_id_v2 text").format(
+            table_identifier
+        )
+    )
+    cursor.execute(
+        sql.SQL("ALTER TABLE {} ADD COLUMN IF NOT EXISTS peak_snapshot_id text").format(
+            table_identifier
+        )
+    )
+    cursor.execute(
+        sql.SQL("ALTER TABLE {} ADD COLUMN IF NOT EXISTS legacy_semantics jsonb").format(
+            table_identifier
+        )
+    )
     conn.commit()
     
     # 创建优化索引
     try:
         # 复合索引优化主键查询和时间范围查询
-        cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_{country_outage_table}_source_country_time 
-            ON {country_outage_table} (source, country, s_time DESC, e_time DESC)
-        """)
+        cursor.execute(
+            sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {} "
+                    "(source, country, s_time DESC, e_time DESC)").format(
+                _identifier(
+                    "idx_" + country_outage_table + "_source_country_time"
+                ),
+                table_identifier,
+            )
+        )
         
         # 按中断等级查询优化
-        cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_{country_outage_table}_level_time 
-            ON {country_outage_table} (outage_level, s_time DESC) WHERE outage_level IS NOT NULL
-        """)
+        cursor.execute(
+            sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {} "
+                    "(outage_level, s_time DESC) "
+                    "WHERE outage_level IS NOT NULL").format(
+                _identifier("idx_" + country_outage_table + "_level_time"),
+                table_identifier,
+            )
+        )
         
         conn.commit()
         database_logger.info(f'Successfully created optimized indexes for table {country_outage_table}')
@@ -61,6 +122,7 @@ def create_country_outage_table(conn, country_outage_table):
         conn.rollback()
     finally:
         cursor.close()
+    create_country_outage_v2_tables(conn)
 
 
 def get_country_outage_id(conn, country_outage_table):
@@ -241,14 +303,15 @@ def get_country_outage_de(conn, table, country, outage_id, source) -> list:
     row = list()
     if if_table_exist(conn, table):
         cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        sql = """
+        query = sql.SQL("""
             select country_chinese_name, total_as_num, s_time, e_time, duration, outage_level, max_outage_as_num,
-                   outage_level_descr, outage_ases, event_info
+                   outage_level_descr, outage_ases, event_info,
+                   incident_id_v2, peak_snapshot_id, legacy_semantics
             from {}
-            where country = '{}' and outage_id = '{}' and source = '{}';
-        """.format(table, country, outage_id, source)
+            where country = %s and outage_id = %s and source = %s;
+        """).format(_identifier(table))
         try:
-            cursor.execute(sql)
+            cursor.execute(query, (country, outage_id, source))
             row = cursor.fetchall()
         except Exception as e:
             database_logger.error(f'get country outage detail from table {table} failed: {e}')
@@ -368,6 +431,3 @@ def get_country_allocated_as_count(conn, country_code) -> int:
         return 0
     finally:
         cursor.close()
-
-
-
