@@ -8,6 +8,7 @@ from .events.api import (
     EventDetailResource,
     EventEvidenceBundleResource,
     EventListResource,
+    EventStoryResource,
     TopEventResource,
 )
 from .features.api import (
@@ -47,6 +48,10 @@ api.add_resource(TopEventResource, '/events/top')
 api.add_resource(
     EventEvidenceBundleResource,
     '/events/evidence-bundle/<event_type>/<start_time>/<problem>/<int:event_id>/<source>',
+)
+api.add_resource(
+    EventStoryResource,
+    '/events/story/<event_type>/<start_time>/<problem>/<int:event_id>/<source>',
 )
 api.add_resource(
     EventDetailResource,

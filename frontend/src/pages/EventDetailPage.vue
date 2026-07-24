@@ -2,13 +2,19 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-import { getEventEvidenceBundle } from '@/api/events'
+import {
+  getEventEvidenceBundle,
+  getEventStory,
+  parseEventReference,
+} from '@/api/events'
+import IranEventStory from '@/components/IranEventStory.vue'
 import PageState from '@/components/PageState.vue'
 import type {
   EvidenceBundle,
   EvidenceItem,
   EvidencePhase,
   EvidencePhaseCoverage,
+  EventStory,
   ParsedDetailRef,
 } from '@/types/api'
 import { cleanText, errorMessage, isRecord } from '@/utils/normalize'
@@ -32,6 +38,7 @@ const loading = ref(false)
 const error = ref('')
 const parsed = ref<ParsedDetailRef | null>(null)
 const bundle = ref<EvidenceBundle | null>(null)
+const story = ref<EventStory | null>(null)
 
 const reference = computed(() => typeof route.query.ref === 'string' ? route.query.ref : '')
 
@@ -136,10 +143,27 @@ async function load() {
   error.value = ''
   parsed.value = null
   bundle.value = null
+  story.value = null
   try {
-    const response = await getEventEvidenceBundle(reference.value)
-    parsed.value = response.parsed
-    bundle.value = response.bundle
+    const parsedReference = parseEventReference(reference.value)
+    const isIranAcceptanceEvent = parsedReference?.kind === 'country_outage'
+      && parsedReference.startTime === '2026-02-27 09:12:32'
+      && parsedReference.problem === 'IR'
+      && parsedReference.eventId === '1'
+      && parsedReference.source === 'r'
+    try {
+      const response = await getEventStory(reference.value)
+      parsed.value = response.parsed
+      story.value = response.story
+      return
+    } catch (storyCause) {
+      if (isIranAcceptanceEvent) {
+        throw new Error(`伊朗事件研究叙事暂不可用：${errorMessage(storyCause)}`)
+      }
+    }
+    const legacyResponse = await getEventEvidenceBundle(reference.value)
+    parsed.value = legacyResponse.parsed
+    bundle.value = legacyResponse.bundle
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -152,7 +176,7 @@ watch(reference, load, { immediate: true })
 
 <template>
   <article class="page evidence-page">
-    <header class="incident-header">
+    <header v-if="!story" class="incident-header">
       <div class="incident-title">
         <RouterLink class="back-link" to="/events">← 返回异常事件</RouterLink>
         <p class="eyebrow">事件研判 / Evidence Bundle</p>
@@ -196,6 +220,8 @@ watch(reference, load, { immediate: true })
       @retry="load"
     />
 
+    <IranEventStory v-else-if="story" :story="story" />
+
     <template v-else-if="bundle">
       <section class="evidence-boundary" aria-label="Legacy 与 P0 证据边界">
         <div>
@@ -209,9 +235,9 @@ watch(reference, load, { immediate: true })
           <p>未附 MRT / UPDATE 原始记录；AS_PATH 仅为路径观测快照。</p>
         </div>
         <div>
-          <span>P0 EVIDENCE v2</span>
-          <strong>6 SAMPLES · NOT FULL POPULATION</strong>
-          <p>当前 legacy 事件行未保留到 D4 样本注册表的稳定映射，因此本页不会假装回查 v2。</p>
+          <span>STATE EVIDENCE</span>
+          <strong>DIRECT LINKS ONLY</strong>
+          <p>逐槽状态与原始记录通过 Incident、RouteEvent 和 raw ref 直接关联；本页不合成额外证据包。</p>
         </div>
       </section>
 

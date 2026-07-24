@@ -3,7 +3,9 @@ import { CORE_EVENT_TYPES, type EventQuery, type ParsedDetailRef } from '@/types
 import {
   buildEvidenceEndpoint,
   buildDetailEndpoint,
+  buildStoryEndpoint,
   normalizeEvidenceBundle,
+  normalizeEventStory,
   normalizeEventArray,
   normalizeEventPage,
   parseDetailUrl,
@@ -32,6 +34,13 @@ export async function getEventEvidenceBundle(reference: string) {
   if (!parsed) throw new Error('事件详情引用无效')
   const payload = await apiGet<unknown>(buildEvidenceEndpoint(parsed))
   return { parsed, bundle: normalizeEvidenceBundle(payload) }
+}
+
+export async function getEventStory(reference: string) {
+  const parsed = parseDetailUrl(reference)
+  if (!parsed) throw new Error('事件详情引用无效')
+  const payload = await apiGet<unknown>(buildStoryEndpoint(parsed))
+  return { parsed, story: normalizeEventStory(payload) }
 }
 
 export const parseEventReference = (reference: string): ParsedDetailRef | null =>

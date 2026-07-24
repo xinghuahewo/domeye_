@@ -137,6 +137,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events/story/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 返回通过事件详情页产品合同验收的研究型事件叙事。结论显式限定 collector、固定 cohort、控制面范围、时间删失和因果边界；当前只为伊朗国家中断验收事件提供。 */
+        get: operations["getEventStory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
         parameters: {
             query?: never;
@@ -608,6 +625,52 @@ export interface components {
             event_info: string;
         } & {
             [key: string]: unknown;
+        };
+        EventStory: {
+            /** @constant */
+            schema_version: "event_detail_story_v1";
+            contract_scope: {
+                [key: string]: unknown;
+            };
+            event: {
+                [key: string]: unknown;
+            };
+            observation: {
+                [key: string]: unknown;
+            };
+            baseline: {
+                [key: string]: unknown;
+            };
+            detection: {
+                [key: string]: unknown;
+            };
+            impact: {
+                [key: string]: unknown;
+            };
+            series: {
+                [key: string]: unknown;
+            }[];
+            lifecycle: {
+                [key: string]: unknown;
+            };
+            precursor: {
+                [key: string]: unknown;
+            };
+            comparisons: {
+                [key: string]: unknown;
+            }[];
+            claims: {
+                [key: string]: unknown;
+            }[];
+            unknowns: {
+                [key: string]: unknown;
+            }[];
+            actions: {
+                [key: string]: unknown;
+            }[];
+            evidence: {
+                [key: string]: unknown;
+            };
         };
         EvidenceBundle: {
             /** @constant */
@@ -3330,6 +3393,46 @@ export interface operations {
             };
             /** @description 业务事实记录不存在 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEventStory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_type: "country_outage";
+                start_time: string;
+                problem: string;
+                event_id: number;
+                source: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 事件产品叙事 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStory"];
+                };
+            };
+            /** @description 该事件尚未建立产品合同叙事 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 研究交付包不可用、未完成或校验失败 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

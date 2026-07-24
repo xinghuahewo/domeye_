@@ -1,0 +1,17 @@
+{
+  "description": "Domeye Core 任务完成时回检事件详情页产品合同。",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/event_detail_contract_review.py\"",
+            "timeout": 10,
+            "statusMessage": "回检事件详情页产品合同"
+          }
+        ]
+      }
+    ]
+  }
+}

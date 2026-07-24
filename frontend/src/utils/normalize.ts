@@ -15,6 +15,7 @@ import {
   type EvidencePhase,
   type EvidencePhaseCoverage,
   type EvidencePhaseStatus,
+  type EventStory,
   type EventKind,
   type EventLevel,
   type EventPage,
@@ -141,6 +142,33 @@ export const buildDetailEndpoint = (detail: ParsedDetailRef): string =>
 
 export const buildEvidenceEndpoint = (detail: ParsedDetailRef): string =>
   `events/evidence-bundle/${buildDetailEndpoint(detail)}`
+
+export const buildStoryEndpoint = (detail: ParsedDetailRef): string =>
+  `events/story/${buildDetailEndpoint(detail)}`
+
+export const normalizeEventStory = (payload: unknown): EventStory => {
+  if (!isRecord(payload)) throw new Error('事件叙事响应格式异常')
+  if (payload.status === false) {
+    throw new Error(cleanText(payload.msg) || '事件叙事暂不可用')
+  }
+  if (
+    payload.schema_version !== 'event_detail_story_v1'
+    || !isRecord(payload.event)
+    || !isRecord(payload.observation)
+    || !isRecord(payload.baseline)
+    || !isRecord(payload.detection)
+    || !isRecord(payload.impact)
+    || !Array.isArray(payload.series)
+    || !isRecord(payload.lifecycle)
+    || !Array.isArray(payload.claims)
+    || !Array.isArray(payload.unknowns)
+    || !Array.isArray(payload.actions)
+    || !isRecord(payload.evidence)
+  ) {
+    throw new Error('事件叙事响应缺少产品合同字段')
+  }
+  return payload as unknown as EventStory
+}
 
 const extractArray = (payload: unknown, context: string): unknown[] => {
   if (isRecord(payload) && payload.status === false) {

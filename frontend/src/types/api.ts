@@ -133,6 +133,232 @@ export interface EvidenceBundle {
   factRecord: Record<string, unknown>
 }
 
+export type StoryClaimLevel = 'fact' | 'derived' | 'inference' | 'unknown'
+
+export interface EventStorySnapshot {
+  snapshot_id: string
+  observed_at_utc: string
+  observed_at_local: string
+  affected_asn_count: number
+  affected_asn_ratio: number
+  fully_invisible_asn_count: number
+  partially_visible_asn_count: number
+  visible_origin_asn_count: number
+  visible_origin_asn_ratio: number
+  visible_prefix_vp_count: number
+  visible_prefix_vp_ratio: number
+  ipv4_visible_prefix_vp_count: number
+  ipv4_baseline_prefix_vp_count: number
+  ipv4_visible_prefix_vp_ratio: number
+  ipv4_visible_origin_asn_count: number
+  ipv4_baseline_origin_asn_count: number
+  ipv6_visible_prefix_vp_count: number
+  ipv6_baseline_prefix_vp_count: number
+  ipv6_visible_prefix_vp_ratio: number
+  ipv6_visible_origin_asn_count: number
+  ipv6_baseline_origin_asn_count: number
+  announce_count: number
+  withdraw_count: number
+}
+
+export interface EventStoryAffectedAsn {
+  asn: string
+  affected_slot_count: number
+  fully_invisible_slot_count: number
+  partially_visible_slot_count: number
+  first_affected_at: string
+  last_affected_at: string
+  first_affected_at_local: string
+  last_affected_at_local: string
+  end_classification: 'fully_visible' | 'partially_visible' | 'fully_invisible' | 'unknown'
+  baseline_prefix_vp_count: number
+  baseline_prefix_count: number
+  address_families: number[]
+}
+
+export interface EventStoryClaim {
+  claim_id: string
+  level: StoryClaimLevel
+  confidence: string
+  title: string
+  statement: string
+  scope: string
+  evidence_refs: string[]
+}
+
+export interface EventStoryUnknown {
+  question: string
+  reason: string
+  evidence_needed: string
+  next_action: string
+}
+
+export interface EventStory {
+  schema_version: 'event_detail_story_v1'
+  contract_scope: {
+    acceptance_event: boolean
+    event_types_covered: string[]
+    collector_scope: string[]
+    control_plane_only: boolean
+    causal_analysis_performed: boolean
+  }
+  event: {
+    incident_id: string
+    legacy_reference: string
+    legacy_record_time_local: string | null
+    kind: string
+    label: string
+    country_code: string
+    country_name: string
+    severity: string
+    status: string
+    status_label: string
+    headline: string
+    scope_statement: string
+    service_impact_statement: string
+  }
+  observation: {
+    collector_id: string
+    collector_count: number
+    vantage_point_count: number
+    vantage_point_count_semantics: string
+    window_start_utc: string
+    window_start_local: string
+    window_end_utc: string
+    window_end_local: string
+    timezone: string
+    observation_count: number
+    interval_seconds: number
+    left_censored: boolean
+    right_censored: boolean
+    coverage_state: string
+    coverage_statement: string
+    cohort: {
+      cohort_id: string
+      seed_observed_at_utc: string
+      seed_observed_at_local: string
+      baseline_origin_asn_count: number
+      baseline_prefix_vp_count: number
+      mapping_version: string
+      denominator_policy: string
+    }
+    data_freshness: {
+      last_observation_at_utc: string
+      last_observation_at_local: string
+      replay_completed_at_utc: string
+      replay_completed_at_local: string
+      quality_status: string
+    }
+  }
+  baseline: {
+    state: string
+    label: string
+    reason: string
+    known_population: {
+      origin_asn_count: number
+      prefix_vp_count: number
+    }
+    consequence: string
+  }
+  detection: {
+    rule: {
+      metric: string
+      threshold: number
+      confirm_observation_count: number
+      confirm_duration_seconds: number
+      statement: string
+    }
+    onset: {
+      at_utc: string
+      at_local: string
+      precision: string
+      statement: string
+    }
+    detected: {
+      at_utc: string
+      at_local: string
+      snapshot_id: string
+    }
+    legacy_record: {
+      at_local: string | null
+      semantics: string
+      not_event_onset: boolean
+    }
+  }
+  impact: {
+    peak: EventStorySnapshot
+    trough: EventStorySnapshot
+    window_start: EventStorySnapshot
+    window_end: EventStorySnapshot
+    peak_statement: string
+    trough_statement: string
+    end_statement: string
+    persistent_asns: EventStoryAffectedAsn[]
+    ranking_semantics: string
+  }
+  series: EventStorySnapshot[]
+  lifecycle: {
+    episode_count: number
+    wave_count: number
+    wave_causal_relation: string
+    current_state: string
+    current_state_label: string
+    duration_state: string
+    onset_at_local: string
+    detected_at_local: string
+    peak_at_local: string
+    trough_at_local: string
+    partial_recovery_at_local: string | null
+    full_recovery_at_local: string | null
+    observation_end_at_local: string
+    recovery_rule: string
+    rebound_statement: string
+  }
+  precursor: {
+    candidate_time_local: string | null
+    relation: string
+    causal_relation: string
+    statement: string
+  }
+  comparisons: Array<{
+    source: string
+    value: string
+    status: string
+    explanation: string
+  }>
+  claims: EventStoryClaim[]
+  unknowns: EventStoryUnknown[]
+  actions: Array<{
+    priority: number
+    label: string
+    reason: string
+  }>
+  evidence: {
+    engine_version: string
+    package_directory: string
+    quality_status: string
+    consumed_deliverable_hashes_verified: boolean
+    verified_hashes: Record<string, string>
+    route_state_file: {
+      filename: string
+      recorded_sha256: string
+      row_count: number
+      request_path_hash_reverified: boolean
+      statement: string
+    }
+    input_summary: {
+      rib_count: number
+      catch_up_update_count: number
+      formal_update_count: number
+      input_compressed_bytes: number
+      rib_physical_records: number
+      rib_entries: number
+      update_physical_records: number
+      update_route_events: number
+    }
+  }
+}
+
 export interface FeaturePoint {
   time: string
   announce: number | null

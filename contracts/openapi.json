@@ -107,6 +107,24 @@
         }
       }
     },
+    "/events/story/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+      "get": {
+        "operationId": "getEventStory",
+        "description": "返回通过事件详情页产品合同验收的研究型事件叙事。结论显式限定 collector、固定 cohort、控制面范围、时间删失和因果边界；当前只为伊朗国家中断验收事件提供。",
+        "parameters": [
+          {"name": "event_type", "in": "path", "required": true, "schema": {"type": "string", "const": "country_outage"}},
+          {"name": "start_time", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "problem", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "event_id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "source", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "事件产品叙事", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventStory"}}}},
+          "404": {"description": "该事件尚未建立产品合同叙事"},
+          "503": {"description": "研究交付包不可用、未完成或校验失败"}
+        }
+      }
+    },
     "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
       "get": {
         "operationId": "getEventDetail",
@@ -502,6 +520,28 @@
           "event_level": {"type": "string"}, "event_descr": {"type": "string"}, "event_info": {"type": "string"}
         },
         "additionalProperties": true
+      },
+      "EventStory": {
+        "type": "object",
+        "required": ["schema_version", "contract_scope", "event", "observation", "baseline", "detection", "impact", "series", "lifecycle", "precursor", "comparisons", "claims", "unknowns", "actions", "evidence"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "event_detail_story_v1"},
+          "contract_scope": {"type": "object", "additionalProperties": true},
+          "event": {"type": "object", "additionalProperties": true},
+          "observation": {"type": "object", "additionalProperties": true},
+          "baseline": {"type": "object", "additionalProperties": true},
+          "detection": {"type": "object", "additionalProperties": true},
+          "impact": {"type": "object", "additionalProperties": true},
+          "series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "lifecycle": {"type": "object", "additionalProperties": true},
+          "precursor": {"type": "object", "additionalProperties": true},
+          "comparisons": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "claims": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "unknowns": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "actions": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "evidence": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
       },
       "EvidenceBundle": {
         "type": "object",
