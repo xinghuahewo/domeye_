@@ -14,7 +14,6 @@ from backend.data_pipeline.route_event import scan_mrt_artifacts, verify_artifac
 from dev.data_quality import p0_quality_gate as cli
 from dev.tests.test_p0_quality_gate import (
     assert_schema_valid,
-    evidence_summary,
     metric_summary,
     reproducibility_summary,
     single_run_assurance_context_and_summary,
@@ -378,7 +377,6 @@ class QualityGateCliFixture:
         }
         payloads = {
             "route.json": route,
-            "evidence.json": evidence_summary(),
             "metric.json": metric_summary(),
             "repro.json": reproducibility_summary(with_route=True),
         }
@@ -419,7 +417,6 @@ class QualityGateCliFixture:
         if include_aux:
             for option, name in (
                 ("route", "route.json"),
-                ("evidence", "evidence.json"),
                 ("metric", "metric.json"),
                 ("reproducibility", "repro.json"),
             ):
@@ -441,10 +438,9 @@ class QualityGateCliFixture:
         d3_summary_sha = sha256(self.d3_summary)
 
         route_dir = self.base / "route-v1"
-        evidence_dir = self.base / "evidence-v1"
         metric_dir = self.base / "metric-v1"
         assurance_dir = self.base / "assurance-v1"
-        for directory in (route_dir, evidence_dir, metric_dir, assurance_dir):
+        for directory in (route_dir, metric_dir, assurance_dir):
             directory.mkdir()
 
         route = {
@@ -471,36 +467,6 @@ class QualityGateCliFixture:
         route_path = route_dir / "route-event-reconciliation-summary.json"
         route_path.write_bytes(canonical_bytes(route))
         route_checksums = write_checksums(route_dir, [route_path.name])
-
-        evidence = refingerprint_summary(
-            evidence_summary(), "evidence_reconciliation_fingerprint_v1"
-        )
-        evidence_path = evidence_dir / "evidence-reconciliation-summary.json"
-        evidence_path.write_bytes(canonical_bytes(evidence))
-        evidence_manifest = {
-            "candidate_fingerprint_sha256": "a" * 64,
-            "data_profile": deepcopy(PROFILE),
-            "inputs": {
-                "d2": {
-                    "candidate_fingerprint_sha256": d2[
-                        "candidate_fingerprint_sha256"
-                    ],
-                    "manifest_sha256": d2_manifest_sha,
-                },
-                "d3_artifacts": {
-                    "manifest_fingerprint_sha256": self.d3[
-                        "manifest_fingerprint_sha256"
-                    ],
-                    "manifest_sha256": d3_manifest_sha,
-                    "summary_sha256": d3_summary_sha,
-                },
-            },
-        }
-        evidence_manifest_path = evidence_dir / "manifest.json"
-        evidence_manifest_path.write_bytes(canonical_bytes(evidence_manifest))
-        evidence_checksums = write_checksums(
-            evidence_dir, [evidence_path.name, evidence_manifest_path.name]
-        )
 
         metric = refingerprint_summary(
             metric_summary(), "metric_reconciliation_summary_fingerprint_v1"
@@ -540,10 +506,6 @@ class QualityGateCliFixture:
             d3_manifest_sha=d3_manifest_sha,
             d3_summary_sha=d3_summary_sha,
             d3_closure=closure(self.d3_dir),
-            d4=evidence_manifest,
-            d4_manifest_sha=sha256(evidence_manifest_path),
-            d4_summary=evidence,
-            d4_closure=closure(evidence_dir),
             metric_manifest=metric_manifest,
             metric_manifest_sha=sha256(metric_manifest_path),
             metric_summary=metric,
@@ -572,9 +534,6 @@ class QualityGateCliFixture:
             [
                 "--route-summary", str(route_path),
                 "--route-checksums", str(route_checksums),
-                "--evidence-summary", str(evidence_path),
-                "--evidence-manifest", str(evidence_manifest_path),
-                "--evidence-checksums", str(evidence_checksums),
                 "--metric-summary", str(metric_path),
                 "--metric-manifest", str(metric_manifest_path),
                 "--metric-checksums", str(metric_checksums),
@@ -657,7 +616,7 @@ class QualityGateCliTest(unittest.TestCase):
     def test_single_run_assurance_rejects_unsigned_extra_candidate_file(self):
         output = self.base / "quality-single-run-extra"
         arguments = self.fixture.single_run_arguments(output)
-        (self.base / "evidence-v1" / "unsigned.tmp").write_text(
+        (self.base / "metric-v1" / "unsigned.tmp").write_text(
             "not signed\n", encoding="utf-8"
         )
 
@@ -670,14 +629,14 @@ class QualityGateCliTest(unittest.TestCase):
     def test_single_run_assurance_recomputes_reconciliation_fingerprint(self):
         output = self.base / "quality-single-run-fingerprint"
         arguments = self.fixture.single_run_arguments(output)
-        evidence_dir = self.base / "evidence-v1"
-        summary_path = evidence_dir / "evidence-reconciliation-summary.json"
+        metric_dir = self.base / "metric-v1"
+        summary_path = metric_dir / "metric-reconciliation-summary.json"
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         summary["summary_fingerprint_sha256"] = "0" * 64
         summary_path.write_bytes(canonical_bytes(summary))
         write_checksums(
-            evidence_dir,
-            ["evidence-reconciliation-summary.json", "manifest.json"],
+            metric_dir,
+            ["metric-reconciliation-summary.json", "manifest.json"],
         )
 
         status, _, stderr = self.invoke(arguments)
@@ -744,7 +703,7 @@ class QualityGateCliTest(unittest.TestCase):
         metric_path.write_bytes(canonical_bytes(metric))
         self.fixture.aux_checksums = write_checksums(
             self.fixture.aux_dir,
-            ["route.json", "evidence.json", "metric.json", "repro.json"],
+            ["route.json", "metric.json", "repro.json"],
         )
         output = self.base / "metric-schema-mismatch"
         status, _, stderr = self.invoke(self.fixture.arguments(output))
@@ -773,7 +732,6 @@ class QualityGateCliTest(unittest.TestCase):
         self.assertEqual((status, stderr), (1, ""))
         report = json.loads((output / "data-quality-report.json").read_text(encoding="utf-8"))
         self.assertEqual(report["gate"]["admission_level"], "not_accepted")
-        self.assertIn("completeness-evidence-contract", report["gate"]["blocking_failed_check_ids"])
         self.assertIn("completeness-metric-contract", report["gate"]["blocking_failed_check_ids"])
 
     def test_missing_route_alone_is_blocking_unknown_not_a_guessed_zero(self):

@@ -306,8 +306,10 @@ def get_country_outage_de(conn, table, country, outage_id, source) -> list:
         query = sql.SQL("""
             select country_chinese_name, total_as_num, s_time, e_time, duration, outage_level, max_outage_as_num,
                    outage_level_descr, outage_ases, event_info,
-                   incident_id_v2, peak_snapshot_id, legacy_semantics
-            from {}
+                   to_jsonb(country_row) ->> 'incident_id_v2' as incident_id_v2,
+                   to_jsonb(country_row) ->> 'peak_snapshot_id' as peak_snapshot_id,
+                   to_jsonb(country_row) -> 'legacy_semantics' as legacy_semantics
+            from {} as country_row
             where country = %s and outage_id = %s and source = %s;
         """).format(_identifier(table))
         try:

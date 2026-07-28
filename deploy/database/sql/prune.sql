@@ -43,6 +43,27 @@ END
 $block$;
 
 DO $block$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_class AS relation
+        JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        WHERE relation.relkind IN ('r', 'p', 'v', 'm')
+          AND namespace.nspname NOT IN ('public', 'info')
+          AND namespace.nspname NOT LIKE 'pg_%'
+          AND namespace.nspname <> 'information_schema'
+          AND namespace.nspname NOT IN (
+              '_timescaledb_catalog', '_timescaledb_config',
+              '_timescaledb_internal', '_timescaledb_cache',
+              'timescaledb_information', 'timescaledb_experimental'
+          )
+    ) THEN
+        RAISE EXCEPTION '候选库存在 public/info 之外的未授权用户 schema';
+    END IF;
+END
+$block$;
+
+DO $block$
 DECLARE
     family text;
     current_table text;

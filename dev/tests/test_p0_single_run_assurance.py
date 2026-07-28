@@ -109,7 +109,6 @@ class SingleRunAssuranceTest(unittest.TestCase):
         fixture = Fixture(self.root)
         d2 = fixture.d2("d2-final")
         d3 = fixture.d3("d3-final")
-        d4 = fixture.d4("d4-final", d2, d3)
         metric = fixture.metric("metric-final", d2, d3)
         fixture.d3_fingerprint = json.loads(
             (d3 / "p0-artifact-manifest.json").read_text(encoding="utf-8")
@@ -131,14 +130,13 @@ class SingleRunAssuranceTest(unittest.TestCase):
             started_at="2026-07-20T16:02:00+08:00",
             finished_at="2026-07-20T16:03:00+08:00",
         )
-        return d2, d3, d4, metric, route, sample_a, sample_b, evidence_a, evidence_b
+        return d2, d3, metric, route, sample_a, sample_b, evidence_a, evidence_b
 
     def args(self, values, output="assurance"):
-        d2, d3, d4, metric, route, sample_a, sample_b, evidence_a, evidence_b = values
+        d2, d3, metric, route, sample_a, sample_b, evidence_a, evidence_b = values
         return Namespace(
             d2_final=str(d2),
             d3_final=str(d3),
-            d4_final=str(d4),
             metric_final=str(metric),
             route_final=str(route),
             d2_sample_a=str(sample_a),
@@ -161,7 +159,7 @@ class SingleRunAssuranceTest(unittest.TestCase):
         )
         self.assertEqual(
             set(result["final_candidate_integrity"]["components"]),
-            {"d2", "d3", "d4", "metric", "route_event"},
+            {"d2", "d3", "metric", "route_event"},
         )
         self.assertTrue(all(result["cross_artifact_binding"]["checks"].values()))
         bounded = result["bounded_replay"]
@@ -206,7 +204,7 @@ class SingleRunAssuranceTest(unittest.TestCase):
 
     def test_same_sample_path_is_rejected_without_output(self):
         values = list(self.inputs())
-        values[6] = values[5]
+        values[5] = values[4]
         args = self.args(tuple(values))
 
         with self.assertRaisesRegex(assurance.AssuranceError, "同一路径"):
@@ -215,13 +213,13 @@ class SingleRunAssuranceTest(unittest.TestCase):
 
     def test_hardlinked_sample_files_are_rejected(self):
         values = list(self.inputs())
-        sample_a = values[5]
-        sample_b = values[6]
+        sample_a = values[4]
+        sample_b = values[5]
         for path in sample_b.iterdir():
             path.unlink()
             os.link(sample_a / path.name, path)
-        values[8] = execution_evidence(
-            values[8],
+        values[7] = execution_evidence(
+            values[7],
             sample_b,
             execution_id="sample-b-hardlink",
             started_at="2026-07-20T16:04:00+08:00",
@@ -235,7 +233,7 @@ class SingleRunAssuranceTest(unittest.TestCase):
 
     def test_execution_evidence_must_bind_current_candidate_closure(self):
         values = self.inputs()
-        evidence_path = values[7]
+        evidence_path = values[6]
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence["candidate_sha256sums_sha256"] = "0" * 64
         write_json(evidence_path, evidence)
@@ -247,7 +245,7 @@ class SingleRunAssuranceTest(unittest.TestCase):
 
     def test_execution_times_must_be_distinct_as_instants(self):
         values = self.inputs()
-        evidence_b_path = values[8]
+        evidence_b_path = values[7]
         evidence = json.loads(evidence_b_path.read_text(encoding="utf-8"))
         evidence["started_at"] = "2026-07-20T08:00:00Z"
         write_json(evidence_b_path, evidence)
@@ -259,7 +257,7 @@ class SingleRunAssuranceTest(unittest.TestCase):
 
     def test_route_profile_must_bind_final_d3(self):
         values = self.inputs()
-        route_dir = values[4]
+        route_dir = values[3]
         summary_path = route_dir / "route-event-reconciliation-summary.json"
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         summary["build_scope"]["data_profile"]["id"] = "another-profile"
@@ -273,7 +271,7 @@ class SingleRunAssuranceTest(unittest.TestCase):
 
     def test_runner_locator_may_differ_when_program_hash_is_identical(self):
         values = list(self.inputs())
-        for index, sample in ((5, values[5]), (6, values[6])):
+        for index, sample in ((4, values[4]), (5, values[5])):
             manifest_path = sample / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["source"]["provenance"].update(
@@ -286,16 +284,16 @@ class SingleRunAssuranceTest(unittest.TestCase):
             write_pretty_json(manifest_path, manifest)
             seal(sample)
             values[index] = sample
-        values[7] = execution_evidence(
-            values[7],
-            values[5],
+        values[6] = execution_evidence(
+            values[6],
+            values[4],
             execution_id="sample-a-relocated",
             started_at="2026-07-20T16:06:00+08:00",
             finished_at="2026-07-20T16:07:00+08:00",
         )
-        values[8] = execution_evidence(
-            values[8],
-            values[6],
+        values[7] = execution_evidence(
+            values[7],
+            values[5],
             execution_id="sample-b-relocated",
             started_at="2026-07-20T16:08:00+08:00",
             finished_at="2026-07-20T16:09:00+08:00",

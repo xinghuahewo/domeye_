@@ -22,6 +22,10 @@ export default defineConfig(({ mode }) => {
           target: apiProxyTarget,
           changeOrigin: true,
         },
+        '/api/v2': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+        },
       },
     },
     preview: {
@@ -29,6 +33,10 @@ export default defineConfig(({ mode }) => {
       port: Number(env.VITE_PORT || 28471),
       proxy: {
         '/api/v1': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+        },
+        '/api/v2': {
           target: apiProxyTarget,
           changeOrigin: true,
         },

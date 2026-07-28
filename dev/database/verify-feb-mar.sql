@@ -191,6 +191,12 @@ CREATE TEMP TABLE domeye_detail_reference_sample (
     month_suffix text NOT NULL
 ) ON COMMIT DROP;
 
+CREATE TEMP TABLE domeye_info_summary (
+    singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+    payload jsonb
+) ON COMMIT DROP;
+INSERT INTO domeye_info_summary(singleton, payload) VALUES (true, NULL);
+
 DO $block$
 DECLARE
     context domeye_dev_context%ROWTYPE;
@@ -266,13 +272,174 @@ BEGIN
           AND namespace.nspname NOT LIKE 'pg_%'
           AND namespace.nspname <> 'information_schema'
           AND namespace.nspname NOT IN (
-              'domeye_dev',
+              'domeye_dev', 'info',
               '_timescaledb_catalog', '_timescaledb_config',
               '_timescaledb_internal', '_timescaledb_cache',
               'timescaledb_information', 'timescaledb_experimental'
           )
     ) THEN
         RAISE EXCEPTION '开发库存在未授权的用户 schema 表';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'info') THEN
+        IF to_regclass('info.dataset_release') IS NULL
+           OR to_regclass('info.source_file') IS NULL THEN
+            RAISE EXCEPTION 'info schema 不完整';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM info.dataset_release AS release
+            WHERE release.source_release_label = context.release_id
+              AND release.status NOT IN ('loading', 'failed')
+              AND (
+                  SELECT count(*)
+                  FROM info.source_file AS source
+                  WHERE source.release_sk = release.release_sk
+              ) = 24
+        ) THEN
+            RAISE EXCEPTION 'info release 未与开发数据库 release-id/24 文件合同绑定';
+        END IF;
+        IF NOT has_schema_privilege(context.reader_role, 'info', 'USAGE')
+           OR NOT has_table_privilege(
+               context.reader_role,
+               'info.autonomous_system',
+               'SELECT'
+           )
+           OR has_table_privilege(
+               context.reader_role,
+               'info.as_contact',
+               'SELECT'
+           )
+           OR (
+               to_regclass('info.source_record') IS NOT NULL
+               AND has_table_privilege(
+                   context.reader_role,
+                   'info.source_record',
+                   'SELECT'
+               )
+           )
+           OR (
+               to_regclass('info.legacy_record') IS NOT NULL
+               AND has_table_privilege(
+                   context.reader_role,
+                   'info.legacy_record',
+                   'SELECT'
+               )
+           ) THEN
+            RAISE EXCEPTION '开发库 info 只读权限不符合最小授权';
+        END IF;
+        IF EXISTS (
+            SELECT 1
+            FROM info.schema_metadata
+            WHERE singleton
+              AND implementation_scope = 'all_24_files'
+        ) AND EXISTS (
+            SELECT 1
+            FROM info.source_file AS source
+            WHERE source.release_sk = (
+                SELECT release_sk
+                FROM info.dataset_release
+                WHERE source_release_label = context.release_id
+                ORDER BY release_sk DESC
+                LIMIT 1
+            )
+              AND (
+                  source.load_status <> 'loaded'
+                  OR source.loaded_record_count
+                     + source.quarantined_record_count
+                     <> source.logical_record_count
+                  OR (
+                      SELECT count(*)
+                      FROM info.source_record AS record
+                      WHERE record.release_sk = source.release_sk
+                        AND record.source_file_sk = source.source_file_sk
+                  ) <> source.logical_record_count
+                  OR (
+                      SELECT count(*)
+                      FROM info.source_record AS record
+                      WHERE record.release_sk = source.release_sk
+                        AND record.source_file_sk = source.source_file_sk
+                        AND record.disposition = 'accepted'
+                  ) <> source.loaded_record_count
+                  OR (
+                      SELECT count(*)
+                      FROM info.source_record AS record
+                      WHERE record.release_sk = source.release_sk
+                        AND record.source_file_sk = source.source_file_sk
+                        AND record.disposition = 'quarantined'
+                  ) <> source.quarantined_record_count
+              )
+        ) THEN
+            RAISE EXCEPTION '开发库 INFO 全 24 文件或来源账本未闭合';
+        END IF;
+        IF EXISTS (
+            SELECT 1
+            FROM info.source_record AS record
+            FULL OUTER JOIN info.quarantine AS quarantine
+              ON quarantine.release_sk = record.release_sk
+             AND quarantine.source_file_sk = record.source_file_sk
+             AND quarantine.source_row_no = record.source_row_no
+            WHERE coalesce(record.release_sk, quarantine.release_sk) = (
+                SELECT release_sk
+                FROM info.dataset_release
+                WHERE source_release_label = context.release_id
+                ORDER BY release_sk DESC
+                LIMIT 1
+            )
+              AND (
+                record.disposition = 'quarantined'
+                OR quarantine.quarantine_sk IS NOT NULL
+              )
+              AND (
+                record.source_row_no IS NULL
+                OR quarantine.quarantine_sk IS NULL
+                OR record.disposition <> 'quarantined'
+                OR record.reason_code IS DISTINCT FROM quarantine.reason_code
+                OR record.source_record_sha256 IS DISTINCT FROM
+                   quarantine.raw_record_sha256
+              )
+        ) THEN
+            RAISE EXCEPTION '开发库 INFO 隔离记录与来源账本不一致';
+        END IF;
+        IF EXISTS (
+            SELECT 1
+            FROM info.source_record AS record
+            CROSS JOIN LATERAL
+                jsonb_array_elements(record.quality_flags) AS flag
+            WHERE record.release_sk = (
+                SELECT release_sk
+                FROM info.dataset_release
+                WHERE source_release_label = context.release_id
+                ORDER BY release_sk DESC
+                LIMIT 1
+            )
+              AND coalesce((flag->>'blocking')::boolean, false)
+        ) THEN
+            RAISE EXCEPTION '开发库 INFO 存在未批准的阻断级质量标记';
+        END IF;
+        UPDATE domeye_info_summary
+        SET payload = (
+            SELECT jsonb_build_object(
+                'content_id', release.content_id,
+                'manifest_sha256', release.manifest_sha256,
+                'status', release.status,
+                'source_release_label', release.source_release_label,
+                'implementation_scope', metadata.implementation_scope,
+                'loaded_file_count', (
+                    SELECT count(*)
+                    FROM info.source_file AS source
+                    WHERE source.release_sk = release.release_sk
+                      AND source.load_status = 'loaded'
+                )
+            )
+            FROM info.dataset_release AS release
+            CROSS JOIN info.schema_metadata AS metadata
+            WHERE release.source_release_label = context.release_id
+              AND metadata.singleton
+            ORDER BY release.release_sk DESC
+            LIMIT 1
+        )
+        WHERE singleton;
     END IF;
 
     SELECT * INTO reader_record
@@ -436,6 +603,9 @@ SELECT jsonb_build_object(
     ),
     'reader_table_count', (
         SELECT count(*) FROM domeye_expected_table
+    ),
+    'static_info', (
+        SELECT payload FROM domeye_info_summary WHERE singleton
     ),
     'detail_reference_type_count', (
         SELECT count(*) FROM domeye_detail_reference_sample

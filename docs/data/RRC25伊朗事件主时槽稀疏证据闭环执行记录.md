@@ -256,7 +256,7 @@ verification       = verified
 
 - 216 个样本全部为 `unknown_after_gap`；
 - 数值基线为 `unknown / snapshot_state_gap`；
-- Episode、Wave、逐 ASN Episode 记录和 Research Evidence Package 均为 0；
+- Episode、Wave、逐 ASN Episode 记录均为 0；
 - 报告 11 项主张中，8 项 `unverifiable`、3 项 `hypothesis_only`；
 - 不能复算 `199/595`、`73/126`、旧数据库 `176/556`、IPv4 约 6% 降幅或恢复状态。
 

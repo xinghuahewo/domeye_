@@ -141,7 +141,6 @@ _REQUIRED_BUSINESS_SEQUENCE_PATHS = frozenset(
         "data/revised-episode-as-measurement-semantics.jsonl.gz",
         "data/revised-prefix-impact.jsonl.gz",
         "data/incident-episode-mappings.jsonl.gz",
-        "evidence/research-evidence-packages.jsonl.gz",
     }
 )
 _REQUIRED_BUSINESS_REPORT_PATH = (
@@ -162,7 +161,6 @@ _BUSINESS_NONEMPTY_SEQUENCE_PATHS = frozenset(
         "data/compatible-episode-as.jsonl.gz",
         "data/compatible-prefix-impact.jsonl.gz",
         "data/incident-episode-mappings.jsonl.gz",
-        "evidence/research-evidence-packages.jsonl.gz",
     }
 )
 
@@ -553,9 +551,6 @@ def _verify_business_package_gate(
             "rrc25-full-window-episode-prefix-impact/v1"
         ),
         "data/incident-episode-mappings.jsonl.gz": "incident-episode-mapping/v1",
-        "evidence/research-evidence-packages.jsonl.gz": (
-            "research-evidence-package/v1"
-        ),
     }
     verified_counts = {}
     for relative, schema in schema_by_path.items():

@@ -4,7 +4,6 @@ from flask_restful import Resource
 
 from services.p0_data_service import (
     P0DataError,
-    get_p0_evidence,
     get_p0_metric,
     get_p0_quality,
     get_p0_status,
@@ -30,13 +29,6 @@ class P0MetricResource(Resource):
 
     def get(self, metric_name):
         return _result(get_p0_metric, metric_name)
-
-
-class P0EvidenceResource(Resource):
-    """通过稳定 Incident ID 返回引用闭合的 Evidence Bundle v2。"""
-
-    def get(self, incident_id):
-        return _result(get_p0_evidence, incident_id)
 
 
 class P0QualityResource(Resource):

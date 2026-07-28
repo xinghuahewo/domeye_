@@ -37,6 +37,35 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'domeye_dev') THEN
         RAISE EXCEPTION 'domeye_dev schema 已存在，拒绝重复或跨版本裁剪';
     END IF;
+    IF EXISTS (
+        SELECT 1
+        FROM pg_class AS relation
+        JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        WHERE relation.relkind IN ('r', 'p', 'v', 'm')
+          AND namespace.nspname NOT IN ('public', 'info')
+          AND namespace.nspname NOT LIKE 'pg_%'
+          AND namespace.nspname <> 'information_schema'
+          AND namespace.nspname NOT IN (
+              '_timescaledb_catalog', '_timescaledb_config',
+              '_timescaledb_internal', '_timescaledb_cache',
+              'timescaledb_information', 'timescaledb_experimental'
+          )
+    ) THEN
+        RAISE EXCEPTION '开发候选库存在 public/info 之外的未授权用户 schema';
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'info') THEN
+        IF to_regclass('info.dataset_release') IS NULL THEN
+            RAISE EXCEPTION 'info schema 存在但缺少 dataset_release';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM info.dataset_release
+            WHERE source_release_label = :'release_id'
+              AND status NOT IN ('loading', 'failed')
+        ) THEN
+            RAISE EXCEPTION 'info release 未与开发数据库 release-id 绑定';
+        END IF;
+    END IF;
 END
 $block$;
 

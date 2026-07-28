@@ -1,0 +1,61 @@
+{
+  "schema_version": "country_outage_observation_registry_v1",
+  "observations": [
+    {
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+      "country": {
+        "code": "IR",
+        "name": "伊朗"
+      },
+      "display_name": "伊朗 BGP 路由观测",
+      "package_uri": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/state-replay-1805-2300-go-v1",
+      "collector_ids": [
+        "rrc25"
+      ],
+      "vantage_point_count": 96,
+      "interval_seconds": 300,
+      "revision": 1,
+      "publication_state": "published",
+      "observation_state": "state_complete",
+      "data_mode": "replay",
+      "data_through": "2026-02-28T15:00:00Z",
+      "updated_at": "2026-07-24T08:46:05Z",
+      "is_final": true,
+      "run_id": "20260723T094940Z-full-p0",
+      "artifact_set_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "route_state_row_count": 23094550,
+      "resource_source": {
+        "state": "available",
+        "country_name": "伊朗"
+      },
+      "capabilities": {
+        "legacy_summary": {
+          "state": "available"
+        },
+        "fixed_cohort": {
+          "state": "available"
+        },
+        "country_resources": {
+          "state": "available"
+        },
+        "update_activity": {
+          "state": "available"
+        },
+        "address_families": {
+          "state": "available"
+        },
+        "asn_matrix": {
+          "state": "available"
+        },
+        "audit": {
+          "state": "available"
+        },
+        "normal_band": {
+          "state": "unavailable",
+          "reason": "缺少可信正常参照"
+        }
+      }
+    }
+  ]
+}

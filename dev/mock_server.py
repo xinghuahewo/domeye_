@@ -20,6 +20,66 @@ FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "api-snapshot.json
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$")
 BUSINESS_TIMEZONE = ZoneInfo("Asia/Shanghai")
+EVENT_LABEL_KINDS = {
+    "前缀劫持": "hijack",
+    "子前缀劫持": "sub_hijack",
+    "前缀中断": "prefix_outage",
+    "AS中断": "as_outage",
+    "国家中断": "country_outage",
+    "路由泄漏": "leak",
+}
+
+
+def _semantic_guardrails(event_type, end_time=None):
+    event_kind = EVENT_LABEL_KINDS.get(event_type, event_type)
+    lifecycle_state = (
+        "unavailable"
+        if event_kind == "leak"
+        else (
+            "recorded"
+            if end_time not in (None, "", "-", "None", "NaT")
+            else "unknown"
+        )
+    )
+    blocked_claims = ["causal_conclusion"]
+    reason_codes = []
+    if event_kind == "leak":
+        blocked_claims.extend(["event_end", "duration", "recovery_state", "ongoing_state"])
+        reason_codes.append("legacy_leak_lifecycle_missing")
+    if event_kind == "prefix_outage":
+        blocked_claims.extend(["responsible_as", "causal_attribution"])
+        reason_codes.append("legacy_moas_attribution_bias")
+    ratio_state = (
+        "recompute_required"
+        if event_kind in ("as_outage", "country_outage")
+        else "not_applicable"
+    )
+    if ratio_state == "recompute_required":
+        blocked_claims.append("stored_ratio_as_authoritative")
+        reason_codes.append("legacy_ratio_recompute_required")
+    return {
+        "contract_version": "legacy_event_semantic_guardrails_v1",
+        "lifecycle_state": lifecycle_state,
+        "attribution_state": (
+            "legacy_biased"
+            if event_kind == "prefix_outage"
+            else "detector_fact_only"
+        ),
+        "ratio_state": ratio_state,
+        "blocked_claims": blocked_claims,
+        "reason_codes": reason_codes,
+    }
+
+
+def _decorate_event_item(item):
+    result = deepcopy(item)
+    if EVENT_LABEL_KINDS.get(result.get("event_type")) == "leak":
+        result["end_time"] = "-"
+    result["semantic_guardrails"] = _semantic_guardrails(
+        result.get("event_type"),
+        result.get("end_time"),
+    )
+    return result
 
 
 def load_fixture():
@@ -128,7 +188,10 @@ def _event_page(fixture, query):
     return {
         "total_page": math.ceil(len(rows) / page_size) if rows else 0,
         "record_count": str(len(rows)),
-        "data": rows[offset:offset + page_size],
+        "data": [
+            _decorate_event_item(row)
+            for row in rows[offset:offset + page_size]
+        ],
     }
 
 
@@ -172,7 +235,7 @@ def _top_events(fixture):
     for row in sorted(fixture["events"]["data"], key=lambda item: item["start_time"], reverse=True):
         if row["event_type"] in seen:
             continue
-        selected.append(deepcopy(row))
+        selected.append(_decorate_event_item(row))
         seen.add(row["event_type"])
     return selected[:10]
 
@@ -528,6 +591,10 @@ def _mock_evidence_bundle(path, fixture):
     if not detail or not event_id.isdigit():
         return None
     detail["start_time"] = start_time
+    detail["semantic_guardrails"] = _semantic_guardrails(
+        event_kind,
+        detail.get("end_time"),
+    )
 
     event_labels = {
         "hijack": "前缀劫持", "sub_hijack": "子前缀劫持",
@@ -560,17 +627,22 @@ def _mock_evidence_bundle(path, fixture):
     end_local, end_utc = _iso_times(detail.get("end_time"))
     snapshot_local, snapshot_utc = _iso_times(fixture["data_window"]["end_time"])
 
+    fact_record_identity = {
+        key: value
+        for key, value in detail.items()
+        if key != "semantic_guardrails"
+    }
     fact_identity = {
         "incident_id": incident_id,
         "source_record": source_record,
-        "fact_record": detail,
+        "fact_record": fact_record_identity,
     }
     evidence_items = [{
         "evidence_id": _stable_identifier("ev_v1_", fact_identity),
         "phase": "context", "kind": "fact_record",
         "label": "业务事实表原始记录", "source_field": "fact_record",
         "observed_at_local": start_local, "observed_at_utc": start_utc,
-        "field_count": len(detail), "semantics": "detector_fact_record",
+        "field_count": len(fact_record_identity), "semantics": "detector_fact_record",
     }]
     route_items = []
     route_items.extend(_mock_route_items(
@@ -627,6 +699,13 @@ def _mock_evidence_bundle(path, fixture):
         "当前证据包未附原始 BGP 报文，无法进行逐报文重放。",
         "路径快照只能说明被观测到的路径状态，不能单独证明异常根因。",
     ]
+    reason_codes = set(detail["semantic_guardrails"]["reason_codes"])
+    if "legacy_leak_lifecycle_missing" in reason_codes:
+        gaps.append("历史路由泄漏记录未保留结束时间和时长；不得据此判断恢复、持续中或已结束。")
+    if "legacy_moas_attribution_bias" in reason_codes:
+        gaps.append("历史前缀中断的 AS 归属存在 MOAS 选择偏置；只能展示检测器记录，不能认定责任主体。")
+    if "legacy_ratio_recompute_required" in reason_codes:
+        gaps.append("历史中断比例字段不作为权威事实；需要时必须使用当前返回的分子和分母重新计算。")
     for phase, label in (("before", "异常前"), ("during", "异常期间"), ("after", "异常后")):
         if phase_coverage[phase]["status"] == "not_available":
             gaps.append("{}路径快照缺失；这表示证据不可用，不表示该阶段没有路径。".format(label))
@@ -641,6 +720,7 @@ def _mock_evidence_bundle(path, fixture):
         "bundle_version": "evidence_bundle_v1",
         "incident_id": incident_id,
         "incident_id_schema": "incident_id_v1",
+        "semantic_guardrails": detail["semantic_guardrails"],
         "event": {
             "kind": event_kind, "label": event_labels[event_kind], "object": object_value,
             "level": str(detail.get("event_level") or ""),
@@ -737,6 +817,10 @@ def payload_for(path, query, fixture):
         if not detail:
             return {}
         detail["start_time"] = start_time
+        detail["semantic_guardrails"] = _semantic_guardrails(
+            event_kind,
+            detail.get("end_time"),
+        )
         return detail
     return None
 

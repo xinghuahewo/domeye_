@@ -15,7 +15,7 @@ acceptance_state=not_accepted
 
 前者表示本次请求的数据库优先工作流已经完整执行；后者表示尚未获得去重地址并集、
 同快照 ASN/前缀人口、逐 VP 连续状态和 RIB seed，因此没有生成正式
-`country-outage-sample/v1`、Episode/Wave 或 Evidence Bundle v2，也不能宣称
+`country-outage-sample/v1`、Episode/Wave 或完整状态引用链，也不能宣称
 状态级研究验收通过。
 
 本次可以确认：

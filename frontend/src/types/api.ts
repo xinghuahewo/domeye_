@@ -57,6 +57,15 @@ export type EvidencePhase = 'before' | 'during' | 'after' | 'context'
 export type EvidencePhaseStatus = 'not_available' | 'observed_no_path' | 'observed_paths'
 export type EvidenceKind = 'fact_record' | 'route_observation' | 'affected_object_set'
 
+export interface LegacyEventSemanticGuardrails {
+  contractVersion: 'legacy_event_semantic_guardrails_v1'
+  lifecycleState: 'recorded' | 'unknown' | 'unavailable'
+  attributionState: 'detector_fact_only' | 'legacy_biased'
+  ratioState: 'not_applicable' | 'recompute_required'
+  blockedClaims: string[]
+  reasonCodes: string[]
+}
+
 export interface EvidencePhaseCoverage {
   status: EvidencePhaseStatus
   snapshotCount: number
@@ -98,6 +107,7 @@ export interface EvidenceBundle {
   bundleVersion: 'evidence_bundle_v1'
   incidentId: string
   incidentIdSchema: 'incident_id_v1'
+  semanticGuardrails: LegacyEventSemanticGuardrails
   event: EvidenceEvent
   dataSnapshot: {
     snapshotTimeLocal: string | null
@@ -131,6 +141,560 @@ export interface EvidenceBundle {
     limitations: string[]
   }
   factRecord: Record<string, unknown>
+}
+
+export type StoryClaimLevel = 'fact' | 'derived' | 'inference' | 'unknown'
+
+export interface EventStorySnapshot {
+  snapshot_id: string
+  observed_at_utc: string
+  observed_at_local: string
+  affected_asn_count: number
+  affected_asn_ratio: number
+  fully_invisible_asn_count: number
+  partially_visible_asn_count: number
+  visible_origin_asn_count: number
+  visible_origin_asn_ratio: number
+  visible_prefix_vp_count: number
+  visible_prefix_vp_ratio: number
+  ipv4_visible_prefix_vp_count: number
+  ipv4_baseline_prefix_vp_count: number
+  ipv4_visible_prefix_vp_ratio: number
+  ipv4_visible_origin_asn_count: number
+  ipv4_baseline_origin_asn_count: number
+  ipv6_visible_prefix_vp_count: number
+  ipv6_baseline_prefix_vp_count: number
+  ipv6_visible_prefix_vp_ratio: number
+  ipv6_visible_origin_asn_count: number
+  ipv6_baseline_origin_asn_count: number
+  announce_count: number
+  withdraw_count: number
+}
+
+export interface EventStoryAffectedAsn {
+  asn: string
+  affected_slot_count: number
+  fully_invisible_slot_count: number
+  partially_visible_slot_count: number
+  first_affected_at: string
+  last_affected_at: string
+  first_affected_at_local: string
+  last_affected_at_local: string
+  end_classification: 'fully_visible' | 'partially_visible' | 'fully_invisible' | 'unknown'
+  baseline_prefix_vp_count: number
+  baseline_prefix_count: number
+  address_families: number[]
+}
+
+export interface EventStoryClaim {
+  claim_id: string
+  level: StoryClaimLevel
+  confidence: string
+  title: string
+  statement: string
+  scope: string
+  evidence_refs: string[]
+}
+
+export interface EventStoryUnknown {
+  question: string
+  reason: string
+  evidence_needed: string
+  next_action: string
+}
+
+export interface EventStory {
+  schema_version: 'event_detail_story_v1'
+  contract_scope: {
+    acceptance_event: boolean
+    event_types_covered: string[]
+    collector_scope: string[]
+    control_plane_only: boolean
+    causal_analysis_performed: boolean
+  }
+  event: {
+    incident_id: string
+    legacy_reference: string
+    legacy_record_time_local: string | null
+    kind: string
+    label: string
+    country_code: string
+    country_name: string
+    severity: string
+    status: string
+    status_label: string
+    headline: string
+    scope_statement: string
+    service_impact_statement: string
+  }
+  observation: {
+    collector_id: string
+    collector_count: number
+    vantage_point_count: number
+    vantage_point_count_semantics: string
+    window_start_utc: string
+    window_start_local: string
+    window_end_utc: string
+    window_end_local: string
+    timezone: string
+    observation_count: number
+    interval_seconds: number
+    left_censored: boolean
+    right_censored: boolean
+    coverage_state: string
+    coverage_statement: string
+    cohort: {
+      cohort_id: string
+      seed_observed_at_utc: string
+      seed_observed_at_local: string
+      baseline_origin_asn_count: number
+      baseline_prefix_vp_count: number
+      mapping_version: string
+      denominator_policy: string
+    }
+    data_freshness: {
+      last_observation_at_utc: string
+      last_observation_at_local: string
+      replay_completed_at_utc: string
+      replay_completed_at_local: string
+      quality_status: string
+    }
+  }
+  baseline: {
+    state: string
+    label: string
+    reason: string
+    known_population: {
+      origin_asn_count: number
+      prefix_vp_count: number
+    }
+    consequence: string
+  }
+  detection: {
+    rule: {
+      metric: string
+      threshold: number
+      confirm_observation_count: number
+      confirm_duration_seconds: number
+      statement: string
+    }
+    onset: {
+      at_utc: string
+      at_local: string
+      precision: string
+      statement: string
+    }
+    detected: {
+      at_utc: string
+      at_local: string
+      snapshot_id: string
+    }
+    legacy_record: {
+      at_local: string | null
+      semantics: string
+      not_event_onset: boolean
+    }
+  }
+  impact: {
+    peak: EventStorySnapshot
+    trough: EventStorySnapshot
+    window_start: EventStorySnapshot
+    window_end: EventStorySnapshot
+    peak_statement: string
+    trough_statement: string
+    end_statement: string
+    persistent_asns: EventStoryAffectedAsn[]
+    ranking_semantics: string
+  }
+  series: EventStorySnapshot[]
+  lifecycle: {
+    episode_count: number
+    wave_count: number
+    wave_causal_relation: string
+    current_state: string
+    current_state_label: string
+    duration_state: string
+    onset_at_local: string
+    detected_at_local: string
+    peak_at_local: string
+    trough_at_local: string
+    partial_recovery_at_local: string | null
+    full_recovery_at_local: string | null
+    observation_end_at_local: string
+    recovery_rule: string
+    rebound_statement: string
+  }
+  precursor: {
+    candidate_time_local: string | null
+    relation: string
+    causal_relation: string
+    statement: string
+  }
+  comparisons: Array<{
+    source: string
+    value: string
+    status: string
+    explanation: string
+  }>
+  claims: EventStoryClaim[]
+  unknowns: EventStoryUnknown[]
+  actions: Array<{
+    priority: number
+    label: string
+    reason: string
+  }>
+  evidence: {
+    engine_version: string
+    package_directory: string
+    quality_status: string
+    consumed_deliverable_hashes_verified: boolean
+    verified_hashes: Record<string, string>
+    route_state_file: {
+      filename: string
+      recorded_sha256: string
+      row_count: number
+      request_path_hash_reverified: boolean
+      statement: string
+    }
+    input_summary: {
+      rib_count: number
+      catch_up_update_count: number
+      formal_update_count: number
+      input_compressed_bytes: number
+      rib_physical_records: number
+      rib_entries: number
+      update_physical_records: number
+      update_route_events: number
+    }
+  }
+}
+
+export interface EventObservationExtreme {
+  metric: string
+  observed_at_utc: string
+  observed_at_local: string
+  value: number
+}
+
+export interface EventObservationSeriesPoint {
+  snapshot_id: string
+  observed_at_utc: string
+  observed_at_local: string
+  slot_state:
+    | 'observed'
+    | 'source_unavailable'
+    | 'processing_gap'
+    | 'parse_failed'
+    | 'not_observed'
+  missing_reason: string | null
+  visible_prefix_vp_count: number | null
+  invisible_prefix_vp_count: number | null
+  visible_prefix_vp_ratio: number | null
+  visible_prefix_vp_delta: number | null
+  visible_prefix_vp_ratio_delta_pp: number | null
+  visible_origin_asn_count: number | null
+  visible_origin_asn_ratio: number | null
+  visible_origin_asn_delta: number | null
+  fully_visible_asn_count: number | null
+  partially_visible_asn_count: number | null
+  fully_invisible_asn_count: number | null
+  non_fully_visible_asn_count: number | null
+  ipv4_visible_prefix_vp_count: number | null
+  ipv4_baseline_prefix_vp_count: number | null
+  ipv4_visible_prefix_vp_ratio: number | null
+  ipv4_visible_prefix_vp_delta: number | null
+  ipv6_visible_prefix_vp_count: number | null
+  ipv6_baseline_prefix_vp_count: number | null
+  ipv6_visible_prefix_vp_ratio: number | null
+  ipv6_visible_prefix_vp_delta: number | null
+  announce_count: number | null
+  withdraw_count: number | null
+  update_total: number | null
+  withdraw_ratio: number | null
+  announce_delta: number | null
+  withdraw_delta: number | null
+  country_announce_count: number | null
+  country_withdraw_count: number | null
+  country_update_total: number | null
+  country_withdraw_ratio: number | null
+  country_announce_delta: number | null
+  country_withdraw_delta: number | null
+}
+
+export interface EventObservationUpdatePoint {
+  observed_at_utc: string
+  observed_at_local: string
+  announce_count: number | null
+  withdraw_count: number | null
+  update_total: number | null
+  withdraw_ratio: number | null
+  announce_delta: number | null
+  withdraw_delta: number | null
+}
+
+export interface EventObservationResourcePoint {
+  observed_at_utc: string
+  observed_at_local: string
+  ipv4_24_equivalent_count: number | null
+  ipv6_48_equivalent_count: number | null
+  ipv4_address_count: number | null
+  announce_count: number | null
+  withdraw_count: number | null
+  update_total: number | null
+  withdraw_ratio: number | null
+  ipv4_24_equivalent_delta: number | null
+  ipv6_48_equivalent_delta: number | null
+  ipv4_address_delta: number | null
+  announce_delta: number | null
+  withdraw_delta: number | null
+}
+
+export interface EventObservationAsnTimeline {
+  asn: string
+  address_families: number[]
+  baseline_prefix_count: number
+  baseline_prefix_vp_count: number
+  states: number[]
+  state_slot_counts: {
+    fully_visible: number
+    partially_visible: number
+    fully_invisible: number
+    unknown: number
+  }
+  longest_fully_visible_slots: number
+  longest_partially_visible_slots: number
+  longest_fully_invisible_slots: number
+}
+
+export interface EventObservationCapability {
+  state: 'available' | 'building' | 'unavailable' | 'not_applicable'
+  reason?: string
+}
+
+export type CountryOutageObservationState =
+  | 'legacy_summary'
+  | 'aggregate_available'
+  | 'state_partial'
+  | 'state_complete'
+  | 'evidence_complete'
+
+export type CountryOutageDataMode = 'legacy' | 'replay' | 'live' | 'mixed'
+
+export interface CountryOutageProcessingStatus {
+  state: 'idle' | 'processing' | 'waiting_for_source' | 'failed' | 'final'
+  updated_at: string | null
+  attempted_through: string | null
+  reason: string | null
+  last_complete_data_through: string | null
+}
+
+export interface CountryOutageMissingSlot {
+  observed_at: string
+  slot_state:
+    | 'source_unavailable'
+    | 'processing_gap'
+    | 'parse_failed'
+    | 'not_observed'
+  missing_reason: string
+}
+
+export interface CountryOutageReleaseMetadata {
+  revision: number
+  publication_id: string
+  publication_state: string
+  observation_state: CountryOutageObservationState
+  data_mode: CountryOutageDataMode
+  data_through: string | null
+  updated_at: string | null
+  is_final: boolean
+  processing_status: CountryOutageProcessingStatus
+  missing_slot_count: number
+  incident_id: string
+  cohort_id: string | null
+  window_start_utc: string | null
+  window_end_utc: string | null
+  capability_contract_version: 'country_outage_capabilities_v1'
+}
+
+export interface EventObservationAudit extends CountryOutageReleaseMetadata {
+  schema_version: 'country_outage_audit_v2'
+  run_id?: string | null
+  artifact_set_id?: string | null
+  engine_version: string
+  algorithm_version: string | null
+  mapping_version: string | null
+  quality_status: string
+  source_system: string
+  source_table: string
+  source_reference: string
+  evidence_level: string
+  consumed_deliverable_hashes_verified: boolean
+  verified_hashes: Record<string, string>
+  route_state_file: {
+    filename: string | null
+    recorded_sha256: string | null
+    row_count: number | null
+    request_path_scanned: boolean
+  }
+  input_summary: {
+    rib_count: number | null
+    catch_up_update_count: number | null
+    formal_update_count: number | null
+    input_compressed_bytes: number | null
+    rib_physical_records: number | null
+    rib_entries: number | null
+    update_physical_records: number | null
+    update_route_events: number | null
+  }
+  revision_history?: Array<Record<string, unknown>>
+  supersedes_publication_id?: string | null
+  correction_reason?: string | null
+  missing_slots?: CountryOutageMissingSlot[]
+}
+
+export interface CountryOutageAsnPage extends CountryOutageReleaseMetadata {
+  schema_version: 'country_outage_asn_page_v2'
+  page: number
+  page_size: number
+  page_count: number
+  total: number
+  observed_at_utc: string[]
+  observed_at_local: string[]
+  state_codes: Record<string, string>
+  duration_histogram: Record<
+    'fully_visible' | 'partially_visible' | 'fully_invisible',
+    Record<string, number>
+  >
+  items: EventObservationAsnTimeline[]
+}
+
+export interface EventObservation {
+  schema_version: 'event_observation_v1' | 'country_outage_observation_v2'
+  revision?: number
+  publication_id?: string
+  publication_state?: string
+  observation_state?: CountryOutageObservationState
+  data_mode?: CountryOutageDataMode
+  data_through?: string | null
+  updated_at?: string | null
+  is_final?: boolean
+  processing_status?: CountryOutageProcessingStatus
+  missing_slot_count?: number
+  incident_id?: string
+  cohort_id?: string | null
+  window_start_utc?: string | null
+  window_end_utc?: string | null
+  capability_contract_version?: 'country_outage_capabilities_v1'
+  event_identity: {
+    incident_id: string
+    legacy_reference: string
+    legacy_record_time_local: string | null
+    event_type: string
+    country_code: string
+    country_name: string
+    display_name: string
+  }
+  observation_scope: {
+    collector_id: string
+    collector_ids?: string[]
+    collector_count: number
+    vantage_point_count: number | null
+    vantage_point_semantics: string
+    window_start_utc: string | null
+    window_start_local: string | null
+    window_end_utc: string | null
+    window_end_local: string | null
+    timezone: string
+    interval_seconds: number | null
+    observation_count: number
+    expected_observation_count: number | null
+    missing_observation_count?: number
+    quality_status: string
+    last_observation_at_utc: string | null
+    last_observation_at_local: string | null
+    replay_completed_at_utc: string | null
+    replay_completed_at_local: string | null
+    left_boundary: string
+    right_boundary: string
+  }
+  cohort: {
+    cohort_id: string
+    seed_observed_at_utc: string
+    seed_observed_at_local: string
+    origin_asn_count: number
+    prefix_vp_count: number
+    ipv4_prefix_vp_count: number | null
+    ipv6_prefix_vp_count: number | null
+    mapping_version: string
+    denominator_policy: string
+  } | null
+  normal_band: {
+    state: 'unavailable' | 'not_applicable'
+    label: string
+    reason: string
+  }
+  rule_marker: {
+    metric: string
+    threshold: number
+    consecutive_observation_count: number
+    interval_seconds: number
+    first_met_at_utc: string | null
+    first_met_at_local: string | null
+  } | null
+  capabilities?: Record<string, EventObservationCapability>
+  legacy_summary?: {
+    event_id: number
+    source: string
+    start_time_local: string | null
+    end_time_local: string | null
+    duration: string | null
+    total_asn_count: number | null
+    affected_asn_count: number | null
+    affected_asns: Array<string | number>
+    risk_level: string | null
+    description: string | null
+    summary: string | null
+  } | null
+  metric_definitions: Array<{
+    key: string
+    label: string
+    unit: string
+    population: string
+    definition: string
+  }>
+  series: EventObservationSeriesPoint[]
+  metric_extrema: Record<string, {
+    min: EventObservationExtreme | null
+    max: EventObservationExtreme | null
+  }>
+  resource_series: EventObservationResourcePoint[]
+  resource_metric_extrema: Record<string, {
+    min: EventObservationExtreme | null
+    max: EventObservationExtreme | null
+  }>
+  country_update_series: EventObservationUpdatePoint[]
+  country_update_metric_extrema: Record<string, {
+    min: EventObservationExtreme | null
+    max: EventObservationExtreme | null
+  }>
+  annotations: Array<{
+    kind: string
+    metric: string
+    observed_at_utc: string | null
+    observed_at_local: string | null
+    label: string
+    value: number | null
+    unit: string
+  }>
+  asn_state: {
+    state_codes: Record<string, string>
+    observed_at_utc: string[]
+    observed_at_local: string[]
+    timelines: EventObservationAsnTimeline[]
+  }
+  limitations: string[]
+  audit: EventObservationAudit | null
+  asn_page?: CountryOutageAsnPage
 }
 
 export interface FeaturePoint {

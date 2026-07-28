@@ -2,8 +2,8 @@
 """生成 P0 单份最终候选与 D2 有界 A/B 重放的 assurance 摘要。
 
 本程序不生成候选、不连接数据库、不读取原始 MRT。它只读复核一份最终
-D2/D3/D4/Metric/RouteEvent 候选，以及两份由外部执行产生的 D2 64 条样本
-候选。最终候选全部执行 SHA256 闭包校验；D3、D4、Metric 与 RouteEvent
+D2/D3/Metric/RouteEvent 候选，以及两份由外部执行产生的 D2 64 条样本
+候选。最终候选全部执行 SHA256 闭包校验；D3、Metric 与 RouteEvent
 执行各自完整的小型语义复核，最终 D2 只读取各 JSONL 的确定性 64 条前缀。
 两份 D2 样本则完整流式读取，并比较完整候选字节、稳定 ID、记录数、摘要与
 指纹。
@@ -268,7 +268,6 @@ def _final_identity(
     directories: Mapping[str, repro.VerifiedDirectory],
     d2: Mapping[str, Any],
     d3: Mapping[str, Any],
-    d4: Mapping[str, Any],
     metric: Mapping[str, Any],
     route: Mapping[str, Any],
 ) -> Dict[str, Any]:
@@ -284,14 +283,6 @@ def _final_identity(
             "manifest_sha256": d3["_validated_manifest_sha256"],
             "summary_sha256": d3["_validated_summary_sha256"],
             "sha256sums_sha256": d3["_validated_checksums_sha256"],
-        },
-        "d4": {
-            "candidate_fingerprint_sha256": d4["_validated_fingerprint"],
-            "manifest_sha256": directories["d4"].checksums["manifest.json"],
-            "reconciliation_fingerprint_sha256": d4[
-                "_validated_reconciliation_fingerprint"
-            ],
-            "sha256sums_sha256": directories["d4"].checksum_sha256,
         },
         "metric": {
             "candidate_fingerprint_sha256": metric["_validated_fingerprint"],
@@ -325,9 +316,6 @@ def _build_summary(
             directories["d2"], "a", final_index, record_limit=SAMPLE_MAX_EVENTS
         )
         d3, d3_counts = repro._validate_d3(directories["d3"], "a", final_index)
-        d4, d4_counts, _ = repro._validate_d4(
-            directories["d4"], "a", final_index
-        )
         metric, metric_counts, _ = repro._validate_metric(
             directories["metric"], "a", final_index
         )
@@ -335,7 +323,7 @@ def _build_summary(
             directories["route_event"], "a", final_index
         )
         _require_full_final_d2(d2)
-        repro._cross_validate("最终候选", d2, d3, d4, metric)
+        repro._cross_validate("最终候选", d2, d3, metric)
         if route.get("manifest_fingerprint_sha256") != d3["_validated_fingerprint"]:
             raise AssuranceError("最终 RouteEvent 未绑定当前 D3 manifest")
         route_identity = repro._route_identity(route)
@@ -418,7 +406,6 @@ def _build_summary(
     final_counts = {
         "d2": d2_counts,
         "d3": d3_counts,
-        "d4": d4_counts,
         "metric": metric_counts,
         "route_event": route_counts,
     }
@@ -437,25 +424,22 @@ def _build_summary(
             "all_sha256_closures_verified": True,
             "components": {
                 name: _closure(directories[name])
-                for name in ("d2", "d3", "d4", "metric", "route_event")
+                for name in ("d2", "d3", "metric", "route_event")
             },
             "semantic_validation_scope": {
                 "d2": "deterministic_prefix_64_per_jsonl_stream",
                 "d3": "full_manifest_metadata",
-                "d4": "all_six_event_candidate_bundles",
                 "metric": "full_emitted_metric_candidate",
                 "route_event": "full_bounded_pilot",
             },
             "record_counts": final_counts,
         },
         "final_candidate_identity": _final_identity(
-            directories, d2, d3, d4, metric, route
+            directories, d2, d3, metric, route
         ),
         "cross_artifact_binding": {
             "status": "passed",
             "checks": {
-                "d4_to_final_d2": True,
-                "d4_to_final_d3": True,
                 "metric_to_final_d2": True,
                 "metric_to_final_d3": True,
                 "route_event_to_final_d3": True,
@@ -515,7 +499,6 @@ def _build_summary(
             "single_candidate_components": [
                 "d2_full",
                 "d3",
-                "d4",
                 "metric",
                 "route_event",
             ],
@@ -555,13 +538,13 @@ def _summary_markdown(summary: Mapping[str, Any]) -> str:
 
 ## 证据边界
 
-最终 D2/D3/D4/Metric/RouteEvent 均逐文件重算 SHA256；最终 D2 的逐行语义
+最终 D2/D3/Metric/RouteEvent 均逐文件重算 SHA256；最终 D2 的逐行语义
 仅复核各 JSONL 的确定性前 64 条。D2 样本 A/B 各自完整流式读取，并由两份
 不同的外部执行记录绑定输出目录与 `SHA256SUMS`。这些记录支撑“两次执行有
 记录”，但不是密码学独立性证明；仅凭目录、inode 或相同结果无法排除普通
 文件复制。
 
-本摘要没有重跑完整 D2，也没有对 D3、D4、Metric、RouteEvent 做全链路 A/B
+本摘要没有重跑完整 D2，也没有对 D3、Metric、RouteEvent 做全链路 A/B
 重放，因此 `cross_run_coverage=partial`、`full_semantic_validation=not_run`；不得
 据此声明完整流水线全量可复现、原始证据全覆盖或因果结论。
 """.format(
@@ -591,7 +574,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         paths = {
             "d2": args.d2_final,
             "d3": args.d3_final,
-            "d4": args.d4_final,
             "metric": args.metric_final,
             "route_event": args.route_final,
             "d2_sample_a": args.d2_sample_a,
@@ -689,7 +671,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="生成 P0 单份最终候选与 D2 64 条 A/B 样本 assurance"
     )
-    for component in ("d2", "d3", "d4", "metric", "route"):
+    for component in ("d2", "d3", "metric", "route"):
         parser.add_argument("--{}-final".format(component), required=True)
     parser.add_argument("--d2-sample-a", required=True)
     parser.add_argument("--d2-sample-b", required=True)

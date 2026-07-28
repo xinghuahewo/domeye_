@@ -16,7 +16,7 @@ readonly MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_RELEASE_MANIFEST}"
 readonly INFO_MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_INFO_MANIFEST}"
 readonly DATABASE_MANIFEST_PATH="${RELEASE_DIR}/${DOMEYE_CORE_DATABASE_MANIFEST}"
 readonly CHECKSUM_PATH="${RELEASE_DIR}/${DOMEYE_CORE_CHECKSUM_FILE}"
-readonly EXPECTED_FILES=(
+EXPECTED_FILES=(
     'database-image.tar.zst'
     'database-inventory.json'
     'database-manifest.json'
@@ -27,13 +27,31 @@ readonly EXPECTED_FILES=(
     'manifest.json'
 )
 
-for command_name in diff find jq sha256sum sort; do
+for command_name in diff find jq sha256sum sort stat; do
     domeye_artifact_require_command "${command_name}"
 done
 if [[ ! -d "${RELEASE_DIR}" || -L "${RELEASE_DIR}" ]]; then
     domeye_artifact_error "发布路径必须是实际目录：${RELEASE_DIR}"
     exit 1
 fi
+for file_path in "${MANIFEST_PATH}" "${INFO_MANIFEST_PATH}" "${DATABASE_MANIFEST_PATH}" "${CHECKSUM_PATH}"; do
+    domeye_artifact_require_regular_file "${file_path}"
+done
+for manifest_file in "${MANIFEST_PATH}" "${INFO_MANIFEST_PATH}" "${DATABASE_MANIFEST_PATH}"; do
+    domeye_artifact_json_file "${manifest_file}"
+done
+static_info_evidence_name="$(
+    jq -r '.static_info_evidence.name // empty' "${DATABASE_MANIFEST_PATH}"
+)"
+if [[ -n "${static_info_evidence_name}" ]]; then
+    if [[ "${static_info_evidence_name}" != "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}" ]]; then
+        domeye_artifact_error \
+            "static INFO 证据包名称无效：${static_info_evidence_name}"
+        exit 1
+    fi
+    EXPECTED_FILES+=("${static_info_evidence_name}")
+fi
+
 mapfile -t actual_entries < <(find "${RELEASE_DIR}" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
 mapfile -t expected_entries < <(
     printf '%s\n' "${EXPECTED_FILES[@]}" "${DOMEYE_CORE_CHECKSUM_FILE}" | sort
@@ -42,17 +60,11 @@ if ! diff -u \
     <(printf '%s\n' "${expected_entries[@]}") \
     <(printf '%s\n' "${actual_entries[@]}") \
     >/dev/null; then
-    domeye_artifact_error '发布目录顶层必须恰好包含八个内容文件和 SHA256SUMS'
+    domeye_artifact_error '发布目录顶层文件集合与组件清单不一致'
     exit 1
 fi
 for entry_name in "${actual_entries[@]}"; do
     domeye_artifact_require_regular_file "${RELEASE_DIR}/${entry_name}"
-done
-for file_path in "${MANIFEST_PATH}" "${INFO_MANIFEST_PATH}" "${DATABASE_MANIFEST_PATH}" "${CHECKSUM_PATH}"; do
-    domeye_artifact_require_regular_file "${file_path}"
-done
-for manifest_file in "${MANIFEST_PATH}" "${INFO_MANIFEST_PATH}" "${DATABASE_MANIFEST_PATH}"; do
-    domeye_artifact_json_file "${manifest_file}"
 done
 
 declare -A checksum_by_name=()
@@ -127,6 +139,30 @@ check_component_file "${DATABASE_MANIFEST_PATH}" '.archive.name' '.archive.sha25
 check_component_file "${DATABASE_MANIFEST_PATH}" '.image.archive' '.image.archive_sha256' "${DOMEYE_CORE_IMAGE_ARCHIVE}"
 check_component_file "${DATABASE_MANIFEST_PATH}" '.inventory.name' '.inventory.sha256' 'database-inventory.json'
 check_component_file "${DATABASE_MANIFEST_PATH}" '.schema.name' '.schema.sha256' 'database-schema.sql'
+if [[ -n "${static_info_evidence_name}" ]]; then
+    check_component_file \
+        "${DATABASE_MANIFEST_PATH}" \
+        '.static_info_evidence.name' \
+        '.static_info_evidence.sha256' \
+        "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+    if ! jq -e \
+        --argjson actual_size "$(
+            stat -c '%s' "${RELEASE_DIR}/${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+        )" \
+        '(.static_info_evidence.scope == "core_four_files"
+          or .static_info_evidence.scope == "all_24_files")
+         and .static_info_evidence.scope == .static_info.implementation_scope
+         and .static_info_evidence.content_id == .static_info.content_id
+         and .static_info_evidence.size == $actual_size' \
+        "${DATABASE_MANIFEST_PATH}" >/dev/null; then
+        domeye_artifact_error \
+            'static INFO 证据包元数据与数据库组件清单不一致'
+        exit 1
+    fi
+    "${SCRIPT_DIR}/verify-static-info-evidence.sh" \
+        "${RELEASE_DIR}/${DOMEYE_CORE_STATIC_INFO_EVIDENCE}" \
+        "$(jq -r '.static_info_evidence.scope' "${DATABASE_MANIFEST_PATH}")"
+fi
 
 if ! jq -e \
     '.integrity.table_whitelist.ok == true
@@ -147,5 +183,12 @@ if ! diff -u \
     domeye_artifact_error '数据库组件清单与 inventory 的完整性摘要不一致'
     exit 1
 fi
+if ! diff -u \
+    <(jq -S '.static_info' "${RELEASE_DIR}/database-inventory.json") \
+    <(jq -S '.static_info' "${DATABASE_MANIFEST_PATH}") \
+    >/dev/null; then
+    domeye_artifact_error '数据库组件清单与 inventory 的 static INFO 摘要不一致'
+    exit 1
+fi
 
-printf '发布制品八文件校验与清单交叉校验通过：%s\n' "${RELEASE_DIR}"
+printf '发布制品文件集合与清单交叉校验通过：%s\n' "${RELEASE_DIR}"

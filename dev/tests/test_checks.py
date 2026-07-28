@@ -22,6 +22,12 @@ class RiskClassificationTest(unittest.TestCase):
         self.assertEqual(CHECKS.classify("frontend/src/api/events.ts"), 2)
         self.assertEqual(CHECKS.classify("backend/services/events_service.py"), 2)
         self.assertEqual(CHECKS.classify("config/performance-budget.json"), 2)
+        self.assertEqual(
+            CHECKS.classify("config/country-outage-agent-acceptance-v1.json"),
+            2,
+        )
+        self.assertEqual(CHECKS.classify(".codex/hooks/country_outage_agent_review.py"), 2)
+        self.assertEqual(CHECKS.classify("tools/verify_rrc25_global_country_packages.py"), 2)
 
     def test_database_and_deploy_are_l3(self):
         self.assertEqual(CHECKS.classify("backend/database/event.py"), 3)

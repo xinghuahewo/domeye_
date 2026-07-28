@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/info/static-info-stage-gate-report-v1.schema.json",
+  "title": "Domeye static INFO 阶段结束门禁回执 v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "component",
+    "contract_id",
+    "contract_sha256",
+    "acceptance_document_sha256",
+    "stage_plan_document_sha256",
+    "stage_id",
+    "stage_name",
+    "status",
+    "checked_at",
+    "subject",
+    "previous_receipt_sha256",
+    "artifact_sha256",
+    "requirements",
+    "checks",
+    "deviation_count",
+    "deviations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "component": {
+      "const": "static_info_stage_gate"
+    },
+    "contract_id": {
+      "const": "domeye-static-info-final-acceptance-v1"
+    },
+    "contract_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "acceptance_document_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "stage_plan_document_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "stage_id": {
+      "enum": [
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6"
+      ]
+    },
+    "stage_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_id",
+        "manifest_sha256"
+      ],
+      "properties": {
+        "content_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manifest_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "previous_receipt_sha256": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "artifact_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/sha256"
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requirement_id",
+          "title",
+          "due_stage",
+          "status"
+        ],
+        "properties": {
+          "requirement_id": {
+            "type": "string",
+            "pattern": "^FA-(0[1-9]|1[0-2])$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "due_stage": {
+            "enum": [
+              "S0",
+              "S1",
+              "S2",
+              "S3",
+              "S4",
+              "S5",
+              "S6"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "not_due"
+            ]
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "deviation_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "deviations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check_id",
+          "message"
+        ],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

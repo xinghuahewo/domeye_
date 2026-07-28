@@ -974,7 +974,12 @@ validate_source_before_prune() {
     fi
 
     local expected_tables actual_tables preflight
-    expected_tables="$(jq -c '[.tables[].name] | sort' "${inventory}")"
+    expected_tables="$(jq -c \
+        '[.tables[]
+          | select((.schema_name // "public") == "public")
+          | .table_name // .name]
+         | sort' \
+        "${inventory}")"
     actual_tables="$(admin_scalar \
         "SELECT coalesce(jsonb_agg(tablename ORDER BY tablename), '[]'::jsonb)::text FROM pg_tables WHERE schemaname = 'public';")"
     if ! jq -en \

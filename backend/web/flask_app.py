@@ -26,11 +26,14 @@ def create_flask_app():
             origins=origins,
             supports_credentials=False,
             methods=['GET', 'OPTIONS'],
-            allow_headers=['Content-Type'],
+            allow_headers=['Content-Type', 'If-None-Match'],
+            expose_headers=['ETag'],
         )
 
     from .api.route import api_v1_bp
+    from .api.v2.route import api_v2_bp
 
     app.before_request(enforce_request_data_window)
     app.register_blueprint(api_v1_bp, url_prefix='/api/v1')
+    app.register_blueprint(api_v2_bp, url_prefix='/api/v2')
     return app

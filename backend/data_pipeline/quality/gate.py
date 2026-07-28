@@ -85,18 +85,6 @@ ROUTE_EVENT_REQUIRED_QUALITY_FIELDS = (
     "outside_window_record_count",
 )
 
-EVIDENCE_REQUIRED_QUALITY_FIELDS = (
-    "schema_invalid_count",
-    "classification_violation_count",
-    "causal_conclusion_nonnull_count",
-    "evidence_id_conflict_count",
-    "unresolved_evidence_reference_count",
-    "unresolved_route_event_reference_count",
-    "outside_window_record_count",
-    "unknown_missing_reason_count",
-    "auto_zero_fill_count",
-)
-
 METRIC_REQUIRED_QUALITY_FIELDS = (
     "admitted_metric_count",
     "formula_contract_coverage_ratio",
@@ -266,7 +254,6 @@ def _evidence_ref(
         "d2": "d2-candidate-manifest.json",
         "d3": "d3-artifact-manifest.json",
         "route": "route-event-reconciliation-summary.json",
-        "evidence": "evidence-reconciliation-summary.json",
         "metric": "metric-reconciliation-summary.json",
         "repro": "reproducibility-summary.json",
         "execution": "quality-gate-execution-context.json",
@@ -320,7 +307,6 @@ def _aggregate_failure(
         "d2": "d2-candidate-manifest.json",
         "d3": "d3-artifact-manifest.json",
         "route": "route-event-reconciliation-summary.json",
-        "evidence": "evidence-reconciliation-summary.json",
         "metric": "metric-reconciliation-summary.json",
         "repro": "reproducibility-summary.json",
         "execution": "quality-gate-execution-context.json",
@@ -1382,7 +1368,7 @@ def _single_run_assurance_views(
 
     integrity = summary.get("final_candidate_integrity")
     components = integrity.get("components") if isinstance(integrity, Mapping) else None
-    component_names = {"d2", "d3", "d4", "metric", "route_event"}
+    component_names = {"d2", "d3", "metric", "route_event"}
     components_ok = isinstance(components, Mapping) and set(components) == component_names
     if components_ok:
         for value in components.values():
@@ -1416,17 +1402,17 @@ def _single_run_assurance_views(
         check_id="reproducibility-final-artifact-integrity",
         dimension="reproducibility",
         rule_id="P0-REPRO-005",
-        title_zh="最终五类候选 SHA256 闭包与送检输入一致",
+        title_zh="最终四类候选 SHA256 闭包与送检输入一致",
         status="pass" if integrity_ok else "fail",
         severity="blocking",
-        scope_ref="candidate:final-five-component-closures",
+        scope_ref="candidate:final-four-component-closures",
         observed_value=integrity_ok,
         observed_unit="boolean",
         expected_operator="eq",
         expected_value=True,
         expected_unit="boolean",
         unknown_count=0 if integrity_ok else 1,
-        message_zh="D2/D3/D4/Metric/RouteEvent 闭包均由 D5 复算并与 assurance 一致。"
+        message_zh="D2/D3/Metric/RouteEvent 闭包均由 D5 复算并与 assurance 一致。"
         if integrity_ok
         else "最终候选闭包缺失、非法或与 D5 实际送检输入不一致。",
         remediation_stage="none" if integrity_ok else "D5",
@@ -1456,12 +1442,6 @@ def _single_run_assurance_views(
             "manifest_fingerprint_sha256",
             "manifest_sha256",
             "summary_sha256",
-            "sha256sums_sha256",
-        },
-        "d4": {
-            "candidate_fingerprint_sha256",
-            "manifest_sha256",
-            "reconciliation_fingerprint_sha256",
             "sha256sums_sha256",
         },
         "metric": {
@@ -1499,10 +1479,10 @@ def _single_run_assurance_views(
         check_id="reproducibility-final-identity-binding",
         dimension="reproducibility",
         rule_id="P0-REPRO-006",
-        title_zh="Assurance 精确绑定最终五类候选身份",
+        title_zh="Assurance 精确绑定最终四类候选身份",
         status="pass" if identity_ok else "fail",
         severity="blocking",
-        scope_ref="candidate:final-five-component-identities",
+        scope_ref="candidate:final-four-component-identities",
         observed_value=identity_ok,
         observed_unit="boolean",
         expected_operator="eq",
@@ -1530,8 +1510,6 @@ def _single_run_assurance_views(
     binding = summary.get("cross_artifact_binding")
     binding_checks = binding.get("checks") if isinstance(binding, Mapping) else None
     expected_binding_keys = {
-        "d4_to_final_d2",
-        "d4_to_final_d3",
         "metric_to_final_d2",
         "metric_to_final_d3",
         "route_event_to_final_d3",
@@ -1553,7 +1531,7 @@ def _single_run_assurance_views(
         check_id="reproducibility-cross-artifact-binding",
         dimension="reproducibility",
         rule_id="P0-REPRO-007",
-        title_zh="D4、Metric、RouteEvent 绑定最终上游候选",
+        title_zh="Metric、RouteEvent 绑定最终上游候选",
         status="pass" if binding_ok else "fail",
         severity="blocking",
         scope_ref="candidate:cross-artifact-bindings",
@@ -1563,7 +1541,7 @@ def _single_run_assurance_views(
         expected_value=True,
         expected_unit="boolean",
         unknown_count=0 if binding_ok else 1,
-        message_zh="六项跨制品绑定均由 D5 从实际 manifest 复核通过。"
+        message_zh="四项跨制品绑定均由 D5 从实际 manifest 复核通过。"
         if binding_ok
         else "跨制品绑定缺项、非法或与 D5 独立复核结果不一致。",
         remediation_stage="none" if binding_ok else "D5",
@@ -1675,7 +1653,7 @@ def _single_run_assurance_views(
         and coverage.get("status") == "partial"
         and coverage.get("replayed_components") == ["d2_bounded_sample"]
         and coverage.get("single_candidate_components")
-        == ["d2_full", "d3", "d4", "metric", "route_event"]
+        == ["d2_full", "d3", "metric", "route_event"]
         and coverage.get("population_coverage_claimed") is False
         and coverage.get("full_pipeline_reproducibility_claimed") is False
     )
@@ -1822,7 +1800,6 @@ def build_quality_report(
     context: Mapping[str, Any],
     route_event_summary: Optional[Mapping[str, Any]] = None,
     artifact_verification_summary: Optional[Mapping[str, Any]] = None,
-    evidence_summary: Optional[Mapping[str, Any]] = None,
     metric_summary: Optional[Mapping[str, Any]] = None,
     reproducibility_summary: Optional[Mapping[str, Any]] = None,
 ) -> QualityGateResult:
@@ -1867,112 +1844,6 @@ def build_quality_report(
         remediation_stage="none" if not input_failures else "D5",
         evidence=[("d2", ""), ("d3", "")],
         failures=input_failures,
-    )
-
-    evidence_present = _summary_present(evidence_summary, "evidence_reconciliation_v1")
-    evidence_failures = []
-    if not evidence_present:
-        evidence_failures.append(
-            _aggregate_failure(
-                label="evidence",
-                path="schema_version",
-                check_id="completeness-evidence-contract",
-                reason_code="missing_quality_evidence",
-                missing_detail=True,
-            )
-        )
-    evidence_contract_value, evidence_contract_invalid = _count_values(
-        [
-            (evidence_summary, "evidence", "schema_invalid_count"),
-            (evidence_summary, "evidence", "classification_violation_count"),
-            (evidence_summary, "evidence", "causal_conclusion_nonnull_count"),
-        ]
-    )
-    if evidence_contract_invalid and evidence_present:
-        evidence_failures.extend(
-            _aggregate_failure(
-                label=label,
-                path=path,
-                check_id="completeness-evidence-contract",
-                reason_code=reason,
-                missing_detail=True,
-            )
-            for label, path, reason in evidence_contract_invalid
-        )
-    if evidence_contract_value not in (None, 0):
-        supplied = _normalize_supplied_failures(
-            evidence_summary, label="evidence", check_id="completeness-evidence-contract"
-        )
-        evidence_failures.extend(
-            supplied
-            or [
-                _aggregate_failure(
-                    label="evidence",
-                    path="schema_invalid_count",
-                    check_id="completeness-evidence-contract",
-                    reason_code="evidence_contract_violation",
-                    missing_detail=True,
-                )
-            ]
-        )
-    evidence_types = (
-        evidence_summary.get("event_types")
-        if evidence_present and isinstance(evidence_summary.get("event_types"), list)
-        else None
-    )
-    evidence_scope_ok = (
-        evidence_present
-        and evidence_summary.get("scope")
-        == "six_event_contract_investigation_sample"
-        and evidence_summary.get("sample_only") is True
-        and evidence_summary.get("population_coverage_claimed") is False
-        and evidence_summary.get("strict_schema_status") == "passed"
-        and evidence_summary.get("bundle_count") == 6
-        and evidence_summary.get("event_type_count") == 6
-        and evidence_types is not None
-        and len(evidence_types) == len(EVENT_TYPES)
-        and all(isinstance(event_type, str) for event_type in evidence_types)
-        and set(evidence_types) == set(EVENT_TYPES)
-    )
-    if evidence_present and not evidence_scope_ok:
-        evidence_failures.append(
-            _aggregate_failure(
-                label="evidence",
-                path="scope",
-                check_id="completeness-evidence-contract",
-                reason_code="evidence_sample_scope_misrepresented",
-                missing_detail=True,
-            )
-        )
-    evidence_contract_status = (
-        "pass"
-        if evidence_scope_ok
-        and evidence_contract_value == 0
-        and not evidence_contract_invalid
-        else "fail"
-    )
-    checks.add(
-        check_id="completeness-evidence-contract",
-        dimension="completeness",
-        rule_id="P0-COMPLETE-002",
-        title_zh="Evidence v2 合同与观测边界完整",
-        status=evidence_contract_status,
-        severity="blocking",
-        scope_ref="evidence:v2:six-event-contract-sample",
-        observed_value=evidence_contract_value,
-        observed_unit="record_count",
-        expected_operator="eq",
-        expected_value=0,
-        expected_unit="record_count",
-        unknown_count=len(evidence_contract_invalid)
-        + (0 if evidence_present else 1)
-        + (0 if evidence_scope_ok else 1),
-        message_zh="六类 Evidence 调查样本全部通过 schema，并明确不代表全量事件覆盖；保持 observation_only 且 causal_conclusion=null。"
-        if evidence_contract_status == "pass"
-        else "Evidence 对账摘要缺失或违反合同/因果边界。",
-        remediation_stage="none" if evidence_contract_status == "pass" else "D4",
-        evidence=[("evidence", "")],
-        failures=evidence_failures,
     )
 
     metric_present = _summary_present(metric_summary, "metric_reconciliation_v1")
@@ -2128,12 +1999,9 @@ def build_quality_report(
         check_id="uniqueness-stable-ids",
         dimension="uniqueness",
         rule_id="P0-UNIQUE-001",
-        title_zh="稳定 Incident、RouteEvent 与 Evidence ID 无冲突",
+        title_zh="稳定 Incident 与 RouteEvent ID 无冲突",
         scope_ref="candidate:stable-identifiers",
-        specifications=[
-            (d2_manifest, "d2", "summary.stable_id_conflict_count"),
-            (evidence_summary, "evidence", "evidence_id_conflict_count"),
-        ]
+        specifications=[(d2_manifest, "d2", "summary.stable_id_conflict_count")]
         + (
             [(route_event_summary, "route", "route_event_id_conflict_count")]
             if route_event_summary is not None
@@ -2142,7 +2010,6 @@ def build_quality_report(
         sources_for_samples=[
             (d2_manifest, "d2"),
             (route_event_summary, "route"),
-            (evidence_summary, "evidence"),
         ],
         reason_code="stable_id_conflict",
         remediation_stage="D2",
@@ -2236,24 +2103,6 @@ def build_quality_report(
         message_pass="反向孤儿均已进入可复核 quarantine。",
         message_fail="存在未解释事实孤儿，或缺少可定位明细。",
     )
-    _add_zero_count_check(
-        checks,
-        check_id="references-evidence-closure",
-        dimension="referential_integrity",
-        rule_id="P0-REF-003",
-        title_zh="Evidence、阶段与 RouteEvent 引用闭合",
-        scope_ref="evidence:v2:registry-closure",
-        specifications=[
-            (evidence_summary, "evidence", "unresolved_evidence_reference_count"),
-            (evidence_summary, "evidence", "unresolved_route_event_reference_count"),
-        ],
-        sources_for_samples=[(evidence_summary, "evidence")],
-        reason_code="unresolved_evidence_reference",
-        remediation_stage="D4",
-        message_pass="Evidence 注册表、阶段和 RouteEvent 引用完全闭合。",
-        message_fail="Evidence 引用未闭合或缺少逐项对账证据。",
-    )
-
     raw_claimed = _raw_claimed(route_event_summary)
     raw_severity = "blocking" if raw_claimed else "warning"
     raw_ref_specs = []
@@ -2942,24 +2791,18 @@ def build_quality_report(
     outside_specs = [(d2_manifest, "d2", "summary.visible_outside_window_count")]
     if route_event_summary is not None:
         outside_specs.append((route_event_summary, "route", "outside_window_record_count"))
-    outside_specs.extend(
-        [
-            (evidence_summary, "evidence", "outside_window_record_count"),
-            (metric_summary, "metric", "outside_window_point_count"),
-        ]
-    )
+    outside_specs.append((metric_summary, "metric", "outside_window_point_count"))
     _add_zero_count_check(
         checks,
         check_id="window-outside-visible-records",
         dimension="fixed_window_bounds",
         rule_id="P0-WINDOW-001",
         title_zh="固定窗口外可见记录为零",
-        scope_ref="normalized+route+evidence+metric:profile-window",
+        scope_ref="normalized+route+metric:profile-window",
         specifications=outside_specs,
         sources_for_samples=[
             (d2_manifest, "d2"),
             (route_event_summary, "route"),
-            (evidence_summary, "evidence"),
             (metric_summary, "metric"),
         ],
         reason_code="outside_fixed_window",
@@ -2974,15 +2817,13 @@ def build_quality_report(
         dimension="unknown_missingness",
         rule_id="P0-MISSING-001",
         title_zh="派生空值均有明确缺失原因",
-        scope_ref="normalized+evidence+metric:nullable-fields",
+        scope_ref="normalized+metric:nullable-fields",
         specifications=[
             (d2_manifest, "d2", "summary.unknown_derived_null_count"),
-            (evidence_summary, "evidence", "unknown_missing_reason_count"),
             (metric_summary, "metric", "unknown_missing_reason_count"),
         ],
         sources_for_samples=[
             (d2_manifest, "d2"),
-            (evidence_summary, "evidence"),
             (metric_summary, "metric"),
         ],
         reason_code="unknown_missing_reason",
@@ -2997,7 +2838,6 @@ def build_quality_report(
     zero_value, zero_invalid = _count_values(
         [
             (d2_manifest, "d2", "summary.confirmed_missing_zero_fill_count"),
-            (evidence_summary, "evidence", "auto_zero_fill_count"),
             (metric_summary, "metric", "confirmed_missing_zero_fill_count"),
         ]
     )
@@ -3020,7 +2860,7 @@ def build_quality_report(
         title_zh="已确认缺测补零记录为零",
         status="pass" if zero_ok else "fail",
         severity="blocking",
-        scope_ref="normalized+evidence+metric:zero-semantics",
+        scope_ref="normalized+metric:zero-semantics",
         observed_value=zero_value,
         observed_unit="record_count",
         expected_operator="eq",
@@ -3033,7 +2873,6 @@ def build_quality_report(
         remediation_stage="none" if zero_ok else "D2",
         evidence=[
             ("d2", "materialization_policy.missing_values_coerced_to_zero"),
-            ("evidence", "auto_zero_fill_count"),
             ("metric", "confirmed_missing_zero_fill_count"),
         ],
         failures=zero_failures,
@@ -3048,7 +2887,6 @@ def build_quality_report(
         "d3": d3_artifact_manifest,
         "route": route_event_summary,
         "artifact_verification": artifact_verification_summary,
-        "evidence": evidence_summary,
         "metric": metric_summary,
         "repro": reproducibility_summary,
         "context": context,
@@ -3091,7 +2929,6 @@ def build_quality_report(
 
 __all__ = [
     "D2_REQUIRED_QUALITY_FIELDS",
-    "EVIDENCE_REQUIRED_QUALITY_FIELDS",
     "METRIC_REQUIRED_QUALITY_FIELDS",
     "QualityGateInputError",
     "QualityGateResult",

@@ -2,7 +2,6 @@
 
 from .gate import (
     D2_REQUIRED_QUALITY_FIELDS,
-    EVIDENCE_REQUIRED_QUALITY_FIELDS,
     METRIC_REQUIRED_QUALITY_FIELDS,
     QualityGateInputError,
     QualityGateResult,
@@ -15,7 +14,6 @@ from .gate import (
 
 __all__ = [
     "D2_REQUIRED_QUALITY_FIELDS",
-    "EVIDENCE_REQUIRED_QUALITY_FIELDS",
     "METRIC_REQUIRED_QUALITY_FIELDS",
     "QualityGateInputError",
     "QualityGateResult",

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildObservationEndpoint,
   buildDetailEndpoint,
   normalizeAsOverview,
   normalizeCountryOverview,
+  normalizeCountryOutageObservation,
   normalizeDashboardOverview,
   normalizeEvidenceBundle,
   normalizeEventPage,
+  normalizeEventObservation,
   normalizeTime,
   parseDetailUrl,
 } from './normalize'
@@ -51,6 +54,126 @@ describe('API 数据归一化', () => {
     expect(parseDetailUrl('boundary_outage/2026-07-17 08:00:00/a/1/r')).toBeNull()
     expect(normalizeTime('NaT')).toBeNull()
     expect(normalizeTime('-')).toBeNull()
+  })
+
+  it('构造观测接口并拒绝混入分析叙事字段', () => {
+    const parsed = parseDetailUrl('country_outage/2026-02-27 09:12:32/IR/1/r')
+    expect(parsed).not.toBeNull()
+    expect(buildObservationEndpoint(parsed!)).toBe(
+      'events/observations/country_outage/2026-02-27%2009%3A12%3A32/IR/1/r',
+    )
+
+    const observation = {
+      schema_version: 'event_observation_v1',
+      event_identity: {},
+      observation_scope: {},
+      cohort: {},
+      normal_band: {},
+      rule_marker: {},
+      metric_definitions: [],
+      series: [],
+      metric_extrema: {},
+      resource_series: [],
+      resource_metric_extrema: {},
+      annotations: [],
+      asn_state: {},
+      limitations: [],
+      audit: {},
+    }
+    expect(normalizeEventObservation(observation).schema_version).toBe('event_observation_v1')
+    expect(() => normalizeEventObservation({
+      ...observation,
+      lifecycle: { state: 'forbidden' },
+    })).toThrow('混入分析叙事字段')
+  })
+
+  it('组合 legacy summary 并拒绝跨接口发布身份漂移', () => {
+    const metadata = {
+      revision: 1,
+      publication_id: 'publication_legacy_v1_example',
+      publication_state: 'published',
+      observation_state: 'legacy_summary',
+      data_mode: 'legacy',
+      data_through: null,
+      updated_at: null,
+      is_final: false,
+      processing_status: {
+        state: 'idle',
+        updated_at: null,
+        attempted_through: null,
+        reason: null,
+        last_complete_data_through: null,
+      },
+      missing_slot_count: 0,
+      incident_id: 'legacy_country_outage_v1.example',
+      cohort_id: null,
+      window_start_utc: '2026-02-28T16:00:00Z',
+      window_end_utc: null,
+      capability_contract_version: 'country_outage_capabilities_v1',
+    }
+    const overview = {
+      schema_version: 'country_outage_overview_v2',
+      ...metadata,
+      event_identity: {},
+      observation_scope: {},
+      cohort: null,
+      normal_band: {},
+      rule_marker: null,
+      capabilities: {
+        legacy_summary: { state: 'available' },
+        asn_matrix: { state: 'unavailable', reason: '未保存' },
+      },
+      legacy_summary: { affected_asn_count: 5 },
+      limitations: [],
+    }
+    const series = {
+      schema_version: 'country_outage_series_v2',
+      ...metadata,
+      interval_seconds: null,
+      metric_definitions: [],
+      series: [],
+      metric_extrema: {},
+      resource_series: [],
+      resource_metric_extrema: {},
+      annotations: [],
+    }
+    const asns = {
+      schema_version: 'country_outage_asn_page_v2',
+      ...metadata,
+      page: 1,
+      page_size: 60,
+      page_count: 1,
+      total: 0,
+      observed_at_utc: [],
+      observed_at_local: [],
+      state_codes: {},
+      duration_histogram: {},
+      items: [],
+    }
+
+    const observation = normalizeCountryOutageObservation(overview, series, asns)
+    expect(observation.cohort).toBeNull()
+    expect(observation.legacy_summary?.affected_asn_count).toBe(5)
+    expect(observation.capabilities?.asn_matrix?.state).toBe('unavailable')
+
+    expect(() => normalizeCountryOutageObservation(
+      overview,
+      { ...series, data_through: '2026-02-28T16:05:00Z' },
+      asns,
+    )).toThrow('发布身份不一致：data_through')
+
+    expect(() => normalizeCountryOutageObservation(
+      overview,
+      {
+        ...series,
+        processing_status: {
+          ...metadata.processing_status,
+          state: 'failed',
+          reason: 'parse_failed',
+        },
+      },
+      asns,
+    )).toThrow('发布身份不一致：processing_status')
   })
 
   it('归一化首页六类趋势、影响范围和排行', () => {
@@ -217,6 +340,14 @@ describe('API 数据归一化', () => {
       bundle_version: 'evidence_bundle_v1',
       incident_id: 'inc_v1_0123456789abcdef01234567',
       incident_id_schema: 'incident_id_v1',
+      semantic_guardrails: {
+        contract_version: 'legacy_event_semantic_guardrails_v1',
+        lifecycle_state: 'recorded',
+        attribution_state: 'detector_fact_only',
+        ratio_state: 'not_applicable',
+        blocked_claims: ['causal_conclusion'],
+        reason_codes: [],
+      },
       event: {
         kind: 'hijack',
         label: '前缀劫持',
@@ -286,6 +417,7 @@ describe('API 数据归一化', () => {
     expect(bundle.evidenceItems[0]?.paths).toEqual([])
     expect(bundle.assessment.counterevidence[0]).toContain('不证明全网恢复')
     expect(bundle.assessment.causalConclusion).toBeNull()
+    expect(bundle.semanticGuardrails.blockedClaims).toContain('causal_conclusion')
     expect(bundle.dataQuality.vantagePointIdentityAvailable).toBe(false)
     expect(bundle.sourceRecord.sourceTable).toBe('hijack_202602')
   })

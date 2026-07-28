@@ -585,10 +585,10 @@ PostgreSQL 尚未实测。按紧凑列、路径字典、必要主键和少量索
 六类历史事实表（只读）
    + RouteEvent / raw record sidecar
    -> incident_route_observation_link
-   -> Evidence Bundle v2 只读组装
+   -> 事件调查只读联查
 ```
 
-Evidence Bundle 可以返回：
+事件调查接口可以返回：
 
 - `collector_id`；
 - `vp_id` 和 `vp_asn`；

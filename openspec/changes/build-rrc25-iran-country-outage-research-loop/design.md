@@ -6,7 +6,7 @@
 `1,928/1,928` 个五分钟槽，国家事实的 176 个 ASN 与 `22:34:40` 活跃 AS
 事实集合完全一致，并可从 AS/前缀事实计算 2,842 个活跃中断前缀。因此数据库应先
 承担研究主体和定位索引，原始 RRC25 只补 VP、报文、路径和阶段状态证据。仓库已有
-artifact manifest、UPDATE RouteEvent pilot、稳定 raw identity、Evidence Bundle v2
+artifact manifest、UPDATE RouteEvent pilot、稳定 raw identity
 和质量门禁，可用于关键槽定向取证；它们不再构成先重放完整窗口的理由。
 
 本设计遵循访谈决策：旧项目只读，新项目外围可修改；流程可复用于其他国家但只验收伊朗；新结果不强行匹配旧数字；双栈分别统计；由数据决定 episode/wave；数据库先行、原始数据按字段缺口定向补证；本轮不写数据库、不改前端、不部署生产。
@@ -48,7 +48,7 @@ artifact manifest、UPDATE RouteEvent pilot、稳定 raw identity、Evidence Bun
 未知必须分开；ASN 月表按活动稀疏表解释。
 
 数据库阶段完成后，才为 `06:35`、`18:45`、`22:30` 三个关键槽以及少量代表
-ASN/前缀解析原始数据。每个证据包的输入按需要分为 state seed、baseline
+ASN/前缀解析原始数据。每个定向请求的输入按需要分为 state seed、baseline
 reference、catch-up 和 event UPDATE；没有阶段状态需求的槽不得为形式完整而读取
 RIB 或长 catch-up。
 
@@ -57,7 +57,7 @@ RIB 或长 catch-up。
 
 ### 3. 定向 raw 输入仍分为 state seed、baseline reference、catch-up 和 analysis 四种角色
 
-resolver 为每个获选证据包选择关键槽之前最近的完整 RIB，并仅对代表实体执行必要
+resolver 为每个获选定向请求选择关键槽之前最近的完整 RIB，并仅对代表实体执行必要
 catch-up。严格早于事件窗的最近 RIB可作为 `baseline_reference_rib`。数据库主线
 继续使用冻结半开窗口；raw 证据包则使用各自更小的半开区间。全窗口
 1,928 个 UPDATE 槽和 22 张 RIB 只作为来源库存对账，不是必须读取的执行清单。
@@ -115,9 +115,9 @@ origin”的反向发现，并在对账中报告。未采用“复制所有 RRC2
 
 旧 Incident 保留 source fact 身份，通过显式 mapping 与零个、一个或多个研究 episode 关联。关系只表示对账和观测相交，不表示因果。
 
-### 11. Evidence v2 保留旧事实并引用新研究结果
+### 11. 旧事实与新研究结果分层保存
 
-Evidence Bundle v2 的 Incident 继续承载旧事实表身份；新的 onset、peak、wave 和 recovery 通过研究 sidecar、MetricWindow、Evidence registry 和 RouteEvent/raw refs表达。若现有严格 schema 无法直接承载 episode 字段，则新增内容寻址 sidecar schema并在 Evidence registry 中引用，不静默改变 v2 旧字段含义。
+旧 Incident 继续承载旧事实表身份；新的 onset、peak、wave 和 recovery 直接由研究 Sample、Episode、Wave、MetricWindow 和 RouteEvent/raw refs 表达，不静默改变旧字段含义。
 
 报告中的每条主张单独评级：可复算且一致为 `confirmed`，可复算但口径或数值不同为 `revised`，缺少必要数据源为 `unverifiable`，机制或意图推断为 `hypothesis_only`。
 

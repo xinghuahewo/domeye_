@@ -280,9 +280,9 @@ onMounted(load)
               <small>通过仅表示压缩容器完整，不等于全量 MRT/BGP 语义解析通过</small>
             </div>
             <div>
-              <dt>Evidence v2</dt>
-              <dd>{{ status.evidence_coverage.bundle_count }} SAMPLES / {{ status.evidence_coverage.event_type_count }} TYPES</dd>
-              <small>{{ status.evidence_coverage.represents_full_evidence_population ? '全量证据候选' : '六类调查样本，不代表全量证据覆盖' }} · raw traceable {{ status.evidence_coverage.raw_traceable ? 'yes' : 'no' }}</small>
+              <dt>已准入指标</dt>
+              <dd>{{ status.available_metrics.length }} METRICS</dd>
+              <small>仅发布通过缺失值与来源覆盖校验的指标序列</small>
             </div>
           </dl>
 
@@ -389,7 +389,7 @@ onMounted(load)
       <div class="section-heading">
         <div>
           <h2>固定窗口最新核心事件</h2>
-          <p>2026 年 2—3 月六类历史事实各取最近观测，不代表 Evidence v2 全量覆盖</p>
+          <p>2026 年 2—3 月六类历史事实各取最近观测，不代表原始记录全量覆盖</p>
         </div>
         <RouterLink to="/events">查看历史事件 →</RouterLink>
       </div>

@@ -126,7 +126,7 @@
       "additionalProperties": false,
       "required": ["kind", "path", "sha256", "record_count"],
       "properties": {
-        "kind": {"enum": ["samples", "episodes", "waves", "episode_as", "route_events", "raw_refs", "evidence_bundle_v2", "reconciliation", "quality_report", "report_zh", "manifest"]},
+        "kind": {"enum": ["samples", "episodes", "waves", "episode_as", "route_events", "raw_refs", "reconciliation", "quality_report", "report_zh", "manifest"]},
         "path": {"type": "string", "minLength": 1},
         "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "record_count": {"type": "integer", "minimum": 0}

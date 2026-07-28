@@ -6,7 +6,7 @@ MOCK_SCENARIO ?= normal
 P0_DATA_PROFILE ?= config/data-profile.json
 P0_PIPELINE_ROOT ?= .
 
-.PHONY: dev preview risk api-types check-fast check-integration check-data-p0 check-release check-release-full release-prepare release-activate release-rollback release-gc
+.PHONY: dev preview risk api-types check-fast check-integration check-data-p0 check-p0-producer-identity check-release check-release-full release-prepare release-activate release-rollback release-gc
 
 dev:
 	DOMEYE_MOCK_SCENARIO="$(MOCK_SCENARIO)" $(PYTHON) dev/run_local.py dev --api "$(API_MODE)"
@@ -38,7 +38,6 @@ check-data-p0:
 		test -n "$(P0_EXECUTION_CONTEXT)" || { echo '缺少 P0_EXECUTION_CONTEXT'; exit 2; }; \
 		test -n "$(P0_EXECUTION_CHECKSUMS)" || { echo '缺少 P0_EXECUTION_CHECKSUMS'; exit 2; }; \
 		test -n "$(P0_QUALITY_OUTPUT_DIR)" || { echo '缺少 P0_QUALITY_OUTPUT_DIR'; exit 2; }; \
-		test -z "$(P0_EVIDENCE_SUMMARY)" || test -n "$(P0_EVIDENCE_MANIFEST)" || { echo '提供 P0_EVIDENCE_SUMMARY 时缺少 P0_EVIDENCE_MANIFEST'; exit 2; }; \
 		test -z "$(P0_METRIC_SUMMARY)" || test -n "$(P0_METRIC_MANIFEST)" || { echo '提供 P0_METRIC_SUMMARY 时缺少 P0_METRIC_MANIFEST'; exit 2; }; \
 		$(PYTHON) dev/data_quality/p0_quality_gate.py \
 			--data-profile "$(P0_DATA_PROFILE)" \
@@ -52,10 +51,13 @@ check-data-p0:
 			--pipeline-root "$(P0_PIPELINE_ROOT)" \
 			--output-dir "$(P0_QUALITY_OUTPUT_DIR)" \
 			$(if $(P0_ROUTE_SUMMARY),--route-summary "$(P0_ROUTE_SUMMARY)" --route-checksums "$(P0_ROUTE_CHECKSUMS)") \
-			$(if $(P0_EVIDENCE_SUMMARY),--evidence-summary "$(P0_EVIDENCE_SUMMARY)" --evidence-manifest "$(P0_EVIDENCE_MANIFEST)" --evidence-checksums "$(P0_EVIDENCE_CHECKSUMS)") \
 			$(if $(P0_METRIC_SUMMARY),--metric-summary "$(P0_METRIC_SUMMARY)" --metric-manifest "$(P0_METRIC_MANIFEST)" --metric-checksums "$(P0_METRIC_CHECKSUMS)") \
 			$(if $(P0_REPRODUCIBILITY_SUMMARY),--reproducibility-summary "$(P0_REPRODUCIBILITY_SUMMARY)" --reproducibility-checksums "$(P0_REPRODUCIBILITY_CHECKSUMS)"); \
 	fi
+
+check-p0-producer-identity:
+	$(PYTHON) dev/data_quality/p0_producer_identity.py
+	$(PYTHON) -m unittest dev.tests.test_p0_producer_identity dev.tests.test_p0_r_track_hook
 
 check-release:
 	$(PYTHON) dev/checks.py release

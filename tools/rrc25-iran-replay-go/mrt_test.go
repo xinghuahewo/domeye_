@@ -219,3 +219,51 @@ func TestUpdateRejectsMalformedASPathLimit(t *testing.T) {
 		t.Fatal("expected malformed AS_PATHLIMIT failure")
 	}
 }
+
+func TestUpdateTreatsNarrowMalformedOTCAsWithdraw(t *testing.T) {
+	rawRoot := t.TempDir()
+	slot := mustUTC("2026-02-28T09:25:00Z")
+	// 发送方设置了 Extended Length 位，但仍以一字节 4 编码长度。
+	// 后四字节是 OTC ASN 274278。
+	malformedOTC := []byte{0xf0, 35, 4, 0, 4, 47, 102}
+	artifact := writeGzipArtifact(
+		t, rawRoot, "rrc25/test-update.gz",
+		updateFixture(slot.Add(time.Second), 4, 64500, malformedOTC),
+		slot.Format(time.RFC3339), "update",
+	)
+	var events []ParsedEvent
+	stats, err := ParseUpdate(
+		rawRoot, artifact, 84,
+		func(event ParsedEvent) error {
+			events = append(events, event)
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].Action != actionWithdraw ||
+		events[0].Key.Prefix.String() != "203.0.113.0/24" {
+		t.Fatalf("malformed OTC was not treated as withdraw: %+v", events)
+	}
+	if stats.MalformedOTC != 1 || stats.TreatAsWithdraw != 1 ||
+		stats.Announces != 0 || stats.Withdraws != 1 {
+		t.Fatalf("unexpected malformed OTC stats: %+v", stats)
+	}
+}
+
+func TestUpdateRejectsOtherExtendedLengthOverflow(t *testing.T) {
+	rawRoot := t.TempDir()
+	slot := mustUTC("2026-02-28T09:25:00Z")
+	malformed := []byte{0xf0, 36, 4, 0, 4, 47, 102}
+	artifact := writeGzipArtifact(
+		t, rawRoot, "rrc25/test-update.gz",
+		updateFixture(slot.Add(time.Second), 4, 64500, malformed),
+		slot.Format(time.RFC3339), "update",
+	)
+	if _, err := ParseUpdate(
+		rawRoot, artifact, 84, func(ParsedEvent) error { return nil },
+	); err == nil {
+		t.Fatal("non-OTC extended length overflow was accepted")
+	}
+}

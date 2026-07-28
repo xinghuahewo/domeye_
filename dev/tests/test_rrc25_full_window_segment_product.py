@@ -391,10 +391,6 @@ class FullWindowSegmentProductTests(unittest.TestCase):
                 },
             )
             self.assertIn(
-                "evidence/research-evidence-packages.jsonl.gz",
-                business.sequence_files,
-            )
-            self.assertIn(
                 "data/compatible-country-samples.jsonl.gz",
                 business.sequence_files,
             )

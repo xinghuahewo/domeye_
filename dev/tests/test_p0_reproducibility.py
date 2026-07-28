@@ -265,220 +265,6 @@ class Fixture:
         seal(directory)
         return directory
 
-    def d4(self, name, d2_dir, d3_dir, *, evidence_suffix="4"):
-        directory = self.root / name
-        directory.mkdir()
-        event_types = repro.D4_EVENT_TYPES
-        incident_chars = "123456"
-        bundle_chars = "789abc"
-        evidence_chars = [evidence_suffix] + [
-            value for value in "0123456789abcdef" if value != evidence_suffix
-        ][:5]
-        table_families = {
-            "hijack": "hijack",
-            "sub_hijack": "sub_hijack",
-            "leak": "leak_event",
-            "prefix_outage": "prefix_outage",
-            "as_outage": "as_outage",
-            "country_outage": "country_outage",
-        }
-        selections = {}
-        registry_entries = {}
-        bundle_ids = []
-        bundle_names = []
-        for index, event_type in enumerate(event_types):
-            incident_id = "inc_v1_" + incident_chars[index] * 24
-            bundle_id = "eb_v2_" + bundle_chars[index] * 32
-            evidence_id = "ev_v2_" + evidence_chars[index] * 32
-            bundle_name = "bundle-{:02d}-{}-{}.json".format(
-                index + 1, event_type, incident_id
-            )
-            evidence_item = {"evidence_id": evidence_id}
-            bundle = {
-                "bundle_version": "evidence_bundle_v2",
-                "bundle_id": bundle_id,
-                "incident": {"incident_id": incident_id, "event_type": event_type},
-                "coverage_summary": {"admission_level": "legacy_compatible"},
-                "route_event_refs": [],
-                "raw_record_refs": [],
-                "metric_windows": [],
-                "conclusion": {
-                    "classification": "observation_only",
-                    "causal_conclusion": None,
-                },
-                "evidence_registry": [evidence_item],
-            }
-            write_json(directory / bundle_name, bundle)
-            bundle_names.append(bundle_name)
-            bundle_ids.append(bundle_id)
-            selections[event_type] = {
-                "incident_id": incident_id,
-                "source_table": table_families[event_type] + "_202602",
-                "source_primary_key": {"fixture_id": index + 1},
-                "bundle_id": bundle_id,
-                "bundle_file": bundle_name,
-                "fact_link_status": "matched",
-                "source_fact_record_hash": None,
-                "selection_rule": repro.D4_SELECTION_RULE,
-            }
-            registry_entries[evidence_id] = {
-                "bundle_id": bundle_id,
-                "bundle_file": bundle_name,
-                "registry_item": evidence_item,
-            }
-        registry = {
-            "schema_version": "p0_evidence_registry_index_v1",
-            "candidate_scope": "six_event_contract_investigation_sample",
-            "entry_count": len(registry_entries),
-            "entries": dict(sorted(registry_entries.items())),
-            "classification": "observation_only",
-            "causal_conclusion": None,
-        }
-        write_json(directory / "evidence-registry.json", registry)
-        schema_sha = "d" * 64
-        reconciliation_payload = {
-            "schema_version": "evidence_reconciliation_v1",
-            "scope": "six_event_contract_investigation_sample",
-            "sample_only": True,
-            "population_coverage_claimed": False,
-            "bundle_count": len(bundle_names),
-            "event_type_count": len(event_types),
-            "event_types": sorted(event_types),
-            "bundle_ids": sorted(bundle_ids),
-            "strict_schema_status": "passed",
-            "schema_sha256": schema_sha,
-            "reference_closure_status": "passed",
-            "schema_invalid_count": 0,
-            "classification_violation_count": 0,
-            "causal_conclusion_nonnull_count": 0,
-            "evidence_id_conflict_count": 0,
-            "unresolved_evidence_reference_count": 0,
-            "unresolved_route_event_reference_count": 0,
-            "outside_window_record_count": 0,
-            "unknown_missing_reason_count": 0,
-            "legacy_unknown_value_count": 0,
-            "auto_zero_fill_count": 0,
-            "classification": "observation_only",
-            "causal_conclusion": None,
-        }
-        reconciliation = {
-            **reconciliation_payload,
-            "summary_fingerprint_sha256": repro._canonical_sha256(
-                {
-                    "schema": "evidence_reconciliation_fingerprint_v1",
-                    "summary": reconciliation_payload,
-                }
-            ),
-        }
-        write_json(directory / "evidence-reconciliation-summary.json", reconciliation)
-        files = {
-            filename: inventory(directory / filename)
-            for filename in (
-                *bundle_names,
-                "evidence-registry.json",
-                "evidence-reconciliation-summary.json",
-            )
-        }
-        d2_manifest = json.loads((d2_dir / "manifest.json").read_text(encoding="utf-8"))
-        d3_manifest = json.loads(
-            (d3_dir / "p0-artifact-manifest.json").read_text(encoding="utf-8")
-        )
-        d2_manifest_sha = sha((d2_dir / "manifest.json").read_bytes())
-        d3_manifest_sha = sha((d3_dir / "p0-artifact-manifest.json").read_bytes())
-        d3_summary_sha = sha(
-            (d3_dir / "p0-artifact-manifest.summary.zh.json").read_bytes()
-        )
-        manifest = {
-            "schema_version": "p0_evidence_candidate_v1",
-            "candidate_kind": "six_event_contract_investigation_sample",
-            "candidate_fingerprint_sha256": "0" * 64,
-            "data_profile": PROFILE,
-            "generated_at": "2026-07-20T12:00:00Z",
-            "inputs": {
-                "d2": {
-                    "manifest_sha256": d2_manifest_sha,
-                    "candidate_fingerprint_sha256": d2_manifest[
-                        "candidate_fingerprint_sha256"
-                    ],
-                    "admission_status": d2_manifest["admission"]["status"],
-                    "sample_enabled": False,
-                    "sha256_closure": "passed",
-                    "content_hash_closure": "passed",
-                },
-                "d3_artifacts": {
-                    "manifest_sha256": d3_manifest_sha,
-                    "manifest_fingerprint_sha256": d3_manifest[
-                        "manifest_fingerprint_sha256"
-                    ],
-                    "summary_sha256": d3_summary_sha,
-                    "raw_source_status": "full",
-                    "update_coverage": {"expected_count": 1, "observed_count": 1},
-                    "sha256_closure": "passed",
-                    "verification_status": "verified",
-                },
-                "route_event_index": {
-                    "status": "not_provided",
-                    "missing_reason": "route_event_index_not_available_for_candidate",
-                },
-                "metric_series": {
-                    "status": "not_provided",
-                    "missing_reason": "metric_series_not_available_for_candidate",
-                },
-            },
-            "generator": {
-                "runner_sha256": "6" * 64,
-                "evidence_module_hashes": {"backend/data_pipeline/evidence/bundle.py": "e" * 64},
-                "schema_sha256": schema_sha,
-            },
-            "selection": selections,
-            "files": files,
-            "registry": {
-                "file": "evidence-registry.json",
-                "entry_count": len(registry_entries),
-                "evidence_id_conflict_count": 0,
-                "unresolved_evidence_reference_count": 0,
-                "unresolved_route_event_reference_count": 0,
-                "reference_closure_ratio": 1,
-            },
-            "reconciliation": {
-                "file": "evidence-reconciliation-summary.json",
-                "schema_version": reconciliation["schema_version"],
-                "scope": reconciliation["scope"],
-                "sample_only": True,
-                "population_coverage_claimed": False,
-                "summary_fingerprint_sha256": reconciliation["summary_fingerprint_sha256"],
-            },
-            "validation": {
-                "strict_schema_status": "passed",
-                "schema_sha256": schema_sha,
-                "bundle_count": len(bundle_names),
-                "event_type_count": len(event_types),
-                "classification_violation_count": 0,
-                "causal_conclusion_nonnull_count": 0,
-                "auto_zero_fill_count": 0,
-            },
-            "admission": {
-                "status": "sample_only_not_full_population",
-                "represents_full_evidence_population": False,
-                "eligible_for_release_gate": False,
-                "raw_traceable": False,
-                "blocking_reasons": [
-                    "six_event_sample_not_full_evidence_population",
-                    "route_event_index_not_provided",
-                    "metric_series_not_provided",
-                ],
-            },
-            "classification": "observation_only",
-            "causal_conclusion": None,
-        }
-        manifest["candidate_fingerprint_sha256"] = repro._canonical_sha256(
-            repro._candidate_fingerprint_payload(manifest, "d4")
-        )
-        write_json(directory / "manifest.json", manifest)
-        (directory / "摘要.md").write_text("# D4\n", encoding="utf-8")
-        seal(directory)
-        return directory
-
     def metric(self, name, d2_dir, d3_dir, *, value=1):
         directory = self.root / name
         directory.mkdir()
@@ -643,36 +429,23 @@ class ReproducibilityCliTest(unittest.TestCase):
         d2b = fixture.d2("d2b")
         d3a = fixture.d3("d3a")
         d3b = fixture.d3("d3b")
-        d4a = fixture.d4("d4a", d2a, d3a)
-        d4b = fixture.d4("d4b", d2b, d3b)
         ma = fixture.metric("ma", d2a, d3a)
         mb = fixture.metric("mb", d2b, d3b)
-        return d2a, d2b, d3a, d3b, d4a, d4b, ma, mb
+        return d2a, d2b, d3a, d3b, ma, mb
 
     def args(self, inputs, output="out"):
-        d2a, d2b, d3a, d3b, d4a, d4b, ma, mb = inputs
+        d2a, d2b, d3a, d3b, ma, mb = inputs
         return Namespace(
             d2_a=str(d2a),
             d2_b=str(d2b),
             d3_a=str(d3a),
             d3_b=str(d3b),
-            d4_a=str(d4a),
-            d4_b=str(d4b),
             metric_a=str(ma),
             metric_b=str(mb),
             route_a=None,
             route_b=None,
             output_dir=str(self.root / output),
         )
-
-    def rewrite_d4_manifest(self, directory, manifest, *, refresh_files=()):
-        for filename in refresh_files:
-            manifest["files"][filename] = inventory(directory / filename)
-        manifest["candidate_fingerprint_sha256"] = repro._canonical_sha256(
-            repro._candidate_fingerprint_payload(manifest, "d4")
-        )
-        write_json(directory / "manifest.json", manifest)
-        seal(directory)
 
     def test_identical_reruns_generate_passing_deterministic_summary(self):
         inputs = self.build_inputs()
@@ -700,7 +473,6 @@ class ReproducibilityCliTest(unittest.TestCase):
             RawFixture,
             context,
             d2_manifest,
-            evidence_summary,
             metric_summary,
         )
 
@@ -712,7 +484,6 @@ class ReproducibilityCliTest(unittest.TestCase):
                 raw.manifest,
                 context=context(),
                 artifact_verification_summary=raw.verification,
-                evidence_summary=evidence_summary(),
                 metric_summary=metric_summary(),
                 reproducibility_summary=generated,
             )
@@ -748,7 +519,7 @@ class ReproducibilityCliTest(unittest.TestCase):
             (inputs[2] / "p0-artifact-manifest.json").read_text(encoding="utf-8")
         )["manifest_fingerprint_sha256"]
         # 使用相同输入身份但不同落盘 series/summary，模拟非确定性输出。
-        inputs[7] = fixture.metric("mb-different", inputs[1], inputs[3], value=2)
+        inputs[5] = fixture.metric("mb-different", inputs[1], inputs[3], value=2)
         result = repro.run(self.args(tuple(inputs)))
         semantic = result["semantic_validation"]
         self.assertFalse(semantic["aggregate_summary_match"])
@@ -760,8 +531,7 @@ class ReproducibilityCliTest(unittest.TestCase):
         fixture = Fixture(self.root)
         changed_d2 = fixture.d2("d2b-different", incident_suffix="2")
         inputs[1] = changed_d2
-        inputs[5] = fixture.d4("d4b-different", changed_d2, inputs[3])
-        inputs[7] = fixture.metric("mb-different-d2", changed_d2, inputs[3])
+        inputs[5] = fixture.metric("mb-different-d2", changed_d2, inputs[3])
         # B 侧下游重新绑定其实际 D2；输入根身份仍可比较，实际稳定 ID 集不同。
         result = repro.run(self.args(tuple(inputs)))
         semantic = result["semantic_validation"]
@@ -904,177 +674,9 @@ class ReproducibilityCliTest(unittest.TestCase):
         expected = hashlib.sha256(canonical(producer_payload).encode("utf-8")).hexdigest()
         self.assertEqual(manifest["candidate_fingerprint_sha256"], expected)
 
-    def test_d4_d2_manifest_sha_reference_must_close(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest_path = directory / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["inputs"]["d2"]["manifest_sha256"] = "f" * 64
-        manifest["candidate_fingerprint_sha256"] = repro._canonical_sha256(
-            repro._candidate_fingerprint_payload(manifest, "d4")
-        )
-        write_json(manifest_path, manifest)
-        seal(directory)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 未绑定当前 D2 manifest"):
-            repro.run(self.args(inputs))
-
-    def test_d4_d3_summary_sha_reference_must_close(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest_path = directory / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["inputs"]["d3_artifacts"]["summary_sha256"] = "f" * 64
-        manifest["candidate_fingerprint_sha256"] = repro._canonical_sha256(
-            repro._candidate_fingerprint_payload(manifest, "d4")
-        )
-        write_json(manifest_path, manifest)
-        seal(directory)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 未绑定当前 D3 summary"):
-            repro.run(self.args(inputs))
-
-    def test_d4_inputs_require_all_four_exact_producer_blocks(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["inputs"].pop("metric_series")
-        self.rewrite_d4_manifest(directory, manifest)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 inputs.*字段集合非法"):
-            repro.run(self.args(inputs))
-
-    def test_d4_d2_derived_state_is_not_trusted(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["inputs"]["d2"]["admission_status"] = "not_eligible"
-        self.rewrite_d4_manifest(directory, manifest)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 D2 派生状态"):
-            repro.run(self.args(inputs))
-
-    def test_d4_d3_raw_status_and_coverage_are_rederived(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["inputs"]["d3_artifacts"]["raw_source_status"] = "unavailable"
-        manifest["inputs"]["d3_artifacts"]["update_coverage"] = {
-            "expected_count": 1,
-            "observed_count": 0,
-        }
-        self.rewrite_d4_manifest(directory, manifest)
-        with self.assertRaisesRegex(
-            repro.ReproducibilityError, "D4 inputs.d3_artifacts 未按当前 D3 派生"
-        ):
-            repro.run(self.args(inputs))
-
-    def test_d4_route_and_metric_absence_contract_is_exact(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        for input_name, expected_message in (
-            ("route_event_index", "RouteEvent 输入边界"),
-            ("metric_series", "MetricSeries 输入边界"),
-        ):
-            with self.subTest(input_name=input_name):
-                manifest = json.loads(
-                    (directory / "manifest.json").read_text(encoding="utf-8")
-                )
-                manifest["inputs"]["route_event_index"] = {
-                    "status": "not_provided",
-                    "missing_reason": "route_event_index_not_available_for_candidate",
-                }
-                manifest["inputs"]["metric_series"] = {
-                    "status": "not_provided",
-                    "missing_reason": "metric_series_not_available_for_candidate",
-                }
-                manifest["inputs"][input_name]["status"] = "provided"
-                self.rewrite_d4_manifest(directory, manifest)
-                with self.assertRaisesRegex(repro.ReproducibilityError, expected_message):
-                    repro.run(self.args(inputs, "out-" + input_name))
-
-    def test_d4_admission_is_exact_sample_only_boundary(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["admission"]["eligible_for_release_gate"] = True
-        self.rewrite_d4_manifest(directory, manifest)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 admission"):
-            repro.run(self.args(inputs))
-
-    def test_d4_selection_requires_exactly_one_bundle_for_each_six_event_type(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["selection"].pop("country_outage")
-        self.rewrite_d4_manifest(directory, manifest)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 selection.*字段集合非法"):
-            repro.run(self.args(inputs))
-
-    def test_d4_reconciliation_metadata_is_recomputed_not_trusted(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        reconciliation_path = directory / "evidence-reconciliation-summary.json"
-        reconciliation = json.loads(reconciliation_path.read_text(encoding="utf-8"))
-        reconciliation["population_coverage_claimed"] = True
-        reconciliation.pop("summary_fingerprint_sha256")
-        reconciliation["summary_fingerprint_sha256"] = repro._canonical_sha256(
-            {
-                "schema": "evidence_reconciliation_fingerprint_v1",
-                "summary": reconciliation,
-            }
-        )
-        write_json(reconciliation_path, reconciliation)
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["reconciliation"]["population_coverage_claimed"] = True
-        manifest["reconciliation"]["summary_fingerprint_sha256"] = reconciliation[
-            "summary_fingerprint_sha256"
-        ]
-        self.rewrite_d4_manifest(
-            directory,
-            manifest,
-            refresh_files=("evidence-reconciliation-summary.json",),
-        )
-        with self.assertRaisesRegex(repro.ReproducibilityError, "reconciliation 元数据非法"):
-            repro.run(self.args(inputs))
-
-    def test_d4_validation_projection_is_recomputed_from_bundles(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        manifest["validation"]["bundle_count"] = 5
-        self.rewrite_d4_manifest(directory, manifest)
-        with self.assertRaisesRegex(repro.ReproducibilityError, "D4 validation"):
-            repro.run(self.args(inputs))
-
-    def test_d4_registry_locator_must_equal_the_bundle_registry_item(self):
-        inputs = self.build_inputs()
-        directory = inputs[4]
-        registry_path = directory / "evidence-registry.json"
-        registry = json.loads(registry_path.read_text(encoding="utf-8"))
-        evidence_id = sorted(registry["entries"])[0]
-        registry["entries"][evidence_id]["bundle_file"] = sorted(
-            path.name for path in directory.glob("bundle-*.json")
-        )[-1]
-        write_json(registry_path, registry)
-        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
-        self.rewrite_d4_manifest(
-            directory,
-            manifest,
-            refresh_files=("evidence-registry.json",),
-        )
-        with self.assertRaisesRegex(repro.ReproducibilityError, "evidence registry 引用不闭合"):
-            repro.run(self.args(inputs))
-
-    def test_d4_v1_fingerprint_does_not_expand_to_derived_metadata(self):
-        inputs = self.build_inputs()
-        manifest = json.loads((inputs[4] / "manifest.json").read_text(encoding="utf-8"))
-        before = repro._canonical_sha256(repro._candidate_fingerprint_payload(manifest, "d4"))
-        manifest["admission"]["eligible_for_release_gate"] = True
-        manifest["inputs"]["d3_artifacts"]["raw_source_status"] = "partial"
-        manifest["validation"]["bundle_count"] = 5
-        after = repro._canonical_sha256(repro._candidate_fingerprint_payload(manifest, "d4"))
-        self.assertEqual(before, after)
-
     def test_metric_d3_file_identity_must_close(self):
         inputs = self.build_inputs()
-        directory = inputs[6]
+        directory = inputs[4]
         manifest_path = directory / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["sources"]["d3_artifacts"]["summary_sha256"] = "f" * 64
@@ -1088,10 +690,10 @@ class ReproducibilityCliTest(unittest.TestCase):
 
     def test_metric_manifest_requires_exact_frozen_pretty_serialization(self):
         inputs = self.build_inputs()
-        manifest_path = inputs[6] / "manifest.json"
+        manifest_path = inputs[4] / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         write_json(manifest_path, manifest)
-        seal(inputs[6])
+        seal(inputs[4])
         with self.assertRaisesRegex(repro.ReproducibilityError, "不是规范 JSON 字节"):
             repro.run(self.args(inputs))
 
@@ -1112,7 +714,7 @@ class ReproducibilityCliTest(unittest.TestCase):
 
     def test_tampered_signed_file_fails_closed(self):
         inputs = self.build_inputs()
-        with (inputs[6] / "metric-series.jsonl.gz").open("ab") as stream:
+        with (inputs[4] / "metric-series.jsonl.gz").open("ab") as stream:
             stream.write(b"tamper")
         with self.assertRaisesRegex(repro.ReproducibilityError, "SHA256"):
             repro.run(self.args(inputs))
@@ -1123,9 +725,9 @@ class ReproducibilityCliTest(unittest.TestCase):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["generated_at"] = "2026-07-20T12:00:01Z"
         manifest["candidate_fingerprint_sha256"] = repro._canonical_sha256(
-            repro._candidate_fingerprint_payload(manifest, "d4")
+            repro._candidate_fingerprint_payload(manifest, "metric")
         )
-        write_json(manifest_path, manifest)
+        write_pretty_json(manifest_path, manifest)
         seal(inputs[5])
         with self.assertRaisesRegex(repro.ReproducibilityError, "输入身份不同"):
             repro.run(self.args(inputs))

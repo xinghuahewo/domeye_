@@ -270,6 +270,7 @@ fi
 if [[ "${reuse_existing}" == true ]]; then
     docker run --detach \
         --name "${CANDIDATE_CONTAINER}" \
+        --label "domeye.core.database-role=offline-candidate" \
         --memory "${DOMEYE_CORE_DATABASE_MEMORY}" \
         --shm-size 4g \
         --env "POSTGRES_DB=${DOMEYE_CORE_DB_NAME}" \
@@ -435,10 +436,10 @@ jq -s '.[0] + {integrity: .[1]}' "${RESTORED_INVENTORY_RAW}" "${RESTORED_INTEGRI
 domeye_artifact_json_file "${RESTORED_INVENTORY}"
 
 if ! diff -u \
-    <(jq -S '{tables, integrity}' "${RELEASE_DIR}/database-inventory.json") \
-    <(jq -S '{tables, integrity}' "${RESTORED_INVENTORY}") \
+    <(jq -S '{tables, integrity, static_info}' "${RELEASE_DIR}/database-inventory.json") \
+    <(jq -S '{tables, integrity, static_info}' "${RESTORED_INVENTORY}") \
     >/dev/null; then
-    domeye_artifact_error '恢复后的表行数、时间范围或 schema hash 与制品不一致'
+    domeye_artifact_error '恢复后的表、static INFO 或 schema hash 与制品不一致'
     exit 1
 fi
 

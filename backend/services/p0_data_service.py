@@ -1,10 +1,10 @@
 """P0 候选数据制品的只读准入服务。
 
 服务只在显式配置 ``P0_DATA_RELEASE_DIR`` 时读取候选仓库。仓库固定包含
-``d2``、``d3``、``d4``、``metric`` 和 ``quality`` 五个平铺组件目录；
+``d2``、``d3``、``metric`` 和 ``quality`` 四个平铺组件目录；
 每个目录都必须有覆盖其余全部普通文件的 ``SHA256SUMS``。本模块不导入
 数据库连接、不写文件、不激活生产，只把已经通过组件准入且引用闭合的
-MetricSeries、Evidence Bundle v2 和质量报告投影为 API 数据。
+MetricSeries 和质量报告投影为 API 数据。
 
 缓存以目录和文件的 device/inode/size/mtime/ctime 以及已校验 SHA256 为
 边界。任一元数据变化都会重新加载；读取前后发生变化、软链接、重复 JSON
@@ -28,24 +28,14 @@ import threading
 import zlib
 from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple
 
-from data_pipeline.evidence import EvidenceBundleError, validate_reference_closure
 from data_pipeline.metrics import METRIC_DEFINITIONS
 from data_pipeline.quality import QualityGateInputError, validate_report_semantics
 
 
 P0_DATA_RELEASE_ENV = "P0_DATA_RELEASE_DIR"
 P0_DATA_PRODUCTION_ACTIVE_ENV = "P0_DATA_PRODUCTION_ACTIVE"
-COMPONENT_NAMES = ("d2", "d3", "d4", "metric", "quality")
-EVENT_TYPES = (
-    "hijack",
-    "sub_hijack",
-    "leak",
-    "prefix_outage",
-    "as_outage",
-    "country_outage",
-)
+COMPONENT_NAMES = ("d2", "d3", "metric", "quality")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-INCIDENT_ID_RE = re.compile(r"^inc_v1_[0-9a-f]{24}$")
 METRIC_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,95}$")
 SAFE_FILE_RE = re.compile(r"^[^/\\\x00\r\n]+$")
 D3_ARTIFACT_FILE_RE = re.compile(
@@ -123,7 +113,6 @@ UTC = timezone.utc
 COMPONENT_MAX_TOTAL_BYTES = {
     "d2": 1024 * 1024 * 1024,
     "d3": 128 * 1024 * 1024,
-    "d4": 512 * 1024 * 1024,
     "metric": 1024 * 1024 * 1024,
     "quality": 1024 * 1024 * 1024,
 }
@@ -138,7 +127,6 @@ QUALITY_REQUIRED_FILES = frozenset(
         "d3-artifact-manifest.json",
         "d3-artifact-verification-summary.json",
         "route-event-reconciliation-summary.json",
-        "evidence-reconciliation-summary.json",
         "metric-reconciliation-summary.json",
         "reproducibility-summary.json",
         "quality-gate-execution-context.json",
@@ -151,7 +139,6 @@ QUALITY_SOURCE_INPUT_FILES = {
     "d2_audited": "d2-candidate-manifest.json",
     "d3": "d3-artifact-manifest.json",
     "route": "route-event-reconciliation-summary.json",
-    "evidence": "evidence-reconciliation-summary.json",
     "metric": "metric-reconciliation-summary.json",
     "repro": "reproducibility-summary.json",
     "execution": "quality-gate-execution-context.json",
@@ -196,39 +183,6 @@ MISSING_STATES = frozenset(
         "source_fact_collision",
     }
 )
-EVIDENCE_RECONCILIATION_BLOCKING_COUNTS = (
-    "schema_invalid_count",
-    "classification_violation_count",
-    "causal_conclusion_nonnull_count",
-    "evidence_id_conflict_count",
-    "unresolved_evidence_reference_count",
-    "unresolved_route_event_reference_count",
-    "outside_window_record_count",
-    "unknown_missing_reason_count",
-    "auto_zero_fill_count",
-)
-EVIDENCE_RECONCILIATION_KEYS = frozenset(
-    {
-        "schema_version",
-        "scope",
-        "sample_only",
-        "population_coverage_claimed",
-        "bundle_count",
-        "event_type_count",
-        "event_types",
-        "bundle_ids",
-        "strict_schema_status",
-        "schema_sha256",
-        "reference_closure_status",
-        *EVIDENCE_RECONCILIATION_BLOCKING_COUNTS,
-        "legacy_unknown_value_count",
-        "classification",
-        "causal_conclusion",
-        "summary_fingerprint_sha256",
-    }
-)
-
-
 class P0DataError(RuntimeError):
     """P0 API 可稳定映射的只读候选错误。"""
 
@@ -303,12 +257,9 @@ class ReleaseSnapshot:
     repository_fingerprint_sha256: str
     d2: Mapping[str, Any]
     d3: Mapping[str, Any]
-    d4: Mapping[str, Any]
     metric_manifest: Mapping[str, Any]
     quality: Mapping[str, Any]
     metrics: Mapping[str, Mapping[str, Any]]
-    evidence_by_incident: Mapping[str, Mapping[str, Any]]
-    evidence_files: Mapping[str, str]
     raw_coverage: Mapping[str, Any]
 
 
@@ -1846,265 +1797,6 @@ def _load_metrics(
     return manifest, records
 
 
-def _d4_fingerprint(manifest: Mapping[str, Any]) -> str:
-    inputs = manifest.get("inputs")
-    if not isinstance(inputs, Mapping):
-        raise P0DataConflict("D4 inputs 缺失")
-    d2 = inputs.get("d2")
-    d3 = inputs.get("d3_artifacts")
-    if not isinstance(d2, Mapping) or not isinstance(d3, Mapping):
-        raise P0DataConflict("D4 D2/D3 inputs 缺失")
-    payload = {
-        "schema_version": manifest.get("schema_version"),
-        "candidate_kind": manifest.get("candidate_kind"),
-        "data_profile": manifest.get("data_profile"),
-        "generated_at": manifest.get("generated_at"),
-        "inputs": {
-            "d2_manifest_sha256": d2.get("manifest_sha256"),
-            "d2_candidate_fingerprint_sha256": d2.get(
-                "candidate_fingerprint_sha256"
-            ),
-            "d3_artifact_manifest_sha256": d3.get("manifest_sha256"),
-            "d3_artifact_fingerprint_sha256": d3.get(
-                "manifest_fingerprint_sha256"
-            ),
-        },
-        "generator": manifest.get("generator"),
-        "selection": manifest.get("selection"),
-        "files": manifest.get("files"),
-        "registry_entry_count": (manifest.get("registry") or {}).get("entry_count"),
-        "classification": manifest.get("classification"),
-        "causal_conclusion": manifest.get("causal_conclusion"),
-    }
-    return _canonical_sha256(payload)
-
-
-def _evidence_reconciliation_fingerprint(summary: Mapping[str, Any]) -> str:
-    payload = dict(summary)
-    payload.pop("summary_fingerprint_sha256", None)
-    return _canonical_sha256(
-        {"schema": "evidence_reconciliation_fingerprint_v1", "summary": payload}
-    )
-
-
-def _load_evidence_reconciliation(
-    layout: Layout,
-    component: Component,
-    manifest: Mapping[str, Any],
-) -> Mapping[str, Any]:
-    metadata = manifest.get("reconciliation")
-    inventories = manifest.get("files")
-    if not isinstance(metadata, Mapping) or not isinstance(inventories, Mapping):
-        raise P0DataConflict("D4 Evidence 对账元数据缺失")
-    name = metadata.get("file")
-    if (
-        name != "evidence-reconciliation-summary.json"
-        or name not in inventories
-        or name not in component.checksums
-    ):
-        raise P0DataConflict("D4 Evidence 对账文件不可解析")
-    summary = _load_json(layout, "d4", name, "D4 Evidence reconciliation")
-    if set(summary) != EVIDENCE_RECONCILIATION_KEYS:
-        raise P0DataConflict("D4 Evidence 对账字段集合非法")
-    if (
-        summary.get("schema_version") != "evidence_reconciliation_v1"
-        or summary.get("scope") != "six_event_contract_investigation_sample"
-        or summary.get("sample_only") is not True
-        or summary.get("population_coverage_claimed") is not False
-        or summary.get("strict_schema_status") != "passed"
-        or summary.get("reference_closure_status") != "passed"
-        or summary.get("classification") != "observation_only"
-        or summary.get("causal_conclusion") is not None
-    ):
-        raise P0DataConflict("D4 Evidence 对账违反六类样本或观察事实边界")
-    fingerprint = _sha(
-        summary.get("summary_fingerprint_sha256"),
-        "D4 Evidence reconciliation fingerprint",
-    )
-    if fingerprint != _evidence_reconciliation_fingerprint(summary):
-        raise P0DataConflict("D4 Evidence 对账 fingerprint 不一致")
-    for field in EVIDENCE_RECONCILIATION_BLOCKING_COUNTS:
-        if _count(summary.get(field), "D4 Evidence reconciliation." + field) != 0:
-            raise P0DataConflict("D4 Evidence 对账存在阻断计数：{}".format(field))
-    _count(
-        summary.get("legacy_unknown_value_count"),
-        "D4 Evidence reconciliation.legacy_unknown_value_count",
-    )
-    _count(summary.get("bundle_count"), "D4 Evidence reconciliation.bundle_count", minimum=1)
-    _count(
-        summary.get("event_type_count"),
-        "D4 Evidence reconciliation.event_type_count",
-        minimum=1,
-    )
-    schema_sha = _sha(
-        summary.get("schema_sha256"), "D4 Evidence reconciliation schema_sha256"
-    )
-    generator = manifest.get("generator")
-    validation = manifest.get("validation")
-    if (
-        not isinstance(generator, Mapping)
-        or not isinstance(validation, Mapping)
-        or generator.get("schema_sha256") != schema_sha
-        or validation.get("schema_sha256") != schema_sha
-    ):
-        raise P0DataConflict("D4 Evidence 对账 Schema 身份不一致")
-    for field in (
-        "schema_version",
-        "scope",
-        "sample_only",
-        "population_coverage_claimed",
-        "summary_fingerprint_sha256",
-    ):
-        if metadata.get(field) != summary.get(field):
-            raise P0DataConflict("D4 Evidence 对账元数据不一致：{}".format(field))
-    event_types = summary.get("event_types")
-    bundle_ids = summary.get("bundle_ids")
-    if (
-        not isinstance(event_types, list)
-        or not event_types
-        or any(not isinstance(item, str) for item in event_types)
-        or event_types != sorted(set(event_types))
-        or not isinstance(bundle_ids, list)
-        or not bundle_ids
-        or any(not isinstance(item, str) or not item for item in bundle_ids)
-        or bundle_ids != sorted(set(bundle_ids))
-    ):
-        raise P0DataConflict("D4 Evidence 对账 Bundle 或事件类型集合非法")
-    return summary
-
-
-def _load_evidence(
-    layout: Layout, component: Component
-) -> Tuple[
-    Mapping[str, Any],
-    Dict[str, Mapping[str, Any]],
-    Dict[str, str],
-]:
-    manifest = _load_json(layout, "d4", "manifest.json", "D4 manifest")
-    if manifest.get("schema_version") != "p0_evidence_candidate_v1":
-        raise P0DataConflict("D4 manifest 版本非法")
-    _profile(manifest, "D4")
-    _verify_inventory(manifest, component, layout, "D4")
-    _require_component_files(
-        component,
-        set(manifest["files"]) | {"manifest.json", "摘要.md"},
-        "D4 组件",
-    )
-    fingerprint = _sha(manifest.get("candidate_fingerprint_sha256"), "D4 fingerprint")
-    if fingerprint != _d4_fingerprint(manifest):
-        raise P0DataConflict("D4 candidate fingerprint 不一致")
-    if manifest.get("classification") != "observation_only" or manifest.get(
-        "causal_conclusion"
-    ) is not None:
-        raise P0DataConflict("D4 违反 observation_only 边界")
-    admission = manifest.get("admission")
-    if (
-        manifest.get("candidate_kind") != "six_event_contract_investigation_sample"
-        or not isinstance(admission, Mapping)
-        or admission.get("status") != "sample_only_not_full_population"
-        or admission.get("represents_full_evidence_population") is not False
-        or admission.get("eligible_for_release_gate") is not False
-        or admission.get("raw_traceable") is not False
-    ):
-        raise P0DataConflict("D4 未保持六类样本的非全量准入边界")
-    reconciliation = _load_evidence_reconciliation(layout, component, manifest)
-    registry_meta = manifest.get("registry")
-    if not isinstance(registry_meta, Mapping):
-        raise P0DataConflict("D4 registry metadata 缺失")
-    registry_name = registry_meta.get("file")
-    if not isinstance(registry_name, str) or registry_name not in component.checksums:
-        raise P0DataConflict("D4 registry 文件不可解析")
-    registry = _load_json(layout, "d4", registry_name, "D4 evidence registry")
-    entries = registry.get("entries")
-    if (
-        registry.get("schema_version") != "p0_evidence_registry_index_v1"
-        or not isinstance(entries, Mapping)
-        or registry.get("entry_count") != len(entries)
-        or registry_meta.get("entry_count") != len(entries)
-    ):
-        raise P0DataConflict("D4 evidence registry 计数或版本非法")
-    inventories = manifest.get("files")
-    assert isinstance(inventories, Mapping)
-    bundle_names = sorted(
-        name
-        for name in inventories
-        if name.startswith("bundle-") and name.endswith(".json")
-    )
-    if not bundle_names:
-        raise P0DataConflict("D4 没有 Evidence Bundle")
-    by_incident: Dict[str, Mapping[str, Any]] = {}
-    evidence_files: Dict[str, str] = {}
-    reconstructed_entries: Dict[str, Mapping[str, Any]] = {}
-    bundle_ids = set()
-    bundle_event_types = set()
-    for name in bundle_names:
-        bundle = _load_json(layout, "d4", name, "Evidence Bundle v2")
-        try:
-            validate_reference_closure(bundle)
-        except (EvidenceBundleError, KeyError, TypeError, AttributeError) as error:
-            raise P0DataConflict("Evidence Bundle 结构或引用未闭合") from error
-        if (
-            bundle.get("bundle_version") != "evidence_bundle_v2"
-            or bundle.get("conclusion", {}).get("classification") != "observation_only"
-            or bundle.get("conclusion", {}).get("causal_conclusion") is not None
-        ):
-            raise P0DataConflict("Evidence Bundle 版本或结论边界非法")
-        bundle_id = bundle.get("bundle_id")
-        incident_id = bundle.get("incident", {}).get("incident_id")
-        event_type = bundle.get("incident", {}).get("event_type")
-        if not isinstance(bundle_id, str) or bundle_id in bundle_ids:
-            raise P0DataConflict("Evidence Bundle ID 重复")
-        if not isinstance(incident_id, str) or not INCIDENT_ID_RE.fullmatch(incident_id):
-            raise P0DataConflict("Evidence Bundle Incident ID 非法")
-        if incident_id in by_incident:
-            raise P0DataConflict("Evidence Bundle Incident ID 重复")
-        if event_type not in EVENT_TYPES:
-            raise P0DataConflict("Evidence Bundle 事件类型非法")
-        bundle_ids.add(bundle_id)
-        bundle_event_types.add(event_type)
-        by_incident[incident_id] = bundle
-        evidence_files[incident_id] = name
-        bundle_registry = bundle.get("evidence_registry")
-        if not isinstance(bundle_registry, list):
-            raise P0DataConflict("Evidence Bundle registry 缺失")
-        for item in bundle_registry:
-            if not isinstance(item, Mapping):
-                raise P0DataConflict("Evidence registry item 非对象")
-            evidence_id = item.get("evidence_id")
-            if not isinstance(evidence_id, str) or evidence_id in reconstructed_entries:
-                raise P0DataConflict("Evidence ID 跨 Bundle 重复")
-            reconstructed_entries[evidence_id] = {
-                "bundle_id": bundle_id,
-                "bundle_file": name,
-                "registry_item": item,
-            }
-    if set(entries) != set(reconstructed_entries):
-        raise P0DataConflict("D4 evidence registry 与 Bundle 引用不闭合")
-    for evidence_id, expected in reconstructed_entries.items():
-        if entries[evidence_id] != expected:
-            raise P0DataConflict("D4 evidence registry 定位不一致")
-    if (
-        reconciliation.get("bundle_count") != len(by_incident)
-        or reconciliation.get("event_type_count") != len(bundle_event_types)
-        or reconciliation.get("bundle_ids") != sorted(bundle_ids)
-        or reconciliation.get("event_types") != sorted(bundle_event_types)
-        or set(bundle_event_types) != set(EVENT_TYPES)
-    ):
-        raise P0DataConflict("D4 Evidence 对账与实际六类 Bundle 不一致")
-    validation = manifest.get("validation")
-    if (
-        not isinstance(validation, Mapping)
-        or validation.get("strict_schema_status") != "passed"
-        or validation.get("bundle_count") != len(by_incident)
-        or validation.get("event_type_count") != len(bundle_event_types)
-        or validation.get("classification_violation_count") != 0
-        or validation.get("causal_conclusion_nonnull_count") != 0
-        or validation.get("auto_zero_fill_count") != 0
-    ):
-        raise P0DataConflict("D4 validation 与实际 Bundle 不一致")
-    return manifest, by_incident, evidence_files
-
-
 def _quality_fingerprint(report: Mapping[str, Any]) -> str:
     payload = dict(report)
     payload.pop("report_fingerprint_sha256", None)
@@ -2290,18 +1982,15 @@ def _profile_identity(raw: Mapping[str, Any], label: str) -> Dict[str, str]:
 def _cross_validate(
     d2: Mapping[str, Any],
     d3: Mapping[str, Any],
-    d4: Mapping[str, Any],
     metric: Mapping[str, Any],
     quality: Mapping[str, Any],
-    bundles: Mapping[str, Mapping[str, Any]],
     raw_coverage: Mapping[str, Any],
     components: Mapping[str, Component],
     quality_closure: Mapping[str, Any],
 ) -> None:
     baseline = _profile_identity(_profile(d2, "D2"), "D2")
-    for label, manifest in (("D4", d4), ("Metric", metric)):
-        if _profile_identity(_profile(manifest, label), label) != baseline:
-            raise P0DataConflict("{} 与 D2 data_profile 不一致".format(label))
+    if _profile_identity(_profile(metric, "Metric"), "Metric") != baseline:
+        raise P0DataConflict("Metric 与 D2 data_profile 不一致")
     d3_profile = d3.get("data_profile")
     if not isinstance(d3_profile, Mapping):
         raise P0DataConflict("D3 data_profile 缺失")
@@ -2334,27 +2023,17 @@ def _cross_validate(
     profile_sha = d2["source"]["provenance"]["data_profile_sha256"]
     if quality_profile.get("profile_sha256") != profile_sha:
         raise P0DataConflict("质量报告与 D2 data-profile SHA256 不一致")
-    metric_profile_sha = metric.get("provenance", {}).get("data_profile_sha256")
-    if metric_profile_sha != profile_sha:
+    if metric.get("provenance", {}).get("data_profile_sha256") != profile_sha:
         raise P0DataConflict("Metric 与 D2 data-profile SHA256 不一致")
+
     d2_fingerprint = d2["candidate_fingerprint_sha256"]
     d3_fingerprint = d3["manifest_fingerprint_sha256"]
-    d4_inputs = d4.get("inputs", {})
     metric_sources = metric.get("sources", {})
     d3_manifest_name, d3_summary_name = _select_d3_names(
         components["d3"].checksums
     )
     if (
-        d4_inputs.get("d2", {}).get("candidate_fingerprint_sha256") != d2_fingerprint
-        or d4_inputs.get("d2", {}).get("manifest_sha256")
-        != components["d2"].checksums.get("manifest.json")
-        or d4_inputs.get("d3_artifacts", {}).get("manifest_fingerprint_sha256")
-        != d3_fingerprint
-        or d4_inputs.get("d3_artifacts", {}).get("manifest_sha256")
-        != components["d3"].checksums.get(d3_manifest_name)
-        or d4_inputs.get("d3_artifacts", {}).get("summary_sha256")
-        != components["d3"].checksums.get(d3_summary_name)
-        or metric_sources.get("d2_normalization", {}).get("fingerprint_sha256")
+        metric_sources.get("d2_normalization", {}).get("fingerprint_sha256")
         != d2_fingerprint
         or metric_sources.get("d2_normalization", {}).get("manifest_sha256")
         != components["d2"].checksums.get("manifest.json")
@@ -2369,16 +2048,7 @@ def _cross_validate(
         or metric_sources.get("d3_artifacts", {}).get("checksums_sha256")
         != components["d3"].checksum_file_sha256
     ):
-        raise P0DataConflict("D2/D3 与 D4/Metric 输入身份不一致")
-    d4_update_coverage = d4_inputs.get("d3_artifacts", {}).get("update_coverage")
-    if (
-        not isinstance(d4_update_coverage, Mapping)
-        or d4_update_coverage.get("expected_count")
-        != raw_coverage.get("expected_count")
-        or d4_update_coverage.get("observed_count")
-        != raw_coverage.get("observed_count")
-    ):
-        raise P0DataConflict("D3 与 D4 的 raw UPDATE 覆盖计数不一致")
+        raise P0DataConflict("D2/D3 与 Metric 输入身份不一致")
     metric_summary = metric.get("summary")
     if (
         not isinstance(metric_summary, Mapping)
@@ -2388,6 +2058,7 @@ def _cross_validate(
         != raw_coverage.get("missing_state_counts", {}).get("parse_failed")
     ):
         raise P0DataConflict("D3 与 Metric 的原始槽分类不一致")
+
     source_inputs = quality_closure.get("source_inputs", {})
     quality_component = components["quality"]
     if (
@@ -2411,16 +2082,13 @@ def _cross_validate(
         ),
         "d3": components["d3"].checksums.get(d3_manifest_name),
         "d3_verification": components["d3"].checksums.get(d3_summary_name),
-        "evidence": components["d4"].checksums.get(
-            "evidence-reconciliation-summary.json"
-        ),
         "metric": components["metric"].checksums.get(
             "metric-reconciliation-summary.json"
         ),
         "profile": profile_sha,
     }
     if any(source_inputs.get(key) != expected for key, expected in quality_expected.items()):
-        raise P0DataConflict("Quality 输入闭包没有绑定当前 D2/D3/D4/Metric 组件")
+        raise P0DataConflict("Quality 输入闭包没有绑定当前 D2/D3/Metric 组件")
     source_release = quality.get("source_release")
     if (
         not isinstance(source_release, Mapping)
@@ -2434,44 +2102,13 @@ def _cross_validate(
         or metric_sources.get("database", {}).get("release_id") != release_id
     ):
         raise P0DataConflict("D2/Metric/Quality release ID 不一致")
-    for bundle in bundles.values():
-        snapshot = bundle.get("data_snapshot")
-        coverage_summary = bundle.get("coverage_summary", {})
-        bundle_raw = coverage_summary.get("raw_source")
-        bundle_raw_ratio = (
-            _ratio(bundle_raw.get("coverage_ratio"), "Evidence raw coverage ratio")
-            if isinstance(bundle_raw, Mapping)
-            else None
-        )
-        if (
-            not isinstance(snapshot, Mapping)
-            or snapshot.get("profile_id") != baseline["id"]
-            or snapshot.get("profile_sha256") != profile_sha
-            or snapshot.get("database_release_id") != release_id
-            or snapshot.get("raw_source_status")
-            != ("complete" if raw_coverage.get("status") == "complete" else "partial")
-            or coverage_summary.get("admission_level") != "legacy_compatible"
-            or not isinstance(bundle_raw, Mapping)
-            or bundle_raw.get("expected_count") != raw_coverage.get("expected_count")
-            or bundle_raw.get("observed_count") != raw_coverage.get("observed_count")
-            or bundle_raw_ratio is None
-            or abs(bundle_raw_ratio - raw_coverage["coverage_ratio"]) > 1e-8
-            or bundle_raw.get("status")
-            != ("full" if raw_coverage.get("status") == "complete" else "partial")
-        ):
-            raise P0DataConflict("Evidence Bundle 与候选身份不一致")
-    evidence_admission = d4.get("admission")
     gate = quality.get("gate")
     if (
         isinstance(gate, Mapping)
         and gate.get("admission_level") == "raw_traceable"
-        and (
-            raw_coverage.get("status") != "complete"
-            or not isinstance(evidence_admission, Mapping)
-            or evidence_admission.get("represents_full_evidence_population") is not True
-        )
+        and raw_coverage.get("status") != "complete"
     ):
-        raise P0DataConflict("部分原始覆盖或六类样本不得提升为 raw_traceable")
+        raise P0DataConflict("原始覆盖不完整时不得提升为 raw_traceable")
 
 
 def _load_repository(layout: Layout) -> ReleaseSnapshot:
@@ -2480,7 +2117,6 @@ def _load_repository(layout: Layout) -> ReleaseSnapshot:
     d3, _, raw_coverage, d3_slot_closure = _load_d3(
         layout, components["d3"]
     )
-    d4, bundles, evidence_files = _load_evidence(layout, components["d4"])
     metric_manifest, metrics = _load_metrics(
         layout, components["metric"], d3_slot_closure
     )
@@ -2488,10 +2124,8 @@ def _load_repository(layout: Layout) -> ReleaseSnapshot:
     _cross_validate(
         d2,
         d3,
-        d4,
         metric_manifest,
         quality,
-        bundles,
         raw_coverage,
         components,
         quality_closure,
@@ -2510,12 +2144,9 @@ def _load_repository(layout: Layout) -> ReleaseSnapshot:
         repository_fingerprint_sha256=repository_fingerprint,
         d2=d2,
         d3=d3,
-        d4=d4,
         metric_manifest=metric_manifest,
         quality=quality,
         metrics=metrics,
-        evidence_by_incident=bundles,
-        evidence_files=evidence_files,
         raw_coverage=raw_coverage,
     )
 
@@ -2581,15 +2212,6 @@ def _limitations(
                 "当前数据只来自显式候选仓库，未执行生产激活。",
             )
         )
-    admission = snapshot.d4.get("admission", {})
-    if admission.get("represents_full_evidence_population") is not True:
-        result.append(
-            _limitation(
-                "evidence_sample_only",
-                "blocking",
-                "当前 Evidence 只是调查样本，不代表全量事件证据覆盖。",
-            )
-        )
     if snapshot.raw_coverage.get("status") != "complete":
         result.append(
             _limitation(
@@ -2635,7 +2257,6 @@ def get_p0_status() -> Mapping[str, Any]:
     snapshot = _snapshot()
     d2 = snapshot.d2
     d3 = snapshot.d3
-    d4 = snapshot.d4
     metric = snapshot.metric_manifest
     quality = snapshot.quality
     raw_profile = d2["data_profile"]
@@ -2657,8 +2278,6 @@ def get_p0_status() -> Mapping[str, Any]:
                 }
             )
     gate = quality["gate"]
-    evidence_admission = d4.get("admission", {})
-    validation = d4.get("validation", {})
     repository_state, production_active = _repository_identity()
     return {
         "schema_version": "p0_data_status_v1",
@@ -2680,9 +2299,6 @@ def get_p0_status() -> Mapping[str, Any]:
             "artifact_manifest_fingerprint_sha256": d3[
                 "manifest_fingerprint_sha256"
             ],
-            "evidence_candidate_fingerprint_sha256": d4[
-                "candidate_fingerprint_sha256"
-            ],
             "metric_candidate_fingerprint_sha256": metric[
                 "candidate_fingerprint_sha256"
             ],
@@ -2701,18 +2317,6 @@ def get_p0_status() -> Mapping[str, Any]:
             "decision_reasons_zh": gate["decision_reasons_zh"],
         },
         "available_metrics": available_metrics,
-        "evidence_coverage": {
-            "candidate_kind": d4.get("candidate_kind"),
-            "admission_status": evidence_admission.get("status"),
-            "bundle_count": validation.get("bundle_count"),
-            "event_type_count": validation.get("event_type_count"),
-            "registry_entry_count": d4.get("registry", {}).get("entry_count"),
-            "represents_full_evidence_population": evidence_admission.get(
-                "represents_full_evidence_population"
-            )
-            is True,
-            "raw_traceable": evidence_admission.get("raw_traceable") is True,
-        },
         "raw_coverage": dict(snapshot.raw_coverage),
         "limitations": _limitations(snapshot, production_active),
     }
@@ -2745,44 +2349,6 @@ def get_p0_metric(metric_name: str) -> Mapping[str, Any]:
     }
 
 
-def get_p0_evidence(incident_id: str) -> Mapping[str, Any]:
-    """通过 D4 registry 闭包返回 Evidence Bundle v2。"""
-
-    if not isinstance(incident_id, str) or not INCIDENT_ID_RE.fullmatch(incident_id):
-        raise P0DataBadRequest("incident_id 非法，禁止路径穿越或非稳定 ID")
-    snapshot = _snapshot()
-    bundle = snapshot.evidence_by_incident.get(incident_id)
-    if bundle is None:
-        admission = snapshot.d4.get("admission", {})
-        if admission.get("represents_full_evidence_population") is not True:
-            raise P0DataNotFound(
-                "当前六类调查样本未收录该 Incident；这不表示全量 Evidence 不存在"
-            )
-        raise P0DataNotFound("当前全量 Evidence 候选未找到该 Incident")
-    admission = snapshot.d4["admission"]
-    repository_state, production_active = _repository_identity()
-    return {
-        "schema_version": "p0_evidence_response_v1",
-        "repository_state": repository_state,
-        "production_active": production_active,
-        "candidate_fingerprint_sha256": snapshot.d4[
-            "candidate_fingerprint_sha256"
-        ],
-        "coverage_scope": (
-            "full_population"
-            if admission.get("represents_full_evidence_population") is True
-            else "sample_only"
-        ),
-        "represents_full_evidence_population": admission.get(
-            "represents_full_evidence_population"
-        )
-        is True,
-        "bundle_file": snapshot.evidence_files[incident_id],
-        "bundle": bundle,
-        "limitations": _limitations(snapshot, production_active),
-    }
-
-
 def get_p0_quality() -> Mapping[str, Any]:
     """返回通过 SHA 和语义闭包校验的完整 P0 数据质量报告。"""
 
@@ -2803,7 +2369,6 @@ __all__ = (
     "P0DataError",
     "P0DataNotFound",
     "P0DataUnavailable",
-    "get_p0_evidence",
     "get_p0_metric",
     "get_p0_quality",
     "get_p0_status",

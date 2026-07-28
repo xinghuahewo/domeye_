@@ -11,6 +11,24 @@ GC = (ROOT / "deploy" / "release" / "gc.sh").read_text(encoding="utf-8")
 FULL_ACCEPTANCE = (ROOT / "deploy" / "acceptance" / "full-acceptance.sh").read_text(
     encoding="utf-8"
 )
+DATABASE_BUILD = (
+    ROOT / "deploy" / "database" / "build-database-artifact.sh"
+).read_text(encoding="utf-8")
+DATABASE_RESUME = (
+    ROOT / "deploy" / "database" / "resume-database-artifact.sh"
+).read_text(encoding="utf-8")
+STATIC_INFO_COMMON = (
+    ROOT / "deploy" / "lib" / "static-info-common.sh"
+).read_text(encoding="utf-8")
+STATIC_INFO_FULL_IMPORT = (
+    ROOT / "deploy" / "database" / "import-static-info-full-candidate.sh"
+).read_text(encoding="utf-8")
+STATIC_INFO_CORE_IMPORT = (
+    ROOT / "deploy" / "database" / "import-static-info-candidate.sh"
+).read_text(encoding="utf-8")
+DATABASE_COMMON = (
+    ROOT / "deploy" / "lib" / "database-common.sh"
+).read_text(encoding="utf-8")
 
 
 class ReleaseCommandBoundaryTest(unittest.TestCase):
@@ -69,6 +87,60 @@ class ReleaseCommandBoundaryTest(unittest.TestCase):
         self.assertIn("mounted-or-container-used", GC)
         self.assertIn("retention-window", GC)
         self.assertIn("以上仅为 dry-run；未删除任何目录", GC)
+
+    def test_static_info_full_load_is_explicit_and_sequential(self):
+        for script in (DATABASE_BUILD, DATABASE_RESUME):
+            self.assertIn(
+                'DOMEYE_CORE_STATIC_INFO_SCOPE:-core_four_files',
+                script,
+            )
+            s1_call = script.index("domeye_static_info_load_shadow")
+            s2_call = script.index("domeye_static_info_load_full_shadow")
+            self.assertLess(s1_call, s2_call)
+            self.assertIn("all_24_files", script[s1_call:s2_call])
+        self.assertIn("stage-gate-S1.json", STATIC_INFO_FULL_IMPORT)
+        self.assertIn("sha256sum -c SHA256SUMS", STATIC_INFO_FULL_IMPORT)
+        self.assertIn("stage-gate-S2.json", STATIC_INFO_FULL_IMPORT)
+        for script in (STATIC_INFO_CORE_IMPORT, STATIC_INFO_FULL_IMPORT):
+            self.assertIn(
+                "domeye_static_info_assert_offline_candidate",
+                script,
+            )
+        self.assertLess(
+            STATIC_INFO_CORE_IMPORT.index(
+                "domeye_static_info_assert_offline_candidate"
+            ),
+            STATIC_INFO_CORE_IMPORT.index("domeye_static_info_load_shadow"),
+        )
+        self.assertLess(
+            STATIC_INFO_FULL_IMPORT.index(
+                "domeye_static_info_assert_offline_candidate"
+            ),
+            STATIC_INFO_FULL_IMPORT.index("-m backend.info_pipeline load-full"),
+        )
+        self.assertIn(
+            "domeye.core.database-role=offline-candidate",
+            DATABASE_COMMON,
+        )
+        self.assertIn(
+            "domeye.core.database-role=offline-candidate",
+            DATABASE_RESUME,
+        )
+
+    def test_static_info_resume_preserves_incomplete_evidence(self):
+        self.assertIn(
+            "domeye_static_info_archive_incomplete_evidence",
+            STATIC_INFO_COMMON,
+        )
+        self.assertIn(".incomplete.", STATIC_INFO_COMMON)
+        self.assertIn(
+            "domeye_static_info_reuse_s1_evidence",
+            STATIC_INFO_COMMON,
+        )
+        self.assertIn(
+            "domeye_static_info_reuse_s2_evidence",
+            STATIC_INFO_COMMON,
+        )
 
 
 if __name__ == "__main__":

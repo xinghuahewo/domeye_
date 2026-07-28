@@ -193,6 +193,27 @@ func parseAddress(raw []byte) (netip.Addr, error) {
 	return address.Unmap(), nil
 }
 
+func parsePrefixAddress(raw []byte, afi uint8) (netip.Addr, error) {
+	switch afi {
+	case 4:
+		if len(raw) != 4 {
+			return netip.Addr{}, fmt.Errorf("invalid IPv4 prefix address")
+		}
+		var value [4]byte
+		copy(value[:], raw)
+		return netip.AddrFrom4(value), nil
+	case 6:
+		if len(raw) != 16 {
+			return netip.Addr{}, fmt.Errorf("invalid IPv6 prefix address")
+		}
+		var value [16]byte
+		copy(value[:], raw)
+		return netip.AddrFrom16(value), nil
+	default:
+		return netip.Addr{}, fmt.Errorf("unsupported prefix AFI %d", afi)
+	}
+}
+
 func parsePeerIndex(payload []byte) ([]peer, error) {
 	cursor := cursor{raw: payload, field: "peer-index"}
 	if _, err := cursor.take(4, "collector-bgp-id"); err != nil {
@@ -321,13 +342,16 @@ func parseASPath(value []byte, asnWidth int) (originResult, error) {
 }
 
 type parsedAttributes struct {
-	Origin          originResult
-	OriginSeen      bool
-	AS4Origin       originResult
-	AS4Seen         bool
-	MPAnnounces     map[uint8][]netip.Prefix
-	MPWithdraws     map[uint8][]netip.Prefix
-	UnknownOptional map[uint8]int64
+	Origin            originResult
+	OriginSeen        bool
+	AS4Origin         originResult
+	AS4Seen           bool
+	MPAnnounces       map[uint8][]netip.Prefix
+	MPWithdraws       map[uint8][]netip.Prefix
+	UnknownOptional   map[uint8]int64
+	RIBCompactMPReach int64
+	MalformedOTC      int64
+	TreatAsWithdraw   bool
 }
 
 func parseNLRIs(raw []byte, afi uint8) ([]netip.Prefix, error) {
@@ -411,7 +435,38 @@ func parseMPUnreach(value []byte) (uint8, []netip.Prefix, error) {
 	return afi, prefixes, err
 }
 
-func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
+func parseRIBCompactMPReach(value []byte) error {
+	if len(value) < 1 {
+		return fmt.Errorf("compact RIB MP_REACH truncated")
+	}
+	nextHopLength := int(value[0])
+	if nextHopLength != 4 && nextHopLength != 16 && nextHopLength != 32 {
+		return fmt.Errorf(
+			"unsupported compact RIB MP_REACH next-hop length %d",
+			nextHopLength,
+		)
+	}
+	if len(value) != nextHopLength+1 {
+		return fmt.Errorf("compact RIB MP_REACH length mismatch")
+	}
+	for at := 1; at < len(value); {
+		width := 16
+		if nextHopLength == 4 {
+			width = 4
+		}
+		if _, err := parseAddress(value[at : at+width]); err != nil {
+			return fmt.Errorf("compact RIB MP_REACH next-hop: %w", err)
+		}
+		at += width
+	}
+	return nil
+}
+
+func parseAttributesWithRIBMode(
+	raw []byte,
+	asnWidth int,
+	compactRIBMPReach bool,
+) (parsedAttributes, error) {
 	result := parsedAttributes{
 		MPAnnounces:     make(map[uint8][]netip.Prefix),
 		MPWithdraws:     make(map[uint8][]netip.Prefix),
@@ -433,6 +488,7 @@ func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
 		}
 		seen[attributeType] = struct{}{}
 		var length int
+		lengthAt := at
 		if flags&0x10 != 0 {
 			if at+2 > len(raw) {
 				return result, fmt.Errorf("extended attribute length truncated")
@@ -444,7 +500,22 @@ func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
 			at++
 		}
 		if at+length > len(raw) {
-			return result, fmt.Errorf("path attribute %d out of bounds", attributeType)
+			// RRC25 的一个真实 UPDATE 将 OTC(35) 设置了 Extended
+			// Length 位，却仍使用一字节长度 4。RFC 9234 规定 OTC
+			// 必须为四字节，畸形 OTC 应按 treat-as-withdraw 处理。
+			// 这里只接受“最后一个属性、单字节长度正好为 4”的窄特征，
+			// 以便保留可识别 NLRI，同时拒绝其他越界属性。
+			if attributeType == 35 && flags&0xe0 == 0xe0 &&
+				raw[lengthAt] == 4 && lengthAt+1+4 == len(raw) {
+				length = 4
+				at = lengthAt + 1
+				result.MalformedOTC++
+				result.TreatAsWithdraw = true
+			} else {
+				return result, fmt.Errorf(
+					"path attribute %d out of bounds", attributeType,
+				)
+			}
 		}
 		value := raw[at : at+length]
 		at += length
@@ -463,6 +534,13 @@ func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
 			}
 			result.Origin, result.OriginSeen = origin, true
 		case 14:
+			if compactRIBMPReach {
+				if err := parseRIBCompactMPReach(value); err != nil {
+					return result, err
+				}
+				result.RIBCompactMPReach++
+				continue
+			}
 			afi, prefixes, err := parseMPReach(value)
 			if err != nil {
 				return result, err
@@ -487,6 +565,13 @@ func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
 			if len(value) != 5 {
 				return result, fmt.Errorf("invalid AS_PATHLIMIT length")
 			}
+		case 35:
+			if flags&0xe0 != 0xc0 && flags&0xe0 != 0xe0 {
+				return result, fmt.Errorf("invalid OTC flags")
+			}
+			if len(value) != 4 {
+				return result, fmt.Errorf("invalid OTC length")
+			}
 		default:
 			if flags&0x80 == 0 {
 				if attributeType != 3 && attributeType != 5 && attributeType != 6 {
@@ -505,6 +590,14 @@ func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
 		result.OriginSeen = true
 	}
 	return result, nil
+}
+
+func parseAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
+	return parseAttributesWithRIBMode(raw, asnWidth, false)
+}
+
+func parseRIBAttributes(raw []byte, asnWidth int) (parsedAttributes, error) {
+	return parseAttributesWithRIBMode(raw, asnWidth, true)
 }
 
 func parseRIBRecord(
@@ -564,7 +657,7 @@ func parseRIBRecord(
 			return err
 		}
 		quality.RIBEntries++
-		parsed, err := parseAttributes(attributes, 4)
+		parsed, err := parseRIBAttributes(attributes, 4)
 		if err != nil {
 			return err
 		}
@@ -662,6 +755,8 @@ type UpdateParseStats struct {
 	Withdraws       int64
 	UnknownOrigins  int64
 	UnknownOptional map[uint8]int64
+	MalformedOTC    int64
+	TreatAsWithdraw int64
 }
 
 func parseBGP4MP(
@@ -783,6 +878,7 @@ func decodeUpdateEvents(
 	for key, count := range attributes.UnknownOptional {
 		stats.UnknownOptional[key] += count
 	}
+	stats.MalformedOTC += attributes.MalformedOTC
 	announcePrefixes, err := parseNLRIs(body[attributeEnd:], 4)
 	if err != nil {
 		return nil, err
@@ -804,6 +900,11 @@ func decodeUpdateEvents(
 		stats.Withdraws++
 	}
 	appendAnnounce := func(afi uint8, prefix netip.Prefix) {
+		if attributes.TreatAsWithdraw {
+			appendWithdraw(afi, prefix)
+			stats.TreatAsWithdraw++
+			return
+		}
 		events = append(events, ParsedEvent{
 			Key:    RouteKey{PeerIP: peer.IP, PeerASN: peer.ASN, AFI: afi, Prefix: prefix},
 			Action: actionAnnounce, OriginKnown: attributes.Origin.Known,

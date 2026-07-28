@@ -15,7 +15,7 @@
 | 样本粒度 | 300 秒 |
 | 规范输出 | 规范 JSONL gzip；Parquet 仅为可选投影 |
 
-本字典逐项解释 `contracts/research/` 下八份 JSON Schema：
+本字典逐项解释 `contracts/research/` 下七份 JSON Schema：
 
 1. `research-profile.schema.json`；
 2. `country-outage-sample.schema.json`；
@@ -23,10 +23,9 @@
 4. `country-outage-wave.schema.json`；
 5. `country-outage-episode-as.schema.json`；
 6. `research-run.schema.json`；
-7. `reconciliation-result.schema.json`；
-8. `research-evidence-sidecar.schema.json`。
+7. `reconciliation-result.schema.json`。
 
-八份合同均使用 JSON Schema 2020-12，顶层 `additionalProperties=false`。本文是中文语义说明；字段类型、必填性、枚举和正则约束以对应 Schema 为机器权威，跨字段约束以 `dev/data_quality/validate_research_contracts.cjs` 为机器权威。新增字段、改变字段含义或改变稳定 ID 截断长度时，必须升级合同版本，不能静默沿用 v1。
+七份合同均使用 JSON Schema 2020-12，顶层 `additionalProperties=false`。本文是中文语义说明；字段类型、必填性、枚举和正则约束以对应 Schema 为机器权威，跨字段约束以 `dev/data_quality/validate_research_contracts.cjs` 为机器权威。新增字段、改变字段含义或改变稳定 ID 截断长度时，必须升级合同版本，不能静默沿用 v1。
 
 ## 2. 全局语义
 
@@ -39,14 +38,14 @@ research_profile
           -> country_outage_episode（持续异常）
               -> country_outage_wave（同一 episode 内的再次下降）
               -> country_outage_episode_as（逐 ASN、逐地址族影响）
-      -> Evidence Bundle v2 / RouteEvent / raw record
+      -> RouteEvent / raw record
       -> reconciliation_result（报告主张逐条对账）
 ```
 
 - Profile 冻结窗口、输入选择、算法、映射、资源上限和输出政策。
 - Sample 是最小不可变国家状态样本。Episode、wave 和逐 ASN 记录都必须能回指 sample。
-- 旧 Incident 继续保留旧事实身份。研究对象通过 `incident_mappings`、Evidence registry 和运行输出引用与 Incident 关联，不修改旧 Incident 的字段含义。
-- Evidence Bundle v2 继续使用 `contracts/data/evidence-bundle-v2.schema.json`。本研究合同是内容寻址 sidecar 与引用层，不把新计算得到的 onset、wave 或 recovery 写成旧事实原文。
+- 旧 Incident 继续保留旧事实身份。研究对象通过 `incident_mappings`、对账引用和运行输出与 Incident 关联，不修改旧 Incident 的字段含义。
+- 新计算得到的 onset、wave 或 recovery 直接保存在研究对象中，不写成旧事实原文。
 
 ### 2.2 时间与半开区间
 
@@ -637,7 +636,7 @@ Schema、Profile 和资源门禁统一使用十进制 50,000,000,000/5,000,000,0
 
 每项含 `kind`、非空 `path`、64 hex `sha256` 和非负整数 `record_count`。`kind` 允许：
 
-`samples`、`episodes`、`waves`、`episode_as`、`route_events`、`raw_refs`、`evidence_bundle_v2`、`reconciliation`、`quality_report`、`report_zh`、`manifest`。
+`samples`、`episodes`、`waves`、`episode_as`、`route_events`、`raw_refs`、`reconciliation`、`quality_report`、`report_zh`、`manifest`。
 
 `record_count=0` 表示一个已成功产出但内容确实为空的制品；输出缺失不能用一条伪造的零记录引用替代，应由运行状态和质量门表达。
 
@@ -755,9 +754,9 @@ Schema、Profile 和资源门禁统一使用十进制 50,000,000,000/5,000,000,0
 - 旧 Incident 是 `source_fact`，研究 episode 是重建结果。`legacy_reconciliation` 表示做过旧事实对账，不表示旧事实已经被研究结果证实。
 - 对旧报告中的事件时间、IPv4 下降、恢复、受影响 ASN 比例和可见性分类，应提供 `reported` 与 `recomputed` 并列值；无法由 RRC25 证明的机制与意图必须标记证据边界。
 
-## 11. Evidence Bundle v2 与引用闭环
+## 11. 研究对象与原始引用闭环
 
-本研究不改变 Evidence Bundle v2 的旧 Incident 语义。完整引用闭环至少包含：
+完整引用链至少包含：
 
 ```text
 Incident
@@ -775,10 +774,8 @@ Incident
 - `episode.supporting_sample_ids`、`wave.supporting_sample_ids` 和 split evidence 证明边界判定；
 - `episode_as.evidence_links` 提供逐 ASN 路由事实的原始坐标；
 - `reconciliation_result.evidence_registry` 将研究记录、旧事实、报告页、限制、RouteEvent 和 raw record 统一为主张可引用的证据；
-- `research_run.outputs` 绑定 Evidence Bundle v2、对账、质量报告和中文报告的路径、哈希与记录数；
+- `research_run.outputs` 绑定研究对象、对账、质量报告和中文报告的路径、哈希与记录数；
 - `reference_closure` 质量门验证引用存在，`stable_identity` 验证 ID 稳定，`reproducibility` 验证同输入与同版本可重建相同语义指纹。
-
-`research-evidence-sidecar.schema.json` 冻结上述研究引用层，`schema_version` 固定为 `research-evidence-sidecar/v1`。它以 `sidecar_id` 和 `run_id` 绑定运行身份，通过 `mapping`、`bundle_refs`、`legacy_source_fact_refs`、`incident_episode_links`、`episode_ref`、`wave_refs`、`sample_refs` 与 `sample_route_event_links` 连接旧 Incident 和研究结果，再以 `route_event_refs`、`raw_record_refs`、`artifact_refs` 与 `reference_closure` 闭合到原始制品。`recovery_assessment` 必须保留恢复状态及其证据边界；`limitations_zh` 必须显式列出限制；`conclusion` 只能是 `classification=observation_only` 且 `causal_conclusion=null`，不得把引用闭包升级为因果证明。
 
 AS_PATH、RouteEvent 和 peer session 状态都是观测证据，不是数据包传播路径或因果证明。BGP4MP `STATE_CHANGE` 应作为会话观测单独保存；它不能冒充该 VP 对全部前缀发出了 withdrawal。
 
@@ -792,7 +789,7 @@ AS_PATH、RouteEvent 和 peer session 状态都是观测证据，不是数据包
 4. 状态连续性、VP 覆盖和映射覆盖达到本轮门槛，所有 unknown 如实保留；
 5. sample 的 measure、集合、比例全部来自父 sample 的同一 snapshot；
 6. episode/wave/恢复边界均有 sample 证据，未恢复事件使用下界或未知；
-7. Evidence 与 RouteEvent/raw/artifact 引用闭合，三个原始身份均使用 32 hex 后缀；
+7. RouteEvent/raw/artifact 引用闭合，三个原始身份均使用 32 hex 后缀；
 8. 十个质量门齐全，所有阻断门均为 `pass`；
 9. 数据库写操作为 0，实际资源使用严格低于 Profile 与 Schema 中更严格的排他上限；
 10. 输出不可变、原子发布、不覆盖已有制品，不修改前端、不部署生产。
@@ -803,8 +800,8 @@ AS_PATH、RouteEvent 和 peer session 状态都是观测证据，不是数据包
 
 - `country-outage-sample/v1.metrics.announce_count` 与 `withdraw_count` 只表示当前 carried-state 工作集实际保留的 tracked-prefix UPDATE 数，即 `retained_announce` / `retained_withdraw`；它们不是采集器全量报文数，也不表示 IR 或任何主体的主动宣告、主动撤回或意图。
 - 采集器全量槽级计数使用 `collector_total_announce_count` / `collector_total_withdraw_count`，只发布在 `rrc25-full-window-sample-measurement-semantics/v1` sidecar，不能与 retained 计数混用。
-- 当 VP 覆盖不完整时，v1 样本中的受影响数值与 ASN 集合必须投影为 `unknown_state_gap + null`；实际 carried-state 部分观测值、原始 partial value state、down VP 和计数 scope 仅保存在由相同 `sample_id`、`snapshot_id` 与不可变 shard 引用绑定的 sidecar。
-- peer session down 不是隐式 WITHDRAW。partial carried-state 可供显式披露的研究算法使用，但不得在 Evidence Bundle 的 v1 样本中伪装为完整 observed 人口。
+- 当 VP 覆盖不完整时，v1 样本中的受影响数值与 ASN 集合必须投影为 `unknown_state_gap + null`；实际 carried-state 部分观测值、原始 partial value state、down VP 和计数 scope 仅保存在由相同 `sample_id`、`snapshot_id` 与不可变 shard 引用绑定的状态数据中。
+- peer session down 不是隐式 WITHDRAW。partial carried-state 可供显式披露的研究算法使用，但不得在对外样本中伪装为完整 observed 人口。
 - 双目录复现仅证明同一冻结 journal 的纯派生业务语义一致；若没有重放真实 MRT，必须标记 `raw_replay_reproduction=not_performed_by_user_choice`，不得称为原始全链 A/B。
 
 ## 14. 完整窗口原始读取账本与 seed 离线闭包
@@ -816,10 +813,10 @@ AS_PATH、RouteEvent 和 peer session 状态都是观测证据，不是数据包
 - seed bootstrap 包含 full-seed v2 checkpoint 的身份哈希、完整 seed RouteEvent/raw 引用投影、可离线重放的 route state、初始 compact state、spool attestation、parser 身份和退役收据。checkpoint 原字节未封包，因此离线范围固定为 `checkpoint_identity_and_seed_evidence_projection_without_checkpoint_bytes`，不得描述为 checkpoint 字节级复现。
 - seed 退役成功收据与 raw verification attempt 必须分别验证自身 schema 和 fingerprint，并闭合到同一 selection、checkpoint、spool、压缩 seed 原件及 genesis raw accounting；只重算外层 attestation fingerprint 不能替代这些内层证明。
 
-## 15. Evidence provenance 包络、物理记录流与最终化软停止门
+## 15. 来源时间边界、物理记录流与最终化软停止门
 
-- 旧 Incident 的 locator `2026-02-27T01:12:32Z` 只用于稳定源记录身份，不能冒充研究事件起点。由于 Evidence Bundle v2 要求 Incident 身份时间落在其数据档窗口内，Bundle 使用独立的 provenance 包络：起点取 `min(locator, Profile.start)`，结束仍取 `Profile.end_exclusive`。
-- provenance 包络不改变研究窗口。`MetricWindow`、五分钟样本、Episode、Wave 和恢复判断仍严格限定在 Profile 半开窗口 `[2026-02-27T16:00:00Z, Profile.end_exclusive)`；`[2026-02-27T01:12:32Z,2026-02-27T16:00:00Z)` 明确标记为不属于本次 RRC25 MRT 研究覆盖。因此 Bundle 的 `raw_source_status` 必须保持 `partial`，不能因 Profile 窗口内 RouteEvent 已闭合就改写为 `full`。
+- 旧 Incident 的 locator `2026-02-27T01:12:32Z` 只用于稳定源记录身份，不能冒充研究事件起点。
+- 来源身份时间不改变研究窗口。`MetricWindow`、五分钟样本、Episode、Wave 和恢复判断仍严格限定在 Profile 半开窗口 `[2026-02-27T16:00:00Z, Profile.end_exclusive)`；`[2026-02-27T01:12:32Z,2026-02-27T16:00:00Z)` 明确标记为不属于本次 RRC25 MRT 研究覆盖。原始来源状态必须保持 `partial`，不能因 Profile 窗口内 RouteEvent 已闭合就改写为 `full`。
 - `record_observations` 是逐物理 MRT record 的完整观测流，真实全窗可能达到百万或千万行。最终化只能逐 receipt、逐 shard 流式校验，并保存总记录数和有域分隔的有序 shard 语义哈希链；`_JournalData` 不得长期持有全窗 observation tuple。原始不可变 shard 仍按原字节复制进最终包，离线验包使用同一流式算法重算 count 与语义链。
 - 每个 retained `raw_record_ref` 必须按 `(artifact_id, record_ordinal)` 与对应 `record_observation` 的 `raw_record_sha256`、`record_offset`、`record_length` 精确一致，且 `record_hash` 必须等于该物理 record SHA-256。每个 retained RouteEvent 只能指向 `record_kind=update` 的 observation；合法格式但内容伪造的 64 位哈希同样失败关闭。
 - BGP4MP_ET 的事件时间可带规范小数秒，例如 `2026-02-27T16:00:01.123456Z`。RouteEvent、control record 与 record observation 使用事件时间规范器保留该精度；Profile、槽起止和输入制品时间仍必须是秒级 UTC。

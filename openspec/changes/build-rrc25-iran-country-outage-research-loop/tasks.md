@@ -10,7 +10,7 @@
 > 11 项主张对账和两空目录 v2 复现已完成，评级为
 > `1 confirmed / 3 revised / 4 unverifiable / 3 hypothesis_only`，发布状态为
 > `workflow_state=completed/acceptance_state=not_accepted`。未勾选的状态回放、
-> 正式 Episode/Evidence v2 和状态级四类 ASN 验收明确延后，不能由代理结果替代。
+> 正式 Episode、原始状态引用和状态级四类 ASN 验收明确延后，不能由代理结果替代。
 
 ## 0. 数据库优先研究主体
 

@@ -19,7 +19,7 @@
   VP、AS_PATH、原始 record/element 坐标及稳定身份。
 - 新增五分钟不可变国家状态、逐 ASN/前缀影响、动态 episode 与 wave 数据模型；
   由数据决定“一次事件多个波次”还是“多个事件”，不预设前兆因果。
-- 新增事件级 Evidence Bundle v2 组装、原始证据闭合、确定性文件制品和中文复算对账报告。
+- 新增事件级状态与原始引用关联、确定性文件制品和中文复算对账报告。
 - 提供“数据库快照 → 缺口矩阵 → 定向 raw 证据”的统一研究入口；任一关键缺口
   或资源越界均失败关闭，不用 0 或推测结果继续运行。
 - 保持旧项目只读，不修改 `backend/core/`，不写数据库，不修改前端，不运行真实全量 A/B，不部署生产。
@@ -32,7 +32,7 @@
 - `bounded-rrc25-research-input`: 冻结并校验伊朗事件研究窗口、基线、原始制品、国家映射和执行边界。
 - `rrc25-route-state-replay`: 从 RIB 和 UPDATE 重建双栈逐 VP 路由状态并输出可追溯状态变化。
 - `country-outage-episode-analysis`: 从五分钟状态序列生成基线、episode、wave、恢复状态和逐 ASN/前缀影响。
-- `country-outage-research-evidence`: 组装 Evidence v2、确定性制品、质量报告和原报告对账结果。
+- `country-outage-research-output`: 组装研究状态、原始引用、确定性制品、质量报告和原报告对账结果。
 
 ### Modified Capabilities
 
@@ -44,6 +44,6 @@
   `dev/data_quality/` 数据库只读/定向 raw 入口和定向测试。
 - 预计新增研究 profile、JSON Schema、fixture、数据字典和中文对账报告模板。
 - 复用现有独立数据库作为研究主体和定位索引；复用 MRT artifact manifest、
-  RouteEvent 稳定身份、Evidence Bundle v2 和质量门禁补证，但不写回数据库。
+  RouteEvent 稳定身份和质量门禁补证，但不写回数据库。
 - 大型派生制品位于服务器独立研究制品目录；Git 只保存规格、代码、配置、清单、哈希、摘要和可复现命令。
 - 本变更不会修改旧项目、原始 MRT、生产数据库、`backend/core/`、前端或生产服务。

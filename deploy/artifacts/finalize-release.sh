@@ -54,14 +54,27 @@ if [[ "${info_release}" != "${database_release}" ]]; then
 fi
 domeye_artifact_validate_release_id "${info_release}"
 
-for file_name in \
+release_component_files=(
     "${DOMEYE_CORE_INFO_ARCHIVE}" \
     "${DOMEYE_CORE_DATABASE_ARCHIVE}" \
     "${DOMEYE_CORE_IMAGE_ARCHIVE}" \
     'database-inventory.json' \
     'database-schema.sql' \
     "${DOMEYE_CORE_INFO_MANIFEST}" \
-    "${DOMEYE_CORE_DATABASE_MANIFEST}"; do
+    "${DOMEYE_CORE_DATABASE_MANIFEST}"
+)
+static_info_evidence_name="$(
+    jq -r '.static_info_evidence.name // empty' "${DATABASE_MANIFEST_PATH}"
+)"
+if [[ -n "${static_info_evidence_name}" ]]; then
+    if [[ "${static_info_evidence_name}" != "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}" ]]; then
+        domeye_artifact_error \
+            "static INFO 证据包名称无效：${static_info_evidence_name}"
+        exit 1
+    fi
+    release_component_files+=("${static_info_evidence_name}")
+fi
+for file_name in "${release_component_files[@]}"; do
     domeye_artifact_require_regular_file "${RELEASE_DIR}/${file_name}"
 done
 
@@ -128,15 +141,7 @@ fi
 
 (
     cd -- "${RELEASE_DIR}"
-    sha256sum \
-        "${DOMEYE_CORE_INFO_ARCHIVE}" \
-        "${DOMEYE_CORE_DATABASE_ARCHIVE}" \
-        "${DOMEYE_CORE_IMAGE_ARCHIVE}" \
-        database-inventory.json \
-        database-schema.sql \
-        "${DOMEYE_CORE_INFO_MANIFEST}" \
-        "${DOMEYE_CORE_DATABASE_MANIFEST}" \
-        "${DOMEYE_CORE_RELEASE_MANIFEST}"
+    sha256sum "${release_component_files[@]}" "${DOMEYE_CORE_RELEASE_MANIFEST}"
 ) > "${checksum_tmp}"
 chmod 0600 "${checksum_tmp}"
 mv -T -- "${checksum_tmp}" "${CHECKSUM_PATH}"

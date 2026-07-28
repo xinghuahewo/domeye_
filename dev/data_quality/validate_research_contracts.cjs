@@ -24,9 +24,7 @@ const outputContracts = new Set([
   'country-outage-wave',
   'country-outage-episode-as',
   'reconciliation-result',
-  'research-evidence-sidecar',
   'incident-episode-mapping',
-  'research-evidence-package',
 ])
 
 function readJson(file) {
@@ -254,125 +252,6 @@ function semanticReconciliationErrors(payload) {
   return errors
 }
 
-function semanticResearchEvidenceSidecarErrors(payload) {
-  const errors = []
-  const ids = (values, field) => {
-    const result = values.map((item) => item[field])
-    if (new Set(result).size !== result.length) errors.push(`${field} 必须唯一`)
-    return new Set(result)
-  }
-  const sameSet = (left, right, message) => {
-    if (left.size !== right.size || [...left].some((value) => !right.has(value))) errors.push(message)
-  }
-
-  const bundleIds = ids(payload.bundle_refs, 'bundle_id')
-  const bundleIncidentIds = new Set(payload.bundle_refs.map((item) => item.incident_id))
-  const linkedIncidentIds = ids(payload.incident_episode_links, 'incident_id')
-  const mappedIncidentIds = new Set(payload.mapping.incident_ids)
-  const incidentBundleIds = new Set(payload.incident_episode_links.map((item) => item.bundle_id))
-  sameSet(new Set(payload.mapping.bundle_ids), bundleIds, 'mapping.bundle_ids 与 Bundle ref 不闭合')
-  const noEpisode = payload.episode_ref === null
-  if (noEpisode) {
-    if (payload.incident_episode_links.length !== 0) errors.push('零 episode sidecar 不得伪造 Incident→episode 引用')
-    sameSet(mappedIncidentIds, bundleIncidentIds, '零 episode mapping.incident_ids 与 Bundle→Incident 不闭合')
-  } else {
-    sameSet(mappedIncidentIds, linkedIncidentIds, 'mapping.incident_ids 与 Incident link 不闭合')
-    sameSet(bundleIncidentIds, linkedIncidentIds, 'Bundle→Incident 引用未闭合')
-    sameSet(incidentBundleIds, bundleIds, 'Incident→Bundle 引用未闭合')
-  }
-
-  const waveIds = ids(payload.wave_refs, 'wave_id')
-  const sampleIds = ids(payload.sample_refs, 'sample_id')
-  if (noEpisode) {
-    if (waveIds.size !== 0 || sampleIds.size !== 0) errors.push('零 episode sidecar 不得伪造 wave/sample 引用')
-  } else {
-    sameSet(new Set(payload.episode_ref.wave_ids), waveIds, 'episode→wave 引用未闭合')
-    sameSet(new Set(payload.episode_ref.supporting_sample_ids), sampleIds, 'episode→sample 引用未闭合')
-    for (const item of payload.incident_episode_links) {
-      if (item.episode_id !== payload.episode_ref.episode_id) errors.push('Incident→episode 引用未闭合')
-      for (const sampleId of item.evidence_sample_ids) {
-        if (!sampleIds.has(sampleId)) errors.push(`Incident evidence sample 未解析：${sampleId}`)
-      }
-    }
-  }
-  for (const wave of payload.wave_refs) {
-    for (const sampleId of wave.supporting_sample_ids) {
-      if (!sampleIds.has(sampleId)) errors.push(`wave sample 未解析：${sampleId}`)
-    }
-  }
-
-  const linkSampleIds = ids(payload.sample_route_event_links, 'sample_id')
-  sameSet(linkSampleIds, sampleIds, 'sample→RouteEvent link 未覆盖全部样本')
-  const routeIds = ids(payload.route_event_refs, 'route_event_id')
-  const linkedRoutes = new Set(payload.sample_route_event_links.flatMap((item) => item.route_event_ids))
-  if (!noEpisode) sameSet(linkedRoutes, routeIds, 'sample→RouteEvent 引用未闭合')
-  for (const route of payload.route_event_refs) {
-    for (const bundleId of route.bundle_ids) {
-      if (!bundleIds.has(bundleId)) errors.push(`RouteEvent Bundle 未解析：${bundleId}`)
-    }
-  }
-
-  const rawIds = ids(payload.raw_record_refs, 'raw_record_ref_id')
-  const linkedRaw = new Set(payload.route_event_refs.flatMap((item) => item.raw_record_ref_ids))
-  sameSet(linkedRaw, rawIds, 'RouteEvent→raw 引用未闭合')
-  const artifactIds = ids(payload.artifact_refs, 'artifact_id')
-  const linkedArtifacts = new Set(payload.raw_record_refs.map((item) => item.artifact_id))
-  sameSet(linkedArtifacts, artifactIds, 'raw→artifact 引用未闭合')
-  for (const artifact of payload.artifact_refs) {
-    const expectedRaw = new Set(
-      payload.raw_record_refs
-        .filter((item) => item.artifact_id === artifact.artifact_id)
-        .map((item) => item.raw_record_ref_id),
-    )
-    sameSet(new Set(artifact.raw_record_ref_ids), expectedRaw, 'artifact raw 反向引用未闭合')
-  }
-  for (const candidate of payload.recovery_assessment.candidates) {
-    for (const sampleId of candidate.supporting_sample_ids) {
-      if (!sampleIds.has(sampleId)) errors.push(`恢复候选 sample 未解析：${sampleId}`)
-    }
-  }
-  if (noEpisode) {
-    if (routeIds.size !== 0 || rawIds.size !== 0 || artifactIds.size !== 0) {
-      errors.push('零 episode sidecar 不得把 RouteEvent/raw/artifact 硬归因到旧 Incident')
-    }
-    const recovery = payload.recovery_assessment
-    const duration = recovery.duration
-    if (
-      recovery.recovery_state !== 'unknown'
-      || recovery.partial_recovery_at !== null
-      || recovery.full_recovery_at !== null
-      || recovery.continuity_status !== 'unknown'
-      || recovery.candidates.length !== 0
-      || duration.duration_state !== 'unknown'
-      || duration.seconds !== null
-      || duration.minimum_seconds !== null
-      || duration.maximum_seconds !== null
-      || duration.measured_to !== null
-    ) {
-      errors.push('零 episode 的恢复、持续时间和连续性必须全部显式为 unknown')
-    }
-    const closure = payload.reference_closure
-    if (
-      closure.incident_episode !== 'explicit_no_episode'
-      || closure.episode_wave_sample !== 'not_applicable_no_episode'
-      || closure.sample_route_event !== 'not_applicable_no_episode'
-      || closure.route_raw_artifact !== 'not_applicable_no_episode'
-      || closure.overall !== 'passed_with_explicit_no_episode'
-      || closure.unresolved_refs.length !== 0
-    ) {
-      errors.push('零 episode reference_closure 组合非法')
-    }
-  }
-  for (const fact of payload.legacy_source_fact_refs) {
-    if (!bundleIds.has(fact.bundle_id)) errors.push(`legacy fact Bundle 未解析：${fact.bundle_id}`)
-    const incidentIds = noEpisode ? mappedIncidentIds : linkedIncidentIds
-    if (!incidentIds.has(fact.incident_id)) errors.push(`legacy fact Incident 未解析：${fact.incident_id}`)
-  }
-  if (payload.reference_closure.unresolved_refs.length !== 0) errors.push('unresolved_refs 必须为空')
-  if (payload.conclusion.causal_conclusion !== null) errors.push('研究 sidecar 禁止因果结论')
-  return errors
-}
-
 function semanticIncidentEpisodeMappingErrors(payload) {
   const errors = []
   const identity = {...payload}
@@ -402,48 +281,6 @@ function semanticIncidentEpisodeMappingErrors(payload) {
   return errors
 }
 
-function semanticResearchEvidencePackageErrors(payload) {
-  const errors = []
-  const identity = {...payload}
-  delete identity.package_id
-  if (payload.package_id !== stableId('research_package_v1_', identity)) {
-    errors.push('package_id 与规范内容不一致')
-  }
-  if (!sortedUnique(payload.incident_ids)) errors.push('incident_ids 必须去重排序')
-  if (!sortedUnique(payload.episode_ids)) errors.push('episode_ids 必须去重排序')
-  if (!sortedUnique(payload.limitations_zh)) errors.push('limitations_zh 必须去重排序')
-
-  if (payload.evidence_package_state === 'unavailable_source_fact_unresolved') {
-    if (payload.incident_locators.length !== 1 || payload.incident_locators[0].incident_id !== payload.incident_ids[0]) {
-      errors.push('unavailable package 的 Incident locator 未闭合')
-    }
-    for (const locator of payload.incident_locators) errors.push(...causalLocatorErrors(locator))
-    return errors
-  }
-
-  const sidecar = payload.sidecar
-  errors.push(...semanticResearchEvidenceSidecarErrors(sidecar).map((item) => `sidecar: ${item}`))
-  if (sidecar.run_id !== payload.run_id) errors.push('package.run_id 与 sidecar.run_id 不一致')
-  const bundleIncidentIds = payload.bundles.map((bundle) => bundle.incident && bundle.incident.incident_id).sort()
-  if (JSON.stringify(bundleIncidentIds) !== JSON.stringify(payload.incident_ids)) {
-    errors.push('package Incident 与 Bundle 集合不闭合')
-  }
-  const sidecarIncidentIds = [...sidecar.mapping.incident_ids].sort()
-  if (JSON.stringify(sidecarIncidentIds) !== JSON.stringify(payload.incident_ids)) {
-    errors.push('package Incident 与 sidecar mapping 不闭合')
-  }
-  const expectedEpisodeIds = sidecar.episode_ref === null ? [] : [sidecar.episode_ref.episode_id]
-  if (JSON.stringify(expectedEpisodeIds) !== JSON.stringify(payload.episode_ids)) {
-    errors.push('package Episode 与 sidecar episode_ref 不闭合')
-  }
-  const expectedState = sidecar.episode_ref === null ? 'available_no_episode' : 'available_with_episode'
-  if (payload.evidence_package_state !== expectedState) errors.push('package state 与 sidecar Episode 状态不一致')
-  if (JSON.stringify(payload.limitations_zh) !== JSON.stringify(sidecar.limitations_zh)) {
-    errors.push('package limitations_zh 与 sidecar 不一致')
-  }
-  return errors
-}
-
 function semanticErrors(name, payload) {
   if (name === 'country-outage-sample') return semanticSampleErrors(payload)
   if (name === 'research-run') return semanticRunErrors(payload)
@@ -451,16 +288,12 @@ function semanticErrors(name, payload) {
   if (name === 'country-outage-wave') return semanticWaveErrors(payload)
   if (name === 'country-outage-episode-as') return semanticEpisodeAsErrors(payload)
   if (name === 'reconciliation-result') return semanticReconciliationErrors(payload)
-  if (name === 'research-evidence-sidecar') return semanticResearchEvidenceSidecarErrors(payload)
   if (name === 'incident-episode-mapping') return semanticIncidentEpisodeMappingErrors(payload)
-  if (name === 'research-evidence-package') return semanticResearchEvidencePackageErrors(payload)
   return []
 }
 
 const ajv = new Ajv2020({allErrors: true, allowUnionTypes: true, strict: true, validateFormats: true})
 ajv.addFormat('date-time', {type: 'string', validate: utcDateTime})
-const evidenceBundleSchema = readJson(path.join(root, 'contracts', 'data', 'evidence-bundle-v2.schema.json'))
-ajv.addSchema(evidenceBundleSchema)
 
 const schemaFiles = fs.readdirSync(contractRoot)
   .filter((name) => name.endsWith('.schema.json'))

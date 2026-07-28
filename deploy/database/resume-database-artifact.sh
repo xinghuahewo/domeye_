@@ -6,6 +6,8 @@ readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SQL_DIR="${SCRIPT_DIR}/sql"
 # shellcheck source=../lib/artifact-common.sh
 source "${SCRIPT_DIR}/../lib/artifact-common.sh"
+# shellcheck source=../lib/static-info-common.sh
+source "${SCRIPT_DIR}/../lib/static-info-common.sh"
 # shellcheck source=../lib/database-common.sh
 source "${SCRIPT_DIR}/../lib/database-common.sh"
 
@@ -22,14 +24,29 @@ readonly DATABASE_ENV_FILE="$1"
 readonly RELEASE_ID="$2"
 readonly CANDIDATE_ROOT="${3%/}"
 readonly ARTIFACT_ROOT="${4:-${DOMEYE_CORE_DEFAULT_ARTIFACT_ROOT}}"
+readonly STATIC_INFO_SOURCE_DIR="${DOMEYE_CORE_STATIC_INFO_SOURCE_DIR:-}"
+readonly STATIC_INFO_SCOPE="${DOMEYE_CORE_STATIC_INFO_SCOPE:-core_four_files}"
+readonly REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 
 domeye_artifact_validate_release_id "${RELEASE_ID}"
 for command_name in awk chmod date docker install jq mkdir mktemp mv readlink rm rmdir sha256sum stat tail tar zstd; do
     domeye_artifact_require_command "${command_name}"
 done
-for sql_file in inventory.sql validate-integrity.sql create-reader.sql prune.sql; do
+for sql_file in inventory.sql validate-integrity.sql create-reader.sql prune.sql info-schema-v1.sql info-schema-v2.sql; do
     domeye_artifact_require_regular_file "${SQL_DIR}/${sql_file}"
 done
+if [[ "${STATIC_INFO_SCOPE}" != 'core_four_files'
+    && "${STATIC_INFO_SCOPE}" != 'all_24_files' ]]; then
+    domeye_artifact_error \
+        "DOMEYE_CORE_STATIC_INFO_SCOPE 仅允许 core_four_files 或 all_24_files：${STATIC_INFO_SCOPE}"
+    exit 2
+fi
+if [[ "${STATIC_INFO_SCOPE}" == 'all_24_files'
+    && -z "${STATIC_INFO_SOURCE_DIR}" ]]; then
+    domeye_artifact_error \
+        'all_24_files 模式必须显式设置 DOMEYE_CORE_STATIC_INFO_SOURCE_DIR'
+    exit 2
+fi
 
 domeye_database_load_env "${DATABASE_ENV_FILE}"
 domeye_database_validate_config
@@ -112,6 +129,16 @@ if ! jq -e \
      and ((.system_identifier | test("^[0-9]+$")))
      and ((.component_created_at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")))
      and ((.base_release == null) or ((.base_release | type) == "string"))
+     and (
+       .static_info_import == null
+       or (
+         (.static_info_import.enabled | type) == "boolean"
+         and (
+           .static_info_import.scope == "core_four_files"
+           or .static_info_import.scope == "all_24_files"
+         )
+       )
+     )
      and (.provenance.mode == "source_snapshot"
           or .provenance.mode == "incremental_refresh"
           or .provenance.mode == "prebuilt_full_dump")
@@ -135,6 +162,16 @@ readonly STATE_IMAGE_REF="$(jq -r '.image.ref' "${STATE_FILE}")"
 readonly STATE_IMAGE_ID="$(jq -r '.image.id' "${STATE_FILE}")"
 readonly STATE_SYSTEM_IDENTIFIER="$(jq -r '.system_identifier' "${STATE_FILE}")"
 readonly STATE_SAFE_CHECKPOINT="$(jq -r '.safe_checkpoint' "${STATE_FILE}")"
+readonly STATE_STATIC_INFO_ENABLED="$(
+    jq -r \
+        'if .static_info_import == null then "legacy"
+         else (.static_info_import.enabled | tostring)
+         end' \
+        "${STATE_FILE}"
+)"
+readonly STATE_STATIC_INFO_SCOPE="$(
+    jq -r '.static_info_import.scope // empty' "${STATE_FILE}"
+)"
 readonly PRUNE_OUTPUT="${EVIDENCE_DIR}/prune-output.txt"
 readonly PRUNE_OUTPUT_CHECKSUM="${EVIDENCE_DIR}/prune-output.sha256"
 readonly PRUNE_PENDING_SUCCESS="${EVIDENCE_DIR}/prune-output.pending.success"
@@ -144,6 +181,23 @@ if [[ ! "${SNAPSHOT_TIME}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9
     || ! "${SNAPSHOT_MONTH}" =~ ^[0-9]{6}$ \
     || "${SNAPSHOT_MONTH}" != "${SNAPSHOT_LOCAL:0:4}${SNAPSHOT_LOCAL:5:2}" ]]; then
     domeye_artifact_error 'build-state.json 的快照时间字段无效'
+    exit 1
+fi
+if [[ "${STATE_STATIC_INFO_ENABLED}" == 'true' ]]; then
+    if [[ -z "${STATIC_INFO_SOURCE_DIR}"
+        || "${STATIC_INFO_SCOPE}" != "${STATE_STATIC_INFO_SCOPE}" ]]; then
+        domeye_artifact_error \
+            '续跑必须提供与 build-state.json 相同的 static INFO 来源开关和 scope'
+        exit 1
+    fi
+elif [[ "${STATE_STATIC_INFO_ENABLED}" == 'false' ]]; then
+    if [[ -n "${STATIC_INFO_SOURCE_DIR}" ]]; then
+        domeye_artifact_error \
+            '原构建未启用 static INFO，续跑不得临时扩大导入范围'
+        exit 1
+    fi
+elif [[ "${STATE_STATIC_INFO_ENABLED}" != 'legacy' ]]; then
+    domeye_artifact_error 'build-state.json 的 static INFO 状态无效'
     exit 1
 fi
 case "${EVIDENCE_DIR}" in
@@ -161,6 +215,12 @@ if [[ "${STATE_SAFE_CHECKPOINT}" == 'database_component_published' ]]; then
         'database-schema.sql'
         "${DOMEYE_CORE_DATABASE_MANIFEST}"
     )
+    if jq -e \
+        --arg name "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}" \
+        '.staged_outputs[$name] != null' \
+        "${STATE_FILE}" >/dev/null; then
+        completed_outputs+=("${DOMEYE_CORE_STATIC_INFO_EVIDENCE}")
+    fi
     for completed_name in "${completed_outputs[@]}"; do
         completed_path="${RELEASE_DIR}/${completed_name}"
         completed_sha="$(jq -r --arg name "${completed_name}" '.staged_outputs[$name].sha256 // empty' "${STATE_FILE}")"
@@ -400,6 +460,9 @@ output_names=(
     'database-schema.sql'
     "${DOMEYE_CORE_DATABASE_MANIFEST}"
 )
+if [[ -n "${STATIC_INFO_SOURCE_DIR}" ]]; then
+    output_names+=("${DOMEYE_CORE_STATIC_INFO_EVIDENCE}")
+fi
 for finalized_name in "${DOMEYE_CORE_RELEASE_MANIFEST}" "${DOMEYE_CORE_CHECKSUM_FILE}"; do
     if [[ -e "${RELEASE_DIR}/${finalized_name}" || -L "${RELEASE_DIR}/${finalized_name}" ]]; then
         domeye_artifact_error "发布已进入总清单定稿阶段，拒绝续写数据库组件：${finalized_name}"
@@ -430,6 +493,7 @@ fi
 
 docker run --detach \
     --name "${CANDIDATE_CONTAINER}" \
+    --label "domeye.core.database-role=offline-candidate" \
     --memory "${DOMEYE_CORE_DATABASE_MEMORY}" \
     --shm-size 4g \
     --volume "${CANDIDATE_DATA_DIR}:/var/lib/postgresql/data" \
@@ -526,6 +590,41 @@ if ! jq -e \
     exit 1
 fi
 
+if [[ -n "${STATIC_INFO_SOURCE_DIR}" ]]; then
+    static_info_commit="${DOMEYE_CORE_CODE_COMMIT:-unknown}"
+    if [[ "${static_info_commit}" == 'unknown' ]] && command -v git >/dev/null 2>&1; then
+        static_info_commit="$(git -C "${REPOSITORY_ROOT}" rev-parse HEAD 2>/dev/null || printf unknown)"
+    fi
+    domeye_static_info_load_shadow \
+        "${REPOSITORY_ROOT}" \
+        "${STATIC_INFO_SOURCE_DIR}" \
+        "${RELEASE_ID}" \
+        "${CANDIDATE_CONTAINER}" \
+        "${DOMEYE_CORE_DB_ADMIN_USER}" \
+        "${DOMEYE_CORE_DB_NAME}" \
+        "${EVIDENCE_DIR}/static-info" \
+        "${static_info_commit}"
+    if [[ "${STATIC_INFO_SCOPE}" == 'all_24_files' ]]; then
+        domeye_static_info_load_full_shadow \
+            "${REPOSITORY_ROOT}" \
+            "${STATIC_INFO_SOURCE_DIR}" \
+            "${CANDIDATE_CONTAINER}" \
+            "${DOMEYE_CORE_DB_ADMIN_USER}" \
+            "${DOMEYE_CORE_DB_NAME}" \
+            "${EVIDENCE_DIR}/static-info"
+    fi
+fi
+
+static_info_evidence_tmp=''
+if [[ -n "${STATIC_INFO_SOURCE_DIR}" ]]; then
+    static_info_evidence_tmp="${work_dir}/${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+    domeye_static_info_bundle_evidence \
+        "${REPOSITORY_ROOT}" \
+        "${EVIDENCE_DIR}/static-info" \
+        "${STATIC_INFO_SCOPE}" \
+        "${static_info_evidence_tmp}"
+fi
+
 domeye_database_apply_reader "${CANDIDATE_CONTAINER}" "${SQL_DIR}/create-reader.sql"
 readonly POSTGRES_VERSION="$(domeye_database_psql "${CANDIDATE_CONTAINER}" --quiet --no-align --tuples-only --command 'SHOW server_version;')"
 readonly TIMESCALEDB_VERSION="$(domeye_database_psql "${CANDIDATE_CONTAINER}" --quiet --no-align --tuples-only --command "SELECT extversion FROM pg_extension WHERE extname='timescaledb';")"
@@ -600,6 +699,9 @@ staging_path["${DOMEYE_CORE_DATABASE_ARCHIVE}"]="${DATABASE_TMP}"
 staging_path["${DOMEYE_CORE_IMAGE_ARCHIVE}"]="${IMAGE_TMP}"
 staging_path['database-inventory.json']="${INVENTORY_TMP}"
 staging_path['database-schema.sql']="${SCHEMA_TMP}"
+if [[ -n "${static_info_evidence_tmp}" ]]; then
+    staging_path["${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"]="${static_info_evidence_tmp}"
+fi
 for output_name in "${output_names[@]:0:4}"; do
     output_path="${RELEASE_DIR}/${output_name}"
     if [[ -e "${output_path}" ]]; then
@@ -623,6 +725,23 @@ jq \
     --arg image_name "${DOMEYE_CORE_IMAGE_ARCHIVE}" --arg image_sha "${final_sha[${DOMEYE_CORE_IMAGE_ARCHIVE}]}" --argjson image_size "${final_size[${DOMEYE_CORE_IMAGE_ARCHIVE}]}" \
     --arg inventory_sha "${final_sha[database-inventory.json]}" --argjson inventory_size "${final_size[database-inventory.json]}" \
     --arg schema_sha "${final_sha[database-schema.sql]}" --argjson schema_size "${final_size[database-schema.sql]}" \
+    --arg static_info_evidence_name "$(
+        if [[ -n "${static_info_evidence_tmp}" ]]; then
+            printf '%s' "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+        fi
+    )" \
+    --arg static_info_evidence_sha "$(
+        if [[ -n "${static_info_evidence_tmp}" ]]; then
+            domeye_artifact_sha256 "${static_info_evidence_tmp}"
+        fi
+    )" \
+    --argjson static_info_evidence_size "$(
+        if [[ -n "${static_info_evidence_tmp}" ]]; then
+            stat -c '%s' "${static_info_evidence_tmp}"
+        else
+            printf 0
+        fi
+    )" \
     --arg manifest_name "${DOMEYE_CORE_DATABASE_MANIFEST}" \
     '. as $state
      | .current_stage = "publish_pending"
@@ -635,7 +754,13 @@ jq \
          }
          + (if $state.staged_outputs[$manifest_name] == null then {}
             else {($manifest_name): $state.staged_outputs[$manifest_name]} end)
-       )' "${STATE_FILE}" > "${state_tmp}"
+       )
+     | if $static_info_evidence_name == "" then .
+       else .staged_outputs[$static_info_evidence_name] = {
+         sha256: $static_info_evidence_sha,
+         size: $static_info_evidence_size
+       }
+       end' "${STATE_FILE}" > "${state_tmp}"
 chmod 0600 "${state_tmp}"
 mv -T -- "${state_tmp}" "${STATE_FILE}"
 
@@ -664,8 +789,24 @@ publish_resume_output() {
 for output_name in "${output_names[@]:0:4}"; do
     publish_resume_output "${staging_path[${output_name}]}" "${output_name}"
 done
+if [[ -n "${static_info_evidence_tmp}" ]]; then
+    publish_resume_output \
+        "${static_info_evidence_tmp}" \
+        "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+fi
 
 readonly MANIFEST_TMP="${work_dir}/${DOMEYE_CORE_DATABASE_MANIFEST}"
+static_info_evidence_sha=''
+static_info_evidence_size=0
+if [[ -n "${STATIC_INFO_SOURCE_DIR}" ]]; then
+    static_info_evidence_sha="$(
+        domeye_artifact_sha256 \
+            "${RELEASE_DIR}/${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+    )"
+    static_info_evidence_size="$(
+        stat -c '%s' "${RELEASE_DIR}/${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+    )"
+fi
 jq -n \
     --argjson schema_version 1 --arg release_id "${RELEASE_ID}" \
     --arg created_at "$(jq -r '.component_created_at' "${STATE_FILE}")" \
@@ -676,6 +817,14 @@ jq -n \
     --arg schema_sha256 "$(domeye_artifact_sha256 "${RELEASE_DIR}/database-schema.sql")" \
     --arg image_archive "${DOMEYE_CORE_IMAGE_ARCHIVE}" --arg image_archive_sha256 "$(domeye_artifact_sha256 "${RELEASE_DIR}/${DOMEYE_CORE_IMAGE_ARCHIVE}")" \
     --arg image_ref "${STATE_IMAGE_REF}" --arg image_id "${STATE_IMAGE_ID}" --arg image_digest "${IMAGE_DIGEST}" \
+    --arg static_info_evidence_name "$(
+        if [[ -n "${STATIC_INFO_SOURCE_DIR}" ]]; then
+            printf '%s' "${DOMEYE_CORE_STATIC_INFO_EVIDENCE}"
+        fi
+    )" \
+    --arg static_info_evidence_sha "${static_info_evidence_sha}" \
+    --argjson static_info_evidence_size "${static_info_evidence_size}" \
+    --arg static_info_evidence_scope "${STATIC_INFO_SCOPE}" \
     --slurpfile inventory "${RELEASE_DIR}/database-inventory.json" --slurpfile state "${STATE_FILE}" \
     '{
       schema_version: $schema_version, component: "database", release_id: $release_id, created_at: $created_at,
@@ -690,6 +839,18 @@ jq -n \
         orphan_detail_count: $inventory[0].integrity.detail_references.orphan_count,
         discarded_malformed_event_rows: $inventory[0].integrity.detail_references.discarded_malformed_event_rows
       },
+      static_info: $inventory[0].static_info,
+      static_info_evidence: (
+        if $static_info_evidence_name == "" then null
+        else {
+          name: $static_info_evidence_name,
+          sha256: $static_info_evidence_sha,
+          size: $static_info_evidence_size,
+          scope: $static_info_evidence_scope,
+          content_id: $inventory[0].static_info.content_id
+        }
+        end
+      ),
       schema: {name: "database-schema.sql", sha256: $schema_sha256},
       image: {archive: $image_archive, archive_sha256: $image_archive_sha256, ref: $image_ref, id: $image_id, digest: $image_digest},
       provenance: $state[0].provenance

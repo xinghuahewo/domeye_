@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-import { getEventEvidenceBundle } from '@/api/events'
+import {
+  getEventEvidenceBundle,
+  getEventObservation,
+  isEventObservationNotConfigured,
+} from '@/api/events'
+import CountryOutageDashboard from '@/components/CountryOutageDashboard.vue'
 import PageState from '@/components/PageState.vue'
 import type {
   EvidenceBundle,
   EvidenceItem,
   EvidencePhase,
   EvidencePhaseCoverage,
+  EventObservation,
   ParsedDetailRef,
 } from '@/types/api'
 import { cleanText, errorMessage, isRecord } from '@/utils/normalize'
@@ -32,6 +38,8 @@ const loading = ref(false)
 const error = ref('')
 const parsed = ref<ParsedDetailRef | null>(null)
 const bundle = ref<EvidenceBundle | null>(null)
+const observation = ref<EventObservation | null>(null)
+let observationRefreshTimer: ReturnType<typeof setInterval> | undefined
 
 const reference = computed(() => typeof route.query.ref === 'string' ? route.query.ref : '')
 
@@ -132,14 +140,36 @@ function pathPreview(item: EvidenceItem) {
 }
 
 async function load() {
+  if (observationRefreshTimer) clearInterval(observationRefreshTimer)
   loading.value = true
   error.value = ''
   parsed.value = null
   bundle.value = null
+  observation.value = null
   try {
-    const response = await getEventEvidenceBundle(reference.value)
-    parsed.value = response.parsed
-    bundle.value = response.bundle
+    try {
+      const response = await getEventObservation(reference.value)
+      parsed.value = response.parsed
+      observation.value = response.observation
+      if (!response.observation.is_final) {
+        observationRefreshTimer = setInterval(async () => {
+          try {
+            const refreshed = await getEventObservation(reference.value)
+            observation.value = refreshed.observation
+          } catch {
+            // 保留最近一次已发布修订，下一轮继续尝试。
+          }
+        }, 45_000)
+      }
+      return
+    } catch (observationCause) {
+      if (!isEventObservationNotConfigured(observationCause)) {
+        throw new Error(`事件观测数据暂不可用：${errorMessage(observationCause)}`)
+      }
+    }
+    const legacyResponse = await getEventEvidenceBundle(reference.value)
+    parsed.value = legacyResponse.parsed
+    bundle.value = legacyResponse.bundle
   } catch (cause) {
     error.value = errorMessage(cause)
   } finally {
@@ -148,11 +178,14 @@ async function load() {
 }
 
 watch(reference, load, { immediate: true })
+onBeforeUnmount(() => {
+  if (observationRefreshTimer) clearInterval(observationRefreshTimer)
+})
 </script>
 
 <template>
   <article class="page evidence-page">
-    <header class="incident-header">
+    <header v-if="!observation" class="incident-header">
       <div class="incident-title">
         <RouterLink class="back-link" to="/events">← 返回异常事件</RouterLink>
         <p class="eyebrow">事件研判 / Evidence Bundle</p>
@@ -196,6 +229,8 @@ watch(reference, load, { immediate: true })
       @retry="load"
     />
 
+    <CountryOutageDashboard v-else-if="observation" :observation="observation" />
+
     <template v-else-if="bundle">
       <section class="evidence-boundary" aria-label="Legacy 与 P0 证据边界">
         <div>
@@ -209,9 +244,9 @@ watch(reference, load, { immediate: true })
           <p>未附 MRT / UPDATE 原始记录；AS_PATH 仅为路径观测快照。</p>
         </div>
         <div>
-          <span>P0 EVIDENCE v2</span>
-          <strong>6 SAMPLES · NOT FULL POPULATION</strong>
-          <p>当前 legacy 事件行未保留到 D4 样本注册表的稳定映射，因此本页不会假装回查 v2。</p>
+          <span>STATE EVIDENCE</span>
+          <strong>DIRECT LINKS ONLY</strong>
+          <p>逐槽状态与原始记录通过 Incident、RouteEvent 和 raw ref 直接关联；本页不合成额外证据包。</p>
         </div>
       </section>
 

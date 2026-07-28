@@ -396,7 +396,7 @@ func (reader *spoolReader) Next() (ParsedEvent, error) {
 	if err != nil {
 		return ParsedEvent{}, err
 	}
-	prefixAddress, err := parseAddress(rawPrefix)
+	prefixAddress, err := parsePrefixAddress(rawPrefix, afi)
 	if err != nil {
 		return ParsedEvent{}, err
 	}

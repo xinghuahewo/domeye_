@@ -136,6 +136,7 @@ domeye_database_start_candidate() {
 
     if ! docker run --detach \
         --name "${container_name}" \
+        --label "domeye.core.database-role=offline-candidate" \
         --memory "${DOMEYE_CORE_DATABASE_MEMORY}" \
         --shm-size 4g \
         --env "POSTGRES_DB=${DOMEYE_CORE_DB_NAME}" \

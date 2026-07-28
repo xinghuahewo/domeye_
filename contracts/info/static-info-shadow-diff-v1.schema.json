@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/info/static-info-shadow-diff-v1.schema.json",
+  "title": "static INFO S3 文件与数据库影子语义对账报告",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "component",
+    "shadow_contract_version",
+    "content_id",
+    "manifest_sha256",
+    "release_sk",
+    "database_release_status",
+    "scope",
+    "status",
+    "activated",
+    "deterministic_query_case_count",
+    "deterministic_query_unapproved_difference_count",
+    "full_set_unapproved_difference_count",
+    "snapshot_unapproved_difference_count",
+    "contact_plaintext_exposure_count",
+    "approved_exception_count",
+    "approved_exceptions",
+    "sections"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "component": {
+      "const": "static_info_shadow_diff"
+    },
+    "shadow_contract_version": {
+      "const": "info-shadow-diff-v1"
+    },
+    "content_id": {
+      "type": "string",
+      "pattern": "^info_v1_[0-9a-f]{32}$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "release_sk": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "database_release_status": {
+      "const": "validating"
+    },
+    "scope": {
+      "const": "all_static_queries_and_snapshot"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "activated": {
+      "const": false
+    },
+    "deterministic_query_case_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "deterministic_query_unapproved_difference_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "full_set_unapproved_difference_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "snapshot_unapproved_difference_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "contact_plaintext_exposure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "approved_exception_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "approved_exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_file",
+          "source_row_no",
+          "natural_key",
+          "field",
+          "reason_code",
+          "source_record_sha256",
+          "approval_basis"
+        ],
+        "properties": {
+          "source_file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_row_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "natural_key": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason_code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_record_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "approval_basis": {
+            "const": "S2_quarantine_contract"
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "minProperties": 15,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "comparison_unit",
+          "file_record_count",
+          "database_record_count",
+          "file_set_sha256",
+          "database_set_sha256",
+          "unapproved_difference_count"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "pass",
+              "fail"
+            ]
+          },
+          "comparison_unit": {
+            "const": "canonical_semantic_record"
+          },
+          "file_record_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "database_record_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "file_set_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "database_set_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "unapproved_difference_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

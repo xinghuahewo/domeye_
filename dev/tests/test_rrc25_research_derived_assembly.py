@@ -38,14 +38,74 @@ from backend.data_pipeline.research.rrc25_country_outage.state_replay import (
     RouteStateEntry,
     build_research_route_event,
 )
-from dev.tests.test_rrc25_research_evidence import _bundle_parameters, _incident
-
-
 ROOT = Path(__file__).resolve().parents[2]
 START = datetime(2026, 2, 27, 16, 0, tzinfo=timezone.utc)
 RUN_ID = "research_run_v1_" + "9" * 24
 FILE_HASH = "a" * 64
 ASN = 65001
+
+
+def _phase():
+    return {
+        "source_field": "legacy_country_outage",
+        "semantics": "route_observation_not_causal_trace",
+        "supports_recovery": False,
+        "status": "not_applicable",
+        "missing_reason": "legacy_not_applicable",
+        "observations": None,
+    }
+
+
+def _incident(index=1):
+    incident_id = "inc_v1_{:024x}".format(index)
+    detail = "country_outage/2026-02-27 09:12:{:02d}/IR/{}/r".format(
+        31 + index, index
+    )
+    return {
+        "schema_version": "p0_incident_normalization_v1",
+        "incident_id": incident_id,
+        "incident_id_schema": "incident_id_v1",
+        "event_type": "country_outage",
+        "source_code": "r",
+        "source_table": "country_outage_202602",
+        "source_primary_key": {
+            "source": "r",
+            "country": "IR",
+            "outage_id": index,
+        },
+        "detail_reference": detail,
+        "event_time_utc": "2026-02-27T01:12:{:02d}Z".format(31 + index),
+        "end_time_utc": None,
+        "duration_seconds": None,
+        "risk_level": None,
+        "affected_objects": [
+            {
+                "object_type": "country",
+                "object_id": "IR",
+                "role": "affected",
+                "source_field": "detail_url.problem",
+            }
+        ],
+        "collection_quality": [],
+        "phase_coverage": {
+            "before": _phase(),
+            "during": _phase(),
+            "after": _phase(),
+        },
+        "fact_link_status": "matched",
+        "field_quality": [
+            {
+                "field": "detector_version",
+                "status": "not_retained",
+                "missing_reason": "legacy_field_not_retained",
+            }
+        ],
+        "collision_group_id": None,
+        "quarantine_id": None,
+        "detector_version": None,
+        "classification": "observation_only",
+        "causal_conclusion": None,
+    }
 
 
 def _utc(value):
@@ -198,11 +258,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             )
             for index, gate_id in enumerate(GATE_ORDER, start=1)
         )
-        evidence_parameters = (
-            _bundle_parameters(include_raw=False)
-            if incident["fact_link_status"] == "matched"
-            else None
-        )
         return assemble_derived_research(
             profile=profile,
             run_id=RUN_ID,
@@ -241,8 +296,7 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             reproduction_commands=(
                 "python3 -m unittest dev.tests.test_rrc25_research_derived_assembly",
             ),
-            evidence_bundle_parameters=evidence_parameters,
-            limitations_zh=("本次只验证零 Episode 的事件级证据闭环。",),
+            limitations_zh=("本次只验证零 Episode 的事件模型闭环。",),
         )
 
     def test_small_synthetic_fixture_flows_through_all_derived_layers(self):
@@ -304,8 +358,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             source_sha256="c" * 64,
             source_ref="synthetic-ir-mapping",
         )
-        evidence_parameters = _bundle_parameters()
-        evidence_parameters["route_event_refs"][0]["observed_at"] = withdraw.event_time_utc
         quality_facts = tuple(
             DiagnosticFact(
                 gate_id=gate_id,
@@ -352,7 +404,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             },
             reproduction_commands=("python3 -m unittest dev.tests.test_rrc25_research_derived_assembly",),
             route_events_by_id={withdraw.route_event_id: withdraw},
-            evidence_bundle_parameters=evidence_parameters,
             limitations_zh=("本次仅用小型合成状态验证研究闭环。",),
         )
         with self.assertRaisesRegex(
@@ -364,7 +415,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             **{
                 **assembly_arguments,
                 "incidents": (),
-                "evidence_bundle_parameters": None,
             }
         )
         probe_episode = unmapped_probe.episodes[0]
@@ -387,7 +437,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
         self.assertEqual(len(result.episodes), 1)
         self.assertEqual(len(result.waves), 1)
         self.assertEqual(len(result.episode_as_records), 1)
-        self.assertEqual(len(result.evidence_packages), 1)
         self.assertEqual(len(result.incident_episode_mappings), 1)
         self.assertEqual(
             result.incident_episode_mappings[0]["mapping_state"],
@@ -403,9 +452,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
         self.assertEqual(result.package_manifest["acceptance_state"], "not_accepted")
         self.assertIn("不得外推为完整事件人口或生产验收结果", result.report_zh)
         self.assertEqual(len(result.reconciliation["claims"]), 11)
-        self.assertTrue(
-            result.evidence_packages[0]["sidecar"]["route_event_refs"]
-        )
         self.assertEqual(result.episode_as_records[0]["evidence_links"], [])
         reference_gate = next(
             gate
@@ -463,19 +509,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             mapping_by_incident[second_incident["incident_id"]]["mapping_state"],
             "no_research_episode",
         )
-        with_episode = next(
-            package
-            for package in selective.evidence_packages
-            if package["evidence_package_state"] == "available_with_episode"
-        )
-        without_episode = next(
-            package
-            for package in selective.evidence_packages
-            if package["evidence_package_state"] == "available_no_episode"
-        )
-        self.assertEqual(with_episode["incident_ids"], [_incident()["incident_id"]])
-        self.assertEqual(without_episode["incident_ids"], [second_incident["incident_id"]])
-
         assert result.detection is not None
         detected_episode = result.detection.episodes[0]
         with self.assertRaisesRegex(
@@ -539,7 +572,7 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
                 __import__("hashlib").sha256(payload).hexdigest(),
             )
 
-    def test_zero_episode_keeps_incident_mapping_and_standard_evidence_bundle(self):
+    def test_zero_episode_keeps_incident_mapping(self):
         result = self._assemble_without_episode(_incident())
 
         self.assertFalse(result.baseline.resolved)
@@ -551,18 +584,7 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
         self.assertFalse(mapping["causal"])
         self.assertIn("未伪造事件边界", mapping["missing_reason_zh"])
 
-        self.assertEqual(len(result.evidence_packages), 1)
-        package = result.evidence_packages[0]
-        self.assertEqual(package["evidence_package_state"], "available_no_episode")
-        self.assertEqual(len(package["bundles"]), 1)
-        self.assertIsNone(package["sidecar"]["episode_ref"])
-        self.assertEqual(package["sidecar"]["incident_episode_links"], [])
-        self.assertEqual(
-            package["sidecar"]["reference_closure"]["overall"],
-            "passed_with_explicit_no_episode",
-        )
-
-    def test_unresolved_incident_without_episode_is_explicitly_unavailable(self):
+    def test_unresolved_incident_without_episode_keeps_mapping(self):
         incident = _incident()
         incident["fact_link_status"] = "unresolved"
         result = self._assemble_without_episode(incident)
@@ -572,17 +594,6 @@ class DerivedAssemblyFlowTests(unittest.TestCase):
             result.incident_episode_mappings[0]["mapping_state"],
             "no_research_episode",
         )
-        self.assertEqual(len(result.evidence_packages), 1)
-        package = result.evidence_packages[0]
-        self.assertEqual(
-            package["evidence_package_state"],
-            "unavailable_source_fact_unresolved",
-        )
-        self.assertEqual(package["incident_locators"], [incident])
-        self.assertEqual(package["episode_ids"], [])
-        self.assertEqual(package["bundles"], [])
-        self.assertIsNone(package["sidecar"])
-
     def test_mapping_validator_rejects_relation_and_sample_outside_episode(self):
         sample_id = "sample_v1_" + "1" * 24
         episode_id = "episode_v1_" + "2" * 24

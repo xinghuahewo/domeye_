@@ -213,32 +213,6 @@ class FullWindowSegmentPackageTests(unittest.TestCase):
                 )
             )
             self.assertEqual(first, second)
-            sequence = next(
-                item
-                for item in first.items
-                if item.relative_path
-                == "evidence/research-evidence-packages.jsonl.gz"
-            )
-            self.assertEqual(
-                sequence.materialization,
-                segment_package.MATERIALIZATION_CANONICAL_JSONL_GZIP,
-            )
-            self.assertIsNotNone(sequence.generated_bytes)
-            rows = gzip.decompress(sequence.generated_bytes).decode("utf-8")
-            self.assertTrue(rows.endswith("\n"))
-            self.assertTrue(rows.strip())
-            for line in rows.splitlines():
-                value = json.loads(line)
-                self.assertEqual(
-                    line,
-                    json.dumps(
-                        value,
-                        ensure_ascii=False,
-                        sort_keys=True,
-                        separators=(",", ":"),
-                        allow_nan=False,
-                    ),
-                )
 
     def test_business_path_collision_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:

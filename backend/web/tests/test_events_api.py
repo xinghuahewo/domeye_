@@ -26,6 +26,7 @@ EVENT_ITEM_SCHEMA = {
     'attacked_org': str,
     'attacker_country': str,
     'attacked_country': str,
+    'semantic_guardrails': dict,
     'state': str,
     'judge_reason': (str, type(None)),
     'judge_userid': (str, type(None)),
@@ -91,6 +92,7 @@ COMMON_DETAIL_SCHEMA = {
     'event_level': str,
     'event_descr': str,
     'event_info': str,
+    'semantic_guardrails': dict,
 }
 
 DETAIL_CASES = [
@@ -379,6 +381,14 @@ def test_event_list_contract_and_query_params(client, assert_contract):
     assert payload['data'][0]['event_type'] in CORE_EVENT_TYPES
     assert payload['data'][0]['level'] in EVENT_LEVELS
     assert payload['data'][0]['state'] in EVENT_STATES
+    assert payload['data'][0]['semantic_guardrails'] == {
+        'contract_version': 'legacy_event_semantic_guardrails_v1',
+        'lifecycle_state': 'recorded',
+        'attribution_state': 'detector_fact_only',
+        'ratio_state': 'not_applicable',
+        'blocked_claims': ['causal_conclusion'],
+        'reason_codes': [],
+    }
     assert payload['record_count'] == '1'
     assert payload['data'][0]['event_type'] == '前缀劫持'
     assert query.call_args.kwargs['page_num'] == 1
@@ -441,6 +451,25 @@ def test_six_event_detail_contracts(
     assert payload['start_time'] == start_time
     assert payload['end_time'] == ''
     assert payload['duration'] == ''
+    guardrails = payload['semantic_guardrails']
+    assert guardrails['contract_version'] == 'legacy_event_semantic_guardrails_v1'
+    assert 'causal_conclusion' in guardrails['blocked_claims']
+    if event_type == 'leak':
+        assert guardrails['lifecycle_state'] == 'unavailable'
+        assert guardrails['reason_codes'] == ['legacy_leak_lifecycle_missing']
+        assert {'event_end', 'duration', 'recovery_state', 'ongoing_state'} <= set(
+            guardrails['blocked_claims']
+        )
+    else:
+        assert guardrails['lifecycle_state'] == 'unknown'
+    if event_type == 'prefix_outage':
+        assert guardrails['attribution_state'] == 'legacy_biased'
+        assert 'legacy_moas_attribution_bias' in guardrails['reason_codes']
+        assert 'responsible_as' in guardrails['blocked_claims']
+    if event_type in {'as_outage', 'country_outage'}:
+        assert guardrails['ratio_state'] == 'recompute_required'
+        assert 'legacy_ratio_recompute_required' in guardrails['reason_codes']
+        assert 'stored_ratio_as_authoritative' in guardrails['blocked_claims']
     assert query.call_args.kwargs['table'] == table
     assert query.call_args.kwargs[identifier] == value
     assert query.call_args.kwargs['source'] == 'r'
@@ -493,6 +522,22 @@ def test_event_list_service_keeps_invalid_paging_defaults():
     assert query.call_args.kwargs['page_size'] == 10
 
 
+def test_event_list_suppresses_legacy_leak_end_and_blocks_lifecycle_claims():
+    leak_row = {
+        **EVENT_ROW,
+        'event_type': '路由泄漏',
+        'detail_url': 'leak/2026-02-01 00:00:00/1.2.3.0-24/7/r',
+    }
+    with patch('services.events_service.get_event', return_value=[leak_row]), \
+         patch('services.events_service.get_total_page', return_value=(1, 1)):
+        result = events_service.get_event_list_data({}, conn=object())
+
+    item = result['data'][0]
+    assert item['end_time'] == '-'
+    assert item['semantic_guardrails']['lifecycle_state'] == 'unavailable'
+    assert 'ongoing_state' in item['semantic_guardrails']['blocked_claims']
+
+
 def test_event_evidence_bundle_has_stable_ids_phase_semantics_and_quality_limits(client):
     start_time = quote('2026-02-01 00:00:00', safe='')
     path = f'/api/v1/events/evidence-bundle/hijack/{start_time}/1.2.3.0-24/7/r'
@@ -524,6 +569,21 @@ def test_event_evidence_bundle_has_stable_ids_phase_semantics_and_quality_limits
     assert payload['data_quality']['raw_bgp_message_available'] is False
     assert payload['assessment']['classification'] == 'observation_only'
     assert payload['assessment']['causal_conclusion'] is None
+    assert payload['semantic_guardrails'] == payload['fact_record']['semantic_guardrails']
+    assert payload['semantic_guardrails']['attribution_state'] == 'detector_fact_only'
+    fact_record_identity = dict(payload['fact_record'])
+    fact_record_identity.pop('semantic_guardrails')
+    expected_fact_id = events_service._stable_id('ev_v1_', {
+        'incident_id': payload['incident_id'],
+        'source_record': payload['source_record'],
+        'fact_record': fact_record_identity,
+    })
+    fact_item = next(
+        item for item in payload['evidence_items']
+        if item['kind'] == 'fact_record'
+    )
+    assert fact_item['evidence_id'] == expected_fact_id
+    assert fact_item['field_count'] == len(fact_record_identity)
     assert payload['assessment']['counterevidence']
     assert any('不证明全网恢复' in item for item in payload['assessment']['counterevidence'])
 

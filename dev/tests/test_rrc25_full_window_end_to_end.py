@@ -798,7 +798,6 @@ class FullWindowEndToEndTests(unittest.TestCase):
                     "data/revised-episode-as-measurement-semantics.jsonl.gz",
                     "data/revised-prefix-impact.jsonl.gz",
                     "data/incident-episode-mappings.jsonl.gz",
-                    "evidence/research-evidence-packages.jsonl.gz",
                 },
             )
             report_path = "报告/RRC25伊朗国家路由中断事件复算与对账报告.md"
@@ -826,39 +825,6 @@ class FullWindowEndToEndTests(unittest.TestCase):
             self.assertEqual(
                 (first.root / report_path).read_bytes(),
                 business.byte_files[report_path][1],
-            )
-            with gzip.open(
-                first.root / "evidence/research-evidence-packages.jsonl.gz",
-                "rt",
-                encoding="utf-8",
-            ) as stream:
-                evidence_package = json.loads(next(stream))
-            bundle = evidence_package["bundles"][0]
-            self.assertEqual(
-                bundle["data_snapshot"]["window_start"],
-                "2026-02-27T01:12:32Z",
-            )
-            self.assertEqual(
-                bundle["data_snapshot"]["raw_source_status"], "partial"
-            )
-            parameters = {
-                row["name"]: row["value"]
-                for row in bundle["reproducibility"]["parameters"]
-            }
-            self.assertEqual(
-                parameters["research_window_start_utc"],
-                "2026-02-27T16:00:00Z",
-            )
-            self.assertEqual(
-                parameters["metric_window_policy"],
-                "strict_research_profile_half_open_window",
-            )
-            self.assertTrue(
-                any(
-                    "[2026-02-27T01:12:32Z,2026-02-27T16:00:00Z)"
-                    in limitation
-                    for limitation in evidence_package["limitations_zh"]
-                )
             )
             verified_first = finalizer.verify_finalized_package(first.root)
             self.assertEqual(

@@ -30,9 +30,7 @@ class Rrc25ResearchContractTest(unittest.TestCase):
             "country-outage-wave",
             "country-outage-episode-as",
             "reconciliation-result",
-            "research-evidence-sidecar",
             "incident-episode-mapping",
-            "research-evidence-package",
         }
         for name in names:
             schema = json.loads((CONTRACT_ROOT / f"{name}.schema.json").read_text(encoding="utf-8"))
@@ -48,9 +46,7 @@ class Rrc25ResearchContractTest(unittest.TestCase):
             "fixtures/country-outage-wave/invalid-causal-precursor-label.json",
             "fixtures/country-outage-episode-as/invalid-dual-stack-label-when-ipv6-visible.json",
             "fixtures/reconciliation-result/invalid-rrc25-only-causal-overreach.json",
-            "fixtures/research-evidence-sidecar/invalid-no-episode-fabricated-recovery-with-valid-content-id.json",
             "fixtures/incident-episode-mapping/invalid-content-id.json",
-            "fixtures/research-evidence-package/invalid-precursor-assertion-with-valid-content-id.json",
         ]
         for relative in expected:
             self.assertTrue((CONTRACT_ROOT / relative).is_file(), relative)

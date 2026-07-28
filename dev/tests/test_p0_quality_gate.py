@@ -145,36 +145,6 @@ def d2_manifest():
     }
 
 
-def evidence_summary():
-    return {
-        "schema_version": "evidence_reconciliation_v1",
-        "scope": "six_event_contract_investigation_sample",
-        "sample_only": True,
-        "population_coverage_claimed": False,
-        "bundle_count": 6,
-        "event_type_count": 6,
-        "event_types": [
-            "hijack",
-            "sub_hijack",
-            "leak",
-            "prefix_outage",
-            "as_outage",
-            "country_outage",
-        ],
-        "strict_schema_status": "passed",
-        "schema_invalid_count": 0,
-        "classification_violation_count": 0,
-        "causal_conclusion_nonnull_count": 0,
-        "evidence_id_conflict_count": 0,
-        "unresolved_evidence_reference_count": 0,
-        "unresolved_route_event_reference_count": 0,
-        "outside_window_record_count": 0,
-        "unknown_missing_reason_count": 0,
-        "auto_zero_fill_count": 0,
-        "summary_fingerprint_sha256": "7" * 64,
-    }
-
-
 def metric_summary():
     return {
         "schema_version": "metric_reconciliation_v1",
@@ -336,7 +306,6 @@ def context():
             "d2": "d" * 64,
             "d3": "e" * 64,
             "route": "f" * 64,
-            "evidence": "1" * 64,
             "metric": "2" * 64,
             "repro": "3" * 64,
             "execution": "4" * 64,
@@ -352,7 +321,7 @@ def single_run_assurance_context_and_summary():
             "signed_size_bytes": 100 + index,
             "verified": True,
         }
-        for index, name in enumerate(("d2", "d3", "d4", "metric", "route_event"))
+        for index, name in enumerate(("d2", "d3", "metric", "route_event"))
     }
     identity_fields = {
         "d2": (
@@ -365,12 +334,6 @@ def single_run_assurance_context_and_summary():
             "manifest_fingerprint_sha256",
             "manifest_sha256",
             "summary_sha256",
-            "sha256sums_sha256",
-        ),
-        "d4": (
-            "candidate_fingerprint_sha256",
-            "manifest_sha256",
-            "reconciliation_fingerprint_sha256",
             "sha256sums_sha256",
         ),
         "metric": (
@@ -394,8 +357,6 @@ def single_run_assurance_context_and_summary():
         for name, fields in identity_fields.items()
     }
     bindings = {
-        "d4_to_final_d2": True,
-        "d4_to_final_d3": True,
         "metric_to_final_d2": True,
         "metric_to_final_d3": True,
         "route_event_to_final_d3": True,
@@ -494,7 +455,6 @@ def single_run_assurance_context_and_summary():
             "single_candidate_components": [
                 "d2_full",
                 "d3",
-                "d4",
                 "metric",
                 "route_event",
             ],
@@ -555,7 +515,7 @@ class RawFixture:
         self.temporary.cleanup()
 
 
-def build_all(raw, *, d2=None, route=None, evidence=None, metric=None, repro=None, ctx=None):
+def build_all(raw, *, d2=None, route=None, metric=None, repro=None, ctx=None):
     d2_value = d2 or d2_manifest()
     route_value = route if route is not None else route_summary(raw.manifest)
     return build_quality_report(
@@ -564,7 +524,6 @@ def build_all(raw, *, d2=None, route=None, evidence=None, metric=None, repro=Non
         context=ctx or context(),
         route_event_summary=route_value,
         artifact_verification_summary=raw.verification,
-        evidence_summary=evidence if evidence is not None else evidence_summary(),
         metric_summary=metric if metric is not None else metric_summary(),
         reproducibility_summary=repro
         if repro is not None
@@ -601,7 +560,6 @@ def build_with_refingerprinted_manifest(raw, manifest):
         context=context(),
         route_event_summary=route_summary(manifest),
         artifact_verification_summary=verification,
-        evidence_summary=evidence_summary(),
         metric_summary=metric_summary(),
         reproducibility_summary=reproducibility_summary(),
     )
@@ -765,29 +723,6 @@ class QualityGateTest(unittest.TestCase):
                     assert_schema_valid(self, result.report)
         finally:
             raw.close()
-
-    def test_evidence_sample_scope_must_not_be_presented_as_population(self):
-        raw = RawFixture(partial=True)
-        misleading = evidence_summary()
-        misleading["sample_only"] = False
-        misleading["population_coverage_claimed"] = True
-        misleading["event_types"] = [{"invalid": "unhashable"}]
-        try:
-            result = build_all(raw, evidence=misleading)
-        finally:
-            raw.close()
-        self.assertEqual(result.report["gate"]["status"], "failed")
-        self.assertIn(
-            "completeness-evidence-contract",
-            result.report["gate"]["blocking_failed_check_ids"],
-        )
-        detail = next(
-            row
-            for row in result.failure_details_zh
-            if row["check_id"] == "completeness-evidence-contract"
-        )
-        self.assertIn("evidence_sample_scope_misrepresented", detail["reason_codes"])
-        assert_schema_valid(self, result.report)
 
     def test_metric_contract_requires_real_schema_validation_evidence(self):
         raw = RawFixture(partial=True)
@@ -1078,7 +1013,6 @@ class QualityGateTest(unittest.TestCase):
                 context=context(),
                 route_event_summary=None,
                 artifact_verification_summary=raw.verification,
-                evidence_summary=evidence_summary(),
                 metric_summary=metric_summary(),
                 reproducibility_summary=reproducibility_summary(with_route=False),
             )
@@ -1099,10 +1033,6 @@ class QualityGateTest(unittest.TestCase):
         self.assertEqual(result.report["gate"]["status"], "failed")
         self.assertEqual(result.report["gate"]["admission_level"], "not_accepted")
         self.assertIn(
-            "completeness-evidence-contract",
-            result.report["gate"]["blocking_failed_check_ids"],
-        )
-        self.assertIn(
             "completeness-metric-contract",
             result.report["gate"]["blocking_failed_check_ids"],
         )
@@ -1120,7 +1050,6 @@ class QualityGateTest(unittest.TestCase):
                 context=context(),
                 route_event_summary=route_summary(raw.manifest),
                 artifact_verification_summary=raw.verification,
-                evidence_summary=evidence_summary(),
                 metric_summary=metric_summary(),
                 reproducibility_summary=reproducibility_summary(),
             )

@@ -375,12 +375,6 @@ def _business_fixture_files(root: Path, *, business_core: str, segment_core: str
                 "incident_id": "inc_v1_fixture",
             }
         ],
-        "evidence/research-evidence-packages.jsonl.gz": [
-            {
-                "schema_version": "research-evidence-package/v1",
-                "evidence_package_id": "research_evidence_v1_fixture",
-            }
-        ],
     }
     for relative, rows in sequence_values.items():
         _write_rows(root / relative, rows)

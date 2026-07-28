@@ -591,7 +591,6 @@ class FullWindowFinalizeWorkspaceTests(unittest.TestCase):
                 "segments/index.json",
                 "metadata/finalization.json",
                 "quality-and-accounting.json",
-                "evidence/research-evidence-packages.jsonl.gz",
                 "报告/RRC25伊朗国家路由中断事件复算与对账报告.md",
             }
             self.assertTrue(

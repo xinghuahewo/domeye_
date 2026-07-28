@@ -261,7 +261,7 @@ def _load_temporal_evidence(
 
 
 def load_frozen_incident_fact(snapshot: Mapping[str, Any]) -> FrozenIncidentFact:
-    """校验冻结 API 快照并返回可供 Evidence v2 使用的 matched Incident。"""
+    """校验冻结 API 快照并返回可供研究关联使用的 matched Incident。"""
 
     root = _mapping(snapshot, "source_fact_snapshot")
     if set(root) != {

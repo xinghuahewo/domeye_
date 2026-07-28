@@ -96,7 +96,6 @@ REQUIRED_BUSINESS_SEQUENCE_PATHS = frozenset(
         "data/revised-episode-as-measurement-semantics.jsonl.gz",
         "data/revised-prefix-impact.jsonl.gz",
         "data/incident-episode-mappings.jsonl.gz",
-        "evidence/research-evidence-packages.jsonl.gz",
     }
 )
 REQUIRED_BUSINESS_BYTE_PATHS = frozenset(
@@ -651,7 +650,7 @@ def _validate_product_and_business(
     if any(missing):
         _fail(
             "FullWindowBusinessOutputs 缺少完整 frozen/data/quality/"
-            "reconciliation/Evidence v2/中文报告人口"
+            "reconciliation/中文报告人口"
         )
 
 

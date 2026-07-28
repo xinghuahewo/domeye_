@@ -40,22 +40,6 @@
         }
       }
     },
-    "/p0/evidence/{incident_id}": {
-      "get": {
-        "operationId": "getP0EvidenceBundleV2",
-        "description": "通过 D4 注册表返回引用闭合的 Evidence Bundle v2。响应明确区分六类调查样本和后续全量候选。",
-        "parameters": [
-          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^inc_v1_[0-9a-f]{24}$"}}
-        ],
-        "responses": {
-          "200": {"description": "引用闭合的 Evidence Bundle v2", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/P0EvidenceResponse"}}}},
-          "400": {"$ref": "#/components/responses/P0BadRequest"},
-          "404": {"$ref": "#/components/responses/P0ResourceNotFound"},
-          "409": {"$ref": "#/components/responses/P0ArtifactConflict"},
-          "503": {"$ref": "#/components/responses/P0RepositoryUnavailable"}
-        }
-      }
-    },
     "/p0/quality": {
       "get": {
         "operationId": "getP0DataQualityReport",
@@ -105,6 +89,109 @@
           "200": {"description": "事件 Evidence Bundle", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvidenceBundle"}}}},
           "404": {"description": "业务事实记录不存在"}
         }
+      }
+    },
+    "/events/story/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+      "get": {
+        "operationId": "getEventStory",
+        "description": "返回通过事件详情页产品合同验收的研究型事件叙事。结论显式限定 collector、固定 cohort、控制面范围、时间删失和因果边界；当前只为伊朗国家中断验收事件提供。",
+        "parameters": [
+          {"name": "event_type", "in": "path", "required": true, "schema": {"type": "string", "const": "country_outage"}},
+          {"name": "start_time", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "problem", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "event_id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "source", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "事件产品叙事", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventStory"}}}},
+          "404": {"description": "该事件尚未建立产品合同叙事"},
+          "503": {"description": "研究交付包不可用、未完成或校验失败"}
+        }
+      }
+    },
+    "/events/observations/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+      "get": {
+        "operationId": "getEventObservation",
+        "description": "兼容旧引用路径的国家中断观测数据。事件身份和制品位置来自发布注册表，不在接口代码中绑定国家。",
+        "parameters": [
+          {"name": "event_type", "in": "path", "required": true, "schema": {"type": "string", "const": "country_outage"}},
+          {"name": "start_time", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "problem", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "event_id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "source", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "事件数据观测合同", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventObservation"}}}},
+          "404": {"description": "该事件尚未建立数据观测合同"},
+          "503": {"description": "研究交付包或 Core 国家资源时序不可用"}
+        }
+      }
+    },
+    "/api/v2/events/resolve": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "resolveCountryOutage",
+        "description": "将旧五段式事件引用解析为稳定 incident ID、当前不可变 publication 和最新已发布修订。",
+        "parameters": [
+          {"name": "ref", "in": "query", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "事件解析结果", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageResolutionV2"}}}},
+          "400": {"description": "引用不是合法的 country_outage 五段式引用"},
+          "404": {"description": "引用格式合法，但旧事实数据源中不存在该事件"},
+          "503": {"description": "注册表或旧事实数据源暂不可用"}
+        }
+      }
+    },
+    "/api/v2/country-outages/{incident_id}/overview": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutageOverview",
+        "parameters": [
+          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "首屏、范围、能力和质量", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageOverviewV2"}}}}}
+      }
+    },
+    "/api/v2/country-outages/{incident_id}/series": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutageSeries",
+        "parameters": [
+          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "共享时间轴的图表轨道", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageSeriesV2"}}}}}
+      }
+    },
+    "/api/v2/country-outages/{incident_id}/asns": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutageAsns",
+        "parameters": [
+          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}},
+          {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1}},
+          {"name": "page_size", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 60}},
+          {"name": "query", "in": "query", "schema": {"type": "string"}},
+          {"name": "address_family", "in": "query", "schema": {"type": "string", "enum": ["all", "ipv4", "ipv6", "dual"]}},
+          {"name": "state", "in": "query", "schema": {"type": "string", "enum": ["all", "partial", "invisible", "unknown"]}},
+          {"name": "sort", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "服务端筛选、排序和分页的 ASN 状态", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAsnPageV2"}}}}}
+      }
+    },
+    "/api/v2/country-outages/{incident_id}/audit": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutageAudit",
+        "description": "仅在用户展开审计区时读取；不暴露服务器物理目录。",
+        "parameters": [
+          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "逻辑制品身份、质量与哈希", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAuditV2"}}}}}
       }
     },
     "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
@@ -287,12 +374,11 @@
       "P0Releases": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["source_release_id", "normalization_candidate_fingerprint_sha256", "artifact_manifest_fingerprint_sha256", "evidence_candidate_fingerprint_sha256", "metric_candidate_fingerprint_sha256", "quality_report_id", "quality_report_fingerprint_sha256", "repository_fingerprint_sha256"],
+        "required": ["source_release_id", "normalization_candidate_fingerprint_sha256", "artifact_manifest_fingerprint_sha256", "metric_candidate_fingerprint_sha256", "quality_report_id", "quality_report_fingerprint_sha256", "repository_fingerprint_sha256"],
         "properties": {
           "source_release_id": {"type": "string", "minLength": 1},
           "normalization_candidate_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "artifact_manifest_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-          "evidence_candidate_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "metric_candidate_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "quality_report_id": {"type": "string", "pattern": "^dqr-[a-z0-9][a-z0-9._-]*$"},
           "quality_report_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -325,20 +411,6 @@
           "subject": {"$ref": "./data/metric-series.schema.json#/$defs/subject"},
           "window": {"$ref": "./data/metric-series.schema.json#/$defs/window"},
           "coverage": {"$ref": "./data/metric-series.schema.json#/$defs/coverage"}
-        }
-      },
-      "P0EvidenceCoverage": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["candidate_kind", "admission_status", "bundle_count", "event_type_count", "registry_entry_count", "represents_full_evidence_population", "raw_traceable"],
-        "properties": {
-          "candidate_kind": {"type": "string"},
-          "admission_status": {"type": "string"},
-          "bundle_count": {"type": "integer", "minimum": 0},
-          "event_type_count": {"type": "integer", "minimum": 0, "maximum": 6},
-          "registry_entry_count": {"type": "integer", "minimum": 0},
-          "represents_full_evidence_population": {"type": "boolean"},
-          "raw_traceable": {"type": "boolean"}
         }
       },
       "P0RawCoverage": {
@@ -398,7 +470,7 @@
       "P0DataStatus": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema_version", "repository_state", "production_active", "profile", "releases", "quality_decision", "available_metrics", "evidence_coverage", "raw_coverage", "limitations"],
+        "required": ["schema_version", "repository_state", "production_active", "profile", "releases", "quality_decision", "available_metrics", "raw_coverage", "limitations"],
         "oneOf": [
           {"properties": {"repository_state": {"const": "candidate"}, "production_active": {"const": false}}},
           {"properties": {"repository_state": {"const": "production"}, "production_active": {"const": true}}}
@@ -411,7 +483,6 @@
           "releases": {"$ref": "#/components/schemas/P0Releases"},
           "quality_decision": {"$ref": "#/components/schemas/P0QualityDecision"},
           "available_metrics": {"type": "array", "items": {"$ref": "#/components/schemas/P0AvailableMetric"}},
-          "evidence_coverage": {"$ref": "#/components/schemas/P0EvidenceCoverage"},
           "raw_coverage": {"$ref": "#/components/schemas/P0RawCoverage"},
           "limitations": {"type": "array", "items": {"$ref": "#/components/schemas/P0Limitation"}}
         }
@@ -431,26 +502,6 @@
           "candidate_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "admission_status": {"const": "metric_candidate_ready"},
           "metric": {"$ref": "./data/metric-series.schema.json"},
-          "limitations": {"type": "array", "items": {"$ref": "#/components/schemas/P0Limitation"}}
-        }
-      },
-      "P0EvidenceResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schema_version", "repository_state", "production_active", "candidate_fingerprint_sha256", "coverage_scope", "represents_full_evidence_population", "bundle_file", "bundle", "limitations"],
-        "oneOf": [
-          {"properties": {"repository_state": {"const": "candidate"}, "production_active": {"const": false}}},
-          {"properties": {"repository_state": {"const": "production"}, "production_active": {"const": true}}}
-        ],
-        "properties": {
-          "schema_version": {"const": "p0_evidence_response_v1"},
-          "repository_state": {"enum": ["candidate", "production"]},
-          "production_active": {"type": "boolean"},
-          "candidate_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-          "coverage_scope": {"enum": ["sample_only", "full_population"]},
-          "represents_full_evidence_population": {"type": "boolean"},
-          "bundle_file": {"type": "string", "minLength": 1},
-          "bundle": {"$ref": "./data/evidence-bundle-v2.schema.json"},
           "limitations": {"type": "array", "items": {"$ref": "#/components/schemas/P0Limitation"}}
         }
       },
@@ -475,9 +526,22 @@
         "required": ["status", "service", "time"],
         "properties": {"status": {"type": "string"}, "service": {"type": "string"}, "time": {"type": "string"}}
       },
+      "LegacyEventSemanticGuardrails": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contract_version", "lifecycle_state", "attribution_state", "ratio_state", "blocked_claims", "reason_codes"],
+        "properties": {
+          "contract_version": {"type": "string", "const": "legacy_event_semantic_guardrails_v1"},
+          "lifecycle_state": {"type": "string", "enum": ["recorded", "unknown", "unavailable"]},
+          "attribution_state": {"type": "string", "enum": ["detector_fact_only", "legacy_biased"]},
+          "ratio_state": {"type": "string", "enum": ["not_applicable", "recompute_required"]},
+          "blocked_claims": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "reason_codes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+        }
+      },
       "EventItem": {
         "type": "object",
-        "required": ["event_type", "level", "start_time", "end_time", "attacker_as", "attacked_as", "event_info", "detail_url", "affected_prefix", "attacker_org", "attacked_org", "attacker_country", "attacked_country"],
+        "required": ["event_type", "level", "start_time", "end_time", "attacker_as", "attacked_as", "event_info", "detail_url", "affected_prefix", "attacker_org", "attacked_org", "attacker_country", "attacked_country", "semantic_guardrails"],
         "properties": {
           "event_type": {"type": "string"}, "level": {"type": "string"},
           "start_time": {"type": "string"}, "end_time": {"type": "string"},
@@ -485,7 +549,8 @@
           "event_info": {"type": "string"}, "detail_url": {"type": "string"},
           "affected_prefix": {"type": "string"}, "attacker_org": {"type": "string"},
           "attacked_org": {"type": "string"}, "attacker_country": {"type": "string"},
-          "attacked_country": {"type": "string"}
+          "attacked_country": {"type": "string"},
+          "semantic_guardrails": {"$ref": "#/components/schemas/LegacyEventSemanticGuardrails"}
         },
         "additionalProperties": true
       },
@@ -496,20 +561,268 @@
       },
       "EventDetail": {
         "type": "object",
-        "required": ["start_time", "end_time", "duration", "event_level", "event_descr", "event_info"],
+        "required": ["start_time", "end_time", "duration", "event_level", "event_descr", "event_info", "semantic_guardrails"],
         "properties": {
           "start_time": {"type": "string"}, "end_time": {"type": "string"}, "duration": {"type": "string"},
-          "event_level": {"type": "string"}, "event_descr": {"type": "string"}, "event_info": {"type": "string"}
+          "event_level": {"type": "string"}, "event_descr": {"type": "string"}, "event_info": {"type": "string"},
+          "semantic_guardrails": {"$ref": "#/components/schemas/LegacyEventSemanticGuardrails"}
         },
         "additionalProperties": true
       },
+      "EventStory": {
+        "type": "object",
+        "required": ["schema_version", "contract_scope", "event", "observation", "baseline", "detection", "impact", "series", "lifecycle", "precursor", "comparisons", "claims", "unknowns", "actions", "evidence"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "event_detail_story_v1"},
+          "contract_scope": {"type": "object", "additionalProperties": true},
+          "event": {"type": "object", "additionalProperties": true},
+          "observation": {"type": "object", "additionalProperties": true},
+          "baseline": {"type": "object", "additionalProperties": true},
+          "detection": {"type": "object", "additionalProperties": true},
+          "impact": {"type": "object", "additionalProperties": true},
+          "series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "lifecycle": {"type": "object", "additionalProperties": true},
+          "precursor": {"type": "object", "additionalProperties": true},
+          "comparisons": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "claims": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "unknowns": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "actions": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "evidence": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
+      },
+      "EventObservation": {
+        "type": "object",
+        "required": ["schema_version", "event_identity", "observation_scope", "cohort", "normal_band", "rule_marker", "metric_definitions", "series", "metric_extrema", "resource_series", "resource_metric_extrema", "country_update_series", "country_update_metric_extrema", "annotations", "asn_state", "limitations", "audit"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "event_observation_v1"},
+          "event_identity": {"type": "object", "additionalProperties": true},
+          "observation_scope": {"type": "object", "additionalProperties": true},
+          "cohort": {"type": "object", "additionalProperties": true},
+          "normal_band": {"type": "object", "additionalProperties": true},
+          "rule_marker": {"type": "object", "additionalProperties": true},
+          "metric_definitions": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "metric_extrema": {"type": "object", "additionalProperties": true},
+          "resource_series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "resource_metric_extrema": {"type": "object", "additionalProperties": true},
+          "country_update_series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "country_update_metric_extrema": {"type": "object", "additionalProperties": true},
+          "annotations": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "asn_state": {"type": "object", "additionalProperties": true},
+          "limitations": {"type": "array", "items": {"type": "string"}},
+          "audit": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageResolutionV2": {
+        "type": "object",
+        "required": ["schema_version", "incident_id", "publication_id", "legacy_reference", "event_type", "observation_state", "latest_revision", "data_mode", "data_through", "is_final", "processing_status", "missing_slot_count", "capability_contract_version", "capabilities"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_resolution_v2"},
+          "incident_id": {"type": "string"},
+          "publication_id": {"type": "string"},
+          "legacy_reference": {"type": "string"},
+          "event_type": {"type": "string", "const": "country_outage"},
+          "observation_state": {"$ref": "#/components/schemas/CountryOutageObservationState"},
+          "latest_revision": {"type": "integer", "minimum": 1},
+          "data_mode": {"$ref": "#/components/schemas/CountryOutageDataMode"},
+          "data_through": {"type": ["string", "null"]},
+          "is_final": {"type": "boolean"},
+          "processing_status": {"$ref": "#/components/schemas/CountryOutageProcessingStatus"},
+          "missing_slot_count": {"type": "integer", "minimum": 0},
+          "capability_contract_version": {"type": "string", "const": "country_outage_capabilities_v1"},
+          "capabilities": {"$ref": "#/components/schemas/CountryOutageCapabilities"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageObservationState": {
+        "type": "string",
+        "enum": ["legacy_summary", "aggregate_available", "state_partial", "state_complete", "evidence_complete"]
+      },
+      "CountryOutageDataMode": {
+        "type": "string",
+        "enum": ["legacy", "replay", "live", "mixed"]
+      },
+      "CountryOutageProcessingStatus": {
+        "type": "object",
+        "required": ["state", "updated_at", "attempted_through", "reason", "last_complete_data_through"],
+        "properties": {
+          "state": {"type": "string", "enum": ["idle", "processing", "waiting_for_source", "failed", "final"]},
+          "updated_at": {"type": ["string", "null"]},
+          "attempted_through": {"type": ["string", "null"]},
+          "reason": {"type": ["string", "null"]},
+          "last_complete_data_through": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageMissingSlot": {
+        "type": "object",
+        "required": ["observed_at", "slot_state", "missing_reason"],
+        "properties": {
+          "observed_at": {"type": "string"},
+          "slot_state": {"type": "string", "enum": ["source_unavailable", "processing_gap", "parse_failed", "not_observed"]},
+          "missing_reason": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageCapability": {
+        "type": "object",
+        "required": ["state"],
+        "properties": {
+          "state": {"type": "string", "enum": ["available", "building", "unavailable", "not_applicable"]},
+          "reason": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "CountryOutageCapabilities": {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/components/schemas/CountryOutageCapability"}
+      },
+      "CountryOutageOverviewV2": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "updated_at", "is_final", "processing_status", "missing_slot_count", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "capability_contract_version", "event_identity", "observation_scope", "cohort", "normal_band", "rule_marker", "capabilities", "legacy_summary", "limitations"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_overview_v2"},
+          "revision": {"type": "integer", "minimum": 1},
+          "publication_id": {"type": "string"},
+          "publication_state": {"type": "string"},
+          "observation_state": {"$ref": "#/components/schemas/CountryOutageObservationState"},
+          "data_mode": {"$ref": "#/components/schemas/CountryOutageDataMode"},
+          "data_through": {"type": ["string", "null"]},
+          "updated_at": {"type": ["string", "null"]},
+          "is_final": {"type": "boolean"},
+          "processing_status": {"$ref": "#/components/schemas/CountryOutageProcessingStatus"},
+          "missing_slot_count": {"type": "integer", "minimum": 0},
+          "incident_id": {"type": "string"},
+          "cohort_id": {"type": ["string", "null"]},
+          "window_start_utc": {"type": ["string", "null"]},
+          "window_end_utc": {"type": ["string", "null"]},
+          "capability_contract_version": {"type": "string", "const": "country_outage_capabilities_v1"},
+          "event_identity": {"type": "object", "additionalProperties": true},
+          "observation_scope": {"type": "object", "additionalProperties": true},
+          "cohort": {"type": ["object", "null"], "additionalProperties": true},
+          "normal_band": {"type": "object", "additionalProperties": true},
+          "rule_marker": {"type": ["object", "null"], "additionalProperties": true},
+          "capabilities": {"$ref": "#/components/schemas/CountryOutageCapabilities"},
+          "legacy_summary": {"type": ["object", "null"], "additionalProperties": true},
+          "limitations": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageSeriesV2": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "updated_at", "is_final", "processing_status", "missing_slot_count", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "capability_contract_version", "interval_seconds", "metric_definitions", "series", "metric_extrema", "resource_series", "resource_metric_extrema", "country_update_series", "country_update_metric_extrema", "annotations"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_series_v2"},
+          "revision": {"type": "integer", "minimum": 1},
+          "publication_id": {"type": "string"},
+          "publication_state": {"type": "string"},
+          "observation_state": {"$ref": "#/components/schemas/CountryOutageObservationState"},
+          "data_mode": {"$ref": "#/components/schemas/CountryOutageDataMode"},
+          "data_through": {"type": ["string", "null"]},
+          "updated_at": {"type": ["string", "null"]},
+          "is_final": {"type": "boolean"},
+          "processing_status": {"$ref": "#/components/schemas/CountryOutageProcessingStatus"},
+          "missing_slot_count": {"type": "integer", "minimum": 0},
+          "incident_id": {"type": "string"},
+          "cohort_id": {"type": ["string", "null"]},
+          "window_start_utc": {"type": ["string", "null"]},
+          "window_end_utc": {"type": ["string", "null"]},
+          "capability_contract_version": {"type": "string", "const": "country_outage_capabilities_v1"},
+          "interval_seconds": {"type": ["integer", "null"], "minimum": 1},
+          "metric_definitions": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "metric_extrema": {"type": "object", "additionalProperties": true},
+          "resource_series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "resource_metric_extrema": {"type": "object", "additionalProperties": true},
+          "country_update_series": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "country_update_metric_extrema": {"type": "object", "additionalProperties": true},
+          "annotations": {"type": "array", "items": {"type": "object", "additionalProperties": true}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAsnPageV2": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "updated_at", "is_final", "processing_status", "missing_slot_count", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "capability_contract_version", "page", "page_size", "page_count", "total", "observed_at_utc", "observed_at_local", "state_codes", "duration_histogram", "items"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_asn_page_v2"},
+          "revision": {"type": "integer", "minimum": 1},
+          "publication_id": {"type": "string"},
+          "publication_state": {"type": "string"},
+          "observation_state": {"$ref": "#/components/schemas/CountryOutageObservationState"},
+          "data_mode": {"$ref": "#/components/schemas/CountryOutageDataMode"},
+          "data_through": {"type": ["string", "null"]},
+          "updated_at": {"type": ["string", "null"]},
+          "is_final": {"type": "boolean"},
+          "processing_status": {"$ref": "#/components/schemas/CountryOutageProcessingStatus"},
+          "missing_slot_count": {"type": "integer", "minimum": 0},
+          "incident_id": {"type": "string"},
+          "cohort_id": {"type": ["string", "null"]},
+          "window_start_utc": {"type": ["string", "null"]},
+          "window_end_utc": {"type": ["string", "null"]},
+          "capability_contract_version": {"type": "string", "const": "country_outage_capabilities_v1"},
+          "page": {"type": "integer", "minimum": 1},
+          "page_size": {"type": "integer", "minimum": 1, "maximum": 60},
+          "page_count": {"type": "integer", "minimum": 1},
+          "total": {"type": "integer", "minimum": 0},
+          "observed_at_utc": {"type": "array", "items": {"type": "string"}},
+          "observed_at_local": {"type": "array", "items": {"type": "string"}},
+          "state_codes": {"type": "object", "additionalProperties": {"type": "string"}},
+          "duration_histogram": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": {"type": "integer"}}},
+          "items": {"type": "array", "items": {"type": "object", "additionalProperties": true}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAuditV2": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "updated_at", "is_final", "processing_status", "missing_slot_count", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "capability_contract_version", "engine_version", "algorithm_version", "mapping_version", "quality_status", "source_system", "source_table", "source_reference", "evidence_level", "consumed_deliverable_hashes_verified", "verified_hashes", "route_state_file", "input_summary"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_audit_v2"},
+          "revision": {"type": "integer", "minimum": 1},
+          "publication_id": {"type": "string"},
+          "publication_state": {"type": "string"},
+          "observation_state": {"$ref": "#/components/schemas/CountryOutageObservationState"},
+          "data_mode": {"$ref": "#/components/schemas/CountryOutageDataMode"},
+          "data_through": {"type": ["string", "null"]},
+          "updated_at": {"type": ["string", "null"]},
+          "is_final": {"type": "boolean"},
+          "processing_status": {"$ref": "#/components/schemas/CountryOutageProcessingStatus"},
+          "missing_slot_count": {"type": "integer", "minimum": 0},
+          "incident_id": {"type": "string"},
+          "cohort_id": {"type": ["string", "null"]},
+          "window_start_utc": {"type": ["string", "null"]},
+          "window_end_utc": {"type": ["string", "null"]},
+          "capability_contract_version": {"type": "string", "const": "country_outage_capabilities_v1"},
+          "run_id": {"type": ["string", "null"]},
+          "artifact_set_id": {"type": ["string", "null"]},
+          "engine_version": {"type": "string"},
+          "quality_status": {"type": "string"},
+          "consumed_deliverable_hashes_verified": {"type": "boolean"},
+          "verified_hashes": {"type": "object", "additionalProperties": {"type": "string"}},
+          "route_state_file": {"type": "object", "additionalProperties": true},
+          "input_summary": {"type": "object", "additionalProperties": true},
+          "revision_history": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+          "supersedes_publication_id": {"type": ["string", "null"]},
+          "correction_reason": {"type": ["string", "null"]},
+          "missing_slots": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageMissingSlot"}},
+          "algorithm_version": {"type": ["string", "null"]},
+          "mapping_version": {"type": ["string", "null"]},
+          "source_system": {"type": "string"},
+          "source_table": {"type": "string"},
+          "source_reference": {"type": "string"},
+          "evidence_level": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
       "EvidenceBundle": {
         "type": "object",
-        "required": ["bundle_version", "incident_id", "incident_id_schema", "event", "data_snapshot", "source_record", "phase_coverage", "evidence_items", "assessment", "data_quality", "fact_record"],
+        "required": ["bundle_version", "incident_id", "incident_id_schema", "semantic_guardrails", "event", "data_snapshot", "source_record", "phase_coverage", "evidence_items", "assessment", "data_quality", "fact_record"],
         "properties": {
           "bundle_version": {"type": "string", "const": "evidence_bundle_v1"},
           "incident_id": {"type": "string", "pattern": "^inc_v1_[0-9a-f]{24}$"},
           "incident_id_schema": {"type": "string", "const": "incident_id_v1"},
+          "semantic_guardrails": {"$ref": "#/components/schemas/LegacyEventSemanticGuardrails"},
           "event": {"$ref": "#/components/schemas/EvidenceEvent"},
           "data_snapshot": {"type": "object", "additionalProperties": true},
           "source_record": {"type": "object", "additionalProperties": true},

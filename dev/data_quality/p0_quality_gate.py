@@ -77,7 +77,6 @@ OUTPUT_INPUT_NAMES = {
     "d3": "d3-artifact-manifest.json",
     "d3_verification": "d3-artifact-verification-summary.json",
     "route": "route-event-reconciliation-summary.json",
-    "evidence": "evidence-reconciliation-summary.json",
     "metric": "metric-reconciliation-summary.json",
     "repro": "reproducibility-summary.json",
     "execution": "quality-gate-execution-context.json",
@@ -1340,10 +1339,6 @@ def _build_assurance_context(
     d3_manifest_sha: str,
     d3_summary_sha: str,
     d3_closure: Mapping[str, Any],
-    d4: Mapping[str, Any],
-    d4_manifest_sha: str,
-    d4_summary: Mapping[str, Any],
-    d4_closure: Mapping[str, Any],
     metric_manifest: Mapping[str, Any],
     metric_manifest_sha: str,
     metric_summary: Mapping[str, Any],
@@ -1367,14 +1362,6 @@ def _build_assurance_context(
             "summary_sha256": d3_summary_sha,
             "sha256sums_sha256": d3_closure.get("sha256sums_sha256"),
         },
-        "d4": {
-            "candidate_fingerprint_sha256": d4.get("candidate_fingerprint_sha256"),
-            "manifest_sha256": d4_manifest_sha,
-            "reconciliation_fingerprint_sha256": d4_summary.get(
-                "summary_fingerprint_sha256"
-            ),
-            "sha256sums_sha256": d4_closure.get("sha256sums_sha256"),
-        },
         "metric": {
             "candidate_fingerprint_sha256": metric_manifest.get(
                 "candidate_fingerprint_sha256"
@@ -1397,13 +1384,6 @@ def _build_assurance_context(
         },
     }
 
-    d4_inputs = d4.get("inputs") if isinstance(d4.get("inputs"), Mapping) else {}
-    d4_d2 = d4_inputs.get("d2") if isinstance(d4_inputs.get("d2"), Mapping) else {}
-    d4_d3 = (
-        d4_inputs.get("d3_artifacts")
-        if isinstance(d4_inputs.get("d3_artifacts"), Mapping)
-        else {}
-    )
     metric_sources = (
         metric_manifest.get("sources")
         if isinstance(metric_manifest.get("sources"), Mapping)
@@ -1427,22 +1407,10 @@ def _build_assurance_context(
     profiles = (
         _candidate_profile_identity(d2.get("data_profile")),
         _candidate_profile_identity(d3.get("data_profile")),
-        _candidate_profile_identity(d4.get("data_profile")),
         _candidate_profile_identity(metric_manifest.get("data_profile")),
         _candidate_profile_identity(route_scope.get("data_profile")),
     )
     bindings = {
-        "d4_to_final_d2": (
-            d4_d2.get("candidate_fingerprint_sha256")
-            == identities["d2"]["candidate_fingerprint_sha256"]
-            and d4_d2.get("manifest_sha256") == identities["d2"]["manifest_sha256"]
-        ),
-        "d4_to_final_d3": (
-            d4_d3.get("manifest_fingerprint_sha256")
-            == identities["d3"]["manifest_fingerprint_sha256"]
-            and d4_d3.get("manifest_sha256") == identities["d3"]["manifest_sha256"]
-            and d4_d3.get("summary_sha256") == identities["d3"]["summary_sha256"]
-        ),
         "metric_to_final_d2": (
             metric_d2.get("fingerprint_sha256")
             == identities["d2"]["candidate_fingerprint_sha256"]
@@ -1473,7 +1441,6 @@ def _build_assurance_context(
         "final_candidate_integrity": {
             "d2": dict(d2_closure),
             "d3": dict(d3_closure),
-            "d4": dict(d4_closure),
             "metric": dict(metric_closure),
             "route_event": dict(route_closure),
         },
@@ -1678,7 +1645,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         _validate_execution(execution, d2_manifest)
 
         route, route_payload, route_sha = _load_auxiliary(args.route_summary, args.route_checksums, "RouteEvent 摘要")
-        evidence, evidence_payload, evidence_sha = _load_auxiliary(args.evidence_summary, args.evidence_checksums, "Evidence 摘要")
         metric, metric_payload, metric_sha = _load_auxiliary(args.metric_summary, args.metric_checksums, "Metric 摘要")
         if metric is not None:
             metric_schema_path = pipeline_root / METRIC_SCHEMA_RELATIVE_PATH
@@ -1694,13 +1660,12 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         if isinstance(repro, Mapping) and repro.get("schema_version") == "p0_single_run_assurance_v1":
             required = {
                 "route": (route, args.route_summary, args.route_checksums),
-                "evidence": (evidence, args.evidence_summary, args.evidence_checksums),
                 "metric": (metric, args.metric_summary, args.metric_checksums),
             }
             if any(value[0] is None for value in required.values()):
-                raise QualityCliError("single-run assurance 要求 RouteEvent/Evidence/Metric 全部提供")
-            if not args.evidence_manifest or not args.metric_manifest:
-                raise QualityCliError("single-run assurance 要求 D4 与 Metric manifest")
+                raise QualityCliError("single-run assurance 要求 RouteEvent/Metric 全部提供")
+            if not args.metric_manifest:
+                raise QualityCliError("single-run assurance 要求 Metric manifest")
 
             route_summary_path = Path(args.route_summary)
             route_checksum_path = Path(args.route_checksums)
@@ -1710,29 +1675,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
             )
             route_closure = _verified_flat_candidate_closure(
                 route_checksum_path, route_index, "RouteEvent"
-            )
-
-            evidence_summary_path = Path(args.evidence_summary)
-            evidence_manifest_path = Path(args.evidence_manifest)
-            evidence_checksum_path = Path(args.evidence_checksums)
-            evidence_index = _checksum_index(evidence_checksum_path, "Evidence SHA256SUMS")
-            _require_same_candidate_directory(
-                (evidence_summary_path, evidence_manifest_path),
-                evidence_checksum_path,
-                "Evidence",
-            )
-            evidence_manifest, _evidence_manifest_payload, evidence_manifest_sha = _load_json(
-                evidence_manifest_path, "Evidence manifest"
-            )
-            if evidence_index.get(evidence_manifest_path.name) != evidence_manifest_sha:
-                raise QualityCliError("Evidence manifest 未通过 SHA256SUMS 校验")
-            evidence_closure = _verified_flat_candidate_closure(
-                evidence_checksum_path, evidence_index, "Evidence"
-            )
-            _validate_reconciliation_fingerprint(
-                evidence,
-                "evidence_reconciliation_fingerprint_v1",
-                "Evidence 对账摘要",
             )
 
             metric_summary_path = Path(args.metric_summary)
@@ -1776,10 +1718,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
                 d3_manifest_sha=d3_sha,
                 d3_summary_sha=d3_verification_sha,
                 d3_closure=d3_closure,
-                d4=evidence_manifest,
-                d4_manifest_sha=evidence_manifest_sha,
-                d4_summary=evidence,
-                d4_closure=evidence_closure,
                 metric_manifest=metric_manifest,
                 metric_manifest_sha=metric_manifest_sha,
                 metric_summary=metric,
@@ -1844,7 +1782,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
             "d2_audited": d2_audited_sha,
             "d3": d3_sha,
             "route": route_sha,
-            "evidence": evidence_sha,
             "metric": metric_sha,
             "repro": repro_sha,
             "execution": execution_sha,
@@ -1877,7 +1814,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
             context=context,
             route_event_summary=route_for_gate,
             artifact_verification_summary=verification,
-            evidence_summary=evidence,
             metric_summary=metric,
             reproducibility_summary=repro,
         )
@@ -1893,7 +1829,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         }
         for key, payload in (
             ("route", route_payload),
-            ("evidence", evidence_payload),
             ("metric", metric_payload),
             ("repro", repro_payload),
         ):
@@ -1908,7 +1843,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
             label
             for label, value in (
                 ("RouteEvent", route),
-                ("Evidence", evidence),
                 ("Metric", metric),
                 ("可复现性", repro),
             )
@@ -2019,9 +1953,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--execution-checksums", required=True)
     parser.add_argument("--route-summary")
     parser.add_argument("--route-checksums")
-    parser.add_argument("--evidence-summary")
-    parser.add_argument("--evidence-manifest")
-    parser.add_argument("--evidence-checksums")
     parser.add_argument("--metric-summary")
     parser.add_argument("--metric-manifest")
     parser.add_argument("--metric-checksums")

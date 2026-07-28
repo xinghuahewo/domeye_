@@ -18,7 +18,6 @@ const Ajv2020 = require(path.join(
 const contracts = [
   'route-event',
   'metric-series',
-  'evidence-bundle-v2',
   'data-quality-report',
 ]
 
@@ -41,49 +40,7 @@ function fixtureFiles(directory, prefix) {
     .map((name) => path.join(directory, name))
 }
 
-function evidenceClosureErrors(payload) {
-  const registryIds = payload.evidence_registry.map((item) => item.evidence_id)
-  const registry = new Set(registryIds)
-  const errors = []
-  if (registry.size !== registryIds.length) {
-    errors.push('evidence_registry.evidence_id 必须唯一')
-  }
-
-  const evidenceRefs = [
-    ...payload.supporting_evidence_refs,
-    ...payload.counterevidence_refs,
-    ...Object.values(payload.phase_coverage).flatMap((phase) => phase.evidence_ids),
-    ...payload.limitations.flatMap((limitation) => limitation.evidence_refs),
-  ]
-  for (const evidenceId of evidenceRefs) {
-    if (!registry.has(evidenceId)) {
-      errors.push(`Evidence ID 未在注册表中：${evidenceId}`)
-    }
-  }
-
-  const routeEventIds = new Set(payload.route_event_refs.map((item) => item.route_event_id))
-  const rawRecordIds = new Set(payload.raw_record_refs.map((item) => item.raw_record_ref_id))
-  for (const phase of Object.values(payload.phase_coverage)) {
-    for (const routeEventId of phase.route_event_ref_ids) {
-      if (!routeEventIds.has(routeEventId)) {
-        errors.push(`阶段 RouteEvent 引用未闭合：${routeEventId}`)
-      }
-    }
-  }
-  for (const routeEvent of payload.route_event_refs) {
-    for (const rawRecordId of routeEvent.raw_record_ref_ids) {
-      if (!rawRecordIds.has(rawRecordId)) {
-        errors.push(`RouteEvent 原始记录引用未闭合：${rawRecordId}`)
-      }
-    }
-  }
-  return errors
-}
-
-function semanticErrors(name, payload) {
-  if (name === 'evidence-bundle-v2') {
-    return evidenceClosureErrors(payload)
-  }
+function semanticErrors() {
   return []
 }
 

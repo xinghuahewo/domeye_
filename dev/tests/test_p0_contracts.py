@@ -1,7 +1,6 @@
 import importlib.util
 import json
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
@@ -44,15 +43,6 @@ class P0ContractVerificationTest(unittest.TestCase):
 
     def test_contract_documents_have_unique_json_keys(self):
         self.assertGreater(VERIFY._verify_json_files(), 0)
-
-    def test_evidence_source_fact_table_pattern_uses_real_leak_table_name(self):
-        schema = VERIFY._load_json_strict(
-            ROOT / "contracts" / "data" / "evidence-bundle-v2.schema.json"
-        )
-        pattern = schema["$defs"]["SourceFactRef"]["properties"]["table_name"]["pattern"]
-        self.assertIsNotNone(re.fullmatch(pattern, "leak_event_202603"))
-        self.assertIsNone(re.fullmatch(pattern, "leak_202603"))
-
 
 if __name__ == "__main__":
     unittest.main()

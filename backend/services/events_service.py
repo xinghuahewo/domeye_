@@ -51,6 +51,11 @@ EVENT_KIND_LABELS = {
     'leak': '路由泄漏',
 }
 
+EVENT_LABEL_KINDS = {
+    label: kind
+    for kind, label in EVENT_KIND_LABELS.items()
+}
+
 EVENT_FACT_TABLES = {
     'hijack': 'hijack',
     'sub_hijack': 'sub_hijack',
@@ -62,6 +67,89 @@ EVENT_FACT_TABLES = {
 
 BUSINESS_TIMEZONE = ZoneInfo('Asia/Shanghai')
 UTC = datetime.timezone.utc
+
+
+def _semantic_guardrails(event_type, end_time=None):
+    """把已确认的历史语义风险转换为机器可判定的只读约束。"""
+
+    event_kind = EVENT_LABEL_KINDS.get(event_type, event_type)
+    lifecycle_state = (
+        'unavailable'
+        if event_kind == 'leak'
+        else (
+            'recorded'
+            if end_time not in (None, '', '-', 'None', 'NaT')
+            else 'unknown'
+        )
+    )
+    attribution_state = (
+        'legacy_biased'
+        if event_kind == 'prefix_outage'
+        else 'detector_fact_only'
+    )
+    ratio_state = (
+        'recompute_required'
+        if event_kind in ('as_outage', 'country_outage')
+        else 'not_applicable'
+    )
+
+    blocked_claims = ['causal_conclusion']
+    reason_codes = []
+    if event_kind == 'leak':
+        blocked_claims.extend([
+            'event_end',
+            'duration',
+            'recovery_state',
+            'ongoing_state',
+        ])
+        reason_codes.append('legacy_leak_lifecycle_missing')
+    if event_kind == 'prefix_outage':
+        blocked_claims.extend(['responsible_as', 'causal_attribution'])
+        reason_codes.append('legacy_moas_attribution_bias')
+    if ratio_state == 'recompute_required':
+        blocked_claims.append('stored_ratio_as_authoritative')
+        reason_codes.append('legacy_ratio_recompute_required')
+
+    return {
+        'contract_version': 'legacy_event_semantic_guardrails_v1',
+        'lifecycle_state': lifecycle_state,
+        'attribution_state': attribution_state,
+        'ratio_state': ratio_state,
+        'blocked_claims': blocked_claims,
+        'reason_codes': reason_codes,
+    }
+
+
+def _decorate_event_items(items):
+    decorated = []
+    for item in items:
+        result = dict(item)
+        if EVENT_LABEL_KINDS.get(result.get('event_type')) == 'leak':
+            result['end_time'] = '-'
+        result['semantic_guardrails'] = _semantic_guardrails(
+            result.get('event_type'),
+            result.get('end_time'),
+        )
+        decorated.append(result)
+    return decorated
+
+
+def _semantic_limitations(guardrails):
+    limitations = []
+    reason_codes = set(guardrails['reason_codes'])
+    if 'legacy_leak_lifecycle_missing' in reason_codes:
+        limitations.append(
+            '历史路由泄漏记录未保留结束时间和时长；不得据此判断恢复、持续中或已结束。'
+        )
+    if 'legacy_moas_attribution_bias' in reason_codes:
+        limitations.append(
+            '历史前缀中断的 AS 归属存在 MOAS 选择偏置；只能展示检测器记录，不能认定责任主体。'
+        )
+    if 'legacy_ratio_recompute_required' in reason_codes:
+        limitations.append(
+            '历史中断比例字段不作为权威事实；需要时必须使用当前返回的分子和分母重新计算。'
+        )
+    return limitations
 
 
 def _parse_page_size(raw_value):
@@ -556,6 +644,7 @@ def get_event_evidence_bundle_data(event_type, start_time, problem, event_id, so
     )
     if not detail:
         return None
+    semantic_guardrails = detail['semantic_guardrails']
 
     canonical_reference = '{}/{}/{}/{}/{}'.format(
         event_type, start_time, problem, event_id, source,
@@ -586,10 +675,15 @@ def get_event_evidence_bundle_data(event_type, start_time, problem, event_id, so
         },
         'detail_reference': canonical_reference,
     }
+    fact_record_identity = {
+        key: value
+        for key, value in detail.items()
+        if key != 'semantic_guardrails'
+    }
     fact_identity = {
         'incident_id': incident_id,
         'source_record': source_record,
-        'fact_record': detail,
+        'fact_record': fact_record_identity,
     }
     evidence_items = [{
         'evidence_id': _stable_id('ev_v1_', fact_identity),
@@ -599,7 +693,7 @@ def get_event_evidence_bundle_data(event_type, start_time, problem, event_id, so
         'source_field': 'fact_record',
         'observed_at_local': event_start_local,
         'observed_at_utc': event_start_utc,
-        'field_count': len(detail),
+        'field_count': len(fact_record_identity),
         'semantics': 'detector_fact_record',
     }]
 
@@ -647,6 +741,7 @@ def get_event_evidence_bundle_data(event_type, start_time, problem, event_id, so
         '当前证据包未附原始 BGP 报文，无法进行逐报文重放。',
         '路径快照只能说明被观测到的路径状态，不能单独证明异常根因。',
     ]
+    gaps.extend(_semantic_limitations(semantic_guardrails))
     for phase, label in (('before', '异常前'), ('during', '异常期间'), ('after', '异常后')):
         if phase_coverage[phase]['status'] == 'not_available':
             gaps.append('{}路径快照缺失；这表示证据不可用，不表示该阶段没有路径。'.format(label))
@@ -662,6 +757,7 @@ def get_event_evidence_bundle_data(event_type, start_time, problem, event_id, so
         'bundle_version': 'evidence_bundle_v1',
         'incident_id': incident_id,
         'incident_id_schema': 'incident_id_v1',
+        'semantic_guardrails': semantic_guardrails,
         'event': {
             'kind': event_type,
             'label': EVENT_KIND_LABELS[event_type],
@@ -742,7 +838,7 @@ def get_event_list_data(params, conn=conn_11):
     return {
         'total_page': total_page,
         'record_count': str(record_count),
-        'data': deal_event(event_rows=rows),
+        'data': _decorate_event_items(deal_event(event_rows=rows)),
     }
 
 
@@ -758,7 +854,7 @@ def get_top_event_items(event_type_str=None, conn=conn_11, now=None, page_size=1
         event_type=_parse_event_types(event_type_str),
         now=effective_now,
     )
-    return deal_top_event(top_event_rows=rows)
+    return _decorate_event_items(deal_top_event(top_event_rows=rows))
 
 
 def get_event_detail_data(event_type, start_time, problem, event_id, source, query_params=None):
@@ -773,4 +869,11 @@ def get_event_detail_data(event_type, start_time, problem, event_id, source, que
     handler = handlers.get(event_type)
     if handler is None:
         return {}
-    return handler(start_time, problem, event_id, source)
+    detail = handler(start_time, problem, event_id, source)
+    if not detail:
+        return {}
+    detail['semantic_guardrails'] = _semantic_guardrails(
+        event_type,
+        detail.get('end_time'),
+    )
+    return detail

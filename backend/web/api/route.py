@@ -8,6 +8,8 @@ from .events.api import (
     EventDetailResource,
     EventEvidenceBundleResource,
     EventListResource,
+    EventObservationResource,
+    EventStoryResource,
     TopEventResource,
 )
 from .features.api import (
@@ -25,7 +27,6 @@ from .features.api import (
 )
 from .health.api import HealthzResource
 from .p0.api import (
-    P0EvidenceResource,
     P0MetricResource,
     P0QualityResource,
     P0StatusResource,
@@ -39,7 +40,6 @@ api.add_resource(HealthzResource, '/healthz')
 
 api.add_resource(P0StatusResource, '/p0/status')
 api.add_resource(P0MetricResource, '/p0/metrics/<metric_name>')
-api.add_resource(P0EvidenceResource, '/p0/evidence/<incident_id>')
 api.add_resource(P0QualityResource, '/p0/quality')
 
 api.add_resource(EventListResource, '/events')
@@ -47,6 +47,14 @@ api.add_resource(TopEventResource, '/events/top')
 api.add_resource(
     EventEvidenceBundleResource,
     '/events/evidence-bundle/<event_type>/<start_time>/<problem>/<int:event_id>/<source>',
+)
+api.add_resource(
+    EventStoryResource,
+    '/events/story/<event_type>/<start_time>/<problem>/<int:event_id>/<source>',
+)
+api.add_resource(
+    EventObservationResource,
+    '/events/observations/<event_type>/<start_time>/<problem>/<int:event_id>/<source>',
 )
 api.add_resource(
     EventDetailResource,

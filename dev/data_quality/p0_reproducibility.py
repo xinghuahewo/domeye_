@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """生成 P0 候选制品 A/B 重跑的可复现性摘要。
 
-本程序只读取已经落盘的 D2、D3、D4 与 Metric 候选目录，可选读取
+本程序只读取已经落盘的 D2、D3 与 Metric 候选目录，可选读取
 RouteEvent 索引目录。每个输入目录都必须是由 ``SHA256SUMS`` 覆盖全部其余
 普通文件的扁平、无链接闭包。程序不连接来源数据库、不读取原始 MRT、不
 修改输入；稳定 ID 仅写入输出 staging 内、发布前删除的临时 SQLite。任何
@@ -69,13 +69,9 @@ INCIDENT_ID_RE = re.compile(r"^inc_v1_[0-9a-f]{24}$")
 COLLISION_ID_RE = re.compile(r"^lcg_v1_[0-9a-f]{32}$")
 QUARANTINE_ID_RE = re.compile(r"^qr_v1_[0-9a-f]{32}$")
 ARTIFACT_ID_RE = re.compile(r"^art_v1_[0-9a-f]{32}$")
-BUNDLE_ID_RE = re.compile(r"^eb_v2_[0-9a-f]{32}$")
-EVIDENCE_ID_RE = re.compile(r"^ev_v2_[0-9a-f]{32}$")
 ROUTE_EVENT_ID_RE = re.compile(r"^rte_v1_[0-9a-f]{32}$")
 FINGERPRINT_SCHEMAS = {
     "d3": "mrt_artifact_manifest_fingerprint_v1",
-    "d4": "p0_evidence_candidate_v1",
-    "d4_reconciliation": "evidence_reconciliation_fingerprint_v1",
     "metric": "p0_metric_candidate_v1",
     "metric_reconciliation": "metric_reconciliation_summary_fingerprint_v1",
 }
@@ -89,40 +85,6 @@ FILE_IDENTITY_FIELDS = (
     "st_mtime_ns",
     "st_ctime_ns",
 )
-D4_EVENT_TYPES = (
-    "hijack",
-    "sub_hijack",
-    "leak",
-    "prefix_outage",
-    "as_outage",
-    "country_outage",
-)
-D4_SELECTION_RULE = "first_safe_matched_non_collision_per_event_type_v1"
-D4_RECONCILIATION_COUNT_FIELDS = (
-    "schema_invalid_count",
-    "classification_violation_count",
-    "causal_conclusion_nonnull_count",
-    "evidence_id_conflict_count",
-    "unresolved_evidence_reference_count",
-    "unresolved_route_event_reference_count",
-    "outside_window_record_count",
-    "unknown_missing_reason_count",
-    "legacy_unknown_value_count",
-    "auto_zero_fill_count",
-)
-D4_ADMISSION = {
-    "status": "sample_only_not_full_population",
-    "represents_full_evidence_population": False,
-    "eligible_for_release_gate": False,
-    "raw_traceable": False,
-    "blocking_reasons": [
-        "six_event_sample_not_full_evidence_population",
-        "route_event_index_not_provided",
-        "metric_series_not_provided",
-    ],
-}
-
-
 class ReproducibilityError(RuntimeError):
     """输入不能构成可信、同输入的可复现性比较。"""
 
@@ -1022,29 +984,6 @@ def _validate_d3(
 
 
 def _candidate_fingerprint_payload(manifest: Mapping[str, Any], kind: str) -> Dict[str, Any]:
-    if kind == "d4":
-        inputs = _require_mapping(manifest.get("inputs"), "D4 inputs")
-        d2 = _require_mapping(inputs.get("d2"), "D4 inputs.d2")
-        d3 = _require_mapping(inputs.get("d3_artifacts"), "D4 inputs.d3_artifacts")
-        registry = _require_mapping(manifest.get("registry"), "D4 registry")
-        return {
-            "schema_version": manifest.get("schema_version"),
-            "candidate_kind": manifest.get("candidate_kind"),
-            "data_profile": manifest.get("data_profile"),
-            "generated_at": manifest.get("generated_at"),
-            "inputs": {
-                "d2_manifest_sha256": d2.get("manifest_sha256"),
-                "d2_candidate_fingerprint_sha256": d2.get("candidate_fingerprint_sha256"),
-                "d3_artifact_manifest_sha256": d3.get("manifest_sha256"),
-                "d3_artifact_fingerprint_sha256": d3.get("manifest_fingerprint_sha256"),
-            },
-            "generator": manifest.get("generator"),
-            "selection": manifest.get("selection"),
-            "files": manifest.get("files"),
-            "registry_entry_count": registry.get("entry_count"),
-            "classification": manifest.get("classification"),
-            "causal_conclusion": manifest.get("causal_conclusion"),
-        }
     if kind == "metric":
         return {
             "schema_version": manifest.get("schema_version"),
@@ -1067,8 +1006,7 @@ def _validate_summary_fingerprint(summary: Mapping[str, Any], kind: str) -> str:
     )
     payload = dict(summary)
     payload.pop("summary_fingerprint_sha256", None)
-    # Metric 的生成器把 fingerprint 字段加入前的整个 summary 作为 identity；
-    # Evidence 则显式包裹去掉 fingerprint 后的 payload。
+    # Metric 的生成器把 fingerprint 字段加入前的整个 summary 作为 identity。
     expected = _canonical_sha256(
         {
             "schema": FINGERPRINT_SCHEMAS[kind + "_reconciliation"],
@@ -1078,448 +1016,6 @@ def _validate_summary_fingerprint(summary: Mapping[str, Any], kind: str) -> str:
     if fingerprint != expected:
         raise ReproducibilityError("{} summary fingerprint 复算不一致".format(kind))
     return fingerprint
-
-
-def _d4_identity(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
-    # D2/D3 指纹属于上游重跑输出。若上游本身不确定，D4 的 inputs 理应随之
-    # 不同；这应落为 fingerprint=false，而不是把整条流水线误判成不可比较。
-    return {
-        "schema_version": manifest.get("schema_version"),
-        "candidate_kind": manifest.get("candidate_kind"),
-        "data_profile": manifest.get("data_profile"),
-        "generated_at": manifest.get("generated_at"),
-        "generator": manifest.get("generator"),
-        "classification": manifest.get("classification"),
-        "causal_conclusion": manifest.get("causal_conclusion"),
-    }
-
-
-def _validate_d4(
-    directory: VerifiedDirectory,
-    side: str,
-    stable: StableIdIndex,
-) -> Tuple[Dict[str, Any], Dict[str, int], Dict[str, Any]]:
-    manifest = directory.json("manifest.json")
-    _require_exact_mapping(
-        manifest,
-        {
-            "schema_version",
-            "candidate_kind",
-            "candidate_fingerprint_sha256",
-            "data_profile",
-            "generated_at",
-            "inputs",
-            "generator",
-            "selection",
-            "files",
-            "registry",
-            "reconciliation",
-            "validation",
-            "admission",
-            "classification",
-            "causal_conclusion",
-        },
-        directory.label + " D4 manifest",
-    )
-    if manifest.get("schema_version") != "p0_evidence_candidate_v1":
-        raise ReproducibilityError("{} D4 schema_version 非法".format(directory.label))
-    if manifest.get("candidate_kind") != "six_event_contract_investigation_sample":
-        raise ReproducibilityError("{} D4 candidate_kind 非法".format(directory.label))
-    if (
-        manifest.get("classification") != "observation_only"
-        or manifest.get("causal_conclusion") is not None
-    ):
-        raise ReproducibilityError("{} D4 观测/因果边界非法".format(directory.label))
-
-    inputs = _require_exact_mapping(
-        manifest.get("inputs"),
-        {"d2", "d3_artifacts", "route_event_index", "metric_series"},
-        directory.label + " D4 inputs",
-    )
-    d2_input = _require_exact_mapping(
-        inputs.get("d2"),
-        {
-            "manifest_sha256",
-            "candidate_fingerprint_sha256",
-            "admission_status",
-            "sample_enabled",
-            "sha256_closure",
-            "content_hash_closure",
-        },
-        directory.label + " D4 inputs.d2",
-    )
-    _valid_sha(d2_input.get("manifest_sha256"), directory.label + " D4 D2 manifest")
-    _valid_sha(
-        d2_input.get("candidate_fingerprint_sha256"),
-        directory.label + " D4 D2 fingerprint",
-    )
-    if (
-        d2_input.get("admission_status") != "legacy_candidate_ready"
-        or d2_input.get("sample_enabled") is not False
-        or d2_input.get("sha256_closure") != "passed"
-        or d2_input.get("content_hash_closure") != "passed"
-    ):
-        raise ReproducibilityError("{} D4 D2 派生状态非法".format(directory.label))
-    d3_input = _require_exact_mapping(
-        inputs.get("d3_artifacts"),
-        {
-            "manifest_sha256",
-            "summary_sha256",
-            "manifest_fingerprint_sha256",
-            "raw_source_status",
-            "update_coverage",
-            "sha256_closure",
-            "verification_status",
-        },
-        directory.label + " D4 inputs.d3_artifacts",
-    )
-    for field in ("manifest_sha256", "summary_sha256", "manifest_fingerprint_sha256"):
-        _valid_sha(d3_input.get(field), directory.label + " D4 D3 " + field)
-    update_coverage = _require_exact_mapping(
-        d3_input.get("update_coverage"),
-        {"expected_count", "observed_count"},
-        directory.label + " D4 D3 update_coverage",
-    )
-    update_expected = _require_count(
-        update_coverage.get("expected_count"),
-        directory.label + " D4 D3 update expected_count",
-    )
-    update_observed = _require_count(
-        update_coverage.get("observed_count"),
-        directory.label + " D4 D3 update observed_count",
-    )
-    if (
-        update_expected < 1
-        or update_observed > update_expected
-        or d3_input.get("raw_source_status") not in {"unavailable", "partial", "full"}
-        or d3_input.get("sha256_closure") != "passed"
-        or d3_input.get("verification_status") != "verified"
-    ):
-        raise ReproducibilityError("{} D4 D3 派生状态非法".format(directory.label))
-    route_input = _require_exact_mapping(
-        inputs.get("route_event_index"),
-        {"status", "missing_reason"},
-        directory.label + " D4 inputs.route_event_index",
-    )
-    if dict(route_input) != {
-        "status": "not_provided",
-        "missing_reason": "route_event_index_not_available_for_candidate",
-    }:
-        raise ReproducibilityError("{} D4 RouteEvent 输入边界非法".format(directory.label))
-    metric_input = _require_exact_mapping(
-        inputs.get("metric_series"),
-        {"status", "missing_reason"},
-        directory.label + " D4 inputs.metric_series",
-    )
-    if dict(metric_input) != {
-        "status": "not_provided",
-        "missing_reason": "metric_series_not_available_for_candidate",
-    }:
-        raise ReproducibilityError("{} D4 MetricSeries 输入边界非法".format(directory.label))
-
-    generator = _require_exact_mapping(
-        manifest.get("generator"),
-        {"runner_sha256", "evidence_module_hashes", "schema_sha256"},
-        directory.label + " D4 generator",
-    )
-    _valid_sha(generator.get("runner_sha256"), directory.label + " D4 runner_sha256")
-    schema_sha = _valid_sha(
-        generator.get("schema_sha256"), directory.label + " D4 schema_sha256"
-    )
-    module_hashes = _require_mapping(
-        generator.get("evidence_module_hashes"),
-        directory.label + " D4 evidence_module_hashes",
-    )
-    if not module_hashes:
-        raise ReproducibilityError("{} D4 evidence_module_hashes 不能为空".format(directory.label))
-    for module_name, digest in module_hashes.items():
-        if not isinstance(module_name, str) or not module_name:
-            raise ReproducibilityError("{} D4 evidence module 路径非法".format(directory.label))
-        _valid_sha(digest, directory.label + " D4 evidence module " + module_name)
-
-    admission = _require_exact_mapping(
-        manifest.get("admission"), D4_ADMISSION, directory.label + " D4 admission"
-    )
-    if dict(admission) != D4_ADMISSION:
-        raise ReproducibilityError("{} D4 admission 与样本边界不一致".format(directory.label))
-
-    files = _require_mapping(manifest.get("files"), directory.label + " D4 files")
-    expected = set(files) | {"manifest.json", "摘要.md", "SHA256SUMS"}
-    directory.require_exact(expected)
-    for name, inventory_value in files.items():
-        if not isinstance(name, str):
-            raise ReproducibilityError("{} D4 files 文件名非法".format(directory.label))
-        inventory = _require_mapping(inventory_value, directory.label + " D4 " + name)
-        _inventory_matches(directory, name, inventory)
-    fingerprint = _valid_sha(
-        manifest.get("candidate_fingerprint_sha256"), directory.label + " D4 fingerprint"
-    )
-    expected_fingerprint = _canonical_sha256(_candidate_fingerprint_payload(manifest, "d4"))
-    if fingerprint != expected_fingerprint:
-        raise ReproducibilityError("{} D4 candidate fingerprint 复算不一致".format(directory.label))
-
-    reconciliation = directory.json("evidence-reconciliation-summary.json")
-    _require_exact_mapping(
-        reconciliation,
-        {
-            "schema_version",
-            "scope",
-            "sample_only",
-            "population_coverage_claimed",
-            "bundle_count",
-            "event_type_count",
-            "event_types",
-            "bundle_ids",
-            "strict_schema_status",
-            "schema_sha256",
-            "reference_closure_status",
-            *D4_RECONCILIATION_COUNT_FIELDS,
-            "classification",
-            "causal_conclusion",
-            "summary_fingerprint_sha256",
-        },
-        directory.label + " D4 reconciliation",
-    )
-    if (
-        reconciliation.get("schema_version") != "evidence_reconciliation_v1"
-        or reconciliation.get("scope") != "six_event_contract_investigation_sample"
-        or reconciliation.get("sample_only") is not True
-        or reconciliation.get("population_coverage_claimed") is not False
-        or reconciliation.get("strict_schema_status") != "passed"
-        or reconciliation.get("reference_closure_status") != "passed"
-        or reconciliation.get("classification") != "observation_only"
-        or reconciliation.get("causal_conclusion") is not None
-        or reconciliation.get("event_types") != sorted(D4_EVENT_TYPES)
-    ):
-        raise ReproducibilityError("{} D4 reconciliation 元数据非法".format(directory.label))
-    if _valid_sha(
-        reconciliation.get("schema_sha256"), directory.label + " D4 reconciliation schema"
-    ) != schema_sha:
-        raise ReproducibilityError("{} D4 reconciliation 未绑定 generator schema".format(directory.label))
-    for field in D4_RECONCILIATION_COUNT_FIELDS:
-        count = _require_count(
-            reconciliation.get(field), directory.label + " D4 reconciliation " + field
-        )
-        if field != "legacy_unknown_value_count" and count != 0:
-            raise ReproducibilityError(
-                "{} D4 reconciliation 存在阻断计数 {}".format(directory.label, field)
-            )
-    reconciliation_fingerprint = _validate_summary_fingerprint(reconciliation, "d4")
-
-    selection = _require_exact_mapping(
-        manifest.get("selection"), D4_EVENT_TYPES, directory.label + " D4 selection"
-    )
-    bundle_files = []
-    bundle_ids = set()
-    incident_ids = set()
-    evidence_ids = set()
-    expected_registry_entries: Dict[str, Any] = {}
-    for event_type in D4_EVENT_TYPES:
-        row = _require_exact_mapping(
-            selection[event_type],
-            {
-                "incident_id",
-                "source_table",
-                "source_primary_key",
-                "bundle_id",
-                "bundle_file",
-                "fact_link_status",
-                "source_fact_record_hash",
-                "selection_rule",
-            },
-            directory.label + " D4 selection." + event_type,
-        )
-        if (
-            not isinstance(row.get("source_table"), str)
-            or not row.get("source_table")
-            or not isinstance(row.get("source_primary_key"), Mapping)
-            or row.get("fact_link_status") != "matched"
-            or row.get("source_fact_record_hash") is not None
-            or row.get("selection_rule") != D4_SELECTION_RULE
-        ):
-            raise ReproducibilityError(
-                "{} D4 selection.{} 来源定位非法".format(directory.label, event_type)
-            )
-        name = row.get("bundle_file")
-        if not isinstance(name, str) or name not in files or name in bundle_files:
-            raise ReproducibilityError("{} D4 bundle_file 非法或重复".format(directory.label))
-        bundle_files.append(name)
-        bundle = directory.json(name)
-        if bundle.get("bundle_version") != "evidence_bundle_v2":
-            raise ReproducibilityError("{} D4 bundle_version 非法".format(directory.label))
-        bundle_id = bundle.get("bundle_id")
-        if not isinstance(bundle_id, str) or BUNDLE_ID_RE.fullmatch(bundle_id) is None:
-            raise ReproducibilityError("{} D4 bundle_id 非法".format(directory.label))
-        if row.get("bundle_id") != bundle_id or bundle_id in bundle_ids:
-            raise ReproducibilityError("{} D4 selection.bundle_id 不一致".format(directory.label))
-        bundle_ids.add(bundle_id)
-        stable.add(side, "d4_bundle", bundle_id)
-        incident = _require_mapping(bundle.get("incident"), directory.label + " D4 incident")
-        incident_id = incident.get("incident_id")
-        if not isinstance(incident_id, str) or INCIDENT_ID_RE.fullmatch(incident_id) is None:
-            raise ReproducibilityError("{} D4 incident_id 非法".format(directory.label))
-        if (
-            row.get("incident_id") != incident_id
-            or incident.get("event_type") != event_type
-            or incident_id in incident_ids
-        ):
-            raise ReproducibilityError("{} D4 selection.incident_id 不一致".format(directory.label))
-        incident_ids.add(incident_id)
-        coverage_summary = _require_mapping(
-            bundle.get("coverage_summary"), directory.label + " D4 coverage_summary"
-        )
-        conclusion = _require_mapping(
-            bundle.get("conclusion"), directory.label + " D4 conclusion"
-        )
-        if (
-            coverage_summary.get("admission_level") != "legacy_compatible"
-            or bundle.get("route_event_refs") != []
-            or bundle.get("raw_record_refs") != []
-            or bundle.get("metric_windows") != []
-            or conclusion.get("classification") != "observation_only"
-            or conclusion.get("causal_conclusion") is not None
-        ):
-            raise ReproducibilityError("{} D4 bundle 超出 legacy 样本边界".format(directory.label))
-        registry = bundle.get("evidence_registry")
-        if not isinstance(registry, list):
-            raise ReproducibilityError("{} D4 evidence_registry 非数组".format(directory.label))
-        for item in registry:
-            evidence = _require_mapping(item, directory.label + " D4 evidence")
-            evidence_id = evidence.get("evidence_id")
-            if not isinstance(evidence_id, str) or EVIDENCE_ID_RE.fullmatch(evidence_id) is None:
-                raise ReproducibilityError("{} D4 evidence_id 非法".format(directory.label))
-            if evidence_id in evidence_ids:
-                raise ReproducibilityError("{} D4 evidence_id 重复".format(directory.label))
-            evidence_ids.add(evidence_id)
-            stable.add(side, "d4_evidence", evidence_id)
-            expected_registry_entries[evidence_id] = {
-                "bundle_id": bundle_id,
-                "bundle_file": name,
-                "registry_item": dict(evidence),
-            }
-
-    if set(files) != set(bundle_files) | {
-        "evidence-registry.json",
-        "evidence-reconciliation-summary.json",
-    }:
-        raise ReproducibilityError("{} D4 files 未精确闭合六类 Bundle".format(directory.label))
-
-    registry = directory.json("evidence-registry.json")
-    _require_exact_mapping(
-        registry,
-        {
-            "schema_version",
-            "candidate_scope",
-            "entry_count",
-            "entries",
-            "classification",
-            "causal_conclusion",
-        },
-        directory.label + " D4 registry",
-    )
-    registry_entries = _require_mapping(
-        registry.get("entries"), directory.label + " D4 registry.entries"
-    )
-    if (
-        registry.get("schema_version") != "p0_evidence_registry_index_v1"
-        or registry.get("candidate_scope") != "six_event_contract_investigation_sample"
-        or registry.get("classification") != "observation_only"
-        or registry.get("causal_conclusion") is not None
-        or registry.get("entry_count") != len(evidence_ids)
-        or dict(registry_entries) != expected_registry_entries
-    ):
-        raise ReproducibilityError("{} D4 evidence registry 引用不闭合".format(directory.label))
-
-    registry_metadata = _require_exact_mapping(
-        manifest.get("registry"),
-        {
-            "file",
-            "entry_count",
-            "evidence_id_conflict_count",
-            "unresolved_evidence_reference_count",
-            "unresolved_route_event_reference_count",
-            "reference_closure_ratio",
-        },
-        directory.label + " D4 manifest.registry",
-    )
-    registry_count = _require_count(
-        registry_metadata.get("entry_count"), directory.label + " D4 registry entry_count"
-    )
-    closure_ratio = _require_count(
-        registry_metadata.get("reference_closure_ratio"),
-        directory.label + " D4 reference_closure_ratio",
-    )
-    if dict(registry_metadata) != {
-        "file": "evidence-registry.json",
-        "entry_count": len(evidence_ids),
-        "evidence_id_conflict_count": 0,
-        "unresolved_evidence_reference_count": 0,
-        "unresolved_route_event_reference_count": 0,
-        "reference_closure_ratio": 1,
-    } or registry_count != len(evidence_ids) or closure_ratio != 1:
-        raise ReproducibilityError("{} D4 registry metadata 不闭合".format(directory.label))
-
-    if (
-        reconciliation.get("bundle_count") != len(bundle_files)
-        or reconciliation.get("event_type_count") != len(D4_EVENT_TYPES)
-        or reconciliation.get("bundle_ids") != sorted(bundle_ids)
-    ):
-        raise ReproducibilityError("{} D4 reconciliation Bundle 元数据不一致".format(directory.label))
-    reconciliation_metadata = _require_exact_mapping(
-        manifest.get("reconciliation"),
-        {
-            "file",
-            "schema_version",
-            "scope",
-            "sample_only",
-            "population_coverage_claimed",
-            "summary_fingerprint_sha256",
-        },
-        directory.label + " D4 manifest.reconciliation",
-    )
-    expected_reconciliation_metadata = {
-        "file": "evidence-reconciliation-summary.json",
-        "schema_version": reconciliation["schema_version"],
-        "scope": reconciliation["scope"],
-        "sample_only": True,
-        "population_coverage_claimed": False,
-        "summary_fingerprint_sha256": reconciliation_fingerprint,
-    }
-    if dict(reconciliation_metadata) != expected_reconciliation_metadata:
-        raise ReproducibilityError("{} D4 reconciliation metadata 不闭合".format(directory.label))
-
-    validation = _require_exact_mapping(
-        manifest.get("validation"),
-        {
-            "strict_schema_status",
-            "schema_sha256",
-            "bundle_count",
-            "event_type_count",
-            "classification_violation_count",
-            "causal_conclusion_nonnull_count",
-            "auto_zero_fill_count",
-        },
-        directory.label + " D4 validation",
-    )
-    expected_validation = {
-        "strict_schema_status": "passed",
-        "schema_sha256": schema_sha,
-        "bundle_count": len(bundle_files),
-        "event_type_count": len(D4_EVENT_TYPES),
-        "classification_violation_count": 0,
-        "causal_conclusion_nonnull_count": 0,
-        "auto_zero_fill_count": 0,
-    }
-    if dict(validation) != expected_validation:
-        raise ReproducibilityError("{} D4 validation 与实际 Bundle 不一致".format(directory.label))
-
-    manifest["_validated_fingerprint"] = fingerprint
-    manifest["_validated_reconciliation_fingerprint"] = reconciliation_fingerprint
-    return (
-        manifest,
-        {"bundles": len(bundle_files), "evidence_registry_entries": len(evidence_ids)},
-        reconciliation,
-    )
 
 
 def _metric_identity(manifest: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -1726,105 +1222,19 @@ def _route_identity(summary: Mapping[str, Any]) -> Mapping[str, Any]:
     }
 
 
-def _d3_update_projection_for_d4(
-    d3: Mapping[str, Any], label: str
-) -> Tuple[str, Dict[str, int]]:
-    """按 D4 producer 规则从 D3 collector coverage 重建 update 状态。"""
-
-    coverage = _require_mapping(d3.get("coverage"), label + " coverage")
-    by_collector = coverage.get("by_collector")
-    if not isinstance(by_collector, list) or not by_collector:
-        raise ReproducibilityError("{} collector coverage 缺失".format(label))
-    expected_count = 0
-    observed_count = 0
-    for index, collector_value in enumerate(by_collector):
-        collector = _require_mapping(
-            collector_value, "{} by_collector[{}]".format(label, index)
-        )
-        by_artifact_type = _require_mapping(
-            collector.get("by_artifact_type"),
-            "{} by_collector[{}].by_artifact_type".format(label, index),
-        )
-        update = _require_mapping(
-            by_artifact_type.get("update"),
-            "{} by_collector[{}].update".format(label, index),
-        )
-        current_expected = _require_count(
-            update.get("expected_slots"),
-            "{} by_collector[{}].update.expected_slots".format(label, index),
-        )
-        current_observed = _require_count(
-            update.get("available_slots"),
-            "{} by_collector[{}].update.available_slots".format(label, index),
-        )
-        if current_observed > current_expected:
-            raise ReproducibilityError("{} update coverage 计数非法".format(label))
-        expected_count += current_expected
-        observed_count += current_observed
-    if expected_count < 1:
-        raise ReproducibilityError("{} update expected_count 不得为 0".format(label))
-    status = (
-        "unavailable"
-        if observed_count == 0
-        else ("full" if observed_count == expected_count else "partial")
-    )
-    return status, {
-        "expected_count": expected_count,
-        "observed_count": observed_count,
-    }
-
-
 def _cross_validate(
     side: str,
     d2: Mapping[str, Any],
     d3: Mapping[str, Any],
-    d4: Mapping[str, Any],
     metric: Mapping[str, Any],
 ) -> None:
-    d4_inputs = _require_mapping(d4.get("inputs"), side + " D4 inputs")
-    d4_d2 = _require_mapping(d4_inputs.get("d2"), side + " D4 inputs.d2")
-    d4_d3 = _require_mapping(d4_inputs.get("d3_artifacts"), side + " D4 inputs.d3_artifacts")
-    if d4_d2.get("candidate_fingerprint_sha256") != d2["_validated_fingerprint"]:
-        raise ReproducibilityError("{} D4 未绑定当前 D2 candidate".format(side))
-    if d4_d2.get("manifest_sha256") != d2["_validated_manifest_sha256"]:
-        raise ReproducibilityError("{} D4 未绑定当前 D2 manifest SHA256".format(side))
-    if d4_d3.get("manifest_fingerprint_sha256") != d3["_validated_fingerprint"]:
-        raise ReproducibilityError("{} D4 未绑定当前 D3 manifest".format(side))
-    if d4_d3.get("manifest_sha256") != d3["_validated_manifest_sha256"]:
-        raise ReproducibilityError("{} D4 未绑定当前 D3 manifest SHA256".format(side))
-    if d4_d3.get("summary_sha256") != d3["_validated_summary_sha256"]:
-        raise ReproducibilityError("{} D4 未绑定当前 D3 summary SHA256".format(side))
-    d2_admission = _require_mapping(d2.get("admission"), side + " D2 admission")
-    d2_sample = _require_mapping(d2.get("sample"), side + " D2 sample")
-    expected_d4_d2 = {
-        "manifest_sha256": d2["_validated_manifest_sha256"],
-        "candidate_fingerprint_sha256": d2["_validated_fingerprint"],
-        "admission_status": d2_admission.get("status"),
-        "sample_enabled": d2_sample.get("enabled"),
-        "sha256_closure": "passed",
-        "content_hash_closure": "passed",
-    }
-    if dict(d4_d2) != expected_d4_d2:
-        raise ReproducibilityError("{} D4 inputs.d2 未按当前 D2 派生".format(side))
-    raw_source_status, update_coverage = _d3_update_projection_for_d4(
-        d3, side + " D3"
-    )
-    expected_d4_d3 = {
-        "manifest_sha256": d3["_validated_manifest_sha256"],
-        "summary_sha256": d3["_validated_summary_sha256"],
-        "manifest_fingerprint_sha256": d3["_validated_fingerprint"],
-        "raw_source_status": raw_source_status,
-        "update_coverage": update_coverage,
-        "sha256_closure": "passed",
-        "verification_status": "verified",
-    }
-    if dict(d4_d3) != expected_d4_d3:
-        raise ReproducibilityError("{} D4 inputs.d3_artifacts 未按当前 D3 派生".format(side))
-    if _canonical_bytes(d4.get("data_profile")) != _canonical_bytes(d2.get("data_profile")):
-        raise ReproducibilityError("{} D4 data_profile 未完整继承当前 D2".format(side))
     sources = _require_mapping(metric.get("sources"), side + " Metric sources")
-    metric_d2 = _require_mapping(sources.get("d2_normalization"), side + " Metric D2 source")
-    metric_d3 = _require_mapping(sources.get("d3_artifacts"), side + " Metric D3 source")
+    metric_d2 = _require_mapping(
+        sources.get("d2_normalization"), side + " Metric D2 source"
+    )
+    metric_d3 = _require_mapping(
+        sources.get("d3_artifacts"), side + " Metric D3 source"
+    )
     if metric_d2.get("fingerprint_sha256") != d2["_validated_fingerprint"]:
         raise ReproducibilityError("{} Metric 未绑定当前 D2 candidate".format(side))
     if (
@@ -1841,17 +1251,24 @@ def _cross_validate(
         or metric_d3.get("checksums_sha256") != d3["_validated_checksums_sha256"]
     ):
         raise ReproducibilityError("{} Metric 未闭合当前 D3 文件身份".format(side))
-    profiles = [d2.get("data_profile"), d3.get("data_profile"), d4.get("data_profile"), metric.get("data_profile")]
+    profiles = [
+        d2.get("data_profile"),
+        d3.get("data_profile"),
+        metric.get("data_profile"),
+    ]
     profile_keys = ("id", "timezone", "window_start", "window_end_exclusive")
     normalized = []
     for index, value in enumerate(profiles):
         profile = _require_mapping(value, "{} data_profile {}".format(side, index + 1))
         identity = {key: profile.get(key) for key in profile_keys}
-        if any(not isinstance(identity[key], str) or not identity[key] for key in profile_keys):
+        if any(
+            not isinstance(identity[key], str) or not identity[key]
+            for key in profile_keys
+        ):
             raise ReproducibilityError("{} data_profile 身份字段不完整".format(side))
         normalized.append(_canonical_bytes(identity))
     if len(set(normalized)) != 1:
-        raise ReproducibilityError("{} 四类候选 data_profile 不一致".format(side))
+        raise ReproducibilityError("{} 三类候选 data_profile 不一致".format(side))
 
 
 def _comparison_rows(first: Mapping[str, int], second: Mapping[str, int]) -> Dict[str, Any]:
@@ -1883,8 +1300,6 @@ def _build_summary(
         )
         d3_a, d3_count_a = _validate_d3(components["d3"][0], "a", stable)
         d3_b, d3_count_b = _validate_d3(components["d3"][1], "b", stable)
-        d4_a, d4_count_a, d4_summary_a = _validate_d4(components["d4"][0], "a", stable)
-        d4_b, d4_count_b, d4_summary_b = _validate_d4(components["d4"][1], "b", stable)
         metric_a, metric_count_a, metric_summary_a = _validate_metric(
             components["metric"][0], "a", stable
         )
@@ -1894,10 +1309,9 @@ def _build_summary(
 
         _assert_same_input("D2", _d2_identity(d2_a), _d2_identity(d2_b))
         _assert_same_input("D3", _d3_identity(d3_a), _d3_identity(d3_b))
-        _assert_same_input("D4", _d4_identity(d4_a), _d4_identity(d4_b))
         _assert_same_input("Metric", _metric_identity(metric_a), _metric_identity(metric_b))
-        _cross_validate("A", d2_a, d3_a, d4_a, metric_a)
-        _cross_validate("B", d2_b, d3_b, d4_b, metric_b)
+        _cross_validate("A", d2_a, d3_a, metric_a)
+        _cross_validate("B", d2_b, d3_b, metric_b)
 
         route_a = route_b = None
         route_count_a = route_count_b = None
@@ -1914,7 +1328,6 @@ def _build_summary(
         record_counts = {
             "d2": _comparison_rows(d2_count_a, d2_count_b),
             "d3": _comparison_rows(d3_count_a, d3_count_b),
-            "d4": _comparison_rows(d4_count_a, d4_count_b),
             "metric": _comparison_rows(metric_count_a, metric_count_b),
         }
         if route_count_a is not None and route_count_b is not None:
@@ -1930,7 +1343,6 @@ def _build_summary(
                 {"summary": d3_a.get("summary"), "coverage": d3_a.get("coverage")}
             )
             == _canonical_bytes({"summary": d3_b.get("summary"), "coverage": d3_b.get("coverage")}),
-            "evidence_reconciliation": _canonical_bytes(d4_summary_a) == _canonical_bytes(d4_summary_b),
             "metric_manifest_and_reconciliation": _canonical_bytes(
                 {"summary": metric_a.get("summary"), "reconciliation": metric_summary_a}
             )
@@ -1949,12 +1361,6 @@ def _build_summary(
                 == _canonical_bytes(d2_b.get("files")),
             },
             "d3": {"a": d3_a["_validated_fingerprint"], "b": d3_b["_validated_fingerprint"]},
-            "evidence": {
-                "a": d4_a["_validated_fingerprint"],
-                "b": d4_b["_validated_fingerprint"],
-                "reconciliation_a": d4_a["_validated_reconciliation_fingerprint"],
-                "reconciliation_b": d4_b["_validated_reconciliation_fingerprint"],
-            },
             "metric": {
                 "a": metric_a["_validated_fingerprint"],
                 "b": metric_b["_validated_fingerprint"],
@@ -2001,10 +1407,6 @@ def _build_summary(
             "d2": fingerprint_values["d2"]["a"] == fingerprint_values["d2"]["b"]
             and fingerprint_values["d2"]["file_inventory_match"],
             "d3": fingerprint_values["d3"]["a"] == fingerprint_values["d3"]["b"],
-            "evidence": fingerprint_values["evidence"]["a"]
-            == fingerprint_values["evidence"]["b"]
-            and fingerprint_values["evidence"]["reconciliation_a"]
-            == fingerprint_values["evidence"]["reconciliation_b"],
             "metric": fingerprint_values["metric"]["a"]
             == fingerprint_values["metric"]["b"]
             and fingerprint_values["metric"]["reconciliation_a"]
@@ -2031,7 +1433,6 @@ def _build_summary(
                 "max_records_per_stream": d2_record_limit,
             },
             "d3": {"scope": "full_manifest_metadata", "raw_mrt_read": False},
-            "d4": {"scope": "all_six_event_candidate_bundles"},
             "metric": {"scope": "full_emitted_metric_candidate"},
             "route_event": {
                 "scope": "full_bounded_pilot" if route_a is not None else "not_provided"
@@ -2160,7 +1561,7 @@ def _summary_markdown(summary: Mapping[str, Any]) -> str:
 冻结前缀样本；文件 SHA、manifest 指纹、聚合摘要及其他明确标注的小型候选
 仍按摘要中的范围复核，不得据此声明全量语义复现。稳定 ID
 一致率使用带类型的 ID 集合 Jaccard 比实际计算；记录数来自压缩 JSONL、
-manifest artifact、Evidence registry、Metric points 及可选 SQLite 的只读复核。
+manifest artifact、Metric points 及可选 SQLite 的只读复核。
 Metric 自身的内存/落盘重读只作为单次运行内部证据，不替代这里的外部 A/B
 跨运行比较。
 稳定 ID 集合只写入输出 staging 内的临时 SQLite，生成摘要前即删除；程序未
@@ -2206,7 +1607,6 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
         paths = {
             "d2": (args.d2_a, args.d2_b),
             "d3": (args.d3_a, args.d3_b),
-            "d4": (args.d4_a, args.d4_b),
             "metric": (args.metric_a, args.metric_b),
         }
         if route_values[0]:
@@ -2272,7 +1672,7 @@ def run(args: argparse.Namespace) -> Dict[str, Any]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="生成 P0 A/B 候选制品可复现性摘要")
-    for component in ("d2", "d3", "d4", "metric"):
+    for component in ("d2", "d3", "metric"):
         parser.add_argument("--{}-a".format(component), required=True)
         parser.add_argument("--{}-b".format(component), required=True)
     parser.add_argument("--route-a")

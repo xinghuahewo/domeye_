@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from data_pipeline.evidence import build_evidence_bundle_v2, canonical_evidence_bundle_bytes
 from services import p0_data_service
 
 
@@ -421,221 +420,6 @@ def normalized_incident(event_type):
     }
 
 
-def create_d4(root, d2, d3):
-    directory = root / "d4"
-    directory.mkdir()
-    snapshot = {
-        "profile_id": profile()["id"],
-        "profile_sha256": PROFILE_SHA,
-        "window_start": profile()["window_start"],
-        "window_end_exclusive": profile()["window_end_exclusive"],
-        "snapshot_time": profile()["snapshot_time"],
-        "business_timezone": "Asia/Shanghai",
-        "database_release_id": RELEASE_ID,
-        "overlay_inventory_sha256": INVENTORY_SHA,
-        "raw_source_status": "partial",
-    }
-    program = {
-        "name": "p0-incident-normalizer",
-        "version": "1.0.0",
-        "code_sha256": "c" * 64,
-        "config_sha256": PROFILE_SHA,
-    }
-    lineage = {
-        "parser": None,
-        "importer": None,
-        "detector": None,
-        "normalizer": program,
-        "bundle_generator": {
-            **program,
-            "name": "p0-evidence-bundle-generator",
-            "version": "2.0.0",
-            "code_sha256": "d" * 64,
-        },
-        "import_run_id": None,
-    }
-    files = {}
-    selections = {}
-    registry_entries = {}
-    bundles = []
-    for index, event_type in enumerate(EVENT_CONFIG, 1):
-        incident = normalized_incident(event_type)
-        bundle = build_evidence_bundle_v2(
-            incident,
-            data_snapshot=snapshot,
-            processing_lineage=lineage,
-            raw_source_coverage={"expected_count": 4, "observed_count": 2},
-            generated_at="2026-07-20T12:00:00Z",
-            input_snapshot_sha256="e" * 64,
-            query_fingerprint_sha256=d2["candidate_fingerprint_sha256"],
-            source_hash_verification_status="partial",
-        )
-        bundles.append(bundle)
-        name = "bundle-{:02d}-{}.json".format(index, event_type)
-        (directory / name).write_bytes(canonical_evidence_bundle_bytes(bundle) + b"\n")
-        files[name] = inventory(directory / name)
-        selections[event_type] = {
-            "incident_id": incident["incident_id"],
-            "source_table": incident["source_table"],
-            "source_primary_key": incident["source_primary_key"],
-            "bundle_id": bundle["bundle_id"],
-            "bundle_file": name,
-            "fact_link_status": "matched",
-            "source_fact_record_hash": None,
-            "selection_rule": "first_safe_matched_non_collision_per_event_type_v1",
-        }
-        for item in bundle["evidence_registry"]:
-            registry_entries[item["evidence_id"]] = {
-                "bundle_id": bundle["bundle_id"],
-                "bundle_file": name,
-                "registry_item": item,
-            }
-    registry = {
-        "schema_version": "p0_evidence_registry_index_v1",
-        "candidate_scope": "six_event_contract_investigation_sample",
-        "entry_count": len(registry_entries),
-        "entries": registry_entries,
-        "classification": "observation_only",
-        "causal_conclusion": None,
-    }
-    write_json(directory / "evidence-registry.json", registry)
-    files["evidence-registry.json"] = inventory(directory / "evidence-registry.json")
-    reconciliation_payload = {
-        "schema_version": "evidence_reconciliation_v1",
-        "scope": "six_event_contract_investigation_sample",
-        "sample_only": True,
-        "population_coverage_claimed": False,
-        "bundle_count": len(bundles),
-        "event_type_count": len(EVENT_CONFIG),
-        "event_types": sorted(EVENT_CONFIG),
-        "bundle_ids": sorted(bundle["bundle_id"] for bundle in bundles),
-        "strict_schema_status": "passed",
-        "schema_sha256": "5" * 64,
-        "reference_closure_status": "passed",
-        "schema_invalid_count": 0,
-        "classification_violation_count": 0,
-        "causal_conclusion_nonnull_count": 0,
-        "evidence_id_conflict_count": 0,
-        "unresolved_evidence_reference_count": 0,
-        "unresolved_route_event_reference_count": 0,
-        "outside_window_record_count": 0,
-        "unknown_missing_reason_count": 0,
-        "legacy_unknown_value_count": 0,
-        "auto_zero_fill_count": 0,
-        "classification": "observation_only",
-        "causal_conclusion": None,
-    }
-    reconciliation = dict(reconciliation_payload)
-    reconciliation["summary_fingerprint_sha256"] = canonical_sha(
-        {
-            "schema": "evidence_reconciliation_fingerprint_v1",
-            "summary": reconciliation_payload,
-        }
-    )
-    write_json(directory / "evidence-reconciliation-summary.json", reconciliation)
-    files["evidence-reconciliation-summary.json"] = inventory(
-        directory / "evidence-reconciliation-summary.json"
-    )
-    generator = {
-        "runner_sha256": "3" * 64,
-        "evidence_module_hashes": {"bundle.py": "4" * 64},
-        "schema_sha256": "5" * 64,
-    }
-    inputs = {
-        "d2": {
-            "manifest_sha256": sha(root / "d2/manifest.json"),
-            "candidate_fingerprint_sha256": d2["candidate_fingerprint_sha256"],
-            "admission_status": "legacy_candidate_ready",
-            "sample_enabled": False,
-            "sha256_closure": "passed",
-            "content_hash_closure": "passed",
-        },
-        "d3_artifacts": {
-            "manifest_sha256": sha(root / "d3/p0-artifact-manifest.json"),
-            "summary_sha256": sha(
-                root / "d3/p0-artifact-manifest.summary.zh.json"
-            ),
-            "manifest_fingerprint_sha256": d3["manifest_fingerprint_sha256"],
-            "raw_source_status": "partial",
-            "update_coverage": {"expected_count": 4, "observed_count": 2},
-            "sha256_closure": "passed",
-            "verification_status": "verified",
-        },
-        "route_event_index": {"status": "not_provided", "missing_reason": "route_event_index_not_available_for_candidate"},
-        "metric_series": {"status": "not_provided", "missing_reason": "metric_series_not_available_for_candidate"},
-    }
-    manifest = {
-        "schema_version": "p0_evidence_candidate_v1",
-        "candidate_kind": "six_event_contract_investigation_sample",
-        "candidate_fingerprint_sha256": "0" * 64,
-        "data_profile": profile(),
-        "generated_at": "2026-07-20T12:00:00Z",
-        "inputs": inputs,
-        "generator": generator,
-        "selection": selections,
-        "files": files,
-        "registry": {
-            "file": "evidence-registry.json",
-            "entry_count": len(registry_entries),
-            "evidence_id_conflict_count": 0,
-            "unresolved_evidence_reference_count": 0,
-            "unresolved_route_event_reference_count": 0,
-            "reference_closure_ratio": 1,
-        },
-        "reconciliation": {
-            "file": "evidence-reconciliation-summary.json",
-            "schema_version": reconciliation["schema_version"],
-            "scope": reconciliation["scope"],
-            "sample_only": True,
-            "population_coverage_claimed": False,
-            "summary_fingerprint_sha256": reconciliation[
-                "summary_fingerprint_sha256"
-            ],
-        },
-        "validation": {
-            "strict_schema_status": "passed",
-            "schema_sha256": "5" * 64,
-            "bundle_count": 6,
-            "event_type_count": 6,
-            "classification_violation_count": 0,
-            "causal_conclusion_nonnull_count": 0,
-            "auto_zero_fill_count": 0,
-        },
-        "admission": {
-            "status": "sample_only_not_full_population",
-            "represents_full_evidence_population": False,
-            "eligible_for_release_gate": False,
-            "raw_traceable": False,
-            "blocking_reasons": ["six_event_sample_not_full_evidence_population"],
-        },
-        "classification": "observation_only",
-        "causal_conclusion": None,
-    }
-    fingerprint_payload = {
-        "schema_version": manifest["schema_version"],
-        "candidate_kind": manifest["candidate_kind"],
-        "data_profile": manifest["data_profile"],
-        "generated_at": manifest["generated_at"],
-        "inputs": {
-            "d2_manifest_sha256": inputs["d2"]["manifest_sha256"],
-            "d2_candidate_fingerprint_sha256": inputs["d2"]["candidate_fingerprint_sha256"],
-            "d3_artifact_manifest_sha256": inputs["d3_artifacts"]["manifest_sha256"],
-            "d3_artifact_fingerprint_sha256": inputs["d3_artifacts"]["manifest_fingerprint_sha256"],
-        },
-        "generator": generator,
-        "selection": selections,
-        "files": files,
-        "registry_entry_count": len(registry_entries),
-        "classification": "observation_only",
-        "causal_conclusion": None,
-    }
-    manifest["candidate_fingerprint_sha256"] = canonical_sha(fingerprint_payload)
-    write_json(directory / "manifest.json", manifest)
-    (directory / "摘要.md").write_text("# D4 六类样本\n", encoding="utf-8")
-    close_component(directory)
-    return manifest
-
-
 def create_metric(root, d2, d3):
     directory = root / "metric"
     directory.mkdir()
@@ -876,7 +660,7 @@ def create_metric(root, d2, d3):
     return manifest
 
 
-def create_quality(root, d2, d3, d4, metric):
+def create_quality(root, d2, d3, metric):
     directory = root / "quality"
     directory.mkdir()
     report = json.loads(
@@ -931,14 +715,6 @@ def create_quality(root, d2, d3, d4, metric):
         directory / "d3-artifact-verification-summary.json", d3_verification
     )
     write_json(
-        directory / "evidence-reconciliation-summary.json",
-        json.loads(
-            (root / "d4/evidence-reconciliation-summary.json").read_text(
-                encoding="utf-8"
-            )
-        ),
-    )
-    write_json(
         directory / "metric-reconciliation-summary.json",
         json.loads(
             (root / "metric/metric-reconciliation-summary.json").read_text(
@@ -987,7 +763,6 @@ def create_quality(root, d2, d3, d4, metric):
         "d2_audited": sha(directory / "d2-candidate-manifest.json"),
         "d3": sha(directory / "d3-artifact-manifest.json"),
         "route": sha(directory / "route-event-reconciliation-summary.json"),
-        "evidence": sha(directory / "evidence-reconciliation-summary.json"),
         "metric": sha(directory / "metric-reconciliation-summary.json"),
         "repro": sha(directory / "reproducibility-summary.json"),
         "execution": sha(directory / "quality-gate-execution-context.json"),
@@ -1020,9 +795,8 @@ def create_release(root):
     root.mkdir()
     d2 = create_d2(root)
     d3 = create_d3(root)
-    d4 = create_d4(root, d2, d3)
     metric = create_metric(root, d2, d3)
-    create_quality(root, d2, d3, d4, metric)
+    create_quality(root, d2, d3, metric)
     return root
 
 
@@ -1042,7 +816,7 @@ def release(tmp_path, monkeypatch):
     return path
 
 
-def test_normal_candidate_exposes_honest_status_metric_evidence_and_quality(client, release):
+def test_normal_candidate_exposes_honest_status_metric_and_quality(client, release):
     status_response = client.get("/api/v1/p0/status")
     assert status_response.status_code == 200
     status = status_response.get_json()
@@ -1071,8 +845,6 @@ def test_normal_candidate_exposes_honest_status_metric_evidence_and_quality(clie
         "compression_magic_mismatch": 0,
         "empty_file": 1,
     }
-    assert status["evidence_coverage"]["bundle_count"] == 6
-    assert status["evidence_coverage"]["represents_full_evidence_population"] is False
     assert [item["metric_name"] for item in status["available_metrics"]] == sorted(
         p0_data_service.METRIC_DEFINITIONS
     )
@@ -1093,14 +865,6 @@ def test_normal_candidate_exposes_honest_status_metric_evidence_and_quality(clie
     incident_points = incident_metric_response.get_json()["metric"]["points"]
     assert all(point["value_state"] == "observed_nonzero" for point in incident_points)
 
-    incident_id = "inc_v1_" + "1" * 24
-    evidence_response = client.get("/api/v1/p0/evidence/{}".format(incident_id))
-    assert evidence_response.status_code == 200
-    evidence = evidence_response.get_json()
-    assert evidence["coverage_scope"] == "sample_only"
-    assert evidence["represents_full_evidence_population"] is False
-    assert evidence["bundle"]["incident"]["incident_id"] == incident_id
-
     quality_response = client.get("/api/v1/p0/quality")
     assert quality_response.status_code == 200
     quality = quality_response.get_json()
@@ -1116,7 +880,6 @@ def test_explicit_production_activation_is_consistent_across_p0_endpoints(
     responses = [
         client.get("/api/v1/p0/status"),
         client.get("/api/v1/p0/metrics/bgp_announce_record_count"),
-        client.get("/api/v1/p0/evidence/inc_v1_{}".format("1" * 24)),
         client.get("/api/v1/p0/quality"),
     ]
 
@@ -1464,129 +1227,8 @@ def test_non_admitted_metric_candidate_is_404(client, release):
 
 def test_path_traversal_identifiers_are_rejected_without_file_access(client, release):
     metric = client.get("/api/v1/p0/metrics/%2E%2E")
-    evidence = client.get("/api/v1/p0/evidence/%2E%2E")
     assert metric.status_code == 400
-    assert evidence.status_code == 400
     assert metric.get_json()["error"]["code"] == "invalid_identifier"
-    assert evidence.get_json()["error"]["code"] == "invalid_identifier"
-
-
-def test_duplicate_registry_json_key_fails_closed(client, release):
-    directory = release / "d4"
-    registry_path = directory / "evidence-registry.json"
-    registry = json.loads(registry_path.read_text(encoding="utf-8"))
-    first_id, first_entry = next(iter(registry["entries"].items()))
-    encoded_entry = canonical(first_entry)
-    original = registry_path.read_text(encoding="utf-8")
-    marker = '"entries":{'
-    registry_path.write_text(
-        original.replace(marker, marker + canonical(first_id) + ":" + encoded_entry + ",", 1),
-        encoding="utf-8",
-    )
-    manifest_path = directory / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["files"]["evidence-registry.json"] = inventory(registry_path)
-    inputs = manifest["inputs"]
-    manifest["candidate_fingerprint_sha256"] = canonical_sha(
-        {
-            "schema_version": manifest["schema_version"],
-            "candidate_kind": manifest["candidate_kind"],
-            "data_profile": manifest["data_profile"],
-            "generated_at": manifest["generated_at"],
-            "inputs": {
-                "d2_manifest_sha256": inputs["d2"]["manifest_sha256"],
-                "d2_candidate_fingerprint_sha256": inputs["d2"]["candidate_fingerprint_sha256"],
-                "d3_artifact_manifest_sha256": inputs["d3_artifacts"]["manifest_sha256"],
-                "d3_artifact_fingerprint_sha256": inputs["d3_artifacts"]["manifest_fingerprint_sha256"],
-            },
-            "generator": manifest["generator"],
-            "selection": manifest["selection"],
-            "files": manifest["files"],
-            "registry_entry_count": manifest["registry"]["entry_count"],
-            "classification": "observation_only",
-            "causal_conclusion": None,
-        }
-    )
-    write_json(manifest_path, manifest)
-    close_component(directory)
-    p0_data_service.reset_p0_data_cache()
-    response = client.get("/api/v1/p0/status")
-    assert response.status_code == 409
-    assert "重复" in response.get_json()["error"]["message_zh"]
-
-
-def test_malformed_bundle_is_a_stable_artifact_conflict(client, release):
-    directory = release / "d4"
-    bundle_path = sorted(directory.glob("bundle-*.json"))[0]
-    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
-    bundle["evidence_registry"][0].pop("source_ref_ids")
-    write_json(bundle_path, bundle)
-
-    manifest_path = directory / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["files"][bundle_path.name] = inventory(bundle_path)
-    manifest["candidate_fingerprint_sha256"] = p0_data_service._d4_fingerprint(
-        manifest
-    )
-    write_json(manifest_path, manifest)
-    close_component(directory)
-
-    p0_data_service.reset_p0_data_cache()
-    response = client.get("/api/v1/p0/status")
-    assert response.status_code == 409
-    assert response.get_json()["error"]["code"] == "candidate_artifact_conflict"
-    assert "结构或引用未闭合" in response.get_json()["error"]["message_zh"]
-
-
-def test_reconciliation_cannot_claim_full_population_after_rehash(client, release):
-    directory = release / "d4"
-    reconciliation_path = directory / "evidence-reconciliation-summary.json"
-    reconciliation = json.loads(reconciliation_path.read_text(encoding="utf-8"))
-    reconciliation["population_coverage_claimed"] = True
-    fingerprint_payload = dict(reconciliation)
-    fingerprint_payload.pop("summary_fingerprint_sha256")
-    reconciliation["summary_fingerprint_sha256"] = canonical_sha(
-        {
-            "schema": "evidence_reconciliation_fingerprint_v1",
-            "summary": fingerprint_payload,
-        }
-    )
-    write_json(reconciliation_path, reconciliation)
-
-    manifest_path = directory / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["files"][reconciliation_path.name] = inventory(reconciliation_path)
-    manifest["reconciliation"]["population_coverage_claimed"] = True
-    manifest["reconciliation"]["summary_fingerprint_sha256"] = reconciliation[
-        "summary_fingerprint_sha256"
-    ]
-    manifest["candidate_fingerprint_sha256"] = p0_data_service._d4_fingerprint(
-        manifest
-    )
-    write_json(manifest_path, manifest)
-    close_component(directory)
-
-    p0_data_service.reset_p0_data_cache()
-    response = client.get("/api/v1/p0/status")
-    assert response.status_code == 409
-    assert "六类样本" in response.get_json()["error"]["message_zh"]
-
-
-def test_d4_update_coverage_must_match_d3_update_slots_after_rehash(client, release):
-    directory = release / "d4"
-    manifest_path = directory / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["inputs"]["d3_artifacts"]["update_coverage"]["expected_count"] = 11
-    manifest["candidate_fingerprint_sha256"] = p0_data_service._d4_fingerprint(
-        manifest
-    )
-    write_json(manifest_path, manifest)
-    close_component(directory)
-
-    p0_data_service.reset_p0_data_cache()
-    response = client.get("/api/v1/p0/status")
-    assert response.status_code == 409
-    assert "raw UPDATE 覆盖计数" in response.get_json()["error"]["message_zh"]
 
 
 def test_metric_reconciliation_difference_is_rejected_after_full_rehash(client, release):
@@ -1700,7 +1342,7 @@ def test_quality_input_closure_must_bind_archived_input_file(client, release):
     directory = release / "quality"
     closure_path = directory / "输入闭包.json"
     closure = json.loads(closure_path.read_text(encoding="utf-8"))
-    closure["source_inputs"]["metric"] = closure["source_inputs"]["evidence"]
+    closure["source_inputs"]["metric"] = closure["source_inputs"]["route"]
     write_json(closure_path, closure)
     close_component(directory)
 
@@ -1795,7 +1437,6 @@ def test_p0_openapi_contract_is_readonly_strict_and_uses_frozen_data_schemas():
     expected_responses = {
         "/p0/status": {"200", "409", "503"},
         "/p0/metrics/{metric_name}": {"200", "400", "404", "409", "503"},
-        "/p0/evidence/{incident_id}": {"200", "400", "404", "409", "503"},
         "/p0/quality": {"200", "409", "503"},
     }
     for path, statuses in expected_responses.items():
@@ -1809,19 +1450,14 @@ def test_p0_openapi_contract_is_readonly_strict_and_uses_frozen_data_schemas():
         "P0Releases",
         "P0QualityDecision",
         "P0AvailableMetric",
-        "P0EvidenceCoverage",
         "P0RawCoverage",
         "P0DataStatus",
         "P0MetricResponse",
-        "P0EvidenceResponse",
         "P0QualityResponse",
     ):
         assert schemas[name]["additionalProperties"] is False
     assert schemas["P0MetricResponse"]["properties"]["metric"] == {
         "$ref": "./data/metric-series.schema.json"
-    }
-    assert schemas["P0EvidenceResponse"]["properties"]["bundle"] == {
-        "$ref": "./data/evidence-bundle-v2.schema.json"
     }
     assert schemas["P0QualityResponse"]["properties"]["report"] == {
         "$ref": "./data/data-quality-report.schema.json"
@@ -1843,7 +1479,6 @@ def test_p0_openapi_contract_is_readonly_strict_and_uses_frozen_data_schemas():
     for name in (
         "P0DataStatus",
         "P0MetricResponse",
-        "P0EvidenceResponse",
         "P0QualityResponse",
     ):
         assert schemas[name]["oneOf"] == expected_repository_states

@@ -254,6 +254,13 @@ done
         '      proxy_connect_timeout 3s;' \
         '      proxy_read_timeout 90s;' \
         '    }' \
+        '    location = /api/v2 { return 308 /api/v2/; }' \
+        '    location ^~ /api/v2/ {' \
+        "      proxy_pass http://127.0.0.1:${CANDIDATE_BACKEND_PORT};" \
+        '      proxy_http_version 1.1;' \
+        '      proxy_connect_timeout 3s;' \
+        '      proxy_read_timeout 90s;' \
+        '    }' \
         '    location / { try_files $uri $uri/ /index.html; }' \
         '  }' \
         '}'

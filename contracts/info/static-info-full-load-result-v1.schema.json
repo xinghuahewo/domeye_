@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/info/static-info-full-load-result-v1.schema.json",
+  "title": "Domeye static INFO 全 24 文件导入结果 v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "component",
+    "content_id",
+    "manifest_sha256",
+    "release_sk",
+    "import_run_sk",
+    "scope",
+    "status",
+    "database_release_status",
+    "activated",
+    "source_file_count",
+    "reconciled_source_file_count",
+    "unreconciled_record_count",
+    "visible_record_traceability_percent",
+    "quarantine_reason_coverage_percent",
+    "next_scope"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "component": {
+      "const": "static_info_full_load"
+    },
+    "content_id": {
+      "type": "string",
+      "pattern": "^info_v1_[0-9a-f]{32}$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "release_sk": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "import_run_sk": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "scope": {
+      "const": "all_24_files"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "already_completed",
+        "quality_failed"
+      ]
+    },
+    "database_release_status": {
+      "const": "validating"
+    },
+    "activated": {
+      "const": false
+    },
+    "source_file_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 24
+    },
+    "reconciled_source_file_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 24
+    },
+    "unreconciled_record_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "visible_record_traceability_percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "quarantine_reason_coverage_percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "next_scope": {
+      "const": "query_and_snapshot_shadow"
+    }
+  }
+}

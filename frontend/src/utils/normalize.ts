@@ -9,17 +9,22 @@ import {
   type CountrySparkPoint,
   type DashboardOverview,
   type DashboardRanking,
+  type CountryOutageAsnPage,
   type EvidenceBundle,
   type EvidenceItem,
   type EvidenceKind,
   type EvidencePhase,
   type EvidencePhaseCoverage,
   type EvidencePhaseStatus,
+  type EventStory,
+  type EventObservation,
+  type EventObservationAudit,
   type EventKind,
   type EventLevel,
   type EventPage,
   type EventRow,
   type FeaturePoint,
+  type LegacyEventSemanticGuardrails,
   type OutagePoint,
   type ParsedDetailRef,
 } from '@/types/api'
@@ -141,6 +146,224 @@ export const buildDetailEndpoint = (detail: ParsedDetailRef): string =>
 
 export const buildEvidenceEndpoint = (detail: ParsedDetailRef): string =>
   `events/evidence-bundle/${buildDetailEndpoint(detail)}`
+
+export const buildStoryEndpoint = (detail: ParsedDetailRef): string =>
+  `events/story/${buildDetailEndpoint(detail)}`
+
+export const buildObservationEndpoint = (detail: ParsedDetailRef): string =>
+  `events/observations/${buildDetailEndpoint(detail)}`
+
+export const normalizeEventStory = (payload: unknown): EventStory => {
+  if (!isRecord(payload)) throw new Error('事件叙事响应格式异常')
+  if (payload.status === false) {
+    throw new Error(cleanText(payload.msg) || '事件叙事暂不可用')
+  }
+  if (
+    payload.schema_version !== 'event_detail_story_v1'
+    || !isRecord(payload.event)
+    || !isRecord(payload.observation)
+    || !isRecord(payload.baseline)
+    || !isRecord(payload.detection)
+    || !isRecord(payload.impact)
+    || !Array.isArray(payload.series)
+    || !isRecord(payload.lifecycle)
+    || !Array.isArray(payload.claims)
+    || !Array.isArray(payload.unknowns)
+    || !Array.isArray(payload.actions)
+    || !isRecord(payload.evidence)
+  ) {
+    throw new Error('事件叙事响应缺少产品合同字段')
+  }
+  return payload as unknown as EventStory
+}
+
+export const normalizeEventObservation = (payload: unknown): EventObservation => {
+  if (!isRecord(payload)) throw new Error('事件观测响应格式异常')
+  if (payload.status === false) {
+    throw new Error(cleanText(payload.msg) || '事件观测暂不可用')
+  }
+  if (payload.country_update_series === undefined) {
+    payload.country_update_series = []
+  }
+  if (payload.country_update_metric_extrema === undefined) {
+    payload.country_update_metric_extrema = {}
+  }
+  if (
+    !['event_observation_v1', 'country_outage_observation_v2'].includes(
+      cleanText(payload.schema_version),
+    )
+    || !isRecord(payload.event_identity)
+    || !isRecord(payload.observation_scope)
+    || !(payload.cohort === null || isRecord(payload.cohort))
+    || !isRecord(payload.normal_band)
+    || !(payload.rule_marker === null || isRecord(payload.rule_marker))
+    || !Array.isArray(payload.metric_definitions)
+    || !Array.isArray(payload.series)
+    || !isRecord(payload.metric_extrema)
+    || !Array.isArray(payload.resource_series)
+    || !isRecord(payload.resource_metric_extrema)
+    || !Array.isArray(payload.country_update_series)
+    || !isRecord(payload.country_update_metric_extrema)
+    || !Array.isArray(payload.annotations)
+    || !isRecord(payload.asn_state)
+    || !Array.isArray(payload.limitations)
+    || !(payload.audit === null || isRecord(payload.audit))
+  ) {
+    throw new Error('事件观测响应缺少数据合同字段')
+  }
+  if (payload.schema_version === 'country_outage_observation_v2') {
+    const capabilityStates = new Set([
+      'available',
+      'building',
+      'unavailable',
+      'not_applicable',
+    ])
+    if (
+      !isRecord(payload.capabilities)
+      || payload.capability_contract_version !== 'country_outage_capabilities_v1'
+      || !Number.isInteger(payload.revision)
+      || typeof payload.publication_id !== 'string'
+      || payload.publication_id.length === 0
+      || !isRecord(payload.processing_status)
+      || ![
+        'idle',
+        'processing',
+        'waiting_for_source',
+        'failed',
+        'final',
+      ].includes(cleanText(payload.processing_status.state))
+      || !Number.isInteger(payload.missing_slot_count)
+      || ![
+        'legacy_summary',
+        'aggregate_available',
+        'state_partial',
+        'state_complete',
+        'evidence_complete',
+      ].includes(cleanText(payload.observation_state))
+      || !['legacy', 'replay', 'live', 'mixed'].includes(cleanText(payload.data_mode))
+      || !Object.values(payload.capabilities).every(
+        (capability) => isRecord(capability)
+          && capabilityStates.has(cleanText(capability.state)),
+      )
+    ) {
+      throw new Error('国家中断观测 v2 能力或版本合同无效')
+    }
+  }
+  if (
+    'lifecycle' in payload
+    || 'precursor' in payload
+    || 'claims' in payload
+    || 'actions' in payload
+  ) {
+    throw new Error('事件观测响应混入分析叙事字段')
+  }
+  return payload as unknown as EventObservation
+}
+
+const releaseMetadataKeys = [
+  'revision',
+  'publication_id',
+  'publication_state',
+  'observation_state',
+  'data_mode',
+  'data_through',
+  'updated_at',
+  'is_final',
+  'processing_status',
+  'missing_slot_count',
+  'incident_id',
+  'cohort_id',
+  'window_start_utc',
+  'window_end_utc',
+  'capability_contract_version',
+] as const
+
+const assertMatchingCountryOutageRelease = (
+  overview: Record<string, unknown>,
+  companions: Record<string, unknown>[],
+) => {
+  for (const companion of companions) {
+    for (const key of releaseMetadataKeys) {
+      const overviewValue = overview[key]
+      const companionValue = companion[key]
+      const matches = (
+        isRecord(overviewValue) && isRecord(companionValue)
+          ? JSON.stringify(overviewValue) === JSON.stringify(companionValue)
+          : overviewValue === companionValue
+      )
+      if (!matches) {
+        throw new Error(`国家中断观测接口发布身份不一致：${key}`)
+      }
+    }
+  }
+}
+
+export const normalizeCountryOutageObservation = (
+  overview: unknown,
+  series: unknown,
+  asnPage: unknown,
+): EventObservation => {
+  if (
+    !isRecord(overview)
+    || overview.schema_version !== 'country_outage_overview_v2'
+    || !isRecord(series)
+    || series.schema_version !== 'country_outage_series_v2'
+  ) {
+    throw new Error('国家中断观测 v2 响应格式异常')
+  }
+  const normalizedAsns = normalizeCountryOutageAsnPage(asnPage)
+  assertMatchingCountryOutageRelease(
+    overview,
+    [series, normalizedAsns as unknown as Record<string, unknown>],
+  )
+  return normalizeEventObservation({
+    ...overview,
+    ...series,
+    schema_version: 'country_outage_observation_v2',
+    asn_state: {
+      state_codes: normalizedAsns.state_codes,
+      observed_at_utc: normalizedAsns.observed_at_utc,
+      observed_at_local: normalizedAsns.observed_at_local,
+      timelines: normalizedAsns.items,
+    },
+    asn_page: normalizedAsns,
+    audit: null,
+  })
+}
+
+export const normalizeCountryOutageAsnPage = (
+  payload: unknown,
+): CountryOutageAsnPage => {
+  if (
+    !isRecord(payload)
+    || payload.schema_version !== 'country_outage_asn_page_v2'
+    || !releaseMetadataKeys.every((key) => key in payload)
+    || !Array.isArray(payload.observed_at_utc)
+    || !Array.isArray(payload.observed_at_local)
+    || !isRecord(payload.state_codes)
+    || !isRecord(payload.duration_histogram)
+    || !Array.isArray(payload.items)
+  ) {
+    throw new Error('ASN 状态分页响应格式异常')
+  }
+  return payload as unknown as CountryOutageAsnPage
+}
+
+export const normalizeCountryOutageAudit = (
+  payload: unknown,
+): EventObservationAudit => {
+  if (
+    !isRecord(payload)
+    || payload.schema_version !== 'country_outage_audit_v2'
+    || !releaseMetadataKeys.every((key) => key in payload)
+    || !isRecord(payload.verified_hashes)
+    || !isRecord(payload.route_state_file)
+    || !isRecord(payload.input_summary)
+  ) {
+    throw new Error('国家中断审计响应格式异常')
+  }
+  return payload as unknown as EventObservationAudit
+}
 
 const extractArray = (payload: unknown, context: string): unknown[] => {
   if (isRecord(payload) && payload.status === false) {
@@ -381,6 +604,19 @@ const textArray = (value: unknown): string[] => (Array.isArray(value) ? value : 
 const evidencePhases = new Set<EvidencePhase>(['before', 'during', 'after', 'context'])
 const evidenceKinds = new Set<EvidenceKind>(['fact_record', 'route_observation', 'affected_object_set'])
 const phaseStatuses = new Set<EvidencePhaseStatus>(['not_available', 'observed_no_path', 'observed_paths'])
+const lifecycleStates = new Set<LegacyEventSemanticGuardrails['lifecycleState']>([
+  'recorded',
+  'unknown',
+  'unavailable',
+])
+const attributionStates = new Set<LegacyEventSemanticGuardrails['attributionState']>([
+  'detector_fact_only',
+  'legacy_biased',
+])
+const ratioStates = new Set<LegacyEventSemanticGuardrails['ratioState']>([
+  'not_applicable',
+  'recompute_required',
+])
 
 const normalizePhaseCoverage = (value: unknown): EvidencePhaseCoverage => {
   const record = isRecord(value) ? value : {}
@@ -390,6 +626,30 @@ const normalizePhaseCoverage = (value: unknown): EvidencePhaseCoverage => {
     snapshotCount: Math.max(0, finiteNumber(record.snapshot_count) ?? 0),
     pathCount: Math.max(0, finiteNumber(record.path_count) ?? 0),
     evidenceIds: textArray(record.evidence_ids),
+  }
+}
+
+const normalizeSemanticGuardrails = (value: unknown): LegacyEventSemanticGuardrails => {
+  if (!isRecord(value) || value.contract_version !== 'legacy_event_semantic_guardrails_v1') {
+    throw new Error('Evidence Bundle 缺少遗留语义约束')
+  }
+  const lifecycleState = cleanText(value.lifecycle_state) as LegacyEventSemanticGuardrails['lifecycleState']
+  const attributionState = cleanText(value.attribution_state) as LegacyEventSemanticGuardrails['attributionState']
+  const ratioState = cleanText(value.ratio_state) as LegacyEventSemanticGuardrails['ratioState']
+  if (
+    !lifecycleStates.has(lifecycleState)
+    || !attributionStates.has(attributionState)
+    || !ratioStates.has(ratioState)
+  ) {
+    throw new Error('Evidence Bundle 遗留语义约束无效')
+  }
+  return {
+    contractVersion: 'legacy_event_semantic_guardrails_v1',
+    lifecycleState,
+    attributionState,
+    ratioState,
+    blockedClaims: textArray(value.blocked_claims),
+    reasonCodes: textArray(value.reason_codes),
   }
 }
 
@@ -439,6 +699,7 @@ export const normalizeEvidenceBundle = (payload: unknown): EvidenceBundle => {
   const dataQuality = isRecord(payload.data_quality) ? payload.data_quality : {}
   const recordLocator = isRecord(sourceRecord.record_locator) ? sourceRecord.record_locator : {}
   const factRecord = isRecord(payload.fact_record) ? payload.fact_record : {}
+  const semanticGuardrails = normalizeSemanticGuardrails(payload.semantic_guardrails)
   const evidenceItems = (Array.isArray(payload.evidence_items) ? payload.evidence_items : [])
     .map(normalizeEvidenceItem)
     .filter((item): item is EvidenceItem => item !== null)
@@ -447,6 +708,7 @@ export const normalizeEvidenceBundle = (payload: unknown): EvidenceBundle => {
     bundleVersion: 'evidence_bundle_v1',
     incidentId: cleanText(payload.incident_id),
     incidentIdSchema: 'incident_id_v1',
+    semanticGuardrails,
     event: {
       kind: eventKind,
       label: cleanText(payload.event.label) || EVENT_KIND_LABELS[eventKind],

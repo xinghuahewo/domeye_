@@ -132,6 +132,7 @@ class MockFilteringTest(unittest.TestCase):
         )
         self.assertTrue(events["data"])
         self.assertTrue(all(row["attacked_as"] == "64512" for row in events["data"]))
+        self.assertTrue(all("semantic_guardrails" in row for row in events["data"]))
 
     def test_each_event_kind_returns_its_own_detail_shape(self):
         expected_fields = {
@@ -151,6 +152,10 @@ class MockFilteringTest(unittest.TestCase):
             )
             self.assertIn(field, detail)
             self.assertEqual(detail["start_time"], events[event_kind]["start_time"])
+            self.assertEqual(
+                detail["semantic_guardrails"]["contract_version"],
+                "legacy_event_semantic_guardrails_v1",
+            )
         self.assertIsInstance(
             self.fixture["event_details"]["hijack"]["pre_vp_paths"],
             dict,
@@ -170,6 +175,25 @@ class MockFilteringTest(unittest.TestCase):
         self.assertIn(first["phase_coverage"]["before"]["status"], ("observed_paths", "not_available"))
         self.assertEqual(first["assessment"]["classification"], "observation_only")
         self.assertIsNone(first["assessment"]["causal_conclusion"])
+        self.assertEqual(
+            first["semantic_guardrails"],
+            first["fact_record"]["semantic_guardrails"],
+        )
+        fact_record_identity = dict(first["fact_record"])
+        fact_record_identity.pop("semantic_guardrails")
+        fact_item = next(
+            item for item in first["evidence_items"]
+            if item["kind"] == "fact_record"
+        )
+        self.assertEqual(
+            fact_item["evidence_id"],
+            MOCK_SERVER._stable_identifier("ev_v1_", {
+                "incident_id": first["incident_id"],
+                "source_record": first["source_record"],
+                "fact_record": fact_record_identity,
+            }),
+        )
+        self.assertEqual(fact_item["field_count"], len(fact_record_identity))
         route_items = [item for item in first["evidence_items"] if item["kind"] == "route_observation"]
         self.assertTrue(route_items)
         self.assertTrue(all(
@@ -178,6 +202,20 @@ class MockFilteringTest(unittest.TestCase):
         ))
         self.assertFalse(first["data_quality"]["vantage_point_identity_available"])
         self.assertFalse(first["data_quality"]["raw_bgp_message_available"])
+
+    def test_legacy_leak_list_does_not_publish_lifecycle(self):
+        events = MOCK_SERVER.payload_for("/api/v1/events", {}, self.fixture)
+        leak = next(row for row in events["data"] if row["event_type"] == "路由泄漏")
+
+        self.assertEqual(leak["end_time"], "-")
+        self.assertEqual(
+            leak["semantic_guardrails"]["lifecycle_state"],
+            "unavailable",
+        )
+        self.assertIn(
+            "ongoing_state",
+            leak["semantic_guardrails"]["blocked_claims"],
+        )
 
     def test_query_after_development_window_is_empty(self):
         payload = MOCK_SERVER.payload_for(

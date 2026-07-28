@@ -121,11 +121,16 @@ def classify(path):
         raise ClassificationError("改动路径格式无效：{}".format(path))
     if path in ("Makefile", "dev/checks.py") or path.startswith(".github/workflows/"):
         return 3
+    if path.startswith(".codex/"):
+        return 2
     if path == "config/data-profile.json":
         return 3
     if path.startswith("config/research/") and path.endswith(".json"):
         return 3
-    if path == "config/performance-budget.json":
+    if path in (
+        "config/performance-budget.json",
+        "config/country-outage-agent-acceptance-v1.json",
+    ):
         return 2
     if path == "openspec/config.yaml":
         return 2
@@ -148,6 +153,8 @@ def classify(path):
     if path in ("backend/init_db.py",) or "migration" in path.lower() or "schema" in path.lower():
         return 3
     if path.startswith(("backend/", "dev/", "contracts/")):
+        return 2
+    if path.startswith("tools/"):
         return 2
     if path in ("frontend/package.json", "frontend/package-lock.json", "frontend/vite.config.ts"):
         return 2

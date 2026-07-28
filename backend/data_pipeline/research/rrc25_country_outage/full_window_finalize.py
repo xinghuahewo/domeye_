@@ -1,4 +1,4 @@
-"""完整窗口 journal 的纯派生、证据封包与语义复现。
+"""完整窗口 journal 的纯派生、结果封包与语义复现。
 
 本模块只消费已经闭合的 ``full_window_journal`` 及显式冻结的配置文件。它不
 读取 MRT、不连接数据库、不修改 ``CURRENT`` 或 scratch，也不把 peer session
@@ -6,8 +6,8 @@
 会原样保留；当 VP 覆盖不完整时，样本继续使用
 ``observed_route_state_partial_vp_coverage``，质量报告和中文报告同时披露该限制。
 
-最终包复用既有 baseline、episode、episode-as、Evidence Bundle v2、质量、
-对账、中文报告和 package manifest 纯函数。由于 journal 保存的是预计算槽而
+最终包复用既有 baseline、episode、episode-as、质量、对账、中文报告和
+package manifest 纯函数。由于 journal 保存的是预计算槽而
 不是完整 ``ReplaySnapshot``，这里提供严格适配层；算法内部可以消费 carried
 state 数值，但对外样本从不把 partial VP coverage 改写成完整观测。
 """
@@ -75,7 +75,6 @@ from .derived_assembly import (
     _expand_assessment_refs,
     _incident_episode_mapping_records,
     _mapping_summary,
-    _recovery_candidates,
     _source_temporal_report_records,
 )
 from .episode_as import build_episode_as_records
@@ -118,7 +117,6 @@ from .replay_persistence import (
     route_replay_state_from_payload,
     route_replay_state_to_payload,
 )
-from .research_evidence import build_research_evidence_package
 from .research_quality import (
     DiagnosticFact,
     DiagnosticViolation,
@@ -3077,351 +3075,6 @@ def _quality_evidence_rows(
     return routes, raw
 
 
-def _program(name: str, *, version: str, code_sha: str, config_sha: str) -> Mapping[str, str]:
-    return {
-        "name": name,
-        "version": version,
-        "code_sha256": code_sha,
-        "config_sha256": config_sha,
-    }
-
-
-def _evidence_provenance_context(
-    *,
-    source_fact: FrozenIncidentFact,
-    profile: Mapping[str, Any],
-    bindings: Mapping[str, str],
-    revised_mapping_sha: str,
-) -> Tuple[Mapping[str, Any], Mapping[str, Any], str]:
-    """分离 Evidence 身份包络与严格 MRT 研究窗，禁止合并双时间锚点。"""
-
-    locator = source_fact.temporal_evidence.locator_record_start
-    if (
-        locator.role != "source_record_identity_only"
-        or source_fact.temporal_evidence.single_event_time_merge_allowed is not False
-    ):
-        raise FullWindowFinalizeError("Evidence provenance 未保持 locator 的纯身份语义")
-    profile_start = _utc(profile["window"]["start_utc"], "profile.window.start_utc")
-    profile_end = _utc(
-        profile["window"]["end_exclusive_utc"],
-        "profile.window.end_exclusive_utc",
-    )
-    locator_time = _utc(locator.utc, "source fact locator identity time")
-    provenance_start = min(locator_time, profile_start)
-    if locator_time >= profile_end:
-        raise FullWindowFinalizeError("旧 Incident locator 越出 Evidence provenance 结束边界")
-    envelope = {
-        "schema_version": "rrc25-full-window-evidence-provenance-envelope/v1",
-        "source_fact": {
-            "snapshot_sha256": source_fact.snapshot_sha256,
-            "locator_identity_time_utc": locator_time,
-            "locator_time_role": locator.role,
-        },
-        "research_profile": {
-            "profile_id": profile["study_id"],
-            "profile_sha256": bindings["profile_sha256"],
-            "window_start_utc": profile_start,
-            "window_end_exclusive_utc": profile_end,
-            "interval_semantics": "half_open",
-        },
-        "evidence_provenance_window": {
-            "start_utc": provenance_start,
-            "end_exclusive_utc": profile_end,
-            "purpose": "legacy_incident_identity_plus_research_evidence",
-        },
-        "mrt_coverage": {
-            "window_start_utc": profile_start,
-            "window_end_exclusive_utc": profile_end,
-            "pre_research_interval_status": (
-                "not_in_rrc25_research_scope"
-                if provenance_start < profile_start
-                else "not_applicable"
-            ),
-        },
-        "single_event_time_merge_allowed": False,
-    }
-    envelope_sha = _canonical_hash(envelope)
-    data_snapshot = {
-        "profile_id": "iran-rrc25-full-window-evidence-provenance-envelope-v1",
-        "profile_sha256": envelope_sha,
-        "window_start": provenance_start,
-        "window_end_exclusive": profile_end,
-        "snapshot_time": profile["window"]["observation_end_utc"],
-        "business_timezone": "UTC",
-        "database_release_id": "research-filesystem-no-db",
-        "overlay_inventory_sha256": revised_mapping_sha,
-        # provenance 包络包含 locator→Profile 起点的无 MRT 区间，因此即使
-        # 研究窗内选中的 RouteEvent 全部 raw_traceable，也不能宣称 full。
-        "raw_source_status": "partial",
-    }
-    reproducibility_parameters = {
-        "provenance_envelope_schema_version": envelope["schema_version"],
-        "provenance_envelope_sha256": envelope_sha,
-        "source_fact_locator_identity_time_utc": locator_time,
-        "source_fact_locator_time_role": locator.role,
-        "research_profile_id": profile["study_id"],
-        "research_profile_sha256": bindings["profile_sha256"],
-        "research_window_start_utc": profile_start,
-        "research_window_end_exclusive_utc": profile_end,
-        "metric_window_policy": "strict_research_profile_half_open_window",
-        "episode_window_policy": "strict_research_profile_half_open_window",
-        "pre_research_mrt_coverage": (
-            "not_in_scope" if provenance_start < profile_start else "not_applicable"
-        ),
-        "single_event_time_merge_allowed": False,
-    }
-    limitation = (
-        f"Evidence Bundle 的 provenance 包络为容纳旧 Incident 身份锚点扩展至 "
-        f"{provenance_start}；[{provenance_start},{profile_start}) 不属于 RRC25 MRT "
-        "研究覆盖，MetricWindow、样本与 Episode 仍严格使用 Profile 半开窗口。"
-        if provenance_start < profile_start
-        else "Evidence Bundle provenance 与 RRC25 MRT Profile 起点一致；MetricWindow、样本与 Episode 仍严格使用 Profile 半开窗口。"
-    )
-    return data_snapshot, reproducibility_parameters, limitation
-
-
-def _evidence_parameters(
-    *,
-    episode: EpisodeDetection,
-    samples_by_id: Mapping[str, Mapping[str, Any]],
-    journal: _JournalData,
-    route_index: Mapping[str, ResearchRouteEvent],
-    source_fact: FrozenIncidentFact,
-    profile: Mapping[str, Any],
-    bindings: Mapping[str, str],
-    revised_mapping_sha: str,
-) -> Tuple[Mapping[str, Any], Tuple[Mapping[str, Any], ...]]:
-    support = [samples_by_id[sample_id] for sample_id in episode.supporting_sample_ids]
-    supporting_slots = {str(sample["slot"]["start"]): str(sample["sample_id"]) for sample in support}
-    selected_by_sample: dict[str, set[str]] = {str(sample["sample_id"]): set() for sample in support}
-    selected_ids: set[str] = set()
-    for sample in support:
-        slot_start = str(sample["slot"]["start"])
-        source_slot = next(
-            row
-            for row in journal.compatible_slots
-            if row["slot_start_utc"] == slot_start
-        )
-        for relation in source_slot.get("prefix_relations", ()):
-            for route_id in relation.get("route_event_ids", ()):
-                route_id = str(route_id)
-                if route_id in route_index:
-                    selected_ids.add(route_id)
-                    selected_by_sample[str(sample["sample_id"])].add(route_id)
-        for discovery in source_slot.get("dynamic_discoveries", ()):
-            route_id = discovery.get("route_event_id")
-            if isinstance(route_id, str) and route_id in route_index:
-                selected_ids.add(route_id)
-                selected_by_sample[str(sample["sample_id"])].add(route_id)
-    if not selected_ids:
-        # 仅使用 Episode 时间窗内、属于冻结 cohort 前缀的真实 RouteEvent 兜底；
-        # 仍不按 ASN 猜测 withdraw origin。
-        relevant_prefixes = {
-            relation.get("prefix")
-            for row in journal.compatible_slots
-            if row["slot_start_utc"] in supporting_slots
-            for relation in row.get("prefix_relations", ())
-        }
-        relevant_prefixes.update(
-            prefix
-            for row in journal.compatible_slots
-            if row["slot_start_utc"] in supporting_slots
-            for impact in row.get("asn_impacts", ())
-            if isinstance(impact, Mapping)
-            for family in impact.get("address_families", ())
-            if isinstance(family, Mapping)
-            for prefix in (family.get("reference_prefixes") or ())
-        )
-        for route_id, event in route_index.items():
-            if (
-                event.prefix in relevant_prefixes
-                and episode.onset_at <= event.event_time_utc < episode.observation_end_at
-            ):
-                selected_ids.add(route_id)
-                sample_id = supporting_slots.get(event.artifact_slot_utc)
-                if sample_id is not None:
-                    selected_by_sample[sample_id].add(route_id)
-    if not selected_ids:
-        raise FullWindowFinalizeError("已检测 Episode 没有可闭合的 RouteEvent/raw 证据")
-
-    raw_by_route = {str(row["route_event_id"]): row for row in journal.raw_rows}
-    route_rows_by_id = {str(row["route_event_id"]): row for row in journal.route_rows}
-    route_refs = []
-    raw_refs = []
-    for route_id in sorted(selected_ids):
-        row = route_rows_by_id.get(route_id)
-        raw = raw_by_route.get(route_id)
-        if row is None or raw is None:
-            raise FullWindowFinalizeError("Evidence RouteEvent/raw ref 未闭合")
-        raw_id = str(raw["raw_record_ref_id"])
-        route_refs.append(
-            {
-                "route_event_id": route_id,
-                "route_event_id_schema": "route_event_id_v1",
-                "schema_version": "route_event_v1",
-                "relation": "supports_observation",
-                "semantics": "route_observation",
-                "lineage_status": "raw_traceable",
-                "observed_at": row["event_time_utc"],
-                "collector_id": row["collector_id"],
-                "vp_id": row["vp_id"],
-                "vp_asn": row["peer_asn"],
-                "raw_record_ref_ids": [raw_id],
-                "phase": "during",
-            }
-        )
-        raw_refs.append(
-            {
-                "raw_record_ref_id": raw_id,
-                "artifact_id": raw["artifact_id"],
-                "file_sha256": raw["file_sha256"],
-                "record_offset": raw["record_offset"],
-                "record_length": raw["record_length"],
-                "record_hash": raw["record_hash"],
-                "record_ordinal": raw["record_ordinal"],
-                "element_ordinal": raw["element_ordinal"],
-                "collector_id": row["collector_id"],
-                "vp_id": row["vp_id"],
-                "vp_asn": row["peer_asn"],
-                "verification_status": "verified",
-            }
-        )
-    sample_links = tuple(
-        {
-            "sample_id": sample_id,
-            "link_state": "linked" if route_ids else "unknown",
-            "route_event_ids": sorted(route_ids),
-            "missing_reason_zh": (
-                None
-                if route_ids
-                else "该五分钟 carried-state 样本没有新增可关联 RouteEvent；状态来自此前已验证路由状态。"
-            ),
-        }
-        for sample_id, route_ids in sorted(selected_by_sample.items())
-    )
-    code_sha = bindings["code_sha256"]
-    config_sha = bindings["profile_sha256"]
-    data_snapshot, reproducibility_parameters, _limitation = (
-        _evidence_provenance_context(
-            source_fact=source_fact,
-            profile=profile,
-            bindings=bindings,
-            revised_mapping_sha=revised_mapping_sha,
-        )
-    )
-    parameters = {
-        "data_snapshot": data_snapshot,
-        "processing_lineage": {
-            "parser": _program("rrc25-mrt-parser", version="1.0.0", code_sha=code_sha, config_sha=config_sha),
-            "importer": _program("rrc25-full-window-worker", version="1.0.0", code_sha=code_sha, config_sha=config_sha),
-            "detector": _program("country-outage-episode", version="1.0.0", code_sha=code_sha, config_sha=config_sha),
-            "normalizer": _program("research-incident-normalizer", version="1.0.0", code_sha=code_sha, config_sha=config_sha),
-            "bundle_generator": _program("research-evidence-bundle-generator", version="2.0.0", code_sha=code_sha, config_sha=config_sha),
-            "import_run_id": journal.frozen_head["run_id"].replace("research_run_v1_", "run_v1_") + "0" * 8,
-        },
-        "raw_source_coverage": {
-            "expected_count": len(raw_refs),
-            "observed_count": len(raw_refs),
-        },
-        "generated_at": profile["window"]["observation_end_utc"],
-        "input_snapshot_sha256": source_fact.snapshot_sha256,
-        "query_fingerprint_sha256": journal.frozen_head["shard_chain_sha256"],
-        "source_hash_verification_status": "verified",
-        "source_fact_record_hash": _canonical_hash(source_fact.incident),
-        "reproducibility_parameters": reproducibility_parameters,
-        "raw_record_refs": raw_refs,
-        "route_event_refs": route_refs,
-    }
-    return parameters, sample_links
-
-
-def _evidence_packages(
-    *,
-    detection: Optional[DetectionResult],
-    episode_records: Sequence[Mapping[str, Any]],
-    wave_records: Sequence[Mapping[str, Any]],
-    samples: Sequence[Mapping[str, Any]],
-    journal: _JournalData,
-    route_index: Mapping[str, ResearchRouteEvent],
-    source_fact: FrozenIncidentFact,
-    profile: Mapping[str, Any],
-    bindings: Mapping[str, str],
-    revised_mapping_sha: str,
-    limitations_zh: Sequence[str],
-) -> Tuple[Mapping[str, Any], ...]:
-    data_snapshot, reproducibility_parameters, provenance_limitation = (
-        _evidence_provenance_context(
-            source_fact=source_fact,
-            profile=profile,
-            bindings=bindings,
-            revised_mapping_sha=revised_mapping_sha,
-        )
-    )
-    effective_limitations = tuple(
-        sorted(set(limitations_zh) | {provenance_limitation})
-    )
-    if detection is None or not detection.episodes:
-        parameters = {
-            "data_snapshot": data_snapshot,
-            "processing_lineage": {
-                "parser": None,
-                "importer": None,
-                "detector": None,
-                "normalizer": _program("research-incident-normalizer", version="1.0.0", code_sha=bindings["code_sha256"], config_sha=bindings["profile_sha256"]),
-                "bundle_generator": _program("research-evidence-bundle-generator", version="2.0.0", code_sha=bindings["code_sha256"], config_sha=bindings["profile_sha256"]),
-                "import_run_id": None,
-            },
-            "raw_source_coverage": {"expected_count": 0, "observed_count": 0},
-            "generated_at": profile["window"]["observation_end_utc"],
-            "input_snapshot_sha256": source_fact.snapshot_sha256,
-            "query_fingerprint_sha256": journal.frozen_head["shard_chain_sha256"],
-            "source_hash_verification_status": "partial",
-            "source_fact_record_hash": _canonical_hash(source_fact.incident),
-            "reproducibility_parameters": reproducibility_parameters,
-        }
-        return (
-            build_research_evidence_package(
-                incidents=(source_fact.incident,),
-                episode=None,
-                run_id=journal.frozen_head["run_id"],
-                waves=(),
-                samples=(),
-                recovery_candidates=(),
-                evidence_bundle_parameters=parameters,
-                limitations_zh=effective_limitations,
-            ),
-        )
-    samples_by_id = {str(item["sample_id"]): item for item in samples}
-    episode_record_by_id = {str(item["episode_id"]): item for item in episode_records}
-    packages = []
-    for episode in detection.episodes:
-        parameters, links = _evidence_parameters(
-            episode=episode,
-            samples_by_id=samples_by_id,
-            journal=journal,
-            route_index=route_index,
-            source_fact=source_fact,
-            profile=profile,
-            bindings=bindings,
-            revised_mapping_sha=revised_mapping_sha,
-        )
-        packages.append(
-            build_research_evidence_package(
-                incidents=(source_fact.incident,),
-                episode=episode_record_by_id[episode.episode_id],
-                waves=tuple(
-                    row for row in wave_records if row.get("episode_id") == episode.episode_id
-                ),
-                samples=tuple(samples_by_id[sample_id] for sample_id in episode.supporting_sample_ids),
-                recovery_candidates=_recovery_candidates(episode),
-                sample_route_event_links=links,
-                evidence_bundle_parameters=parameters,
-                limitations_zh=effective_limitations,
-            )
-        )
-    return tuple(packages)
-
-
 def _validate_parser_attestations_against_artifacts(
     attestations: Sequence[Mapping[str, Any]],
     artifacts: Sequence[Mapping[str, Any]],
@@ -4220,7 +3873,6 @@ def _build_reconciliation(
     episode_as_records: Sequence[Mapping[str, Any]],
     quality_routes: Sequence[Mapping[str, Any]],
     quality_raw: Sequence[Mapping[str, Any]],
-    evidence_packages: Sequence[Mapping[str, Any]],
     primary_episode_id: Optional[str],
 ) -> Mapping[str, Any]:
     registry = _evidence_registry(
@@ -4230,7 +3882,6 @@ def _build_reconciliation(
         episode_as_records=episode_as_records,
         route_events=quality_routes,
         raw_refs=quality_raw,
-        evidence_packages=evidence_packages,
     )
     derived = _derived_claim_values(
         primary_episode_id=primary_episode_id,
@@ -5331,19 +4982,6 @@ def derive_full_window_business_outputs(
             }
         )
     )
-    evidence_packages = _evidence_packages(
-        detection=compatible_detection,
-        episode_records=compatible_episodes,
-        wave_records=compatible_waves,
-        samples=compatible_samples,
-        journal=inputs.journal,
-        route_index=route_index,
-        source_fact=inputs.source_fact,
-        profile=inputs.profile,
-        bindings=inputs.bindings,
-        revised_mapping_sha=inputs.frozen_hashes["revised-mapping"],
-        limitations_zh=limitations,
-    )
     quality_routes, quality_raw = _quality_evidence_rows(inputs.journal)
     primary_episode_id = _select_primary_episode(
         compatible_episodes, compatible_algorithm_samples
@@ -5358,7 +4996,6 @@ def derive_full_window_business_outputs(
         episode_as_records=compatible_episode_as,
         quality_routes=quality_routes,
         quality_raw=quality_raw,
-        evidence_packages=evidence_packages,
         primary_episode_id=primary_episode_id,
     )
     stable_input_hashes = {
@@ -5427,7 +5064,6 @@ def derive_full_window_business_outputs(
             "prefix_impacts": revised_prefixes,
         },
         "incident_episode_mappings": incident_mappings,
-        "evidence_packages": evidence_packages,
         "reconciliation": reconciliation,
     }
     semantic_core_sha256 = _canonical_hash(semantic_core)
@@ -5584,7 +5220,6 @@ def derive_full_window_business_outputs(
         ),
         "data/revised-prefix-impact.jsonl.gz": ("prefix-impact", revised_prefixes),
         "data/incident-episode-mappings.jsonl.gz": ("incident-mappings", incident_mappings),
-        "evidence/research-evidence-packages.jsonl.gz": ("research-evidence", evidence_packages),
     }
     byte_files = {
         "报告/RRC25伊朗国家路由中断事件复算与对账报告.md": (
@@ -6166,7 +5801,6 @@ def verify_finalized_package(
         "data/compatible-country-samples.jsonl.gz",
         "data/compatible-sample-measurement-semantics.jsonl.gz",
         "data/compatible-episode-as-measurement-semantics.jsonl.gz",
-        "evidence/research-evidence-packages.jsonl.gz",
         "报告/RRC25伊朗国家路由中断事件复算与对账报告.md",
     }
     observed = {item["path"] for item in manifest["contents"]}

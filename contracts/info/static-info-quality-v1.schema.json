@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/info/static-info-quality-v1.schema.json",
+  "title": "Domeye static INFO 一期质量报告 v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "component",
+    "quality_gate_version",
+    "content_id",
+    "manifest_sha256",
+    "scope",
+    "status",
+    "blocking_failure_count",
+    "blocking_failures",
+    "files",
+    "rules"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "component": {"const": "static_info_quality"},
+    "quality_gate_version": {"const": "info-quality-v1"},
+    "content_id": {
+      "type": "string",
+      "pattern": "^info_v1_[0-9a-f]{32}$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "scope": {"const": "core_four_files"},
+    "status": {"enum": ["pass", "fail"]},
+    "blocking_failure_count": {"type": "integer", "minimum": 0},
+    "blocking_failures": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "files": {"type": "object"},
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rule_id",
+          "rule_version",
+          "blocking",
+          "status",
+          "observed",
+          "expected",
+          "evidence"
+        ],
+        "properties": {
+          "rule_id": {"type": "string", "minLength": 1},
+          "rule_version": {"const": 1},
+          "blocking": {"type": "boolean"},
+          "status": {"enum": ["pass", "fail"]},
+          "observed": {},
+          "expected": {},
+          "evidence": {"type": "object"}
+        }
+      }
+    }
+  }
+}
