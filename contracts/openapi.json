@@ -194,6 +194,246 @@
         "responses": {"200": {"description": "逻辑制品身份、质量与哈希", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAuditV2"}}}}}
       }
     },
+    "/api/v2/country-outage/capabilities/external-evidence": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutageExternalEvidenceCapability",
+        "description": "返回 Domeye 应用编排层的外部证据附加能力就绪态。该能力不可用不影响 RRC25 核心报告、追问和基础下载。",
+        "responses": {
+          "200": {
+            "description": "外部证据附加能力当前就绪态",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CountryOutageExternalEvidenceCapability"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
+    "/api/v2/country-outage/reports": {
+      "servers": [{"url": "/"}],
+      "post": {
+        "operationId": "createCountryOutageAgentReport",
+        "description": "由当前用户主动触发已有合法 country_outage 事件的 RRC25 固定快照报告。Python 控制面只代理到本机受限 Sidecar。",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "若提供，必须与请求体 idempotency_key 完全一致。",
+            "schema": {"$ref": "#/components/schemas/CountryOutageAgentIdempotencyKey"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CountryOutageAgentCreateReportRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "幂等请求命中同一报告运行", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentCreateReportResponse"}}}},
+          "202": {"description": "报告运行已排队或开始", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentCreateReportResponse"}}}},
+          "400": {"$ref": "#/components/responses/CountryOutageAgentBadRequest"},
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
+          "409": {"$ref": "#/components/responses/CountryOutageAgentConflict"},
+          "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "429": {"$ref": "#/components/responses/CountryOutageAgentRateLimited"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
+    "/api/v2/country-outage/reports/{report_id}/events": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "streamCountryOutageAgentReportEvents",
+        "description": "按递增 event id 返回受控报告、问答和会话状态；不发送模型草稿、工具返回或思考过程。支持 Last-Event-ID 重放。",
+        "parameters": [
+          {"name": "report_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]{1,124}$"}},
+          {"name": "Last-Event-ID", "in": "header", "schema": {"type": "string", "pattern": "^\\d+$"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "短期会话 SSE。每个 data 字段是三类受控事件之一；正式报告或答案只出现在终态事件。",
+            "headers": {
+              "Cache-Control": {"schema": {"type": "string"}},
+              "X-Accel-Buffering": {"schema": {"type": "string", "const": "no"}}
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {"$ref": "#/components/schemas/CountryOutageAgentEvent"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/CountryOutageAgentBadRequest"},
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
+          "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
+          "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
+    "/api/v2/country-outage/reports/{report_id}/questions": {
+      "servers": [{"url": "/"}],
+      "post": {
+        "operationId": "askCountryOutageAgentQuestion",
+        "description": "围绕原报告固定快照提交追问。默认仅使用 Domeye；只有请求显式携带本次授权时，才允许生成与 Domeye 回答严格分离的公开网络证据附录。",
+        "parameters": [
+          {"name": "report_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]{1,124}$"}},
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "若提供，必须与请求体 idempotency_key 完全一致。",
+            "schema": {"$ref": "#/components/schemas/CountryOutageAgentIdempotencyKey"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CountryOutageAgentCreateQuestionRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "幂等请求命中同一问题运行", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentCreateQuestionResponse"}}}},
+          "202": {"description": "问题运行已开始", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentCreateQuestionResponse"}}}},
+          "400": {"$ref": "#/components/responses/CountryOutageAgentBadRequest"},
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
+          "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
+          "409": {"$ref": "#/components/responses/CountryOutageAgentConflict"},
+          "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "429": {"$ref": "#/components/responses/CountryOutageAgentRateLimited"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
+    "/api/v2/country-outage/runs/{run_id}/abort": {
+      "servers": [{"url": "/"}],
+      "post": {
+        "operationId": "abortCountryOutageAgentRun",
+        "description": "取消当前用户拥有的报告或问题运行；取消后不再发布迟到结果。",
+        "parameters": [
+          {"name": "run_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^run_[A-Za-z0-9_-]{1,124}$"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentAbortRunRequest"}}}
+        },
+        "responses": {
+          "200": {"description": "运行已取消或已经处于终态", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentAbortRunResponse"}}}},
+          "400": {"$ref": "#/components/responses/CountryOutageAgentBadRequest"},
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
+          "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
+          "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
+    "/api/v2/country-outage/reports/{report_id}/artifacts/{artifact_format}": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "downloadCountryOutageAgentArtifact",
+        "description": "下载同一已校验报告制品生成的 Markdown 或 PDF；普通问答不进入文件。",
+        "parameters": [
+          {"name": "report_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]{1,124}$"}},
+          {"name": "artifact_format", "in": "path", "required": true, "schema": {"type": "string", "enum": ["markdown", "pdf"]}}
+        ],
+        "responses": {
+          "200": {
+            "description": "报告下载制品",
+            "headers": {
+              "Content-Disposition": {
+                "required": true,
+                "schema": {"type": "string", "pattern": "^attachment;"}
+              },
+              "X-Artifact-Id": {
+                "required": true,
+                "schema": {"type": "string", "minLength": 1}
+              },
+              "X-Content-SHA256": {
+                "required": true,
+                "schema": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+              }
+            },
+            "content": {
+              "text/markdown": {"schema": {"type": "string"}},
+              "application/pdf": {"schema": {"type": "string", "format": "binary"}}
+            }
+          },
+          "400": {"$ref": "#/components/responses/CountryOutageAgentBadRequest"},
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
+          "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
+          "409": {
+            "description": "报告尚未完成，或指定格式生成失败；另一格式可能仍可下载。",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}
+          },
+          "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
+    "/api/v2/country-outage/reports/{report_id}/questions/{question_id}/artifacts/external-appendix": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "downloadCountryOutageAgentExternalAppendix",
+        "description": "在短期会话内下载绑定当前用户、基础报告固定快照和指定问题的独立 Markdown 外部来源核验附录。只有无错误的 completed 外部核验可以下载；附录不修改基础报告，普通问答不进入附录，也不提供永久历史。",
+        "parameters": [
+          {"name": "report_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]{1,124}$"}},
+          {"name": "question_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^q_[A-Za-z0-9_-]{1,124}$"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "已完成外部来源核验的独立 Markdown 附录",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {"type": "string", "const": "private, no-store"}
+              },
+              "X-Content-Type-Options": {
+                "required": true,
+                "schema": {"type": "string", "const": "nosniff"}
+              },
+              "Content-Disposition": {
+                "required": true,
+                "schema": {"type": "string", "pattern": "^attachment;"}
+              },
+              "X-Artifact-Id": {
+                "required": true,
+                "schema": {"type": "string", "pattern": "^external_appendix_[0-9a-f]{32}$"}
+              },
+              "X-Content-SHA256": {
+                "required": true,
+                "schema": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+              }
+            },
+            "content": {
+              "text/markdown": {"schema": {"type": "string"}}
+            }
+          },
+          "400": {"$ref": "#/components/responses/CountryOutageAgentBadRequest"},
+          "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
+          "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
+          "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
+          "409": {
+            "description": "外部核验不是无错误完成态，或附录身份、来源边界不满足下载合同。",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}
+          },
+          "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
+        }
+      }
+    },
     "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
       "get": {
         "operationId": "getEventDetail",
@@ -327,7 +567,15 @@
       "P0BadRequest": {"description": "标识符非法或尝试路径穿越", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/P0ErrorResponse"}}}},
       "P0ResourceNotFound": {"description": "合法资源未出现在当前已准入候选中", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/P0ErrorResponse"}}}},
       "P0ArtifactConflict": {"description": "候选制品 SHA、fingerprint、引用或跨组件身份不一致", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/P0ErrorResponse"}}}},
-      "P0RepositoryUnavailable": {"description": "候选仓库未配置或不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/P0ErrorResponse"}}}}
+      "P0RepositoryUnavailable": {"description": "候选仓库未配置或不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/P0ErrorResponse"}}}},
+      "CountryOutageAgentBadRequest": {"description": "请求格式、标识符或幂等键不合法", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentUnauthenticated": {"description": "需要有效的登录身份", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentForbidden": {"description": "当前用户无事件、报告或运行访问权", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentNotFound": {"description": "报告、运行或短期会话不存在或已清理", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentConflict": {"description": "幂等键、快照身份、并发运行或状态冲突", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentExpired": {"description": "短期会话已到期，需由用户重新生成", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentRateLimited": {"description": "并发、队列、问题数或频率超过冻结门槛", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentUnavailable": {"description": "Agent Sidecar 未配置或暂不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}}
     },
     "schemas": {
       "P0ErrorResponse": {
@@ -670,7 +918,7 @@
         "type": "object",
         "required": ["state"],
         "properties": {
-          "state": {"type": "string", "enum": ["available", "building", "unavailable", "not_applicable"]},
+          "state": {"type": "string", "enum": ["available", "building", "unavailable", "not_applicable", "unknown"]},
           "reason": {"type": "string"}
         },
         "additionalProperties": true
@@ -814,6 +1062,749 @@
           "evidence_level": {"type": "string"}
         },
         "additionalProperties": false
+      },
+      "CountryOutageAgentIdempotencyKey": {
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+      },
+      "CountryOutageExternalEvidencePolicy": {
+        "type": "object",
+        "required": ["version", "sha256", "allowed_host_roots", "minimum_urls", "maximum_urls"],
+        "properties": {
+          "version": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "allowed_host_roots": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "minimum_urls": {"type": "integer", "const": 1},
+          "maximum_urls": {"type": "integer", "minimum": 1, "maximum": 5}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageExternalEvidenceCapability": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["schema_version", "capability", "state", "provider", "checked_at", "policy"],
+            "properties": {
+              "schema_version": {"type": "string", "const": "country_outage_external_evidence_capability_v1"},
+              "capability": {"type": "string", "const": "external_evidence"},
+              "state": {"type": "string", "const": "ready"},
+              "provider": {"type": "string", "const": "managed-egress-v1"},
+              "checked_at": {"type": "string", "format": "date-time"},
+              "policy": {"$ref": "#/components/schemas/CountryOutageExternalEvidencePolicy"}
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["schema_version", "capability", "state", "provider", "checked_at", "policy", "reason_code"],
+            "properties": {
+              "schema_version": {"type": "string", "const": "country_outage_external_evidence_capability_v1"},
+              "capability": {"type": "string", "const": "external_evidence"},
+              "state": {"type": "string", "const": "not_configured"},
+              "provider": {"type": "string", "const": "disabled"},
+              "checked_at": {"type": "string", "format": "date-time"},
+              "policy": {"type": "null"},
+              "reason_code": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["schema_version", "capability", "state", "provider", "checked_at", "policy", "reason_code"],
+            "properties": {
+              "schema_version": {"type": "string", "const": "country_outage_external_evidence_capability_v1"},
+              "capability": {"type": "string", "const": "external_evidence"},
+              "state": {"type": "string", "const": "self_check_failed"},
+              "provider": {"type": "string", "const": "managed-egress-v1"},
+              "checked_at": {"type": "string", "format": "date-time"},
+              "policy": {"type": "null"},
+              "reason_code": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "CountryOutageAgentEvidenceRef": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512,
+        "pattern": "^(?:[a-z][a-z0-9_]*:[A-Za-z0-9_~./:@+-]{1,480}|fact_[A-Za-z0-9_-]{1,128})$"
+      },
+      "CountryOutageAgentError": {
+        "type": "object",
+        "required": ["code", "message", "retryable"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1},
+          "retryable": {"type": "boolean"},
+          "next_action": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {"$ref": "#/components/schemas/CountryOutageAgentError"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentSession": {
+        "type": "object",
+        "required": ["expires_at", "reminder_at"],
+        "properties": {
+          "expires_at": {"type": "string", "format": "date-time"},
+          "reminder_at": {"type": "string", "format": "date-time"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentCreateReportRequest": {
+        "type": "object",
+        "required": ["event_reference", "publication_id", "revision", "idempotency_key"],
+        "properties": {
+          "event_reference": {
+            "type": "string",
+            "pattern": "^country_outage/\\d{4}-\\d{2}-\\d{2}[ +]\\d{2}:\\d{2}:\\d{2}/[A-Z]{2}/[1-9]\\d*/r$"
+          },
+          "publication_id": {"type": "string", "minLength": 1, "maxLength": 200},
+          "revision": {"type": "integer", "minimum": 1},
+          "idempotency_key": {"$ref": "#/components/schemas/CountryOutageAgentIdempotencyKey"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportPhase": {
+        "type": "string",
+        "enum": ["queued", "reading_data", "generating_report", "validating", "completed", "failed", "cancelled"]
+      },
+      "CountryOutageAgentQuestionPhase": {
+        "type": "string",
+        "enum": ["answering", "collecting_external", "completed", "failed", "cancelled"]
+      },
+      "CountryOutageAgentActiveRunState": {
+        "type": "string",
+        "enum": ["queued", "running", "completed", "failed", "cancelled"]
+      },
+      "CountryOutageAgentRunState": {
+        "type": "string",
+        "enum": ["queued", "running", "completed", "failed", "cancelled", "expired"]
+      },
+      "CountryOutageAgentCreateReportResponse": {
+        "type": "object",
+        "required": ["schema_version", "report_id", "run_id", "state", "phase", "session", "deduplicated"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_agent_http_v1"},
+          "report_id": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]+$"},
+          "run_id": {"type": "string", "pattern": "^run_[A-Za-z0-9_-]+$"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentActiveRunState"},
+          "phase": {"$ref": "#/components/schemas/CountryOutageAgentReportPhase"},
+          "session": {"$ref": "#/components/schemas/CountryOutageAgentSession"},
+          "deduplicated": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuoteSummary": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": {"type": "string", "const": "summary"},
+          "evidence_refs": {
+            "type": "array",
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuoteHighlight": {
+        "type": "object",
+        "required": ["kind", "highlight_index"],
+        "properties": {
+          "kind": {"type": "string", "const": "highlight"},
+          "highlight_index": {"type": "integer", "minimum": 0},
+          "evidence_refs": {
+            "type": "array",
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuoteSectionParagraph": {
+        "type": "object",
+        "required": ["kind", "section_id", "paragraph_index"],
+        "properties": {
+          "kind": {"type": "string", "const": "section_paragraph"},
+          "section_id": {"type": "string", "minLength": 1},
+          "paragraph_index": {"type": "integer", "minimum": 0},
+          "evidence_refs": {
+            "type": "array",
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuestionQuote": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/CountryOutageAgentQuoteSummary"},
+          {"$ref": "#/components/schemas/CountryOutageAgentQuoteHighlight"},
+          {"$ref": "#/components/schemas/CountryOutageAgentQuoteSectionParagraph"}
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "summary": "#/components/schemas/CountryOutageAgentQuoteSummary",
+            "highlight": "#/components/schemas/CountryOutageAgentQuoteHighlight",
+            "section_paragraph": "#/components/schemas/CountryOutageAgentQuoteSectionParagraph"
+          }
+        }
+      },
+      "CountryOutageAgentDomeyeOnlyQuestionRequest": {
+        "type": "object",
+        "required": ["question", "evidence_mode", "idempotency_key"],
+        "properties": {
+          "question": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "evidence_mode": {"type": "string", "const": "domeye_only"},
+          "quote": {"$ref": "#/components/schemas/CountryOutageAgentQuestionQuote"},
+          "idempotency_key": {"$ref": "#/components/schemas/CountryOutageAgentIdempotencyKey"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalAuthorization": {
+        "type": "object",
+        "required": ["authorized", "authorized_at"],
+        "properties": {
+          "authorized": {"type": "boolean", "const": true},
+          "authorized_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "用户在提交有效指定 URL 后明确确认读取的时间；新运行只接受请求前五分钟内且不晚于服务端当前时间的授权，已接受请求的幂等重放不重复读取。"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalQuestionRequest": {
+        "type": "object",
+        "required": ["question", "evidence_mode", "external_authorization", "external_urls", "idempotency_key"],
+        "properties": {
+          "question": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "evidence_mode": {"type": "string", "const": "domeye_plus_external"},
+          "quote": {"$ref": "#/components/schemas/CountryOutageAgentQuestionQuote"},
+          "external_authorization": {"$ref": "#/components/schemas/CountryOutageAgentExternalAuthorization"},
+          "external_urls": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "description": "用户本次明确确认读取和核验的公开 HTTP/HTTPS 页面；允许来源与数量由已认证的 capability 策略决定，不会从问题文字发现或扩展其他页面。",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048,
+              "pattern": "^https?://"
+            }
+          },
+          "idempotency_key": {"$ref": "#/components/schemas/CountryOutageAgentIdempotencyKey"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentCreateQuestionRequest": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/CountryOutageAgentDomeyeOnlyQuestionRequest"},
+          {"$ref": "#/components/schemas/CountryOutageAgentExternalQuestionRequest"}
+        ],
+        "discriminator": {
+          "propertyName": "evidence_mode",
+          "mapping": {
+            "domeye_only": "#/components/schemas/CountryOutageAgentDomeyeOnlyQuestionRequest",
+            "domeye_plus_external": "#/components/schemas/CountryOutageAgentExternalQuestionRequest"
+          }
+        }
+      },
+      "CountryOutageAgentCreateQuestionResponse": {
+        "type": "object",
+        "required": ["schema_version", "report_id", "question_id", "number", "run_id", "state", "phase", "session", "deduplicated"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_agent_http_v1"},
+          "report_id": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]+$"},
+          "question_id": {"type": "string", "pattern": "^q_[A-Za-z0-9_-]+$"},
+          "number": {"type": "integer", "minimum": 1, "maximum": 30},
+          "run_id": {"type": "string", "pattern": "^run_[A-Za-z0-9_-]+$"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentActiveRunState"},
+          "phase": {"$ref": "#/components/schemas/CountryOutageAgentQuestionPhase"},
+          "session": {"$ref": "#/components/schemas/CountryOutageAgentSession"},
+          "deduplicated": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentAbortRunRequest": {
+        "type": "object",
+        "maxProperties": 0,
+        "additionalProperties": false
+      },
+      "CountryOutageAgentAbortRunResponse": {
+        "type": "object",
+        "required": ["schema_version", "report_id", "run_id", "state", "abort_effective"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_agent_http_v1"},
+          "report_id": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]+$"},
+          "run_id": {"type": "string", "pattern": "^run_[A-Za-z0-9_-]+$"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentActiveRunState"},
+          "abort_effective": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentSnapshotIdentity": {
+        "type": "object",
+        "required": ["incidentId", "publicationId", "revision", "dataThrough", "isFinal", "cohortId", "collectorId", "windowStartUtc", "windowEndUtc"],
+        "properties": {
+          "incidentId": {"type": "string", "minLength": 1},
+          "publicationId": {"type": "string", "minLength": 1},
+          "revision": {"type": "integer", "minimum": 1},
+          "dataThrough": {"type": ["string", "null"], "format": "date-time"},
+          "isFinal": {"type": "boolean"},
+          "cohortId": {"type": "string", "minLength": 1},
+          "collectorId": {"type": "string", "const": "rrc25"},
+          "windowStartUtc": {"type": "string", "format": "date-time"},
+          "windowEndUtc": {"type": "string", "format": "date-time"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentArtifactReady": {
+        "type": "object",
+        "required": ["format", "status", "artifact_id", "filename", "media_type", "byte_length", "sha256"],
+        "properties": {
+          "format": {"type": "string", "enum": ["markdown", "pdf"]},
+          "status": {"type": "string", "const": "ready"},
+          "artifact_id": {"type": "string", "minLength": 1},
+          "filename": {"type": "string", "minLength": 1},
+          "media_type": {"type": "string", "enum": ["text/markdown; charset=utf-8", "application/pdf"]},
+          "byte_length": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentArtifactFailed": {
+        "type": "object",
+        "required": ["format", "status", "code", "message"],
+        "properties": {
+          "format": {"type": "string", "enum": ["markdown", "pdf"]},
+          "status": {"type": "string", "const": "failed"},
+          "code": {"type": "string", "minLength": 1},
+          "message": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentArtifactMetadata": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/CountryOutageAgentArtifactReady"},
+          {"$ref": "#/components/schemas/CountryOutageAgentArtifactFailed"}
+        ],
+        "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+            "ready": "#/components/schemas/CountryOutageAgentArtifactReady",
+            "failed": "#/components/schemas/CountryOutageAgentArtifactFailed"
+          }
+        }
+      },
+      "CountryOutageAgentEvidenceParagraph": {
+        "type": "object",
+        "required": ["text", "evidenceRefs"],
+        "properties": {
+          "text": {"type": "string"},
+          "evidenceRefs": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportHighlight": {
+        "type": "object",
+        "required": ["label", "value", "evidenceRefs"],
+        "properties": {
+          "label": {"type": "string"},
+          "value": {"type": "string"},
+          "evidenceRefs": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportSection": {
+        "type": "object",
+        "required": ["id", "title", "paragraphs"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["scope", "key_numbers", "visibility", "asn_scope", "address_families", "updates", "end_state", "resources", "assessment"]
+          },
+          "title": {"type": "string"},
+          "paragraphs": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceParagraph"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportDraft": {
+        "type": "object",
+        "required": ["schemaVersion", "title", "subtitle", "summary", "highlights", "sections", "unknowns"],
+        "properties": {
+          "schemaVersion": {"type": "string", "const": "country_outage_report_draft_v1"},
+          "title": {"type": "string"},
+          "subtitle": {"type": "string"},
+          "summary": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceParagraph"},
+          "highlights": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentReportHighlight"}
+          },
+          "sections": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentReportSection"}
+          },
+          "unknowns": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentEventIdentity": {
+        "type": "object",
+        "required": ["incident_id", "legacy_reference", "event_type", "country_code", "country_name", "display_name"],
+        "properties": {
+          "incident_id": {"type": "string"},
+          "legacy_reference": {"type": "string", "pattern": "^country_outage/"},
+          "event_type": {"type": "string", "const": "country_outage"},
+          "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
+          "country_name": {"type": "string"},
+          "display_name": {"type": "string"}
+        },
+        "additionalProperties": true
+      },
+      "CountryOutageAgentReportModelIdentity": {
+        "type": "object",
+        "required": ["provider", "model", "modelVersion", "adapter"],
+        "properties": {
+          "provider": {"type": "string"},
+          "model": {"type": "string"},
+          "modelVersion": {"type": "string"},
+          "adapter": {"type": "string", "enum": ["pi-sdk", "deterministic-acceptance"]},
+          "piVersion": {"type": "string"},
+          "runtimeIdentity": {"type": "string", "enum": ["formal", "candidate"]},
+          "modelRevisionKind": {
+            "type": "string",
+            "const": "mutable_alias",
+            "description": "供应方模型标识是可变别名，不是不可变权重 revision。"
+          },
+          "immutableRevisionAvailable": {
+            "type": "boolean",
+            "const": false,
+            "description": "供应方未提供可验证的不可变权重 revision。"
+          },
+          "limitation": {
+            "type": "string",
+            "const": "供应方未提供不可变权重 revision；deepseek-v4-flash 是可变别名，可能无痕变化。"
+          },
+          "certificationValidUntil": {
+            "type": "string",
+            "format": "date-time",
+            "description": "本次模型认证的失效时刻；到达该时刻即不得继续生成。"
+          },
+          "certifiedScenarioSetId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$",
+            "description": "已认证合法场景集合的稳定标识。"
+          },
+          "certifiedInputScope": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$",
+            "description": "已认证输入范围的稳定标识。"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": ["adapter", "runtimeIdentity"],
+              "properties": {
+                "adapter": {"const": "pi-sdk"},
+                "runtimeIdentity": {"const": "formal"}
+              }
+            },
+            "then": {
+              "required": [
+                "modelRevisionKind",
+                "immutableRevisionAvailable",
+                "limitation",
+                "certificationValidUntil",
+                "certifiedScenarioSetId",
+                "certifiedInputScope"
+              ]
+            }
+          }
+        ],
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportValidation": {
+        "type": "object",
+        "required": ["passed", "errors", "warnings", "checkedEvidenceRefs"],
+        "properties": {
+          "passed": {"type": "boolean"},
+          "errors": {"type": "array", "items": {"type": "string"}},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "checkedEvidenceRefs": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportDocument": {
+        "type": "object",
+        "required": ["schemaVersion", "artifactId", "reportContentSha256", "reportSpecificationVersion", "projectKnowledgeVersion", "validatorRulesVersion", "skillBundleSha256", "generatedAt", "aiGenerated", "humanReviewed", "event", "snapshot", "factSetId", "model", "validation", "draft"],
+        "properties": {
+          "schemaVersion": {"type": "string", "const": "country_outage_report_document_v1"},
+          "artifactId": {"type": "string", "minLength": 1},
+          "reportContentSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "reportSpecificationVersion": {"type": "string", "const": "country_outage_report_spec_v1"},
+          "projectKnowledgeVersion": {"type": "string", "const": "country_outage_report_skill_v6"},
+          "validatorRulesVersion": {"type": "string"},
+          "skillBundleSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "generatedAt": {"type": "string", "format": "date-time"},
+          "aiGenerated": {"type": "boolean", "const": true},
+          "humanReviewed": {"type": "boolean", "const": false},
+          "event": {"$ref": "#/components/schemas/CountryOutageAgentEventIdentity"},
+          "snapshot": {"$ref": "#/components/schemas/CountryOutageAgentSnapshotIdentity"},
+          "factSetId": {"type": "string", "minLength": 1},
+          "model": {"$ref": "#/components/schemas/CountryOutageAgentReportModelIdentity"},
+          "validation": {"$ref": "#/components/schemas/CountryOutageAgentReportValidation"},
+          "draft": {"$ref": "#/components/schemas/CountryOutageAgentReportDraft"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuestionEvidenceRecord": {
+        "type": "object",
+        "required": ["evidence_ref", "source", "label", "metric", "value", "observed_at_utc", "observed_at_local", "statistical_scope"],
+        "properties": {
+          "evidence_ref": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"},
+          "source": {"type": "string", "enum": ["report", "overview", "series", "audit", "derived_fact", "asn_detail"]},
+          "label": {"type": "string"},
+          "metric": {"type": ["string", "null"]},
+          "value": {"type": ["string", "null"]},
+          "observed_at_utc": {"type": ["string", "null"]},
+          "observed_at_local": {"type": ["string", "null"]},
+          "statistical_scope": {"type": "string", "pattern": ".*RRC25.*"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuestionAnswer": {
+        "type": "object",
+        "required": ["kind", "text", "evidence_refs", "evidence_records", "missing_evidence", "limitations", "snapshot"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["fact", "metric_semantics", "evidence_boundary", "insufficient_evidence"]},
+          "text": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/components/schemas/CountryOutageAgentEvidenceRef"}},
+          "evidence_records": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentQuestionEvidenceRecord"}
+          },
+          "missing_evidence": {"type": "array", "maxItems": 20, "items": {"type": "string"}},
+          "limitations": {"type": "array", "maxItems": 20, "items": {"type": "string"}},
+          "snapshot": {"$ref": "#/components/schemas/CountryOutageAgentSnapshotIdentity"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalClaim": {
+        "type": "object",
+        "required": ["claim_id", "text", "status", "source_ids", "limitations"],
+        "properties": {
+          "claim_id": {"type": "string", "minLength": 1},
+          "text": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "status": {"type": "string", "enum": ["supported", "mixed", "conflict", "insufficient"]},
+          "source_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "limitations": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalFrozenBinding": {
+        "type": "object",
+        "required": ["incident_id", "publication_id", "revision", "data_through", "fact_set_id", "cohort_id", "country_code", "collector_id", "window_start_utc", "window_end_utc"],
+        "properties": {
+          "incident_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "publication_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "revision": {"type": "integer", "minimum": 1},
+          "data_through": {"type": ["string", "null"], "format": "date-time"},
+          "fact_set_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "cohort_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
+          "collector_id": {"type": "string", "const": "rrc25"},
+          "window_start_utc": {"type": "string", "format": "date-time"},
+          "window_end_utc": {"type": "string", "format": "date-time"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalStructuredFact": {
+        "type": "object",
+        "required": ["fact_id", "binding_id", "metric", "address_family", "observed_window_start_utc", "observed_window_end_utc", "source_value", "normalized_value"],
+        "properties": {
+          "fact_id": {"type": "string", "minLength": 1},
+          "binding_id": {"type": "string", "minLength": 1},
+          "metric": {"type": "string", "const": "bgp_control_plane_visibility_state"},
+          "address_family": {"type": "string", "enum": ["all", "ipv4", "ipv6"]},
+          "observed_window_start_utc": {"type": "string", "format": "date-time"},
+          "observed_window_end_utc": {"type": "string", "format": "date-time"},
+          "source_value": {"type": "string", "enum": ["degraded", "visibility_reduced", "stable", "no_material_change", "recovering", "visibility_improving", "recovered", "baseline_restored"]},
+          "normalized_value": {"type": "string", "enum": ["degraded", "stable", "recovering", "recovered"]}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalSource": {
+        "type": "object",
+        "required": ["source_id", "title", "publisher", "url", "published_at", "retrieved_at", "source_classification", "source_tier", "read_status", "read_status_detail", "summary"],
+        "properties": {
+          "source_id": {"type": "string", "minLength": 1},
+          "title": {"type": ["string", "null"], "maxLength": 300},
+          "publisher": {"type": ["string", "null"], "maxLength": 300},
+          "url": {"type": "string", "maxLength": 2048},
+          "published_at": {"type": ["string", "null"], "format": "date-time"},
+          "retrieved_at": {"type": ["string", "null"], "format": "date-time"},
+          "source_classification": {"type": "string", "enum": ["measurement_platform", "unknown"]},
+          "source_tier": {"type": "string", "enum": ["direct", "secondary", "lead", "unknown"]},
+          "read_status": {"type": "string", "enum": ["readable", "unreadable", "blocked", "failed"]},
+          "read_status_detail": {"type": ["string", "null"], "maxLength": 500},
+          "summary": {"type": ["string", "null"], "maxLength": 480},
+          "evidence_status": {"type": "string", "enum": ["available", "insufficient", "read_failed"]},
+          "evidence_status_detail": {"type": ["string", "null"], "maxLength": 500},
+          "structured_facts": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentExternalStructuredFact"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentExternalAppendix": {
+        "type": "object",
+        "required": ["schema_version", "classification_policy_version", "status", "query", "requested_at", "retrieved_at", "claims", "sources"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_external_appendix_v1"},
+          "classification_policy_version": {"type": "string", "const": "country_outage_external_source_classification_policy_v1"},
+          "status": {"type": "string", "enum": ["collecting", "completed", "partial", "failed"]},
+          "comparison_status": {"type": "string", "enum": ["supported", "mixed", "conflict", "insufficient"]},
+          "frozen_binding": {"$ref": "#/components/schemas/CountryOutageAgentExternalFrozenBinding"},
+          "query": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "requested_at": {"type": "string", "format": "date-time"},
+          "retrieved_at": {"type": ["string", "null"], "format": "date-time"},
+          "claims": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentExternalClaim"}
+          },
+          "sources": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentExternalSource"}
+          },
+          "error": {"$ref": "#/components/schemas/CountryOutageAgentError"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuestionResult": {
+        "type": "object",
+        "required": ["question_id", "number", "question", "evidence_mode", "state"],
+        "properties": {
+          "question_id": {"type": "string", "pattern": "^q_[A-Za-z0-9_-]+$"},
+          "number": {"type": "integer", "minimum": 1, "maximum": 30},
+          "question": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "evidence_mode": {"type": "string", "enum": ["domeye_only", "domeye_plus_external"]},
+          "quote": {"$ref": "#/components/schemas/CountryOutageAgentQuestionQuote"},
+          "external_appendix": {"$ref": "#/components/schemas/CountryOutageAgentExternalAppendix"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentActiveRunState"},
+          "answer": {"$ref": "#/components/schemas/CountryOutageAgentQuestionAnswer"},
+          "error": {"$ref": "#/components/schemas/CountryOutageAgentError"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentReportStateEvent": {
+        "type": "object",
+        "required": ["schema_version", "event_id", "report_id", "run_id", "event_type", "at", "state", "phase", "session"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_agent_event_v1"},
+          "event_id": {"type": "integer", "minimum": 1},
+          "report_id": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]+$"},
+          "run_id": {"type": "string", "pattern": "^run_[A-Za-z0-9_-]+$"},
+          "event_type": {"type": "string", "const": "report_state"},
+          "at": {"type": "string", "format": "date-time"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentActiveRunState"},
+          "phase": {"$ref": "#/components/schemas/CountryOutageAgentReportPhase"},
+          "session": {"$ref": "#/components/schemas/CountryOutageAgentSession"},
+          "snapshot": {"$ref": "#/components/schemas/CountryOutageAgentSnapshotIdentity"},
+          "report": {"$ref": "#/components/schemas/CountryOutageAgentReportDocument"},
+          "artifacts": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"$ref": "#/components/schemas/CountryOutageAgentArtifactMetadata"}
+          },
+          "error": {"$ref": "#/components/schemas/CountryOutageAgentError"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentQuestionStateEvent": {
+        "type": "object",
+        "required": ["schema_version", "event_id", "report_id", "run_id", "event_type", "at", "state", "phase", "session", "question"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_agent_event_v1"},
+          "event_id": {"type": "integer", "minimum": 1},
+          "report_id": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]+$"},
+          "run_id": {"type": "string", "pattern": "^run_[A-Za-z0-9_-]+$"},
+          "event_type": {"type": "string", "const": "question_state"},
+          "at": {"type": "string", "format": "date-time"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentActiveRunState"},
+          "phase": {"$ref": "#/components/schemas/CountryOutageAgentQuestionPhase"},
+          "session": {"$ref": "#/components/schemas/CountryOutageAgentSession"},
+          "question": {"$ref": "#/components/schemas/CountryOutageAgentQuestionResult"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentSessionNoticeEvent": {
+        "type": "object",
+        "required": ["schema_version", "event_id", "report_id", "event_type", "at", "state", "phase", "session"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_agent_event_v1"},
+          "event_id": {"type": "integer", "minimum": 1},
+          "report_id": {"type": "string", "pattern": "^cor_[A-Za-z0-9_-]+$"},
+          "event_type": {"type": "string", "const": "session_notice"},
+          "at": {"type": "string", "format": "date-time"},
+          "state": {"$ref": "#/components/schemas/CountryOutageAgentRunState"},
+          "phase": {"type": "string", "enum": ["session_expiring", "session_expired"]},
+          "session": {"$ref": "#/components/schemas/CountryOutageAgentSession"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageAgentEvent": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/CountryOutageAgentReportStateEvent"},
+          {"$ref": "#/components/schemas/CountryOutageAgentQuestionStateEvent"},
+          {"$ref": "#/components/schemas/CountryOutageAgentSessionNoticeEvent"}
+        ],
+        "discriminator": {
+          "propertyName": "event_type",
+          "mapping": {
+            "report_state": "#/components/schemas/CountryOutageAgentReportStateEvent",
+            "question_state": "#/components/schemas/CountryOutageAgentQuestionStateEvent",
+            "session_notice": "#/components/schemas/CountryOutageAgentSessionNoticeEvent"
+          }
+        }
       },
       "EvidenceBundle": {
         "type": "object",

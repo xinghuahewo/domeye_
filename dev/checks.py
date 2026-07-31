@@ -16,7 +16,13 @@ RISK_NAMES = {
     2: "L2 API/业务逻辑/构建配置",
     3: "L3 Schema/数据/权限/部署",
 }
-IGNORED_PREFIXES = ("frontend/dist/", "frontend/node_modules/", "backend/.venv/")
+IGNORED_PREFIXES = (
+    "frontend/dist/",
+    "frontend/node_modules/",
+    "backend/.venv/",
+    "agent-sidecar/dist/",
+    "agent-sidecar/node_modules/",
+)
 RISK_CHECK_MATRIX = {
     0: ("check-fast",),
     1: ("check-fast",),
@@ -130,6 +136,9 @@ def classify(path):
     if path in (
         "config/performance-budget.json",
         "config/country-outage-agent-acceptance-v1.json",
+        "config/country-outage-agent-acceptance-v2.json",
+        "config/country-outage-agent-core-acceptance-v3.json",
+        "config/country-outage-external-evidence-pack-v1.json",
     ):
         return 2
     if path == "openspec/config.yaml":
@@ -139,6 +148,8 @@ def classify(path):
     if path == "backend/core.sha256":
         return 3
     if path.startswith(("dev/database/", "dev/backend/")):
+        return 3
+    if path.startswith("agent-sidecar/"):
         return 3
     if path.endswith(".md") or path.startswith("docs/"):
         return 0
@@ -176,6 +187,8 @@ def boundary_flags(path):
         flags.add("pipeline-rules")
     if path in ("backend/pyproject.toml", "backend/uv.lock", "frontend/package-lock.json"):
         flags.add("dependency-lock")
+    if path in ("agent-sidecar/package.json", "agent-sidecar/package-lock.json"):
+        flags.add("dependency-lock")
     if path == "config/data-profile.json" or path in (
         "backend/config/data_window.py",
         "deploy/lib/data-profile.sh",
@@ -193,6 +206,8 @@ def boundary_flags(path):
         flags.update(("deployment-switch", "nginx-switch"))
     if path.startswith("deploy/release/"):
         flags.add("deployment-switch")
+    if path.startswith("deploy/country-outage-agent/"):
+        flags.update(("deployment-switch", "production-env", "security-config"))
     if path in (
         "deploy/start-backend.sh",
         "deploy/stop-backend.sh",
@@ -205,6 +220,10 @@ def boundary_flags(path):
         flags.add("deployment-switch")
     if path.endswith((".env", ".env.example")) or "source.env" in lower_path:
         flags.update(("production-env", "security-config"))
+    if path.startswith("agent-sidecar/src/pi/") or path.startswith(
+        "agent-sidecar/resources/"
+    ):
+        flags.add("security-config")
     if path.startswith("deploy/lib/"):
         flags.add("deployment-switch")
     return flags
@@ -314,6 +333,25 @@ def print_risk(files):
 
 def fast_checks(files):
     commands = []
+    agent_sidecar_affected = any(
+        path.startswith("agent-sidecar/")
+        or path.startswith("contracts/agent/")
+        or path
+        in (
+            "config/country-outage-agent-acceptance-v2.json",
+            "config/country-outage-agent-core-acceptance-v3.json",
+            "config/country-outage-external-evidence-pack-v1.json",
+            ".codex/hooks/country_outage_agent_review.py",
+        )
+        for path in files
+    )
+    if agent_sidecar_affected:
+        commands.append(
+            ("国家中断 Agent Sidecar 类型检查", ["npm", "run", "typecheck"], ROOT / "agent-sidecar")
+        )
+        commands.append(
+            ("国家中断 Agent Sidecar 全量测试", ["npm", "test"], ROOT / "agent-sidecar")
+        )
     if any(path in (
         "config/data-profile.json",
         "dev/data_profile.py",
@@ -389,6 +427,16 @@ def release_checks():
         ("P0 数据合同", [sys.executable, "dev/verify_p0_contracts.py"], ROOT),
         ("P0 数据质量门禁离线 fixture", ["make", "check-data-p0", "P0_QUALITY_FIXTURE=1"], ROOT),
         ("OpenAPI 生成类型一致性", [sys.executable, "dev/verify_openapi_types.py"], ROOT),
+        (
+            "国家中断 Agent Sidecar 类型检查",
+            ["npm", "run", "typecheck"],
+            ROOT / "agent-sidecar",
+        ),
+        (
+            "国家中断 Agent Sidecar 全量测试",
+            ["npm", "test"],
+            ROOT / "agent-sidecar",
+        ),
         ("前端全量测试", ["npm", "test"], ROOT / "frontend"),
         ("前端生产构建", ["npm", "run", "build"], ROOT / "frontend"),
         ("后端全量测试", ["uv", "run", "--frozen", "pytest"], ROOT / "backend"),

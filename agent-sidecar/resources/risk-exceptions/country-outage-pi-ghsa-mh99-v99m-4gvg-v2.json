@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "country_outage_dependency_risk_exception_v2",
+  "exceptionId": "country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2",
+  "status": "approved",
+  "approvedAt": "2026-07-29T03:03:08Z",
+  "expiresAt": "2026-08-12T16:00:00Z",
+  "risk": {
+    "advisory": "GHSA-mh99-v99m-4gvg",
+    "component": "brace-expansion@5.0.7",
+    "piPackage": "@earendil-works/pi-coding-agent",
+    "piVersion": "0.82.1"
+  },
+  "constraints": {
+    "resourceLoaderId": "country-outage-static-resource-loader-v1",
+    "packageManagerResolutionEnabled": false,
+    "modelResolverEnabled": false,
+    "externalGlobEnabled": false,
+    "skillName": "country-outage-report",
+    "allowedTools": [
+      "country_outage_resolve",
+      "country_outage_get_observation",
+      "country_outage_get_asns"
+    ],
+    "capabilityExpansionAllowed": false,
+    "responseModelVendorPatch": {
+      "patchId": "pi-ai-openai-completions-response-model-v1",
+      "targetPackage": "@earendil-works/pi-ai",
+      "targetVersion": "0.82.1",
+      "targetRelativePathFromCodingAgent": "node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",
+      "upstreamSourceSha256": "0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a",
+      "patchedSourceSha256": "5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b",
+      "patchArtifactSha256": "c62983d07f150ddbef0e412feb596406648f1e151430f633f406ca018e2412cd",
+      "patchManifestSha256": "886b0faf7ccbd0dec19ba74aaa3d92e5b6a218177bf36f1f50a5ece553f8bfba",
+      "sameNameResponseModelPreserved": true,
+      "applicationMode": "postinstall_exact_hash_replacement_v1"
+    }
+  },
+  "reevaluationTriggers": [
+    "pi_fixed_version_available",
+    "formal_path_changed",
+    "capability_scope_changed",
+    "vendor_patch_drift",
+    "vendor_patch_no_longer_required"
+  ]
+}

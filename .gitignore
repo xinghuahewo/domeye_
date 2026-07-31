@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 /artifacts/
+/frontend/tmp/
+/output/
+/tmp/
 var/
 deploy/database/database.env
 deploy/database/source.env

@@ -11,8 +11,10 @@ import { eventDateTimeRange, recentDateRange, resolveDataWindow } from '@/utils/
 
 const router = useRouter()
 const route = useRoute()
-const defaultDates = recentDateRange(7)
 const dataWindow = resolveDataWindow(import.meta.env)
+const defaultDates = dataWindow
+  ? recentDateRange(7, import.meta.env)
+  : { start: '', end: '' }
 const minimumDate = dataWindow?.start.slice(0, 10)
 const maximumDate = dataWindow?.end.slice(0, 10)
 const requestedEventType = typeof route.query.event_type === 'string'
@@ -48,6 +50,12 @@ const pageLabel = computed(() => {
 
 async function load(resetPage = false) {
   if (resetPage) page.value = 1
+  if (!dataWindow) {
+    result.value = { data: [], totalPage: 0, recordCount: 0 }
+    loading.value = false
+    error.value = '缺少固定数据窗口配置，已阻止按当前日期查询。请重新构建并发布完整前端。'
+    return
+  }
   loading.value = true
   error.value = ''
   try {

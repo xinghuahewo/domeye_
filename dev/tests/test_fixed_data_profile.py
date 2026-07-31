@@ -30,6 +30,10 @@ FULL_ACCEPTANCE = (ROOT / "deploy" / "acceptance" / "full-acceptance.sh").read_t
 FIXED_FRONTEND = (ROOT / "deploy" / "build-fixed-frontend.sh").read_text(
     encoding="utf-8"
 )
+VITE_CONFIG = (ROOT / "frontend" / "vite.config.ts").read_text(encoding="utf-8")
+EVENTS_PAGE = (ROOT / "frontend" / "src" / "pages" / "EventsPage.vue").read_text(
+    encoding="utf-8"
+)
 RELEASE_COMMANDS = [
     (ROOT / "deploy" / "release" / name).read_text(encoding="utf-8")
     for name in ("prepare.sh", "activate.sh", "rollback.sh")
@@ -79,6 +83,22 @@ class FixedDataProfileContractTest(unittest.TestCase):
         self.assertIn('VITE_DATA_WINDOW_START="${DOMEYE_CORE_FIXED_DATA_START/ /T}"', FIXED_FRONTEND)
         self.assertIn('VITE_DATA_WINDOW_END="${DOMEYE_CORE_FIXED_SNAPSHOT_TIME/ /T}"', FIXED_FRONTEND)
         self.assertIn("install-frontend-build.sh", FIXED_FRONTEND)
+
+    def test_plain_frontend_build_defaults_to_the_unique_data_profile(self):
+        self.assertIn("../config/data-profile.json", VITE_CONFIG)
+        self.assertIn("profile.window_start.slice(0, 19)", VITE_CONFIG)
+        self.assertIn("profile.snapshot_time.slice(0, 19)", VITE_CONFIG)
+        self.assertIn("'import.meta.env.VITE_DATA_WINDOW_START'", VITE_CONFIG)
+        self.assertIn("'import.meta.env.VITE_DATA_WINDOW_END'", VITE_CONFIG)
+
+    def test_events_page_fails_closed_without_the_fixed_window(self):
+        resolve_index = EVENTS_PAGE.index("const dataWindow = resolveDataWindow(import.meta.env)")
+        default_index = EVENTS_PAGE.index("const defaultDates = dataWindow")
+        request_index = EVENTS_PAGE.index("result.value = await getEvents")
+        gate_index = EVENTS_PAGE.index("if (!dataWindow)")
+        self.assertLess(resolve_index, default_index)
+        self.assertLess(gate_index, request_index)
+        self.assertIn("已阻止按当前日期查询", EVENTS_PAGE)
 
     def test_stateful_release_commands_are_blocked_by_fixed_profile(self):
         for command in RELEASE_COMMANDS:

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "country_outage_pi_vendor_patch_v1",
+  "patchId": "pi-ai-openai-completions-response-model-v1",
+  "approvedAt": "2026-07-29T03:03:08Z",
+  "applicationMode": "postinstall_exact_hash_replacement_v1",
+  "target": {
+    "codingAgentPackage": "@earendil-works/pi-coding-agent",
+    "codingAgentVersion": "0.82.1",
+    "package": "@earendil-works/pi-ai",
+    "version": "0.82.1",
+    "relativePathFromCodingAgent": "node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",
+    "upstreamSourceSha256": "0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a",
+    "patchedSourceSha256": "5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b",
+    "upstreamByteLength": 56943,
+    "patchedByteLength": 56915
+  },
+  "patchArtifact": {
+    "relativePath": "vendor-patches/pi-ai-0.82.1-openai-completions-response-model-v1.patch",
+    "sha256": "c62983d07f150ddbef0e412feb596406648f1e151430f633f406ca018e2412cd"
+  },
+  "behavior": {
+    "before": "if (typeof chunk.model === \"string\" && chunk.model.length > 0 && chunk.model !== model.id) {",
+    "after": "if (typeof chunk.model === \"string\" && chunk.model.length > 0) {",
+    "preservesSameNameResponseModel": true,
+    "addsNetworkRequests": false,
+    "changesToolCapabilities": false,
+    "changesResourceResolution": false
+  }
+}

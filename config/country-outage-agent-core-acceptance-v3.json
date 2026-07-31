@@ -1,16 +1,33 @@
 {
-  "schema_version": 1,
-  "id": "country-outage-agent-acceptance-v1",
+  "schema_version": 3,
+  "id": "country-outage-agent-core-acceptance-v3",
   "status": "frozen",
-  "frozen_at": "2026-07-28T13:26:19Z",
+  "frozen_at": "2026-07-30T10:41:59Z",
+  "acceptance_profile": "core-v1",
   "business_timezone": "Asia/Shanghai",
+  "validator_rules_version": "country_outage_report_validator_rules_v5",
   "scope": {
     "event_type": "country_outage",
     "collector_id": "rrc25",
     "trigger": "user_only",
     "data_access": "published_read_only",
-    "external_evidence_default": "disabled",
+    "public_network_access": "none",
+    "external_evidence_pack_required_for_core_acceptance": false,
     "conversation_persistence": "ephemeral"
+  },
+  "representative_event": {
+    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "publication_id": "publication_v1_38bddead083db3f49023c2e1",
+    "revision": 1,
+    "is_final": true,
+    "data_through": "2026-02-28T15:00:00Z",
+    "collector_id": "rrc25",
+    "cohort_id": "cohort_go_v1_4ff75dc68f95249de99c11bec48391fb",
+    "window_start_utc": "2026-02-28T10:05:00Z",
+    "window_end_utc": "2026-02-28T15:00:00Z",
+    "interval_seconds": 300,
+    "expected_observation_count": 60
   },
   "session": {
     "ttl_seconds": 1800,
@@ -24,7 +41,6 @@
     "snapshot_resolution_ms": 5000,
     "report_run_ms": 120000,
     "question_run_ms": 60000,
-    "external_evidence_run_ms": 90000,
     "model_attempt_ms": 75000,
     "pdf_render_ms": 45000,
     "reconnect_status_ms": 5000
@@ -35,23 +51,13 @@
     "maximum_queue_depth": 32,
     "maximum_snapshot_batch_retries": 2,
     "maximum_model_attempts": 2,
+    "maximum_provider_requests_per_report": 5,
+    "maximum_provider_context_utf8_bytes": 900000,
     "maximum_questions_per_minute": 6,
     "maximum_report_runs_per_user_per_hour": 3,
     "maximum_fact_records": 2000,
     "maximum_context_tokens": 64000,
     "maximum_answer_characters": 4000
-  },
-  "external_evidence": {
-    "maximum_pages": 5,
-    "maximum_response_bytes_per_page": 2097152,
-    "maximum_redirects": 3,
-    "allowed_schemes": [
-      "http",
-      "https"
-    ],
-    "allow_private_networks": false,
-    "allow_authenticated_pages": false,
-    "allow_file_uploads": false
   },
   "downloads": {
     "maximum_pdf_pages": 40,
@@ -85,16 +91,19 @@
       "height": 844
     }
   ],
-  "browser_support": {
-    "chrome": "current_and_previous_2_major_versions",
-    "edge": "current_and_previous_2_major_versions",
-    "safari": "current_and_previous_major_version"
+  "browser_acceptance": {
+    "browser": "Google Chrome",
+    "version": "150.0.7871.187",
+    "platform": "macOS",
+    "keyboard_required": true,
+    "semantic_tree_required": true,
+    "reduced_motion_required": true,
+    "specific_real_screen_reader_required": false
   },
   "retention": {
     "session_state_seconds": 1800,
     "temporary_report_seconds": 3600,
     "temporary_question_seconds": 1800,
-    "temporary_external_evidence_seconds": 1800,
     "temporary_download_seconds": 3600,
     "operational_log_days": 30,
     "store_prompt_or_answer_bodies_in_operational_logs": false
@@ -103,8 +112,10 @@
     "required_capability": "country_outage_event_read",
     "report_cache_scope": "same_authorization_scope",
     "question_scope": "requesting_user_only",
-    "external_evidence_scope": "requesting_user_only",
     "download_scope": "requesting_user_and_current_event_authorization",
-    "anonymous_access": false
+    "anonymous_access": false,
+    "cross_user_sessions_isolated": true,
+    "cross_authorization_scope_cache_isolated": true,
+    "event_capability_checked_on_each_entry": true
   }
 }

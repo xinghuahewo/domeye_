@@ -150,16 +150,39 @@ describe('API 数据归一化', () => {
       duration_histogram: {},
       items: [],
     }
+    const audit = {
+      schema_version: 'country_outage_audit_v2',
+      ...metadata,
+      engine_version: 'test-engine-v1',
+      algorithm_version: null,
+      mapping_version: null,
+      quality_status: 'pass',
+      source_system: 'test',
+      source_table: 'test',
+      source_reference: 'test',
+      evidence_level: 'test',
+      consumed_deliverable_hashes_verified: true,
+      verified_hashes: {},
+      route_state_file: {},
+      input_summary: {},
+    }
 
-    const observation = normalizeCountryOutageObservation(overview, series, asns)
+    const observation = normalizeCountryOutageObservation(
+      overview,
+      series,
+      asns,
+      audit,
+    )
     expect(observation.cohort).toBeNull()
     expect(observation.legacy_summary?.affected_asn_count).toBe(5)
     expect(observation.capabilities?.asn_matrix?.state).toBe('unavailable')
+    expect(observation.audit?.quality_status).toBe('pass')
 
     expect(() => normalizeCountryOutageObservation(
       overview,
       { ...series, data_through: '2026-02-28T16:05:00Z' },
       asns,
+      audit,
     )).toThrow('发布身份不一致：data_through')
 
     expect(() => normalizeCountryOutageObservation(
@@ -173,7 +196,15 @@ describe('API 数据归一化', () => {
         },
       },
       asns,
+      audit,
     )).toThrow('发布身份不一致：processing_status')
+
+    expect(() => normalizeCountryOutageObservation(
+      overview,
+      series,
+      asns,
+      { ...audit, publication_id: 'publication_drift' },
+    )).toThrow('发布身份不一致：publication_id')
   })
 
   it('归一化首页六类趋势、影响范围和排行', () => {

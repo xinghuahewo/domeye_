@@ -236,6 +236,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/country-outage/capabilities/external-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 返回 Domeye 应用编排层的外部证据附加能力就绪态。该能力不可用不影响 RRC25 核心报告、追问和基础下载。 */
+        get: operations["getCountryOutageExternalEvidenceCapability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 由当前用户主动触发已有合法 country_outage 事件的 RRC25 固定快照报告。Python 控制面只代理到本机受限 Sidecar。 */
+        post: operations["createCountryOutageAgentReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 按递增 event id 返回受控报告、问答和会话状态；不发送模型草稿、工具返回或思考过程。支持 Last-Event-ID 重放。 */
+        get: operations["streamCountryOutageAgentReportEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 围绕原报告固定快照提交追问。默认仅使用 Domeye；只有请求显式携带本次授权时，才允许生成与 Domeye 回答严格分离的公开网络证据附录。 */
+        post: operations["askCountryOutageAgentQuestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/runs/{run_id}/abort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 取消当前用户拥有的报告或问题运行；取消后不再发布迟到结果。 */
+        post: operations["abortCountryOutageAgentRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/artifacts/{artifact_format}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 下载同一已校验报告制品生成的 Markdown 或 PDF；普通问答不进入文件。 */
+        get: operations["downloadCountryOutageAgentArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/questions/{question_id}/artifacts/external-appendix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 在短期会话内下载绑定当前用户、基础报告固定快照和指定问题的独立 Markdown 外部来源核验附录。只有无错误的 completed 外部核验可以下载；附录不修改基础报告，普通问答不进入附录，也不提供永久历史。 */
+        get: operations["downloadCountryOutageAgentExternalAppendix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
         parameters: {
             query?: never;
@@ -822,7 +941,7 @@ export interface components {
         };
         CountryOutageCapability: {
             /** @enum {string} */
-            state: "available" | "building" | "unavailable" | "not_applicable";
+            state: "available" | "building" | "unavailable" | "not_applicable" | "unknown";
             reason?: string;
         } & {
             [key: string]: unknown;
@@ -998,6 +1117,486 @@ export interface components {
             source_reference: string;
             evidence_level: string;
         };
+        CountryOutageAgentIdempotencyKey: string;
+        CountryOutageExternalEvidencePolicy: {
+            version: string;
+            sha256: string;
+            allowed_host_roots: string[];
+            /** @constant */
+            minimum_urls: 1;
+            maximum_urls: number;
+        };
+        CountryOutageExternalEvidenceCapability: {
+            /** @constant */
+            schema_version: "country_outage_external_evidence_capability_v1";
+            /** @constant */
+            capability: "external_evidence";
+            /** @constant */
+            state: "ready";
+            /** @constant */
+            provider: "managed-egress-v1";
+            /** Format: date-time */
+            checked_at: string;
+            policy: components["schemas"]["CountryOutageExternalEvidencePolicy"];
+        } | {
+            /** @constant */
+            schema_version: "country_outage_external_evidence_capability_v1";
+            /** @constant */
+            capability: "external_evidence";
+            /** @constant */
+            state: "not_configured";
+            /** @constant */
+            provider: "disabled";
+            /** Format: date-time */
+            checked_at: string;
+            policy: null;
+            reason_code: string;
+        } | {
+            /** @constant */
+            schema_version: "country_outage_external_evidence_capability_v1";
+            /** @constant */
+            capability: "external_evidence";
+            /** @constant */
+            state: "self_check_failed";
+            /** @constant */
+            provider: "managed-egress-v1";
+            /** Format: date-time */
+            checked_at: string;
+            policy: null;
+            reason_code: string;
+        };
+        CountryOutageAgentEvidenceRef: string;
+        CountryOutageAgentError: {
+            code: string;
+            message: string;
+            retryable: boolean;
+            next_action?: string;
+        };
+        CountryOutageAgentErrorResponse: {
+            error: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentSession: {
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            reminder_at: string;
+        };
+        CountryOutageAgentCreateReportRequest: {
+            event_reference: string;
+            publication_id: string;
+            revision: number;
+            idempotency_key: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+        };
+        /** @enum {string} */
+        CountryOutageAgentReportPhase: "queued" | "reading_data" | "generating_report" | "validating" | "completed" | "failed" | "cancelled";
+        /** @enum {string} */
+        CountryOutageAgentQuestionPhase: "answering" | "collecting_external" | "completed" | "failed" | "cancelled";
+        /** @enum {string} */
+        CountryOutageAgentActiveRunState: "queued" | "running" | "completed" | "failed" | "cancelled";
+        /** @enum {string} */
+        CountryOutageAgentRunState: "queued" | "running" | "completed" | "failed" | "cancelled" | "expired";
+        CountryOutageAgentCreateReportResponse: {
+            /** @constant */
+            schema_version: "country_outage_agent_http_v1";
+            report_id: string;
+            run_id: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentReportPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            deduplicated: boolean;
+        };
+        CountryOutageAgentQuoteSummary: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "summary";
+            evidence_refs?: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentQuoteHighlight: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "highlight";
+            highlight_index: number;
+            evidence_refs?: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentQuoteSectionParagraph: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "section_paragraph";
+            section_id: string;
+            paragraph_index: number;
+            evidence_refs?: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentQuestionQuote: components["schemas"]["CountryOutageAgentQuoteSummary"] | components["schemas"]["CountryOutageAgentQuoteHighlight"] | components["schemas"]["CountryOutageAgentQuoteSectionParagraph"];
+        CountryOutageAgentDomeyeOnlyQuestionRequest: {
+            question: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            evidence_mode: "domeye_only";
+            quote?: components["schemas"]["CountryOutageAgentQuestionQuote"];
+            idempotency_key: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+        };
+        CountryOutageAgentExternalAuthorization: {
+            /** @constant */
+            authorized: true;
+            /**
+             * Format: date-time
+             * @description 用户在提交有效指定 URL 后明确确认读取的时间；新运行只接受请求前五分钟内且不晚于服务端当前时间的授权，已接受请求的幂等重放不重复读取。
+             */
+            authorized_at: string;
+        };
+        CountryOutageAgentExternalQuestionRequest: {
+            question: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            evidence_mode: "domeye_plus_external";
+            quote?: components["schemas"]["CountryOutageAgentQuestionQuote"];
+            external_authorization: components["schemas"]["CountryOutageAgentExternalAuthorization"];
+            /** @description 用户本次明确确认读取和核验的公开 HTTP/HTTPS 页面；允许来源与数量由已认证的 capability 策略决定，不会从问题文字发现或扩展其他页面。 */
+            external_urls: string[];
+            idempotency_key: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+        };
+        CountryOutageAgentCreateQuestionRequest: components["schemas"]["CountryOutageAgentDomeyeOnlyQuestionRequest"] | components["schemas"]["CountryOutageAgentExternalQuestionRequest"];
+        CountryOutageAgentCreateQuestionResponse: {
+            /** @constant */
+            schema_version: "country_outage_agent_http_v1";
+            report_id: string;
+            question_id: string;
+            number: number;
+            run_id: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentQuestionPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            deduplicated: boolean;
+        };
+        CountryOutageAgentAbortRunRequest: Record<string, never>;
+        CountryOutageAgentAbortRunResponse: {
+            /** @constant */
+            schema_version: "country_outage_agent_http_v1";
+            report_id: string;
+            run_id: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            abort_effective: boolean;
+        };
+        CountryOutageAgentSnapshotIdentity: {
+            incidentId: string;
+            publicationId: string;
+            revision: number;
+            /** Format: date-time */
+            dataThrough: string | null;
+            isFinal: boolean;
+            cohortId: string;
+            /** @constant */
+            collectorId: "rrc25";
+            /** Format: date-time */
+            windowStartUtc: string;
+            /** Format: date-time */
+            windowEndUtc: string;
+        };
+        CountryOutageAgentArtifactReady: {
+            /** @enum {string} */
+            format: "markdown" | "pdf";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "ready";
+            artifact_id: string;
+            filename: string;
+            /** @enum {string} */
+            media_type: "text/markdown; charset=utf-8" | "application/pdf";
+            byte_length: number;
+            sha256: string;
+        };
+        CountryOutageAgentArtifactFailed: {
+            /** @enum {string} */
+            format: "markdown" | "pdf";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "failed";
+            code: string;
+            message: string;
+        };
+        CountryOutageAgentArtifactMetadata: components["schemas"]["CountryOutageAgentArtifactReady"] | components["schemas"]["CountryOutageAgentArtifactFailed"];
+        CountryOutageAgentEvidenceParagraph: {
+            text: string;
+            evidenceRefs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentReportHighlight: {
+            label: string;
+            value: string;
+            evidenceRefs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentReportSection: {
+            /** @enum {string} */
+            id: "scope" | "key_numbers" | "visibility" | "asn_scope" | "address_families" | "updates" | "end_state" | "resources" | "assessment";
+            title: string;
+            paragraphs: components["schemas"]["CountryOutageAgentEvidenceParagraph"][];
+        };
+        CountryOutageAgentReportDraft: {
+            /** @constant */
+            schemaVersion: "country_outage_report_draft_v1";
+            title: string;
+            subtitle: string;
+            summary: components["schemas"]["CountryOutageAgentEvidenceParagraph"];
+            highlights: components["schemas"]["CountryOutageAgentReportHighlight"][];
+            sections: components["schemas"]["CountryOutageAgentReportSection"][];
+            unknowns: string[];
+        };
+        CountryOutageAgentEventIdentity: {
+            incident_id: string;
+            legacy_reference: string;
+            /** @constant */
+            event_type: "country_outage";
+            country_code: string;
+            country_name: string;
+            display_name: string;
+        } & {
+            [key: string]: unknown;
+        };
+        CountryOutageAgentReportModelIdentity: {
+            provider: string;
+            model: string;
+            modelVersion: string;
+            /** @enum {string} */
+            adapter: "pi-sdk" | "deterministic-acceptance";
+            piVersion?: string;
+            /** @enum {string} */
+            runtimeIdentity?: "formal" | "candidate";
+            /**
+             * @description 供应方模型标识是可变别名，不是不可变权重 revision。
+             * @constant
+             */
+            modelRevisionKind?: "mutable_alias";
+            /**
+             * @description 供应方未提供可验证的不可变权重 revision。
+             * @constant
+             */
+            immutableRevisionAvailable?: false;
+            /** @constant */
+            limitation?: "供应方未提供不可变权重 revision；deepseek-v4-flash 是可变别名，可能无痕变化。";
+            /**
+             * Format: date-time
+             * @description 本次模型认证的失效时刻；到达该时刻即不得继续生成。
+             */
+            certificationValidUntil?: string;
+            /** @description 已认证合法场景集合的稳定标识。 */
+            certifiedScenarioSetId?: string;
+            /** @description 已认证输入范围的稳定标识。 */
+            certifiedInputScope?: string;
+        } & unknown;
+        CountryOutageAgentReportValidation: {
+            passed: boolean;
+            errors: string[];
+            warnings: string[];
+            checkedEvidenceRefs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentReportDocument: {
+            /** @constant */
+            schemaVersion: "country_outage_report_document_v1";
+            artifactId: string;
+            reportContentSha256: string;
+            /** @constant */
+            reportSpecificationVersion: "country_outage_report_spec_v1";
+            /** @constant */
+            projectKnowledgeVersion: "country_outage_report_skill_v6";
+            validatorRulesVersion: string;
+            skillBundleSha256: string;
+            /** Format: date-time */
+            generatedAt: string;
+            /** @constant */
+            aiGenerated: true;
+            /** @constant */
+            humanReviewed: false;
+            event: components["schemas"]["CountryOutageAgentEventIdentity"];
+            snapshot: components["schemas"]["CountryOutageAgentSnapshotIdentity"];
+            factSetId: string;
+            model: components["schemas"]["CountryOutageAgentReportModelIdentity"];
+            validation: components["schemas"]["CountryOutageAgentReportValidation"];
+            draft: components["schemas"]["CountryOutageAgentReportDraft"];
+        };
+        CountryOutageAgentQuestionEvidenceRecord: {
+            evidence_ref: components["schemas"]["CountryOutageAgentEvidenceRef"];
+            /** @enum {string} */
+            source: "report" | "overview" | "series" | "audit" | "derived_fact" | "asn_detail";
+            label: string;
+            metric: string | null;
+            value: string | null;
+            observed_at_utc: string | null;
+            observed_at_local: string | null;
+            statistical_scope: string;
+        };
+        CountryOutageAgentQuestionAnswer: {
+            /** @enum {string} */
+            kind: "fact" | "metric_semantics" | "evidence_boundary" | "insufficient_evidence";
+            text: string;
+            evidence_refs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+            evidence_records: components["schemas"]["CountryOutageAgentQuestionEvidenceRecord"][];
+            missing_evidence: string[];
+            limitations: string[];
+            snapshot: components["schemas"]["CountryOutageAgentSnapshotIdentity"];
+        };
+        CountryOutageAgentExternalClaim: {
+            claim_id: string;
+            text: string;
+            /** @enum {string} */
+            status: "supported" | "mixed" | "conflict" | "insufficient";
+            source_ids: string[];
+            limitations: string[];
+        };
+        CountryOutageAgentExternalFrozenBinding: {
+            incident_id: string;
+            publication_id: string;
+            revision: number;
+            /** Format: date-time */
+            data_through: string | null;
+            fact_set_id: string;
+            cohort_id: string;
+            country_code: string;
+            /** @constant */
+            collector_id: "rrc25";
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+        };
+        CountryOutageAgentExternalStructuredFact: {
+            fact_id: string;
+            binding_id: string;
+            /** @constant */
+            metric: "bgp_control_plane_visibility_state";
+            /** @enum {string} */
+            address_family: "all" | "ipv4" | "ipv6";
+            /** Format: date-time */
+            observed_window_start_utc: string;
+            /** Format: date-time */
+            observed_window_end_utc: string;
+            /** @enum {string} */
+            source_value: "degraded" | "visibility_reduced" | "stable" | "no_material_change" | "recovering" | "visibility_improving" | "recovered" | "baseline_restored";
+            /** @enum {string} */
+            normalized_value: "degraded" | "stable" | "recovering" | "recovered";
+        };
+        CountryOutageAgentExternalSource: {
+            source_id: string;
+            title: string | null;
+            publisher: string | null;
+            url: string;
+            /** Format: date-time */
+            published_at: string | null;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            /** @enum {string} */
+            source_classification: "measurement_platform" | "unknown";
+            /** @enum {string} */
+            source_tier: "direct" | "secondary" | "lead" | "unknown";
+            /** @enum {string} */
+            read_status: "readable" | "unreadable" | "blocked" | "failed";
+            read_status_detail: string | null;
+            summary: string | null;
+            /** @enum {string} */
+            evidence_status?: "available" | "insufficient" | "read_failed";
+            evidence_status_detail?: string | null;
+            structured_facts?: components["schemas"]["CountryOutageAgentExternalStructuredFact"][];
+        };
+        CountryOutageAgentExternalAppendix: {
+            /** @constant */
+            schema_version: "country_outage_external_appendix_v1";
+            /** @constant */
+            classification_policy_version: "country_outage_external_source_classification_policy_v1";
+            /** @enum {string} */
+            status: "collecting" | "completed" | "partial" | "failed";
+            /** @enum {string} */
+            comparison_status?: "supported" | "mixed" | "conflict" | "insufficient";
+            frozen_binding?: components["schemas"]["CountryOutageAgentExternalFrozenBinding"];
+            query: string;
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            claims: components["schemas"]["CountryOutageAgentExternalClaim"][];
+            sources: components["schemas"]["CountryOutageAgentExternalSource"][];
+            error?: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentQuestionResult: {
+            question_id: string;
+            number: number;
+            question: string;
+            /** @enum {string} */
+            evidence_mode: "domeye_only" | "domeye_plus_external";
+            quote?: components["schemas"]["CountryOutageAgentQuestionQuote"];
+            external_appendix?: components["schemas"]["CountryOutageAgentExternalAppendix"];
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            answer?: components["schemas"]["CountryOutageAgentQuestionAnswer"];
+            error?: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentReportStateEvent: {
+            /** @constant */
+            schema_version: "country_outage_agent_event_v1";
+            event_id: number;
+            report_id: string;
+            run_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "report_state";
+            /** Format: date-time */
+            at: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentReportPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            snapshot?: components["schemas"]["CountryOutageAgentSnapshotIdentity"];
+            report?: components["schemas"]["CountryOutageAgentReportDocument"];
+            artifacts?: components["schemas"]["CountryOutageAgentArtifactMetadata"][];
+            error?: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentQuestionStateEvent: {
+            /** @constant */
+            schema_version: "country_outage_agent_event_v1";
+            event_id: number;
+            report_id: string;
+            run_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "question_state";
+            /** Format: date-time */
+            at: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentQuestionPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            question: components["schemas"]["CountryOutageAgentQuestionResult"];
+        };
+        CountryOutageAgentSessionNoticeEvent: {
+            /** @constant */
+            schema_version: "country_outage_agent_event_v1";
+            event_id: number;
+            report_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "session_notice";
+            /** Format: date-time */
+            at: string;
+            state: components["schemas"]["CountryOutageAgentRunState"];
+            /** @enum {string} */
+            phase: "session_expiring" | "session_expired";
+            session: components["schemas"]["CountryOutageAgentSession"];
+        };
+        CountryOutageAgentEvent: components["schemas"]["CountryOutageAgentReportStateEvent"] | components["schemas"]["CountryOutageAgentQuestionStateEvent"] | components["schemas"]["CountryOutageAgentSessionNoticeEvent"];
         EvidenceBundle: {
             /** @constant */
             bundle_version: "evidence_bundle_v1";
@@ -2203,6 +2802,78 @@ export interface components {
                 "application/json": components["schemas"]["P0ErrorResponse"];
             };
         };
+        /** @description 请求格式、标识符或幂等键不合法 */
+        CountryOutageAgentBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 需要有效的登录身份 */
+        CountryOutageAgentUnauthenticated: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 当前用户无事件、报告或运行访问权 */
+        CountryOutageAgentForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 报告、运行或短期会话不存在或已清理 */
+        CountryOutageAgentNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 幂等键、快照身份、并发运行或状态冲突 */
+        CountryOutageAgentConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 短期会话已到期，需由用户重新生成 */
+        CountryOutageAgentExpired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 并发、队列、问题数或频率超过冻结门槛 */
+        CountryOutageAgentRateLimited: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description Agent Sidecar 未配置或暂不可用 */
+        CountryOutageAgentUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
     };
     parameters: {
         StartTime: string;
@@ -2619,6 +3290,266 @@ export interface operations {
                     "application/json": components["schemas"]["CountryOutageAuditV2"];
                 };
             };
+        };
+    };
+    getCountryOutageExternalEvidenceCapability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 外部证据附加能力当前就绪态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageExternalEvidenceCapability"];
+                };
+            };
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    createCountryOutageAgentReport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 若提供，必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key"?: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentCreateReportRequest"];
+            };
+        };
+        responses: {
+            /** @description 幂等请求命中同一报告运行 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateReportResponse"];
+                };
+            };
+            /** @description 报告运行已排队或开始 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateReportResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            409: components["responses"]["CountryOutageAgentConflict"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            429: components["responses"]["CountryOutageAgentRateLimited"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    streamCountryOutageAgentReportEvents: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Last-Event-ID"?: string;
+            };
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 短期会话 SSE。每个 data 字段是三类受控事件之一；正式报告或答案只出现在终态事件。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "X-Accel-Buffering"?: "no";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["CountryOutageAgentEvent"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    askCountryOutageAgentQuestion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 若提供，必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key"?: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+            };
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentCreateQuestionRequest"];
+            };
+        };
+        responses: {
+            /** @description 幂等请求命中同一问题运行 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateQuestionResponse"];
+                };
+            };
+            /** @description 问题运行已开始 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateQuestionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            409: components["responses"]["CountryOutageAgentConflict"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            429: components["responses"]["CountryOutageAgentRateLimited"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    abortCountryOutageAgentRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentAbortRunRequest"];
+            };
+        };
+        responses: {
+            /** @description 运行已取消或已经处于终态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentAbortRunResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    downloadCountryOutageAgentArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+                artifact_format: "markdown" | "pdf";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 报告下载制品 */
+            200: {
+                headers: {
+                    "Content-Disposition": string;
+                    "X-Artifact-Id": string;
+                    "X-Content-SHA256": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                    "application/pdf": string;
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            /** @description 报告尚未完成，或指定格式生成失败；另一格式可能仍可下载。 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+                };
+            };
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    downloadCountryOutageAgentExternalAppendix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已完成外部来源核验的独立 Markdown 附录 */
+            200: {
+                headers: {
+                    "Cache-Control": "private, no-store";
+                    "X-Content-Type-Options": "nosniff";
+                    "Content-Disposition": string;
+                    "X-Artifact-Id": string;
+                    "X-Content-SHA256": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            /** @description 外部核验不是无错误完成态，或附录身份、来源边界不满足下载合同。 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+                };
+            };
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
         };
     };
     getEventDetail: {

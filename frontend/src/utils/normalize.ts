@@ -302,6 +302,7 @@ export const normalizeCountryOutageObservation = (
   overview: unknown,
   series: unknown,
   asnPage: unknown,
+  audit: unknown,
 ): EventObservation => {
   if (
     !isRecord(overview)
@@ -312,9 +313,14 @@ export const normalizeCountryOutageObservation = (
     throw new Error('国家中断观测 v2 响应格式异常')
   }
   const normalizedAsns = normalizeCountryOutageAsnPage(asnPage)
+  const normalizedAudit = normalizeCountryOutageAudit(audit)
   assertMatchingCountryOutageRelease(
     overview,
-    [series, normalizedAsns as unknown as Record<string, unknown>],
+    [
+      series,
+      normalizedAsns as unknown as Record<string, unknown>,
+      normalizedAudit as unknown as Record<string, unknown>,
+    ],
   )
   return normalizeEventObservation({
     ...overview,
@@ -327,7 +333,7 @@ export const normalizeCountryOutageObservation = (
       timelines: normalizedAsns.items,
     },
     asn_page: normalizedAsns,
-    audit: null,
+    audit: normalizedAudit,
   })
 }
 

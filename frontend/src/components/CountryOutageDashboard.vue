@@ -1051,7 +1051,7 @@ const durationSeries = computed<DurationSeries[]>(() => [
     </section>
 
     <main v-if="observation.cohort" class="observation-main">
-      <section class="chart-panel is-hero">
+      <section id="observation-visibility" class="chart-panel is-hero">
         <header class="panel-heading">
           <div>
             <span>01 / FIXED COHORT STATE</span>
@@ -1123,7 +1123,7 @@ const durationSeries = computed<DurationSeries[]>(() => [
         </figure>
       </section>
 
-      <section v-if="hasCountryResources" class="chart-panel">
+      <section v-if="hasCountryResources" id="observation-resources" class="chart-panel">
         <header class="panel-heading has-controls">
           <div>
             <span>02 / COUNTRY RESOURCE LEDGER</span>
@@ -1265,7 +1265,7 @@ const durationSeries = computed<DurationSeries[]>(() => [
         </div>
       </section>
 
-      <section class="chart-panel">
+      <section id="observation-updates" class="chart-panel">
         <header class="panel-heading has-controls">
           <div>
             <span>04 / BGP UPDATE ACTIVITY</span>
@@ -1463,7 +1463,7 @@ const durationSeries = computed<DurationSeries[]>(() => [
         </div>
       </section>
 
-      <section v-if="hasAsnMatrix" class="chart-panel">
+      <section v-if="hasAsnMatrix" id="observation-asn" class="chart-panel">
         <header class="panel-heading">
           <div>
             <span>06 / ASN STATE MATRIX</span>

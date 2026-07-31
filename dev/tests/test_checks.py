@@ -23,7 +23,7 @@ class RiskClassificationTest(unittest.TestCase):
         self.assertEqual(CHECKS.classify("backend/services/events_service.py"), 2)
         self.assertEqual(CHECKS.classify("config/performance-budget.json"), 2)
         self.assertEqual(
-            CHECKS.classify("config/country-outage-agent-acceptance-v1.json"),
+            CHECKS.classify("config/country-outage-agent-acceptance-v2.json"),
             2,
         )
         self.assertEqual(CHECKS.classify(".codex/hooks/country_outage_agent_review.py"), 2)
@@ -32,8 +32,16 @@ class RiskClassificationTest(unittest.TestCase):
     def test_database_and_deploy_are_l3(self):
         self.assertEqual(CHECKS.classify("backend/database/event.py"), 3)
         self.assertEqual(CHECKS.classify("deploy/database/restore-database.sh"), 3)
+        self.assertEqual(
+            CHECKS.classify("deploy/country-outage-agent/prepare.sh"),
+            3,
+        )
         self.assertEqual(CHECKS.classify("dev/database/manage-dev-database.sh"), 3)
         self.assertEqual(CHECKS.classify("dev/backend/manage-dev-api.sh"), 3)
+        self.assertEqual(
+            CHECKS.classify("agent-sidecar/src/cli/serve-formal.ts"),
+            3,
+        )
 
     def test_pipeline_rules_and_data_profile_are_l3(self):
         self.assertEqual(CHECKS.classify("Makefile"), 3)
@@ -141,6 +149,36 @@ class SelectionTest(unittest.TestCase):
         self.assertIn("OpenAPI 生成类型一致性", labels)
         self.assertIn("OpenAPI 与 Flask 路由一致性", labels)
         self.assertNotIn("P0 数据合同", labels)
+
+    def test_agent_sidecar_change_runs_typecheck_and_full_tests(self):
+        commands = CHECKS.fast_checks(
+            ["agent-sidecar/src/cli/formal-sidecar.ts"]
+        )
+        labels = [label for label, _command, _cwd in commands]
+        self.assertIn("国家中断 Agent Sidecar 类型检查", labels)
+        self.assertIn("国家中断 Agent Sidecar 全量测试", labels)
+
+    def test_agent_contract_and_hook_changes_keep_sidecar_gate(self):
+        for path in (
+            "contracts/agent/country-outage-report-facts-v1.schema.json",
+            "config/country-outage-agent-core-acceptance-v3.json",
+            ".codex/hooks/country_outage_agent_review.py",
+        ):
+            labels = [
+                label
+                for label, _command, _cwd in CHECKS.fast_checks([path])
+            ]
+            self.assertIn("国家中断 Agent Sidecar 类型检查", labels)
+            self.assertIn("国家中断 Agent Sidecar 全量测试", labels)
+
+    def test_agent_deploy_is_stateful_security_boundary(self):
+        summary = CHECKS.risk_summary(
+            ["deploy/country-outage-agent/activate.sh"]
+        )
+        self.assertEqual(summary["risk"], 3)
+        self.assertTrue(summary["stateful"])
+        self.assertIn("deployment-switch", summary["flags"])
+        self.assertIn("security-config", summary["flags"])
 
     def test_p0_quality_gate_is_integration_only_and_uses_file_fixture(self):
         files = ["dev/data_quality/p0_quality_gate.py"]

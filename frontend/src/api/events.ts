@@ -87,7 +87,7 @@ export async function getEventObservation(reference: string) {
   }
   const incidentId = encodeURIComponent(resolution.incident_id)
   const publicationParams = { publication_id: resolution.publication_id }
-  const [overview, series, asnPage] = await Promise.all([
+  const [overview, series, asnPage, audit] = await Promise.all([
     apiV2Get<unknown>(`country-outages/${incidentId}/overview`, {
       params: publicationParams,
     }),
@@ -101,10 +101,18 @@ export async function getEventObservation(reference: string) {
         page_size: 60,
       },
     }),
+    apiV2Get<unknown>(`country-outages/${incidentId}/audit`, {
+      params: publicationParams,
+    }),
   ])
   return {
     parsed,
-    observation: normalizeCountryOutageObservation(overview, series, asnPage),
+    observation: normalizeCountryOutageObservation(
+      overview,
+      series,
+      asnPage,
+      audit,
+    ),
   }
 }
 

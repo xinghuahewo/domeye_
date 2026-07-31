@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "country_outage_model_certification_fixture_v1",
+  "fixtureId": "a4-iran-country-outage-rrc25-v1",
+  "eventReference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "eventType": "country_outage",
+  "countryCode": "IR",
+  "collectorId": "rrc25",
+  "incidentId": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+  "publicationId": "publication_v1_38bddead083db3f49023c2e1",
+  "revision": 1,
+  "dataThrough": "2026-02-28T15:00:00Z",
+  "isFinal": true
+}

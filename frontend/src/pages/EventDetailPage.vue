@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import {
@@ -8,6 +8,7 @@ import {
   isEventObservationNotConfigured,
 } from '@/api/events'
 import CountryOutageDashboard from '@/components/CountryOutageDashboard.vue'
+import CountryOutageReportWorkbench from '@/components/CountryOutageReportWorkbench.vue'
 import PageState from '@/components/PageState.vue'
 import type {
   EvidenceBundle,
@@ -17,6 +18,15 @@ import type {
   EventObservation,
   ParsedDetailRef,
 } from '@/types/api'
+import {
+  countryOutageViewForTabKey,
+  type CountryOutageView,
+} from '@/utils/countryOutageReport'
+import {
+  CountryOutageObservationRequestGate,
+  decideCountryOutageObservationRefresh,
+  validateCountryOutagePageObservationIdentity,
+} from '@/utils/countryOutageRuntime'
 import { cleanText, errorMessage, isRecord } from '@/utils/normalize'
 
 interface FactItem {
@@ -39,7 +49,12 @@ const error = ref('')
 const parsed = ref<ParsedDetailRef | null>(null)
 const bundle = ref<EvidenceBundle | null>(null)
 const observation = ref<EventObservation | null>(null)
+const observationRefreshNotice = ref('')
+const countryOutageView = ref<CountryOutageView>('observation')
+const observationTab = ref<HTMLButtonElement | null>(null)
+const reportTab = ref<HTMLButtonElement | null>(null)
 let observationRefreshTimer: ReturnType<typeof setInterval> | undefined
+const observationRequests = new CountryOutageObservationRequestGate()
 
 const reference = computed(() => typeof route.query.ref === 'string' ? route.query.ref : '')
 
@@ -139,47 +154,128 @@ function pathPreview(item: EvidenceItem) {
   return item.paths.slice(0, 4)
 }
 
+function stopObservationRefresh() {
+  if (!observationRefreshTimer) return
+  clearInterval(observationRefreshTimer)
+  observationRefreshTimer = undefined
+}
+
+async function refreshObservation() {
+  const token = observationRequests.beginRefresh()
+  if (!token) return
+  try {
+    const refreshed = await getEventObservation(token.reference)
+    if (!observationRequests.isCurrent(token) || !observation.value) return
+    const decision = decideCountryOutageObservationRefresh(
+      observation.value,
+      refreshed.observation,
+      token.reference,
+    )
+    if (!decision.accepted) {
+      observationRefreshNotice.value = decision.message
+      return
+    }
+    observation.value = refreshed.observation
+    observationRefreshNotice.value = ''
+    if (refreshed.observation.is_final) stopObservationRefresh()
+  } catch {
+    // 保留最近一次合法已发布修订，下一轮继续尝试。
+  } finally {
+    observationRequests.finish(token)
+  }
+}
+
+function startObservationRefresh() {
+  stopObservationRefresh()
+  observationRefreshTimer = setInterval(() => {
+    void refreshObservation()
+  }, 45_000)
+}
+
 async function load() {
-  if (observationRefreshTimer) clearInterval(observationRefreshTimer)
+  stopObservationRefresh()
+  const targetReference = reference.value
+  observationRequests.setReference(targetReference)
+  const token = observationRequests.beginInitial()
   loading.value = true
   error.value = ''
   parsed.value = null
   bundle.value = null
   observation.value = null
+  observationRefreshNotice.value = ''
   try {
     try {
-      const response = await getEventObservation(reference.value)
+      const response = await getEventObservation(targetReference)
+      if (!observationRequests.isCurrent(token)) return
+      const identity = validateCountryOutagePageObservationIdentity(
+        response.observation,
+        targetReference,
+      )
+      if (!identity.accepted) throw new Error(identity.message)
       parsed.value = response.parsed
       observation.value = response.observation
-      if (!response.observation.is_final) {
-        observationRefreshTimer = setInterval(async () => {
-          try {
-            const refreshed = await getEventObservation(reference.value)
-            observation.value = refreshed.observation
-          } catch {
-            // 保留最近一次已发布修订，下一轮继续尝试。
-          }
-        }, 45_000)
-      }
+      if (!response.observation.is_final) startObservationRefresh()
       return
     } catch (observationCause) {
+      if (!observationRequests.isCurrent(token)) return
       if (!isEventObservationNotConfigured(observationCause)) {
         throw new Error(`事件观测数据暂不可用：${errorMessage(observationCause)}`)
       }
     }
-    const legacyResponse = await getEventEvidenceBundle(reference.value)
+    const legacyResponse = await getEventEvidenceBundle(targetReference)
+    if (!observationRequests.isCurrent(token)) return
     parsed.value = legacyResponse.parsed
     bundle.value = legacyResponse.bundle
   } catch (cause) {
+    if (!observationRequests.isCurrent(token)) return
     error.value = errorMessage(cause)
   } finally {
-    loading.value = false
+    if (observationRequests.isCurrent(token)) loading.value = false
   }
 }
 
-watch(reference, load, { immediate: true })
+function openObservationAnchor(anchor: string) {
+  countryOutageView.value = 'observation'
+  void nextTick(() => {
+    const target = document.getElementById(anchor)
+    if (!target) return
+    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
+    target.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth',
+      block: 'start',
+    })
+    target.focus({ preventScroll: true })
+  })
+}
+
+function selectCountryOutageView(
+  view: CountryOutageView,
+  moveFocus = false,
+) {
+  countryOutageView.value = view
+  if (!moveFocus) return
+  void nextTick(() => {
+    const target = view === 'observation' ? observationTab.value : reportTab.value
+    target?.focus()
+  })
+}
+
+function onCountryOutageTabKeydown(event: KeyboardEvent) {
+  const next = countryOutageViewForTabKey(countryOutageView.value, event.key)
+  if (!next) return
+  event.preventDefault()
+  selectCountryOutageView(next, true)
+}
+
+watch(reference, () => {
+  countryOutageView.value = 'observation'
+  void load()
+}, { immediate: true })
 onBeforeUnmount(() => {
-  if (observationRefreshTimer) clearInterval(observationRefreshTimer)
+  observationRequests.invalidate()
+  stopObservationRefresh()
 })
 </script>
 
@@ -229,7 +325,73 @@ onBeforeUnmount(() => {
       @retry="load"
     />
 
-    <CountryOutageDashboard v-else-if="observation" :observation="observation" />
+    <template v-else-if="observation">
+      <nav class="country-outage-view-switch" aria-label="国家中断事件视图">
+        <div role="tablist" aria-label="数据观测与报告">
+          <button
+            id="country-outage-observation-tab"
+            ref="observationTab"
+            type="button"
+            role="tab"
+            :aria-selected="countryOutageView === 'observation'"
+            aria-controls="country-outage-observation-panel"
+            :tabindex="countryOutageView === 'observation' ? 0 : -1"
+            :class="{ 'is-active': countryOutageView === 'observation' }"
+            @click="selectCountryOutageView('observation')"
+            @keydown="onCountryOutageTabKeydown"
+          >
+            <span>01</span>
+            数据观测
+          </button>
+          <button
+            id="country-outage-report-tab"
+            ref="reportTab"
+            type="button"
+            role="tab"
+            :aria-selected="countryOutageView === 'report'"
+            aria-controls="country-outage-report-panel"
+            :tabindex="countryOutageView === 'report' ? 0 : -1"
+            :class="{ 'is-active': countryOutageView === 'report' }"
+            @click="selectCountryOutageView('report')"
+            @keydown="onCountryOutageTabKeydown"
+          >
+            <span>02</span>
+            报告与追问
+          </button>
+        </div>
+        <p>
+          {{ observation.event_identity.country_name }} · RRC25 ·
+          REV {{ observation.revision ?? 1 }}
+        </p>
+      </nav>
+      <p
+        v-if="observationRefreshNotice"
+        class="observation-refresh-notice"
+        role="alert"
+      >
+        {{ observationRefreshNotice }}
+      </p>
+      <div
+        id="country-outage-observation-panel"
+        v-show="countryOutageView === 'observation'"
+        role="tabpanel"
+        aria-labelledby="country-outage-observation-tab"
+      >
+        <CountryOutageDashboard :observation="observation" />
+      </div>
+      <div
+        id="country-outage-report-panel"
+        v-show="countryOutageView === 'report'"
+        role="tabpanel"
+        aria-labelledby="country-outage-report-tab"
+      >
+        <CountryOutageReportWorkbench
+          :observation="observation"
+          :event-reference="reference"
+          @open-observation="openObservationAnchor"
+        />
+      </div>
+    </template>
 
     <template v-else-if="bundle">
       <section class="evidence-boundary" aria-label="Legacy 与 P0 证据边界">
@@ -543,6 +705,73 @@ onBeforeUnmount(() => {
 .raw-facts summary { cursor: pointer; font-weight: 700; }
 .raw-facts pre { max-height: 430px; margin: 12px 0 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 9px/1.55 var(--mono); }
 
+.country-outage-view-switch {
+  position: sticky;
+  top: 64px;
+  z-index: 29;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px clamp(14px, 3vw, 34px);
+  color: #dce5ea;
+  background: rgba(18, 29, 38, .97);
+  border-bottom: 1px solid #42515c;
+  backdrop-filter: blur(12px);
+}
+
+.country-outage-view-switch > div {
+  display: flex;
+  gap: 4px;
+}
+
+.country-outage-view-switch button {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: #99a8b2;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.country-outage-view-switch button span {
+  color: #6e818e;
+  font: 700 9px/1 var(--mono);
+}
+
+.country-outage-view-switch button.is-active {
+  color: #fff;
+  background: #263845;
+  border-color: #526572;
+}
+
+.country-outage-view-switch button.is-active span {
+  color: #e69a69;
+}
+
+.country-outage-view-switch > p {
+  overflow: hidden;
+  margin: 0;
+  color: #91a0aa;
+  font: 700 9px/1.3 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.observation-refresh-notice {
+  margin: 0;
+  padding: 10px 13px;
+  color: #7a3f08;
+  background: #fff7e8;
+  border: 1px solid #e7c98e;
+  border-left: 4px solid #c9640a;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 @media (max-width: 1100px) {
   .incident-header, .registry-layout { grid-template-columns: 1fr; }
   .summary-strip { grid-template-columns: 1fr; }
@@ -551,6 +780,23 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 720px) {
+  .country-outage-view-switch {
+    position: relative;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .country-outage-view-switch > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .country-outage-view-switch button {
+    justify-content: center;
+  }
+  .country-outage-view-switch > p {
+    padding: 0 5px 4px;
+    text-align: center;
+  }
   .evidence-boundary { grid-template-columns: 1fr; }
   .incident-header { gap: 18px; padding: 18px; }
   .identity-block { grid-template-columns: 1fr; }

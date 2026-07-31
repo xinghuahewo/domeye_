@@ -5,6 +5,7 @@ import {
   getEventObservation,
   isEventObservationNotConfigured,
 } from '@/api/events'
+import { normalizeCountryOutageObservation } from '@/utils/normalize'
 
 vi.mock('@/api/client', () => ({
   apiGet: vi.fn(),
@@ -62,15 +63,20 @@ describe('event observation fallback boundary', () => {
     expect(apiV2Get).not.toHaveBeenCalled()
   })
 
-  it('pins overview, series and ASN reads to the resolver publication', async () => {
+  it('pins overview, series, ASN and audit reads to the resolver publication', async () => {
+    const overview = { schema_version: 'country_outage_overview_v2' }
+    const series = { schema_version: 'country_outage_series_v2' }
+    const asnPage = { schema_version: 'country_outage_asn_page_v2' }
+    const audit = { schema_version: 'country_outage_audit_v2' }
     vi.mocked(apiV2Get)
       .mockResolvedValueOnce({
         incident_id: 'incident-test',
         publication_id: 'publication-test',
       })
-      .mockResolvedValueOnce({ schema_version: 'country_outage_overview_v2' })
-      .mockResolvedValueOnce({ schema_version: 'country_outage_series_v2' })
-      .mockResolvedValueOnce({ schema_version: 'country_outage_asn_page_v2' })
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValueOnce(series)
+      .mockResolvedValueOnce(asnPage)
+      .mockResolvedValueOnce(audit)
 
     await getEventObservation(
       'country_outage/2026-02-27 09:12:32/IR/1/r',
@@ -95,6 +101,16 @@ describe('event observation fallback boundary', () => {
           },
         },
       ],
+      [
+        'country-outages/incident-test/audit',
+        { params: { publication_id: 'publication-test' } },
+      ],
     ])
+    expect(normalizeCountryOutageObservation).toHaveBeenCalledWith(
+      overview,
+      series,
+      asnPage,
+      audit,
+    )
   })
 })
