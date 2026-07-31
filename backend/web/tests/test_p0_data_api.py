@@ -800,6 +800,48 @@ def create_release(root):
     return root
 
 
+def add_retained_legacy_d4(root):
+    directory = root / "d4"
+    directory.mkdir()
+    reconciliation_path = directory / "evidence-reconciliation-summary.json"
+    write_json(
+        reconciliation_path,
+        {
+            "schema_version": "evidence_reconciliation_v1",
+            "summary_fingerprint_sha256": "4" * 64,
+        },
+    )
+    manifest = {
+        "schema_version": "p0_evidence_candidate_v1",
+        "candidate_kind": "six_event_contract_investigation_sample",
+        "classification": "observation_only",
+        "causal_conclusion": None,
+        "admission": {
+            "status": "sample_only_not_full_population",
+            "eligible_for_release_gate": False,
+            "raw_traceable": False,
+            "represents_full_evidence_population": False,
+            "blocking_reasons": ["six_event_sample_not_full_evidence_population"],
+        },
+        "files": {
+            reconciliation_path.name: inventory(reconciliation_path),
+        },
+    }
+    write_json(directory / "manifest.json", manifest)
+    (directory / "摘要.md").write_text("# 保留 D4 样本\n", encoding="utf-8")
+    close_component(directory)
+
+    quality = root / "quality"
+    archived_reconciliation = quality / reconciliation_path.name
+    archived_reconciliation.write_bytes(reconciliation_path.read_bytes())
+    closure_path = quality / "输入闭包.json"
+    closure = json.loads(closure_path.read_text(encoding="utf-8"))
+    closure["source_inputs"]["evidence"] = sha(archived_reconciliation)
+    write_json(closure_path, closure)
+    close_component(quality)
+    return directory
+
+
 @pytest.fixture(autouse=True)
 def clear_cache(monkeypatch):
     p0_data_service.reset_p0_data_cache()
@@ -923,6 +965,31 @@ def test_candidate_repository_rejects_unapproved_top_level_entry(client, release
     assert payload["error"]["code"] == "candidate_artifact_conflict"
     assert "未准入顶层条目" in payload["error"]["message_zh"]
     assert "README.txt" in payload["error"]["message_zh"]
+
+
+def test_retained_legacy_d4_requires_quality_hash_binding(client, release):
+    directory = add_retained_legacy_d4(release)
+    p0_data_service.reset_p0_data_cache()
+    assert client.get("/api/v1/p0/status").status_code == 200
+
+    reconciliation_path = directory / "evidence-reconciliation-summary.json"
+    write_json(
+        reconciliation_path,
+        {
+            "schema_version": "evidence_reconciliation_v1",
+            "summary_fingerprint_sha256": "5" * 64,
+        },
+    )
+    manifest_path = directory / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"][reconciliation_path.name] = inventory(reconciliation_path)
+    write_json(manifest_path, manifest)
+    close_component(directory)
+
+    p0_data_service.reset_p0_data_cache()
+    response = client.get("/api/v1/p0/status")
+    assert response.status_code == 409
+    assert "Quality 输入闭包" in response.get_json()["error"]["message_zh"]
 
 
 def test_tampered_component_is_409_and_never_empty_data(client, release):

@@ -1,7 +1,9 @@
 """P0 候选数据制品的只读准入服务。
 
 服务只在显式配置 ``P0_DATA_RELEASE_DIR`` 时读取候选仓库。仓库固定包含
-``d2``、``d3``、``metric`` 和 ``quality`` 四个平铺组件目录；
+``d2``、``d3``、``metric`` 和 ``quality`` 四个平铺组件目录；已发布的
+legacy_compatible 仓库还允许保留只读 ``d4`` 证据组件，但必须由 Quality
+输入闭包逐哈希绑定，且不会恢复已经下线的旧证据 API。
 每个目录都必须有覆盖其余全部普通文件的 ``SHA256SUMS``。本模块不导入
 数据库连接、不写文件、不激活生产，只把已经通过组件准入且引用闭合的
 MetricSeries 和质量报告投影为 API 数据。
@@ -35,6 +37,7 @@ from data_pipeline.quality import QualityGateInputError, validate_report_semanti
 P0_DATA_RELEASE_ENV = "P0_DATA_RELEASE_DIR"
 P0_DATA_PRODUCTION_ACTIVE_ENV = "P0_DATA_PRODUCTION_ACTIVE"
 COMPONENT_NAMES = ("d2", "d3", "metric", "quality")
+OPTIONAL_RETAINED_COMPONENT_NAMES = ("d4",)
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 METRIC_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,95}$")
 SAFE_FILE_RE = re.compile(r"^[^/\\\x00\r\n]+$")
@@ -113,6 +116,7 @@ UTC = timezone.utc
 COMPONENT_MAX_TOTAL_BYTES = {
     "d2": 1024 * 1024 * 1024,
     "d3": 128 * 1024 * 1024,
+    "d4": 512 * 1024 * 1024,
     "metric": 1024 * 1024 * 1024,
     "quality": 1024 * 1024 * 1024,
 }
@@ -390,7 +394,8 @@ def _scan_layout(root: Path) -> Layout:
     for path in root_entries:
         metadata = _lstat(path, "P0 候选仓库条目")
         stamps[path.name] = _stamp(metadata)
-    unexpected_entries = sorted(set(entries) - set(COMPONENT_NAMES))
+    approved_names = set(COMPONENT_NAMES) | set(OPTIONAL_RETAINED_COMPONENT_NAMES)
+    unexpected_entries = sorted(set(entries) - approved_names)
     if unexpected_entries:
         raise P0DataConflict(
             "P0 候选仓库存在未准入顶层条目：{}".format(
@@ -398,7 +403,10 @@ def _scan_layout(root: Path) -> Layout:
             )
         )
     component_files = []
-    for component_name in COMPONENT_NAMES:
+    present_component_names = COMPONENT_NAMES + tuple(
+        name for name in OPTIONAL_RETAINED_COMPONENT_NAMES if name in entries
+    )
+    for component_name in present_component_names:
         directory = entries.get(component_name)
         if directory is None:
             raise P0DataConflict("P0 候选仓库缺少 {} 组件".format(component_name))
@@ -1805,10 +1813,56 @@ def _quality_fingerprint(report: Mapping[str, Any]) -> str:
     )
 
 
+def _load_retained_legacy_d4(layout: Layout, component: Component) -> None:
+    """校验仍由 legacy_compatible Quality 闭包引用的只读 D4 组件。
+
+    D4 只作为已发布数据身份的一部分保留。这里校验其文件闭包、manifest
+    inventory 和 sample-only 边界，但不重新暴露旧 Evidence Bundle API。
+    """
+
+    manifest = _load_json(layout, "d4", "manifest.json", "保留 D4 manifest")
+    if (
+        manifest.get("schema_version") != "p0_evidence_candidate_v1"
+        or manifest.get("classification") != "observation_only"
+        or manifest.get("causal_conclusion") is not None
+    ):
+        raise P0DataConflict("保留 D4 manifest 版本或观测边界非法")
+    admission = manifest.get("admission")
+    if (
+        not isinstance(admission, Mapping)
+        or admission.get("represents_full_evidence_population") is not False
+        or admission.get("eligible_for_release_gate") is not False
+        or admission.get("raw_traceable") is not False
+    ):
+        raise P0DataConflict("保留 D4 必须保持 sample-only 且不可独立准入")
+    _verify_inventory(manifest, component, layout, "保留 D4")
+    inventories = manifest.get("files")
+    assert isinstance(inventories, Mapping)
+    _require_component_files(
+        component,
+        set(inventories) | {"manifest.json", "摘要.md"},
+        "保留 D4 组件",
+    )
+    reconciliation = _load_json(
+        layout,
+        "d4",
+        "evidence-reconciliation-summary.json",
+        "保留 D4 Evidence reconciliation",
+    )
+    if reconciliation.get("schema_version") != "evidence_reconciliation_v1":
+        raise P0DataConflict("保留 D4 Evidence reconciliation 版本非法")
+
+
 def _load_quality(
     layout: Layout, component: Component
 ) -> Tuple[Mapping[str, Any], Mapping[str, Any]]:
-    _require_component_files(component, QUALITY_REQUIRED_FILES, "Quality 组件")
+    retained_d4 = any(name == "d4" for name, _ in layout.component_files)
+    required_files = QUALITY_REQUIRED_FILES
+    source_input_files = dict(QUALITY_SOURCE_INPUT_FILES)
+    if retained_d4:
+        required_files = required_files | {"evidence-reconciliation-summary.json"}
+        source_input_files["evidence"] = "evidence-reconciliation-summary.json"
+    _require_component_files(component, required_files, "Quality 组件")
     report = _load_json(
         layout, "quality", "data-quality-report.json", "P0 data quality report"
     )
@@ -1926,7 +1980,7 @@ def _load_quality(
     expected_source_keys = {
         "d2_original_manifest_sha256",
         "d2_audited_manifest_sha256",
-        *QUALITY_SOURCE_INPUT_FILES,
+        *source_input_files,
     }
     if (
         closure.get("schema_version") != "p0_quality_gate_input_closure_v1"
@@ -1956,7 +2010,7 @@ def _load_quality(
         ],
         **{
             key: component.checksums[filename]
-            for key, filename in QUALITY_SOURCE_INPUT_FILES.items()
+            for key, filename in source_input_files.items()
         },
     }
     if any(
@@ -2087,8 +2141,12 @@ def _cross_validate(
         ),
         "profile": profile_sha,
     }
+    if "d4" in components:
+        quality_expected["evidence"] = components["d4"].checksums.get(
+            "evidence-reconciliation-summary.json"
+        )
     if any(source_inputs.get(key) != expected for key, expected in quality_expected.items()):
-        raise P0DataConflict("Quality 输入闭包没有绑定当前 D2/D3/Metric 组件")
+        raise P0DataConflict("Quality 输入闭包没有绑定当前 D2/D3/D4/Metric 组件")
     source_release = quality.get("source_release")
     if (
         not isinstance(source_release, Mapping)
@@ -2112,7 +2170,12 @@ def _cross_validate(
 
 
 def _load_repository(layout: Layout) -> ReleaseSnapshot:
-    components = {name: _load_component(layout, name) for name in COMPONENT_NAMES}
+    components = {
+        name: _load_component(layout, name)
+        for name, _ in layout.component_files
+    }
+    if "d4" in components:
+        _load_retained_legacy_d4(layout, components["d4"])
     d2 = _load_d2(layout, components["d2"])
     d3, _, raw_coverage, d3_slot_closure = _load_d3(
         layout, components["d3"]
