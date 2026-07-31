@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "domeye_codex_version_policy_v1",
+  "immutablePaths": [
+    "backend/core/**",
+    "backend/core.sha256"
+  ],
+  "forbiddenContentRules": []
+}
