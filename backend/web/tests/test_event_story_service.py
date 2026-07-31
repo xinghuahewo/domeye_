@@ -147,6 +147,26 @@ def _correct_snapshot_package(source, target, corrected_at):
     return target
 
 
+def _remove_country_updates_snapshot_package(source, target):
+    shutil.copytree(source, target)
+    snapshots_path = target / "country-snapshots.jsonl.gz"
+    with gzip.open(snapshots_path, "rt", encoding="utf-8") as stream:
+        snapshots = [json.loads(line) for line in stream if line.strip()]
+    for snapshot in snapshots:
+        snapshot.pop("country_update_counts", None)
+    _write_jsonl_gzip(snapshots_path, snapshots)
+
+    complete = json.loads((target / "COMPLETE.json").read_text(encoding="utf-8"))
+    complete["deliverable_sha256"] = {
+        filename: _sha256(target / filename)
+        for filename in event_story_service.CONSUMED_DELIVERABLES
+    }
+    complete["deliverable_sha256"]["route-states.jsonl.gz"] = "a" * 64
+    _write_json(target / "COMPLETE.json", complete)
+    event_story_service._load_package.cache_clear()
+    return target
+
+
 def _snapshot(at, affected, fully_invisible, partially_visible, visible_prefix):
     return {
         "snapshot_id": "snapshot-" + at,
@@ -428,6 +448,44 @@ def test_country_observation_exposes_only_descriptive_data(story_package):
         "unknowns",
         "actions",
     } & set(observation)
+
+
+def test_unavailable_country_updates_do_not_publish_null_extrema(
+    story_package,
+    tmp_path,
+):
+    package = _remove_country_updates_snapshot_package(
+        story_package,
+        tmp_path / "without-country-updates",
+    )
+    observation = event_story_service.get_country_outage_observation(
+        registration={
+            "incident_id": "incident-test",
+            "legacy_reference": LEGACY_REFERENCE,
+            "country": {"code": "IR", "name": "伊朗"},
+            "package_uri": str(package),
+            "collector_ids": ["rrc25"],
+            "vantage_point_count": 96,
+            "interval_seconds": 300,
+            "revision": 4,
+            "publication_state": "published",
+            "resource_source": {"state": "available"},
+        },
+        legacy_detail={"start_time": "2026-02-27 09:12:32"},
+        package_directory=package,
+        resource_series=_resource_series(),
+    )
+
+    assert observation["country_update_series"] == []
+    assert observation["country_update_metric_extrema"] == {}
+    assert not any(
+        metric.startswith("country_")
+        for metric in observation["metric_extrema"]
+    )
+    assert all(
+        extrema["min"] is not None and extrema["max"] is not None
+        for extrema in observation["metric_extrema"].values()
+    )
 
 
 def test_v2_publication_pin_keeps_four_interfaces_atomic(

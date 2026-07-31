@@ -333,7 +333,8 @@ export interface CountryOutageServerLimits {
   maximumActiveReportRunsGlobal: number
   maximumQueueDepth: number
   maximumQuestionsPerMinute: number
-  maximumReportRunsPerUserPerHour: number
+  /** null 表示不限制单用户每小时报告生成次数。 */
+  maximumReportRunsPerUserPerHour: number | null
   maximumAnswerCharacters: number
   maximumQuestionCharacters: number
   completedDownloadGraceMs: number

@@ -185,7 +185,7 @@ test('正式核心运行完整映射 core-v3，且不消费外部能力包配置
     maximumActiveReportRunsGlobal: 8,
     maximumQueueDepth: 32,
     maximumQuestionsPerMinute: 6,
-    maximumReportRunsPerUserPerHour: 3,
+    maximumReportRunsPerUserPerHour: null,
     maximumAnswerCharacters: 4_000,
     maximumQuestionCharacters: 4_000,
     completedDownloadGraceMs: 120_000,
@@ -248,6 +248,11 @@ test('核心配置身份、RRC25、无公网和交叉边界漂移时拒绝映射
       ;(
         source.capacity as Record<string, unknown>
       ).unversioned_runtime_limit = 1
+    }],
+    ['报告小时限频不能用零伪装关闭', (source) => {
+      ;(
+        source.capacity as Record<string, unknown>
+      ).maximum_report_runs_per_user_per_hour = 0
     }],
   ]
 

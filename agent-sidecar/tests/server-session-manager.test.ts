@@ -1080,6 +1080,40 @@ test('回答并发和每分钟六问按用户计算，不能通过多个报告�
   )
 })
 
+test('单用户报告小时限频关闭后连续生成不会返回 report_rate_limited', async () => {
+  let generationCalls = 0
+  const manager = new CountryOutageSessionManager({
+    reportService: {
+      async generate() {
+        generationCalls += 1
+        return result()
+      },
+    },
+    questionService: {
+      async answer() {
+        throw new Error('本测试不应追问')
+      },
+    },
+    authorize: () => true,
+    limits: {
+      maximumReportRunsPerUserPerHour: null,
+    },
+    timersEnabled: false,
+  })
+
+  assert.equal(manager.limits.maximumReportRunsPerUserPerHour, null)
+  for (let index = 1; index <= 10; index += 1) {
+    const created = await manager.createReport(
+      PRINCIPAL,
+      request(`unlimited-report-${String(index).padStart(4, '0')}`),
+    )
+    await settle()
+    const events = await replayEvents(manager, created.report_id)
+    assert.equal(events.at(-1)?.state, 'completed')
+  }
+  assert.equal(generationCalls, 10)
+})
+
 test('无冒号 fact_ 派生事实引用可由冻结 allowlist 安全发布', async () => {
   const factRef = `fact_${'1'.repeat(24)}`
   const base = result()

@@ -95,7 +95,7 @@ export interface FormalCountryOutageAcceptanceRuntime {
     readonly maximumProviderRequestsPerReport: number
     readonly maximumProviderContextUtf8Bytes: number
     readonly maximumQuestionsPerMinute: number
-    readonly maximumReportRunsPerUserPerHour: number
+    readonly maximumReportRunsPerUserPerHour: number | null
     readonly maximumFactRecords: number
     readonly maximumContextTokens: number
     readonly maximumAnswerCharacters: number
@@ -213,6 +213,15 @@ function positiveInteger(
     )
   }
   return Number(value)
+}
+
+function nullablePositiveInteger(
+  parent: Record<string, unknown>,
+  key: string,
+): number | null {
+  const value = parent[key]
+  if (value === null) return null
+  return positiveInteger(parent, key)
 }
 
 function exactValue<T extends string | number | boolean>(
@@ -573,7 +582,7 @@ export function mapFormalCountryOutageAcceptanceConfiguration(
       capacitySource,
       'maximum_questions_per_minute',
     ),
-    maximumReportRunsPerUserPerHour: positiveInteger(
+    maximumReportRunsPerUserPerHour: nullablePositiveInteger(
       capacitySource,
       'maximum_report_runs_per_user_per_hour',
     ),

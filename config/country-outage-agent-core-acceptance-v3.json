@@ -54,7 +54,7 @@
     "maximum_provider_requests_per_report": 5,
     "maximum_provider_context_utf8_bytes": 900000,
     "maximum_questions_per_minute": 6,
-    "maximum_report_runs_per_user_per_hour": 3,
+    "maximum_report_runs_per_user_per_hour": null,
     "maximum_fact_records": 2000,
     "maximum_context_tokens": 64000,
     "maximum_answer_characters": 4000

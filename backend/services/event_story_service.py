@@ -888,13 +888,14 @@ def _metric_extrema(
         "ipv4_visible_prefix_vp_delta",
         "ipv6_visible_prefix_vp_delta",
     )
-    return {
-        metric: {
-            "min": _extreme(series, metric, mode="min"),
-            "max": _extreme(series, metric, mode="max"),
-        }
-        for metric in metrics
-    }
+    result = {}
+    for metric in metrics:
+        minimum = _extreme(series, metric, mode="min")
+        maximum = _extreme(series, metric, mode="max")
+        if minimum is None and maximum is None:
+            continue
+        result[metric] = {"min": minimum, "max": maximum}
+    return result
 
 
 def _feature_time(
@@ -1004,13 +1005,14 @@ def _resource_extrema(
         "announce_delta",
         "withdraw_delta",
     )
-    return {
-        metric: {
-            "min": _extreme(series, metric, mode="min"),
-            "max": _extreme(series, metric, mode="max"),
-        }
-        for metric in metrics
-    }
+    result = {}
+    for metric in metrics:
+        minimum = _extreme(series, metric, mode="min")
+        maximum = _extreme(series, metric, mode="max")
+        if minimum is None and maximum is None:
+            continue
+        result[metric] = {"min": minimum, "max": maximum}
+    return result
 
 
 def _country_update_series(

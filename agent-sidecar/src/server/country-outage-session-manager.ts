@@ -70,7 +70,7 @@ export const DEFAULT_COUNTRY_OUTAGE_SERVER_LIMITS =
     maximumActiveReportRunsGlobal: 8,
     maximumQueueDepth: 32,
     maximumQuestionsPerMinute: 6,
-    maximumReportRunsPerUserPerHour: 3,
+    maximumReportRunsPerUserPerHour: null,
     maximumAnswerCharacters: 4000,
     maximumQuestionCharacters: 4000,
     completedDownloadGraceMs: 120 * 1000,
@@ -1162,13 +1162,15 @@ export class CountryOutageCoreSessionManager {
   }
 
   #enforceReportRate(userId: string): void {
+    const limit = this.#limits.maximumReportRunsPerUserPerHour
+    if (limit === null) return
     const cutoff = this.#now() - 60 * 60 * 1000
     const accepted = (this.#reportAcceptedAtByUser.get(userId) ?? []).filter(
       (value) => value > cutoff,
     )
     this.#reportAcceptedAtByUser.set(userId, accepted)
     if (
-      accepted.length >= this.#limits.maximumReportRunsPerUserPerHour
+      accepted.length >= limit
     ) {
       throw new CountryOutageHttpError(
         429,
@@ -1180,6 +1182,7 @@ export class CountryOutageCoreSessionManager {
   }
 
   #recordReportAccepted(userId: string, atMs: number): void {
+    if (this.#limits.maximumReportRunsPerUserPerHour === null) return
     const values = this.#reportAcceptedAtByUser.get(userId) ?? []
     values.push(atMs)
     this.#reportAcceptedAtByUser.set(userId, values)
