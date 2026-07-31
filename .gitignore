@@ -14,3 +14,4 @@ frontend/.dist-backup-*/
 frontend/.dist-deploy-*/
 frontend/.dist-install-*/
 frontend/.dist-rollback-discard-*/
+/.codex/TASK.json
