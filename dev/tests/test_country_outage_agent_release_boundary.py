@@ -9,6 +9,9 @@ OVERLAY_BUILDER = (
 NGINX_CONFIG = (ROOT / "deploy" / "nginx" / "domeye-core.conf").read_text(
     encoding="utf-8"
 )
+FRONTEND_COMMON = (ROOT / "deploy" / "lib" / "frontend-common.sh").read_text(
+    encoding="utf-8"
+)
 
 
 class CountryOutageAgentReleaseBoundaryTest(unittest.TestCase):
@@ -39,6 +42,24 @@ class CountryOutageAgentReleaseBoundaryTest(unittest.TestCase):
         self.assertIn(
             'Cache-Control "public, max-age=604800, immutable"',
             NGINX_CONFIG,
+        )
+
+    def test_frontend_installer_and_nginx_share_the_runtime_target(self):
+        self.assertIn(
+            "DOMEYE_CORE_FRONTEND_RUNTIME_ROOT='/home/bgpdata/Domeye-Core-runtime'",
+            FRONTEND_COMMON,
+        )
+        self.assertIn(
+            'DOMEYE_CORE_FRONTEND_TARGET="${DOMEYE_CORE_FRONTEND_RUNTIME_ROOT}/web/dist"',
+            FRONTEND_COMMON,
+        )
+        self.assertIn(
+            'DOMEYE_CORE_FRONTEND_STATE_DIR="${DOMEYE_CORE_FRONTEND_RUNTIME_ROOT}/web/state"',
+            FRONTEND_COMMON,
+        )
+        self.assertNotIn(
+            'DOMEYE_CORE_FRONTEND_TARGET="${DOMEYE_CORE_FRONTEND_PROJECT_ROOT}/frontend/dist"',
+            FRONTEND_COMMON,
         )
 
 

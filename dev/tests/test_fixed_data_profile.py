@@ -30,6 +30,9 @@ FULL_ACCEPTANCE = (ROOT / "deploy" / "acceptance" / "full-acceptance.sh").read_t
 FIXED_FRONTEND = (ROOT / "deploy" / "build-fixed-frontend.sh").read_text(
     encoding="utf-8"
 )
+FRONTEND_COMMON = (ROOT / "deploy" / "lib" / "frontend-common.sh").read_text(
+    encoding="utf-8"
+)
 VITE_CONFIG = (ROOT / "frontend" / "vite.config.ts").read_text(encoding="utf-8")
 EVENTS_PAGE = (ROOT / "frontend" / "src" / "pages" / "EventsPage.vue").read_text(
     encoding="utf-8"
@@ -83,6 +86,10 @@ class FixedDataProfileContractTest(unittest.TestCase):
         self.assertIn('VITE_DATA_WINDOW_START="${DOMEYE_CORE_FIXED_DATA_START/ /T}"', FIXED_FRONTEND)
         self.assertIn('VITE_DATA_WINDOW_END="${DOMEYE_CORE_FIXED_SNAPSHOT_TIME/ /T}"', FIXED_FRONTEND)
         self.assertIn("install-frontend-build.sh", FIXED_FRONTEND)
+        self.assertIn(
+            'DOMEYE_CORE_FRONTEND_TARGET="${DOMEYE_CORE_FRONTEND_RUNTIME_ROOT}/web/dist"',
+            FRONTEND_COMMON,
+        )
 
     def test_plain_frontend_build_defaults_to_the_unique_data_profile(self):
         self.assertIn("../config/data-profile.json", VITE_CONFIG)

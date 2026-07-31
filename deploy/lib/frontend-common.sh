@@ -2,9 +2,9 @@
 
 # 前端原子安装和回滚脚本的共用校验。调用方必须先启用 set -Eeuo pipefail，
 # 并先加载 artifact-common.sh。
-readonly DOMEYE_CORE_FRONTEND_PROJECT_ROOT='/home/bgpdata/Domeye-Core'
-readonly DOMEYE_CORE_FRONTEND_TARGET="${DOMEYE_CORE_FRONTEND_PROJECT_ROOT}/frontend/dist"
-readonly DOMEYE_CORE_FRONTEND_STATE_DIR="${DOMEYE_CORE_FRONTEND_PROJECT_ROOT}/var/releases"
+readonly DOMEYE_CORE_FRONTEND_RUNTIME_ROOT='/home/bgpdata/Domeye-Core-runtime'
+readonly DOMEYE_CORE_FRONTEND_TARGET="${DOMEYE_CORE_FRONTEND_RUNTIME_ROOT}/web/dist"
+readonly DOMEYE_CORE_FRONTEND_STATE_DIR="${DOMEYE_CORE_FRONTEND_RUNTIME_ROOT}/web/state"
 readonly DOMEYE_CORE_FRONTEND_CURRENT_STATE="${DOMEYE_CORE_FRONTEND_STATE_DIR}/frontend-current"
 readonly DOMEYE_CORE_FRONTEND_ROLLBACK_JOURNAL="${DOMEYE_CORE_FRONTEND_STATE_DIR}/frontend-rollback.json"
 readonly DOMEYE_CORE_FRONTEND_INSTALL_STATUS="${DOMEYE_CORE_FRONTEND_STATE_DIR}/frontend-install-status.json"
