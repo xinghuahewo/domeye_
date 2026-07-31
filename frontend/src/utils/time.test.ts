@@ -77,4 +77,11 @@ describe('开发数据时间窗口', () => {
       end: '2026-03-31T23:59:59',
     })
   })
+
+  it('近 30 天入口以固定窗口终点计算，不读取浏览器当前日期', () => {
+    expect(recentDateRange(30, developmentWindow)).toEqual({
+      start: '2026-03-01',
+      end: '2026-03-31',
+    })
+  })
 })

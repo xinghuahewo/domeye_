@@ -17,6 +17,11 @@ const defaultDates = dataWindow
   : { start: '', end: '' }
 const minimumDate = dataWindow?.start.slice(0, 10)
 const maximumDate = dataWindow?.end.slice(0, 10)
+const DATE_PRESETS = [
+  { id: 'recent-7', label: '近 7 天', days: 7 },
+  { id: 'recent-30', label: '近 30 天', days: 30 },
+  { id: 'full-window', label: '整个数据窗口', days: null },
+] as const
 const requestedEventType = typeof route.query.event_type === 'string'
   && CORE_EVENT_TYPES.includes(route.query.event_type as (typeof CORE_EVENT_TYPES)[number])
   ? route.query.event_type
@@ -47,6 +52,22 @@ const pageLabel = computed(() => {
   const total = Math.max(1, result.value.totalPage)
   return `${page.value.toString().padStart(2, '0')} / ${total.toString().padStart(2, '0')}`
 })
+
+const activeDatePreset = computed(() => DATE_PRESETS.find((preset) => {
+  const range = preset.days === null
+    ? { start: minimumDate, end: maximumDate }
+    : recentDateRange(preset.days, import.meta.env)
+  return filters.startDate === range.start && filters.endDate === range.end
+})?.id ?? '')
+
+function applyDatePreset(preset: (typeof DATE_PRESETS)[number]) {
+  const range = preset.days === null
+    ? { start: minimumDate ?? '', end: maximumDate ?? '' }
+    : recentDateRange(preset.days, import.meta.env)
+  filters.startDate = range.start
+  filters.endDate = range.end
+  void load(true)
+}
 
 async function load(resetPage = false) {
   if (resetPage) page.value = 1
@@ -161,6 +182,23 @@ onMounted(() => load())
         </select>
       </label>
       <button class="solid-action" type="submit">执行查询</button>
+      <div class="filter-presets" role="group" aria-label="快捷时间范围">
+        <span class="preset-label">快捷范围</span>
+        <button
+          v-for="preset in DATE_PRESETS"
+          :key="preset.id"
+          class="preset-chip"
+          :class="{ 'is-active': activeDatePreset === preset.id }"
+          type="button"
+          :aria-pressed="activeDatePreset === preset.id"
+          @click="applyDatePreset(preset)"
+        >
+          {{ preset.label }}
+        </button>
+        <span v-if="minimumDate && maximumDate" class="preset-hint">
+          可选范围 {{ minimumDate }} — {{ maximumDate }}
+        </span>
+      </div>
     </form>
 
     <section class="data-panel">
@@ -235,6 +273,54 @@ onMounted(() => load())
   min-height: 38px;
 }
 
+.filter-presets {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding-top: 3px;
+  border-top: 1px solid #e4e9ef;
+}
+
+.preset-label {
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.preset-chip {
+  min-height: 28px;
+  padding: 0 12px;
+  cursor: pointer;
+  color: var(--primary);
+  background: #f7faff;
+  border: 1px solid #b8cdf5;
+  border-radius: 14px;
+  font-size: 10px;
+  font-weight: 650;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.preset-chip:hover {
+  background: #eaf2ff;
+  border-color: #7da4eb;
+}
+
+.preset-chip.is-active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.preset-hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .result-heading {
   margin: 0;
   padding: 15px 18px;
@@ -290,6 +376,11 @@ onMounted(() => load())
     grid-template-columns: 1fr;
     gap: 11px;
     padding: 13px;
+  }
+
+  .preset-hint {
+    flex-basis: 100%;
+    margin-left: 0;
   }
 
   .pagination {
