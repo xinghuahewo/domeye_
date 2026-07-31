@@ -1,0 +1,38 @@
+{
+  "name": "domeye-country-outage-agent-sidecar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "postinstall": "node scripts/apply_pi_response_model_patch.mjs --apply",
+    "prebuild": "npm run vendor:patch:verify",
+    "build": "tsc -p tsconfig.json",
+    "pretypecheck": "npm run vendor:patch:verify",
+    "certify:model:a4": "npm run build && node dist/src/cli/certify-a4-model-candidate.js",
+    "promote:model:a4": "npm run build && node dist/src/cli/promote-a4-model-candidate.js",
+    "attest:model:a4-price": "npm run build && node dist/src/cli/create-a4-provider-price-attestation.js",
+    "status:model:a4-readiness": "npm run build && node dist/src/cli/a4-candidate-readiness-status.js",
+    "initialize:model:a4-activity": "npm run build && node dist/src/cli/initialize-a4-model-candidate-activity.js",
+    "reconcile:model:a4-failure": "npm run build && node dist/src/cli/reconcile-a4-model-candidate-activity.js",
+    "reconcile:model:a4-historical-usage": "npm run build && node dist/src/cli/reconcile-a4-model-candidate-historical-usage.js",
+    "reconcile:model:a4-historical-billing": "npm run build && node dist/src/cli/reconcile-a4-model-candidate-historical-billed-amount.js",
+    "generate:acceptance-report": "npm run build && node dist/src/cli/generate-acceptance-report.js",
+    "start:acceptance": "npm run build && node dist/src/cli/serve-acceptance.js",
+    "start:formal": "npm run build && node dist/src/cli/serve-formal.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "vendor:patch:apply": "node scripts/apply_pi_response_model_patch.mjs --apply",
+    "vendor:patch:verify": "node scripts/apply_pi_response_model_patch.mjs --verify"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.82.1",
+    "typebox": "1.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.0",
+    "typescript": "5.9.3"
+  }
+}

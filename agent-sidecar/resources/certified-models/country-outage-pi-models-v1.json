@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "country_outage_pi_certified_models_v1",
+  "registryVersion": "deepseek-v4-flash-certified-v1",
+  "status": "frozen",
+  "profiles": [
+    {
+      "id": "deepseek-v4-flash-pi-0.82.1-v1",
+      "status": "certified",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "modelVersion": "deepseek-v4-flash",
+      "expectedResponseModel": "deepseek-v4-flash",
+      "thinkingLevel": "off",
+      "piVersion": "0.82.1",
+      "certificationEvidenceId": "evidence:model-certification:b50f247c7b1322df6d05afa45c5c1078b58349329d9f27ec5800bbfa5770a1d4",
+      "certifiedAt": "2026-07-30T09:19:34.010Z",
+      "modelRevisionKind": "mutable_alias",
+      "immutableRevisionAvailable": false,
+      "limitation": "供应方未提供不可变权重 revision；deepseek-v4-flash 是可变别名，可能无痕变化。",
+      "certificationValidUntil": "2026-08-06T09:19:34.010Z",
+      "certifiedScenarioSetId": "country-outage-rrc25-legal-scenarios-v2",
+      "certifiedInputScope": "legal_country_outage_rrc25_v1"
+    }
+  ]
+}

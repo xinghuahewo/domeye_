@@ -20,6 +20,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/p0/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取显式 P0 候选仓库的数据身份、门禁、覆盖和限制；不连接数据库，不表示生产已激活。 */
+        get: operations["getP0DataStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/p0/metrics/{metric_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 只返回已进入 P0 数据字典、manifest 已准入且 SHA 闭合的 MetricSeries。缺失点保持 null、value_state 和 missing_reason。 */
+        get: operations["getP0MetricSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/p0/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 返回 SHA、fingerprint 和检查引用闭合的完整质量报告；gate 失败仍是可信的 200 状态。 */
+        get: operations["getP0DataQualityReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -44,6 +95,258 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getTopEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/evidence-bundle/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 基于六类业务事实表组装确定性只读证据包。路径字段是 Route Observation / Path Snapshot，不是因果链路。 */
+        get: operations["getEventEvidenceBundle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/story/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 返回通过事件详情页产品合同验收的研究型事件叙事。结论显式限定 collector、固定 cohort、控制面范围、时间删失和因果边界；当前只为伊朗国家中断验收事件提供。 */
+        get: operations["getEventStory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/observations/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 兼容旧引用路径的国家中断观测数据。事件身份和制品位置来自发布注册表，不在接口代码中绑定国家。 */
+        get: operations["getEventObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/events/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 将旧五段式事件引用解析为稳定 incident ID、当前不可变 publication 和最新已发布修订。 */
+        get: operations["resolveCountryOutage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outages/{incident_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCountryOutageOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outages/{incident_id}/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCountryOutageSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outages/{incident_id}/asns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCountryOutageAsns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outages/{incident_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 仅在用户展开审计区时读取；不暴露服务器物理目录。 */
+        get: operations["getCountryOutageAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/capabilities/external-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 返回 Domeye 应用编排层的外部证据附加能力就绪态。该能力不可用不影响 RRC25 核心报告、追问和基础下载。 */
+        get: operations["getCountryOutageExternalEvidenceCapability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 由当前用户主动触发已有合法 country_outage 事件的 RRC25 固定快照报告。Python 控制面只代理到本机受限 Sidecar。 */
+        post: operations["createCountryOutageAgentReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 按递增 event id 返回受控报告、问答和会话状态；不发送模型草稿、工具返回或思考过程。支持 Last-Event-ID 重放。 */
+        get: operations["streamCountryOutageAgentReportEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 围绕原报告固定快照提交追问。默认仅使用 Domeye；只有请求显式携带本次授权时，才允许生成与 Domeye 回答严格分离的公开网络证据附录。 */
+        post: operations["askCountryOutageAgentQuestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/runs/{run_id}/abort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 取消当前用户拥有的报告或问题运行；取消后不再发布迟到结果。 */
+        post: operations["abortCountryOutageAgentRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/artifacts/{artifact_format}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 下载同一已校验报告制品生成的 Markdown 或 PDF；普通问答不进入文件。 */
+        get: operations["downloadCountryOutageAgentArtifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/reports/{report_id}/questions/{question_id}/artifacts/external-appendix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 在短期会话内下载绑定当前用户、基础报告固定快照和指定问题的独立 Markdown 外部来源核验附录。只有无错误的 completed 外部核验可以下载；附录不修改基础报告，普通问答不进入附录，也不提供永久历史。 */
+        get: operations["downloadCountryOutageAgentExternalAppendix"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,6 +403,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/countries/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCountryWorkbenchOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/features/ases": {
         parameters: {
             query?: never;
@@ -108,6 +427,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getAsFeatures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/ases/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAsWorkbenchOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/ases/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAsExactRecentEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -228,14 +579,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDashboardOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        P0ErrorResponse: {
+            /** @constant */
+            schema_version: "p0_error_v1";
+            /** @constant */
+            status: "error";
+            error: {
+                /** @enum {unknown} */
+                code: "invalid_identifier" | "candidate_resource_not_found" | "candidate_artifact_conflict" | "candidate_repository_unavailable" | "p0_internal_error";
+                message_zh: string;
+            };
+        };
+        P0Limitation: {
+            code: string;
+            /** @enum {unknown} */
+            severity: "blocking" | "warning" | "info";
+            message_zh: string;
+        };
+        P0Profile: {
+            id: string;
+            /** @constant */
+            timezone: "Asia/Shanghai";
+            /** Format: date-time */
+            window_start: string;
+            /** Format: date-time */
+            window_end_exclusive: string;
+            /** Format: date-time */
+            snapshot_time: string;
+            /** @constant */
+            boundary: "[start,end)";
+        };
+        P0Releases: {
+            source_release_id: string;
+            normalization_candidate_fingerprint_sha256: string;
+            artifact_manifest_fingerprint_sha256: string;
+            metric_candidate_fingerprint_sha256: string;
+            quality_report_id: string;
+            quality_report_fingerprint_sha256: string;
+            repository_fingerprint_sha256: string;
+        };
+        P0QualityDecision: {
+            /** @enum {unknown} */
+            status: "passed" | "failed" | "pending";
+            /** @enum {unknown} */
+            admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+            blocking_failed_check_ids: string[];
+            blocking_pending_check_ids: string[];
+            warning_check_ids: string[];
+            decision_reasons_zh: string[];
+        };
+        P0AvailableMetric: {
+            metric_name: string;
+            unit: string;
+            aggregation: string;
+            formula: string;
+            formula_version: string;
+            subject: components["schemas"]["subject"];
+            window: components["schemas"]["window"];
+            coverage: components["schemas"]["coverage"];
+        };
+        P0RawCoverage: {
+            /** @constant */
+            artifact_type: "update";
+            collector_scope: string[];
+            /** @enum {unknown} */
+            status: "complete" | "partial";
+            expected_count: number;
+            /** @description 发现文件且通过压缩容器完整性校验的 UPDATE 槽数；不等同于全量 MRT 语义解析通过。 */
+            observed_count: number;
+            /** @description 发现 UPDATE 文件的槽数，等于 observed_count + parse_failed。 */
+            present_count: number;
+            missing_count: number;
+            coverage_ratio: number;
+            presence_ratio: number;
+            /**
+             * @description 缺口聚合状态；mixed 表示来源不可用与解析失败同时存在，精确计数以 missing_state_counts 为准。
+             * @enum {unknown}
+             */
+            missing_value_state: null | "source_unavailable" | "parse_failed" | "mixed";
+            /** @description 原始 UPDATE 缺口的互斥分解；两项之和必须等于 missing_count。 */
+            missing_state_counts: {
+                /** @description 未发现对应原始 UPDATE 制品的时间槽数。 */
+                source_unavailable: number;
+                /** @description 发现原始 UPDATE 文件但因空文件、压缩 magic 错误或压缩流 EOF/CRC 完整性失败而不可用的时间槽数。 */
+                parse_failed: number;
+            };
+            /** @description 仅针对 UPDATE 的 parse_failed 原因互斥分解；三项之和必须等于 missing_state_counts.parse_failed。 */
+            invalid_reason_counts: {
+                compressed_stream_invalid: number;
+                compression_magic_mismatch: number;
+                empty_file: number;
+            };
+        };
+        P0DataStatus: {
+            /** @constant */
+            schema_version: "p0_data_status_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            profile: components["schemas"]["P0Profile"];
+            releases: components["schemas"]["P0Releases"];
+            quality_decision: components["schemas"]["P0QualityDecision"];
+            available_metrics: components["schemas"]["P0AvailableMetric"][];
+            raw_coverage: components["schemas"]["P0RawCoverage"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
+        P0MetricResponse: {
+            /** @constant */
+            schema_version: "p0_metric_response_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            candidate_fingerprint_sha256: string;
+            /** @constant */
+            admission_status: "metric_candidate_ready";
+            metric: components["schemas"]["metric-series.schema"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
+        P0QualityResponse: {
+            /** @constant */
+            schema_version: "p0_quality_response_v1";
+            /** @enum {unknown} */
+            repository_state: "candidate" | "production";
+            production_active: boolean;
+            report: components["schemas"]["data-quality-report.schema"];
+            limitations: components["schemas"]["P0Limitation"][];
+        } & ({
+            /** @constant */
+            repository_state?: "candidate";
+            /** @constant */
+            production_active?: false;
+        } | {
+            /** @constant */
+            repository_state?: "production";
+            /** @constant */
+            production_active?: true;
+        });
         HealthPayload: {
             status: string;
             service: string;
             time: string;
+        };
+        LegacyEventSemanticGuardrails: {
+            /** @constant */
+            contract_version: "legacy_event_semantic_guardrails_v1";
+            /** @enum {string} */
+            lifecycle_state: "recorded" | "unknown" | "unavailable";
+            /** @enum {string} */
+            attribution_state: "detector_fact_only" | "legacy_biased";
+            /** @enum {string} */
+            ratio_state: "not_applicable" | "recompute_required";
+            blocked_claims: string[];
+            reason_codes: string[];
         };
         EventItem: {
             event_type: string;
@@ -251,6 +786,7 @@ export interface components {
             attacked_org: string;
             attacker_country: string;
             attacked_country: string;
+            semantic_guardrails: components["schemas"]["LegacyEventSemanticGuardrails"];
         } & {
             [key: string]: unknown;
         };
@@ -266,8 +802,881 @@ export interface components {
             event_level: string;
             event_descr: string;
             event_info: string;
+            semantic_guardrails: components["schemas"]["LegacyEventSemanticGuardrails"];
         } & {
             [key: string]: unknown;
+        };
+        EventStory: {
+            /** @constant */
+            schema_version: "event_detail_story_v1";
+            contract_scope: {
+                [key: string]: unknown;
+            };
+            event: {
+                [key: string]: unknown;
+            };
+            observation: {
+                [key: string]: unknown;
+            };
+            baseline: {
+                [key: string]: unknown;
+            };
+            detection: {
+                [key: string]: unknown;
+            };
+            impact: {
+                [key: string]: unknown;
+            };
+            series: {
+                [key: string]: unknown;
+            }[];
+            lifecycle: {
+                [key: string]: unknown;
+            };
+            precursor: {
+                [key: string]: unknown;
+            };
+            comparisons: {
+                [key: string]: unknown;
+            }[];
+            claims: {
+                [key: string]: unknown;
+            }[];
+            unknowns: {
+                [key: string]: unknown;
+            }[];
+            actions: {
+                [key: string]: unknown;
+            }[];
+            evidence: {
+                [key: string]: unknown;
+            };
+        };
+        EventObservation: {
+            /** @constant */
+            schema_version: "event_observation_v1";
+            event_identity: {
+                [key: string]: unknown;
+            };
+            observation_scope: {
+                [key: string]: unknown;
+            };
+            cohort: {
+                [key: string]: unknown;
+            };
+            normal_band: {
+                [key: string]: unknown;
+            };
+            rule_marker: {
+                [key: string]: unknown;
+            };
+            metric_definitions: {
+                [key: string]: unknown;
+            }[];
+            series: {
+                [key: string]: unknown;
+            }[];
+            metric_extrema: {
+                [key: string]: unknown;
+            };
+            resource_series: {
+                [key: string]: unknown;
+            }[];
+            resource_metric_extrema: {
+                [key: string]: unknown;
+            };
+            country_update_series: {
+                [key: string]: unknown;
+            }[];
+            country_update_metric_extrema: {
+                [key: string]: unknown;
+            };
+            annotations: {
+                [key: string]: unknown;
+            }[];
+            asn_state: {
+                [key: string]: unknown;
+            };
+            limitations: string[];
+            audit: {
+                [key: string]: unknown;
+            };
+        };
+        CountryOutageResolutionV2: {
+            /** @constant */
+            schema_version: "country_outage_resolution_v2";
+            incident_id: string;
+            publication_id: string;
+            legacy_reference: string;
+            /** @constant */
+            event_type: "country_outage";
+            observation_state: components["schemas"]["CountryOutageObservationState"];
+            latest_revision: number;
+            data_mode: components["schemas"]["CountryOutageDataMode"];
+            data_through: string | null;
+            is_final: boolean;
+            processing_status: components["schemas"]["CountryOutageProcessingStatus"];
+            missing_slot_count: number;
+            /** @constant */
+            capability_contract_version: "country_outage_capabilities_v1";
+            capabilities: components["schemas"]["CountryOutageCapabilities"];
+        };
+        /** @enum {string} */
+        CountryOutageObservationState: "legacy_summary" | "aggregate_available" | "state_partial" | "state_complete" | "evidence_complete";
+        /** @enum {string} */
+        CountryOutageDataMode: "legacy" | "replay" | "live" | "mixed";
+        CountryOutageProcessingStatus: {
+            /** @enum {string} */
+            state: "idle" | "processing" | "waiting_for_source" | "failed" | "final";
+            updated_at: string | null;
+            attempted_through: string | null;
+            reason: string | null;
+            last_complete_data_through: string | null;
+        };
+        CountryOutageMissingSlot: {
+            observed_at: string;
+            /** @enum {string} */
+            slot_state: "source_unavailable" | "processing_gap" | "parse_failed" | "not_observed";
+            missing_reason: string;
+        };
+        CountryOutageCapability: {
+            /** @enum {string} */
+            state: "available" | "building" | "unavailable" | "not_applicable" | "unknown";
+            reason?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        CountryOutageCapabilities: {
+            [key: string]: components["schemas"]["CountryOutageCapability"];
+        };
+        CountryOutageOverviewV2: {
+            /** @constant */
+            schema_version: "country_outage_overview_v2";
+            revision: number;
+            publication_id: string;
+            publication_state: string;
+            observation_state: components["schemas"]["CountryOutageObservationState"];
+            data_mode: components["schemas"]["CountryOutageDataMode"];
+            data_through: string | null;
+            updated_at: string | null;
+            is_final: boolean;
+            processing_status: components["schemas"]["CountryOutageProcessingStatus"];
+            missing_slot_count: number;
+            incident_id: string;
+            cohort_id: string | null;
+            window_start_utc: string | null;
+            window_end_utc: string | null;
+            /** @constant */
+            capability_contract_version: "country_outage_capabilities_v1";
+            event_identity: {
+                [key: string]: unknown;
+            };
+            observation_scope: {
+                [key: string]: unknown;
+            };
+            cohort: {
+                [key: string]: unknown;
+            } | null;
+            normal_band: {
+                [key: string]: unknown;
+            };
+            rule_marker: {
+                [key: string]: unknown;
+            } | null;
+            capabilities: components["schemas"]["CountryOutageCapabilities"];
+            legacy_summary: {
+                [key: string]: unknown;
+            } | null;
+            limitations: string[];
+        };
+        CountryOutageSeriesV2: {
+            /** @constant */
+            schema_version: "country_outage_series_v2";
+            revision: number;
+            publication_id: string;
+            publication_state: string;
+            observation_state: components["schemas"]["CountryOutageObservationState"];
+            data_mode: components["schemas"]["CountryOutageDataMode"];
+            data_through: string | null;
+            updated_at: string | null;
+            is_final: boolean;
+            processing_status: components["schemas"]["CountryOutageProcessingStatus"];
+            missing_slot_count: number;
+            incident_id: string;
+            cohort_id: string | null;
+            window_start_utc: string | null;
+            window_end_utc: string | null;
+            /** @constant */
+            capability_contract_version: "country_outage_capabilities_v1";
+            interval_seconds: number | null;
+            metric_definitions: {
+                [key: string]: unknown;
+            }[];
+            series: {
+                [key: string]: unknown;
+            }[];
+            metric_extrema: {
+                [key: string]: unknown;
+            };
+            resource_series: {
+                [key: string]: unknown;
+            }[];
+            resource_metric_extrema: {
+                [key: string]: unknown;
+            };
+            country_update_series: {
+                [key: string]: unknown;
+            }[];
+            country_update_metric_extrema: {
+                [key: string]: unknown;
+            };
+            annotations: {
+                [key: string]: unknown;
+            }[];
+        };
+        CountryOutageAsnPageV2: {
+            /** @constant */
+            schema_version: "country_outage_asn_page_v2";
+            revision: number;
+            publication_id: string;
+            publication_state: string;
+            observation_state: components["schemas"]["CountryOutageObservationState"];
+            data_mode: components["schemas"]["CountryOutageDataMode"];
+            data_through: string | null;
+            updated_at: string | null;
+            is_final: boolean;
+            processing_status: components["schemas"]["CountryOutageProcessingStatus"];
+            missing_slot_count: number;
+            incident_id: string;
+            cohort_id: string | null;
+            window_start_utc: string | null;
+            window_end_utc: string | null;
+            /** @constant */
+            capability_contract_version: "country_outage_capabilities_v1";
+            page: number;
+            page_size: number;
+            page_count: number;
+            total: number;
+            observed_at_utc: string[];
+            observed_at_local: string[];
+            state_codes: {
+                [key: string]: string;
+            };
+            duration_histogram: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            items: {
+                [key: string]: unknown;
+            }[];
+        };
+        CountryOutageAuditV2: {
+            /** @constant */
+            schema_version: "country_outage_audit_v2";
+            revision: number;
+            publication_id: string;
+            publication_state: string;
+            observation_state: components["schemas"]["CountryOutageObservationState"];
+            data_mode: components["schemas"]["CountryOutageDataMode"];
+            data_through: string | null;
+            updated_at: string | null;
+            is_final: boolean;
+            processing_status: components["schemas"]["CountryOutageProcessingStatus"];
+            missing_slot_count: number;
+            incident_id: string;
+            cohort_id: string | null;
+            window_start_utc: string | null;
+            window_end_utc: string | null;
+            /** @constant */
+            capability_contract_version: "country_outage_capabilities_v1";
+            run_id?: string | null;
+            artifact_set_id?: string | null;
+            engine_version: string;
+            quality_status: string;
+            consumed_deliverable_hashes_verified: boolean;
+            verified_hashes: {
+                [key: string]: string;
+            };
+            route_state_file: {
+                [key: string]: unknown;
+            };
+            input_summary: {
+                [key: string]: unknown;
+            };
+            revision_history?: {
+                [key: string]: unknown;
+            }[];
+            supersedes_publication_id?: string | null;
+            correction_reason?: string | null;
+            missing_slots?: components["schemas"]["CountryOutageMissingSlot"][];
+            algorithm_version: string | null;
+            mapping_version: string | null;
+            source_system: string;
+            source_table: string;
+            source_reference: string;
+            evidence_level: string;
+        };
+        CountryOutageAgentIdempotencyKey: string;
+        CountryOutageExternalEvidencePolicy: {
+            version: string;
+            sha256: string;
+            allowed_host_roots: string[];
+            /** @constant */
+            minimum_urls: 1;
+            maximum_urls: number;
+        };
+        CountryOutageExternalEvidenceCapability: {
+            /** @constant */
+            schema_version: "country_outage_external_evidence_capability_v1";
+            /** @constant */
+            capability: "external_evidence";
+            /** @constant */
+            state: "ready";
+            /** @constant */
+            provider: "managed-egress-v1";
+            /** Format: date-time */
+            checked_at: string;
+            policy: components["schemas"]["CountryOutageExternalEvidencePolicy"];
+        } | {
+            /** @constant */
+            schema_version: "country_outage_external_evidence_capability_v1";
+            /** @constant */
+            capability: "external_evidence";
+            /** @constant */
+            state: "not_configured";
+            /** @constant */
+            provider: "disabled";
+            /** Format: date-time */
+            checked_at: string;
+            policy: null;
+            reason_code: string;
+        } | {
+            /** @constant */
+            schema_version: "country_outage_external_evidence_capability_v1";
+            /** @constant */
+            capability: "external_evidence";
+            /** @constant */
+            state: "self_check_failed";
+            /** @constant */
+            provider: "managed-egress-v1";
+            /** Format: date-time */
+            checked_at: string;
+            policy: null;
+            reason_code: string;
+        };
+        CountryOutageAgentEvidenceRef: string;
+        CountryOutageAgentError: {
+            code: string;
+            message: string;
+            retryable: boolean;
+            next_action?: string;
+        };
+        CountryOutageAgentErrorResponse: {
+            error: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentSession: {
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            reminder_at: string;
+        };
+        CountryOutageAgentCreateReportRequest: {
+            event_reference: string;
+            publication_id: string;
+            revision: number;
+            idempotency_key: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+        };
+        /** @enum {string} */
+        CountryOutageAgentReportPhase: "queued" | "reading_data" | "generating_report" | "validating" | "completed" | "failed" | "cancelled";
+        /** @enum {string} */
+        CountryOutageAgentQuestionPhase: "answering" | "collecting_external" | "completed" | "failed" | "cancelled";
+        /** @enum {string} */
+        CountryOutageAgentActiveRunState: "queued" | "running" | "completed" | "failed" | "cancelled";
+        /** @enum {string} */
+        CountryOutageAgentRunState: "queued" | "running" | "completed" | "failed" | "cancelled" | "expired";
+        CountryOutageAgentCreateReportResponse: {
+            /** @constant */
+            schema_version: "country_outage_agent_http_v1";
+            report_id: string;
+            run_id: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentReportPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            deduplicated: boolean;
+        };
+        CountryOutageAgentQuoteSummary: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "summary";
+            evidence_refs?: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentQuoteHighlight: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "highlight";
+            highlight_index: number;
+            evidence_refs?: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentQuoteSectionParagraph: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "section_paragraph";
+            section_id: string;
+            paragraph_index: number;
+            evidence_refs?: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentQuestionQuote: components["schemas"]["CountryOutageAgentQuoteSummary"] | components["schemas"]["CountryOutageAgentQuoteHighlight"] | components["schemas"]["CountryOutageAgentQuoteSectionParagraph"];
+        CountryOutageAgentDomeyeOnlyQuestionRequest: {
+            question: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            evidence_mode: "domeye_only";
+            quote?: components["schemas"]["CountryOutageAgentQuestionQuote"];
+            idempotency_key: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+        };
+        CountryOutageAgentExternalAuthorization: {
+            /** @constant */
+            authorized: true;
+            /**
+             * Format: date-time
+             * @description 用户在提交有效指定 URL 后明确确认读取的时间；新运行只接受请求前五分钟内且不晚于服务端当前时间的授权，已接受请求的幂等重放不重复读取。
+             */
+            authorized_at: string;
+        };
+        CountryOutageAgentExternalQuestionRequest: {
+            question: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            evidence_mode: "domeye_plus_external";
+            quote?: components["schemas"]["CountryOutageAgentQuestionQuote"];
+            external_authorization: components["schemas"]["CountryOutageAgentExternalAuthorization"];
+            /** @description 用户本次明确确认读取和核验的公开 HTTP/HTTPS 页面；允许来源与数量由已认证的 capability 策略决定，不会从问题文字发现或扩展其他页面。 */
+            external_urls: string[];
+            idempotency_key: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+        };
+        CountryOutageAgentCreateQuestionRequest: components["schemas"]["CountryOutageAgentDomeyeOnlyQuestionRequest"] | components["schemas"]["CountryOutageAgentExternalQuestionRequest"];
+        CountryOutageAgentCreateQuestionResponse: {
+            /** @constant */
+            schema_version: "country_outage_agent_http_v1";
+            report_id: string;
+            question_id: string;
+            number: number;
+            run_id: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentQuestionPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            deduplicated: boolean;
+        };
+        CountryOutageAgentAbortRunRequest: Record<string, never>;
+        CountryOutageAgentAbortRunResponse: {
+            /** @constant */
+            schema_version: "country_outage_agent_http_v1";
+            report_id: string;
+            run_id: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            abort_effective: boolean;
+        };
+        CountryOutageAgentSnapshotIdentity: {
+            incidentId: string;
+            publicationId: string;
+            revision: number;
+            /** Format: date-time */
+            dataThrough: string | null;
+            isFinal: boolean;
+            cohortId: string;
+            /** @constant */
+            collectorId: "rrc25";
+            /** Format: date-time */
+            windowStartUtc: string;
+            /** Format: date-time */
+            windowEndUtc: string;
+        };
+        CountryOutageAgentArtifactReady: {
+            /** @enum {string} */
+            format: "markdown" | "pdf";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "ready";
+            artifact_id: string;
+            filename: string;
+            /** @enum {string} */
+            media_type: "text/markdown; charset=utf-8" | "application/pdf";
+            byte_length: number;
+            sha256: string;
+        };
+        CountryOutageAgentArtifactFailed: {
+            /** @enum {string} */
+            format: "markdown" | "pdf";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "failed";
+            code: string;
+            message: string;
+        };
+        CountryOutageAgentArtifactMetadata: components["schemas"]["CountryOutageAgentArtifactReady"] | components["schemas"]["CountryOutageAgentArtifactFailed"];
+        CountryOutageAgentEvidenceParagraph: {
+            text: string;
+            evidenceRefs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentReportHighlight: {
+            label: string;
+            value: string;
+            evidenceRefs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentReportSection: {
+            /** @enum {string} */
+            id: "scope" | "key_numbers" | "visibility" | "asn_scope" | "address_families" | "updates" | "end_state" | "resources" | "assessment";
+            title: string;
+            paragraphs: components["schemas"]["CountryOutageAgentEvidenceParagraph"][];
+        };
+        CountryOutageAgentReportDraft: {
+            /** @constant */
+            schemaVersion: "country_outage_report_draft_v1";
+            title: string;
+            subtitle: string;
+            summary: components["schemas"]["CountryOutageAgentEvidenceParagraph"];
+            highlights: components["schemas"]["CountryOutageAgentReportHighlight"][];
+            sections: components["schemas"]["CountryOutageAgentReportSection"][];
+            unknowns: string[];
+        };
+        CountryOutageAgentEventIdentity: {
+            incident_id: string;
+            legacy_reference: string;
+            /** @constant */
+            event_type: "country_outage";
+            country_code: string;
+            country_name: string;
+            display_name: string;
+        } & {
+            [key: string]: unknown;
+        };
+        CountryOutageAgentReportModelIdentity: {
+            provider: string;
+            model: string;
+            modelVersion: string;
+            /** @enum {string} */
+            adapter: "pi-sdk" | "deterministic-acceptance";
+            piVersion?: string;
+            /** @enum {string} */
+            runtimeIdentity?: "formal" | "candidate";
+            /**
+             * @description 供应方模型标识是可变别名，不是不可变权重 revision。
+             * @constant
+             */
+            modelRevisionKind?: "mutable_alias";
+            /**
+             * @description 供应方未提供可验证的不可变权重 revision。
+             * @constant
+             */
+            immutableRevisionAvailable?: false;
+            /** @constant */
+            limitation?: "供应方未提供不可变权重 revision；deepseek-v4-flash 是可变别名，可能无痕变化。";
+            /**
+             * Format: date-time
+             * @description 本次模型认证的失效时刻；到达该时刻即不得继续生成。
+             */
+            certificationValidUntil?: string;
+            /** @description 已认证合法场景集合的稳定标识。 */
+            certifiedScenarioSetId?: string;
+            /** @description 已认证输入范围的稳定标识。 */
+            certifiedInputScope?: string;
+        } & unknown;
+        CountryOutageAgentReportValidation: {
+            passed: boolean;
+            errors: string[];
+            warnings: string[];
+            checkedEvidenceRefs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+        };
+        CountryOutageAgentReportDocument: {
+            /** @constant */
+            schemaVersion: "country_outage_report_document_v1";
+            artifactId: string;
+            reportContentSha256: string;
+            /** @constant */
+            reportSpecificationVersion: "country_outage_report_spec_v1";
+            /** @constant */
+            projectKnowledgeVersion: "country_outage_report_skill_v6";
+            validatorRulesVersion: string;
+            skillBundleSha256: string;
+            /** Format: date-time */
+            generatedAt: string;
+            /** @constant */
+            aiGenerated: true;
+            /** @constant */
+            humanReviewed: false;
+            event: components["schemas"]["CountryOutageAgentEventIdentity"];
+            snapshot: components["schemas"]["CountryOutageAgentSnapshotIdentity"];
+            factSetId: string;
+            model: components["schemas"]["CountryOutageAgentReportModelIdentity"];
+            validation: components["schemas"]["CountryOutageAgentReportValidation"];
+            draft: components["schemas"]["CountryOutageAgentReportDraft"];
+        };
+        CountryOutageAgentQuestionEvidenceRecord: {
+            evidence_ref: components["schemas"]["CountryOutageAgentEvidenceRef"];
+            /** @enum {string} */
+            source: "report" | "overview" | "series" | "audit" | "derived_fact" | "asn_detail";
+            label: string;
+            metric: string | null;
+            value: string | null;
+            observed_at_utc: string | null;
+            observed_at_local: string | null;
+            statistical_scope: string;
+        };
+        CountryOutageAgentQuestionAnswer: {
+            /** @enum {string} */
+            kind: "fact" | "metric_semantics" | "evidence_boundary" | "insufficient_evidence";
+            text: string;
+            evidence_refs: components["schemas"]["CountryOutageAgentEvidenceRef"][];
+            evidence_records: components["schemas"]["CountryOutageAgentQuestionEvidenceRecord"][];
+            missing_evidence: string[];
+            limitations: string[];
+            snapshot: components["schemas"]["CountryOutageAgentSnapshotIdentity"];
+        };
+        CountryOutageAgentExternalClaim: {
+            claim_id: string;
+            text: string;
+            /** @enum {string} */
+            status: "supported" | "mixed" | "conflict" | "insufficient";
+            source_ids: string[];
+            limitations: string[];
+        };
+        CountryOutageAgentExternalFrozenBinding: {
+            incident_id: string;
+            publication_id: string;
+            revision: number;
+            /** Format: date-time */
+            data_through: string | null;
+            fact_set_id: string;
+            cohort_id: string;
+            country_code: string;
+            /** @constant */
+            collector_id: "rrc25";
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+        };
+        CountryOutageAgentExternalStructuredFact: {
+            fact_id: string;
+            binding_id: string;
+            /** @constant */
+            metric: "bgp_control_plane_visibility_state";
+            /** @enum {string} */
+            address_family: "all" | "ipv4" | "ipv6";
+            /** Format: date-time */
+            observed_window_start_utc: string;
+            /** Format: date-time */
+            observed_window_end_utc: string;
+            /** @enum {string} */
+            source_value: "degraded" | "visibility_reduced" | "stable" | "no_material_change" | "recovering" | "visibility_improving" | "recovered" | "baseline_restored";
+            /** @enum {string} */
+            normalized_value: "degraded" | "stable" | "recovering" | "recovered";
+        };
+        CountryOutageAgentExternalSource: {
+            source_id: string;
+            title: string | null;
+            publisher: string | null;
+            url: string;
+            /** Format: date-time */
+            published_at: string | null;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            /** @enum {string} */
+            source_classification: "measurement_platform" | "unknown";
+            /** @enum {string} */
+            source_tier: "direct" | "secondary" | "lead" | "unknown";
+            /** @enum {string} */
+            read_status: "readable" | "unreadable" | "blocked" | "failed";
+            read_status_detail: string | null;
+            summary: string | null;
+            /** @enum {string} */
+            evidence_status?: "available" | "insufficient" | "read_failed";
+            evidence_status_detail?: string | null;
+            structured_facts?: components["schemas"]["CountryOutageAgentExternalStructuredFact"][];
+        };
+        CountryOutageAgentExternalAppendix: {
+            /** @constant */
+            schema_version: "country_outage_external_appendix_v1";
+            /** @constant */
+            classification_policy_version: "country_outage_external_source_classification_policy_v1";
+            /** @enum {string} */
+            status: "collecting" | "completed" | "partial" | "failed";
+            /** @enum {string} */
+            comparison_status?: "supported" | "mixed" | "conflict" | "insufficient";
+            frozen_binding?: components["schemas"]["CountryOutageAgentExternalFrozenBinding"];
+            query: string;
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            retrieved_at: string | null;
+            claims: components["schemas"]["CountryOutageAgentExternalClaim"][];
+            sources: components["schemas"]["CountryOutageAgentExternalSource"][];
+            error?: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentQuestionResult: {
+            question_id: string;
+            number: number;
+            question: string;
+            /** @enum {string} */
+            evidence_mode: "domeye_only" | "domeye_plus_external";
+            quote?: components["schemas"]["CountryOutageAgentQuestionQuote"];
+            external_appendix?: components["schemas"]["CountryOutageAgentExternalAppendix"];
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            answer?: components["schemas"]["CountryOutageAgentQuestionAnswer"];
+            error?: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentReportStateEvent: {
+            /** @constant */
+            schema_version: "country_outage_agent_event_v1";
+            event_id: number;
+            report_id: string;
+            run_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "report_state";
+            /** Format: date-time */
+            at: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentReportPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            snapshot?: components["schemas"]["CountryOutageAgentSnapshotIdentity"];
+            report?: components["schemas"]["CountryOutageAgentReportDocument"];
+            artifacts?: components["schemas"]["CountryOutageAgentArtifactMetadata"][];
+            error?: components["schemas"]["CountryOutageAgentError"];
+        };
+        CountryOutageAgentQuestionStateEvent: {
+            /** @constant */
+            schema_version: "country_outage_agent_event_v1";
+            event_id: number;
+            report_id: string;
+            run_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "question_state";
+            /** Format: date-time */
+            at: string;
+            state: components["schemas"]["CountryOutageAgentActiveRunState"];
+            phase: components["schemas"]["CountryOutageAgentQuestionPhase"];
+            session: components["schemas"]["CountryOutageAgentSession"];
+            question: components["schemas"]["CountryOutageAgentQuestionResult"];
+        };
+        CountryOutageAgentSessionNoticeEvent: {
+            /** @constant */
+            schema_version: "country_outage_agent_event_v1";
+            event_id: number;
+            report_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "session_notice";
+            /** Format: date-time */
+            at: string;
+            state: components["schemas"]["CountryOutageAgentRunState"];
+            /** @enum {string} */
+            phase: "session_expiring" | "session_expired";
+            session: components["schemas"]["CountryOutageAgentSession"];
+        };
+        CountryOutageAgentEvent: components["schemas"]["CountryOutageAgentReportStateEvent"] | components["schemas"]["CountryOutageAgentQuestionStateEvent"] | components["schemas"]["CountryOutageAgentSessionNoticeEvent"];
+        EvidenceBundle: {
+            /** @constant */
+            bundle_version: "evidence_bundle_v1";
+            incident_id: string;
+            /** @constant */
+            incident_id_schema: "incident_id_v1";
+            semantic_guardrails: components["schemas"]["LegacyEventSemanticGuardrails"];
+            event: components["schemas"]["EvidenceEvent"];
+            data_snapshot: {
+                [key: string]: unknown;
+            };
+            source_record: {
+                [key: string]: unknown;
+            };
+            phase_coverage: {
+                before: components["schemas"]["EvidencePhaseCoverage"];
+                during: components["schemas"]["EvidencePhaseCoverage"];
+                after: components["schemas"]["EvidencePhaseCoverage"];
+            };
+            evidence_items: components["schemas"]["EvidenceItem"][];
+            assessment: components["schemas"]["EvidenceAssessment"];
+            data_quality: components["schemas"]["EvidenceDataQuality"];
+            fact_record: components["schemas"]["EventDetail"];
+        };
+        EvidenceEvent: {
+            kind: string;
+            label: string;
+            object: string;
+            level: string;
+            summary: string;
+            duration: string;
+            event_time_local: string | null;
+            event_time_utc: string | null;
+            end_time_local: string | null;
+            end_time_utc: string | null;
+            source_timezone: string;
+        };
+        EvidencePhaseCoverage: {
+            /** @enum {string} */
+            status: "not_available" | "observed_no_path" | "observed_paths";
+            snapshot_count: number;
+            path_count: number;
+            evidence_ids: string[];
+        };
+        EvidenceItem: {
+            evidence_id: string;
+            /** @enum {string} */
+            phase: "before" | "during" | "after" | "context";
+            /** @enum {string} */
+            kind: "fact_record" | "route_observation" | "affected_object_set";
+            label: string;
+            source_field: string;
+            semantics: string;
+            observed_at_local?: string | null;
+            observed_at_utc?: string | null;
+            observation_state?: string;
+            path_count?: number;
+            paths?: string[];
+            object_count?: number;
+            objects?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        EvidenceAssessment: {
+            /** @constant */
+            classification: "observation_only";
+            supports: string[];
+            counterevidence: string[];
+            gaps: string[];
+            causal_conclusion: null;
+        };
+        EvidenceDataQuality: {
+            observed_phase_count: number;
+            expected_phase_count: number;
+            route_observation_count: number;
+            evidence_item_count: number;
+            vantage_point_identity_available: boolean;
+            raw_bgp_message_available: boolean;
+            timezone_semantics: string;
+            limitations: string[];
         };
         FeaturePoint: {
             t: string;
@@ -289,6 +1698,125 @@ export interface components {
         CountryFeatureItem: {
             country: string;
             time_series_data: components["schemas"]["FeatureSeriesPoint"][];
+        };
+        CountrySparkPoint: {
+            time: string;
+            announce: number;
+            withdraw: number;
+        };
+        CountrySeriesPoint: {
+            time: string;
+            announce: number | null;
+            withdraw: number | null;
+            ipv4_prefixes: number | null;
+            ipv6_prefixes: number | null;
+            ipv4_addresses: number | null;
+        };
+        CountryProfile: {
+            country: string;
+            announce: number;
+            withdraw: number;
+            update_total: number;
+            withdraw_rate: number;
+            previous_update_total: number;
+            update_change_rate: number | null;
+            sample_count: number;
+            latest_observation: string | null;
+            ipv4_prefixes: number | null;
+            ipv6_prefixes: number | null;
+            ipv4_addresses: number | null;
+            ipv4_prefix_change: number | null;
+            ipv6_prefix_change: number | null;
+            ipv4_address_change: number | null;
+            resource_change: number;
+            resource_change_rate: number | null;
+            peak_updates: number;
+            peak_time: string | null;
+            anomaly_count: number;
+            high_risk_count: number;
+            sparkline: components["schemas"]["CountrySparkPoint"][];
+            series: components["schemas"]["CountrySeriesPoint"][];
+        };
+        CountryOverview: {
+            start_time: string;
+            end_time: string;
+            timezone: string;
+            latest_observation: string | null;
+            country_count: number;
+            countries_with_anomalies: number;
+            update_leader: components["schemas"]["CountryProfile"] | null;
+            withdraw_rate_leader: components["schemas"]["CountryProfile"] | null;
+            resource_change_leader: components["schemas"]["CountryProfile"] | null;
+            update_rankings: components["schemas"]["CountryProfile"][];
+            withdraw_rate_rankings: components["schemas"]["CountryProfile"][];
+            resource_change_rankings: components["schemas"]["CountryProfile"][];
+            anomaly_rankings: components["schemas"]["CountryProfile"][];
+            selected_country: components["schemas"]["CountryProfile"] | null;
+        };
+        AsProfile: {
+            asn: string;
+            as_name: string;
+            org_name: string;
+            country: string;
+            as_type: string;
+            global_rank: number | null;
+            country_rank: number | null;
+            important: boolean;
+            announce: number;
+            withdraw: number;
+            update_total: number;
+            withdraw_rate: number;
+            previous_update_total: number;
+            update_change_rate: number | null;
+            sample_count: number;
+            latest_observation: string | null;
+            ipv4_prefixes: number | null;
+            ipv6_prefixes: number | null;
+            ipv4_addresses: number | null;
+            ipv4_prefix_change: number | null;
+            ipv6_prefix_change: number | null;
+            ipv4_address_change: number | null;
+            resource_change: number;
+            resource_change_rate: number | null;
+            peak_updates: number;
+            peak_time: string | null;
+            volatility: number;
+            anomaly_count: number;
+            high_risk_count: number;
+            sparkline: components["schemas"]["CountrySparkPoint"][];
+            series: components["schemas"]["CountrySeriesPoint"][];
+        };
+        AsOverview: {
+            start_time: string;
+            end_time: string;
+            timezone: string;
+            latest_observation: string | null;
+            /** @enum {string} */
+            scope_kind: "operational_asn_cohort";
+            scope_note: string;
+            candidate_pool_size: number;
+            scope_size: number;
+            feature_asn_count: number;
+            important_asn_count: number;
+            asns_with_anomalies: number;
+            update_leader: components["schemas"]["AsProfile"] | null;
+            withdraw_rate_leader: components["schemas"]["AsProfile"] | null;
+            resource_change_leader: components["schemas"]["AsProfile"] | null;
+            volatility_leader: components["schemas"]["AsProfile"] | null;
+            update_rankings: components["schemas"]["AsProfile"][];
+            withdraw_rate_rankings: components["schemas"]["AsProfile"][];
+            resource_change_rankings: components["schemas"]["AsProfile"][];
+            volatility_rankings: components["schemas"]["AsProfile"][];
+            anomaly_rankings: components["schemas"]["AsProfile"][];
+            selected_asn: components["schemas"]["AsProfile"] | null;
+        };
+        AsExactEventPage: {
+            /** @enum {string} */
+            match_mode: "asn_token_exact";
+            asn: string;
+            record_count: string;
+            total_page: number;
+            data: components["schemas"]["EventItem"][];
         };
         AsFeatureItem: {
             asn: string;
@@ -326,6 +1854,907 @@ export interface components {
             amplitude: string;
             icon: string;
         };
+        EventTypeCounts: {
+            "\u524D\u7F00\u52AB\u6301": number;
+            "\u5B50\u524D\u7F00\u52AB\u6301": number;
+            "\u524D\u7F00\u4E2D\u65AD": number;
+            "AS\u4E2D\u65AD": number;
+            "\u56FD\u5BB6\u4E2D\u65AD": number;
+            "\u8DEF\u7531\u6CC4\u6F0F": number;
+        };
+        EventSeriesPoint: {
+            time: string;
+            counts: components["schemas"]["EventTypeCounts"];
+            total: number;
+        };
+        CountryRanking: {
+            name: string;
+            event_count: number;
+            high_risk_count: number;
+        };
+        AsRanking: {
+            asn: string;
+            name: string;
+            event_count: number;
+            high_risk_count: number;
+        };
+        DashboardOverview: {
+            start_time: string;
+            end_time: string;
+            timezone: string;
+            latest_observation: string | null;
+            event_count: number;
+            previous_event_count: number;
+            event_change_rate: number | null;
+            high_risk_count: number;
+            active_event_count: number;
+            affected_asn_count: number;
+            affected_country_count: number;
+            event_series: components["schemas"]["EventSeriesPoint"][];
+            country_rankings: components["schemas"]["CountryRanking"][];
+            asn_rankings: components["schemas"]["AsRanking"][];
+        };
+        subject: {
+            /**
+             * @description 指标对象类型。
+             * @enum {unknown}
+             */
+            subject_type: "global" | "country" | "asn" | "prefix";
+            /** @description 规范对象 ID；ASN 使用不带 AS 前缀的十进制字符串，国家使用两位大写代码。 */
+            subject_id: string;
+            /** @description 可选展示名，不参与指标身份。 */
+            display_name: string | null;
+        } & (unknown & unknown & unknown & unknown);
+        window: {
+            /**
+             * Format: date-time
+             * @description 包含的窗口起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description 排除的窗口终点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            end: string;
+            /**
+             * @description 固定半开窗口，禁止闭区间导致五分钟槽多算一个。
+             * @constant
+             */
+            boundary: "[start,end)";
+            /**
+             * @description 当前 P0 数据档业务时区。
+             * @constant
+             */
+            timezone: "Asia/Shanghai";
+        };
+        /** @description 比值与计数的一致性由业务校验器复算；JSON Schema 负责冻结字段和取值范围。 */
+        coverage: {
+            /** @description source_observed_sample_count / expected_sample_count；仅表示采集源覆盖。 */
+            source_coverage_ratio: number;
+            /** @description metric_observed_sample_count / expected_sample_count；与源覆盖分开报告。 */
+            metric_coverage_ratio: number;
+            /** @description subject_active_sample_count / source_observed_sample_count；源样本为 0 时为 null。它是活动密度，不得命名为 ASN 覆盖率。 */
+            subject_activity_density: number | null;
+            /** @description 因 source_unavailable 或 parse_failed 导致、未进入 source_observed_sample_count 的缺槽总数；精确分类由 points.value_state 给出。 */
+            source_gap_sample_count: number;
+            /** @description 源存在但派生处理失败或未生成的缺槽数。 */
+            processing_gap_sample_count: number;
+            /** @description 全部缺槽是否已分类；false 时不得通过 P0 指标准入。 */
+            classification_complete: boolean;
+        };
+        ratioInputs: {
+            /** @description 撤回报文数；源缺失时为 null。 */
+            numerator_withdraw_count: number | null;
+            /** @description announce + withdraw；为 0 时撤回率必须是 null。 */
+            denominator_update_total: number | null;
+        };
+        point: {
+            /**
+             * Format: date-time
+             * @description 五分钟桶起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            time: string;
+            /** @description 仅 observed_nonzero/observed_zero 可以是数字；其他状态必须为 null。 */
+            value: number | null;
+            /**
+             * @description P0 冻结值状态；缺失状态不得被前后端补为 0。
+             * @enum {unknown}
+             */
+            value_state: "observed_nonzero" | "observed_zero" | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+            /**
+             * @description 缺失或不可计算原因；观测值必须为 null。
+             * @enum {string|null}
+             */
+            missing_reason: null | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "denominator_zero" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+            /** @description 撤回率必须带分子分母；其他指标固定为 null。 */
+            formula_inputs: null | components["schemas"]["ratioInputs"];
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        nonRatioPoint: components["schemas"]["point"] & {
+            formula_inputs?: null;
+        };
+        withdrawRatePoint: components["schemas"]["point"] & {
+            value?: null | number;
+            formula_inputs?: components["schemas"]["ratioInputs"];
+        } & Record<string, never> & Record<string, never>;
+        collectorScope: {
+            /**
+             * @description 采集范围类型；all_available_collectors 只表示当前数据档可用范围，不表示全网。
+             * @enum {unknown}
+             */
+            scope_kind: "collector_set" | "all_available_collectors" | "legacy_unknown";
+            collector_ids: string[];
+            /** @description 采集范围未知或受限时的明确说明。 */
+            limitation_reason: string | null;
+        } & (unknown & unknown);
+        sourceRef: {
+            /**
+             * @description 来源分层，业务事实和原始观测不得混称。
+             * @enum {unknown}
+             */
+            source_layer: "raw_observation" | "route_event" | "detection_fact" | "derived_metric" | "release_inventory" | "data_quality_report";
+            /** @description 稳定来源 ID。 */
+            ref_id: string;
+            /** @description 可由服务端解析的表、制品或事件定位符。 */
+            locator: string;
+            /** @description 来源制品具备稳定哈希时填写；历史来源未知时为 null 并由质量报告说明。 */
+            sha256: string | null;
+        };
+        rankingScope: {
+            /**
+             * @description ASN 未完成全量扫描时必须使用 operational_asn_cohort。
+             * @enum {unknown}
+             */
+            scope_kind: "not_ranked" | "global_all_subjects" | "operational_asn_cohort" | "explicit_subject_set";
+            /** @description 参与排名的候选数；非排名序列为 null。 */
+            candidate_count: number | null;
+            /** @description 候选过滤规则；运营 ASN 排名必须明确规则。 */
+            filter_rules: string[];
+        } & ({
+            /** @constant */
+            scope_kind?: "not_ranked";
+            candidate_count?: null;
+            filter_rules?: unknown[];
+        } | {
+            /** @constant */
+            scope_kind?: "global_all_subjects";
+            candidate_count?: number;
+            filter_rules?: unknown[];
+        } | {
+            /** @enum {unknown} */
+            scope_kind?: "operational_asn_cohort" | "explicit_subject_set";
+            candidate_count?: number;
+            filter_rules?: unknown[];
+        });
+        /**
+         * P0 MetricSeries 指标时序合同
+         * @description 冻结 P0 前端指标的身份、半开窗口、五分钟粒度、物理单位、公式版本、源覆盖、派生覆盖、实体活动和缺失语义。此合同只表达观测，不表达因果结论。
+         */
+        "metric-series.schema": {
+            /**
+             * @description MetricSeries 合同版本；变更字段语义时必须升级版本。
+             * @constant
+             */
+            schema_version: "metric-series/v1";
+            /**
+             * @description 指标的稳定机器名；IPv4 /24 等价值与 IPv6 /48 等价值必须使用不同名称。
+             * @enum {unknown}
+             */
+            metric_name: "bgp_announce_record_count" | "bgp_withdraw_record_count" | "bgp_update_record_count" | "bgp_withdraw_ratio" | "ipv4_24_equivalent_count" | "ipv6_48_equivalent_count" | "ipv4_equivalent_address_count" | "anomaly_incident_count" | "prefix_outage_concurrent_count" | "as_outage_concurrent_count";
+            subject: components["schemas"]["subject"];
+            collector_scope: components["schemas"]["collectorScope"];
+            window: components["schemas"]["window"];
+            /**
+             * @description P0 指标固定为 300 秒桶；期望槽数按半开窗口 [start,end) 计算。
+             * @constant
+             */
+            granularity_seconds: 300;
+            /**
+             * @description 不可互换的物理单位；禁止使用含义不明的 count 或 resource_change。
+             * @enum {unknown}
+             */
+            unit: "bgp_update_record" | "ratio_0_1" | "ipv4_24_equivalent" | "ipv6_48_equivalent" | "ipv4_equivalent_address" | "anomaly_incident" | "prefix_count" | "asn_count";
+            /**
+             * @description 单个 300 秒桶的冻结聚合方法。
+             * @enum {unknown}
+             */
+            aggregation: "sum_observation_values" | "sum_components" | "ratio_of_sums" | "last_observation" | "count_distinct_incidents" | "max_concurrent";
+            /** @description 可审阅的冻结公式文本；必须与 metric_name 和 formula_version 对应。 */
+            formula: string;
+            /**
+             * @description 稳定公式版本，禁止由前端临时改写口径。
+             * @enum {string}
+             */
+            formula_version: "announce_count_v1" | "withdraw_count_v1" | "update_total_v1" | "withdraw_ratio_v1" | "ipv4_24e_v1" | "ipv6_48e_v1" | "ipv4_address_v1" | "anomaly_incident_count_v1" | "prefix_outage_concurrency_v1" | "as_outage_concurrency_v1";
+            /** @description 按半开窗口和 300 秒粒度计算的期望源时间槽数。 */
+            expected_sample_count: number;
+            /** @description 采集源实际存在的时间槽数；用于计算 source_coverage_ratio。 */
+            source_observed_sample_count: number;
+            /** @description 派生指标成功生成的时间槽数；处理缺口会使其小于源已观测槽数。 */
+            metric_observed_sample_count: number;
+            /** @description 对象在源已观测槽中实际发生活动的槽数；ASN 稀疏活动表的该值不是覆盖率。 */
+            subject_active_sample_count: number;
+            coverage: components["schemas"]["coverage"];
+            /** @description 按时间升序的五分钟点。业务校验还必须确认时间位于半开窗口内、无重复并与计数一致。 */
+            points: components["schemas"]["point"][];
+            /** @description 可复核的来源引用；不得只写自然语言来源名称。 */
+            source_refs: components["schemas"]["sourceRef"][];
+            /**
+             * Format: date-time
+             * @description 服务端生成时间，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+             */
+            generated_at: string;
+            ranking_scope: components["schemas"]["rankingScope"];
+            $defs: {
+                subject: {
+                    /**
+                     * @description 指标对象类型。
+                     * @enum {unknown}
+                     */
+                    subject_type: "global" | "country" | "asn" | "prefix";
+                    /** @description 规范对象 ID；ASN 使用不带 AS 前缀的十进制字符串，国家使用两位大写代码。 */
+                    subject_id: string;
+                    /** @description 可选展示名，不参与指标身份。 */
+                    display_name: string | null;
+                } & (unknown & unknown & unknown & unknown);
+                collectorScope: {
+                    /**
+                     * @description 采集范围类型；all_available_collectors 只表示当前数据档可用范围，不表示全网。
+                     * @enum {unknown}
+                     */
+                    scope_kind: "collector_set" | "all_available_collectors" | "legacy_unknown";
+                    collector_ids: string[];
+                    /** @description 采集范围未知或受限时的明确说明。 */
+                    limitation_reason: string | null;
+                } & (unknown & unknown);
+                window: {
+                    /**
+                     * Format: date-time
+                     * @description 包含的窗口起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+                     */
+                    start: string;
+                    /**
+                     * Format: date-time
+                     * @description 排除的窗口终点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+                     */
+                    end: string;
+                    /**
+                     * @description 固定半开窗口，禁止闭区间导致五分钟槽多算一个。
+                     * @constant
+                     */
+                    boundary: "[start,end)";
+                    /**
+                     * @description 当前 P0 数据档业务时区。
+                     * @constant
+                     */
+                    timezone: "Asia/Shanghai";
+                };
+                /** @description 比值与计数的一致性由业务校验器复算；JSON Schema 负责冻结字段和取值范围。 */
+                coverage: {
+                    /** @description source_observed_sample_count / expected_sample_count；仅表示采集源覆盖。 */
+                    source_coverage_ratio: number;
+                    /** @description metric_observed_sample_count / expected_sample_count；与源覆盖分开报告。 */
+                    metric_coverage_ratio: number;
+                    /** @description subject_active_sample_count / source_observed_sample_count；源样本为 0 时为 null。它是活动密度，不得命名为 ASN 覆盖率。 */
+                    subject_activity_density: number | null;
+                    /** @description 因 source_unavailable 或 parse_failed 导致、未进入 source_observed_sample_count 的缺槽总数；精确分类由 points.value_state 给出。 */
+                    source_gap_sample_count: number;
+                    /** @description 源存在但派生处理失败或未生成的缺槽数。 */
+                    processing_gap_sample_count: number;
+                    /** @description 全部缺槽是否已分类；false 时不得通过 P0 指标准入。 */
+                    classification_complete: boolean;
+                };
+                point: {
+                    /**
+                     * Format: date-time
+                     * @description 五分钟桶起点，使用 UTC RFC 3339 秒级格式且必须以 Z 结尾。
+                     */
+                    time: string;
+                    /** @description 仅 observed_nonzero/observed_zero 可以是数字；其他状态必须为 null。 */
+                    value: number | null;
+                    /**
+                     * @description P0 冻结值状态；缺失状态不得被前后端补为 0。
+                     * @enum {unknown}
+                     */
+                    value_state: "observed_nonzero" | "observed_zero" | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+                    /**
+                     * @description 缺失或不可计算原因；观测值必须为 null。
+                     * @enum {string|null}
+                     */
+                    missing_reason: null | "not_observed" | "source_unavailable" | "processing_gap" | "parse_failed" | "not_retained" | "not_applicable" | "denominator_zero" | "legacy_unknown" | "invalid_identity" | "legacy_window_contamination" | "source_fact_collision";
+                    /** @description 撤回率必须带分子分母；其他指标固定为 null。 */
+                    formula_inputs: null | components["schemas"]["ratioInputs"];
+                } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+                ratioInputs: {
+                    /** @description 撤回报文数；源缺失时为 null。 */
+                    numerator_withdraw_count: number | null;
+                    /** @description announce + withdraw；为 0 时撤回率必须是 null。 */
+                    denominator_update_total: number | null;
+                };
+                nonRatioPoint: components["schemas"]["point"] & {
+                    formula_inputs?: null;
+                };
+                withdrawRatePoint: components["schemas"]["point"] & {
+                    value?: null | number;
+                    formula_inputs?: components["schemas"]["ratioInputs"];
+                } & Record<string, never> & Record<string, never>;
+                sourceRef: {
+                    /**
+                     * @description 来源分层，业务事实和原始观测不得混称。
+                     * @enum {unknown}
+                     */
+                    source_layer: "raw_observation" | "route_event" | "detection_fact" | "derived_metric" | "release_inventory" | "data_quality_report";
+                    /** @description 稳定来源 ID。 */
+                    ref_id: string;
+                    /** @description 可由服务端解析的表、制品或事件定位符。 */
+                    locator: string;
+                    /** @description 来源制品具备稳定哈希时填写；历史来源未知时为 null 并由质量报告说明。 */
+                    sha256: string | null;
+                };
+                rankingScope: {
+                    /**
+                     * @description ASN 未完成全量扫描时必须使用 operational_asn_cohort。
+                     * @enum {unknown}
+                     */
+                    scope_kind: "not_ranked" | "global_all_subjects" | "operational_asn_cohort" | "explicit_subject_set";
+                    /** @description 参与排名的候选数；非排名序列为 null。 */
+                    candidate_count: number | null;
+                    /** @description 候选过滤规则；运营 ASN 排名必须明确规则。 */
+                    filter_rules: string[];
+                } & ({
+                    /** @constant */
+                    scope_kind?: "not_ranked";
+                    candidate_count?: null;
+                    filter_rules?: unknown[];
+                } | {
+                    /** @constant */
+                    scope_kind?: "global_all_subjects";
+                    candidate_count?: number;
+                    filter_rules?: unknown[];
+                } | {
+                    /** @enum {unknown} */
+                    scope_kind?: "operational_asn_cohort" | "explicit_subject_set";
+                    candidate_count?: number;
+                    filter_rules?: unknown[];
+                });
+            };
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        "$defs-window": {
+            /**
+             * Format: date-time
+             * @description 包含的窗口起点。
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description 排除的窗口终点。
+             */
+            end: string;
+            /**
+             * @description 固定半开窗口。
+             * @constant
+             */
+            boundary: "[start,end)";
+            /**
+             * @description P0 业务时区。
+             * @constant
+             */
+            timezone: "Asia/Shanghai";
+        };
+        /** @enum {unknown} */
+        dimensionName: "completeness" | "uniqueness" | "referential_integrity" | "temporal_consistency" | "raw_traceability" | "sample_coverage" | "reproducibility" | "event_phase_coverage" | "fixed_window_bounds" | "unknown_missingness";
+        dimensionReport: {
+            dimension: components["schemas"]["dimensionName"];
+            /**
+             * @description 该维度聚合状态；不得折算为单一质量分。
+             * @enum {unknown}
+             */
+            status: "pass" | "fail" | "pending";
+            /** @description 该维度当前是否阻断所申请的数据身份等级。 */
+            blocking: boolean;
+            /** @description 构成此维度结论的检查 ID。 */
+            check_ids: string[];
+            /** @description 中文结论摘要，需说明限制而非仅给状态。 */
+            summary_zh: string;
+        };
+        scalar: number | string | boolean | null;
+        /** @enum {unknown} */
+        qualityUnit: "record_count" | "group_count" | "time_slot_count" | "file_count" | "byte" | "ratio_0_1" | "sha256_digest" | "boolean" | "identity_level" | "timestamp" | "version" | "none";
+        observed: {
+            value: components["schemas"]["scalar"];
+            unit: components["schemas"]["qualityUnit"];
+        };
+        expected: {
+            /**
+             * @description 冻结比较方法；classified_only 表示低覆盖可接受但缺口必须全部分类。
+             * @enum {unknown}
+             */
+            operator: "eq" | "lte" | "gte" | "one_of" | "classified_only";
+            value: components["schemas"]["scalar"] | components["schemas"]["scalar"][];
+            unit: components["schemas"]["qualityUnit"];
+        };
+        failureSample: {
+            /** @description 表、文件或制品定位符。 */
+            source_ref: string;
+            /** @description 可定位的主键；非表来源可为 null。 */
+            primary_key: string | null;
+            /** @description 失败字段；记录级失败可为 null。 */
+            field: string | null;
+            /**
+             * Format: date-time
+             * @description 涉及的业务时间。
+             */
+            event_time: string | null;
+            /** @description 稳定原因码，如 orphan_reference、source_fact_collision 或 legacy_window_contamination。 */
+            reason_codes: string[];
+        };
+        evidenceRef: {
+            /** @description 稳定证据 ID。 */
+            ref_id: string;
+            /** @description 可解析证据定位符。 */
+            locator: string;
+            /** @description 证据制品 SHA256；历史记录不可得时为 null。 */
+            sha256: string | null;
+        };
+        dataProfile: {
+            /** @description config/data-profile.json 中的数据档 ID。 */
+            profile_id: string;
+            /** @description 唯一数据档文件 SHA256。 */
+            profile_sha256: string;
+            window: components["schemas"]["$defs-window"];
+            /**
+             * Format: date-time
+             * @description 固定数据快照时钟。
+             */
+            snapshot_time: string;
+        };
+        sourceRelease: {
+            /** @description 数据来源发布 ID。 */
+            release_id: string;
+            /** @description 生成审计工具所对应的 Git 提交。 */
+            git_sha: string;
+            /** @description 存在不可变数据制品清单时填写；历史制品未知时为 null 并由 raw_traceability 检查解释。 */
+            data_artifact_sha256: string | null;
+            /** @description 只读 live probe 结果指纹。 */
+            probe_fingerprint_sha256: string;
+        };
+        generator: {
+            /** @description 报告生成器名称。 */
+            name: string;
+            /** @description 生成器语义版本。 */
+            version: string;
+            /** @description 生成器源文件 SHA256。 */
+            source_sha256: string;
+        };
+        execution: {
+            /**
+             * @description 质量检查必须在只读可重复读边界内执行。
+             * @constant
+             */
+            mode: "read_only_repeatable_read";
+            /**
+             * @description 质量检查产生的数据库写操作必须为 0。
+             * @constant
+             */
+            database_write_operations: 0;
+            /**
+             * Format: date-time
+             * @description 查询开始时间。
+             */
+            started_at: string;
+            /**
+             * Format: date-time
+             * @description 查询结束时间。
+             */
+            finished_at: string;
+        };
+        dimensions: {
+            completeness: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "completeness";
+            };
+            uniqueness: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "uniqueness";
+            };
+            referential_integrity: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "referential_integrity";
+            };
+            temporal_consistency: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "temporal_consistency";
+            };
+            raw_traceability: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "raw_traceability";
+            };
+            sample_coverage: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "sample_coverage";
+            };
+            reproducibility: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "reproducibility";
+            };
+            event_phase_coverage: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "event_phase_coverage";
+            };
+            fixed_window_bounds: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "fixed_window_bounds";
+            };
+            unknown_missingness: components["schemas"]["dimensionReport"] & {
+                /** @constant */
+                dimension?: "unknown_missingness";
+            };
+        };
+        check: {
+            /** @description 报告内唯一的检查 ID。 */
+            check_id: string;
+            dimension: components["schemas"]["dimensionName"];
+            /** @description 版本化门禁规则 ID。 */
+            rule_id: string;
+            /** @description 中文检查标题。 */
+            title_zh: string;
+            /**
+             * @description 检查状态。
+             * @enum {unknown}
+             */
+            status: "pass" | "fail" | "pending";
+            /**
+             * @description 对当前准入申请的严重度。
+             * @enum {unknown}
+             */
+            severity: "blocking" | "warning" | "info";
+            /** @description 被检查的表、列、制品、时间槽或事件类型范围。 */
+            scope_ref: string;
+            observed: components["schemas"]["observed"];
+            expected: components["schemas"]["expected"];
+            /** @description 本检查仍未分类的未知项数量。 */
+            unknown_count: number;
+            /** @description 可定位到来源、主键和字段的有限失败样本。 */
+            failure_samples: components["schemas"]["failureSample"][];
+            /** @description 支撑检查结论的机器证据。 */
+            evidence_refs: components["schemas"]["evidenceRef"][];
+            /** @description 中文结论与限制。 */
+            message_zh: string;
+            /**
+             * @description 失败或待定项的责任阶段。
+             * @enum {unknown}
+             */
+            remediation_stage: "none" | "D0" | "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "external";
+        };
+        /** @description 离散检查计数，不是质量总分；计数一致性由业务校验器复算。 */
+        checkSummary: {
+            total_check_count: number;
+            passed_check_count: number;
+            failed_check_count: number;
+            pending_check_count: number;
+            blocking_failed_check_count: number;
+            blocking_pending_check_count: number;
+        };
+        gate: {
+            /**
+             * @description P0 数据准入门禁状态。
+             * @enum {unknown}
+             */
+            status: "passed" | "failed" | "pending";
+            /**
+             * @description 通过后的数据身份；部分原始覆盖不得声明 raw_traceable。
+             * @enum {unknown}
+             */
+            admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+            blocking_failed_check_ids: string[];
+            blocking_pending_check_ids: string[];
+            warning_check_ids: string[];
+            /** @description 中文门禁理由和能力边界。 */
+            decision_reasons_zh: string[];
+        } & ({
+            /** @constant */
+            status?: "passed";
+            /** @enum {unknown} */
+            admission_level?: "legacy_compatible" | "raw_traceable";
+            blocking_failed_check_ids?: unknown[];
+            blocking_pending_check_ids?: unknown[];
+        } | {
+            /** @constant */
+            status?: "failed";
+            /** @constant */
+            admission_level?: "not_accepted";
+            blocking_failed_check_ids?: unknown[];
+        } | {
+            /** @constant */
+            status?: "pending";
+            /** @constant */
+            admission_level?: "not_accepted";
+            blocking_failed_check_ids?: unknown[];
+            blocking_pending_check_ids?: unknown[];
+        });
+        /**
+         * P0 Data Quality Report 数据质量报告合同
+         * @description 机器可读的 P0 数据质量报告。报告必须逐维度给出检查与门禁决定，禁止用单一总分替代完整性、唯一性、引用、时间、追溯、覆盖、复现、阶段、越界和未知缺失。
+         */
+        "data-quality-report.schema": {
+            /**
+             * @description 数据质量报告合同版本。
+             * @constant
+             */
+            schema_version: "data-quality-report/v1";
+            /** @description 稳定报告 ID。 */
+            report_id: string;
+            data_profile: components["schemas"]["dataProfile"];
+            source_release: components["schemas"]["sourceRelease"];
+            generator: components["schemas"]["generator"];
+            execution: components["schemas"]["execution"];
+            dimensions: components["schemas"]["dimensions"];
+            /** @description 逐规则检查；每个质量维度至少必须出现一项。跨字段校验器还需确认 dimension.check_ids 与本数组完全闭合。 */
+            checks: components["schemas"]["check"][] & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+            check_summary: components["schemas"]["checkSummary"];
+            gate: components["schemas"]["gate"];
+            /**
+             * Format: date-time
+             * @description 报告生成时间，必须带 UTC 偏移。
+             */
+            generated_at: string;
+            /** @description 按实现文档规定的规范序列化内容生成的报告指纹。 */
+            report_fingerprint_sha256: string;
+            $defs: {
+                window: {
+                    /**
+                     * Format: date-time
+                     * @description 包含的窗口起点。
+                     */
+                    start: string;
+                    /**
+                     * Format: date-time
+                     * @description 排除的窗口终点。
+                     */
+                    end: string;
+                    /**
+                     * @description 固定半开窗口。
+                     * @constant
+                     */
+                    boundary: "[start,end)";
+                    /**
+                     * @description P0 业务时区。
+                     * @constant
+                     */
+                    timezone: "Asia/Shanghai";
+                };
+                dataProfile: {
+                    /** @description config/data-profile.json 中的数据档 ID。 */
+                    profile_id: string;
+                    /** @description 唯一数据档文件 SHA256。 */
+                    profile_sha256: string;
+                    window: components["schemas"]["$defs-window"];
+                    /**
+                     * Format: date-time
+                     * @description 固定数据快照时钟。
+                     */
+                    snapshot_time: string;
+                };
+                sourceRelease: {
+                    /** @description 数据来源发布 ID。 */
+                    release_id: string;
+                    /** @description 生成审计工具所对应的 Git 提交。 */
+                    git_sha: string;
+                    /** @description 存在不可变数据制品清单时填写；历史制品未知时为 null 并由 raw_traceability 检查解释。 */
+                    data_artifact_sha256: string | null;
+                    /** @description 只读 live probe 结果指纹。 */
+                    probe_fingerprint_sha256: string;
+                };
+                generator: {
+                    /** @description 报告生成器名称。 */
+                    name: string;
+                    /** @description 生成器语义版本。 */
+                    version: string;
+                    /** @description 生成器源文件 SHA256。 */
+                    source_sha256: string;
+                };
+                execution: {
+                    /**
+                     * @description 质量检查必须在只读可重复读边界内执行。
+                     * @constant
+                     */
+                    mode: "read_only_repeatable_read";
+                    /**
+                     * @description 质量检查产生的数据库写操作必须为 0。
+                     * @constant
+                     */
+                    database_write_operations: 0;
+                    /**
+                     * Format: date-time
+                     * @description 查询开始时间。
+                     */
+                    started_at: string;
+                    /**
+                     * Format: date-time
+                     * @description 查询结束时间。
+                     */
+                    finished_at: string;
+                };
+                /** @enum {unknown} */
+                dimensionName: "completeness" | "uniqueness" | "referential_integrity" | "temporal_consistency" | "raw_traceability" | "sample_coverage" | "reproducibility" | "event_phase_coverage" | "fixed_window_bounds" | "unknown_missingness";
+                dimensionReport: {
+                    dimension: components["schemas"]["dimensionName"];
+                    /**
+                     * @description 该维度聚合状态；不得折算为单一质量分。
+                     * @enum {unknown}
+                     */
+                    status: "pass" | "fail" | "pending";
+                    /** @description 该维度当前是否阻断所申请的数据身份等级。 */
+                    blocking: boolean;
+                    /** @description 构成此维度结论的检查 ID。 */
+                    check_ids: string[];
+                    /** @description 中文结论摘要，需说明限制而非仅给状态。 */
+                    summary_zh: string;
+                };
+                dimensions: {
+                    completeness: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "completeness";
+                    };
+                    uniqueness: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "uniqueness";
+                    };
+                    referential_integrity: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "referential_integrity";
+                    };
+                    temporal_consistency: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "temporal_consistency";
+                    };
+                    raw_traceability: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "raw_traceability";
+                    };
+                    sample_coverage: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "sample_coverage";
+                    };
+                    reproducibility: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "reproducibility";
+                    };
+                    event_phase_coverage: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "event_phase_coverage";
+                    };
+                    fixed_window_bounds: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "fixed_window_bounds";
+                    };
+                    unknown_missingness: components["schemas"]["dimensionReport"] & {
+                        /** @constant */
+                        dimension?: "unknown_missingness";
+                    };
+                };
+                /** @enum {unknown} */
+                qualityUnit: "record_count" | "group_count" | "time_slot_count" | "file_count" | "byte" | "ratio_0_1" | "sha256_digest" | "boolean" | "identity_level" | "timestamp" | "version" | "none";
+                scalar: number | string | boolean | null;
+                observed: {
+                    value: components["schemas"]["scalar"];
+                    unit: components["schemas"]["qualityUnit"];
+                };
+                expected: {
+                    /**
+                     * @description 冻结比较方法；classified_only 表示低覆盖可接受但缺口必须全部分类。
+                     * @enum {unknown}
+                     */
+                    operator: "eq" | "lte" | "gte" | "one_of" | "classified_only";
+                    value: components["schemas"]["scalar"] | components["schemas"]["scalar"][];
+                    unit: components["schemas"]["qualityUnit"];
+                };
+                failureSample: {
+                    /** @description 表、文件或制品定位符。 */
+                    source_ref: string;
+                    /** @description 可定位的主键；非表来源可为 null。 */
+                    primary_key: string | null;
+                    /** @description 失败字段；记录级失败可为 null。 */
+                    field: string | null;
+                    /**
+                     * Format: date-time
+                     * @description 涉及的业务时间。
+                     */
+                    event_time: string | null;
+                    /** @description 稳定原因码，如 orphan_reference、source_fact_collision 或 legacy_window_contamination。 */
+                    reason_codes: string[];
+                };
+                evidenceRef: {
+                    /** @description 稳定证据 ID。 */
+                    ref_id: string;
+                    /** @description 可解析证据定位符。 */
+                    locator: string;
+                    /** @description 证据制品 SHA256；历史记录不可得时为 null。 */
+                    sha256: string | null;
+                };
+                check: {
+                    /** @description 报告内唯一的检查 ID。 */
+                    check_id: string;
+                    dimension: components["schemas"]["dimensionName"];
+                    /** @description 版本化门禁规则 ID。 */
+                    rule_id: string;
+                    /** @description 中文检查标题。 */
+                    title_zh: string;
+                    /**
+                     * @description 检查状态。
+                     * @enum {unknown}
+                     */
+                    status: "pass" | "fail" | "pending";
+                    /**
+                     * @description 对当前准入申请的严重度。
+                     * @enum {unknown}
+                     */
+                    severity: "blocking" | "warning" | "info";
+                    /** @description 被检查的表、列、制品、时间槽或事件类型范围。 */
+                    scope_ref: string;
+                    observed: components["schemas"]["observed"];
+                    expected: components["schemas"]["expected"];
+                    /** @description 本检查仍未分类的未知项数量。 */
+                    unknown_count: number;
+                    /** @description 可定位到来源、主键和字段的有限失败样本。 */
+                    failure_samples: components["schemas"]["failureSample"][];
+                    /** @description 支撑检查结论的机器证据。 */
+                    evidence_refs: components["schemas"]["evidenceRef"][];
+                    /** @description 中文结论与限制。 */
+                    message_zh: string;
+                    /**
+                     * @description 失败或待定项的责任阶段。
+                     * @enum {unknown}
+                     */
+                    remediation_stage: "none" | "D0" | "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "external";
+                };
+                /** @description 离散检查计数，不是质量总分；计数一致性由业务校验器复算。 */
+                checkSummary: {
+                    total_check_count: number;
+                    passed_check_count: number;
+                    failed_check_count: number;
+                    pending_check_count: number;
+                    blocking_failed_check_count: number;
+                    blocking_pending_check_count: number;
+                };
+                gate: {
+                    /**
+                     * @description P0 数据准入门禁状态。
+                     * @enum {unknown}
+                     */
+                    status: "passed" | "failed" | "pending";
+                    /**
+                     * @description 通过后的数据身份；部分原始覆盖不得声明 raw_traceable。
+                     * @enum {unknown}
+                     */
+                    admission_level: "not_accepted" | "legacy_compatible" | "raw_traceable";
+                    blocking_failed_check_ids: string[];
+                    blocking_pending_check_ids: string[];
+                    warning_check_ids: string[];
+                    /** @description 中文门禁理由和能力边界。 */
+                    decision_reasons_zh: string[];
+                } & ({
+                    /** @constant */
+                    status?: "passed";
+                    /** @enum {unknown} */
+                    admission_level?: "legacy_compatible" | "raw_traceable";
+                    blocking_failed_check_ids?: unknown[];
+                    blocking_pending_check_ids?: unknown[];
+                } | {
+                    /** @constant */
+                    status?: "failed";
+                    /** @constant */
+                    admission_level?: "not_accepted";
+                    blocking_failed_check_ids?: unknown[];
+                } | {
+                    /** @constant */
+                    status?: "pending";
+                    /** @constant */
+                    admission_level?: "not_accepted";
+                    blocking_failed_check_ids?: unknown[];
+                    blocking_pending_check_ids?: unknown[];
+                });
+            };
+        };
     };
     responses: {
         /** @description 中断时序 */
@@ -335,6 +2764,114 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["OutagePoint"][];
+            };
+        };
+        /** @description 标识符非法或尝试路径穿越 */
+        P0BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 合法资源未出现在当前已准入候选中 */
+        P0ResourceNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 候选制品 SHA、fingerprint、引用或跨组件身份不一致 */
+        P0ArtifactConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 候选仓库未配置或不可用 */
+        P0RepositoryUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["P0ErrorResponse"];
+            };
+        };
+        /** @description 请求格式、标识符或幂等键不合法 */
+        CountryOutageAgentBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 需要有效的登录身份 */
+        CountryOutageAgentUnauthenticated: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 当前用户无事件、报告或运行访问权 */
+        CountryOutageAgentForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 报告、运行或短期会话不存在或已清理 */
+        CountryOutageAgentNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 幂等键、快照身份、并发运行或状态冲突 */
+        CountryOutageAgentConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 短期会话已到期，需由用户重新生成 */
+        CountryOutageAgentExpired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 并发、队列、问题数或频率超过冻结门槛 */
+        CountryOutageAgentRateLimited: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description Agent Sidecar 未配置或暂不可用 */
+        CountryOutageAgentUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
             };
         };
     };
@@ -370,6 +2907,76 @@ export interface operations {
                     "application/json": components["schemas"]["HealthPayload"];
                 };
             };
+        };
+    };
+    getP0DataStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 可信仓库状态，包括显式生产激活、门禁失败或样本限制 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0DataStatus"];
+                };
+            };
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
+        };
+    };
+    getP0MetricSeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                metric_name: "bgp_announce_record_count" | "bgp_withdraw_record_count" | "bgp_update_record_count" | "bgp_withdraw_ratio" | "ipv4_24_equivalent_count" | "ipv6_48_equivalent_count" | "ipv4_equivalent_address_count" | "anomaly_incident_count" | "prefix_outage_concurrent_count" | "as_outage_concurrent_count";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已准入指标和完整缺失语义 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0MetricResponse"];
+                };
+            };
+            400: components["responses"]["P0BadRequest"];
+            404: components["responses"]["P0ResourceNotFound"];
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
+        };
+    };
+    getP0DataQualityReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完整 P0 数据质量报告 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["P0QualityResponse"];
+                };
+            };
+            409: components["responses"]["P0ArtifactConflict"];
+            503: components["responses"]["P0RepositoryUnavailable"];
         };
     };
     getEvents: {
@@ -421,6 +3028,528 @@ export interface operations {
                     "application/json": components["schemas"]["EventItem"][];
                 };
             };
+        };
+    };
+    getEventEvidenceBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_type: "hijack" | "sub_hijack" | "prefix_outage" | "as_outage" | "country_outage" | "leak";
+                start_time: string;
+                problem: string;
+                event_id: number;
+                source: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 事件 Evidence Bundle */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceBundle"];
+                };
+            };
+            /** @description 业务事实记录不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEventStory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_type: "country_outage";
+                start_time: string;
+                problem: string;
+                event_id: number;
+                source: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 事件产品叙事 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStory"];
+                };
+            };
+            /** @description 该事件尚未建立产品合同叙事 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 研究交付包不可用、未完成或校验失败 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEventObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_type: "country_outage";
+                start_time: string;
+                problem: string;
+                event_id: number;
+                source: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 事件数据观测合同 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventObservation"];
+                };
+            };
+            /** @description 该事件尚未建立数据观测合同 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 研究交付包或 Core 国家资源时序不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resolveCountryOutage: {
+        parameters: {
+            query: {
+                ref: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 事件解析结果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageResolutionV2"];
+                };
+            };
+            /** @description 引用不是合法的 country_outage 五段式引用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 引用格式合法，但旧事实数据源中不存在该事件 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 注册表或旧事实数据源暂不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getCountryOutageOverview: {
+        parameters: {
+            query?: {
+                /** @description 由解析接口返回的不可变发布快照；用于固定本次页面读取。 */
+                publication_id?: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 首屏、范围、能力和质量 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageOverviewV2"];
+                };
+            };
+        };
+    };
+    getCountryOutageSeries: {
+        parameters: {
+            query?: {
+                /** @description 由解析接口返回的不可变发布快照；用于固定本次页面读取。 */
+                publication_id?: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 共享时间轴的图表轨道 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageSeriesV2"];
+                };
+            };
+        };
+    };
+    getCountryOutageAsns: {
+        parameters: {
+            query?: {
+                /** @description 由解析接口返回的不可变发布快照；用于固定本次页面读取。 */
+                publication_id?: string;
+                page?: number;
+                page_size?: number;
+                query?: string;
+                address_family?: "all" | "ipv4" | "ipv6" | "dual";
+                state?: "all" | "partial" | "invisible" | "unknown";
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 服务端筛选、排序和分页的 ASN 状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAsnPageV2"];
+                };
+            };
+        };
+    };
+    getCountryOutageAudit: {
+        parameters: {
+            query?: {
+                /** @description 由解析接口返回的不可变发布快照；用于固定本次页面读取。 */
+                publication_id?: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 逻辑制品身份、质量与哈希 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAuditV2"];
+                };
+            };
+        };
+    };
+    getCountryOutageExternalEvidenceCapability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 外部证据附加能力当前就绪态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageExternalEvidenceCapability"];
+                };
+            };
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    createCountryOutageAgentReport: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 若提供，必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key"?: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentCreateReportRequest"];
+            };
+        };
+        responses: {
+            /** @description 幂等请求命中同一报告运行 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateReportResponse"];
+                };
+            };
+            /** @description 报告运行已排队或开始 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateReportResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            409: components["responses"]["CountryOutageAgentConflict"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            429: components["responses"]["CountryOutageAgentRateLimited"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    streamCountryOutageAgentReportEvents: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Last-Event-ID"?: string;
+            };
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 短期会话 SSE。每个 data 字段是三类受控事件之一；正式报告或答案只出现在终态事件。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "X-Accel-Buffering"?: "no";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["CountryOutageAgentEvent"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    askCountryOutageAgentQuestion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 若提供，必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key"?: components["schemas"]["CountryOutageAgentIdempotencyKey"];
+            };
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentCreateQuestionRequest"];
+            };
+        };
+        responses: {
+            /** @description 幂等请求命中同一问题运行 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateQuestionResponse"];
+                };
+            };
+            /** @description 问题运行已开始 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentCreateQuestionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            409: components["responses"]["CountryOutageAgentConflict"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            429: components["responses"]["CountryOutageAgentRateLimited"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    abortCountryOutageAgentRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentAbortRunRequest"];
+            };
+        };
+        responses: {
+            /** @description 运行已取消或已经处于终态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentAbortRunResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    downloadCountryOutageAgentArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+                artifact_format: "markdown" | "pdf";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 报告下载制品 */
+            200: {
+                headers: {
+                    "Content-Disposition": string;
+                    "X-Artifact-Id": string;
+                    "X-Content-SHA256": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                    "application/pdf": string;
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            /** @description 报告尚未完成，或指定格式生成失败；另一格式可能仍可下载。 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+                };
+            };
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    downloadCountryOutageAgentExternalAppendix: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已完成外部来源核验的独立 Markdown 附录 */
+            200: {
+                headers: {
+                    "Cache-Control": "private, no-store";
+                    "X-Content-Type-Options": "nosniff";
+                    "Content-Disposition": string;
+                    "X-Artifact-Id": string;
+                    "X-Content-SHA256": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            403: components["responses"]["CountryOutageAgentForbidden"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            /** @description 外部核验不是无错误完成态，或附录身份、来源边界不满足下载合同。 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+                };
+            };
+            410: components["responses"]["CountryOutageAgentExpired"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
         };
     };
     getEventDetail: {
@@ -499,6 +3628,31 @@ export interface operations {
             };
         };
     };
+    getCountryWorkbenchOverview: {
+        parameters: {
+            query: {
+                country?: string;
+                limit?: number;
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 国家报文、资源和异常聚合 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOverview"];
+                };
+            };
+        };
+    };
     getAsFeatures: {
         parameters: {
             query: {
@@ -522,6 +3676,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsFeaturePage"];
+                };
+            };
+        };
+    };
+    getAsWorkbenchOverview: {
+        parameters: {
+            query: {
+                asn?: string;
+                limit?: number;
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 运维候选 ASN 的报文、资源、波动和异常聚合 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsOverview"];
+                };
+            };
+        };
+    };
+    getAsExactRecentEvents: {
+        parameters: {
+            query: {
+                asn: string;
+                page_size?: number;
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 数字边界精确匹配的 ASN 最近事件 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsExactEventPage"];
                 };
             };
         };
@@ -642,6 +3846,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TypeCount"];
+                };
+            };
+        };
+    };
+    getDashboardOverview: {
+        parameters: {
+            query: {
+                start_time: components["parameters"]["StartTime"];
+                end_time: components["parameters"]["EndTime"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 首页六类异常聚合 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOverview"];
                 };
             };
         };
