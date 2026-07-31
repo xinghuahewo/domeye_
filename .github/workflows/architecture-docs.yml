@@ -1,0 +1,41 @@
+name: Architecture Docs
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "backend/README.md"
+      - "frontend/README.md"
+      - "deploy/**/*.md"
+      - "deploy/inventory/**"
+      - "docs/**"
+      - "dev/verify_architecture_docs.py"
+      - "dev/tests/test_architecture_docs.py"
+      - "config/data-profile.json"
+      - "contracts/openapi.json"
+      - "backend/web/api/route.py"
+      - "backend/web/api/v2/route.py"
+      - "frontend/src/router/index.ts"
+      - "frontend/package.json"
+      - "frontend/vite.config.ts"
+      - "deploy/nginx/domeye-core.conf"
+      - "deploy/lib/frontend-common.sh"
+      - "Makefile"
+      - ".github/workflows/architecture-docs.yml"
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  docs-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 校验架构文档与机器合同
+        run: make check-docs
+      - name: 校验冻结核心
+        working-directory: backend
+        run: sha256sum -c core.sha256

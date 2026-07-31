@@ -1,164 +1,101 @@
 # Domeye Core
 
-Domeye Core 是 Domeye 路由异常检测系统的核心精简版。项目保留现有核心检测逻辑和只读查询契约，以独立的基础信息制品、独立 PostgreSQL/TimescaleDB、Flask API 和 Vue 前端组成可单独部署的最小系统。
+Domeye Core 是面向 BGP 路由异常观测的精简核心系统。仓库同时包含离线检测核心、
+固定历史数据的只读工作台、Vue 前端、Flask 查询与控制面代理，以及受约束的国家
+中断报告 Sidecar 接入。它用于整理和展示可审计的控制面事实，不把路由可见性直接
+解释为用户连通性、业务影响、事件原因或自动处置结论。
 
-当前进入二三月固定开发阶段。所有真实数据联调只读取 `2026-02-01` 至 `2026-03-31` 的独立只读快照，Domeye Core 不再连接原生产数据库。详细约束见 [二三月固定开发模式](docs/二三月固定开发模式.md)。`backend/core/` 保持迁移基线逐字节不变。
+当前仓库数据档为 `feb-mar-2026`。数据范围、快照时间和业务时区只由
+[`config/data-profile.json`](config/data-profile.json) 定义；国家中断观测与报告
+范围固定为 RRC25。`backend/core/` 是冻结的离线检测核心，任何外围修改都必须继续
+通过 `backend/core.sha256` 校验。
 
-## 系统能力
+## 从这里开始
 
-- 查询前缀劫持、子前缀劫持、路由泄漏、前缀中断、AS 中断和国家中断六类事件。
-- 通过事件总表定位对应月份事实表，展示风险等级、持续时间、影响对象和路径证据。
-- 查询全球采集点、国家和 ASN 的报文量、路由资源量及中断时序。
-- 提供首页事件总量、分类统计、事件列表、事件详情和特征分析页面。
-- 仅注册精简前端使用的只读 GET 接口；登录、研判、通知、报告和任务编排接口保持关闭。
+| 需要了解的内容 | 文档入口 |
+| --- | --- |
+| 文档分类和历史材料性质 | [文档索引](docs/README.md) |
+| 浏览器、前端、后端、Sidecar 与数据库关系 | [Domeye Core 前后端总览](docs/DomeyeCore前后端总览.md) |
+| 前端路由、API、测试和构建 | [前端说明](frontend/README.md) |
+| 后端 API、数据库和 Sidecar 代理 | [后端说明](backend/README.md) |
+| 候选、发布、切换和回滚 | [部署说明](deploy/README.md) |
+| 当前生产运行身份如何采集 | [生产实时库存采集](deploy/inventory/README.md) |
+| 开发、验收与有状态操作边界 | [开发与验收流水线](docs/开发与验收流水线.md) |
+| Worktree 与任务版本边界 | [Codex 版本边界治理](docs/Codex版本边界治理说明.md) |
 
-## 独立运行结构
+历史计划、阶段验收和旧发布记录用于解释设计演进，不能替代当前机器合同，也不能
+单独证明当前生产运行身份。生产结论必须来自目标机器上实时执行的只读库存采集，
+并联合核对进程目录、监听端口、不可变 release、前端树、Nginx 配置和回滚状态。
 
-```text
-浏览器
-  │
-  ▼
-Nginx :28471
-  ├── /              → frontend/dist
-  └── /api/v1/*      → 固定开发 Flask 127.0.0.1:28473
-                              │
-                              ├── PostgreSQL/TimescaleDB 127.0.0.1:31627
-                              └── Domeye-Core-dev-data/api/info 四文件制品
+## 能力边界
 
-backend/core（离线检测核心，Web 启动时不自动运行）
-```
+Domeye Core 当前提供：
 
-精简版运行时不读取原项目目录、不连接原项目数据库，也不复用原项目进程。原项目的目录、Screen 会话、端口和数据库容器不属于本项目部署脚本的操作范围。
+- 六类 BGP 异常事件的分页检索、详情和证据视图；
+- 全局、国家和 ASN 的固定窗口特征与中断时序；
+- P0 数据状态、质量和指标序列查询；
+- RRC25 国家中断发布快照的总览、时序、ASN 矩阵和审计读取；
+- 事件限定的报告生成、同快照追问、SSE 状态、终止以及 Markdown/PDF 下载代理；
+- 独立的候选验收、不可变源码绑定、前端原子安装和组件级回滚机制。
 
-## 数据边界
+这些能力不等于：
 
-- 固定数据起点为 `2026-02-01 00:00:00`。
-- 当前开发数据终点固定为 `2026-03-31T23:59:59+08:00`；业务时区为 `Asia/Shanghai`，后续恢复实时发布前不会自动推进。
-- 数据范围、快照时钟和业务时区只在 `config/data-profile.json` 中维护，Mock、开发启动器和部署脚本均读取或校验该文件；端口仍属于部署拓扑配置。
-- 已结束历史月份保留不变；人工刷新时补齐上一制品的当前月，再导入新增月份和新的当前月。
-- 基础信息只包含 `important_as.csv`、`as_entity.csv`、`ip_bgp_entity.csv` 和 `country.xlsx`。
-- 数据库转储、数据库镜像、基础信息归档和真实 `.env` 均位于 Git 仓库外。
-- TimescaleDB 保留策略会在候选库中移除，避免自动删除 2 月 1 日以来的数据。
+- 实时全网根因分析或闭环响应；
+- 对数据平面、用户体验、业务损失或事件责任的证明；
+- 任意 collector、国家或时间窗口的自由切换；
+- 允许浏览器或核心后端直接访问互联网；
+- 仅凭分支名、构建成功、健康检查或 HTTP 200 即可确认已部署。
 
-## 发布制品
-
-每个 release 位于：
-
-```text
-/home/bgpdata/Domeye-Core-artifacts/releases/<release-id>/
-```
-
-定稿后必须包含八个受 SHA256 保护的文件：
-
-```text
-database-image.tar.zst
-database-inventory.json
-database-manifest.json
-database-schema.sql
-database.dump.zst
-info-manifest.json
-info.tar.zst
-manifest.json
-```
-
-同目录还包含 `SHA256SUMS`。发布校验会检查文件集合、重复项、组件清单与总清单的 release-id、文件名和内嵌哈希，不能通过删减校验行绕过验证。
-
-数据库 inventory 记录 PostgreSQL/TimescaleDB 版本、固定镜像 ID、每张表的行数、最早/最晚业务时间和 schema hash；同时记录公共表白名单、额外用户 schema 表数量，以及逐月集合校验得到的详情引用 `orphan_count=0`。初次构建可读取源库一致性快照，也可导入带可信 TSV 元数据及独立 SHA256 文件的预制完整 dump。后续刷新以最近一次发布为基础，不建立实时复制或双写。
-
-## 目录
+## 仓库结构
 
 ```text
 Domeye-Core/
-├── backend/              Flask API、查询服务、数据库访问和原样迁移的 core
-├── frontend/             Vue 3 + TypeScript 精简前端
-├── deploy/
-│   ├── acceptance/       候选栈、核心冒烟、隔离和完整验收
-│   ├── artifacts/        基础信息制品构建、安装、定稿和校验
-│   ├── database/         数据库制品、恢复、激活、回滚和 Compose
-│   └── nginx/            生产 Nginx 配置
-└── README.md
+├── backend/              Flask API、查询服务、数据库访问和冻结 core
+├── frontend/             Vue 3、TypeScript、Vite 前端
+├── agent-sidecar/        国家中断报告与追问 Sidecar
+├── config/               数据档和版本化验收配置
+├── contracts/            OpenAPI 与 Agent 机器合同
+├── deploy/               候选、发布、切换、回滚和运行库存采集
+├── dev/                  本地开发、门禁和只读检查器
+├── docs/                 当前说明、设计、计划、验收与历史记录
+└── Makefile              统一开发和检查入口
 ```
 
-后端接口和配置见 [后端说明](backend/README.md)，制品生成、部署、刷新和回滚见 [部署说明](deploy/README.md)。
+## 本地开发与检查
 
-## 本地快速开发
-
-日常前端和接口联调默认使用固定小型快照，不需要配置完整数据库、Nginx、Screen 或生产 `.env`：
+日常开发遵循“启动、观察、最小修改、定向检查”的短循环：
 
 ```bash
 make dev
-make dev API_MODE=remote
-make check-fast
 make preview
+make check-fast
 make check-integration
-make check-release
 ```
 
-`make dev` 会自动分配不冲突的前端与 API 端口，并在退出时清理临时进程；启动子进程前会清除数据库、生产配置和旧采集路径环境变量。`make risk` 同时输出风险等级、有状态边界、必需检查和是否需要有状态发布。固定快照的数据窗口为 `2026-02-01T00:00:00+08:00 <= t < 2026-04-01T00:00:00+08:00`，支持正常、空数据、超时和错误四类响应，开发环境还提供 `/__components` 组件标本页。
-
-发布命令已按副作用拆为 `release-prepare`、`release-activate`、`release-rollback` 和默认 dry-run 的 `release-gc`；当前固定数据档继续阻止实际生产激活。完整参数和状态机见 [开发与验收流水线](docs/开发与验收流水线.md)。
-
-需要真实数据联调时，服务器可使用 OverlayFS 从已保留候选库派生同一时间窗口的独立开发数据库；`make dev API_MODE=remote` 会通过 SSH 隧道连接只监听服务器回环地址的开发 API，不在本机保存数据库密码。该流程不恢复全量 dump、不复制 84GB PGDATA，说明见 [2–3 月快速开发数据库](dev/database/README.md) 和 [服务器真实开发 API](dev/backend/README.md)。
-
-分层门禁、真实后端模式、OpenAPI 类型生成和完整发布验收边界见 [开发与验收流水线](docs/开发与验收流水线.md)。
-
-项目默认采用“启动 → 看报错 → 最小修改 → 快速测试”的开发循环。只有数据库裁剪/恢复、部署切换、`backend/core/` 或生产配置变更才进入严格验收；脚本解析、清单和普通前端问题一律保留现有数据库并从失败点续跑。
-
-## 环境要求
-
-- Linux，具备 GNU Bash、GNU coreutils、GNU tar、zstd、jq、curl、Screen 和 Nginx。
-- Docker 与 Docker Compose v2。
-- PostgreSQL `12.16`、TimescaleDB `2.11.2` 的冻结镜像 `timescaledb:2.11.2-pg12`。
-- Python `>=3.10,<3.11` 和 `/home/bgpdata/.local/bin/uv`。
-- 项目隔离安装的 Node.js `v22.23.1`，固定目录为 `/home/bgpdata/.local/node-v22.23.1-linux-x64`，不替换系统 Node.js。
-- 初次数据库构建建议准备至少 300GB 临时空间。
-
-## 锁定环境验证
-
-后端使用 uv 默认的 `backend/.venv`：
+文档改动使用：
 
 ```bash
-cd /home/bgpdata/Domeye-Core/backend
-/home/bgpdata/.local/bin/uv sync --frozen
-/home/bgpdata/.local/bin/uv run --frozen pytest
-sha256sum -c core.sha256
+make check-docs
 ```
 
-前端验证：
+完整发布检查仍由影响范围决定，不应因普通文档或页面文字调整而重建数据库。涉及
+数据库恢复、生产切换、Nginx、Sidecar、`backend/core/` 或真实配置时，必须进入
+独立的严格验收与授权流程。
 
-```bash
-cd /home/bgpdata/Domeye-Core/frontend
-export PATH=/home/bgpdata/.local/node-v22.23.1-linux-x64/bin:$PATH
-node --version  # 必须为 v22.23.1
-npm ci
-npm test
-npm run build
-```
+后端依赖以 [`backend/pyproject.toml`](backend/pyproject.toml) 和
+[`backend/uv.lock`](backend/uv.lock) 为准；前端依赖和命令以
+[`frontend/package.json`](frontend/package.json) 为准；API 路径与响应合同以
+[`contracts/openapi.json`](contracts/openapi.json) 和实际注册路由共同为准。
 
-`core.sha256` 覆盖 13 个迁移核心文件。任何哈希失败都应中止部署，不得通过更新清单掩盖变化。
+## 版本、候选与生产不是同一状态
 
-## 生产地址和状态
+| 状态 | 能证明什么 | 不能证明什么 |
+| --- | --- | --- |
+| 本地工作树 | 某个基线上的源码差异 | 已合并、已发布 |
+| 测试或候选通过 | 指定合同和候选路径通过 | 生产正在运行该候选 |
+| Git 提交或标签 | 源码身份可追溯 | 运行时已切换 |
+| 不可变 release | 发布制品与源码已绑定 | Nginx、进程和前端已指向它 |
+| 实时生产库存 | 采集时刻观察到的运行身份 | 未采集时间之后的持续状态 |
 
-| 用途 | 地址 |
-| --- | --- |
-| Nginx 前端入口 | `0.0.0.0:28471` |
-| 固定开发 Flask API | `127.0.0.1:28473` |
-| 本地联调 Flask API | `127.0.0.1:31629` |
-| 二三月只读数据库 | `127.0.0.1:31627` |
-| Screen 会话 | `domeye_core_app`、`domeye_core_dev_api` |
-
-完成制品恢复和生产激活后：
-
-```bash
-cd /home/bgpdata/Domeye-Core
-./deploy/status.sh
-```
-
-完整验收会先以随机高位端口运行候选数据库、候选后端和临时 Nginx；候选核心接口、SPA 路由及旧目录隔离测试全部通过后，才切换生产。生产切换后的冒烟或隔离验证失败会恢复切换前的四文件信息目录、Domeye Core 数据库链接、`.env`、Nginx 配置和 Screen 后端。
-
-## 当前不处理的内容
-
-- 不修改 `backend/core` 的算法或既有接口行为。
-- 不实施参考图对应的前端改版，不新增国家/AS 页面功能。
-- 不处理冷查询约 26 秒的性能问题。
-- 不迁回认证、权限、多语言、报告导出、通知和非核心运维模块。
+因此，更新仓库文档只代表文档与当前代码、机器合同对齐；本任务或任何文档提交都不
+自动形成生产发布结论。

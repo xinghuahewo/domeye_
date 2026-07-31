@@ -6,7 +6,7 @@ MOCK_SCENARIO ?= normal
 P0_DATA_PROFILE ?= config/data-profile.json
 P0_PIPELINE_ROOT ?= .
 
-.PHONY: dev preview risk api-types codex-preflight codex-postflight codex-version-policy check-fast check-integration check-data-p0 check-p0-producer-identity check-release check-release-full release-prepare release-activate release-rollback release-gc
+.PHONY: dev preview risk api-types codex-preflight codex-postflight codex-version-policy check-docs check-fast check-integration check-data-p0 check-p0-producer-identity check-release check-release-full release-prepare release-activate release-rollback release-gc
 
 dev:
 	DOMEYE_MOCK_SCENARIO="$(MOCK_SCENARIO)" $(PYTHON) dev/run_local.py dev --api "$(API_MODE)"
@@ -29,6 +29,10 @@ codex-postflight:
 codex-version-policy:
 	@test -n "$(BASE_REF)" || { echo '缺少 BASE_REF'; exit 2; }
 	$(PYTHON) dev/codex_task_guard.py policy --base-ref "$(BASE_REF)"
+
+check-docs:
+	$(PYTHON) dev/verify_architecture_docs.py
+	$(PYTHON) -m unittest dev.tests.test_architecture_docs
 
 check-fast:
 	$(PYTHON) dev/checks.py fast $(if $(BASE_REF),--base-ref "$(BASE_REF)")
