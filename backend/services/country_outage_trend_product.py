@@ -44,6 +44,22 @@ ASN_CODE_TO_STATE = {
     1: "partially_visible",
     2: "fully_invisible",
 }
+QUALITY_STATUS_LABELS_ZH = {
+    "complete": "完整",
+    "degraded": "降级",
+    "unavailable": "不可用",
+}
+PHASE_KIND_LABELS_ZH = {
+    "stable": "平稳",
+    "abrupt_drop": "突降",
+    "decline": "下行",
+    "low_plateau": "低位平台",
+    "abrupt_rise": "突升",
+    "rise": "上行",
+    "oscillation": "震荡",
+    "missing": "缺失",
+    "unknown": "未知",
+}
 
 
 class TrendProductValidationError(ValueError):
@@ -732,10 +748,16 @@ def compile_contemporaneous_reference_v1(
     codes = [item.get("country_code") for item in projections if isinstance(item, Mapping)]
     if len(codes) != len(set(codes)):
         _fail("reference_country_duplicate", "reference.projections", "同期参照国家代码重复")
+    ordered_projections = sorted(
+        projections,
+        key=lambda item: (
+            str(item.get("country_code")) if isinstance(item, Mapping) else ""
+        ),
+    )
     expected_times = [slot["observed_at_utc"] for slot in analyzed["slots"]]
     comparable: list[dict[str, Any]] = []
     exclusions: list[dict[str, Any]] = []
-    for projection in projections:
+    for projection in ordered_projections:
         if not isinstance(projection, Mapping):
             _fail("invalid_reference_projection", "reference.projections", "国家投影必须为对象")
         metrics, reason = _projection_metrics(projection, expected_times=expected_times)
@@ -757,7 +779,7 @@ def compile_contemporaneous_reference_v1(
     target_projection = next(
         (
             item
-            for item in projections
+            for item in ordered_projections
             if isinstance(item, Mapping) and item.get("country_code") == target_code
         ),
         None,
@@ -1196,8 +1218,8 @@ def compile_evidence_graph_v1(
         "quality",
         (
             f"本趋势已观测 {analyzed['quality']['observed_slot_count']} / "
-            f"{analyzed['quality']['expected_slot_count']} 个时间槽，质量状态为 "
-            f"{analyzed['quality']['status']}。"
+            f"{analyzed['quality']['expected_slot_count']} 个时间槽，质量状态为"
+            f"{QUALITY_STATUS_LABELS_ZH.get(analyzed['quality']['status'], '未知')}。"
         ),
         [quality_node],
         values={
@@ -1231,7 +1253,7 @@ def compile_evidence_graph_v1(
                 f"窗口起点为 {_format_number(points['start']['value'])}，谷值为 "
                 f"{_format_number(points['extreme_minimum']['value'])}，终点为 "
                 f"{_format_number(points['end']['value'])}；终点相对起点残留 "
-                f"{_format_number(end_fact['value'])} {end_fact['unit']}。"
+                f"{_format_number(end_fact['value'])} 个 Prefix×VP。"
             ),
             [window_node],
             values={
@@ -1239,6 +1261,7 @@ def compile_evidence_graph_v1(
                 "extreme": points["extreme_minimum"]["value"],
                 "end": points["end"]["value"],
                 "end_residual_from_start": end_fact["value"],
+                "end_residual_prefix_vp_from_start": end_fact["value"],
                 "unit": end_fact["unit"],
             },
         )
@@ -1255,8 +1278,7 @@ def compile_evidence_graph_v1(
             "fastest_change",
             (
                 f"最快恶化落在槽 {fastest['slot_index']}（{fastest['observed_at_utc']}），"
-                f"单槽变化为 {_format_number(fastest['change_from_previous'])} "
-                f"{fastest['unit']}。"
+                f"单槽变化为 {_format_number(fastest['change_from_previous'])} 个 Prefix×VP。"
             ),
             [fastest_node],
             values={
@@ -1281,7 +1303,10 @@ def compile_evidence_graph_v1(
         add_claim(
             "phase_sequence",
             "窗口内阶段序列为："
-            + " → ".join(phase["kind"] for phase in analysis["phases"])
+            + " → ".join(
+                PHASE_KIND_LABELS_ZH.get(phase["kind"], "未知")
+                for phase in analysis["phases"]
+            )
             + "。",
             [phase_node],
             values={
@@ -1310,7 +1335,7 @@ def compile_evidence_graph_v1(
             "address_family_comparison",
             (
                 "IPv4 与 IPv6 使用独立分母进行比率对照；"
-                f"比较状态为 {comparison.get('status', 'unknown')}，"
+                f"比较状态为 {QUALITY_STATUS_LABELS_ZH.get(comparison.get('status'), '未知')}，"
                 "观测差异不解释为原因或用户影响。"
             ),
             [af_node],
@@ -1348,8 +1373,8 @@ def compile_evidence_graph_v1(
             ),
             [asn_node],
             values={
-                "persistent_not_at_start_count": len(persistent),
-                "unknown_end_count": len(unknown_end),
+                "persistent_asn_not_at_start_count": len(persistent),
+                "unknown_end_asn_count": len(unknown_end),
                 "asn_count": asn_context.get("asn_count"),
             },
         )
@@ -1638,7 +1663,7 @@ def answer_trend_question_v1(product: Mapping[str, Any], question: str) -> dict[
     forbidden = {
         "cause": ("原因", "为什么", "根因", "导致", "造成"),
         "attack": ("攻击", "黑客", "劫持"),
-        "user_impact": ("用户影响", "业务影响", "全国断网", "无法访问"),
+        "user_impact": ("用户影响", "受影响", "业务影响", "全国断网", "无法访问"),
         "responsibility": ("责任", "负责", "政策", "政府", "运营商责任"),
         "post_window_recovery": ("完全恢复", "窗口后", "后来恢复", "现在恢复"),
     }
