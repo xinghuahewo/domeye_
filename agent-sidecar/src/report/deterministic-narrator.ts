@@ -605,7 +605,6 @@ export function buildDeterministicCountryOutageDraft(
       id: 'assessment',
       title: '综合判断',
       paragraphs: [
-        ...trendClaimParagraphs,
         paragraph(
           `仅依据该固定快照，可以判断 RRC25 观察到${country}相关 BGP 路由${startToLowestAssessment}，${
             fullyInvisibleMax
@@ -626,6 +625,7 @@ export function buildDeterministicCountryOutageDraft(
           'audit:/evidence_level',
           'overview:/limitations',
         ),
+        ...trendClaimParagraphs,
       ],
     })
 

@@ -97,7 +97,6 @@ export class CountryOutageModelLanguageError extends Error {
 
 interface SlotDefinition extends CountryOutageModelLanguagePlanItem {
   readonly required: boolean
-  readonly paragraphLocator?: 'last'
 }
 
 const SLOT_DEFINITIONS: readonly SlotDefinition[] = Object.freeze([
@@ -120,7 +119,6 @@ const SLOT_DEFINITIONS: readonly SlotDefinition[] = Object.freeze([
     id: 'assessment.evidence_boundary',
     sectionId: 'assessment',
     paragraphIndex: 1,
-    paragraphLocator: 'last',
     seedText:
       '这份报告只支持 BGP 控制面可见性描述，不能据此判断全国数据面状态、用户或业务影响，也不能认定事件原因和责任主体。',
     requiredSemanticIds: Object.freeze([
@@ -211,10 +209,6 @@ function planItemMatchesDefinition(
   value: CountryOutageModelLanguagePlanItem,
   definition: SlotDefinition,
 ): boolean {
-  const paragraphIndexMatches = definition.paragraphLocator === 'last'
-    ? Number.isSafeInteger(value.paragraphIndex) &&
-      value.paragraphIndex >= 0
-    : value.paragraphIndex === definition.paragraphIndex
   return (
     hasExactKeys(value as unknown as Record<string, unknown>, [
       'id',
@@ -227,7 +221,7 @@ function planItemMatchesDefinition(
     ]) &&
     value.id === definition.id &&
     value.sectionId === definition.sectionId &&
-    paragraphIndexMatches &&
+    value.paragraphIndex === definition.paragraphIndex &&
     value.seedText === definition.seedText &&
     JSON.stringify(value.requiredSemanticIds) ===
       JSON.stringify(definition.requiredSemanticIds) &&
@@ -293,10 +287,10 @@ export function buildCountryOutageModelLanguagePlan(
         definition.id,
       )
     }
-    const paragraphIndex = definition.paragraphLocator === 'last'
-      ? matchingSections[0]!.paragraphs.length - 1
-      : definition.paragraphIndex
-    if (matchingSections[0]!.paragraphs[paragraphIndex] === undefined) {
+    if (
+      matchingSections[0]!.paragraphs[definition.paragraphIndex] ===
+      undefined
+    ) {
       throw new CountryOutageModelLanguageError(
         'language_plan_invalid',
         definition.id,
@@ -306,7 +300,7 @@ export function buildCountryOutageModelLanguagePlan(
       Object.freeze({
         id: definition.id,
         sectionId: definition.sectionId,
-        paragraphIndex,
+        paragraphIndex: definition.paragraphIndex,
         seedText: definition.seedText,
         requiredSemanticIds: Object.freeze([
           ...definition.requiredSemanticIds,

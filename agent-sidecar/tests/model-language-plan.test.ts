@@ -190,30 +190,25 @@ test('合法语言槽包原子替换白名单正文且最终仍通过 v5', () =>
   assert.equal(validation.passed, true, validation.errors.join('\n'))
 })
 
-test('趋势 Claim 插入综合判断后，边界语言槽仍绑定最后一段并保留事实数字', () => {
+test('趋势 Claim 追加到综合判断后，边界语言槽仍固定为第二段并保留事实数字', () => {
   const input = evidence()
   const base = buildDeterministicCountryOutageDraft(input)
   const assessment = base.sections.find(
     (section) => section.id === 'assessment',
   )
   assert.ok(assessment)
-  assessment.paragraphs.unshift({
+  const numericFactText = assessment.paragraphs[0]!.text
+  assessment.paragraphs.push({
     text: '趋势证据图中的确定性 Claim。',
     evidenceRefs: ['trend:/nodes/0'],
   })
-  const numericFactParagraph = assessment.paragraphs.at(-2)
-  assert.ok(numericFactParagraph)
-  const numericFactText = numericFactParagraph.text
 
   const plan = buildCountryOutageModelLanguagePlan(base)
   const assessmentSlot = plan.find(
     (item) => item.id === 'assessment.evidence_boundary',
   )
   assert.ok(assessmentSlot)
-  assert.equal(
-    assessmentSlot.paragraphIndex,
-    assessment.paragraphs.length - 1,
-  )
+  assert.equal(assessmentSlot.paragraphIndex, 1)
   const parsed = parseCountryOutageLanguageSlotBundle(
     rawBundle(plan),
     plan,
@@ -224,10 +219,14 @@ test('趋势 Claim 插入综合判断后，边界语言槽仍绑定最后一段�
     (section) => section.id === 'assessment',
   )
   assert.ok(mergedAssessment)
-  assert.equal(mergedAssessment.paragraphs.at(-2)?.text, numericFactText)
+  assert.equal(mergedAssessment.paragraphs[0]?.text, numericFactText)
+  assert.equal(
+    mergedAssessment.paragraphs[1]?.text,
+    VALID_SLOT_TEXT['assessment.evidence_boundary'],
+  )
   assert.equal(
     mergedAssessment.paragraphs.at(-1)?.text,
-    VALID_SLOT_TEXT['assessment.evidence_boundary'],
+    '趋势证据图中的确定性 Claim。',
   )
 })
 

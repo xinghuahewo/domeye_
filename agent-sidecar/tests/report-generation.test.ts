@@ -327,6 +327,17 @@ test('报告、Markdown 与 PDF 下载直接消费同一趋势 Claim 节点', as
   const claimParagraph = compiled.document.draft.sections
     .find((section) => section.id === 'assessment')
     ?.paragraphs.find((item) => item.evidenceRefs.includes('trend:/nodes/0'))
+  const assessmentParagraphs = compiled.document.draft.sections
+    .find((section) => section.id === 'assessment')
+    ?.paragraphs
+  assert.ok(assessmentParagraphs)
+  assert.ok(
+    assessmentParagraphs[0]?.evidenceRefs.every(
+      (reference) => !reference.startsWith('trend:/nodes/'),
+    ),
+  )
+  assert.ok(assessmentParagraphs[1]?.evidenceRefs.includes('audit:/evidence_level'))
+  assert.equal(assessmentParagraphs[2]?.evidenceRefs[0], 'trend:/nodes/0')
   assert.equal(
     claimParagraph?.text,
     '最快恶化落在槽 1，单槽变化为 -35,806 Prefix×VP。',
