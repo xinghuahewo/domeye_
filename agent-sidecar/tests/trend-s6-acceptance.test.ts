@@ -21,7 +21,11 @@ import {
 } from './helpers/a4-country-outage-fixture.js'
 
 
-const repositoryRoot = fileURLToPath(new URL('../../..', import.meta.url))
+// 生产 prepare 会把 Sidecar 复制到最小不可变候选目录，但仍通过受信的
+// COA_PROJECT_ROOT 绑定完整源码归档。测试必须从该绑定根读取同一 Python 候选，
+// 不能要求把 backend/dev/docs 扩进 Sidecar 运行包。
+const repositoryRoot = process.env.COA_PROJECT_ROOT
+  ?? fileURLToPath(new URL('../../..', import.meta.url))
 
 function acceptedProduct(): CountryOutageTrendProduct {
   return JSON.parse(execFileSync(
