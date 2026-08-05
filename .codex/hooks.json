@@ -21,6 +21,12 @@
             "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/country_outage_agent_review.py\"",
             "timeout": 20,
             "statusMessage": "按已声明阶段回检国家中断报告 Agent"
+          },
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/country_outage_trend_analysis_review.py\"",
+            "timeout": 20,
+            "statusMessage": "按已声明阶段回检国家中断趋势分析"
           }
         ]
       }
