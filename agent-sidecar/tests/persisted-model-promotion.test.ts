@@ -182,7 +182,10 @@ interface PersistedArtifactFixture {
 
 async function persistedFixture(
   label: string,
-  options: { includeScenarios?: boolean } = {},
+  options: {
+    includeScenarios?: boolean
+    existingProfile?: 'matching' | 'identity-drift' | 'newer'
+  } = {},
 ): Promise<{
   root: string
   registryPath: string
@@ -193,12 +196,47 @@ async function persistedFixture(
   const root = join(TEST_ROOT, label)
   secureDirectory(root)
   const registryPath = join(root, 'registry.json')
+  const existingProfiles =
+    options.existingProfile === undefined
+      ? []
+      : [
+          {
+            id: 'deepseek-v4-flash-pi-0.82.1-v1',
+            status: 'certified',
+            provider: 'deepseek',
+            model:
+              options.existingProfile === 'identity-drift'
+                ? 'deepseek-v4-flash-drifted'
+                : 'deepseek-v4-flash',
+            modelVersion: 'deepseek-v4-flash',
+            expectedResponseModel: 'deepseek-v4-flash',
+            thinkingLevel: 'off',
+            piVersion: '0.82.1',
+            certificationEvidenceId:
+              `evidence:model-certification:${'f'.repeat(64)}`,
+            certifiedAt:
+              options.existingProfile === 'newer'
+                ? '2026-07-30T12:00:00.000Z'
+                : '2026-07-28T10:03:00.000Z',
+            modelRevisionKind: 'mutable_alias',
+            immutableRevisionAvailable: false,
+            limitation: MUTABLE_MODEL_ALIAS_LIMITATION_ZH,
+            certificationValidUntil:
+              options.existingProfile === 'newer'
+                ? '2026-08-06T12:00:00.000Z'
+                : '2026-08-01T10:03:00.000Z',
+            certifiedScenarioSetId:
+              'country-outage-rrc25-legal-scenarios-v2',
+            certifiedInputScope:
+              'legal_country_outage_rrc25_v1',
+          },
+        ]
   const registryText = `${JSON.stringify(
     {
       schemaVersion: 'country_outage_pi_certified_models_v1',
       registryVersion: `${label}-registry-v1`,
       status: 'frozen',
-      profiles: [],
+      profiles: existingProfiles,
     },
     null,
     2,
@@ -1060,6 +1098,91 @@ test('机械晋级按真实 Pi 规范化带空格 reference 并只从固定 evid
         manifest.certificationProfile.certifiedInputScope,
     },
   )
+})
+
+test('同一固定候选重新认证后按身份和时间单调约束原子续期', async () => {
+  const fixture = await persistedFixture('renewal-success', {
+    existingProfile: 'matching',
+  })
+  const result = await promotePersistedA4ModelCandidate({
+    evidenceId: fixture.evidenceId,
+    newRegistryVersion: 'renewal-success-registry-v2',
+    repositoryRoot: fixture.root,
+    registryPath: fixture.registryPath,
+    responseModelAdapterInspector: () => ({
+      sameNamePreserved: true,
+      sourceSha256: 'a'.repeat(64),
+    }),
+    now: FIXED_PROMOTION_NOW,
+  })
+  assert.equal(result.registryVersion, 'renewal-success-registry-v2')
+  const registry = JSON.parse(
+    readFileSync(fixture.registryPath, 'utf8'),
+  ) as {
+    profiles: Array<{
+      certificationEvidenceId: string
+      certifiedAt: string
+      certificationValidUntil: string
+    }>
+  }
+  assert.equal(registry.profiles.length, 1)
+  assert.equal(
+    registry.profiles[0]?.certificationEvidenceId,
+    fixture.evidenceId,
+  )
+  assert.equal(
+    registry.profiles[0]?.certifiedAt,
+    '2026-07-29T10:03:00.000Z',
+  )
+  assert.equal(
+    registry.profiles[0]?.certificationValidUntil,
+    '2026-08-05T10:03:00.000Z',
+  )
+})
+
+test('候选身份漂移、时间倒退或注册表版本未更新时续期零写入', async (context) => {
+  const cases = [
+    {
+      label: 'renewal-identity-drift',
+      existingProfile: 'identity-drift' as const,
+      newRegistryVersion: 'renewal-identity-drift-registry-v2',
+    },
+    {
+      label: 'renewal-time-regression',
+      existingProfile: 'newer' as const,
+      newRegistryVersion: 'renewal-time-regression-registry-v2',
+    },
+    {
+      label: 'renewal-version-reuse',
+      existingProfile: 'matching' as const,
+      newRegistryVersion: 'renewal-version-reuse-registry-v1',
+    },
+  ]
+  for (const item of cases) {
+    await context.test(item.label, async () => {
+      const fixture = await persistedFixture(item.label, {
+        existingProfile: item.existingProfile,
+      })
+      const before = readFileSync(fixture.registryPath, 'utf8')
+      await assert.rejects(
+        promotePersistedA4ModelCandidate({
+          evidenceId: fixture.evidenceId,
+          newRegistryVersion: item.newRegistryVersion,
+          repositoryRoot: fixture.root,
+          registryPath: fixture.registryPath,
+          responseModelAdapterInspector: () => ({
+            sameNamePreserved: true,
+            sourceSha256: 'a'.repeat(64),
+          }),
+          now: FIXED_PROMOTION_NOW,
+        }),
+        (error: unknown) =>
+          error instanceof PiModelCertificationError &&
+          error.code === 'certification_promotion_conflict',
+      )
+      assert.equal(readFileSync(fixture.registryPath, 'utf8'), before)
+    })
+  }
 })
 
 test('旧无场景证书与场景目录结构异常均禁止晋级且注册表零写入', async (context) => {

@@ -4530,50 +4530,75 @@ export function promotePiModelCandidate(
   const candidate = parsePiModelCandidate(
     options.loadedCandidate.candidate,
   )
+  const existingProfile = before.registry.profiles.find(
+    (profile) => profile.id === candidate.candidateId,
+  )
+  const nextRegistryVersion = safeRegistryVersion(
+    options.newRegistryVersion,
+  )
   if (
-    before.registry.profiles.some(
-      (profile) => profile.id === candidate.candidateId,
-    )
+    existingProfile !== undefined &&
+    (nextRegistryVersion === before.registry.registryVersion ||
+      existingProfile.status !== 'certified' ||
+      existingProfile.provider !== candidate.provider ||
+      existingProfile.model !== candidate.model ||
+      existingProfile.modelVersion !== candidate.modelVersion ||
+      existingProfile.expectedResponseModel !==
+        candidate.expectedResponseModel ||
+      existingProfile.thinkingLevel !== candidate.thinkingLevel ||
+      existingProfile.piVersion !== candidate.piVersion ||
+      existingProfile.modelRevisionKind !== 'mutable_alias' ||
+      existingProfile.immutableRevisionAvailable !== false ||
+      existingProfile.certifiedScenarioSetId !==
+        manifest.certificationProfile.certifiedScenarioSetId ||
+      existingProfile.certifiedInputScope !==
+        manifest.certificationProfile.certifiedInputScope ||
+      existingProfile.certificationEvidenceId === manifest.evidenceId ||
+      Date.parse(manifest.completedAt) <=
+        Date.parse(existingProfile.certifiedAt) ||
+      Date.parse(
+        manifest.certificationProfile.certificationValidUntil,
+      ) <= Date.parse(existingProfile.certificationValidUntil))
   ) {
     throw new PiModelCertificationError(
       'certification_promotion_conflict',
     )
   }
+  const certifiedProfile = {
+    id: candidate.candidateId,
+    status: 'certified' as const,
+    provider: candidate.provider,
+    model: candidate.model,
+    modelVersion: candidate.modelVersion,
+    expectedResponseModel: candidate.expectedResponseModel,
+    thinkingLevel: candidate.thinkingLevel,
+    piVersion: candidate.piVersion,
+    certificationEvidenceId: manifest.evidenceId,
+    certifiedAt: manifest.completedAt,
+    modelRevisionKind:
+      manifest.certificationProfile.modelRevisionKind,
+    immutableRevisionAvailable:
+      manifest.certificationProfile.immutableRevisionAvailable,
+    limitation: manifest.certificationProfile.limitation,
+    certificationValidUntil:
+      manifest.certificationProfile.certificationValidUntil,
+    certifiedScenarioSetId:
+      manifest.certificationProfile.certifiedScenarioSetId,
+    certifiedInputScope:
+      manifest.certificationProfile.certifiedInputScope,
+  }
   const nextValue = {
     schemaVersion: before.registry.schemaVersion,
-    registryVersion: safeRegistryVersion(
-      options.newRegistryVersion,
-    ),
+    registryVersion: nextRegistryVersion,
     status: 'frozen',
-    profiles: [
-      ...before.registry.profiles,
-      {
-        id: candidate.candidateId,
-        status: 'certified',
-        provider: candidate.provider,
-        model: candidate.model,
-        modelVersion: candidate.modelVersion,
-        expectedResponseModel: candidate.expectedResponseModel,
-        thinkingLevel: candidate.thinkingLevel,
-        piVersion: candidate.piVersion,
-        certificationEvidenceId: manifest.evidenceId,
-        certifiedAt: manifest.completedAt,
-        modelRevisionKind:
-          manifest.certificationProfile.modelRevisionKind,
-        immutableRevisionAvailable:
-          manifest.certificationProfile
-            .immutableRevisionAvailable,
-        limitation: manifest.certificationProfile.limitation,
-        certificationValidUntil:
-          manifest.certificationProfile
-            .certificationValidUntil,
-        certifiedScenarioSetId:
-          manifest.certificationProfile
-            .certifiedScenarioSetId,
-        certifiedInputScope:
-          manifest.certificationProfile.certifiedInputScope,
-      },
-    ],
+    profiles:
+      existingProfile === undefined
+        ? [...before.registry.profiles, certifiedProfile]
+        : before.registry.profiles.map((profile) =>
+            profile.id === candidate.candidateId
+              ? certifiedProfile
+              : profile,
+          ),
   }
   const nextRegistry = parseCertifiedPiModelRegistry(nextValue)
   const text = `${JSON.stringify(nextValue, null, 2)}\n`

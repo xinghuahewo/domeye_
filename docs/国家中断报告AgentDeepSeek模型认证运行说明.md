@@ -580,11 +580,17 @@ npm run promote:model:a4 -- \
 6. validator、ReportDocument、PDF、Markdown 和事实等价检查均通过；
 7. 当前适配器能够保留同名 `responseModel`，且源码摘要与认证清单一致；
 8. 正式注册表仍与运行前版本和 SHA-256 相同；
-9. 注册表不存在同名 profile。
+9. 首次晋级时注册表不存在同名 profile；重新认证续期时只允许恰好一个同名已认证
+   profile，并要求 provider、model、modelVersion、responseModel、thinkingLevel、
+   Pi 版本、可变别名类型、场景集和输入范围全部不变；新证据 ID 必须不同，
+   `certifiedAt` 与 `certificationValidUntil` 必须严格向后推进，注册表版本也必须
+   更新。任一条件不满足均以冲突失败关闭且注册表零写入。
 
 原子更新先在同目录写入临时文件、同步落盘、再次核验旧注册表，再执行 rename。
-任一检查失败都不会部分写入。晋级后，正式 profile 的证据 ID 指向完整认证清单，
-候选资源本身仍保持 `candidate`。
+任一检查失败都不会部分写入。首次晋级追加固定 profile；重新认证续期只在原位置
+原子替换该 profile，不保留两个同名条目，也不允许借续期改变模型身份或缩短认证
+有效期。晋级后，正式 profile 的证据 ID 指向完整认证清单，候选资源本身仍保持
+`candidate`。
 
 该 CLI 已通过成功晋级、摘要篡改、清单符号链接、额外文件、路径逃逸，以及
 “重算全部摘要和证据身份但 Pi 审计语义与 manifest 不一致”的离线测试。持久化
