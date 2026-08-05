@@ -1,0 +1,73 @@
+{
+  "schema_version": "country_outage_trend_analysis_s1_acceptance_v1",
+  "stage": "S1",
+  "status": "candidate_foundation_not_end_to_end_evidence",
+  "source_curve_fixture": "dev/fixtures/country-outage-trend-analysis-s0-v1.json",
+  "snapshot_template": {
+    "event_type": "country_outage",
+    "event_reference": "country_outage/2000-01-01 00:00:00/XZ/1/synthetic",
+    "incident_id": "incident_trend_s1_synthetic",
+    "country_code": "XZ",
+    "collector_id": "rrc25",
+    "collector_count": 1,
+    "publication_id": "publication_trend_s1_synthetic",
+    "revision": 1,
+    "data_through": "2000-01-01T00:55:00Z",
+    "is_final": true,
+    "window_start_utc": "2000-01-01T00:00:00Z",
+    "window_end_utc": "2000-01-01T00:55:00Z",
+    "timezone": "UTC"
+  },
+  "metric_template": {
+    "metric_id": "visible_prefix_vp_count",
+    "label": "固定人口可见 Prefix×VP 数量",
+    "unit": "count",
+    "statistical_population": "fixed_prefix_vp"
+  },
+  "curve_cases": [
+    {"curve_id": "CURVE-01", "baseline_type": "fixed_cohort", "expected_quality": "complete", "expected_effective_baseline": "fixed_cohort"},
+    {"curve_id": "CURVE-02", "baseline_type": "window_start", "expected_quality": "complete", "expected_effective_baseline": "window_start"},
+    {"curve_id": "CURVE-03", "baseline_type": "window_start", "expected_quality": "complete", "expected_effective_baseline": "window_start"},
+    {"curve_id": "CURVE-04", "baseline_type": "fixed_cohort", "expected_quality": "complete", "expected_effective_baseline": "fixed_cohort"},
+    {"curve_id": "CURVE-05", "baseline_type": "window_start", "expected_quality": "complete", "expected_effective_baseline": "window_start"},
+    {"curve_id": "CURVE-06", "baseline_type": "window_start", "expected_quality": "complete", "expected_effective_baseline": "window_start"},
+    {"curve_id": "CURVE-07", "baseline_type": "fixed_cohort", "expected_quality": "complete", "expected_effective_baseline": "fixed_cohort"},
+    {"curve_id": "CURVE-08", "baseline_type": "unavailable", "expected_quality": "degraded", "expected_effective_baseline": "unavailable"},
+    {"curve_id": "CURVE-09", "baseline_type": "window_start", "expected_quality": "unavailable", "expected_effective_baseline": "unavailable"}
+  ],
+  "baseline_cases": [
+    {"id": "BASELINE-01", "type": "fixed_cohort", "expected_value_source": "metric.denominator"},
+    {"id": "BASELINE-02", "type": "window_start", "expected_value_source": "slots[0]"},
+    {
+      "id": "BASELINE-03",
+      "type": "contemporaneous_reference",
+      "value": 97,
+      "unit": "count",
+      "statistical_population": "fixed_prefix_vp",
+      "reference_id": "reference_s1_same_grid",
+      "expected_value_source": "contemporaneous_reference"
+    },
+    {"id": "BASELINE-04", "type": "unavailable", "expected_value_source": null}
+  ],
+  "failure_cases": [
+    {"id": "FAIL-01", "mutation": "collector_id", "value": "rrc00", "expected_code": "unsupported_collector"},
+    {"id": "FAIL-02", "mutation": "collector_count", "value": 2, "expected_code": "unsupported_collector_count"},
+    {"id": "FAIL-03", "mutation": "event_country", "value": "IR", "expected_code": "event_country_conflict"},
+    {"id": "FAIL-04", "mutation": "window_end", "value": "2000-01-01T01:00:00Z", "expected_code": "time_grid_window_conflict"},
+    {"id": "FAIL-05", "mutation": "slot_time", "value": "2000-01-01T00:06:00Z", "expected_code": "slot_time_conflict"},
+    {"id": "FAIL-06", "mutation": "missing_value", "value": 0, "expected_code": "non_observed_value_present"},
+    {"id": "FAIL-07", "mutation": "denominator_population", "value": "origin_asn", "expected_code": "population_conflict"},
+    {"id": "FAIL-08", "mutation": "reference_grid", "value": 60, "expected_code": "reference_time_grid_conflict"}
+  ],
+  "expected_invariants": {
+    "repeat_profile_id": true,
+    "revision_changes_profile_id": true,
+    "slot_value_changes_profile_id": true,
+    "non_observed_value_is_null": true,
+    "slot_states_remain_distinct": true,
+    "window_start_is_not_normal_baseline": true,
+    "fixed_cohort_is_not_normal_baseline": true,
+    "analysis_status": "not_computed_in_s1",
+    "direct_comparison_requires_same_snapshot_grid_population_unit_and_denominator": true
+  }
+}
