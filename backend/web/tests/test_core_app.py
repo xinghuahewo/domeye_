@@ -34,6 +34,7 @@ EXPECTED_ROUTES = {
     '/api/v2/country-outages/<incident_id>/series',
     '/api/v2/country-outages/<incident_id>/asns',
     '/api/v2/country-outages/<incident_id>/audit',
+    '/api/v2/country-outages/<incident_id>/trend',
     '/api/v2/country-outage/capabilities/external-evidence',
     '/api/v2/country-outage/reports',
     '/api/v2/country-outage/reports/<report_id>/events',
