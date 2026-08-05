@@ -619,7 +619,19 @@ func (state *GlobalReplayState) SnapshotAll(
 	activity *GlobalSlotActivity,
 ) ([]GlobalCountryObservation, []GlobalASNStateRow, GlobalConservation, error) {
 	return state.snapshotAll(
-		observedAt, slotStart, slotEnd, role, activity, true,
+		observedAt, slotStart, slotEnd, role, activity, true, false,
+	)
+}
+
+// SnapshotAllFast 生成与 SnapshotAll 相同的国家和 ASN 状态，但使用已经由
+// Apply 维护的增量人口计数做快速守恒校验。它用于从已验真的长窗 spool 定向
+// 投影少量国家，避免在每个五分钟槽重复扫描全部固定路由。
+func (state *GlobalReplayState) SnapshotAllFast(
+	observedAt, slotStart, slotEnd, role string,
+	activity *GlobalSlotActivity,
+) ([]GlobalCountryObservation, []GlobalASNStateRow, GlobalConservation, error) {
+	return state.snapshotAll(
+		observedAt, slotStart, slotEnd, role, activity, true, true,
 	)
 }
 
@@ -628,7 +640,7 @@ func (state *GlobalReplayState) SnapshotCountries(
 	activity *GlobalSlotActivity,
 ) ([]GlobalCountryObservation, GlobalConservation, error) {
 	observations, _, conservation, err := state.snapshotAll(
-		observedAt, slotStart, slotEnd, role, activity, false,
+		observedAt, slotStart, slotEnd, role, activity, false, false,
 	)
 	return observations, conservation, err
 }
@@ -637,6 +649,7 @@ func (state *GlobalReplayState) snapshotAll(
 	observedAt, slotStart, slotEnd, role string,
 	activity *GlobalSlotActivity,
 	includeASNRows bool,
+	fastConservation bool,
 ) ([]GlobalCountryObservation, []GlobalASNStateRow, GlobalConservation, error) {
 	if activity == nil {
 		activity = NewGlobalSlotActivity()
@@ -831,7 +844,13 @@ func (state *GlobalReplayState) snapshotAll(
 			StateDigest:          state.StateDigest.Hex(),
 		})
 	}
-	conservation, err := state.ValidateConservation()
+	var conservation GlobalConservation
+	var err error
+	if fastConservation {
+		conservation, err = state.ValidateConservationFast()
+	} else {
+		conservation, err = state.ValidateConservation()
+	}
 	if err != nil {
 		return nil, nil, conservation, err
 	}

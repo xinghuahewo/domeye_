@@ -259,6 +259,12 @@ func ApplyGlobalSpoolSlot(
 			heap.Push(&queue, cursor)
 		}
 	}
+	for _, cursor := range cursors {
+		if err := cursor.reader.Verify(cursor.meta); err != nil {
+			_ = closeGlobalSpoolCursors(cursors)
+			return nil, err
+		}
+	}
 	if err := closeGlobalSpoolCursors(cursors); err != nil {
 		return nil, err
 	}

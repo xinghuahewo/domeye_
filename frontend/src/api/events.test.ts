@@ -63,6 +63,26 @@ describe('event observation fallback boundary', () => {
     expect(apiV2Get).not.toHaveBeenCalled()
   })
 
+  it('falls back to the available Evidence Bundle for legacy summaries', async () => {
+    vi.mocked(apiV2Get).mockResolvedValueOnce({
+      incident_id: 'legacy-incident',
+      publication_id: 'legacy-publication',
+      observation_state: 'legacy_summary',
+    })
+
+    let thrown: unknown
+    try {
+      await getEventObservation(
+        'country_outage/2026-03-09 22:09:38/MW/2/r',
+      )
+    } catch (cause) {
+      thrown = cause
+    }
+
+    expect(isEventObservationNotConfigured(thrown)).toBe(true)
+    expect(apiV2Get).toHaveBeenCalledTimes(1)
+  })
+
   it('pins overview, series, ASN and audit reads to the resolver publication', async () => {
     const overview = { schema_version: 'country_outage_overview_v2' }
     const series = { schema_version: 'country_outage_series_v2' }
