@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"time"
 )
 
 var globalContinuationMagic = [8]byte{'D', 'G', 'S', 'T', 'V', '1', 0, 0}
@@ -33,6 +34,7 @@ type GlobalContinuationCheckpointManifest struct {
 	DatasetID                  string                    `json:"dataset_id"`
 	Revision                   string                    `json:"revision"`
 	MappingVersion             string                    `json:"mapping_version"`
+	SeedObservedAt             string                    `json:"seed_observed_at,omitempty"`
 	DataThrough                string                    `json:"data_through"`
 	ProductSequence            int                       `json:"product_sequence"`
 	ProcessedSlot              int                       `json:"processed_slot"`
@@ -298,6 +300,7 @@ func WriteGlobalContinuationCheckpoint(
 	manifest.IdentityTime = manifest.DataThrough
 	manifest.CollectorID = "rrc25"
 	manifest.MappingVersion = state.Mapping.MappingVersion
+	manifest.SeedObservedAt = state.SeedObservedAt
 	manifest.RecordCount = recordCount
 	manifest.StateDigest = state.StateDigest.Hex()
 	manifest.Conservation = conservation
@@ -367,6 +370,7 @@ func (state *GlobalReplayState) restoreRoute(
 	state.StateDigest.Add(routeIdentityDigest(key, route))
 	if !route.Dynamic {
 		state.SeedRouteRows++
+		state.BaselineRouteCount++
 		country := state.country(route.BaselineCountryID)
 		country.BaselinePrefixVP++
 		country.BaselineByAFI[offset]++
@@ -390,6 +394,7 @@ func (state *GlobalReplayState) restoreRoute(
 		}
 	}
 	if route.CurrentPresent {
+		state.PresentRouteCount++
 		current := state.country(route.CurrentCountryID)
 		current.CurrentPrefixVP++
 		current.CurrentByAFI[offset]++
@@ -562,6 +567,16 @@ func LoadGlobalContinuationCheckpoint(
 	state, err := NewGlobalReplayState(mapping, int(manifest.RecordCount))
 	if err != nil {
 		return nil, manifest, manifestSHA, err
+	}
+	state.SeedObservedAt = manifest.SeedObservedAt
+	if state.SeedObservedAt == "" {
+		state.SeedEventMicros = catchUpStart.UnixMicro()
+	} else if parsed, err := time.Parse(time.RFC3339, state.SeedObservedAt); err == nil {
+		state.SeedEventMicros = parsed.UnixMicro()
+	} else {
+		return nil, manifest, manifestSHA, fmt.Errorf(
+			"continuation checkpoint seed time is invalid",
+		)
 	}
 	shards := append([]GlobalCheckpointShard(nil), manifest.Shards...)
 	sort.Slice(shards, func(i, j int) bool {

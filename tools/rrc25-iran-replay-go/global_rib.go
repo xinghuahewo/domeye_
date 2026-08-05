@@ -145,9 +145,64 @@ func SeedGlobalRIB(
 	GlobalRIBQuality,
 	error,
 ) {
+	return seedGlobalRIB(
+		rawRoot, artifact, mapping, checkpointRoot, checkpointShards,
+		routeCapacity, "", progress,
+	)
+}
+
+// SeedGlobalRIBAt 与 SeedGlobalRIB 使用相同的已验收解析器，但把 cohort 的
+// seed 时间显式绑定到长窗口 RIB。原有短窗入口保持原身份不变。
+func SeedGlobalRIBAt(
+	rawRoot string,
+	artifact Artifact,
+	mapping *GlobalCountryMapping,
+	checkpointRoot string,
+	checkpointShards int,
+	routeCapacity int,
+	seedObservedAt string,
+	progress func(string),
+) (
+	*GlobalReplayState,
+	GlobalRIBCheckpointManifest,
+	GlobalRIBQuality,
+	error,
+) {
+	if _, err := time.Parse(time.RFC3339, seedObservedAt); err != nil ||
+		seedObservedAt != artifact.ArtifactTimeUTC {
+		return nil, GlobalRIBCheckpointManifest{}, GlobalRIBQuality{}, fmt.Errorf(
+			"global RIB seed time must equal the input artifact time",
+		)
+	}
+	return seedGlobalRIB(
+		rawRoot, artifact, mapping, checkpointRoot, checkpointShards,
+		routeCapacity, seedObservedAt, progress,
+	)
+}
+
+func seedGlobalRIB(
+	rawRoot string,
+	artifact Artifact,
+	mapping *GlobalCountryMapping,
+	checkpointRoot string,
+	checkpointShards int,
+	routeCapacity int,
+	seedObservedAt string,
+	progress func(string),
+) (
+	*GlobalReplayState,
+	GlobalRIBCheckpointManifest,
+	GlobalRIBQuality,
+	error,
+) {
 	state, err := NewGlobalReplayState(mapping, routeCapacity)
 	if err != nil {
 		return nil, GlobalRIBCheckpointManifest{}, GlobalRIBQuality{}, err
+	}
+	state.SeedObservedAt = seedObservedAt
+	if seedObservedAt != "" {
+		parsed, _ := time.Parse(time.RFC3339, seedObservedAt)
+		state.SeedEventMicros = parsed.UnixMicro()
 	}
 	checkpoint, err := NewGlobalRIBCheckpointWriter(
 		checkpointRoot, checkpointShards,

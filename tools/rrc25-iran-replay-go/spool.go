@@ -178,6 +178,11 @@ func parseUpdateToSpool(
 			existing.EngineVersion == EngineVersion &&
 			existing.Artifact.FileSHA256 == artifact.FileSHA256 &&
 			len(existing.Shards) == shardCount {
+			if err := VerifySpoolFiles(filepath.Dir(spoolRoot), []SlotSpoolMeta{existing}); err != nil {
+				return SlotSpoolMeta{}, fmt.Errorf(
+					"existing spool verification failed at slot %d: %w", index, err,
+				)
+			}
 			return existing, nil
 		}
 		return SlotSpoolMeta{}, fmt.Errorf("existing spool metadata mismatch at slot %d", index)
