@@ -871,6 +871,9 @@ function selectAnswer(
       ? draft('fact', claim.text, [`trend:/nodes/${index}`])
       : null
   }
+  if (/同期|全球参照|分布位置|经验百分位|共同波动/.test(lower)) {
+    return trendClaimAnswer('contemporaneous_reference') ?? answerVisibility(context)
+  }
   if (/阶段|单波|多波|震荡|平台|混合型/.test(lower)) {
     return trendClaimAnswer('phase_sequence') ?? answerVisibility(context)
   }

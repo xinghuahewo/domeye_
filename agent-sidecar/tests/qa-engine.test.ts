@@ -512,6 +512,7 @@ function trendProductForQa(): CountryOutageTrendProduct {
     claim('activity_alignment', 'UPDATE 峰值与谷值为相邻槽，只表示时间对应。', 3),
     claim('address_family_comparison', 'IPv4 与 IPv6 使用独立分母进行对照。', 4),
     claim('window_state', '窗口起点、谷值与终点均来自冻结账本。', 5),
+    claim('contemporaneous_reference', '目标下降幅度在同期可比国家投影中的经验百分位为 80%。', 6),
     {
       node_id: 'limitation-trend-qa',
       node_type: 'Limitation' as const,
@@ -566,6 +567,7 @@ test('组合式趋势追问直接引用原报告同一冻结 Claim', async () =>
     ['哪些 ASN 持续未回到起点？', 'asn_persistence'],
     ['UPDATE 峰值与谷值是同槽还是相邻槽？', 'activity_alignment'],
     ['IPv4 和 IPv6 的地址族分化如何？', 'address_family_comparison'],
+    ['目标在同期全球分布中的位置？', 'contemporaneous_reference'],
     ['查看结论依据', 'window_state'],
   ] as const
   for (let index = 0; index < cases.length; index += 1) {

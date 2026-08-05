@@ -10,10 +10,13 @@ from copy import deepcopy
 from collections import Counter
 import hashlib
 import json
+import os
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from services.country_outage_trend_profile import analyze_trend_profile_v1
 from services.country_outage_trend_profile import (
+    ANALYSIS_RULE,
     align_activity_context_v1,
     compare_address_families_v1,
     compile_trend_profile_v1,
@@ -22,8 +25,17 @@ from services.country_outage_trend_profile import (
 
 EVIDENCE_GRAPH_SCHEMA_VERSION = "country_outage_evidence_graph_v1"
 TREND_PRODUCT_SCHEMA_VERSION = "country_outage_trend_product_v1"
-TREND_PRODUCT_ALGORITHM_VERSION = "country_outage_trend_product_s4_v1"
-QA_RULE_VERSION = "country_outage_trend_qa_s4_v1"
+TREND_PRODUCT_ALGORITHM_VERSION = "country_outage_trend_product_s5_v1"
+QA_RULE_VERSION = "country_outage_trend_qa_s5_v1"
+CONTEMPORANEOUS_REFERENCE_SCHEMA_VERSION = (
+    "country_outage_contemporaneous_reference_v1"
+)
+CONTEMPORANEOUS_REFERENCE_INPUT_SCHEMA_VERSION = (
+    "rrc25_contemporaneous_projection_bundle_v1"
+)
+CONTEMPORANEOUS_REFERENCE_ALGORITHM_VERSION = (
+    "country_outage_contemporaneous_reference_s5_v1"
+)
 NODE_TYPES = ("Claim", "Evidence", "Limitation", "Unknown")
 RELATION_TYPES = ("supported_by", "limited_by", "unknown_about")
 ASN_CODE_TO_STATE = {
@@ -150,6 +162,13 @@ def _format_number(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.6f}".rstrip("0").rstrip(".")
     return str(value)
+
+
+def _format_percentage(value: Any, *, ratio: bool = False) -> str:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return "未知"
+    numeric = value * 100 if ratio else value
+    return f"{numeric:.6f}".rstrip("0").rstrip(".") + "%"
 
 
 def _slot_state(point: Mapping[str, Any]) -> str:
@@ -467,10 +486,475 @@ def _activity_context(
     return align_activity_context_v1(profile, tracks)
 
 
+def _require_reference_identity(
+    profile: Mapping[str, Any], reference: Mapping[str, Any]
+) -> tuple[dict[str, Any], list[str]]:
+    identity = reference.get("identity")
+    if not isinstance(identity, Mapping):
+        _fail("reference_identity_unavailable", "reference.identity", "同期参照缺少身份")
+    if identity.get("collector_id") != "rrc25":
+        _fail(
+            "reference_collector_conflict",
+            "reference.identity.collector_id",
+            "同期参照只允许 rrc25",
+        )
+    required = (
+        "run_id",
+        "dataset_id",
+        "revision",
+        "mapping_version",
+        "data_through",
+        "formal_manifest_sha256",
+        "catalog_sha256",
+        "complete_sha256",
+        "source_reference",
+        "artifact_status",
+        "quality_status",
+    )
+    for field in required:
+        if not isinstance(identity.get(field), str) or not identity[field]:
+            _fail(
+                "reference_identity_unavailable",
+                f"reference.identity.{field}",
+                f"同期参照缺少 {field}",
+            )
+    if identity.get("artifact_status") != "historical_accepted_artifact":
+        _fail(
+            "reference_artifact_not_accepted",
+            "reference.identity.artifact_status",
+            "同期参照必须绑定已验收历史制品身份",
+        )
+    if (
+        identity.get("quality_status") != "pass"
+        or identity.get("consumed_deliverable_hashes_verified") is not True
+    ):
+        _fail(
+            "reference_quality_not_verified",
+            "reference.identity.quality_status",
+            "同期参照质量或交付哈希尚未核验",
+        )
+    if identity.get("data_through") != profile["snapshot"]["data_through"]:
+        _fail(
+            "reference_data_through_conflict",
+            "reference.identity.data_through",
+            "同期参照与目标趋势的 data_through 不一致",
+        )
+    grid = reference.get("time_grid")
+    if not isinstance(grid, Mapping):
+        _fail("reference_time_grid_unavailable", "reference.time_grid", "同期参照缺少时间网格")
+    observed_at = grid.get("observed_at_utc")
+    expected_times = [slot["observed_at_utc"] for slot in profile["slots"]]
+    if (
+        grid.get("slot_seconds") != profile["time_grid"]["slot_seconds"]
+        or grid.get("expected_slot_count")
+        != profile["time_grid"]["expected_slot_count"]
+        or observed_at != expected_times
+    ):
+        _fail(
+            "reference_time_grid_conflict",
+            "reference.time_grid",
+            "同期参照与目标趋势的时间网格不一致",
+        )
+    if reference.get("target_country_code") != profile["snapshot"]["country_code"]:
+        _fail(
+            "reference_target_conflict",
+            "reference.target_country_code",
+            "同期参照目标国家与趋势快照不一致",
+        )
+    source_refs = [
+        identity["source_reference"],
+        f"sha256:{identity['formal_manifest_sha256']}",
+        f"sha256:{identity['catalog_sha256']}",
+        f"sha256:{identity['complete_sha256']}",
+    ]
+    return deepcopy(dict(identity)), source_refs
+
+
+def _collapse_states(states: Sequence[str]) -> list[str]:
+    result: list[str] = []
+    for state in states:
+        if not result or result[-1] != state:
+            result.append(state)
+    return result
+
+
+def _projection_shape(ratios: Sequence[float]) -> str:
+    threshold = ANALYSIS_RULE["directional_change_percentage_points"] / 100
+    directions = []
+    for index in range(1, len(ratios)):
+        delta = ratios[index] - ratios[index - 1]
+        if delta <= -threshold:
+            directions.append("DEGRADING")
+        elif delta >= threshold:
+            directions.append("RECOVERING")
+        else:
+            directions.append("STABLE")
+    collapsed = _collapse_states(directions)
+    return "→".join(collapsed or ["STABLE"])
+
+
+def _projection_shape_label_zh(shape: str) -> str:
+    labels = {
+        "DEGRADING": "下行",
+        "RECOVERING": "上行",
+        "STABLE": "平稳",
+    }
+    return "→".join(labels.get(item, "未知") for item in shape.split("→"))
+
+
+def _projection_metrics(
+    projection: Mapping[str, Any],
+    *,
+    expected_times: Sequence[str],
+) -> tuple[dict[str, Any] | None, str | None]:
+    code = projection.get("country_code")
+    if not isinstance(code, str) or not code:
+        _fail("reference_country_unavailable", "reference.projections.country_code", "国家投影缺少代码")
+    if code == "__UNKNOWN__":
+        return None, "unknown_bucket"
+    if len(code) != 2 or not code.isalpha() or code.upper() != code:
+        return None, "invalid_country_code"
+    denominator = projection.get("denominator")
+    if not isinstance(denominator, int) or isinstance(denominator, bool) or denominator <= 0:
+        return None, "invalid_denominator"
+    if denominator < ANALYSIS_RULE["small_denominator_exclusive_upper_bound"]:
+        return None, "small_denominator"
+    if projection.get("quality_status") != "complete":
+        return None, "quality_not_complete"
+    slots = projection.get("slots")
+    if not isinstance(slots, list) or len(slots) != len(expected_times):
+        return None, "time_grid_incomplete"
+    source_refs = list(
+        dict.fromkeys(
+            ref
+            for ref in projection.get("source_refs", [])
+            if isinstance(ref, str) and ref
+        )
+    )
+    if not isinstance(projection.get("cohort_id"), str) or not projection["cohort_id"]:
+        return None, "cohort_unavailable"
+    if not source_refs:
+        return None, "source_unavailable"
+    ratios: list[float] = []
+    for index, (slot, expected_at) in enumerate(zip(slots, expected_times)):
+        if not isinstance(slot, Mapping):
+            return None, "invalid_slot"
+        if slot.get("index") != index or slot.get("observed_at_utc") != expected_at:
+            return None, "time_grid_conflict"
+        value = slot.get("visible_prefix_vp_count")
+        if (
+            slot.get("state") != "observed"
+            or not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 0
+            or value > denominator
+        ):
+            return None, "quality_not_complete"
+        ratios.append(value / denominator)
+    deltas = [
+        round((ratios[index] - ratios[index - 1]) * 100, 6)
+        for index in range(1, len(ratios))
+    ]
+    minimum_ratio = min(ratios)
+    minimum_index = ratios.index(minimum_ratio)
+    persistence_threshold = 0.95
+    asn_count = projection.get("asn_count")
+    persistent_asn_count = projection.get("asn_persistent_not_at_start_count")
+    asn_migration_ratio = None
+    if (
+        isinstance(asn_count, int)
+        and not isinstance(asn_count, bool)
+        and asn_count > 0
+        and isinstance(persistent_asn_count, int)
+        and not isinstance(persistent_asn_count, bool)
+        and 0 <= persistent_asn_count <= asn_count
+    ):
+        asn_migration_ratio = round(persistent_asn_count / asn_count, 6)
+    largest_drop = min([0.0, *deltas])
+    curve_shape = _projection_shape(ratios)
+    return {
+        "country_code": code,
+        "cohort_id": projection.get("cohort_id"),
+        "denominator": denominator,
+        "ratios": [round(value, 9) for value in ratios],
+        "maximum_decline_percentage_points": round((ratios[0] - minimum_ratio) * 100, 6),
+        "minimum_slot_index": minimum_index,
+        "persistence_below_95_slot_count": sum(
+            value < persistence_threshold for value in ratios
+        ),
+        "largest_single_slot_drop_percentage_points": largest_drop,
+        "largest_single_slot_drop_end_index": (
+            deltas.index(largest_drop) + 1 if largest_drop < 0 else 0
+        ),
+        "curve_shape": curve_shape,
+        "curve_shape_label_zh": _projection_shape_label_zh(curve_shape),
+        "asn_count": (
+            asn_count
+            if isinstance(asn_count, int) and not isinstance(asn_count, bool)
+            else None
+        ),
+        "asn_persistent_not_at_start_count": (
+            persistent_asn_count
+            if isinstance(persistent_asn_count, int)
+            and not isinstance(persistent_asn_count, bool)
+            else None
+        ),
+        "asn_migration_ratio": asn_migration_ratio,
+        "source_refs": source_refs,
+    }, None
+
+
+def _percentile_position(values: Sequence[float], target: float) -> float:
+    if not values:
+        return 0.0
+    return round(sum(value <= target for value in values) / len(values) * 100, 6)
+
+
+def compile_contemporaneous_reference_v1(
+    profile: Mapping[str, Any],
+    reference: Mapping[str, Any],
+) -> dict[str, Any]:
+    """把同期全球国家投影编译为非因果、非事件、非历史基线的参照上下文。"""
+    analyzed = analyze_trend_profile_v1(profile)
+    if reference.get("schema_version") != CONTEMPORANEOUS_REFERENCE_INPUT_SCHEMA_VERSION:
+        _fail("unsupported_reference_schema", "reference.schema_version", "同期参照版本不兼容")
+    identity, identity_refs = _require_reference_identity(analyzed, reference)
+    projections = reference.get("projections")
+    if not isinstance(projections, list) or not projections:
+        _fail("reference_projection_unavailable", "reference.projections", "同期参照没有国家投影")
+    bucket_count = reference.get("country_and_unknown_bucket_count")
+    if bucket_count != len(projections):
+        _fail(
+            "reference_bucket_count_conflict",
+            "reference.country_and_unknown_bucket_count",
+            "国家与未知桶数量不闭合",
+        )
+    codes = [item.get("country_code") for item in projections if isinstance(item, Mapping)]
+    if len(codes) != len(set(codes)):
+        _fail("reference_country_duplicate", "reference.projections", "同期参照国家代码重复")
+    expected_times = [slot["observed_at_utc"] for slot in analyzed["slots"]]
+    comparable: list[dict[str, Any]] = []
+    exclusions: list[dict[str, Any]] = []
+    for projection in projections:
+        if not isinstance(projection, Mapping):
+            _fail("invalid_reference_projection", "reference.projections", "国家投影必须为对象")
+        metrics, reason = _projection_metrics(projection, expected_times=expected_times)
+        if metrics is None:
+            exclusions.append(
+                {
+                    "country_code": projection.get("country_code"),
+                    "reason": reason,
+                    "denominator": projection.get("denominator"),
+                    "quality_status": projection.get("quality_status"),
+                }
+            )
+        else:
+            comparable.append(metrics)
+    target_code = analyzed["snapshot"]["country_code"]
+    target = next(
+        (item for item in comparable if item["country_code"] == target_code), None
+    )
+    target_projection = next(
+        (
+            item
+            for item in projections
+            if isinstance(item, Mapping) and item.get("country_code") == target_code
+        ),
+        None,
+    )
+    if target_projection is None:
+        _fail("reference_target_missing", "reference.projections", "同期参照缺少目标国家投影")
+    target_denominator = analyzed["metric"]["denominator"]["value"]
+    target_values = [slot["value"] for slot in analyzed["slots"]]
+    if (
+        target_projection.get("denominator") != target_denominator
+        or [slot.get("visible_prefix_vp_count") for slot in target_projection.get("slots", [])]
+        != target_values
+    ):
+        _fail(
+            "reference_target_population_conflict",
+            "reference.projections",
+            "同期目标投影与事件趋势人口或逐槽数值不一致",
+        )
+    exclusion_counts = dict(Counter(item["reason"] for item in exclusions))
+    status = "complete" if target is not None and len(comparable) >= 2 else "insufficient_data"
+    result: dict[str, Any] = {
+        "schema_version": CONTEMPORANEOUS_REFERENCE_SCHEMA_VERSION,
+        "algorithm_version": CONTEMPORANEOUS_REFERENCE_ALGORITHM_VERSION,
+        "context_type": "contemporaneous_country_projection_reference",
+        "profile_id": analyzed["profile_id"],
+        "analysis_id": analyzed["analysis"]["analysis_id"],
+        "snapshot": deepcopy(analyzed["snapshot"]),
+        "time_grid": deepcopy(analyzed["time_grid"]),
+        "reference_identity": identity,
+        "status": status,
+        "target_country_code": target_code,
+        "projection_bucket_count": len(projections),
+        "comparable_country_count": len(comparable),
+        "excluded_projection_count": len(exclusions),
+        "exclusion_reason_counts": exclusion_counts,
+        "excluded_projections": exclusions,
+        "normalization": {
+            "visibility": "visible_prefix_vp_count / fixed_prefix_vp_denominator",
+            "decline_magnitude": "(window_start_ratio - minimum_ratio) * 100 percentage_points",
+            "persistence": "observed_slot_count_with_visibility_ratio_below_0.95",
+            "persistence_threshold_ratio": 0.95,
+            "asn_migration": "asn_end_state_not_equal_start_state_count / fixed_asn_count",
+            "curve_shape": (
+                "collapse consecutive ratio deltas by +/- "
+                f"{ANALYSIS_RULE['directional_change_percentage_points']} percentage_points"
+            ),
+            "distribution_position": "empirical_cdf_less_than_or_equal_target",
+            "small_denominator_exclusive_upper_bound": ANALYSIS_RULE[
+                "small_denominator_exclusive_upper_bound"
+            ],
+        },
+        "target": target,
+        "distribution_positions": None,
+        "curve_shape_distribution": [],
+        "common_fluctuation": None,
+        "source_refs": list(
+            dict.fromkeys(
+                [
+                    *identity_refs,
+                    *(
+                        ref
+                        for item in comparable
+                        for ref in item.get("source_refs", [])
+                    ),
+                ]
+            )
+        ),
+        "limitations": [
+            "contemporaneous_distribution_is_not_historical_normal_baseline",
+            "country_projection_is_not_automatic_incident_identity",
+            "common_fluctuation_is_not_collector_failure_or_cause",
+            "rrc25_single_collector_bgp_control_plane_only",
+        ],
+    }
+    if status == "complete" and target is not None:
+        metric_names = (
+            "maximum_decline_percentage_points",
+            "persistence_below_95_slot_count",
+        )
+        positions = {
+            name: {
+                "target_value": target[name],
+                "empirical_percentile": _percentile_position(
+                    [float(item[name]) for item in comparable], float(target[name])
+                ),
+                "comparable_count": len(comparable),
+            }
+            for name in metric_names
+        }
+        asn_values = [
+            float(item["asn_migration_ratio"])
+            for item in comparable
+            if item["asn_migration_ratio"] is not None
+        ]
+        positions["asn_migration_ratio"] = {
+            "target_value": target["asn_migration_ratio"],
+            "empirical_percentile": (
+                _percentile_position(asn_values, float(target["asn_migration_ratio"]))
+                if target["asn_migration_ratio"] is not None and asn_values
+                else None
+            ),
+            "comparable_count": len(asn_values),
+            "status": (
+                "available"
+                if target["asn_migration_ratio"] is not None and asn_values
+                else "insufficient_data"
+            ),
+        }
+        shape_counts = Counter(item["curve_shape"] for item in comparable)
+        result["distribution_positions"] = positions
+        result["curve_shape_distribution"] = [
+            {
+                "curve_shape": shape,
+                "curve_shape_label_zh": _projection_shape_label_zh(shape),
+                "country_count": count,
+                "country_share": round(count / len(comparable), 6),
+                "is_target_shape": shape == target["curve_shape"],
+            }
+            for shape, count in sorted(shape_counts.items())
+        ]
+        threshold = ANALYSIS_RULE["directional_change_percentage_points"]
+        slots = []
+        for index in range(1, len(expected_times)):
+            declining = [
+                item
+                for item in comparable
+                if round((item["ratios"][index] - item["ratios"][index - 1]) * 100, 6)
+                <= -threshold
+            ]
+            slots.append(
+                {
+                    "slot_index": index,
+                    "observed_at_utc": expected_times[index],
+                    "declining_country_count": len(declining),
+                    "comparable_country_count": len(comparable),
+                    "declining_country_share": round(len(declining) / len(comparable), 6),
+                    "target_declined": target in declining,
+                }
+            )
+        target_drop_index = target["largest_single_slot_drop_end_index"]
+        target_drop_slot = next(
+            (item for item in slots if item["slot_index"] == target_drop_index), None
+        )
+        result["common_fluctuation"] = {
+            "directional_change_threshold_percentage_points": threshold,
+            "slots": slots,
+            "target_largest_drop_slot": target_drop_slot,
+            "interpretation": "same_slot_rrc25_observation_only",
+            "collector_failure_claim": False,
+        }
+    material = {
+        key: value
+        for key, value in result.items()
+        if key not in {"context_id"}
+    }
+    result["context_id"] = f"trend_context_v1_{_digest(material)[:32]}"
+    return result
+
+
+def validate_contemporaneous_reference_context_v1(
+    context: Mapping[str, Any],
+) -> list[str]:
+    """验证上下文版本、状态和内容地址；不接受调用方手写改写结果。"""
+    errors: list[str] = []
+    if context.get("schema_version") != CONTEMPORANEOUS_REFERENCE_SCHEMA_VERSION:
+        errors.append("同期参照 context schema_version 不正确")
+    if (
+        context.get("algorithm_version")
+        != CONTEMPORANEOUS_REFERENCE_ALGORITHM_VERSION
+    ):
+        errors.append("同期参照 algorithm_version 不正确")
+    if context.get("status") not in {"complete", "insufficient_data"}:
+        errors.append("同期参照 status 不正确")
+    material = {key: value for key, value in context.items() if key != "context_id"}
+    expected = f"trend_context_v1_{_digest(material)[:32]}"
+    if context.get("context_id") != expected:
+        errors.append("同期参照 context_id 与内容不一致")
+    if context.get("status") == "complete" and (
+        context.get("target") is None
+        or context.get("distribution_positions") is None
+        or context.get("common_fluctuation") is None
+    ):
+        errors.append("完整同期参照缺少目标、分布位置或共同波动")
+    if context.get("status") == "insufficient_data" and (
+        context.get("distribution_positions") is not None
+        or context.get("common_fluctuation") is not None
+    ):
+        errors.append("不足同期参照不得发布分布位置或共同波动")
+    return errors
+
+
 def compile_country_outage_trend_product_from_resources(
     overview: Mapping[str, Any],
     series: Mapping[str, Any],
     asn_pages: Sequence[Mapping[str, Any]],
+    *,
+    contemporaneous_reference: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把同一 v2 发布的 overview/series/asns 适配为权威趋势制品。"""
     for key in (
@@ -528,11 +1012,17 @@ def compile_country_outage_trend_product_from_resources(
     )
     asn_context = _aggregate_asn_context(main, asn_pages)
     activity_context = _activity_context(main, series)
+    contemporaneous_context = (
+        compile_contemporaneous_reference_v1(main, contemporaneous_reference)
+        if contemporaneous_reference is not None
+        else None
+    )
     product = compile_trend_product_v1(
         main,
         address_family_context=address_family,
         asn_context=asn_context,
         activity_context=activity_context,
+        contemporaneous_reference_context=contemporaneous_context,
     )
     return {
         **product,
@@ -572,8 +1062,33 @@ def get_country_outage_trend_product(
                 page_size=60,
             )
         )
+    contemporaneous_reference = None
+    reference_path = os.getenv("DOMEYE_RRC25_CONTEMPORANEOUS_REFERENCE")
+    if reference_path:
+        path = Path(reference_path).expanduser()
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            _fail(
+                "reference_artifact_unreadable",
+                "DOMEYE_RRC25_CONTEMPORANEOUS_REFERENCE",
+                f"同期参照制品不可读：{error}",
+            )
+        if not isinstance(loaded, Mapping):
+            _fail(
+                "invalid_reference_artifact",
+                "DOMEYE_RRC25_CONTEMPORANEOUS_REFERENCE",
+                "同期参照制品顶层必须为对象",
+            )
+        contemporaneous_reference = deepcopy(dict(loaded))
+        contemporaneous_reference["target_country_code"] = (
+            overview.get("event_identity") or {}
+        ).get("country_code")
     return compile_country_outage_trend_product_from_resources(
-        overview, series, pages
+        overview,
+        series,
+        pages,
+        contemporaneous_reference=contemporaneous_reference,
     )
 
 
@@ -583,6 +1098,7 @@ def compile_evidence_graph_v1(
     address_family_context: Mapping[str, Any] | None = None,
     asn_context: Mapping[str, Any] | None = None,
     activity_context: Mapping[str, Any] | None = None,
+    contemporaneous_reference_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把确定性分析结果编译为 Claim/Evidence/Limitation/Unknown 图。"""
     analyzed = analyze_trend_profile_v1(profile)
@@ -590,9 +1106,20 @@ def compile_evidence_graph_v1(
         "address_family": address_family_context,
         "asn": asn_context,
         "activity": activity_context,
+        "contemporaneous_reference": contemporaneous_reference_context,
     }
     for name, context in contexts.items():
         if context is not None:
+            if name == "contemporaneous_reference":
+                context_errors = validate_contemporaneous_reference_context_v1(
+                    context
+                )
+                if context_errors:
+                    _fail(
+                        "invalid_contemporaneous_reference_context",
+                        "contemporaneous_reference_context",
+                        "；".join(context_errors),
+                    )
             _same_identity(analyzed, context, name)
 
     seed = f"evidence_graph_v1_{_digest({'profile_id': analyzed['profile_id'], 'analysis_id': analyzed['analysis']['analysis_id'], 'contexts': {key: value.get('context_id') if value else None for key, value in contexts.items()}})[:32]}"
@@ -855,6 +1382,92 @@ def compile_evidence_graph_v1(
             },
         )
 
+    if contemporaneous_reference_context is not None:
+        context = contemporaneous_reference_context
+        reference_limitation = _limitation_node(
+            seed,
+            "contemporaneous_not_normal",
+            "同期国家投影分布不是历史正常基线，也不自动构成各国真实中断事件。",
+        )
+        common_limitation = _limitation_node(
+            seed,
+            "common_fluctuation_not_failure",
+            "同槽共同波动只表示 RRC25 同期观测现象，不证明 collector 故障或共同原因。",
+        )
+        limitations.extend([reference_limitation, common_limitation])
+        reference_node = _evidence_node(
+            node_id=f"{seed}:evidence:contemporaneous-reference",
+            evidence_kind="contemporaneous_country_projection_reference",
+            label="RRC25 同期国家投影分布",
+            payload=context,
+            source_refs=context.get("source_refs", []),
+            snapshot=snapshot,
+        )
+        dedicated_limitations = [
+            *limitation_ids,
+            reference_limitation["node_id"],
+            common_limitation["node_id"],
+        ]
+        if context.get("status") == "complete":
+            positions = context.get("distribution_positions") or {}
+            decline = positions.get("maximum_decline_percentage_points") or {}
+            persistence = positions.get("persistence_below_95_slot_count") or {}
+            migration = positions.get("asn_migration_ratio") or {}
+            target = context.get("target") or {}
+            target_drop = (
+                (context.get("common_fluctuation") or {}).get(
+                    "target_largest_drop_slot"
+                )
+                or {}
+            )
+            migration_text = (
+                "ASN 迁移位置可用；对应经验百分位为 "
+                f"{_format_percentage(migration.get('empirical_percentile'))}；"
+                if migration.get("status") == "available"
+                else "ASN 迁移位置因人口不足而不可用；"
+            )
+            claim_text = (
+                f"在 {context.get('comparable_country_count')} 个可比同期国家投影中，"
+                "目标下降幅度经验百分位为 "
+                f"{_format_percentage(decline.get('empirical_percentile'))}，"
+                f"低于 95% 分母的槽数经验百分位为 "
+                f"{_format_percentage(persistence.get('empirical_percentile'))}；{migration_text}"
+                f"曲线形状为 {target.get('curve_shape_label_zh')}。目标最大单槽下降时，"
+                f"同期满足下降阈值的投影比例为 "
+                f"{_format_percentage(target_drop.get('declining_country_share'), ratio=True)}。"
+            )
+        else:
+            claim_text = (
+                "同期国家投影参照因目标、小分母、质量或可比人口不足而不可用；"
+                "未生成分布位置。"
+            )
+        add_claim(
+            "contemporaneous_reference",
+            claim_text,
+            [reference_node],
+            values={
+                "status": context.get("status"),
+                "comparable_country_count": context.get("comparable_country_count"),
+                "excluded_projection_count": context.get("excluded_projection_count"),
+                "persistence_threshold_ratio": 0.95,
+                "distribution_positions": context.get("distribution_positions"),
+                "distribution_percentile_ratios": {
+                    key: (
+                        value.get("empirical_percentile") / 100
+                        if isinstance(value, Mapping)
+                        and isinstance(value.get("empirical_percentile"), (int, float))
+                        else None
+                    )
+                    for key, value in (
+                        context.get("distribution_positions") or {}
+                    ).items()
+                },
+                "curve_shape_distribution": context.get("curve_shape_distribution"),
+                "common_fluctuation": context.get("common_fluctuation"),
+            },
+            claim_limitations=dedicated_limitations,
+        )
+
     nodes = [*claims, *evidence, *limitations, *unknowns]
     graph_material = {
         "schema_version": EVIDENCE_GRAPH_SCHEMA_VERSION,
@@ -921,6 +1534,7 @@ def compile_trend_product_v1(
     address_family_context: Mapping[str, Any] | None = None,
     asn_context: Mapping[str, Any] | None = None,
     activity_context: Mapping[str, Any] | None = None,
+    contemporaneous_reference_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """形成页面、报告、追问和下载可共同消费的冻结分析制品。"""
     analyzed = analyze_trend_profile_v1(profile)
@@ -929,6 +1543,7 @@ def compile_trend_product_v1(
         address_family_context=address_family_context,
         asn_context=asn_context,
         activity_context=activity_context,
+        contemporaneous_reference_context=contemporaneous_reference_context,
     )
     errors = validate_evidence_graph_v1(graph)
     if errors:
@@ -937,6 +1552,11 @@ def compile_trend_product_v1(
         "address_family": deepcopy(dict(address_family_context)) if address_family_context else None,
         "asn": deepcopy(dict(asn_context)) if asn_context else None,
         "activity": deepcopy(dict(activity_context)) if activity_context else None,
+        "contemporaneous_reference": (
+            deepcopy(dict(contemporaneous_reference_context))
+            if contemporaneous_reference_context
+            else None
+        ),
     }
     claims = [node for node in graph["nodes"] if node["node_type"] == "Claim"]
     product_material = {
@@ -953,6 +1573,7 @@ def compile_trend_product_v1(
             "address_family_comparison",
             "asn_transition_and_persistence",
             "activity_time_alignment",
+            "contemporaneous_country_projection_reference",
             "claim_evidence_limitation_unknown",
             "bounded_qa_and_download",
         ],
@@ -1047,6 +1668,7 @@ def answer_trend_question_v1(product: Mapping[str, Any], question: str) -> dict[
             }
 
     operators = [
+        (("同期", "同槽共同", "全球参照", "分布位置", "百分位"), "contemporaneous_reference", "contemporaneous_reference"),
         (("update", "announce", "withdraw", "同槽", "相邻槽", "滞后槽"), "activity_alignment", "activity_alignment"),
         (("asn", "持续", "迁移", "未回到"), "asn_persistence", "asn_persistence"),
         (("ipv4", "ipv6", "地址族", "分化"), "address_family_comparison", "address_family_comparison"),

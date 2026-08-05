@@ -78,6 +78,21 @@ function trendProduct(): CountryOutageTrendProduct {
           unknown_refs: ['unknown-report-test'],
         },
         {
+          node_id: 'claim-contemporaneous-report-test',
+          node_type: 'Claim',
+          claim_kind: 'contemporaneous_reference',
+          text: '在 5 个可比同期国家投影中，目标下降幅度经验百分位为 80%，低于 95% 分母的槽数经验百分位为 80%；ASN 迁移位置可用；对应经验百分位为 80%；曲线形状为平稳→下行。目标最大单槽下降时，同期满足下降阈值的投影比例为 80%。',
+          values: {
+            comparable_country_count: 5,
+            persistence_threshold_ratio: 0.95,
+            empirical_percentile_ratio: 0.8,
+            common_fluctuation_share: 0.8,
+          },
+          evidence_refs: ['evidence-contemporaneous-report-test'],
+          limitation_refs: ['limitation-report-test'],
+          unknown_refs: ['unknown-report-test'],
+        },
+        {
           node_id: 'evidence-fastest-report-test',
           node_type: 'Evidence',
         },
@@ -317,8 +332,16 @@ test('报告、Markdown 与 PDF 下载直接消费同一趋势 Claim 节点', as
     '最快恶化落在槽 1，单槽变化为 -35,806 Prefix×VP。',
   )
   assert.equal(compiled.document.validation.passed, true)
+  const contemporaneousParagraph = compiled.document.draft.sections
+    .find((section) => section.id === 'assessment')
+    ?.paragraphs.find((item) => item.evidenceRefs.includes('trend:/nodes/1'))
+  assert.equal(
+    contemporaneousParagraph?.text,
+    '在 5 个可比同期国家投影中，目标下降幅度经验百分位为 80%，低于 95% 分母的槽数经验百分位为 80%；ASN 迁移位置可用；对应经验百分位为 80%；曲线形状为平稳→下行。目标最大单槽下降时，同期满足下降阈值的投影比例为 80%。',
+  )
   const markdown = renderReportMarkdown(compiled.document)
   assert.match(markdown, /最快恶化落在槽 1/)
+  assert.match(markdown, /可比同期国家投影中/)
   assert.match(markdown, /trend:\/nodes\/0/)
 
   const artifacts = await new CountryOutageArtifactBuilder({

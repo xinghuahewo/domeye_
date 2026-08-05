@@ -616,6 +616,64 @@ export interface CountryOutageEvidenceGraph {
   causal_relations_allowed: false
 }
 
+export interface CountryOutageContemporaneousReference {
+  schema_version: 'country_outage_contemporaneous_reference_v1'
+  context_id: string
+  status: 'complete' | 'insufficient_data'
+  target_country_code: string
+  projection_bucket_count: number
+  comparable_country_count: number
+  excluded_projection_count: number
+  exclusion_reason_counts: Record<string, number>
+  normalization: Record<string, unknown>
+  target: {
+    maximum_decline_percentage_points: number
+    persistence_below_95_slot_count: number
+    curve_shape: string
+    curve_shape_label_zh: string
+    asn_migration_ratio: number | null
+    [key: string]: unknown
+  } | null
+  distribution_positions: {
+    maximum_decline_percentage_points: {
+      target_value: number
+      empirical_percentile: number
+      comparable_count: number
+    }
+    persistence_below_95_slot_count: {
+      target_value: number
+      empirical_percentile: number
+      comparable_count: number
+    }
+    asn_migration_ratio: {
+      target_value: number | null
+      empirical_percentile: number | null
+      comparable_count: number
+      status: 'available' | 'insufficient_data'
+    }
+  } | null
+  curve_shape_distribution: Array<{
+    curve_shape: string
+    curve_shape_label_zh: string
+    country_count: number
+    country_share: number
+    is_target_shape: boolean
+  }>
+  common_fluctuation: {
+    target_largest_drop_slot: {
+      slot_index: number
+      observed_at_utc: string
+      declining_country_count: number
+      comparable_country_count: number
+      declining_country_share: number
+      target_declined: boolean
+    } | null
+    interpretation: 'same_slot_rrc25_observation_only'
+    collector_failure_claim: false
+  } | null
+  limitations: string[]
+}
+
 export interface CountryOutageTrendProduct {
   schema_version: 'country_outage_trend_product_v1'
   algorithm_version: string
@@ -664,6 +722,7 @@ export interface CountryOutageTrendProduct {
     address_family: Record<string, unknown> | null
     asn: Record<string, unknown> | null
     activity: Record<string, unknown> | null
+    contemporaneous_reference: CountryOutageContemporaneousReference | null
   }
   evidence_graph: CountryOutageEvidenceGraph
   reading_journey: string[]

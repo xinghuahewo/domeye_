@@ -36,5 +36,17 @@ describe('国家中断趋势阅读旅程', () => {
     expect(source).toContain('不是历史正常带')
     expect(source).toContain('不包含原因、攻击、用户影响、责任或窗口外完全恢复判断')
   })
-})
 
+  it('同期参照只显示后端冻结的分布位置与降级边界', () => {
+    expect(source).toContain('props.product.contexts.contemporaneous_reference')
+    expect(source).toContain('同期国家投影参照')
+    expect(source).toContain('下降幅度位置')
+    expect(source).toContain('低于 95% 槽数位置')
+    expect(source).toContain('ASN 迁移比例位置')
+    expect(source).toContain('最大下降槽共同波动')
+    expect(source).toContain('目标投影、小分母、质量或可比人口不足')
+    expect(source).toContain('不是历史正常带')
+    expect(source).toContain('不自动构成真实中断事件')
+    expect(source).not.toMatch(/normalBand|inferIncident|collectorFailure/)
+  })
+})

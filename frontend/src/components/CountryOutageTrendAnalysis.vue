@@ -30,6 +30,14 @@ const unknownNodes = computed(() => references(selectedClaim.value?.unknown_refs
 
 const phases = computed(() => props.product.profile.analysis.phases)
 const facts = computed(() => props.product.profile.analysis.derived_facts)
+const contemporaneous = computed(() => props.product.contexts.contemporaneous_reference)
+const contemporaneousPositions = computed(() => contemporaneous.value?.distribution_positions)
+const targetShape = computed(() => contemporaneous.value?.curve_shape_distribution.find(
+  (item) => item.is_target_shape,
+))
+const commonAtTargetDrop = computed(() => (
+  contemporaneous.value?.common_fluctuation?.target_largest_drop_slot
+))
 
 function references(ids: string[] | undefined) {
   return (ids ?? [])
@@ -54,6 +62,14 @@ function formatFact(fact: Record<string, unknown>) {
   const value = factValue(fact, 'value')
   const unit = text(factValue(fact, 'unit'), '')
   return `${text(value)} ${unit}`.trim()
+}
+
+function percentile(value: number | null | undefined) {
+  return value === null || value === undefined ? '不可用' : `${value.toFixed(1)}%`
+}
+
+function share(value: number | null | undefined) {
+  return value === null || value === undefined ? '不可用' : `${(value * 100).toFixed(1)}%`
 }
 </script>
 
@@ -173,6 +189,55 @@ function formatFact(fact: Record<string, unknown>) {
       </section>
     </div>
 
+    <section v-if="contemporaneous" class="reference-panel" aria-labelledby="reference-title">
+      <header>
+        <div>
+          <p class="trend-kicker">RRC25 CONTEMPORANEOUS REFERENCE</p>
+          <h3 id="reference-title">同期国家投影参照</h3>
+        </div>
+        <strong>{{ contemporaneous.status }}</strong>
+      </header>
+
+      <template v-if="contemporaneous.status === 'complete' && contemporaneousPositions">
+        <div class="reference-metrics">
+          <article>
+            <span>下降幅度位置</span>
+            <b>{{ percentile(contemporaneousPositions.maximum_decline_percentage_points.empirical_percentile) }}</b>
+            <small>经验分布，不是历史正常带</small>
+          </article>
+          <article>
+            <span>低于 95% 槽数位置</span>
+            <b>{{ percentile(contemporaneousPositions.persistence_below_95_slot_count.empirical_percentile) }}</b>
+            <small>固定分母、同一时间网格</small>
+          </article>
+          <article>
+            <span>ASN 迁移比例位置</span>
+            <b>{{ percentile(contemporaneousPositions.asn_migration_ratio.empirical_percentile) }}</b>
+            <small>{{ contemporaneousPositions.asn_migration_ratio.status }}</small>
+          </article>
+          <article>
+            <span>目标曲线形状占比</span>
+            <b>{{ share(targetShape?.country_share) }}</b>
+            <small>{{ contemporaneous.target?.curve_shape_label_zh ?? '不可用' }}</small>
+          </article>
+          <article>
+            <span>最大下降槽共同波动</span>
+            <b>{{ share(commonAtTargetDrop?.declining_country_share) }}</b>
+            <small>仅表示同槽 RRC25 观测</small>
+          </article>
+        </div>
+      </template>
+      <p v-else class="reference-unavailable">
+        目标投影、小分母、质量或可比人口不足，未生成同期分布位置。
+      </p>
+
+      <footer>
+        可比 {{ contemporaneous.comparable_country_count }} 个；排除
+        {{ contemporaneous.excluded_projection_count }} 个（含小分母、未知桶或质量不足）。
+        非目标国家投影不自动构成真实中断事件；该比例不用于判定采集异常。
+      </footer>
+    </section>
+
     <footer class="trend-footer">
       <span>同制品输出面：{{ product.render_contract.surfaces.join(' · ') }}</span>
       <code>{{ product.graph_id }}</code>
@@ -237,6 +302,16 @@ function formatFact(fact: Record<string, unknown>) {
 .analysis-ledger dt { font-size: 12px; }
 .analysis-ledger dd { margin: 0; font-weight: 800; }
 .analysis-ledger dl small { grid-column: 1 / -1; color: #718692; font: 10px ui-monospace, monospace; }
+.reference-panel { margin-top: 22px; padding: 18px; border: 1px solid #afcbd7; border-radius: 12px; background: #fff; }
+.reference-panel > header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.reference-panel h3 { margin: 4px 0 14px; font-size: 20px; }
+.reference-panel > header > strong { padding: 5px 8px; border: 1px solid #8bb8c8; color: #0b6987; font: 700 10px ui-monospace, monospace; }
+.reference-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.reference-metrics article { padding: 12px; border-top: 3px solid #3f899d; background: #eef5f9; }
+.reference-metrics span, .reference-metrics small { display: block; color: #617785; font-size: 10px; line-height: 1.45; }
+.reference-metrics b { display: block; margin: 7px 0; font-size: 20px; }
+.reference-unavailable { padding: 14px; background: #f7eee7; color: #865235; }
+.reference-panel footer { margin-top: 13px; color: #617785; font-size: 11px; line-height: 1.6; }
 .trend-footer { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #bfd4e4; color: #617785; font-size: 11px; }
 .trend-footer code { overflow-wrap: anywhere; }
 .trend-footer strong { color: #8a4a2a; }
@@ -247,5 +322,6 @@ function formatFact(fact: Record<string, unknown>) {
   .analysis-ledger { grid-template-columns: 1fr; }
   .quality-strip { grid-template-columns: repeat(2, 1fr); }
   .evidence-columns { grid-template-columns: 1fr; }
+  .reference-metrics { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

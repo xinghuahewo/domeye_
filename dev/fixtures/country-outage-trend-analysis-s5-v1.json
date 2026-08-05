@@ -1,0 +1,78 @@
+{
+  "schema_version": "country_outage_trend_analysis_s5_fixture_v1",
+  "reference_identity": {
+    "run_id": "global_run_v1_6427ae1ad52037c83d7ec3bb9b5e7757",
+    "dataset_id": "global_dataset_v1_d015e120c2d02d39596af86ea8f8fb7c",
+    "revision": "global_replay_r2",
+    "collector_id": "rrc25",
+    "mapping_version": "41fa4721c1c8f5eb4fe120987eb9672d32382d694889990b93028f4c881f63c4",
+    "data_through": "2000-01-01T00:55:00Z",
+    "formal_manifest_sha256": "48e5e5e08f47469a16466490397b2d7562d8214ed03fda1cc937e25139ee88c5",
+    "catalog_sha256": "ee10674fb08fc7323df74cf5031849edb3dbdaf8c8d7d7529ac6999e33fd9f06",
+    "complete_sha256": "eb3046bc623bf3b208a195f09d3d9616ec45d18672e838fff2d08d4c1590d20d",
+    "source_reference": "docs/data/RRC25伊朗同期全局状态重放S6最终验收报告.md",
+    "artifact_status": "historical_accepted_artifact",
+    "quality_status": "pass",
+    "consumed_deliverable_hashes_verified": true
+  },
+  "historical_data_probe": {
+    "checked_at": "2026-08-05",
+    "mode": "remote_read_only_recompute",
+    "bucket_count": 241,
+    "observation_count_per_bucket": 60,
+    "comparable_country_count": 240,
+    "excluded_reason_counts": {"unknown_bucket": 1},
+    "target_country_code": "IR",
+    "target_decline_percentage_points": 13.120148,
+    "target_decline_percentile": 100.0,
+    "target_persistence_below_95_slot_count": 56,
+    "target_persistence_percentile": 100.0,
+    "target_curve_shape": "STABLE→DEGRADING→STABLE→RECOVERING→STABLE",
+    "target_curve_shape_share": 0.008333,
+    "target_largest_drop_slot_index": 5,
+    "common_decline_share_at_target_drop": 0.004167,
+    "target_asn_count": 563,
+    "target_asn_persistent_not_at_start_count": 174,
+    "target_asn_migration_ratio": 0.309059,
+    "target_asn_migration_percentile": 99.583333,
+    "boundary": "只读证明现有历史数据可生成同期参照；不是生产或S6同候选验收。"
+  },
+  "projections": [
+    {"country_code": "XZ", "cohort_id": "cohort-xz", "denominator": 100, "quality_status": "complete", "values": [100, 100, 99, 82, 75, 72, 72, 72, 80, 84, 84, 84], "asn_count": 5, "asn_persistent_not_at_start_count": 2},
+    {"country_code": "AA", "cohort_id": "cohort-aa", "denominator": 100, "quality_status": "complete", "values": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100], "asn_count": 10, "asn_persistent_not_at_start_count": 0},
+    {"country_code": "BB", "cohort_id": "cohort-bb", "denominator": 100, "quality_status": "complete", "values": [100, 98, 94, 92, 90, 90, 91, 92, 93, 94, 95, 96], "asn_count": 20, "asn_persistent_not_at_start_count": 2},
+    {"country_code": "CC", "cohort_id": "cohort-cc", "denominator": 100, "quality_status": "complete", "values": [100, 100, 80, 60, 50, 50, 55, 60, 70, 75, 75, 75], "asn_count": 10, "asn_persistent_not_at_start_count": 6},
+    {"country_code": "DD", "cohort_id": "cohort-dd", "denominator": 1000, "quality_status": "complete", "values": [1000, 1000, 990, 820, 750, 720, 720, 720, 800, 840, 840, 840], "asn_count": 50, "asn_persistent_not_at_start_count": 10},
+    {"country_code": "EE", "cohort_id": "cohort-ee", "denominator": 5, "quality_status": "complete", "values": [5, 5, 5, 4, 4, 4, 4, 4, 5, 5, 5, 5], "asn_count": 1, "asn_persistent_not_at_start_count": 0},
+    {"country_code": "FF", "cohort_id": "cohort-ff", "denominator": 100, "quality_status": "degraded", "values": [100, 100, 99, null, 80, 80, 80, 80, 80, 80, 80, 80], "asn_count": 8, "asn_persistent_not_at_start_count": 2},
+    {"country_code": "__UNKNOWN__", "cohort_id": "cohort-unknown", "denominator": 20, "quality_status": "complete", "values": [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20], "asn_count": 2, "asn_persistent_not_at_start_count": 0}
+  ],
+  "expected": {
+    "projection_bucket_count": 8,
+    "comparable_country_count": 5,
+    "excluded_projection_count": 3,
+    "exclusion_reason_counts": {"small_denominator": 1, "quality_not_complete": 1, "unknown_bucket": 1},
+    "decline_percentile": 80.0,
+    "persistence_percentile": 80.0,
+    "asn_migration_percentile": 80.0,
+    "target_shape_share": 0.6,
+    "target_drop_common_share": 0.8,
+    "claim_kind": "contemporaneous_reference",
+    "qa_operator": "contemporaneous_reference"
+  },
+  "negative_cases": [
+    {"id": "FAIL-S5-01", "mutation": "collector_id", "expected_code": "reference_collector_conflict"},
+    {"id": "FAIL-S5-02", "mutation": "data_through", "expected_code": "reference_data_through_conflict"},
+    {"id": "FAIL-S5-03", "mutation": "time_grid", "expected_code": "reference_time_grid_conflict"},
+    {"id": "FAIL-S5-04", "mutation": "target_value", "expected_code": "reference_target_population_conflict"},
+    {"id": "FAIL-S5-05", "mutation": "bucket_count", "expected_code": "reference_bucket_count_conflict"},
+    {"id": "FAIL-S5-06", "mutation": "hash_verification", "expected_code": "reference_quality_not_verified"}
+  ],
+  "boundaries": {
+    "historical_normal_baseline": false,
+    "automatic_incident_identity": false,
+    "collector_failure_claim": false,
+    "external_evidence": false,
+    "causal_claim": false
+  }
+}
