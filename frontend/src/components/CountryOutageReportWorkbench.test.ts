@@ -24,6 +24,20 @@ function functionSource(name: string): string {
 }
 
 describe('国家中断报告工作台键盘焦点合同', () => {
+  it('报告失败按错误类别给出下一步，不把合同校验失败误写成数据门槛问题', () => {
+    const nextAction = functionSource('reportFailureNextAction')
+    const handler = functionSource('handleAgentEvent')
+
+    expect(nextAction).toContain("normalized === 'report_payload_invalid'")
+    expect(nextAction).toContain('报告合同校验未通过')
+    expect(nextAction).toContain('勿调整数据门槛')
+    expect(nextAction).toContain('/insufficient|eligibility|data_gate/')
+    expect(nextAction).toContain('当前快照未达到正式报告数据门槛')
+    expect(nextAction).toContain('if (provided?.trim()) return provided')
+    expect(handler).toContain('reportFailureNextAction(')
+    expect(handler).not.toContain('请核对数据门槛后重新生成。')
+  })
+
   it('删除外部 URL 后在 DOM 更新完成时聚焦计算目标，并以添加按钮兜底', () => {
     const removal = functionSource('removeExternalEvidenceUrl')
 

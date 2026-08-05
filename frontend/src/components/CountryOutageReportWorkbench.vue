@@ -180,6 +180,30 @@ function isReportPhase(value: string): value is CountryOutageAgentReportPhase {
   return reportPhases.includes(value as CountryOutageAgentReportPhase)
 }
 
+function reportFailureNextAction(
+  code: string | undefined,
+  provided: string | undefined,
+): string {
+  if (provided?.trim()) return provided
+  const normalized = (code ?? 'report_failed').toLowerCase()
+  if (normalized === 'report_payload_invalid') {
+    return '报告合同校验未通过；请保留当前快照并联系维护人员核对模型输出与合并校验，勿调整数据门槛。'
+  }
+  if (/insufficient|eligibility|data_gate/.test(normalized)) {
+    return '当前快照未达到正式报告数据门槛；请查看缺失项，待数据完整后重新生成。'
+  }
+  if (/snapshot|revision|publication|conflict/.test(normalized)) {
+    return '请刷新事件数据，确认 publication 与 revision 后重新生成。'
+  }
+  if (/permission|forbidden|unauthor/.test(normalized)) {
+    return '请联系管理员核对当前事件的报告生成权限。'
+  }
+  if (/model|narrat/.test(normalized)) {
+    return '请稍后基于同一快照重试；若持续失败，请联系维护人员核对模型运行状态。'
+  }
+  return '请保留当前快照并联系维护人员核对失败原因后再试。'
+}
+
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return '未知'
   const date = new Date(value)
@@ -870,13 +894,19 @@ function handleAgentEvent(event: CountryOutageAgentEvent) {
         restorePreviousReport(
           event.error?.message ?? '新版报告生成失败，旧报告保持不变。',
           event.error?.code ?? 'report_failed',
-          event.error?.next_action ?? '可稍后基于当前 revision 重新生成。',
+          reportFailureNextAction(
+            event.error?.code,
+            event.error?.next_action,
+          ),
         )
         return
       }
       runError.value = event.error?.message ?? '报告生成失败，未发布任何草稿。'
       runErrorCode.value = event.error?.code ?? 'report_failed'
-      nextAction.value = event.error?.next_action ?? '请核对数据门槛后重新生成。'
+      nextAction.value = reportFailureNextAction(
+        event.error?.code,
+        event.error?.next_action,
+      )
     } else if (event.phase === 'cancelled') {
       if (pendingUpgrade.value) {
         restorePreviousReport(
