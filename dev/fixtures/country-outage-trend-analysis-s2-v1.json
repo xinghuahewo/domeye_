@@ -1,0 +1,128 @@
+{
+  "schema_version": "country_outage_trend_analysis_s2_acceptance_v1",
+  "stage": "S2",
+  "status": "deterministic_analysis_candidate_not_end_to_end_evidence",
+  "analysis_rule": {
+    "rule_version": "country_outage_trend_rule_s2_v1",
+    "directional_change_percentage_points": 2,
+    "abrupt_change_percentage_points": 8,
+    "low_plateau_deficit_percentage_points": 20,
+    "small_denominator_exclusive_upper_bound": 10,
+    "oscillation_min_directional_transitions": 8,
+    "oscillation_min_alternation_ratio": 0.8,
+    "oscillation_min_total_variation_percentage_points": 50,
+    "threshold_visible_ratios": [0.95, 0.9, 0.8],
+    "rounding_decimal_places": 6,
+    "rounding_mode": "half_even"
+  },
+  "curve_expectations": [
+    {
+      "curve_id": "CURVE-01",
+      "analysis_status": "complete",
+      "pattern_status": "matched",
+      "pattern_label": "single_wave_partial_rebound",
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 5, "largest_single_slot_drop_end": 3, "largest_single_slot_recovery_end": 8},
+      "required_atomic_states": ["stable", "abrupt_drop", "decline", "low_plateau", "rise"],
+      "ledger": {"loss_magnitude": 28, "extreme_to_end_rebound": 12, "end_residual_from_start": 16, "window_rebound_ratio": 0.428571, "fixed_cohort_visibility_gap_integral": 196, "window_start_visibility_gap_integral": 196},
+      "threshold_slot_counts": {"0.95": 9, "0.9": 9, "0.8": 4}
+    },
+    {
+      "curve_id": "CURVE-02",
+      "analysis_status": "complete",
+      "pattern_status": "matched",
+      "pattern_label": "multi_wave",
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 5, "largest_single_slot_drop_end": 2, "largest_single_slot_recovery_end": 9},
+      "required_atomic_states": ["stable", "abrupt_drop", "rise", "decline", "low_plateau"],
+      "ledger": {"loss_magnitude": 32, "extreme_to_end_rebound": 10, "end_residual_from_start": 22, "window_rebound_ratio": 0.3125, "fixed_cohort_visibility_gap_integral": 231, "window_start_visibility_gap_integral": 231},
+      "threshold_slot_counts": {"0.95": 10, "0.9": 10, "0.8": 7}
+    },
+    {
+      "curve_id": "CURVE-03",
+      "analysis_status": "complete",
+      "pattern_status": "matched",
+      "pattern_label": "oscillation",
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 5, "largest_single_slot_drop_end": 3, "largest_single_slot_recovery_end": 4},
+      "required_atomic_states": ["stable", "decline", "rise", "high_volatility"],
+      "ledger": {"loss_magnitude": 12, "extreme_to_end_rebound": 3, "end_residual_from_start": 9, "window_rebound_ratio": 0.25, "fixed_cohort_visibility_gap_integral": 77, "window_start_visibility_gap_integral": 77},
+      "threshold_slot_counts": {"0.95": 6, "0.9": 3, "0.8": 0}
+    },
+    {
+      "curve_id": "CURVE-04",
+      "analysis_status": "complete",
+      "pattern_status": "matched",
+      "pattern_label": "plateau",
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 2, "largest_single_slot_drop_end": 2, "largest_single_slot_recovery_end": 3},
+      "required_atomic_states": ["stable"],
+      "ledger": {"loss_magnitude": 1, "extreme_to_end_rebound": 1, "end_residual_from_start": 0, "window_rebound_ratio": 1, "fixed_cohort_visibility_gap_integral": 3, "window_start_visibility_gap_integral": 3},
+      "threshold_slot_counts": {"0.95": 0, "0.9": 0, "0.8": 0}
+    },
+    {
+      "curve_id": "CURVE-05",
+      "analysis_status": "complete",
+      "pattern_status": "mixed",
+      "pattern_label": null,
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 6, "largest_single_slot_drop_end": 4, "largest_single_slot_recovery_end": 5},
+      "required_atomic_states": ["stable", "decline", "rise", "abrupt_drop"],
+      "ledger": {"loss_magnitude": 17, "extreme_to_end_rebound": 6, "end_residual_from_start": 11, "window_rebound_ratio": 0.352941, "fixed_cohort_visibility_gap_integral": 128, "window_start_visibility_gap_integral": 128},
+      "threshold_slot_counts": {"0.95": 10, "0.9": 7, "0.8": 0}
+    },
+    {
+      "curve_id": "CURVE-06",
+      "analysis_status": "complete",
+      "pattern_status": "unmatched",
+      "pattern_label": null,
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 9, "largest_single_slot_drop_end": 3, "largest_single_slot_recovery_end": 6},
+      "required_atomic_states": ["stable", "decline", "rise"],
+      "ledger": {"loss_magnitude": 10, "extreme_to_end_rebound": 1, "end_residual_from_start": 9, "window_rebound_ratio": 0.1, "fixed_cohort_visibility_gap_integral": 69, "window_start_visibility_gap_integral": 69},
+      "threshold_slot_counts": {"0.95": 7, "0.9": 0, "0.8": 0}
+    },
+    {
+      "curve_id": "CURVE-07",
+      "analysis_status": "complete",
+      "pattern_status": "matched",
+      "pattern_label": "small_denominator",
+      "key_point_indices": {"start": 0, "end": 11, "extreme_minimum": 6, "largest_single_slot_drop_end": 2, "largest_single_slot_recovery_end": 3},
+      "required_atomic_states": ["stable", "decline", "rise"],
+      "ledger": {"loss_magnitude": 2, "extreme_to_end_rebound": 1, "end_residual_from_start": 1, "window_rebound_ratio": 0.5, "fixed_cohort_visibility_gap_integral": 10, "window_start_visibility_gap_integral": 10},
+      "threshold_slot_counts": {"0.95": 9, "0.9": 9, "0.8": 9}
+    },
+    {
+      "curve_id": "CURVE-08",
+      "analysis_status": "insufficient_data",
+      "pattern_status": "insufficient_data",
+      "pattern_label": null,
+      "key_point_indices": null,
+      "required_atomic_states": ["missing", "processing_gap", "not_observed"],
+      "ledger": null,
+      "threshold_slot_counts": null
+    },
+    {
+      "curve_id": "CURVE-09",
+      "analysis_status": "insufficient_data",
+      "pattern_status": "insufficient_data",
+      "pattern_label": null,
+      "key_point_indices": null,
+      "required_atomic_states": ["unknown"],
+      "ledger": null,
+      "threshold_slot_counts": null
+    }
+  ],
+  "metamorphic_cases": [
+    {"id": "META-01", "operation": "repeat", "expected": "identical_analysis"},
+    {"id": "META-02", "operation": "scale_count_and_denominator", "factor": 10, "expected": "same_pattern_points_and_phases"},
+    {"id": "META-03", "operation": "shift_window", "seconds": 86400, "expected": "same_slot_indices_and_phase_kinds"},
+    {"id": "META-04", "operation": "rename_country_and_event", "country_code": "XY", "expected": "same_pattern_points_and_phases"},
+    {"id": "META-05", "operation": "inject_explicit_missing", "slot_index": 4, "expected": "insufficient_data_without_cross_gap_outputs"}
+  ],
+  "semantic_invariants": {
+    "pattern_label_is_optional": true,
+    "mixed_and_unmatched_keep_structure": true,
+    "first_tie_wins": true,
+    "missing_is_never_zero": true,
+    "incomplete_curve_has_no_cross_gap_key_points_phases_or_ledger": true,
+    "rebound_is_not_network_or_service_recovery": true,
+    "threshold_slots_are_not_continuous_duration": true,
+    "slot_integral_is_not_user_or_service_time": true,
+    "window_outside_state_is_unknown": true
+  }
+}

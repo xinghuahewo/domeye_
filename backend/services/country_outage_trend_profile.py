@@ -7,6 +7,7 @@ S1 只建立 TrendProfile 地基。关键点、原子状态、阶段和窗口账
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -17,6 +18,20 @@ from typing import Any, Mapping, Sequence
 INPUT_SCHEMA_VERSION = "country_outage_trend_profile_input_v1"
 PROFILE_SCHEMA_VERSION = "country_outage_trend_profile_v1"
 ALGORITHM_VERSION = "country_outage_trend_foundation_s1_v1"
+ANALYSIS_ALGORITHM_VERSION = "country_outage_trend_analysis_s2_v1"
+ANALYSIS_RULE = {
+    "rule_version": "country_outage_trend_rule_s2_v1",
+    "directional_change_percentage_points": 2,
+    "abrupt_change_percentage_points": 8,
+    "low_plateau_deficit_percentage_points": 20,
+    "small_denominator_exclusive_upper_bound": 10,
+    "oscillation_min_directional_transitions": 8,
+    "oscillation_min_alternation_ratio": 0.8,
+    "oscillation_min_total_variation_percentage_points": 50,
+    "threshold_visible_ratios": [0.95, 0.9, 0.8],
+    "rounding_decimal_places": 6,
+    "rounding_mode": "half_even",
+}
 ALLOWED_SLOT_STATES = (
     "observed",
     "missing",
@@ -613,3 +628,644 @@ def profile_compatibility_v1(
         "mismatches": mismatches,
         "rule": "same_snapshot_time_grid_population_unit_and_denominator",
     }
+
+
+def _rounded(value: int | float) -> int | float:
+    rounded = round(value, ANALYSIS_RULE["rounding_decimal_places"])
+    if isinstance(value, int) or rounded.is_integer():
+        return int(rounded)
+    return rounded
+
+
+def _ratio_value(value: int | float, metric: Mapping[str, Any]) -> float:
+    unit = metric["unit"]
+    if unit == "count":
+        return value / metric["denominator"]["value"]
+    if unit == "ratio":
+        return float(value)
+    if unit == "percentage_point":
+        return value / 100
+    _fail("unsupported_analysis_unit", "metric.unit", f"无法分析单位：{unit}")
+
+
+def _point(
+    profile: Mapping[str, Any],
+    *,
+    kind: str,
+    index: int,
+    change_from_previous: int | float | None = None,
+) -> dict[str, Any]:
+    slot = profile["slots"][index]
+    result = {
+        "point_id": f"{profile['profile_id']}:point:{kind}",
+        "kind": kind,
+        "slot_index": index,
+        "observed_at_utc": slot["observed_at_utc"],
+        "value": slot["value"],
+        "unit": profile["metric"]["unit"],
+        "statistical_population": profile["metric"]["statistical_population"],
+        "source_ref": slot["source_ref"],
+        "change_from_previous": (
+            _rounded(change_from_previous)
+            if change_from_previous is not None
+            else None
+        ),
+    }
+    return result
+
+
+def _key_points(profile: Mapping[str, Any]) -> list[dict[str, Any]]:
+    slots = profile["slots"]
+    values = [slot["value"] for slot in slots]
+    extreme_index = min(range(len(values)), key=lambda index: (values[index], index))
+    deltas = [values[index] - values[index - 1] for index in range(1, len(values))]
+    largest_drop_index = min(
+        range(1, len(values)), key=lambda index: (deltas[index - 1], index)
+    )
+    largest_recovery_index = min(
+        range(1, len(values)), key=lambda index: (-deltas[index - 1], index)
+    )
+    return [
+        _point(profile, kind="start", index=0),
+        _point(profile, kind="end", index=len(slots) - 1),
+        _point(profile, kind="extreme_minimum", index=extreme_index),
+        _point(
+            profile,
+            kind="largest_single_slot_drop_end",
+            index=largest_drop_index,
+            change_from_previous=deltas[largest_drop_index - 1],
+        ),
+        _point(
+            profile,
+            kind="largest_single_slot_recovery_end",
+            index=largest_recovery_index,
+            change_from_previous=deltas[largest_recovery_index - 1],
+        ),
+    ]
+
+
+def _pattern_features(
+    profile: Mapping[str, Any],
+    normalized_values: Sequence[float],
+) -> dict[str, Any]:
+    deltas_pp = [
+        (normalized_values[index] - normalized_values[index - 1]) * 100
+        for index in range(1, len(normalized_values))
+    ]
+    directional_threshold = ANALYSIS_RULE["directional_change_percentage_points"]
+    directional = [
+        delta for delta in deltas_pp if abs(delta) >= directional_threshold
+    ]
+    signs = [1 if delta > 0 else -1 for delta in directional]
+    alternation_count = sum(
+        1 for index in range(1, len(signs)) if signs[index] != signs[index - 1]
+    )
+    alternation_ratio = (
+        alternation_count / (len(signs) - 1) if len(signs) > 1 else 0
+    )
+    abrupt_threshold = ANALYSIS_RULE["abrupt_change_percentage_points"]
+    abrupt_drop_indices = [
+        index
+        for index, delta in enumerate(deltas_pp, start=1)
+        if delta <= -abrupt_threshold
+    ]
+    extreme_index = min(
+        range(len(normalized_values)),
+        key=lambda index: (normalized_values[index], index),
+    )
+    meaningful_rise_before_extreme = any(
+        deltas_pp[index - 1] >= directional_threshold
+        for index in range(1, extreme_index + 1)
+    )
+    return {
+        "range_percentage_points": _rounded(
+            (max(normalized_values) - min(normalized_values)) * 100
+        ),
+        "total_variation_percentage_points": _rounded(
+            sum(abs(delta) for delta in deltas_pp)
+        ),
+        "directional_transition_count": len(directional),
+        "alternation_count": alternation_count,
+        "alternation_ratio": _rounded(alternation_ratio),
+        "abrupt_drop_indices": abrupt_drop_indices,
+        "extreme_index": extreme_index,
+        "meaningful_rise_before_extreme": meaningful_rise_before_extreme,
+    }
+
+
+def _classify_pattern(
+    profile: Mapping[str, Any],
+    features: Mapping[str, Any],
+) -> dict[str, Any]:
+    denominator = profile["metric"]["denominator"]["value"]
+    if denominator < ANALYSIS_RULE["small_denominator_exclusive_upper_bound"]:
+        return {
+            "status": "matched",
+            "label": "small_denominator",
+            "warnings": ["small_denominator"],
+        }
+    if (
+        features["range_percentage_points"] <= 2
+        and features["total_variation_percentage_points"] <= 10
+    ):
+        return {"status": "matched", "label": "plateau", "warnings": []}
+    if (
+        features["directional_transition_count"]
+        >= ANALYSIS_RULE["oscillation_min_directional_transitions"]
+        and features["alternation_ratio"]
+        >= ANALYSIS_RULE["oscillation_min_alternation_ratio"]
+        and features["total_variation_percentage_points"]
+        >= ANALYSIS_RULE["oscillation_min_total_variation_percentage_points"]
+    ):
+        return {"status": "matched", "label": "oscillation", "warnings": []}
+    abrupt_drop_indices = features["abrupt_drop_indices"]
+    if len(abrupt_drop_indices) >= 2:
+        return {"status": "matched", "label": "multi_wave", "warnings": []}
+    if (
+        len(abrupt_drop_indices) == 1
+        and not features["meaningful_rise_before_extreme"]
+        and features["extreme_index"] < len(profile["slots"]) - 1
+        and profile["slots"][-1]["value"] > profile["slots"][features["extreme_index"]]["value"]
+    ):
+        start_value = profile["slots"][0]["value"]
+        end_value = profile["slots"][-1]["value"]
+        if end_value < start_value:
+            label = "single_wave_partial_rebound"
+        elif end_value == start_value:
+            label = "single_wave_return_to_window_start"
+        else:
+            label = "single_wave_above_window_start"
+        return {
+            "status": "matched",
+            "label": label,
+            "warnings": [],
+        }
+    if abrupt_drop_indices:
+        return {"status": "mixed", "label": None, "warnings": []}
+    return {"status": "unmatched", "label": None, "warnings": []}
+
+
+def _atomic_states(
+    profile: Mapping[str, Any],
+    *,
+    pattern: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    slots = profile["slots"]
+    if profile["quality"]["status"] != "complete":
+        return [
+            {
+                "atomic_id": f"{profile['profile_id']}:atomic:{slot['index']}",
+                "slot_index": slot["index"],
+                "observed_at_utc": slot["observed_at_utc"],
+                "state": slot["state"],
+                "tags": [],
+                "delta": None,
+                "delta_percentage_points": None,
+                "source_refs": [slot["source_ref"]],
+            }
+            for slot in slots
+            if slot["state"] != "observed"
+        ]
+
+    metric = profile["metric"]
+    normalized = [_ratio_value(slot["value"], metric) for slot in slots]
+    abrupt = ANALYSIS_RULE["abrupt_change_percentage_points"]
+    directional = ANALYSIS_RULE["directional_change_percentage_points"]
+    low_level = (
+        1 - ANALYSIS_RULE["low_plateau_deficit_percentage_points"] / 100
+    )
+    small_denominator = (
+        metric["denominator"]["value"]
+        < ANALYSIS_RULE["small_denominator_exclusive_upper_bound"]
+    )
+    states: list[dict[str, Any]] = []
+    for index, slot in enumerate(slots):
+        tags: list[str] = []
+        if index == 0:
+            state = "stable"
+            delta = None
+            delta_pp = None
+            source_refs = [slot["source_ref"]]
+        else:
+            previous = slots[index - 1]
+            delta = slot["value"] - previous["value"]
+            delta_pp = (normalized[index] - normalized[index - 1]) * 100
+            if small_denominator and delta < 0:
+                state = "decline"
+            elif small_denominator and delta > 0:
+                state = "rise"
+            elif small_denominator:
+                state = "stable"
+            elif delta_pp <= -abrupt:
+                state = "abrupt_drop"
+            elif delta_pp >= abrupt:
+                state = "abrupt_rise"
+            elif delta_pp <= -directional:
+                state = "decline"
+            elif delta_pp >= directional:
+                state = "rise"
+            else:
+                state = "stable"
+            source_refs = [previous["source_ref"], slot["source_ref"]]
+        if (
+            not small_denominator
+            and state == "stable"
+            and normalized[index] <= low_level
+        ):
+            state = "low_plateau"
+        if pattern and pattern.get("label") == "oscillation" and state in {
+            "rise",
+            "decline",
+            "abrupt_rise",
+            "abrupt_drop",
+        }:
+            tags.append("high_volatility")
+        states.append(
+            {
+                "atomic_id": f"{profile['profile_id']}:atomic:{index}",
+                "slot_index": index,
+                "observed_at_utc": slot["observed_at_utc"],
+                "state": state,
+                "tags": tags,
+                "delta": _rounded(delta) if delta is not None else None,
+                "delta_percentage_points": (
+                    _rounded(delta_pp) if delta_pp is not None else None
+                ),
+                "source_refs": source_refs,
+            }
+        )
+    return states
+
+
+def _phases(
+    profile: Mapping[str, Any],
+    atomic_states: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    if profile["quality"]["status"] != "complete" or not atomic_states:
+        return []
+    phases: list[dict[str, Any]] = []
+    start = 0
+    for index in range(1, len(atomic_states) + 1):
+        if (
+            index < len(atomic_states)
+            and atomic_states[index]["state"] == atomic_states[start]["state"]
+            and atomic_states[index]["tags"] == atomic_states[start]["tags"]
+        ):
+            continue
+        phase_atomic = atomic_states[start:index]
+        start_slot = profile["slots"][phase_atomic[0]["slot_index"]]
+        end_slot = profile["slots"][phase_atomic[-1]["slot_index"]]
+        phase_index = len(phases)
+        phases.append(
+            {
+                "phase_id": f"{profile['profile_id']}:phase:{phase_index}",
+                "ordinal": phase_index,
+                "kind": phase_atomic[0]["state"],
+                "tags": phase_atomic[0]["tags"],
+                "start_slot_index": start_slot["index"],
+                "end_slot_index": end_slot["index"],
+                "start_at_utc": start_slot["observed_at_utc"],
+                "end_at_utc": end_slot["observed_at_utc"],
+                "start_value": start_slot["value"],
+                "end_value": end_slot["value"],
+                "unit": profile["metric"]["unit"],
+                "atomic_ids": [item["atomic_id"] for item in phase_atomic],
+                "source_refs": list(
+                    dict.fromkeys(
+                        ref
+                        for item in phase_atomic
+                        for ref in item["source_refs"]
+                    )
+                ),
+            }
+        )
+        start = index
+    return phases
+
+
+def _numeric_fact(
+    profile: Mapping[str, Any],
+    *,
+    metric: str,
+    value: int | float | None,
+    unit: str,
+    direction: str,
+    formula: str,
+    operands: list[dict[str, Any]],
+    source_refs: list[str],
+) -> dict[str, Any]:
+    return {
+        "fact_id": f"{profile['profile_id']}:fact:{metric}",
+        "metric": metric,
+        "value": _rounded(value) if value is not None else None,
+        "unit": unit,
+        "direction": direction,
+        "formula": formula,
+        "operands": operands,
+        "rounding": {
+            "decimal_places": ANALYSIS_RULE["rounding_decimal_places"],
+            "mode": ANALYSIS_RULE["rounding_mode"],
+        },
+        "baseline_type": profile["baseline"]["type"],
+        "statistical_population": profile["metric"]["statistical_population"],
+        "source_refs": source_refs,
+    }
+
+
+def _window_ledger(
+    profile: Mapping[str, Any],
+    points: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    if profile["quality"]["status"] != "complete":
+        return {
+            "status": "unavailable",
+            "reason": "incomplete_slots",
+            "facts": [],
+            "threshold_slots": [],
+        }
+    by_kind = {point["kind"]: point for point in points}
+    start = by_kind["start"]
+    end = by_kind["end"]
+    extreme = by_kind["extreme_minimum"]
+    start_value = start["value"]
+    end_value = end["value"]
+    extreme_value = extreme["value"]
+    loss = start_value - extreme_value
+    rebound = end_value - extreme_value
+    residual = start_value - end_value
+    rebound_ratio = rebound / loss if loss > 0 else None
+    point_refs = list(
+        dict.fromkeys(
+            [start["source_ref"], extreme["source_ref"], end["source_ref"]]
+        )
+    )
+    unit = profile["metric"]["unit"]
+    facts = [
+        _numeric_fact(
+            profile,
+            metric="start_to_extreme_change",
+            value=extreme_value - start_value,
+            unit=unit,
+            direction="decrease" if extreme_value < start_value else "unchanged",
+            formula="extreme_value - start_value",
+            operands=[
+                {"name": "extreme_value", "value": extreme_value, "unit": unit},
+                {"name": "start_value", "value": start_value, "unit": unit},
+            ],
+            source_refs=[start["source_ref"], extreme["source_ref"]],
+        ),
+        _numeric_fact(
+            profile,
+            metric="loss_magnitude",
+            value=loss,
+            unit=unit,
+            direction="below_window_start" if loss > 0 else "none",
+            formula="start_value - extreme_value",
+            operands=[
+                {"name": "start_value", "value": start_value, "unit": unit},
+                {"name": "extreme_value", "value": extreme_value, "unit": unit},
+            ],
+            source_refs=[start["source_ref"], extreme["source_ref"]],
+        ),
+        _numeric_fact(
+            profile,
+            metric="extreme_to_end_rebound",
+            value=rebound,
+            unit=unit,
+            direction="increase_from_window_extreme" if rebound > 0 else "none",
+            formula="end_value - extreme_value",
+            operands=[
+                {"name": "end_value", "value": end_value, "unit": unit},
+                {"name": "extreme_value", "value": extreme_value, "unit": unit},
+            ],
+            source_refs=[extreme["source_ref"], end["source_ref"]],
+        ),
+        _numeric_fact(
+            profile,
+            metric="end_residual_from_start",
+            value=residual,
+            unit=unit,
+            direction="below_window_start" if residual > 0 else "at_or_above_window_start",
+            formula="start_value - end_value",
+            operands=[
+                {"name": "start_value", "value": start_value, "unit": unit},
+                {"name": "end_value", "value": end_value, "unit": unit},
+            ],
+            source_refs=[start["source_ref"], end["source_ref"]],
+        ),
+        _numeric_fact(
+            profile,
+            metric="window_rebound_ratio",
+            value=rebound_ratio,
+            unit="ratio",
+            direction="toward_window_start_reference",
+            formula="(end_value - extreme_value) / (start_value - extreme_value)",
+            operands=[
+                {"name": "end_value", "value": end_value, "unit": unit},
+                {"name": "extreme_value", "value": extreme_value, "unit": unit},
+                {"name": "start_value", "value": start_value, "unit": unit},
+            ],
+            source_refs=point_refs,
+        ),
+    ]
+    if unit == "count":
+        values = [slot["value"] for slot in profile["slots"]]
+        fixed = profile["metric"]["denominator"]["value"]
+        fixed_gap = sum(max(fixed - value, 0) for value in values)
+        start_gap = sum(max(start_value - value, 0) for value in values)
+        all_refs = [slot["source_ref"] for slot in profile["slots"]]
+        facts.extend(
+            [
+                _numeric_fact(
+                    profile,
+                    metric="fixed_cohort_visibility_gap_integral",
+                    value=fixed_gap,
+                    unit="prefix_vp_slot",
+                    direction="deficit_from_fixed_cohort",
+                    formula="sum(max(fixed_cohort_value - slot_value, 0))",
+                    operands=[
+                        {"name": "fixed_cohort_value", "value": fixed, "unit": "count"},
+                        {"name": "observed_slot_count", "value": len(values), "unit": "observed_slot"},
+                    ],
+                    source_refs=all_refs,
+                ),
+                _numeric_fact(
+                    profile,
+                    metric="window_start_visibility_gap_integral",
+                    value=start_gap,
+                    unit="prefix_vp_slot",
+                    direction="deficit_from_window_start",
+                    formula="sum(max(window_start_value - slot_value, 0))",
+                    operands=[
+                        {"name": "window_start_value", "value": start_value, "unit": "count"},
+                        {"name": "observed_slot_count", "value": len(values), "unit": "observed_slot"},
+                    ],
+                    source_refs=all_refs,
+                ),
+            ]
+        )
+    normalized = [
+        _ratio_value(slot["value"], profile["metric"])
+        for slot in profile["slots"]
+    ]
+    threshold_slots = []
+    for threshold in ANALYSIS_RULE["threshold_visible_ratios"]:
+        indices = [
+            index for index, value in enumerate(normalized) if value < threshold
+        ]
+        threshold_slots.append(
+            {
+                "threshold_id": (
+                    f"{ANALYSIS_RULE['rule_version']}:visible_below:"
+                    f"{str(threshold).replace('.', '_')}"
+                ),
+                "threshold_visible_ratio": threshold,
+                "observed_slot_count": len(indices),
+                "slot_indices": indices,
+                "unit": "observed_slot",
+                "slot_seconds": profile["time_grid"]["slot_seconds"],
+                "continuous_duration_claimed": False,
+            }
+        )
+    return {
+        "status": "complete",
+        "reason": None,
+        "facts": facts,
+        "threshold_slots": threshold_slots,
+    }
+
+
+def analyze_trend_profile_v1(profile: Mapping[str, Any]) -> dict[str, Any]:
+    """在 S1 身份上生成 S2 关键点、原子状态、阶段和窗口账本。"""
+    if not isinstance(profile, Mapping):
+        _fail("invalid_type", "$", "TrendProfile 必须是对象")
+    if profile.get("schema_version") != PROFILE_SCHEMA_VERSION:
+        _fail("unsupported_schema", "schema_version", "TrendProfile schema 不兼容")
+    if profile.get("profile_state") not in {
+        "identity_quality_baseline_complete",
+        "analysis_complete",
+        "analysis_insufficient_data",
+    }:
+        _fail("invalid_profile_state", "profile_state", "TrendProfile 状态不可分析")
+    identity_material = {
+        "schema_version": PROFILE_SCHEMA_VERSION,
+        "algorithm_version": ALGORITHM_VERSION,
+        "snapshot": profile.get("snapshot"),
+        "metric": profile.get("metric"),
+        "time_grid": profile.get("time_grid"),
+        "baseline": profile.get("baseline"),
+        "slots": profile.get("slots"),
+    }
+    expected_digest = _digest(identity_material)
+    if (
+        profile.get("input_digest") != expected_digest
+        or profile.get("profile_id")
+        != f"trend_profile_v1_{expected_digest[:32]}"
+    ):
+        _fail(
+            "profile_identity_conflict",
+            "profile_id",
+            "TrendProfile 内容与冻结身份不一致",
+        )
+    expected_quality = _quality(profile["slots"])
+    if profile.get("quality") != expected_quality:
+        _fail(
+            "profile_quality_conflict",
+            "quality",
+            "TrendProfile 质量不能由冻结槽状态重算",
+        )
+    if profile.get("analysis", {}).get("status") in {"complete", "insufficient_data"}:
+        analysis = profile["analysis"]
+        analysis_without_id = {
+            key: value for key, value in analysis.items() if key != "analysis_id"
+        }
+        expected_analysis_id = (
+            f"trend_analysis_s2_{_digest({'profile_id': profile['profile_id'], 'analysis': analysis_without_id})[:32]}"
+        )
+        if analysis.get("analysis_id") != expected_analysis_id:
+            _fail(
+                "analysis_identity_conflict",
+                "analysis.analysis_id",
+                "分析内容与 analysis_id 不一致",
+            )
+        return deepcopy(dict(profile))
+
+    result = deepcopy(dict(profile))
+    quality_status = result["quality"]["status"]
+    if quality_status != "complete":
+        atomic_states = _atomic_states(result)
+        analysis_without_id = {
+            "status": "insufficient_data",
+            "algorithm_version": ANALYSIS_ALGORITHM_VERSION,
+            "rule": deepcopy(ANALYSIS_RULE),
+            "pattern": {
+                "status": "insufficient_data",
+                "label": None,
+                "features": None,
+                "warnings": ["do_not_bridge_non_observed_slots"],
+            },
+            "key_points": [],
+            "atomic_states": atomic_states,
+            "phases": [],
+            "derived_facts": [],
+            "window_ledger": {
+                "status": "unavailable",
+                "reason": "incomplete_slots",
+                "facts": [],
+                "threshold_slots": [],
+            },
+            "evidence_refs": [
+                ref for item in atomic_states for ref in item["source_refs"]
+            ],
+            "limitations": [
+                "non_observed_slots_prevent_cross_gap_analysis",
+                "window_outside_state_unknown",
+            ],
+        }
+        analysis_without_id["evidence_refs"] = list(
+            dict.fromkeys(analysis_without_id["evidence_refs"])
+        )
+        analysis_id = (
+            f"trend_analysis_s2_{_digest({'profile_id': result['profile_id'], 'analysis': analysis_without_id})[:32]}"
+        )
+        result["analysis"] = {"analysis_id": analysis_id, **analysis_without_id}
+        result["profile_state"] = "analysis_insufficient_data"
+        return result
+
+    normalized_values = [
+        _ratio_value(slot["value"], result["metric"])
+        for slot in result["slots"]
+    ]
+    features = _pattern_features(result, normalized_values)
+    pattern = _classify_pattern(result, features)
+    pattern["features"] = features
+    points = _key_points(result)
+    atomic_states = _atomic_states(result, pattern=pattern)
+    phases = _phases(result, atomic_states)
+    ledger = _window_ledger(result, points)
+    analysis_without_id = {
+        "status": "complete",
+        "algorithm_version": ANALYSIS_ALGORITHM_VERSION,
+        "rule": deepcopy(ANALYSIS_RULE),
+        "pattern": pattern,
+        "key_points": points,
+        "atomic_states": atomic_states,
+        "phases": phases,
+        "derived_facts": ledger["facts"],
+        "window_ledger": ledger,
+        "evidence_refs": list(
+            dict.fromkeys(slot["source_ref"] for slot in result["slots"])
+        ),
+        "limitations": [
+            "window_start_is_observation_reference_not_normal_baseline",
+            "window_rebound_is_not_network_or_service_recovery",
+            "window_outside_state_unknown",
+            "pattern_label_is_optional_summary",
+        ],
+    }
+    analysis_id = (
+        f"trend_analysis_s2_{_digest({'profile_id': result['profile_id'], 'analysis': analysis_without_id})[:32]}"
+    )
+    result["analysis"] = {"analysis_id": analysis_id, **analysis_without_id}
+    result["profile_state"] = "analysis_complete"
+    return result
