@@ -19,6 +19,9 @@ ACCEPTANCE_PATH = REPOSITORY_ROOT / "docs" / "国家中断趋势分析最终验�
 PLAN_PATH = REPOSITORY_ROOT / "docs" / "国家中断趋势分析分阶段计划.md"
 TASK_PATH = REPOSITORY_ROOT / ".codex" / "TASK.json"
 CORE_MANIFEST_PATH = REPOSITORY_ROOT / "backend" / "core.sha256"
+S0_VERIFIER_PATH = (
+    REPOSITORY_ROOT / "dev" / "verify_country_outage_trend_analysis_s0.py"
+)
 
 STAGE_IDS = tuple(f"S{index}" for index in range(7))
 ACCEPTANCE_IDS = tuple(f"TAE-{index:02d}" for index in range(1, 16))
@@ -306,6 +309,29 @@ def frozen_core_warnings() -> list[str]:
     return warnings
 
 
+def validate_stage_artifacts(stage: str) -> list[str]:
+    """阶段专属机器基线只在到期阶段执行，且不冒充业务效果验收。"""
+    if stage != "S0":
+        return []
+    if not S0_VERIFIER_PATH.is_file():
+        return [f"S0 机器基线校验器不存在：{S0_VERIFIER_PATH}"]
+    try:
+        result = subprocess.run(
+            [sys.executable, str(S0_VERIFIER_PATH)],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        return [f"无法执行 S0 机器基线校验器：{error}"]
+    if result.returncode == 0:
+        return []
+    detail = (result.stdout + result.stderr).strip()
+    return [f"S0 机器基线校验失败：{detail or '无错误详情'}"]
+
+
 def review_reason(stage: str) -> str:
     due_ids = "、".join(STAGE_DUE_IDS[stage])
     warnings = frozen_core_warnings()
@@ -349,7 +375,11 @@ Hook 机检只覆盖合同结构、阶段映射和当前 TASK.json 路径边界�
 
 
 def run_explicit_stage_review(stage: str) -> int:
-    errors = validate_documents() + validate_task_boundary()
+    errors = (
+        validate_documents()
+        + validate_task_boundary()
+        + validate_stage_artifacts(stage)
+    )
     if errors:
         sys.stderr.write("国家中断趋势分析防偏离 Hook：机器检查失败\n")
         for error in errors:
@@ -397,7 +427,11 @@ def run_stop_hook() -> int:
         emit({})
         return 0
 
-    errors = validate_documents() + validate_task_boundary()
+    errors = (
+        validate_documents()
+        + validate_task_boundary()
+        + validate_stage_artifacts(requested_stage)
+    )
     if errors:
         emit(
             {
