@@ -10,6 +10,7 @@ import {
 } from '@/api/events'
 import AsnDurationChart, { type DurationSeries } from '@/components/AsnDurationChart.vue'
 import AsnStateHeatmap from '@/components/AsnStateHeatmap.vue'
+import CountryOutageTrendAnalysis from '@/components/CountryOutageTrendAnalysis.vue'
 import ObservationChart, {
   type ObservationChartMarker,
   type ObservationChartSeries,
@@ -998,6 +999,19 @@ const durationSeries = computed<DurationSeries[]>(() => [
         <div><dt>最后观测</dt><dd>{{ timeLabel(observation.observation_scope.last_observation_at_local, true) }}</dd></div>
       </dl>
     </header>
+
+    <CountryOutageTrendAnalysis
+      v-if="observation.trend_product"
+      :product="observation.trend_product"
+    />
+
+    <section v-else class="publication-notice" aria-label="趋势分析不可用">
+      <article>
+        <span>趋势分析</span>
+        <strong>当前快照不可用</strong>
+        <p>保留原始观测页；不跨快照补算，也不把缺失趋势解释为稳定。</p>
+      </article>
+    </section>
 
     <section
       v-if="hasPublicationNotice"

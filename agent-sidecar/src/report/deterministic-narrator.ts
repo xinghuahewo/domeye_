@@ -65,6 +65,13 @@ export function buildDeterministicCountryOutageDraft(
       'recovery_share_of_prior_loss',
     )
     const country = facts.event.country_name
+    const trendClaimParagraphs = (
+      facts.trendProduct?.evidence_graph.nodes ?? []
+    ).flatMap((node, index) => (
+      node.node_type === 'Claim' && typeof node.text === 'string'
+        ? [paragraph(node.text, `trend:/nodes/${index}`)]
+        : []
+    ))
     const windowStart = localDateTimeLabel(facts.scope.window_start_local)
     const windowEnd = localTimeLabel(facts.scope.window_end_local)
     const minRef = lowest.provenance.endpoint + ':' + lowest.provenance.pointer
@@ -598,6 +605,7 @@ export function buildDeterministicCountryOutageDraft(
       id: 'assessment',
       title: '综合判断',
       paragraphs: [
+        ...trendClaimParagraphs,
         paragraph(
           `仅依据该固定快照，可以判断 RRC25 观察到${country}相关 BGP 路由${startToLowestAssessment}，${
             fullyInvisibleMax

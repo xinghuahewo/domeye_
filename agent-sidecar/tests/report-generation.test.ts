@@ -4,6 +4,7 @@ import test from 'node:test'
 
 import type {
   CountryOutageAsnPage,
+  CountryOutageTrendProduct,
   ObservationBatch,
 } from '../src/domain/contracts.js'
 import { assembleCountryOutageFacts } from '../src/domain/observation-assembler.js'
@@ -16,7 +17,10 @@ import {
   createCountryOutageReportAuditManifestArtifact,
   describeCountryOutageReportAuditManifestArtifact,
 } from '../src/report/audit-manifest.js'
-import { DeterministicAcceptanceNarrator } from '../src/report/deterministic-narrator.js'
+import { CountryOutageArtifactBuilder } from '../src/report/artifact-builder.js'
+import {
+  DeterministicAcceptanceNarrator,
+} from '../src/report/deterministic-narrator.js'
 import {
   COUNTRY_OUTAGE_REPORT_DRAFT_TEXT_DIAGNOSTICS,
   parseReportDraft,
@@ -35,6 +39,70 @@ import { iranReferenceVisibilitySeries } from './helpers/iran-reference-visibili
 const incidentId = 'incident-report-test'
 const publicationId = 'publication-report-test'
 const cohortId = 'cohort-report-test'
+
+function trendProduct(): CountryOutageTrendProduct {
+  const snapshot = {
+    incident_id: incidentId,
+    publication_id: publicationId,
+    revision: 1,
+    data_through: '2026-02-28T15:00:00Z',
+    collector_id: 'rrc25' as const,
+    window_start_utc: '2026-02-28T10:05:00Z',
+    window_end_utc: '2026-02-28T15:00:00Z',
+  }
+  return {
+    schema_version: 'country_outage_trend_product_v1',
+    product_id: 'trend_product_v1_report_test',
+    profile_id: 'trend_profile_v1_report_test',
+    analysis_id: 'trend_analysis_s2_report_test',
+    graph_id: 'evidence_graph_v1_report_test',
+    snapshot,
+    evidence_graph: {
+      schema_version: 'country_outage_evidence_graph_v1',
+      graph_id: 'evidence_graph_v1_report_test',
+      profile_id: 'trend_profile_v1_report_test',
+      analysis_id: 'trend_analysis_s2_report_test',
+      nodes: [
+        {
+          node_id: 'claim-fastest-report-test',
+          node_type: 'Claim',
+          claim_kind: 'fastest_change',
+          text: '最快恶化落在槽 1，单槽变化为 -35,806 Prefix×VP。',
+          values: {
+            slot_index: 1,
+            change_from_previous: -35806,
+            visible_prefix_vp_delta: -35806,
+          },
+          evidence_refs: ['evidence-fastest-report-test'],
+          limitation_refs: ['limitation-report-test'],
+          unknown_refs: ['unknown-report-test'],
+        },
+        {
+          node_id: 'evidence-fastest-report-test',
+          node_type: 'Evidence',
+        },
+        {
+          node_id: 'limitation-report-test',
+          node_type: 'Limitation',
+          text: '仅代表 RRC25 BGP 控制面。',
+        },
+        {
+          node_id: 'unknown-report-test',
+          node_type: 'Unknown',
+          text: '原因未知。',
+        },
+      ],
+      edges: [],
+      hypothesis_nodes_allowed: false,
+      causal_relations_allowed: false,
+    },
+    render_contract: {
+      source_product_id: 'trend_product_v1_report_test',
+      surfaces: ['page', 'report', 'qa', 'markdown', 'pdf', 'json_download'],
+      model_may_rewrite_deterministic_values: false,
+    },
+  }
+}
 
 function reportBatch(): ObservationBatch {
   const envelope = {
@@ -222,6 +290,55 @@ function reportBatch(): ObservationBatch {
     },
   } as ObservationBatch
 }
+
+test('报告、Markdown 与 PDF 下载直接消费同一趋势 Claim 节点', async () => {
+  const batch = reportBatch()
+  batch.trendProduct = trendProduct()
+  const compiler = new CountryOutageReportCompiler({
+    client: {
+      async getObservationBatch() {
+        return structuredClone(batch)
+      },
+      async getAsns() {
+        return asnPage()
+      },
+    },
+    narrator: new DeterministicAcceptanceNarrator(),
+    now: () => new Date('2026-07-30T00:00:00Z'),
+  })
+  const compiled = await compiler.compileWithEvidence(
+    batch.resolution.legacy_reference,
+  )
+  const claimParagraph = compiled.document.draft.sections
+    .find((section) => section.id === 'assessment')
+    ?.paragraphs.find((item) => item.evidenceRefs.includes('trend:/nodes/0'))
+  assert.equal(
+    claimParagraph?.text,
+    '最快恶化落在槽 1，单槽变化为 -35,806 Prefix×VP。',
+  )
+  assert.equal(compiled.document.validation.passed, true)
+  const markdown = renderReportMarkdown(compiled.document)
+  assert.match(markdown, /最快恶化落在槽 1/)
+  assert.match(markdown, /trend:\/nodes\/0/)
+
+  const artifacts = await new CountryOutageArtifactBuilder({
+    async render(document) {
+      const claim = document.draft.sections
+        .flatMap((section) => section.paragraphs)
+        .find((item) => item.evidenceRefs.includes('trend:/nodes/0'))
+      assert.equal(claim?.text, claimParagraph?.text)
+      return Buffer.from(`%PDF-1.4\n${claim?.text}\n%%EOF`, 'utf8')
+    },
+  }).build(compiled.document)
+  assert.equal(artifacts.markdown.status, 'ready')
+  assert.equal(artifacts.pdf.status, 'ready')
+  if (artifacts.markdown.status === 'ready') {
+    assert.match(artifacts.markdown.artifact.content.toString('utf8'), /最快恶化/)
+  }
+  if (artifacts.pdf.status === 'ready') {
+    assert.match(artifacts.pdf.artifact.content.toString('utf8'), /最快恶化/)
+  }
+})
 
 function asnPage(): CountryOutageAsnPage {
   return {

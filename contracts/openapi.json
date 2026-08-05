@@ -194,6 +194,23 @@
         "responses": {"200": {"description": "逻辑制品身份、质量与哈希", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAuditV2"}}}}}
       }
     },
+    "/api/v2/country-outages/{incident_id}/trend": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutageTrendProduct",
+        "description": "从同一不可变 RRC25 发布确定性编译 TrendProfile、Evidence Graph v1 与阅读制品。",
+        "parameters": [
+          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "publication_id", "in": "query", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "同快照趋势分析制品", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageTrendProductV1"}}}},
+          "404": {"description": "事件或发布不存在"},
+          "422": {"description": "现有数据不能形成同身份趋势制品"},
+          "503": {"description": "事件数据源暂不可用"}
+        }
+      }
+    },
     "/api/v2/country-outage/capabilities/external-evidence": {
       "servers": [{"url": "/"}],
       "get": {
@@ -955,6 +972,71 @@
           "capabilities": {"$ref": "#/components/schemas/CountryOutageCapabilities"},
           "legacy_summary": {"type": ["object", "null"], "additionalProperties": true},
           "limitations": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageEvidenceGraphNodeV1": {
+        "type": "object",
+        "required": ["node_id", "node_type"],
+        "properties": {
+          "node_id": {"type": "string"},
+          "node_type": {"type": "string", "enum": ["Claim", "Evidence", "Limitation", "Unknown"]},
+          "claim_kind": {"type": "string"},
+          "text": {"type": "string"},
+          "values": {"type": "object", "additionalProperties": true},
+          "evidence_refs": {"type": "array", "items": {"type": "string"}},
+          "limitation_refs": {"type": "array", "items": {"type": "string"}},
+          "unknown_refs": {"type": "array", "items": {"type": "string"}},
+          "conclusion_level": {"type": "string"},
+          "evidence_kind": {"type": "string"},
+          "label": {"type": "string"},
+          "snapshot_ref": {"type": "object", "additionalProperties": true},
+          "payload": {"type": "object", "additionalProperties": true},
+          "source_refs": {"type": "array", "items": {"type": "string"}},
+          "code": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageEvidenceGraphV1": {
+        "type": "object",
+        "required": ["schema_version", "algorithm_version", "graph_id", "profile_id", "analysis_id", "snapshot", "nodes", "edges", "node_types", "relation_types", "hypothesis_nodes_allowed", "causal_relations_allowed"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_evidence_graph_v1"},
+          "algorithm_version": {"type": "string"},
+          "graph_id": {"type": "string"},
+          "profile_id": {"type": "string"},
+          "analysis_id": {"type": "string"},
+          "snapshot": {"type": "object", "additionalProperties": true},
+          "nodes": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageEvidenceGraphNodeV1"}},
+          "edges": {"type": "array", "items": {"type": "object", "additionalProperties": {"type": "string"}}},
+          "node_types": {"type": "array", "items": {"type": "string"}},
+          "relation_types": {"type": "array", "items": {"type": "string"}},
+          "hypothesis_nodes_allowed": {"type": "boolean", "const": false},
+          "causal_relations_allowed": {"type": "boolean", "const": false}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageTrendProductV1": {
+        "type": "object",
+        "required": ["schema_version", "algorithm_version", "product_id", "profile_id", "analysis_id", "graph_id", "snapshot", "profile", "contexts", "evidence_graph", "reading_journey", "claim_ids", "qa_rule_version", "render_contract", "event_identity", "observation_scope", "capabilities"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "country_outage_trend_product_v1"},
+          "algorithm_version": {"type": "string"},
+          "product_id": {"type": "string"},
+          "profile_id": {"type": "string"},
+          "analysis_id": {"type": "string"},
+          "graph_id": {"type": "string"},
+          "snapshot": {"type": "object", "additionalProperties": true},
+          "profile": {"type": "object", "additionalProperties": true},
+          "contexts": {"type": "object", "additionalProperties": true},
+          "evidence_graph": {"$ref": "#/components/schemas/CountryOutageEvidenceGraphV1"},
+          "reading_journey": {"type": "array", "items": {"type": "string"}},
+          "claim_ids": {"type": "array", "items": {"type": "string"}},
+          "qa_rule_version": {"type": "string"},
+          "render_contract": {"type": "object", "additionalProperties": true},
+          "event_identity": {"type": "object", "additionalProperties": true},
+          "observation_scope": {"type": "object", "additionalProperties": true},
+          "capabilities": {"$ref": "#/components/schemas/CountryOutageCapabilities"}
         },
         "additionalProperties": false
       },

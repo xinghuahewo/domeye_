@@ -551,6 +551,26 @@ def get_country_outage_overview(
     publication_id: str | None = None,
 ) -> dict[str, Any]:
     observation = _observation_by_incident(incident_id, publication_id)
+    capabilities = dict(observation["capabilities"])
+    scope = observation["observation_scope"]
+    cohort = observation.get("cohort")
+    trend_ready = bool(
+        scope.get("collector_id") == "rrc25"
+        and scope.get("collector_count") == 1
+        and isinstance(observation.get("data_through"), str)
+        and isinstance(cohort, Mapping)
+        and isinstance(cohort.get("prefix_vp_count"), int)
+        and cohort.get("prefix_vp_count", 0) > 0
+        and observation.get("series")
+    )
+    capabilities["trend_analysis"] = {
+        "state": "available" if trend_ready else "unavailable",
+        "reason": (
+            "同一不可变 RRC25 发布可确定性编译 TrendProfile 与 Evidence Graph v1。"
+            if trend_ready
+            else "当前发布缺少趋势编译所需的固定 cohort、截止点或时间序列。"
+        ),
+    }
     return {
         "schema_version": "country_outage_overview_v2",
         **_common_metadata(observation),
@@ -559,7 +579,7 @@ def get_country_outage_overview(
         "cohort": observation["cohort"],
         "normal_band": observation["normal_band"],
         "rule_marker": observation["rule_marker"],
-        "capabilities": observation["capabilities"],
+        "capabilities": capabilities,
         "legacy_summary": observation.get("legacy_summary"),
         "limitations": observation["limitations"],
     }

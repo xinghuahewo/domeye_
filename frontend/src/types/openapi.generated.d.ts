@@ -236,6 +236,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/country-outages/{incident_id}/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 从同一不可变 RRC25 发布确定性编译 TrendProfile、Evidence Graph v1 与阅读制品。 */
+        get: operations["getCountryOutageTrendProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/country-outage/capabilities/external-evidence": {
         parameters: {
             query?: never;
@@ -988,6 +1005,83 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             limitations: string[];
+        };
+        CountryOutageEvidenceGraphNodeV1: {
+            node_id: string;
+            /** @enum {string} */
+            node_type: "Claim" | "Evidence" | "Limitation" | "Unknown";
+            claim_kind?: string;
+            text?: string;
+            values?: {
+                [key: string]: unknown;
+            };
+            evidence_refs?: string[];
+            limitation_refs?: string[];
+            unknown_refs?: string[];
+            conclusion_level?: string;
+            evidence_kind?: string;
+            label?: string;
+            snapshot_ref?: {
+                [key: string]: unknown;
+            };
+            payload?: {
+                [key: string]: unknown;
+            };
+            source_refs?: string[];
+            code?: string;
+        };
+        CountryOutageEvidenceGraphV1: {
+            /** @constant */
+            schema_version: "country_outage_evidence_graph_v1";
+            algorithm_version: string;
+            graph_id: string;
+            profile_id: string;
+            analysis_id: string;
+            snapshot: {
+                [key: string]: unknown;
+            };
+            nodes: components["schemas"]["CountryOutageEvidenceGraphNodeV1"][];
+            edges: {
+                [key: string]: string;
+            }[];
+            node_types: string[];
+            relation_types: string[];
+            /** @constant */
+            hypothesis_nodes_allowed: false;
+            /** @constant */
+            causal_relations_allowed: false;
+        };
+        CountryOutageTrendProductV1: {
+            /** @constant */
+            schema_version: "country_outage_trend_product_v1";
+            algorithm_version: string;
+            product_id: string;
+            profile_id: string;
+            analysis_id: string;
+            graph_id: string;
+            snapshot: {
+                [key: string]: unknown;
+            };
+            profile: {
+                [key: string]: unknown;
+            };
+            contexts: {
+                [key: string]: unknown;
+            };
+            evidence_graph: components["schemas"]["CountryOutageEvidenceGraphV1"];
+            reading_journey: string[];
+            claim_ids: string[];
+            qa_rule_version: string;
+            render_contract: {
+                [key: string]: unknown;
+            };
+            event_identity: {
+                [key: string]: unknown;
+            };
+            observation_scope: {
+                [key: string]: unknown;
+            };
+            capabilities: components["schemas"]["CountryOutageCapabilities"];
         };
         CountryOutageSeriesV2: {
             /** @constant */
@@ -3289,6 +3383,51 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CountryOutageAuditV2"];
                 };
+            };
+        };
+    };
+    getCountryOutageTrendProduct: {
+        parameters: {
+            query: {
+                publication_id: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 同快照趋势分析制品 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageTrendProductV1"];
+                };
+            };
+            /** @description 事件或发布不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 现有数据不能形成同身份趋势制品 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 事件数据源暂不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

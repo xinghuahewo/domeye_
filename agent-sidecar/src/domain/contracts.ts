@@ -176,6 +176,52 @@ export interface CountryOutageAsnPage extends SnapshotEnvelope {
   [key: string]: unknown
 }
 
+export interface CountryOutageTrendGraphNode extends JsonObject {
+  node_id: string
+  node_type: 'Claim' | 'Evidence' | 'Limitation' | 'Unknown'
+  claim_kind?: string
+  text?: string
+  evidence_refs?: string[]
+  limitation_refs?: string[]
+  unknown_refs?: string[]
+  source_refs?: string[]
+}
+
+export interface CountryOutageTrendProduct extends JsonObject {
+  schema_version: 'country_outage_trend_product_v1'
+  product_id: string
+  profile_id: string
+  analysis_id: string
+  graph_id: string
+  snapshot: {
+    incident_id: string
+    publication_id: string
+    revision: number
+    data_through: string
+    collector_id: 'rrc25'
+    window_start_utc: string
+    window_end_utc: string
+    [key: string]: unknown
+  }
+  evidence_graph: {
+    schema_version: 'country_outage_evidence_graph_v1'
+    graph_id: string
+    profile_id: string
+    analysis_id: string
+    nodes: CountryOutageTrendGraphNode[]
+    edges: JsonObject[]
+    hypothesis_nodes_allowed: false
+    causal_relations_allowed: false
+    [key: string]: unknown
+  }
+  render_contract: {
+    source_product_id: string
+    surfaces: string[]
+    model_may_rewrite_deterministic_values: false
+  }
+  [key: string]: unknown
+}
+
 export interface SnapshotIdentity {
   incidentId: string
   publicationId: string
@@ -257,6 +303,7 @@ export interface CountryOutageFactSet {
     mappingVersion: string
     verifiedHashes: Record<string, string>
   }
+  trendProduct?: CountryOutageTrendProduct
 }
 
 export interface ObservationBatch {
@@ -264,4 +311,5 @@ export interface ObservationBatch {
   overview: CountryOutageOverview
   series: CountryOutageSeries
   audit: CountryOutageAudit
+  trendProduct?: CountryOutageTrendProduct
 }

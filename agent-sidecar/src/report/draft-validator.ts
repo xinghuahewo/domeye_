@@ -594,6 +594,14 @@ function resolveEvidenceReference(
       ? items[index]!
       : unresolvedEvidenceReference
   }
+  const trendMatch = reference.match(/^trend:\/nodes\/(\d+)$/)
+  if (trendMatch) {
+    const index = Number(trendMatch[1])
+    const nodes = evidence.facts.trendProduct?.evidence_graph.nodes ?? []
+    return Number.isSafeInteger(index) && index < nodes.length
+      ? nodes[index]!
+      : unresolvedEvidenceReference
+  }
   return unresolvedEvidenceReference
 }
 

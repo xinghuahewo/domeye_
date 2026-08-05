@@ -568,6 +568,117 @@ export interface CountryOutageAsnPage extends CountryOutageReleaseMetadata {
   items: EventObservationAsnTimeline[]
 }
 
+export type CountryOutageEvidenceNodeType =
+  | 'Claim'
+  | 'Evidence'
+  | 'Limitation'
+  | 'Unknown'
+
+export interface CountryOutageEvidenceNode {
+  node_id: string
+  node_type: CountryOutageEvidenceNodeType
+  claim_kind?: string
+  text?: string
+  values?: Record<string, unknown>
+  evidence_refs?: string[]
+  limitation_refs?: string[]
+  unknown_refs?: string[]
+  conclusion_level?: 'rrc25_control_plane_observation'
+  evidence_kind?: string
+  label?: string
+  snapshot_ref?: {
+    incident_id: string
+    publication_id: string
+    revision: number
+    data_through: string
+  }
+  payload?: Record<string, unknown>
+  source_refs?: string[]
+  code?: string
+}
+
+export interface CountryOutageEvidenceGraph {
+  schema_version: 'country_outage_evidence_graph_v1'
+  algorithm_version: string
+  graph_id: string
+  profile_id: string
+  analysis_id: string
+  snapshot: Record<string, unknown>
+  nodes: CountryOutageEvidenceNode[]
+  edges: Array<{
+    from: string
+    relation: 'supported_by' | 'limited_by' | 'unknown_about'
+    to: string
+  }>
+  node_types: CountryOutageEvidenceNodeType[]
+  relation_types: Array<'supported_by' | 'limited_by' | 'unknown_about'>
+  hypothesis_nodes_allowed: false
+  causal_relations_allowed: false
+}
+
+export interface CountryOutageTrendProduct {
+  schema_version: 'country_outage_trend_product_v1'
+  algorithm_version: string
+  product_id: string
+  profile_id: string
+  analysis_id: string
+  graph_id: string
+  snapshot: {
+    incident_id: string
+    publication_id: string
+    revision: number
+    data_through: string
+    collector_id: 'rrc25'
+    window_start_utc: string
+    window_end_utc: string
+    [key: string]: unknown
+  }
+  profile: {
+    quality: {
+      status: string
+      observed_slot_count: number
+      expected_slot_count: number
+      non_observed_slot_count: number
+      window_start_observed: boolean
+      window_end_observed: boolean
+    }
+    metric: {
+      label: string
+      unit: string
+      statistical_population: string
+      denominator: { value: number; unit: string; statistical_population: string }
+    }
+    baseline: { type: string; interpretation: string }
+    time_grid: { slot_seconds: number; expected_slot_count: number }
+    analysis: {
+      status: string
+      pattern: { status: string; label: string | null }
+      key_points: Array<Record<string, unknown>>
+      phases: Array<Record<string, unknown>>
+      derived_facts: Array<Record<string, unknown>>
+      window_ledger: Record<string, unknown>
+    }
+    [key: string]: unknown
+  }
+  contexts: {
+    address_family: Record<string, unknown> | null
+    asn: Record<string, unknown> | null
+    activity: Record<string, unknown> | null
+  }
+  evidence_graph: CountryOutageEvidenceGraph
+  reading_journey: string[]
+  claim_ids: string[]
+  qa_rule_version: string
+  render_contract: {
+    source_product_id: string
+    surfaces: Array<'page' | 'report' | 'qa' | 'markdown' | 'pdf' | 'json_download'>
+    model_may_rewrite_deterministic_values: false
+  }
+  event_identity: Record<string, unknown>
+  observation_scope: Record<string, unknown>
+  capabilities: Record<string, EventObservationCapability>
+}
+
 export interface EventObservation {
   schema_version: 'event_observation_v1' | 'country_outage_observation_v2'
   revision?: number
@@ -695,6 +806,7 @@ export interface EventObservation {
   limitations: string[]
   audit: EventObservationAudit | null
   asn_page?: CountryOutageAsnPage
+  trend_product?: CountryOutageTrendProduct | null
 }
 
 export interface FeaturePoint {

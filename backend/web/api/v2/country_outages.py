@@ -25,6 +25,10 @@ from services.country_outage_service import (
     resolve_country_outage,
 )
 from services.features_service import get_country_feature_series
+from services.country_outage_trend_product import (
+    TrendProductValidationError,
+    get_country_outage_trend_product,
+)
 
 
 def _not_found():
@@ -240,3 +244,34 @@ class CountryOutageAuditResource(Resource):
         ) as error:
             return _unavailable(error)
         return _etag_response(payload, "audit")
+
+
+class CountryOutageTrendResource(Resource):
+    """返回由同一不可变发布确定性编译的趋势分析制品。"""
+
+    def get(self, incident_id):
+        publication_id = request.args.get("publication_id")
+        try:
+            payload = get_country_outage_trend_product(
+                incident_id,
+                publication_id=publication_id,
+            )
+        except CountryOutageNotFound:
+            return _not_found()
+        except CountryOutagePublicationNotFound as error:
+            return _publication_not_found(error)
+        except TrendProductValidationError as error:
+            return {
+                "status": False,
+                "msg": str(error),
+                "observation_state": "trend_unavailable",
+                "error_code": error.code,
+                "error_field": error.field,
+            }, 422
+        except (
+            CountryOutageRegistryError,
+            CountryOutageSourceUnavailable,
+            EventStoryUnavailable,
+        ) as error:
+            return _unavailable(error)
+        return _etag_response(payload, "trend")

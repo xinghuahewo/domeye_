@@ -9,6 +9,7 @@ from .country_outages import (
     CountryOutageOverviewResource,
     CountryOutageResolveResource,
     CountryOutageSeriesResource,
+    CountryOutageTrendResource,
 )
 from .country_outage_agent_proxy import (
     CountryOutageAgentAbortResource,
@@ -40,6 +41,10 @@ api.add_resource(
 api.add_resource(
     CountryOutageAuditResource,
     "/country-outages/<incident_id>/audit",
+)
+api.add_resource(
+    CountryOutageTrendResource,
+    "/country-outages/<incident_id>/trend",
 )
 api.add_resource(
     CountryOutageAgentExternalEvidenceCapabilityResource,

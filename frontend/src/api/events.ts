@@ -16,6 +16,7 @@ import {
   normalizeCountryOutageAsnPage,
   normalizeCountryOutageAudit,
   normalizeCountryOutageObservation,
+  normalizeCountryOutageTrendProduct,
   normalizeEventStory,
   normalizeEventArray,
   normalizeEventPage,
@@ -105,15 +106,44 @@ export async function getEventObservation(reference: string) {
       params: publicationParams,
     }),
   ])
+  const hasPublishedObservationIdentity = isRecord(overview)
+    && typeof overview.incident_id === 'string'
+    && typeof overview.publication_id === 'string'
+    && typeof overview.revision === 'number'
+    && typeof overview.data_through === 'string'
+  const trendProduct = hasPublishedObservationIdentity
+    ? await apiV2Get<unknown>(`country-outages/${incidentId}/trend`, {
+        params: publicationParams,
+      }).catch((error: unknown) => {
+        if (isAxiosError(error) && [404, 422].includes(error.response?.status ?? 0)) {
+          return null
+        }
+        throw error
+      })
+    : null
   return {
     parsed,
-    observation: normalizeCountryOutageObservation(
-      overview,
-      series,
-      asnPage,
-      audit,
-    ),
+    observation: trendProduct === null
+      ? normalizeCountryOutageObservation(overview, series, asnPage, audit)
+      : normalizeCountryOutageObservation(
+          overview,
+          series,
+          asnPage,
+          audit,
+          trendProduct,
+        ),
   }
+}
+
+export async function getCountryOutageTrend(
+  incidentId: string,
+  publicationId: string,
+) {
+  const payload = await apiV2Get<unknown>(
+    `country-outages/${encodeURIComponent(incidentId)}/trend`,
+    { params: { publication_id: publicationId } },
+  )
+  return normalizeCountryOutageTrendProduct(payload)
 }
 
 export interface CountryOutageAsnQuery {

@@ -4,6 +4,7 @@ import type {
   CountryOutageOverview,
   CountryOutageResolution,
   CountryOutageSeries,
+  CountryOutageTrendProduct,
   ObservationBatch,
   SnapshotEnvelope,
   SnapshotIdentity,
@@ -141,6 +142,50 @@ function assertSnapshotPayload<T extends SnapshotEnvelope>(
     schemaVersion
   ) {
     throw new DomeyeApiError(`${schemaVersion} 返回了错误 schema`, 502, true)
+  }
+}
+
+function assertTrendProduct(
+  value: unknown,
+  batch: ObservationBatch,
+): asserts value is CountryOutageTrendProduct {
+  if (!value || typeof value !== 'object') {
+    throw new DomeyeApiError('趋势制品返回值不是对象', 502, true)
+  }
+  const item = value as Record<string, unknown>
+  const snapshot = item.snapshot as Record<string, unknown> | undefined
+  const graph = item.evidence_graph as Record<string, unknown> | undefined
+  const renderContract = item.render_contract as Record<string, unknown> | undefined
+  if (
+    item.schema_version !== 'country_outage_trend_product_v1' ||
+    typeof item.product_id !== 'string' ||
+    typeof item.profile_id !== 'string' ||
+    typeof item.analysis_id !== 'string' ||
+    typeof item.graph_id !== 'string' ||
+    !snapshot ||
+    snapshot.incident_id !== batch.overview.incident_id ||
+    snapshot.publication_id !== batch.overview.publication_id ||
+    snapshot.revision !== batch.overview.revision ||
+    snapshot.data_through !== batch.overview.data_through ||
+    snapshot.collector_id !== 'rrc25' ||
+    snapshot.window_start_utc !== batch.overview.window_start_utc ||
+    snapshot.window_end_utc !== batch.overview.window_end_utc ||
+    !graph ||
+    graph.schema_version !== 'country_outage_evidence_graph_v1' ||
+    graph.graph_id !== item.graph_id ||
+    graph.profile_id !== item.profile_id ||
+    graph.analysis_id !== item.analysis_id ||
+    graph.hypothesis_nodes_allowed !== false ||
+    graph.causal_relations_allowed !== false ||
+    !Array.isArray(graph.nodes) ||
+    !Array.isArray(graph.edges) ||
+    !renderContract ||
+    renderContract.source_product_id !== item.product_id ||
+    renderContract.model_may_rewrite_deterministic_values !== false
+  ) {
+    throw new SnapshotConflictError(
+      '趋势制品与 overview/series/audit 固定快照身份不一致',
+    )
   }
 }
 
@@ -584,13 +629,23 @@ export class DomeyeCountryOutageClient {
       auditValue,
       'country_outage_audit_v2',
     )
-    const batch = {
+    const batch: ObservationBatch = {
       resolution,
       overview: overviewValue,
       series: seriesValue,
       audit: auditValue,
     }
     assertBatchIdentity(batch)
+    if (overviewValue.capabilities.trend_analysis?.state === 'available') {
+      const trendValue = await this.#getJson(
+        `country-outages/${incident}/trend`,
+        query,
+        signal,
+      )
+      signal?.throwIfAborted()
+      assertTrendProduct(trendValue, batch)
+      batch.trendProduct = trendValue
+    }
     return batch
   }
 

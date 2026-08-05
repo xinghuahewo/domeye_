@@ -992,6 +992,9 @@ export function assembleCountryOutageFacts(
       mappingVersion: batch.audit.mapping_version,
       verifiedHashes: batch.audit.verified_hashes,
     },
+    ...(batch.trendProduct
+      ? { trendProduct: structuredClone(batch.trendProduct) }
+      : {}),
   }
   // factSetId 是报告所依赖事实的内容地址。只要任一可进入报告或追问
   // 的事实、能力、质量说明、溯源信息发生变化，就必须得到新身份；

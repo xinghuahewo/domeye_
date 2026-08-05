@@ -264,6 +264,66 @@
         "type": "object"
       }
     },
+    "trendProduct": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "product_id",
+        "profile_id",
+        "analysis_id",
+        "graph_id",
+        "snapshot",
+        "evidence_graph",
+        "render_contract"
+      ],
+      "properties": {
+        "schema_version": {"const": "country_outage_trend_product_v1"},
+        "product_id": {"type": "string"},
+        "profile_id": {"type": "string"},
+        "analysis_id": {"type": "string"},
+        "graph_id": {"type": "string"},
+        "snapshot": {"type": "object"},
+        "evidence_graph": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "graph_id",
+            "profile_id",
+            "analysis_id",
+            "nodes",
+            "edges",
+            "hypothesis_nodes_allowed",
+            "causal_relations_allowed"
+          ],
+          "properties": {
+            "schema_version": {"const": "country_outage_evidence_graph_v1"},
+            "graph_id": {"type": "string"},
+            "profile_id": {"type": "string"},
+            "analysis_id": {"type": "string"},
+            "nodes": {"type": "array"},
+            "edges": {"type": "array"},
+            "hypothesis_nodes_allowed": {"const": false},
+            "causal_relations_allowed": {"const": false}
+          },
+          "additionalProperties": true
+        },
+        "render_contract": {
+          "type": "object",
+          "required": [
+            "source_product_id",
+            "surfaces",
+            "model_may_rewrite_deterministic_values"
+          ],
+          "properties": {
+            "source_product_id": {"type": "string"},
+            "surfaces": {"type": "array", "items": {"type": "string"}},
+            "model_may_rewrite_deterministic_values": {"const": false}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "audit": {
       "type": "object",
       "additionalProperties": false,

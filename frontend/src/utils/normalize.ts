@@ -10,6 +10,7 @@ import {
   type DashboardOverview,
   type DashboardRanking,
   type CountryOutageAsnPage,
+  type CountryOutageTrendProduct,
   type EvidenceBundle,
   type EvidenceItem,
   type EvidenceKind,
@@ -303,6 +304,7 @@ export const normalizeCountryOutageObservation = (
   series: unknown,
   asnPage: unknown,
   audit: unknown,
+  trendProduct: unknown = null,
 ): EventObservation => {
   if (
     !isRecord(overview)
@@ -314,6 +316,9 @@ export const normalizeCountryOutageObservation = (
   }
   const normalizedAsns = normalizeCountryOutageAsnPage(asnPage)
   const normalizedAudit = normalizeCountryOutageAudit(audit)
+  const normalizedTrend = trendProduct === null
+    ? null
+    : normalizeCountryOutageTrendProduct(trendProduct)
   assertMatchingCountryOutageRelease(
     overview,
     [
@@ -322,6 +327,21 @@ export const normalizeCountryOutageObservation = (
       normalizedAudit as unknown as Record<string, unknown>,
     ],
   )
+  if (normalizedTrend) {
+    const trendSnapshot = normalizedTrend.snapshot as Record<string, unknown>
+    for (const key of [
+      'incident_id',
+      'publication_id',
+      'revision',
+      'data_through',
+      'window_start_utc',
+      'window_end_utc',
+    ] as const) {
+      if (trendSnapshot[key] !== overview[key]) {
+        throw new Error(`国家中断趋势制品发布身份不一致：${key}`)
+      }
+    }
+  }
   return normalizeEventObservation({
     ...overview,
     ...series,
@@ -334,7 +354,74 @@ export const normalizeCountryOutageObservation = (
     },
     asn_page: normalizedAsns,
     audit: normalizedAudit,
+    trend_product: normalizedTrend,
   })
+}
+
+export const normalizeCountryOutageTrendProduct = (
+  payload: unknown,
+): CountryOutageTrendProduct => {
+  if (
+    !isRecord(payload)
+    || payload.schema_version !== 'country_outage_trend_product_v1'
+    || !isRecord(payload.snapshot)
+    || payload.snapshot.collector_id !== 'rrc25'
+    || !isRecord(payload.profile)
+    || !isRecord(payload.contexts)
+    || !isRecord(payload.evidence_graph)
+    || payload.evidence_graph.schema_version !== 'country_outage_evidence_graph_v1'
+    || payload.evidence_graph.hypothesis_nodes_allowed !== false
+    || payload.evidence_graph.causal_relations_allowed !== false
+    || !Array.isArray(payload.evidence_graph.nodes)
+    || !Array.isArray(payload.evidence_graph.edges)
+    || !Array.isArray(payload.claim_ids)
+    || !isRecord(payload.render_contract)
+    || payload.render_contract.source_product_id !== payload.product_id
+    || payload.graph_id !== payload.evidence_graph.graph_id
+    || payload.profile_id !== payload.evidence_graph.profile_id
+    || payload.analysis_id !== payload.evidence_graph.analysis_id
+  ) {
+    throw new Error('国家中断趋势制品 v1 响应格式异常')
+  }
+  const nodes = payload.evidence_graph.nodes
+  const nodeIds = new Set<string>()
+  const allowedNodeTypes = new Set(['Claim', 'Evidence', 'Limitation', 'Unknown'])
+  for (const node of nodes) {
+    if (
+      !isRecord(node)
+      || typeof node.node_id !== 'string'
+      || !allowedNodeTypes.has(cleanText(node.node_type))
+      || nodeIds.has(node.node_id)
+    ) {
+      throw new Error('国家中断趋势证据节点无效或重复')
+    }
+    nodeIds.add(node.node_id)
+    if (
+      node.node_type === 'Claim'
+      && (
+        !Array.isArray(node.evidence_refs)
+        || node.evidence_refs.length === 0
+        || !Array.isArray(node.limitation_refs)
+        || node.limitation_refs.length === 0
+        || !Array.isArray(node.unknown_refs)
+        || node.unknown_refs.length === 0
+      )
+    ) {
+      throw new Error('国家中断趋势 Claim 缺少 Evidence、Limitation 或 Unknown')
+    }
+  }
+  const allowedRelations = new Set(['supported_by', 'limited_by', 'unknown_about'])
+  for (const edge of payload.evidence_graph.edges) {
+    if (
+      !isRecord(edge)
+      || !allowedRelations.has(cleanText(edge.relation))
+      || !nodeIds.has(cleanText(edge.from))
+      || !nodeIds.has(cleanText(edge.to))
+    ) {
+      throw new Error('国家中断趋势证据关系无效')
+    }
+  }
+  return payload as unknown as CountryOutageTrendProduct
 }
 
 export const normalizeCountryOutageAsnPage = (

@@ -4,6 +4,7 @@ import test from 'node:test'
 import type {
   CountryOutageAsnPage,
   CountryOutageFactSet,
+  CountryOutageTrendProduct,
   SnapshotIdentity,
   VisibilitySlot,
 } from '../src/domain/contracts.js'
@@ -489,6 +490,109 @@ function context(
     asnPages: [asnPage()],
   }
 }
+
+function trendProductForQa(): CountryOutageTrendProduct {
+  const claim = (
+    claimKind: string,
+    text: string,
+    index: number,
+  ) => ({
+    node_id: `claim-trend-qa-${index}`,
+    node_type: 'Claim' as const,
+    claim_kind: claimKind,
+    text,
+    evidence_refs: [`evidence-trend-qa-${index}`],
+    limitation_refs: ['limitation-trend-qa'],
+    unknown_refs: ['unknown-trend-qa'],
+  })
+  const nodes = [
+    claim('phase_sequence', '阶段序列为 stable → abrupt_drop → rise。', 0),
+    claim('fastest_change', '最快恶化落在槽 1，单槽变化为 -35,806 Prefix×VP。', 1),
+    claim('asn_persistence', '2 个 ASN 的终点状态未回到各自起点状态。', 2),
+    claim('activity_alignment', 'UPDATE 峰值与谷值为相邻槽，只表示时间对应。', 3),
+    claim('address_family_comparison', 'IPv4 与 IPv6 使用独立分母进行对照。', 4),
+    claim('window_state', '窗口起点、谷值与终点均来自冻结账本。', 5),
+    {
+      node_id: 'limitation-trend-qa',
+      node_type: 'Limitation' as const,
+      text: '仅代表 RRC25 BGP 控制面。',
+    },
+    {
+      node_id: 'unknown-trend-qa',
+      node_type: 'Unknown' as const,
+      text: '原因未知。',
+    },
+  ]
+  return {
+    schema_version: 'country_outage_trend_product_v1',
+    product_id: 'trend_product_v1_qa_test',
+    profile_id: 'trend_profile_v1_qa_test',
+    analysis_id: 'trend_analysis_s2_qa_test',
+    graph_id: 'evidence_graph_v1_qa_test',
+    snapshot: {
+      incident_id: snapshot.incidentId,
+      publication_id: snapshot.publicationId,
+      revision: snapshot.revision,
+      data_through: snapshot.dataThrough!,
+      collector_id: 'rrc25',
+      window_start_utc: snapshot.windowStartUtc,
+      window_end_utc: snapshot.windowEndUtc,
+    },
+    evidence_graph: {
+      schema_version: 'country_outage_evidence_graph_v1',
+      graph_id: 'evidence_graph_v1_qa_test',
+      profile_id: 'trend_profile_v1_qa_test',
+      analysis_id: 'trend_analysis_s2_qa_test',
+      nodes,
+      edges: [],
+      hypothesis_nodes_allowed: false,
+      causal_relations_allowed: false,
+    },
+    render_contract: {
+      source_product_id: 'trend_product_v1_qa_test',
+      surfaces: ['page', 'report', 'qa', 'markdown', 'pdf', 'json_download'],
+      model_may_rewrite_deterministic_values: false,
+    },
+  }
+}
+
+test('组合式趋势追问直接引用原报告同一冻结 Claim', async () => {
+  const value = context()
+  value.facts.trendProduct = trendProductForQa()
+  const engine = new DeterministicCountryOutageQuestionEngine()
+  const cases = [
+    ['曲线有哪些阶段？', 'phase_sequence'],
+    ['最快恶化发生在哪里？', 'fastest_change'],
+    ['哪些 ASN 持续未回到起点？', 'asn_persistence'],
+    ['UPDATE 峰值与谷值是同槽还是相邻槽？', 'activity_alignment'],
+    ['IPv4 和 IPv6 的地址族分化如何？', 'address_family_comparison'],
+    ['查看结论依据', 'window_state'],
+  ] as const
+  for (let index = 0; index < cases.length; index += 1) {
+    const [question, claimKind] = cases[index]!
+    const answer = await engine.answer(
+      request(value, question, {
+        requestId: `trend-composition-${index}`,
+        idempotencyKey: `trend-composition-${index}`,
+      }),
+      value,
+    )
+    assert.equal(answer.kind, 'fact')
+    assert.ok(answer.evidenceRefs.some((ref) => ref.startsWith('trend:/nodes/')))
+    assert.equal(answer.evidence[0]?.source, 'derived_fact')
+    assert.match(answer.evidence[0]?.value ?? '', new RegExp(claimKind))
+  }
+
+  const boundary = await engine.answer(
+    request(value, '哪些 ASN 导致了这次变化？', {
+      requestId: 'trend-causal-boundary',
+      idempotencyKey: 'trend-causal-boundary',
+    }),
+    value,
+  )
+  assert.equal(boundary.kind, 'evidence_boundary')
+  assert.ok(boundary.missingEvidence.length > 0)
+})
 
 function binding(
   value: CountryOutageQuestionContext,

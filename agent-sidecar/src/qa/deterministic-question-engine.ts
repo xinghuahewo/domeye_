@@ -859,6 +859,40 @@ function selectAnswer(
   ) {
     return answerCause(context)
   }
+  const trendClaimAnswer = (
+    claimKind: string,
+  ): QuestionAnswerDraft | null => {
+    const nodes = context.facts.trendProduct?.evidence_graph.nodes ?? []
+    const index = nodes.findIndex(
+      (node) => node.node_type === 'Claim' && node.claim_kind === claimKind,
+    )
+    const claim = index >= 0 ? nodes[index] : undefined
+    return claim && typeof claim.text === 'string'
+      ? draft('fact', claim.text, [`trend:/nodes/${index}`])
+      : null
+  }
+  if (/阶段|单波|多波|震荡|平台|混合型/.test(lower)) {
+    return trendClaimAnswer('phase_sequence') ?? answerVisibility(context)
+  }
+  if (/最快.{0,6}(变化|恶化|下降)|恶化最快/.test(lower)) {
+    return trendClaimAnswer('fastest_change') ?? answerLargestDrop(context)
+  }
+  if (/哪些.{0,5}asn.{0,10}(持续|未回到)|asn.{0,10}未回到起点/.test(lower)) {
+    return trendClaimAnswer('asn_persistence') ?? answerTopAsns(context)
+  }
+  if (
+    /(update|announce|withdraw).{0,16}(同槽|相邻槽|滞后槽|时间对应)/i.test(
+      lower,
+    )
+  ) {
+    return trendClaimAnswer('activity_alignment') ?? answerUpdateActivity(context)
+  }
+  if (/ipv4.{0,20}ipv6|ipv6.{0,20}ipv4|地址族.{0,8}(分化|差异|对照)/.test(lower)) {
+    return trendClaimAnswer('address_family_comparison') ?? answerAddressFamilies(context)
+  }
+  if (!anchor && /查看.{0,6}(结论)?(依据|证据)|结论.{0,6}(依据|证据)/.test(lower)) {
+    return trendClaimAnswer('window_state') ?? answerVisibility(context)
+  }
   if (
     /最低点?.{0,12}(比|与|相对).{0,8}起点.{0,8}(少|差|下降)|比起点.{0,12}(少|差|下降)|起点.{0,12}最低点?.{0,8}(变化|差|下降)/.test(
       lower,
@@ -1151,6 +1185,16 @@ function resolveEvidence(
   }
   if (ref.startsWith('series:')) return resolveSeriesEvidence(ref, context)
   if (ref.startsWith('asns:')) return resolveAsnEvidence(ref, context)
+  const trendReference = ref.match(/^trend:\/nodes\/(\d+)$/)
+  if (trendReference?.[1]) {
+    const node = context.facts.trendProduct?.evidence_graph.nodes[
+      Number(trendReference[1])
+    ]
+    return evidenceRecord(ref, 'derived_fact', '冻结趋势分析节点', {
+      metric: node?.claim_kind ?? node?.node_type ?? null,
+      value: displayUnknown(node),
+    })
+  }
   if (ref.startsWith('audit:')) {
     return evidenceRecord(ref, 'audit', `审计证据 ${ref.slice(6)}`, {
       value:
