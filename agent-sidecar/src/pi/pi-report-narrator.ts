@@ -184,8 +184,14 @@ function isPlainJsonObject(
   return prototype === Object.prototype || prototype === null
 }
 
-function deepseekJsonObjectPayloadHook(
+type DeepseekCountryOutageProtocolPhase =
+  | 'resolve'
+  | 'observation'
+  | 'narration'
+
+function deepseekCountryOutageProtocolPayloadHook(
   existingHook: PiPayloadHook | undefined,
+  phase: DeepseekCountryOutageProtocolPhase,
   onRequested: () => void,
 ): PiPayloadHook {
   return async (payload, model) => {
@@ -202,9 +208,24 @@ function deepseekJsonObjectPayloadHook(
     }
     const prepared: Record<string, unknown> = {
       ...source,
-      response_format: {
-        type: 'json_object',
-      },
+      ...(phase === 'narration'
+        ? {
+            tool_choice: 'none',
+            response_format: {
+              type: 'json_object',
+            },
+          }
+        : {
+            tool_choice: {
+              type: 'function',
+              function: {
+                name:
+                  phase === 'resolve'
+                    ? 'country_outage_resolve'
+                    : 'country_outage_get_observation',
+              },
+            },
+          }),
     }
     if (
       prepared.model !== source.model ||
@@ -213,7 +234,7 @@ function deepseekJsonObjectPayloadHook(
     ) {
       throw new Error('structured_output_payload_invalid')
     }
-    onRequested()
+    if (phase === 'narration') onRequested()
     return prepared
   }
 }
@@ -252,10 +273,10 @@ function providerPayloadLimitHook(
   }
 }
 
-function hasRequiredCountryOutageToolResults(
+function deepseekCountryOutageProtocolPhase(
   context: Parameters<PiStreamFunction>[1],
-): boolean {
-  if (!context || !Array.isArray(context.messages)) return false
+): DeepseekCountryOutageProtocolPhase {
+  if (!context || !Array.isArray(context.messages)) return 'resolve'
   const completed = new Set<string>()
   for (const message of context.messages) {
     if (
@@ -267,10 +288,11 @@ function hasRequiredCountryOutageToolResults(
       completed.add(message.toolName)
     }
   }
-  return (
-    completed.has('country_outage_resolve') &&
-    completed.has('country_outage_get_observation')
-  )
+  if (!completed.has('country_outage_resolve')) return 'resolve'
+  if (!completed.has('country_outage_get_observation')) {
+    return 'observation'
+  }
+  return 'narration'
 }
 
 function requiresDeepseekJsonObject(
@@ -280,16 +302,6 @@ function requiresDeepseekJsonObject(
     model.provider === 'deepseek' &&
     model.id === 'deepseek-v4-flash' &&
     model.api === 'openai-completions'
-  )
-}
-
-function shouldRequestDeepseekJsonObject(
-  model: Parameters<PiStreamFunction>[0],
-  context: Parameters<PiStreamFunction>[1],
-): boolean {
-  return (
-    requiresDeepseekJsonObject(model) &&
-    hasRequiredCountryOutageToolResults(context)
   )
 }
 
@@ -437,9 +449,10 @@ function installProviderRequestGate(
 
     forwardedRequestCount += 1
     let payloadHook = options?.onPayload
-    if (shouldRequestDeepseekJsonObject(model, context)) {
-      payloadHook = deepseekJsonObjectPayloadHook(
+    if (requiresDeepseekJsonObject(model)) {
+      payloadHook = deepseekCountryOutageProtocolPayloadHook(
         payloadHook,
+        deepseekCountryOutageProtocolPhase(context),
         () => {
           structuredOutputPayloadPreparedCount += 1
         },

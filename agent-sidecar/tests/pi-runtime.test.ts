@@ -2552,7 +2552,7 @@ test('首轮结构失败且五次 provider 请求已耗尽时保留固定安全�
   assert.doesNotMatch(JSON.stringify(audits[0]), new RegExp(sensitivePayload))
 })
 
-test('DeepSeek 在必需工具结果出现后请求 JSON object，组合既有 payload hook 且不修改原对象', async () => {
+test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙述且不修改原对象', async () => {
   const model = {
     provider: 'deepseek',
     id: 'deepseek-v4-flash',
@@ -2714,7 +2714,14 @@ test('DeepSeek 在必需工具结果出现后请求 JSON object，组合既有 p
         async prompt() {
           promptCalls += 1
           if (promptCalls === 1) {
-            await forward(2, [])
+            await forward(1, [])
+            await forward(1, [
+              {
+                role: 'toolResult',
+                toolName: 'country_outage_resolve',
+                isError: false,
+              },
+            ])
             await forward(2, messages)
             return
           }
@@ -2746,6 +2753,20 @@ test('DeepSeek 在必需工具结果出现后请求 JSON object，组合既有 p
   assert.equal(draft.title, '伊朗 BGP 路由可见性观测报告')
   assert.equal(existingHookCalls, 5)
   assert.equal(forwardedPayloads.length, 5)
+  assert.deepEqual(
+    (forwardedPayloads[0] as Record<string, unknown>).tool_choice,
+    {
+      type: 'function',
+      function: { name: 'country_outage_resolve' },
+    },
+  )
+  assert.deepEqual(
+    (forwardedPayloads[1] as Record<string, unknown>).tool_choice,
+    {
+      type: 'function',
+      function: { name: 'country_outage_get_observation' },
+    },
+  )
   for (const payload of forwardedPayloads.slice(0, 2)) {
     assert.deepEqual(
       (payload as Record<string, unknown>).response_format,
@@ -2757,6 +2778,10 @@ test('DeepSeek 在必需工具结果出现后请求 JSON object，组合既有 p
       (payload as Record<string, unknown>).response_format,
       { type: 'json_object' },
     )
+    assert.equal(
+      (payload as Record<string, unknown>).tool_choice,
+      'none',
+    )
   }
   assert.equal(
     (forwardedPayloads[4] as Record<string, unknown>)
@@ -2767,6 +2792,13 @@ test('DeepSeek 在必需工具结果出现后请求 JSON object，组合既有 p
     Object.prototype.hasOwnProperty.call(
       rawPayloads[4],
       'response_format',
+    ),
+    false,
+  )
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      rawPayloads[4],
+      'tool_choice',
     ),
     false,
   )

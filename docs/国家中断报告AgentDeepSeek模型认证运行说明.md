@@ -379,9 +379,11 @@ provider stream 之前以 `provider_request_limit_exceeded` 截断。每轮转�
 `provider_context_limit_exceeded` 零上游拒绝。该 900,000 字节门只是进入
 adapter 前的容量/DoS 上限，不参与费用计算。
 
-DeepSeek 固定候选只有在同一 provider context 已经出现成功的
-`country_outage_resolve` 和 `country_outage_get_observation` 工具结果后，才为
-该请求组合受控 `onPayload` 并最终强制：
+DeepSeek 固定候选在发送前按宿主确定性协议约束工具选择：第一轮只允许
+`country_outage_resolve`，取得其成功结果后下一轮只允许
+`country_outage_get_observation`；两项必需结果齐备后固定 `tool_choice=none`，
+不再允许模型重复工具或误调用 ASN。该协议不放宽工具次数、结果字节或供应商请求
+上限。随后为叙述请求组合受控 `onPayload` 并最终强制：
 
 ```json
 {
@@ -392,9 +394,10 @@ DeepSeek 固定候选只有在同一 provider context 已经出现成功的
 ```
 
 组合顺序固定为：先执行既有 payload hook，再核验返回值是保留 `model`、
-`messages` 和 `stream=true` 的普通对象，最后在新对象上覆盖
-`response_format`。任何数组、Date、类实例、字段缺失或 hook 异常都失败关闭；
-再由最外层发送前门序列化最终 payload，超过 `59,904 UTF-8 bytes` 时以
+`messages` 和 `stream=true` 的普通对象，最后按当前协议阶段覆盖
+`tool_choice`，并仅在叙述阶段覆盖 `response_format`。任何数组、Date、类实例、
+字段缺失或 hook 异常都失败关闭；再由最外层发送前门序列化最终 payload，超过
+`59,904 UTF-8 bytes` 时以
 `provider_payload_limit_exceeded` 在 HTTP 前拒绝。59,904 字节与 4,096 token
 framing 预留共同服从 64,000 单请求输入预算；由于 DeepSeek 官方 tokenizer 与
 服务端 framing 尚未固定，这是保守工程假设，不是精确 token 换算证明。只有新

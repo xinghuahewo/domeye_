@@ -528,9 +528,30 @@ test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload �
       undefined,
     );
     assert.deepEqual(
+      (capturedRequests[0]!.body as Record<string, unknown>)
+        .tool_choice,
+      {
+        type: "function",
+        function: { name: "country_outage_resolve" },
+      },
+    );
+    assert.deepEqual(
+      (capturedRequests[1]!.body as Record<string, unknown>)
+        .tool_choice,
+      {
+        type: "function",
+        function: { name: "country_outage_get_observation" },
+      },
+    );
+    assert.deepEqual(
       (capturedRequests[2]!.body as Record<string, unknown>)
         .response_format,
       { type: "json_object" },
+    );
+    assert.equal(
+      (capturedRequests[2]!.body as Record<string, unknown>)
+        .tool_choice,
+      "none",
     );
     assert.doesNotMatch(
       JSON.stringify(capturedRequests[2]!.body),
