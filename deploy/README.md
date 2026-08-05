@@ -23,6 +23,32 @@
 
 生产数据库端口只绑定回环。数据库镜像固定为 `timescaledb:2.11.2-pg12`，构建和启动都会校验具体 image ID，不接受同标签漂移。
 
+## 源码、制品与生产身份
+
+部署目录不是 Git 主干。唯一生产主干、任务 Worktree 和发布归一规则见
+[主干开发与发布归一治理规范](../docs/主干开发与发布归一治理规范.md)。治理迁移
+完成后，正式发布只接受 `codex/prod` 上 annotated tag 对应的明确提交，并从该提交
+生成一次不可变候选；候选、金丝雀和生产逐级晋级同一份后端、Sidecar 和前端制品。
+
+每次发布必须在仓库外的 release 证据中绑定：
+
+- release ID、annotated tag 和解引用后的 Git commit；
+- 源码归档 SHA-256 与源码文件清单摘要；
+- 后端、Sidecar、前端目录树摘要；
+- `backend/core.sha256` 校验结果；
+- 模型注册表版本和认证 evidence ID；
+- Nginx 配置摘要、数据档和数据库状态摘要；
+- 构建工具链版本和生成时间。
+
+生产服务器 `/home/bgpdata/Domeye-Core` 的源码 checkout 只能用于只读诊断和发布
+脚本入口，不能以它的分支名、tag 可见性或工作树脏净状态证明生产身份。生产身份
+必须从 runtime release 的源码绑定、目录摘要、活动指针和实际进程取得。
+
+生产验收结束时，Backend 与 Sidecar 的实际进程 release ID 必须分别等于各自
+`current`，Frontend 的 Nginx root 必须等于活动前端 release；任一不一致都属于
+`deployed_identity_drift`，不得写成 `verified`。发布脚本尚未实现的归一检查在实现
+并通过机器验收前属于待建设项，本文不把目标规则冒充为当前能力。
+
 ## 目录职责
 
 - `artifacts/`：构建和安装四文件信息制品，原子安装/回滚前端构建，定稿并校验八文件发布集合。

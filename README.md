@@ -79,7 +79,31 @@ Domeye-Core/
 └── README.md
 ```
 
-后端接口和配置见 [后端说明](backend/README.md)，制品生成、部署、刷新和回滚见 [部署说明](deploy/README.md)。
+后端接口和配置见 [后端说明](backend/README.md)，制品生成、部署、刷新和回滚见
+[部署说明](deploy/README.md)。任务 Worktree、唯一生产主干、不可变制品晋级和发布后
+归一规则见 [主干开发与发布归一治理规范](docs/主干开发与发布归一治理规范.md)。
+
+## 协作与发布主线
+
+治理迁移完成后，`codex/prod` 是唯一长期生产主干，`core-work` 只是该分支的永久
+本地检出。普通功能、修复、研究和文档任务使用独立短生命周期分支及 Worktree；
+通过验收的是提交，不是 Worktree 目录。任务 Worktree 不得直接部署，也不得通过
+复制兄弟 Worktree 的未提交文件完成整合。
+
+正式发布遵循“一次构建、逐级晋级”：从 `codex/prod` 上的明确提交生成 annotated
+tag 和不可变制品，候选、金丝雀与生产使用同一制品摘要。发布完成必须证明：
+
+```text
+core-work HEAD
+= origin/codex/prod
+= release tag commit
+= source archive commit
+= production runtime commit
+```
+
+同时核对实际 Backend、Sidecar、Frontend、Nginx 和数据库身份。测试通过、提交、
+合并、tag、制品生成、认证、部署和生产验收是不同状态，不能相互替代。当前治理
+迁移的具体阶段、Worktree 退役条件和紧急修复边界以治理规范为准。
 
 ## 本地快速开发
 
