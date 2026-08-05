@@ -75,11 +75,37 @@ Domeye-Core/
 │   ├── acceptance/       候选栈、核心冒烟、隔离和完整验收
 │   ├── artifacts/        基础信息制品构建、安装、定稿和校验
 │   ├── database/         数据库制品、恢复、激活、回滚和 Compose
+│   ├── governance/       服务器分支保护、发布归一检查、安装与夹具
 │   └── nginx/            生产 Nginx 配置
 └── README.md
 ```
 
-后端接口和配置见 [后端说明](backend/README.md)，制品生成、部署、刷新和回滚见 [部署说明](deploy/README.md)。
+后端接口和配置见 [后端说明](backend/README.md)，制品生成、部署、刷新和回滚见
+[部署说明](deploy/README.md)。任务 Worktree、唯一生产主干、不可变制品晋级和发布后
+归一规则见 [主干开发与发布归一治理规范](docs/主干开发与发布归一治理规范.md)。
+
+## 协作与发布主线
+
+`codex/prod` 是唯一长期生产主干，`core-work` 是该分支的永久独立 clone。普通功能、
+修复、研究和文档任务使用独立短生命周期分支及 Worktree；通过验收的是提交和制品，
+不是 Worktree 目录。任务 Worktree 不得直接部署，也不得通过复制兄弟 Worktree 的
+未提交文件完成整合。
+
+服务器端保护 Hook 要求 `codex/prod` 只能快进到具有评审和 CI 证明的提交，并保护
+正式 tag 不被改写。正式发布遵循“一次构建、逐级晋级”：候选、金丝雀与生产使用
+同一份不可变制品。发布完成必须证明：
+
+```text
+core-work HEAD
+= origin/codex/prod
+= release tag commit
+= source archive commit
+= Backend、Sidecar、Frontend runtime commit
+```
+
+还必须核对实际进程、活动指针、Nginx 和数据库身份。测试通过、提交、评审、合并、
+tag、构建、认证、部署和生产验证是不同状态，不能相互替代。版本化 Hook、归一检查
+和安装说明见 [治理发布工具](deploy/governance/README.md)。
 
 ## 本地快速开发
 

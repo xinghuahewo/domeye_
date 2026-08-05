@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+readonly ZERO_SHA='0000000000000000000000000000000000000000'
+readonly PROTECTED_REF='refs/heads/codex/prod'
+readonly DEFAULT_APPROVAL_ROOT='/home/bgpdata/Domeye-Core-governance/approvals'
+
+die() {
+    printf 'Domeye 远端门禁拒绝：%s\n' "$*" >&2
+    exit 1
+}
+
+for command_name in git id jq mktemp stat; do
+    command -v "${command_name}" >/dev/null 2>&1 \
+        || die "远端门禁缺少命令：${command_name}"
+done
+
+approval_root_from_config="$(git config --get domeye.governanceApprovalRoot || true)"
+approval_root_candidate="${approval_root_from_config:-${DEFAULT_APPROVAL_ROOT}}"
+[[ "${approval_root_candidate}" == /* ]] \
+    || die 'domeye.governanceApprovalRoot 必须是绝对路径'
+[[ -d "${approval_root_candidate}" && ! -L "${approval_root_candidate}" ]] \
+    || die "审批根目录必须是实际目录：${approval_root_candidate}"
+readonly APPROVAL_ROOT="$(cd "${approval_root_candidate}" && pwd -P)"
+
+require_approval() {
+    local commit="$1"
+    local approval="${APPROVAL_ROOT}/${commit}.json"
+    local mode uid
+
+    [[ -f "${approval}" && ! -L "${approval}" ]] \
+        || die "codex/prod 的目标提交缺少评审与 CI 证明：${commit}"
+    uid="$(stat -c '%u' -- "${approval}" 2>/dev/null \
+        || stat -f '%u' "${approval}")"
+    mode="$(stat -c '%a' -- "${approval}" 2>/dev/null \
+        || stat -f '%Lp' "${approval}")"
+    [[ "${uid}" == "$(id -u)" ]] \
+        || die "评审与 CI 证明必须由 Hook 运行用户持有：${approval}"
+    (( (8#${mode} & 8#022) == 0 )) \
+        || die "评审与 CI 证明不得被组或其他用户写入：${approval}"
+    jq -e --arg commit "${commit}" '
+        .schema_version == "domeye_codex_prod_approval_v1"
+        and .commit == $commit
+        and .review.status == "approved"
+        and (.review.evidence | type == "string" and length > 0)
+        and .ci.status == "passed"
+        and (.ci.evidence | type == "string" and length > 0)
+        and (.approved_at | type == "string" and length > 0)
+    ' "${approval}" >/dev/null \
+        || die "评审与 CI 证明内容无效：${approval}"
+}
+
+readonly INPUT_FILE="$(mktemp "${TMPDIR:-/tmp}/domeye-pre-receive.XXXXXX")"
+trap 'rm -f -- "${INPUT_FILE}"' EXIT
+cat >"${INPUT_FILE}"
+
+incoming_prod=''
+while read -r old_sha new_sha ref_name; do
+    [[ -n "${old_sha}" && -n "${new_sha}" && -n "${ref_name}" ]] \
+        || die '收到格式无效的引用更新'
+    if [[ "${ref_name}" == "${PROTECTED_REF}" ]]; then
+        incoming_prod="${new_sha}"
+    fi
+done <"${INPUT_FILE}"
+
+while read -r old_sha new_sha ref_name; do
+    case "${ref_name}" in
+        "${PROTECTED_REF}")
+            [[ "${new_sha}" != "${ZERO_SHA}" ]] \
+                || die 'codex/prod 禁止删除'
+            [[ "$(git cat-file -t "${new_sha}")" == 'commit' ]] \
+                || die 'codex/prod 只能指向 commit'
+            if [[ "${old_sha}" != "${ZERO_SHA}" ]]; then
+                git merge-base --is-ancestor "${old_sha}" "${new_sha}" \
+                    || die 'codex/prod 禁止非快进或强推'
+            fi
+            require_approval "${new_sha}"
+            ;;
+        refs/tags/*)
+            [[ "${old_sha}" == "${ZERO_SHA}" ]] \
+                || die "tag 禁止修改或删除：${ref_name#refs/tags/}"
+            [[ "${new_sha}" != "${ZERO_SHA}" ]] \
+                || die "tag 禁止删除：${ref_name#refs/tags/}"
+            if [[ "${ref_name#refs/tags/}" =~ ^[0-9]{8}T[0-9]{6}Z- ]]; then
+                [[ "$(git cat-file -t "${new_sha}")" == 'tag' ]] \
+                    || die "正式发布 tag 必须是 annotated tag：${ref_name#refs/tags/}"
+                target_commit="$(git rev-parse "${new_sha}^{}")"
+                prod_target="${incoming_prod}"
+                if [[ -z "${prod_target}" || "${prod_target}" == "${ZERO_SHA}" ]]; then
+                    prod_target="$(git rev-parse "${PROTECTED_REF}")"
+                fi
+                git merge-base --is-ancestor "${target_commit}" "${prod_target}" \
+                    || die "正式发布 tag 目标必须进入 codex/prod：${ref_name#refs/tags/}"
+            fi
+            ;;
+    esac
+done <"${INPUT_FILE}"
+
+exit 0

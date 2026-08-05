@@ -15,6 +15,25 @@
 - 生产前端入口：`http://10.99.8.16:28471/`。
 - 不在项目记忆中保存密码、私钥、真实环境变量、临时发布版本号或备份目录。
 
+## 唯一主干与发布归一
+
+- 永久生产主干固定为 `codex/prod`，本地永久检出固定为
+  `/Users/botongwu/Documents/domeye/core-work`。详细合同见
+  [主干开发与发布归一治理规范](docs/主干开发与发布归一治理规范.md)。
+- Worktree 只是本地隔离检出，不是版本或发布身份。普通任务必须使用短生命周期
+  `codex/<task>` 分支和独立 Worktree，任务 Worktree 不得直接作为生产发布来源。
+- `codex/prod` 只能通过服务器端保护 Hook 快进；目标提交必须绑定评审和 CI 证据。
+  正式发布时间戳 tag 必须是 annotated tag，已有 tag 禁止改写或删除。
+- 同一正式发布只从最终提交构建一次；候选、金丝雀和生产必须晋级相同的不可变
+  Backend、Sidecar 和 Frontend 制品。
+- `implemented`、`committed`、`reviewed`、`merged`、`built`、`certified`、
+  `staged`、`deployed` 和 `verified` 是不同状态，不得用 Hook、HTTP 200、Screen、
+  tag 或可见页面越级宣告生产完成。
+- 发布结束必须证明 `core-work HEAD`、`origin/codex/prod`、release tag、源码归档、
+  组件清单、活动指针和实际进程身份一致；任一漂移时不得写成 `verified`。
+- 已整合任务 Worktree 只有在干净、已推送、证据已保留且不被运行时引用时才能逐个
+  退役；`excluded` 或 `abandoned` 工作不得因目录清理而自动合并。
+
 ## 默认开发与验收边界
 
 - 日常开发默认采用“启动 → 查看报错 → 最小修改 → 定向快速测试”的短循环；优先运行受影响测试，不因普通改动扩大到完整发布验收。
@@ -38,6 +57,8 @@
   当前实现依据；确需兼容旧实现时，必须通过任务合同列出的适配器边界。
 - 不得修改 `.codex/TASK.json` 来掩盖已发生的越界；需要扩大范围时，先停止
   当前任务，由用户重新确认合同，再从干净状态重新执行 preflight。
+- 普通任务完成后只能提交评审，不得自行合入 `codex/prod`。跨分支整合、发布归一
+  和紧急修复必须使用独立任务合同，并明确源提交、目标提交、制品身份和回滚边界。
 
 开始前必须确认：
 
