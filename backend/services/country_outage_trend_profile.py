@@ -1269,3 +1269,689 @@ def analyze_trend_profile_v1(profile: Mapping[str, Any]) -> dict[str, Any]:
     result["analysis"] = {"analysis_id": analysis_id, **analysis_without_id}
     result["profile_state"] = "analysis_complete"
     return result
+
+
+TREND_CONTEXT_SCHEMA_VERSION = "country_outage_trend_context_v1"
+TREND_CONTEXT_ALGORITHM_VERSION = "country_outage_trend_context_s3_v1"
+ASN_STATES = (
+    "fully_visible",
+    "partially_visible",
+    "fully_invisible",
+    "unknown",
+)
+ADDRESS_FAMILIES = ("ipv4", "ipv6")
+ACTIVITY_POPULATIONS = (
+    "update_message",
+    "announce_message",
+    "withdraw_message",
+    "resource_record",
+)
+
+
+def _analyzed_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
+    analyzed = analyze_trend_profile_v1(profile)
+    if analyzed["analysis"]["status"] != "complete":
+        _fail(
+            "profile_analysis_incomplete",
+            "analysis.status",
+            "上下文分析要求完整 TrendProfile；数据不足时必须显式降级",
+        )
+    return analyzed
+
+
+def _validated_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
+    """验证画像身份并返回已有或新生成的确定性分析，包括降级结果。"""
+    return analyze_trend_profile_v1(profile)
+
+
+def _shared_snapshot_grid(
+    left: Mapping[str, Any],
+    right: Mapping[str, Any],
+) -> list[str]:
+    mismatches: list[str] = []
+    for key in (
+        "incident_id",
+        "publication_id",
+        "revision",
+        "data_through",
+        "collector_id",
+        "collector_count",
+        "window_start_utc",
+        "window_end_utc",
+    ):
+        if left["snapshot"].get(key) != right["snapshot"].get(key):
+            mismatches.append(f"snapshot.{key}")
+    if left.get("time_grid") != right.get("time_grid"):
+        mismatches.append("time_grid")
+    if left["metric"].get("metric_id") != right["metric"].get("metric_id"):
+        mismatches.append("metric.metric_id")
+    if left["metric"].get("unit") != right["metric"].get("unit"):
+        mismatches.append("metric.unit")
+    return mismatches
+
+
+def compare_address_families_v1(
+    ipv4_profile: Mapping[str, Any],
+    ipv6_profile: Mapping[str, Any],
+) -> dict[str, Any]:
+    """比较同一快照的 IPv4/IPv6 画像，同时保留各自分母。"""
+    ipv4 = _validated_profile(ipv4_profile)
+    ipv6 = _validated_profile(ipv6_profile)
+    mismatches = _shared_snapshot_grid(ipv4, ipv6)
+    if mismatches:
+        _fail(
+            "address_family_identity_conflict",
+            "address_families",
+            "地址族画像快照、时间网格或指标不兼容：" + ", ".join(mismatches),
+        )
+    expected_populations = {
+        "ipv4": "ipv4_fixed_prefix_vp",
+        "ipv6": "ipv6_fixed_prefix_vp",
+    }
+    for family, profile in (("ipv4", ipv4), ("ipv6", ipv6)):
+        if profile["metric"]["statistical_population"] != expected_populations[family]:
+            _fail(
+                "address_family_population_conflict",
+                f"{family}.metric.statistical_population",
+                f"{family} 必须使用独立地址族 Prefix×VP 人口",
+            )
+    family_views = {}
+    for family, profile in (("ipv4", ipv4), ("ipv6", ipv6)):
+        facts = {
+            item["metric"]: item for item in profile["analysis"]["derived_facts"]
+        }
+        family_views[family] = {
+            "profile_id": profile["profile_id"],
+            "analysis_id": profile["analysis"]["analysis_id"],
+            "quality_status": profile["quality"]["status"],
+            "denominator": deepcopy(profile["metric"]["denominator"]),
+            "pattern": deepcopy(profile["analysis"]["pattern"]),
+            "key_points": deepcopy(profile["analysis"]["key_points"]),
+            "phases": deepcopy(profile["analysis"]["phases"]),
+            "end_residual": deepcopy(facts.get("end_residual_from_start")),
+        }
+    denominator_ratio = max(
+        ipv4["metric"]["denominator"]["value"],
+        ipv6["metric"]["denominator"]["value"],
+    ) / min(
+        ipv4["metric"]["denominator"]["value"],
+        ipv6["metric"]["denominator"]["value"],
+    )
+    material = {
+        "context_type": "address_family_comparison",
+        "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+        "ipv4_profile_id": ipv4["profile_id"],
+        "ipv6_profile_id": ipv6["profile_id"],
+        "ipv4_analysis_id": ipv4["analysis"]["analysis_id"],
+        "ipv6_analysis_id": ipv6["analysis"]["analysis_id"],
+    }
+    if (
+        ipv4["analysis"]["status"] != "complete"
+        or ipv6["analysis"]["status"] != "complete"
+    ):
+        return {
+            "schema_version": TREND_CONTEXT_SCHEMA_VERSION,
+            "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+            "context_type": "address_family_comparison",
+            "context_id": f"trend_context_v1_{_digest(material)[:32]}",
+            "snapshot": deepcopy(ipv4["snapshot"]),
+            "time_grid": deepcopy(ipv4["time_grid"]),
+            "families": family_views,
+            "comparison": {
+                "status": "insufficient_data",
+                "denominator_ratio": _rounded(denominator_ratio),
+                "divergence_slots": [],
+                "maximum_divergence": None,
+                "extreme_alignment": None,
+                "warnings": ["address_family_quality_insufficient"],
+                "limitations": [
+                    "non_observed_slots_prevent_address_family_comparison",
+                    "different_denominators_are_not_equal_absolute_impact",
+                    "observed_difference_has_no_causal_interpretation",
+                ],
+            },
+        }
+    divergence_slots = []
+    for index, (v4_slot, v6_slot) in enumerate(zip(ipv4["slots"], ipv6["slots"])):
+        v4_ratio = _ratio_value(v4_slot["value"], ipv4["metric"])
+        v6_ratio = _ratio_value(v6_slot["value"], ipv6["metric"])
+        divergence_slots.append(
+            {
+                "slot_index": index,
+                "observed_at_utc": v4_slot["observed_at_utc"],
+                "ipv4_value": v4_slot["value"],
+                "ipv4_ratio": _rounded(v4_ratio),
+                "ipv4_denominator": ipv4["metric"]["denominator"]["value"],
+                "ipv6_value": v6_slot["value"],
+                "ipv6_ratio": _rounded(v6_ratio),
+                "ipv6_denominator": ipv6["metric"]["denominator"]["value"],
+                "ipv4_minus_ipv6_percentage_points": _rounded(
+                    (v4_ratio - v6_ratio) * 100
+                ),
+                "source_refs": [v4_slot["source_ref"], v6_slot["source_ref"]],
+            }
+        )
+    maximum_divergence = max(
+        divergence_slots,
+        key=lambda item: (
+            abs(item["ipv4_minus_ipv6_percentage_points"]),
+            -item["slot_index"],
+        ),
+    )
+    v4_extreme = next(
+        item
+        for item in ipv4["analysis"]["key_points"]
+        if item["kind"] == "extreme_minimum"
+    )
+    v6_extreme = next(
+        item
+        for item in ipv6["analysis"]["key_points"]
+        if item["kind"] == "extreme_minimum"
+    )
+    delta_slots = v6_extreme["slot_index"] - v4_extreme["slot_index"]
+    if delta_slots == 0:
+        relation = "same_slot"
+    elif abs(delta_slots) == 1:
+        relation = "adjacent_slot"
+    else:
+        relation = "lagged_slot"
+    warnings = []
+    if denominator_ratio >= 10:
+        warnings.append("address_family_denominator_asymmetry")
+    return {
+        "schema_version": TREND_CONTEXT_SCHEMA_VERSION,
+        "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+        "context_type": "address_family_comparison",
+        "context_id": f"trend_context_v1_{_digest(material)[:32]}",
+        "snapshot": deepcopy(ipv4["snapshot"]),
+        "time_grid": deepcopy(ipv4["time_grid"]),
+        "families": family_views,
+        "comparison": {
+            "status": "complete",
+            "denominator_ratio": _rounded(denominator_ratio),
+            "divergence_slots": divergence_slots,
+            "maximum_divergence": deepcopy(maximum_divergence),
+            "extreme_alignment": {
+                "ipv4_slot_index": v4_extreme["slot_index"],
+                "ipv6_slot_index": v6_extreme["slot_index"],
+                "delta_slots_ipv6_minus_ipv4": delta_slots,
+                "relation": relation,
+            },
+            "warnings": warnings,
+            "limitations": [
+                "different_denominators_are_not_equal_absolute_impact",
+                "observed_difference_has_no_causal_interpretation",
+                "window_outside_state_unknown",
+            ],
+        },
+    }
+
+
+def _normalize_asn_rows(
+    profile: Mapping[str, Any],
+    rows: Any,
+) -> list[dict[str, Any]]:
+    if not isinstance(rows, list) or not rows:
+        _fail("invalid_asn_rows", "asn_rows", "ASN 行必须是非空数组")
+    expected_count = profile["time_grid"]["expected_slot_count"]
+    seen: set[tuple[int, str]] = set()
+    normalized = []
+    for row_index, raw_row in enumerate(rows):
+        field = f"asn_rows[{row_index}]"
+        row = _mapping(raw_row, field)
+        asn = _integer(row.get("asn"), f"{field}.asn", minimum=1)
+        family = _string(row.get("address_family"), f"{field}.address_family")
+        if family not in ADDRESS_FAMILIES:
+            _fail("invalid_address_family", f"{field}.address_family", "地址族必须是 ipv4 或 ipv6")
+        key = (asn, family)
+        if key in seen:
+            _fail("duplicate_asn_family", field, "ASN 与地址族组合不得重复")
+        seen.add(key)
+        baseline = _integer(
+            row.get("baseline_prefix_vp_count"),
+            f"{field}.baseline_prefix_vp_count",
+            minimum=1,
+        )
+        slots = row.get("slots")
+        if not isinstance(slots, list) or len(slots) != expected_count:
+            _fail("asn_slot_count_conflict", f"{field}.slots", "ASN 槽数必须与 TrendProfile 一致")
+        normalized_slots = []
+        for slot_index, raw_slot in enumerate(slots):
+            slot_field = f"{field}.slots[{slot_index}]"
+            slot = _mapping(raw_slot, slot_field)
+            if _integer(slot.get("index"), f"{slot_field}.index", minimum=0) != slot_index:
+                _fail("asn_slot_index_conflict", f"{slot_field}.index", "ASN 槽索引不连续")
+            state = _string(slot.get("state"), f"{slot_field}.state")
+            if state not in ASN_STATES:
+                _fail("invalid_asn_state", f"{slot_field}.state", f"不支持的 ASN 状态：{state}")
+            normalized_slots.append(
+                {
+                    "index": slot_index,
+                    "state": state,
+                    "source_ref": _string(slot.get("source_ref"), f"{slot_field}.source_ref"),
+                }
+            )
+        normalized.append(
+            {
+                "asn": asn,
+                "address_family": family,
+                "baseline_prefix_vp_count": baseline,
+                "slots": normalized_slots,
+            }
+        )
+    return sorted(normalized, key=lambda item: (item["asn"], item["address_family"]))
+
+
+def _aggregate_asn_state(states: Sequence[str]) -> str:
+    if any(state == "unknown" for state in states):
+        return "unknown"
+    if all(state == "fully_visible" for state in states):
+        return "fully_visible"
+    if all(state == "fully_invisible" for state in states):
+        return "fully_invisible"
+    return "partially_visible"
+
+
+def _longest_run(states: Sequence[str], target: str) -> int:
+    longest = current = 0
+    for state in states:
+        if state == target:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _longest_run_in(states: Sequence[str], targets: set[str]) -> int:
+    longest = current = 0
+    for state in states:
+        if state in targets:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _asn_view(
+    profile: Mapping[str, Any],
+    asn: int,
+    rows: Sequence[Mapping[str, Any]],
+    sample_indices: Sequence[int],
+) -> dict[str, Any]:
+    family_views = {}
+    for row in rows:
+        states = [slot["state"] for slot in row["slots"]]
+        family_views[row["address_family"]] = {
+            "baseline_prefix_vp_count": row["baseline_prefix_vp_count"],
+            "start_state": states[0],
+            "end_state": states[-1],
+            "state_slot_counts": {
+                state: states.count(state) for state in ASN_STATES
+            },
+            "longest_runs": {
+                state: _longest_run(states, state) for state in ASN_STATES
+            },
+            "sampled_states": [
+                {"slot_index": index, "state": states[index]}
+                for index in sample_indices
+            ],
+            "source_refs": [slot["source_ref"] for slot in row["slots"]],
+        }
+    aggregate_states = [
+        _aggregate_asn_state([row["slots"][index]["state"] for row in rows])
+        for index in range(profile["time_grid"]["expected_slot_count"])
+    ]
+    transitions = [
+        {
+            "from_slot_index": index - 1,
+            "to_slot_index": index,
+            "from_state": aggregate_states[index - 1],
+            "to_state": aggregate_states[index],
+        }
+        for index in range(1, len(aggregate_states))
+        if aggregate_states[index] != aggregate_states[index - 1]
+    ]
+    return {
+        "asn": asn,
+        "baseline_prefix_vp_count": sum(
+            row["baseline_prefix_vp_count"] for row in rows
+        ),
+        "start_state": aggregate_states[0],
+        "end_state": aggregate_states[-1],
+        "persistent_not_at_start": aggregate_states[-1] != aggregate_states[0],
+        "state_slot_counts": {
+            state: aggregate_states.count(state) for state in ASN_STATES
+        },
+        "longest_runs": {
+            state: _longest_run(aggregate_states, state) for state in ASN_STATES
+        },
+        "longest_observed_non_fully_visible_run": _longest_run_in(
+            aggregate_states,
+            {"partially_visible", "fully_invisible"},
+        ),
+        "sampled_states": [
+            {"slot_index": index, "state": aggregate_states[index]}
+            for index in sample_indices
+        ],
+        "transitions": transitions,
+        "address_families": family_views,
+    }
+
+
+def compile_asn_state_context_v1(
+    profile: Mapping[str, Any],
+    asn_rows: Any,
+) -> dict[str, Any]:
+    """生成 ASN 四状态迁移、持续性和观测规模视图；不生成影响分数。"""
+    analyzed = _analyzed_profile(profile)
+    rows = _normalize_asn_rows(analyzed, asn_rows)
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(row["asn"], []).append(row)
+    phase_ends = [phase["end_slot_index"] for phase in analyzed["analysis"]["phases"]]
+    sample_indices = sorted(
+        set([0, analyzed["time_grid"]["expected_slot_count"] - 1, *phase_ends])
+    )
+    asn_views = [
+        _asn_view(analyzed, asn, family_rows, sample_indices)
+        for asn, family_rows in sorted(grouped.items())
+    ]
+    slot_population = []
+    for index in range(analyzed["time_grid"]["expected_slot_count"]):
+        counts = Counter(
+            next(
+                sample["state"]
+                for sample in asn_view["sampled_states"]
+                if sample["slot_index"] == index
+            )
+            if index in sample_indices
+            else _aggregate_asn_state(
+                [
+                    row["slots"][index]["state"]
+                    for row in rows
+                    if row["asn"] == asn_view["asn"]
+                ]
+            )
+            for asn_view in asn_views
+        )
+        slot_population.append(
+            {
+                "slot_index": index,
+                "state_counts": {state: counts.get(state, 0) for state in ASN_STATES},
+                "total_asn_count": len(asn_views),
+            }
+        )
+    transition_matrices = []
+    for start_index, end_index in zip(sample_indices, sample_indices[1:]):
+        cells = Counter()
+        for asn_view in asn_views:
+            states_by_index = {
+                sample["slot_index"]: sample["state"]
+                for sample in asn_view["sampled_states"]
+            }
+            cells[(states_by_index[start_index], states_by_index[end_index])] += 1
+        transition_matrices.append(
+            {
+                "from_slot_index": start_index,
+                "to_slot_index": end_index,
+                "cells": [
+                    {
+                        "from_state": from_state,
+                        "to_state": to_state,
+                        "asn_count": cells.get((from_state, to_state), 0),
+                    }
+                    for from_state in ASN_STATES
+                    for to_state in ASN_STATES
+                ],
+                "total_asn_count": len(asn_views),
+            }
+        )
+    scale_order = sorted(
+        asn_views,
+        key=lambda item: (-item["baseline_prefix_vp_count"], item["asn"]),
+    )
+    persistence_order = sorted(
+        asn_views,
+        key=lambda item: (
+            -item["longest_observed_non_fully_visible_run"],
+            -item["baseline_prefix_vp_count"],
+            item["asn"],
+        ),
+    )
+    material = {
+        "context_type": "asn_state_context",
+        "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+        "profile_id": analyzed["profile_id"],
+        "analysis_id": analyzed["analysis"]["analysis_id"],
+        "rows": rows,
+    }
+    return {
+        "schema_version": TREND_CONTEXT_SCHEMA_VERSION,
+        "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+        "context_type": "asn_state_context",
+        "context_id": f"trend_context_v1_{_digest(material)[:32]}",
+        "profile_id": analyzed["profile_id"],
+        "analysis_id": analyzed["analysis"]["analysis_id"],
+        "snapshot": deepcopy(analyzed["snapshot"]),
+        "time_grid": deepcopy(analyzed["time_grid"]),
+        "asn_states": list(ASN_STATES),
+        "sample_indices": sample_indices,
+        "asn_count": len(asn_views),
+        "baseline_prefix_vp_count": sum(
+            item["baseline_prefix_vp_count"] for item in asn_views
+        ),
+        "slot_population": slot_population,
+        "transition_matrices": transition_matrices,
+        "asns": asn_views,
+        "priority_views": {
+            "by_observation_scale": [
+                {
+                    "asn": item["asn"],
+                    "baseline_prefix_vp_count": item["baseline_prefix_vp_count"],
+                    "longest_observed_non_fully_visible_run": item[
+                        "longest_observed_non_fully_visible_run"
+                    ],
+                }
+                for item in scale_order
+            ],
+            "by_persistence": [
+                {
+                    "asn": item["asn"],
+                    "baseline_prefix_vp_count": item["baseline_prefix_vp_count"],
+                    "longest_observed_non_fully_visible_run": item[
+                        "longest_observed_non_fully_visible_run"
+                    ],
+                }
+                for item in persistence_order
+            ],
+            "single_impact_score": None,
+        },
+        "limitations": [
+            "asn_order_is_not_user_or_service_impact",
+            "asn_order_is_not_cause_responsibility_or_propagation",
+            "unknown_is_independent_population_state",
+        ],
+    }
+
+
+def _normalize_activity_tracks(
+    profile: Mapping[str, Any],
+    tracks: Any,
+) -> list[dict[str, Any]]:
+    if not isinstance(tracks, list) or not tracks:
+        _fail("invalid_activity_tracks", "tracks", "活动轨道必须是非空数组")
+    expected_count = profile["time_grid"]["expected_slot_count"]
+    seen: set[str] = set()
+    normalized = []
+    for track_index, raw_track in enumerate(tracks):
+        field = f"tracks[{track_index}]"
+        track = _mapping(raw_track, field)
+        track_id = _string(track.get("track_id"), f"{field}.track_id")
+        if track_id in seen:
+            _fail("duplicate_track", f"{field}.track_id", "活动轨道 ID 不得重复")
+        seen.add(track_id)
+        population = _string(
+            track.get("statistical_population"),
+            f"{field}.statistical_population",
+        )
+        if population not in ACTIVITY_POPULATIONS:
+            _fail("invalid_activity_population", f"{field}.statistical_population", "活动轨道统计人口不支持")
+        if _string(track.get("unit"), f"{field}.unit") != "count":
+            _fail("invalid_activity_unit", f"{field}.unit", "活动轨道单位必须为 count")
+        slots = track.get("slots")
+        if not isinstance(slots, list) or len(slots) != expected_count:
+            _fail("activity_slot_count_conflict", f"{field}.slots", "活动轨道槽数必须与 TrendProfile 一致")
+        normalized_slots = []
+        for slot_index, raw_slot in enumerate(slots):
+            slot_field = f"{field}.slots[{slot_index}]"
+            slot = _mapping(raw_slot, slot_field)
+            if _integer(slot.get("index"), f"{slot_field}.index", minimum=0) != slot_index:
+                _fail("activity_slot_index_conflict", f"{slot_field}.index", "活动槽索引不连续")
+            state = _string(slot.get("state"), f"{slot_field}.state")
+            if state not in {"observed", "missing", "unknown", "source_unavailable", "processing_gap", "parse_failed", "not_observed"}:
+                _fail("invalid_activity_slot_state", f"{slot_field}.state", "活动槽状态不支持")
+            value = slot.get("value")
+            if state == "observed":
+                numeric = _integer(value, f"{slot_field}.value", minimum=0)
+            else:
+                if value is not None:
+                    _fail("non_observed_activity_value", f"{slot_field}.value", "非观测活动槽必须为 null")
+                numeric = None
+            normalized_slots.append(
+                {
+                    "index": slot_index,
+                    "state": state,
+                    "value": numeric,
+                    "source_ref": _string(slot.get("source_ref"), f"{slot_field}.source_ref"),
+                }
+            )
+        normalized.append(
+            {
+                "track_id": track_id,
+                "metric_id": _string(track.get("metric_id"), f"{field}.metric_id"),
+                "unit": "count",
+                "statistical_population": population,
+                "slots": normalized_slots,
+            }
+        )
+    return normalized
+
+
+def align_activity_context_v1(
+    profile: Mapping[str, Any],
+    tracks: Any,
+) -> dict[str, Any]:
+    """把不同人口活动轨道与状态槽对齐；只输出时间关系。"""
+    analyzed = _analyzed_profile(profile)
+    normalized_tracks = _normalize_activity_tracks(analyzed, tracks)
+    atomic_by_index = {
+        item["slot_index"]: item for item in analyzed["analysis"]["atomic_states"]
+    }
+    phase_by_index = {
+        index: phase
+        for phase in analyzed["analysis"]["phases"]
+        for index in range(phase["start_slot_index"], phase["end_slot_index"] + 1)
+    }
+    aligned_slots = []
+    for index in range(analyzed["time_grid"]["expected_slot_count"]):
+        aligned_slots.append(
+            {
+                "slot_index": index,
+                "observed_at_utc": analyzed["slots"][index]["observed_at_utc"],
+                "state_atomic_id": atomic_by_index[index]["atomic_id"],
+                "state_phase_id": phase_by_index[index]["phase_id"],
+                "state": atomic_by_index[index]["state"],
+                "activities": [
+                    {
+                        "track_id": track["track_id"],
+                        "state": track["slots"][index]["state"],
+                        "value": track["slots"][index]["value"],
+                        "unit": track["unit"],
+                        "statistical_population": track["statistical_population"],
+                        "source_ref": track["slots"][index]["source_ref"],
+                    }
+                    for track in normalized_tracks
+                ],
+            }
+        )
+    key_points = [
+        point
+        for point in analyzed["analysis"]["key_points"]
+        if point["kind"] in {
+            "extreme_minimum",
+            "largest_single_slot_drop_end",
+            "largest_single_slot_recovery_end",
+        }
+    ]
+    temporal_relations = []
+    for track in normalized_tracks:
+        observed = [slot for slot in track["slots"] if slot["state"] == "observed"]
+        if not observed:
+            extrema_index = None
+            extrema_value = None
+        else:
+            extrema = max(observed, key=lambda slot: (slot["value"], -slot["index"]))
+            extrema_index = extrema["index"]
+            extrema_value = extrema["value"]
+        for point in key_points:
+            if extrema_index is None:
+                offset = None
+                relation = "unavailable"
+                direction = "unknown"
+            else:
+                offset = extrema_index - point["slot_index"]
+                if offset == 0:
+                    relation = "same_slot"
+                    direction = "same_slot"
+                elif abs(offset) == 1:
+                    relation = "adjacent_slot"
+                    direction = "activity_after" if offset > 0 else "activity_before"
+                else:
+                    relation = "lagged_slot"
+                    direction = "activity_after" if offset > 0 else "activity_before"
+            temporal_relations.append(
+                {
+                    "track_id": track["track_id"],
+                    "track_metric_id": track["metric_id"],
+                    "track_statistical_population": track["statistical_population"],
+                    "activity_extrema_slot_index": extrema_index,
+                    "activity_extrema_value": extrema_value,
+                    "state_point_id": point["point_id"],
+                    "state_point_kind": point["kind"],
+                    "state_point_slot_index": point["slot_index"],
+                    "offset_slots_activity_minus_state": offset,
+                    "relation": relation,
+                    "direction": direction,
+                    "causal_interpretation": None,
+                }
+            )
+    material = {
+        "context_type": "activity_alignment",
+        "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+        "profile_id": analyzed["profile_id"],
+        "analysis_id": analyzed["analysis"]["analysis_id"],
+        "tracks": normalized_tracks,
+    }
+    return {
+        "schema_version": TREND_CONTEXT_SCHEMA_VERSION,
+        "algorithm_version": TREND_CONTEXT_ALGORITHM_VERSION,
+        "context_type": "activity_alignment",
+        "context_id": f"trend_context_v1_{_digest(material)[:32]}",
+        "profile_id": analyzed["profile_id"],
+        "analysis_id": analyzed["analysis"]["analysis_id"],
+        "snapshot": deepcopy(analyzed["snapshot"]),
+        "time_grid": deepcopy(analyzed["time_grid"]),
+        "tracks": normalized_tracks,
+        "aligned_slots": aligned_slots,
+        "temporal_relations": temporal_relations,
+        "cross_population_arithmetic_performed": False,
+        "common_impact_score": None,
+        "causal_claim": None,
+        "limitations": [
+            "same_adjacent_and_lagged_slots_are_time_relations_only",
+            "different_statistical_populations_are_not_added_or_subtracted",
+            "no_cause_propagation_or_root_cause_claim",
+        ],
+    }

@@ -23,6 +23,7 @@ STAGE_VERIFIER_PATHS = {
     "S0": REPOSITORY_ROOT / "dev" / "verify_country_outage_trend_analysis_s0.py",
     "S1": REPOSITORY_ROOT / "dev" / "verify_country_outage_trend_analysis_s1.py",
     "S2": REPOSITORY_ROOT / "dev" / "verify_country_outage_trend_analysis_s2.py",
+    "S3": REPOSITORY_ROOT / "dev" / "verify_country_outage_trend_analysis_s3.py",
 }
 
 STAGE_IDS = tuple(f"S{index}" for index in range(7))

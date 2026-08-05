@@ -1,0 +1,83 @@
+{
+  "schema_version": "country_outage_trend_analysis_s3_acceptance_v1",
+  "stage": "S3",
+  "status": "deterministic_context_candidate_not_end_to_end_evidence",
+  "address_family_case": {
+    "ipv4": {"curve_id": "CURVE-01", "scale": 10, "statistical_population": "ipv4_fixed_prefix_vp"},
+    "ipv6": {"curve_id": "CURVE-02", "scale": 1, "statistical_population": "ipv6_fixed_prefix_vp"},
+    "expected": {
+      "ipv4_denominator": 1000,
+      "ipv6_denominator": 100,
+      "denominator_ratio": 10,
+      "warning": "address_family_denominator_asymmetry",
+      "maximum_divergence_slot_index": 2,
+      "maximum_divergence_percentage_points": 17,
+      "extreme_relation": "same_slot",
+      "ipv4_pattern": "single_wave_partial_rebound",
+      "ipv6_pattern": "multi_wave"
+    }
+  },
+  "asn_case": {
+    "profile_curve_id": "CURVE-01",
+    "rows": [
+      {"asn": 100, "address_family": "ipv4", "baseline_prefix_vp_count": 500, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible"]},
+      {"asn": 100, "address_family": "ipv6", "baseline_prefix_vp_count": 50, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible"]},
+      {"asn": 200, "address_family": "ipv4", "baseline_prefix_vp_count": 200, "states": ["fully_visible", "fully_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible", "partially_visible"]},
+      {"asn": 200, "address_family": "ipv6", "baseline_prefix_vp_count": 20, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible"]},
+      {"asn": 300, "address_family": "ipv4", "baseline_prefix_vp_count": 100, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible"]},
+      {"asn": 300, "address_family": "ipv6", "baseline_prefix_vp_count": 10, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible", "fully_invisible"]},
+      {"asn": 400, "address_family": "ipv4", "baseline_prefix_vp_count": 50, "states": ["unknown", "unknown", "unknown", "unknown", "unknown", "unknown", "unknown", "unknown", "unknown", "unknown", "unknown", "unknown"]},
+      {"asn": 400, "address_family": "ipv6", "baseline_prefix_vp_count": 5, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible"]},
+      {"asn": 500, "address_family": "ipv4", "baseline_prefix_vp_count": 30, "states": ["fully_visible", "fully_visible", "partially_visible", "partially_visible", "partially_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible"]},
+      {"asn": 500, "address_family": "ipv6", "baseline_prefix_vp_count": 3, "states": ["fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible", "fully_visible"]}
+    ],
+    "expected": {
+      "asn_count": 5,
+      "baseline_prefix_vp_count": 968,
+      "unknown_count_each_slot": 1,
+      "persistent_not_at_start_asns": [200, 300],
+      "end_equals_start_asns": [100, 400, 500],
+      "scale_order": [100, 200, 300, 400, 500],
+      "persistence_order": [200, 300, 500, 100, 400],
+      "end_state_counts": {"fully_visible": 2, "partially_visible": 1, "fully_invisible": 1, "unknown": 1},
+      "single_impact_score": null
+    }
+  },
+  "activity_case": {
+    "profile_curve_id": "CURVE-01",
+    "tracks": [
+      {"track_id": "updates", "metric_id": "update_count", "statistical_population": "update_message", "values": [10, 12, 100, 80, 50, 40, 30, 35, 90, 60, 20, 10]},
+      {"track_id": "announces", "metric_id": "announce_count", "statistical_population": "announce_message", "values": [8, 10, 80, 60, 35, 20, 15, 20, 70, 50, 15, 8]},
+      {"track_id": "withdraws", "metric_id": "withdraw_count", "statistical_population": "withdraw_message", "values": [2, 2, 20, 21, 15, 20, 15, 15, 20, 10, 5, 2]},
+      {"track_id": "resources", "metric_id": "resource_count", "statistical_population": "resource_record", "values": [1, 1, 1, 2, 10, 20, 30, 10, 5, 3, 2, 1]}
+    ],
+    "expected": {
+      "track_count": 4,
+      "aligned_slot_count": 12,
+      "relations_present": ["same_slot", "adjacent_slot", "lagged_slot"],
+      "cross_population_arithmetic_performed": false,
+      "common_impact_score": null,
+      "causal_claim": null
+    }
+  },
+  "failure_cases": [
+    {"id": "FAIL-S3-01", "mutation": "ipv6_revision", "expected_code": "address_family_identity_conflict"},
+    {"id": "FAIL-S3-02", "mutation": "ipv6_population", "expected_code": "address_family_population_conflict"},
+    {"id": "FAIL-S3-03", "mutation": "duplicate_asn_family", "expected_code": "duplicate_asn_family"},
+    {"id": "FAIL-S3-04", "mutation": "remove_asn_slot", "expected_code": "asn_slot_count_conflict"},
+    {"id": "FAIL-S3-05", "mutation": "invalid_asn_state", "expected_code": "invalid_asn_state"},
+    {"id": "FAIL-S3-06", "mutation": "duplicate_track", "expected_code": "duplicate_track"},
+    {"id": "FAIL-S3-07", "mutation": "activity_population", "expected_code": "invalid_activity_population"},
+    {"id": "FAIL-S3-08", "mutation": "non_observed_activity_value", "expected_code": "non_observed_activity_value"}
+  ],
+  "semantic_invariants": {
+    "address_family_ratios_always_show_denominators": true,
+    "small_family_is_not_equal_absolute_scale": true,
+    "unknown_closes_every_asn_population": true,
+    "unknown_is_not_merged_into_visible_or_partial": true,
+    "priority_has_scale_and_persistence_views_without_score": true,
+    "activity_tracks_keep_distinct_populations": true,
+    "time_relation_is_not_causality": true,
+    "asn_order_is_not_cause_responsibility_or_propagation": true
+  }
+}
