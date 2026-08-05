@@ -188,6 +188,18 @@ function currentPolicy(
   }
 }
 
+function zeroToolPolicy(
+  candidateResourceSha256 = 'b'.repeat(64),
+): CandidateActivityBudgetPolicy {
+  const maximumSingleReportCostCny = 0.21676032
+  return {
+    ...policy(candidateResourceSha256),
+    maximumSingleReportCostCny,
+    maximumCertificationCostCny:
+      maximumSingleReportCostCny * 2,
+  }
+}
+
 function initializeLedger(
   repositoryRoot: string,
   selectedPolicy = policy(),
@@ -453,6 +465,66 @@ test('旧八条前缀后的 sequence 9 不能继续使用旧 5.7835008 预留', 
       inspectCandidateActivityLedger({
         repositoryRoot,
         policy: currentPolicy(FROZEN_CANDIDATE_RESOURCE_SHA256),
+      }),
+    (error: unknown) =>
+      error instanceof CandidateActivityLedgerError &&
+      error.code === 'activity_ledger_invalid',
+  )
+})
+
+test('零工具候选可只读续接此前 0.5419008 历史预留且新预留使用更低包络', () => {
+  const repositoryRoot = root('zero-tool-policy-transition')
+  seedFrozenLegacyPrefix(repositoryRoot)
+  const previous = openCandidateActivityLedger({
+    repositoryRoot,
+    policy: currentPolicy(FROZEN_CANDIDATE_RESOURCE_SHA256),
+  })
+  const previousReservation = previous.reserve(
+    1,
+    new Date('2026-08-05T12:16:08.212Z'),
+  )
+  previous.settle(previousReservation, {
+    outcome: 'rejected',
+    recordedAt: new Date('2026-08-05T12:16:45.181Z'),
+    formalRejectionCode: 'provider_request_limit_exceeded',
+  })
+  previous.close()
+
+  const nextPolicy = zeroToolPolicy()
+  const before = inspectCandidateActivityLedger({
+    repositoryRoot,
+    policy: nextPolicy,
+  })
+  assert.equal(before.recordCount, 10)
+  assert.equal(before.openReservations, 0)
+  assert.ok(
+    Math.abs(before.committedCostCny - 12.26466976) < 1e-12,
+  )
+
+  const current = openCandidateActivityLedger({
+    repositoryRoot,
+    policy: nextPolicy,
+  })
+  const currentReservation = current.reserve(
+    1,
+    new Date('2026-08-05T13:20:00.000Z'),
+  )
+  assert.equal(currentReservation.reservedCostCny, 0.21676032)
+  current.close()
+})
+
+test('候选切换时未知历史候选预算不能借哈希链自报成本', () => {
+  const repositoryRoot = root('unknown-policy-transition')
+  const oldPolicy = currentPolicy('c'.repeat(64))
+  const oldLedger = initializeLedger(repositoryRoot, oldPolicy)
+  oldLedger.reserve(1, new Date('2026-08-05T12:00:00.000Z'))
+  oldLedger.close()
+
+  assert.throws(
+    () =>
+      inspectCandidateActivityLedger({
+        repositoryRoot,
+        policy: zeroToolPolicy(),
       }),
     (error: unknown) =>
       error instanceof CandidateActivityLedgerError &&

@@ -1,6 +1,6 @@
 # 国家中断报告 Agent DeepSeek 模型认证运行说明
 
-状态更新时间：2026-07-30（2.2 编排迁移后）
+状态更新时间：2026-08-05（零工具渲染合同重认证后）
 
 ## 1. 当前结论
 
@@ -9,43 +9,44 @@
 profile，不表示已经部署到生产。
 
 这次五报告认证的证明范围是**核心模型组合**：DeepSeek 模型与 adapter、Pi、
-三个只读工具、Skill/提示词/报告规范/validator、RRC25 事实上下文，以及固定
-timeout/retry/token 上限。它不证明
+宿主冻结的 RRC25 语言槽计划、Skill/提示词/报告规范/validator、RRC25 事实上下文，
+以及固定 timeout/retry/token 上限。正式叙述会话不注册任何工具，DeepSeek 只做
+受控语言槽渲染。它不证明
 `country-outage-external-evidence-pack-v1`、Evidence Gateway、来源适配器、
 网页读取、外部材料解析或外部附录已经可用。
 
 认证证据：
 
 ```text
-evidence:model-certification:b50f247c7b1322df6d05afa45c5c1078b58349329d9f27ec5800bbfa5770a1d4
+evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e
 ```
 
-认证于 `2026-07-30T09:19:12.493Z` 开始，`09:19:34.010Z` 完成。两份代表性
-伊朗 RRC25 报告和三个认证专用边界场景全部通过；每份报告恰好使用两次 provider
-请求，retry 为 0，均生成完整 ReportDocument、Markdown 和 PDF，并通过
+认证于 `2026-08-05T13:14:48.855Z` 开始，`13:15:03.431Z` 完成。两份代表性
+伊朗 RRC25 报告和三个认证专用边界场景全部通过；每份报告只使用一次 provider
+请求，retry 为 0，工具执行、tool call 和 tool result 全部为 0，均生成完整
+ReportDocument、Markdown 和 PDF，并通过
 `country_outage_report_validator_rules_v5`。五份报告实际保守成本合计
-`0.08085616 CNY`。
+`0.01747312 CNY`。
 
 供应方没有提供不可变权重 revision，因此 `deepseek-v4-flash` 仍按可变别名管理。
-当前认证有效至 `2026-08-06T09:19:34.010Z`，认证场景集为
+当前认证有效至 `2026-08-12T13:15:03.431Z`，认证场景集为
 `country-outage-rrc25-legal-scenarios-v2`，输入范围为
 `legal_country_outage_rrc25_v1`；到期或正式路径变化后必须重新认证。
 
 机械晋级后的注册表 SHA-256 为：
 
 ```text
-30a5743019a19ace272a70c35f3bfbffb72286d33b3d698f526c6af8739e4ff6
+c21ec4b23d06a3e81135e1288d292151b63a678f08570d40ce37868338219288
 ```
 
 Pi `0.82.1` 的 `responseModel` vendor patch 仍按批准摘要
 `5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b`
 核验；正式路径继续关闭 PackageManager、ModelResolver、`models.json` 刷新和
-外部 glob，只加载固定 Skill 与三个只读工具。
+外部 glob，只加载固定 Skill；三个只读调查工具保留为未来受限调查能力，但不注册到
+当前正式叙述会话。
 
-预算没有重置、删改或回算。`2026-07-30T09:40:39.213Z` 的模型候选只读
-readiness 为
-`ready=true`、`blockers=[]`；账本共 34 条记录，累计保守承诺
-`14.23965984 CNY`，剩余 `5.76034016 CNY`，未结预留为 0，历史用量状态为
+预算没有重置、删改或回算。认证完成后的活动账本共 48 条记录，累计保守承诺
+`15.34093456 CNY`，剩余 `4.65906544 CNY`，未结预留为 0，历史用量状态为
 `resolved`。该检查明确记录 `credentialsRead=false`、
 `networkAccessed=false`；它不是外部证据 capability readiness。
 

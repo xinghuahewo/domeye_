@@ -6,11 +6,13 @@
 
 本能力只覆盖国家中断报告正式 Pi 运行审计，不改变 Domeye 数据、不修改 `backend/core`，也不扩大 Agent 的工具、路径或网络能力。
 
-2026-08-05 起的待认证候选把正式叙述层收敛为零工具：成功记录必须满足
+2026-08-05 完成认证的当前候选把正式叙述层收敛为零工具：成功记录必须满足
 `tools.executedNames=[]`、`executionCount=0`、`usage.toolCalls=0` 和
 `usage.toolResults=0`，结构化输出机制为
-`deepseek-json-object-no-tools-v2`。下文 2026-07-30 的 profile 旅程是旧工具合同
-下的历史证据，只能证明当时版本，不能作为当前零工具候选已经认证或部署的依据。
+`deepseek-json-object-no-tools-v2`。当前认证 evidence 为
+`evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e`，
+注册表版本为 `deepseek-v4-flash-certified-v2`。下文 2026-07-30 的 profile 旅程
+是旧工具合同下的历史证据，只能证明当时版本，不能作为当前零工具版本已部署的依据。
 
 在 2.2 核心验收口径中，Pi 审计固定属于 `core-v1`，外部证据能力为
 `disabled/not_configured`。核心 Agent 不直接联网，外部 Provider、Evidence

@@ -6,7 +6,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const EXPECTED_REUSE_ANCHOR_SHA256 =
-  '2a19f66ba2493aa9c123f73082a37283f27f9aac6c38e953ca6a2105db9f6844'
+  'e131c1052db44c6789f818d0468956dd7f7a34161ce87cfbfc7529750a8eede6'
 const EXPECTED_REUSE_GROUP_IDS = [
   'deepseek_model_and_api_adapter',
   'pi_0_82_1_dependency_identity',
@@ -149,25 +149,27 @@ if (
   reuseAnchor.schemaVersion !==
     'country_outage_model_certification_reuse_identity_v1' ||
   reuseAnchor.identityId !==
-    'deepseek-v4-flash-pi-0.82.1-a3-v6-reuse-v1' ||
+    'deepseek-v4-flash-pi-0.82.1-zero-tools-certified-v2' ||
   reuseAnchor.status !== 'frozen' ||
   reuseAnchor.baseline?.manifestPath !==
-    'artifacts/country-outage-agent/a3-v6-current-source-20260730T165806+0800/source-end-manifest.json' ||
+    'artifacts/country-outage-agent/a4-model-certification/evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e/manifest.json' ||
   reuseAnchor.baseline?.manifestAlgorithm !==
-    'sha256(path\\0bytes\\0sha256\\n, sorted)' ||
+    'sha256(file bytes)' ||
   reuseAnchor.baseline?.manifestCombinedSha256 !==
-    '983fb7034a9f20abd1ad8f557eb101cef7b3e836002f510008289ce0741e3c45' ||
+    'a728306c7f150b6d0968cb3fa883fc63c798950140773a37c7c6c61d9bbc9c6f' ||
   reuseAnchor.certifiedModel?.profileId !==
     'deepseek-v4-flash-pi-0.82.1-v1' ||
   reuseAnchor.certifiedModel?.registryVersion !==
-    'deepseek-v4-flash-certified-v1' ||
+    'deepseek-v4-flash-certified-v2' ||
   reuseAnchor.certifiedModel?.certificationEvidenceId !==
-    'evidence:model-certification:b50f247c7b1322df6d05afa45c5c1078b58349329d9f27ec5800bbfa5770a1d4' ||
+    'evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e' ||
+  reuseAnchor.certifiedModel?.candidateResourceSha256 !==
+    '7bccc7ab52cd555fb77c615162d4ca3f3f6af0dee18b418adf7f5181ce330d1a' ||
   reuseAnchor.certifiedModel?.provider !== 'deepseek' ||
   reuseAnchor.certifiedModel?.model !== 'deepseek-v4-flash' ||
   reuseAnchor.certifiedModel?.piVersion !== '0.82.1'
 ) {
-  fail('模型认证复用身份锚点的基线或模型身份不符合冻结合同')
+  fail('模型认证身份锚点的认证制品或模型身份不符合冻结合同')
 }
 if (
   !Array.isArray(reuseAnchor.groups) ||
@@ -205,7 +207,7 @@ if (
   JSON.stringify([...new Set(groupedPaths)].sort()) !==
     JSON.stringify([...new Set(reuseFilePaths)].sort())
 ) {
-  fail('六组路径与 21 文件 A3 摘要集合不一致')
+  fail('六组路径与 21 文件认证摘要集合不一致')
 }
 for (const item of reuseAnchor.files) {
   const target = safeReleaseFile(
@@ -214,7 +216,7 @@ for (const item of reuseAnchor.files) {
     `模型认证复用文件 ${item.path}`,
   )
   if (sha256File(target) !== item.a3BaselineSha256) {
-    fail(`模型认证复用文件已偏离 A3 基线：${item.path}`)
+    fail(`模型认证文件已偏离认证时冻结摘要：${item.path}`)
   }
 }
 
@@ -273,7 +275,7 @@ if (
 const registry = readJson(registryPath, '认证模型注册表')
 if (
   registry.schemaVersion !== 'country_outage_pi_certified_models_v1' ||
-  registry.registryVersion !== 'deepseek-v4-flash-certified-v1' ||
+  registry.registryVersion !== 'deepseek-v4-flash-certified-v2' ||
   registry.status !== 'frozen' ||
   !Array.isArray(registry.profiles)
 ) {

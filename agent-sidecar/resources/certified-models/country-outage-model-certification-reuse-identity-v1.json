@@ -1,16 +1,17 @@
 {
   "schemaVersion": "country_outage_model_certification_reuse_identity_v1",
-  "identityId": "deepseek-v4-flash-pi-0.82.1-a3-v6-reuse-v1",
+  "identityId": "deepseek-v4-flash-pi-0.82.1-zero-tools-certified-v2",
   "status": "frozen",
   "baseline": {
-    "manifestPath": "artifacts/country-outage-agent/a3-v6-current-source-20260730T165806+0800/source-end-manifest.json",
-    "manifestAlgorithm": "sha256(path\\0bytes\\0sha256\\n, sorted)",
-    "manifestCombinedSha256": "983fb7034a9f20abd1ad8f557eb101cef7b3e836002f510008289ce0741e3c45"
+    "manifestPath": "artifacts/country-outage-agent/a4-model-certification/evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e/manifest.json",
+    "manifestAlgorithm": "sha256(file bytes)",
+    "manifestCombinedSha256": "a728306c7f150b6d0968cb3fa883fc63c798950140773a37c7c6c61d9bbc9c6f"
   },
   "certifiedModel": {
     "profileId": "deepseek-v4-flash-pi-0.82.1-v1",
-    "registryVersion": "deepseek-v4-flash-certified-v1",
-    "certificationEvidenceId": "evidence:model-certification:b50f247c7b1322df6d05afa45c5c1078b58349329d9f27ec5800bbfa5770a1d4",
+    "registryVersion": "deepseek-v4-flash-certified-v2",
+    "certificationEvidenceId": "evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e",
+    "candidateResourceSha256": "7bccc7ab52cd555fb77c615162d4ca3f3f6af0dee18b418adf7f5181ce330d1a",
     "provider": "deepseek",
     "model": "deepseek-v4-flash",
     "piVersion": "0.82.1"
@@ -91,7 +92,7 @@
     },
     {
       "path": "agent-sidecar/src/formal-runtime-limits.ts",
-      "a3BaselineSha256": "f3305adc3a3366cd54a1b95bb917455773f78beae33d9d6afacb84744bdd88c7"
+      "a3BaselineSha256": "a01f49d4a9276b3eb13eb3b64e12951ea3707146c4a9ee382e55e15aa1a35007"
     },
     {
       "path": "agent-sidecar/src/pi/country-outage-skill-bundle.ts",
@@ -99,7 +100,7 @@
     },
     {
       "path": "agent-sidecar/src/pi/country-outage-tools.ts",
-      "a3BaselineSha256": "846269ecc8a6c36cbfb56a4336e9141992871796b222dac70bc6074b969e6ba8"
+      "a3BaselineSha256": "33082cd29d5303ec69e8220dfa68e2508358f2ed802da56ecca34a5d7aedd6ef"
     },
     {
       "path": "agent-sidecar/src/pi/formal-model-runtime.ts",
@@ -107,7 +108,7 @@
     },
     {
       "path": "agent-sidecar/src/pi/pi-report-narrator.ts",
-      "a3BaselineSha256": "c7fbacde0eb626903ea0caa2f9384adff2149f973ac03bbf66ddc5ebc1308db5"
+      "a3BaselineSha256": "84d553a4f64cbc6943d7af8b08309c9e0e70e3e7eae2cb0989434ee58a25d461"
     },
     {
       "path": "agent-sidecar/src/pi/static-resource-loader.ts",
@@ -115,15 +116,15 @@
     },
     {
       "path": "agent-sidecar/src/domain/contracts.ts",
-      "a3BaselineSha256": "ed91995bed84222ab8e54f76b8c35ed47bbaa4260ee9bd95d13bbc772155ebfd"
+      "a3BaselineSha256": "84a9b024b2d401d80766b4ae82e14d8f37d9d296fc1224c5d94b2e731e17103d"
     },
     {
       "path": "agent-sidecar/src/domain/domeye-client.ts",
-      "a3BaselineSha256": "815519ae0ed7d5cb3d4bfd97597192284fc5d42c35c136af2ac127ed491e7109"
+      "a3BaselineSha256": "b34fe1c518cdd69feaff4281b204c914a539ffc47a22e29913a26abb97db445c"
     },
     {
       "path": "agent-sidecar/src/domain/observation-assembler.ts",
-      "a3BaselineSha256": "66c6b7d363b45c98ed60f36b24f0caec9154f281aac5752a48e973fb561c6e48"
+      "a3BaselineSha256": "d0408570c85c7827af3687f089295157c864eed452897efe175b45fc48f44cd7"
     },
     {
       "path": "agent-sidecar/src/report/contracts.ts",
@@ -131,7 +132,7 @@
     },
     {
       "path": "agent-sidecar/src/report/draft-validator.ts",
-      "a3BaselineSha256": "15ae04f40df32d156f975b265cd5325e671d9dfab4a9433343f12964e485a82c"
+      "a3BaselineSha256": "65ed8f8c768556c722adfe110b7f4a90786f38e76020ba803863f3255ad8202c"
     },
     {
       "path": "agent-sidecar/src/report/markdown-renderer.ts",
@@ -151,7 +152,7 @@
     },
     {
       "path": "contracts/agent/country-outage-report-facts-v1.schema.json",
-      "a3BaselineSha256": "7da0a47cef965fa460c6cd20888b06461fea024c5706461be9c32585ad007cd6"
+      "a3BaselineSha256": "9aea901c040ab309f839d674a562c57cbbd51aec4510099858347a1a99972fb1"
     }
   ],
   "skillBundle": {

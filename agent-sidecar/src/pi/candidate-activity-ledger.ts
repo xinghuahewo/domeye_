@@ -83,6 +83,15 @@ const FROZEN_LEGACY_ACTIVITY_PREFIX = Object.freeze({
     '91f46b18bdbd4f77de3fccbdf901c09a863fd47dd98e5c6b68969f9ce4cd31b3',
   maximumSingleReportCostCny: 5.7835008,
 })
+// 2026-08-05 零工具渲染合同降低了单报告最坏成本，同时改变了候选资源摘要。
+// 账本 9—38 已经按此前同一候选摘要的 0.5419008 CNY 合同落盘。历史行必须
+// 按其当时冻结的候选预算解释，不能用当前更低的预算回算，也不能放宽为接受任意
+// 自报成本。
+const FROZEN_PRE_ZERO_TOOL_ACTIVITY_POLICY = Object.freeze({
+  candidateResourceSha256:
+    '1b8294f946f0bd9ad13ea874b2bf0da79a65adeb7a6713241eccfb2e3b6e6d41',
+  maximumSingleReportCostCny: 0.5419008,
+})
 const MILLION = 1_000_000
 const CNY_E8_SCALE = 100_000_000n
 const LEGACY_PRE_LEDGER_COST_CNY_E8 = 10_838_016n
@@ -1262,7 +1271,15 @@ function parseLedger(
         index < FROZEN_LEGACY_ACTIVITY_PREFIX.recordCount
           ? FROZEN_LEGACY_ACTIVITY_PREFIX
               .maximumSingleReportCostCny
-          : policy.maximumSingleReportCostCny
+          : common.candidateResourceSha256 ===
+              policy.candidateResourceSha256
+            ? policy.maximumSingleReportCostCny
+            : common.candidateResourceSha256 ===
+                FROZEN_PRE_ZERO_TOOL_ACTIVITY_POLICY
+                  .candidateResourceSha256
+              ? FROZEN_PRE_ZERO_TOOL_ACTIVITY_POLICY
+                  .maximumSingleReportCostCny
+              : null
       if (
         historicalUsageStatus !== 'resolved' ||
         !exactKeys(unknownRecord, [
@@ -1284,6 +1301,7 @@ function parseLedger(
           'recordSha256',
         ]) ||
         unknownRecord.budgetLimitCny !== policy.budgetLimitCny ||
+        expectedReservationCostCny === null ||
         !finiteNonnegative(unknownRecord.reservedCostCny) ||
         !approximatelyEqual(
           unknownRecord.reservedCostCny,
@@ -1368,6 +1386,8 @@ function parseLedger(
         !reservation ||
         reservation.settled ||
         reservation.record.runNumber !== common.runNumber ||
+        reservation.record.candidateResourceSha256 !==
+          common.candidateResourceSha256 ||
         !['completed', 'rejected'].includes(
           String(unknownRecord.outcome),
         ) ||
