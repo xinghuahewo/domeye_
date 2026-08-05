@@ -27,7 +27,7 @@
   "execution": {
     "maximumInputTokens": 64000,
     "maximumOutputTokens": 16384,
-    "maximumProviderRequestCount": 5,
+    "maximumProviderRequestCount": 2,
     "providerRetryAttempts": 0
   },
   "adapterRequirement": {

@@ -345,8 +345,8 @@ async function persistedFixture(
         structuredOutput: {
           applicability: 'required',
           mechanism:
-            'deepseek-json-object-after-required-tools-v1',
-          payloadPreparedCount: 1,
+            'deepseek-json-object-no-tools-v2',
+          payloadPreparedCount: 2,
         },
         dependencyRiskException: {
           exceptionId:
@@ -367,18 +367,15 @@ async function persistedFixture(
         stopReason: 'stop',
       },
       tools: {
-        executedNames: [
-          'country_outage_resolve',
-          'country_outage_get_observation',
-        ],
-        executionCount: 2,
+        executedNames: [],
+        executionCount: 0,
         unauthorizedAttemptCount: 0,
       },
       usage: {
         assistantMessages: 2,
-        toolCalls: 2,
-        toolResults: 2,
-        totalMessages: 5,
+        toolCalls: 0,
+        toolResults: 0,
+        totalMessages: 3,
         tokens: {
           input: input.inputTokens,
           output: input.outputTokens,
@@ -489,8 +486,8 @@ async function persistedFixture(
         providerRetryAttempts: 0,
         structuredOutput: {
           mechanism:
-            'deepseek-json-object-after-required-tools-v1',
-          payloadPreparedCount: 1,
+            'deepseek-json-object-no-tools-v2',
+          payloadPreparedCount: 2,
         },
       },
       artifacts: {
@@ -657,7 +654,7 @@ async function persistedFixture(
     policy: {
       piVersion: '0.82.1',
       providerRetryAttempts: 0,
-      maximumProviderRequestCount: 5,
+      maximumProviderRequestCount: 2,
       maximumOutputTokens: 16_384,
       requiredIndependentReportRuns: 2,
       responseModelAdapterSourceSha256: 'a'.repeat(64),
@@ -667,8 +664,8 @@ async function persistedFixture(
       limitCny: 20,
       conservativeCnyPerUsd: 8,
       maximumCertificationCostCny: includeScenarios
-        ? 2.709504
-        : 1.0838016,
+        ? 1.0838016
+        : 0.43352064,
       actualCertificationCostCny: [
         ...runs,
         ...scenarioEvidence,
@@ -1430,7 +1427,7 @@ test('语义篡改即使重算全部摘要与证据身份也禁止晋级', async
   const fixture = rebindTamperedPiRunAudit(
     originalFixture,
     (audit) => {
-      audit.runtimeSecurity.structuredOutput.payloadPreparedCount = 2
+      audit.runtimeSecurity.structuredOutput.payloadPreparedCount = 1
     },
   )
   const manifest = JSON.parse(
@@ -1457,7 +1454,7 @@ test('语义篡改即使重算全部摘要与证据身份也禁止晋级', async
     `candidate-run:${canonicalSha256(runBody)}`,
   )
   assert.equal(manifest.evidenceId, fixture.evidenceId)
-  assert.equal(run.checks.structuredOutput.payloadPreparedCount, 1)
+  assert.equal(run.checks.structuredOutput.payloadPreparedCount, 2)
   assert.equal(
     (
       JSON.parse(auditBytes.toString('utf8')) as {
@@ -1466,7 +1463,7 @@ test('语义篡改即使重算全部摘要与证据身份也禁止晋级', async
         }
       }
     ).runtimeSecurity.structuredOutput.payloadPreparedCount,
-    2,
+    1,
   )
 
   const before = readFileSync(fixture.registryPath, 'utf8')

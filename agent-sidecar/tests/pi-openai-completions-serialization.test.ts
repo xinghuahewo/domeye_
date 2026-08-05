@@ -318,7 +318,7 @@ test("真实 OpenAI-completions adapter 会序列化 onPayload 注入的 respons
   }
 });
 
-test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload 均小于 59904 bytes", async () => {
+test("完整 Pi 零工具语言槽渲染经真实 adapter 的最终 payload 小于 59904 bytes", async () => {
   const evidence: ReportEvidenceBundle = {
     facts: assembleCountryOutageFacts(a4ObservationBatch()),
     asnPages: [a4AsnPage()],
@@ -357,37 +357,7 @@ test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload �
           total_tokens: 1_020,
         },
       };
-      if (requestNumber <= 2) {
-        const name =
-          requestNumber === 1
-            ? "country_outage_resolve"
-            : "country_outage_get_observation";
-        sseChunk(response, {
-          ...common,
-          choices: [
-            {
-              index: 0,
-              delta: {
-                role: "assistant",
-                tool_calls: [
-                  {
-                    index: 0,
-                    id: `loopback-tool-${requestNumber}`,
-                    type: "function",
-                    function: {
-                      name,
-                      arguments: "{}",
-                    },
-                  },
-                ],
-              },
-              finish_reason: "tool_calls",
-            },
-          ],
-        });
-        return;
-      }
-      if (requestNumber === 3) {
+      if (requestNumber === 1) {
         sseChunk(response, {
           ...common,
           choices: [
@@ -404,7 +374,7 @@ test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload �
         return;
       }
       response.statusCode = 500;
-      response.end("不应出现第四次供应商请求");
+      response.end("不应出现第二次供应商请求");
     } catch (error) {
       handlerError = error;
       response.statusCode = 500;
@@ -496,14 +466,12 @@ test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload �
 
     assert.equal(handlerError, undefined);
     assert.ok(draft);
-    assert.equal(capturedRequests.length, 3);
+    assert.equal(capturedRequests.length, 1);
     const payloadBytes = capturedRequests.map((request) =>
       Buffer.byteLength(JSON.stringify(request.body), "utf8"),
     );
-    assert.equal(payloadBytes.length, 3);
-    assert.ok(payloadBytes[0]! < 20_000);
-    assert.ok(payloadBytes[1]! < 20_000);
-    assert.ok(payloadBytes[2]! < 30_000);
+    assert.equal(payloadBytes.length, 1);
+    assert.ok(payloadBytes[0]! < 30_000);
     for (const [index, request] of capturedRequests.entries()) {
       assert.equal(request.method, "POST");
       assert.equal(request.url, "/v1/chat/completions");
@@ -517,44 +485,18 @@ test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload �
         FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumProviderPayloadBytes,
       true,
     );
-    assert.equal(
-      (capturedRequests[0]!.body as Record<string, unknown>)
-        .response_format,
-      undefined,
-    );
-    assert.equal(
-      (capturedRequests[1]!.body as Record<string, unknown>)
-        .response_format,
-      undefined,
-    );
     assert.deepEqual(
       (capturedRequests[0]!.body as Record<string, unknown>)
-        .tool_choice,
-      {
-        type: "function",
-        function: { name: "country_outage_resolve" },
-      },
-    );
-    assert.deepEqual(
-      (capturedRequests[1]!.body as Record<string, unknown>)
-        .tool_choice,
-      {
-        type: "function",
-        function: { name: "country_outage_get_observation" },
-      },
-    );
-    assert.deepEqual(
-      (capturedRequests[2]!.body as Record<string, unknown>)
         .response_format,
       { type: "json_object" },
     );
     assert.equal(
-      (capturedRequests[2]!.body as Record<string, unknown>)
+      (capturedRequests[0]!.body as Record<string, unknown>)
         .tool_choice,
       "none",
     );
     assert.doesNotMatch(
-      JSON.stringify(capturedRequests[2]!.body),
+      JSON.stringify(capturedRequests[0]!.body),
       /"highlights"|"unknowns"|"evidenceRefs"/,
     );
     for (const item of plan) {
@@ -572,13 +514,15 @@ test("完整 Pi 语言槽工具循环经真实 adapter 的每轮最终 payload �
     assert.equal(audits[0]?.outcome, "accepted");
     assert.equal(
       audits[0]?.runtimeSecurity.forwardedProviderRequestCount,
-      3,
+      1,
     );
     assert.equal(
       audits[0]?.runtimeSecurity.structuredOutput
         .payloadPreparedCount,
       1,
     );
+    assert.equal(audits[0]?.tools.executionCount, 0);
+    assert.deepEqual(audits[0]?.tools.executedNames, []);
     assert.deepEqual(audits[0]?.narration, {
       mode: "deterministic-base-with-language-slots-v1",
       slotContractVersion:

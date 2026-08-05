@@ -13,26 +13,24 @@ export const FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS = Object.freeze({
   // `payload bytes + framing reserve <= 64,000` 时才可触达供应商。
   maximumProviderPayloadBytes: 59_904,
   providerFramingTokenReserve: 4_096,
-  // 每次报告最多向上游供应商发起五轮请求。工具返回错误不会终止 Pi
-  // agent loop，因此该限制必须直接位于 streamFunction 边界。
-  maximumProviderRequestsPerReport: 5,
+  // 当前层只做宿主冻结语言槽的受控渲染：首轮失败时最多允许一次整包修订，
+  // 不存在模型工具循环，因此每份报告最多两轮供应商请求。
+  maximumProviderRequestsPerReport: 2,
   // Context JSON 的 900,000-byte 门仍是进入 adapter 前的容量/DoS 上限；
   // 它不是计费 token 上限。费用上界由上面的最终 payload 门单独执行。
   maximumProviderContextBytes: 900_000,
   maximumEvidenceRecords: 2_000,
-  // 总上限保留为四次，以与“最多五轮供应商请求（工具轮次加最终
-  // 叙述/修订轮次）”的冻结候选合同一致；逐工具上限的和为三次，
-  // 因而正式路径实际最多执行 resolve、observation、ASN 各一次。
-  maximumToolExecutions: 4,
+  // 事实读取、报告结构和语言槽计划均由宿主确定性完成；模型运行禁止工具。
+  maximumToolExecutions: 0,
   // 附加安全上限：三个工具结果既受单次限制，也受同一报告累计限制。
   // 这样会在模型上下文膨胀前失败，并为系统提示、Skill、工具 schema
   // 和消息 framing 留出确定空间；最终 59,904-byte 发送前门仍是权威上限。
   maximumToolResultBytes: 24_576,
   maximumCumulativeToolResultBytes: 36_864,
   maximumToolExecutionsByName: Object.freeze({
-    country_outage_resolve: 1,
-    country_outage_get_observation: 1,
-    country_outage_get_asns: 1,
+    country_outage_resolve: 0,
+    country_outage_get_observation: 0,
+    country_outage_get_asns: 0,
   }),
 } as const)
 

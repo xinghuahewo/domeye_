@@ -3,14 +3,10 @@ import type { SessionStats } from '@earendil-works/pi-coding-agent'
 import { FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS } from '../formal-runtime-limits.js'
 import { COUNTRY_OUTAGE_LANGUAGE_SLOT_CONTRACT_VERSION } from '../report/model-language-plan.js'
 import type { COUNTRY_OUTAGE_PROJECT_KNOWLEDGE_VERSION } from './country-outage-skill-bundle.js'
-import { COUNTRY_OUTAGE_TOOL_NAMES } from './country-outage-tools.js'
 import type { PiModelRunSelection } from './formal-model-runtime.js'
 
-const ALLOWED_TOOLS = new Set<string>(COUNTRY_OUTAGE_TOOL_NAMES)
-const REQUIRED_TOOLS = new Set<string>([
-  'country_outage_resolve',
-  'country_outage_get_observation',
-])
+// 正式叙述层只接收宿主冻结的语言计划，不允许模型再调用事实工具。
+const ALLOWED_TOOLS = new Set<string>()
 
 export const FORMAL_PI_RUN_REJECTION_CODES = Object.freeze([
   'configured_model_mismatch',
@@ -83,7 +79,7 @@ const SAFE_ERROR_MESSAGES: Record<FormalPiRunRejectionCode, string> = {
   evidence_record_limit_exceeded:
     '正式报告证据记录数超过冻结上限',
   tool_execution_limit_exceeded:
-    '正式 Pi 只读工具执行次数超过冻结上限',
+    '正式 Pi 叙述层执行了已禁用的工具',
   tool_result_limit_exceeded:
     '正式 Pi 只读工具结果超过冻结字节上限',
   assistant_message_missing: '正式 Pi 模型没有返回最终消息',
@@ -94,7 +90,7 @@ const SAFE_ERROR_MESSAGES: Record<FormalPiRunRejectionCode, string> = {
   response_model_mismatch: '正式 Pi 模型响应版本与已认证组合不一致',
   stop_reason_invalid: '正式 Pi 模型没有正常完成报告生成',
   tool_not_allowed: '正式 Pi 模型尝试使用未授权工具',
-  required_tool_missing: '正式 Pi 模型没有完成必需的只读事实读取',
+  required_tool_missing: '正式 Pi 运行缺少历史合同要求的只读事实读取',
   session_stats_invalid: '正式 Pi 模型会话统计不可核验',
   report_json_object_missing:
     '正式 Pi 报告响应中未找到 JSON 对象',
@@ -169,8 +165,7 @@ export interface FormalPiRuntimeSecurityAudit {
   structuredOutput:
     | {
         applicability: 'required'
-        mechanism:
-          'deepseek-json-object-after-required-tools-v1'
+        mechanism: 'deepseek-json-object-no-tools-v2'
         payloadPreparedCount: number
       }
     | {
@@ -542,11 +537,6 @@ export function validateFormalPiSession(
       throw new FormalPiRunError('tool_execution_limit_exceeded')
     }
   }
-  const executed = new Set(tools.executedNames)
-  if ([...REQUIRED_TOOLS].some((toolName) => !executed.has(toolName))) {
-    throw new FormalPiRunError('required_tool_missing')
-  }
-
   const usage = safeUsage(stats)
   if (!usage) throw new FormalPiRunError('session_stats_invalid')
   if (

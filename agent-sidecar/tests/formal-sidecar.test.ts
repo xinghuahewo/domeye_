@@ -554,7 +554,7 @@ test('正式审核 sink 仅输出白名单元数据并剥离正文、工具参�
       structuredOutput: {
         applicability: 'required',
         mechanism:
-          'deepseek-json-object-after-required-tools-v1',
+          'deepseek-json-object-no-tools-v2',
         payloadPreparedCount: 0,
       },
       dependencyRiskException: {

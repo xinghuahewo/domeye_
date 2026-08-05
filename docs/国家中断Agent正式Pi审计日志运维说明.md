@@ -6,6 +6,12 @@
 
 本能力只覆盖国家中断报告正式 Pi 运行审计，不改变 Domeye 数据、不修改 `backend/core`，也不扩大 Agent 的工具、路径或网络能力。
 
+2026-08-05 起的待认证候选把正式叙述层收敛为零工具：成功记录必须满足
+`tools.executedNames=[]`、`executionCount=0`、`usage.toolCalls=0` 和
+`usage.toolResults=0`，结构化输出机制为
+`deepseek-json-object-no-tools-v2`。下文 2026-07-30 的 profile 旅程是旧工具合同
+下的历史证据，只能证明当时版本，不能作为当前零工具候选已经认证或部署的依据。
+
 在 2.2 核心验收口径中，Pi 审计固定属于 `core-v1`，外部证据能力为
 `disabled/not_configured`。核心 Agent 不直接联网，外部 Provider、Evidence
 Gateway、来源 URL、网页摘要和外部附录都不得进入核心 Pi 会话或核心 Pi 审计。
@@ -113,7 +119,7 @@ Sidecar 在启动预检时执行一次清理；长驻进程进入新的 UTC 日�
 
 在这些证据齐备前，只能表述为“正式 Pi 审计日志留存代码候选已实现并通过本地测试”，不能表述为“生产 30 天留存已经验收通过”。
 
-## 7. 当前本地正式 profile 旅程证据
+## 7. 历史本地正式 profile 旅程证据
 
 ### 7.1 2.1 单报告旅程
 

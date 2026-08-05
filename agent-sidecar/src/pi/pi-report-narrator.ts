@@ -38,8 +38,6 @@ import {
 } from '../report/model-language-plan.js'
 import {
   COUNTRY_OUTAGE_TOOL_NAMES,
-  CountryOutageToolExecutionBudget,
-  createCountryOutageTools,
 } from './country-outage-tools.js'
 import type { CountryOutageToolBindingOptions } from './country-outage-tools.js'
 import {
@@ -86,7 +84,7 @@ const BUILTIN_AND_FILESYSTEM_TOOLS = [
 ] as const
 
 const TRUSTED_SYSTEM_PROMPT = `你是 Domeye 国家中断观测报告的中文语言编辑器。
-只能使用当前会话注册的三个 country_outage 只读工具和受信任的 country-outage-report Skill。
+当前会话禁用全部工具；只能使用受信任的 country-outage-report Skill 和宿主提供的语言槽计划。
 不得使用模型记忆、Codex 记忆、项目 AGENTS、互联网、任意 URL、文件系统或 Shell 补充事件事实。
 完整报告结构、事实、数字、方向、引用和未知项已经由宿主锁定；不得输出或改写这些内容。
 只输出 country_outage_language_slots_v1 JSON，不输出 Markdown 围栏、过程或思考。`
@@ -184,14 +182,8 @@ function isPlainJsonObject(
   return prototype === Object.prototype || prototype === null
 }
 
-type DeepseekCountryOutageProtocolPhase =
-  | 'resolve'
-  | 'observation'
-  | 'narration'
-
-function deepseekCountryOutageProtocolPayloadHook(
+function deepseekNoToolJsonPayloadHook(
   existingHook: PiPayloadHook | undefined,
-  phase: DeepseekCountryOutageProtocolPhase,
   onRequested: () => void,
 ): PiPayloadHook {
   return async (payload, model) => {
@@ -208,24 +200,10 @@ function deepseekCountryOutageProtocolPayloadHook(
     }
     const prepared: Record<string, unknown> = {
       ...source,
-      ...(phase === 'narration'
-        ? {
-            tool_choice: 'none',
-            response_format: {
-              type: 'json_object',
-            },
-          }
-        : {
-            tool_choice: {
-              type: 'function',
-              function: {
-                name:
-                  phase === 'resolve'
-                    ? 'country_outage_resolve'
-                    : 'country_outage_get_observation',
-              },
-            },
-          }),
+      tool_choice: 'none',
+      response_format: {
+        type: 'json_object',
+      },
     }
     if (
       prepared.model !== source.model ||
@@ -234,7 +212,7 @@ function deepseekCountryOutageProtocolPayloadHook(
     ) {
       throw new Error('structured_output_payload_invalid')
     }
-    if (phase === 'narration') onRequested()
+    onRequested()
     return prepared
   }
 }
@@ -271,28 +249,6 @@ function providerPayloadLimitHook(
     }
     return finalPayload
   }
-}
-
-function deepseekCountryOutageProtocolPhase(
-  context: Parameters<PiStreamFunction>[1],
-): DeepseekCountryOutageProtocolPhase {
-  if (!context || !Array.isArray(context.messages)) return 'resolve'
-  const completed = new Set<string>()
-  for (const message of context.messages) {
-    if (
-      message?.role === 'toolResult' &&
-      message.isError !== true &&
-      (message.toolName === 'country_outage_resolve' ||
-        message.toolName === 'country_outage_get_observation')
-    ) {
-      completed.add(message.toolName)
-    }
-  }
-  if (!completed.has('country_outage_resolve')) return 'resolve'
-  if (!completed.has('country_outage_get_observation')) {
-    return 'observation'
-  }
-  return 'narration'
 }
 
 function requiresDeepseekJsonObject(
@@ -450,9 +406,8 @@ function installProviderRequestGate(
     forwardedRequestCount += 1
     let payloadHook = options?.onPayload
     if (requiresDeepseekJsonObject(model)) {
-      payloadHook = deepseekCountryOutageProtocolPayloadHook(
+      payloadHook = deepseekNoToolJsonPayloadHook(
         payloadHook,
-        deepseekCountryOutageProtocolPhase(context),
         () => {
           structuredOutputPayloadPreparedCount += 1
         },
@@ -555,8 +510,7 @@ function languageReportPrompt(
 请为宿主已经生成并通过 v5 校验的确定性报告基稿改写指定说明段落。
 绑定 reference：${reference}
 
-必须先调用 country_outage_resolve 和 country_outage_get_observation。
-本次语言槽不需要 ASN 明细，不要调用 country_outage_get_asns。
+不得调用任何工具；事件事实、数字、方向和证据引用已经由宿主冻结，且不进入模型可改写范围。
 不得请求其他事件、URL、publication 或 revision。
 最终只返回 ${COUNTRY_OUTAGE_LANGUAGE_SLOT_CONTRACT_VERSION} JSON。
 
@@ -730,7 +684,6 @@ export class PiReportNarrator implements ReportNarrator {
   readonly validatorRulesVersion =
     COUNTRY_OUTAGE_REPORT_VALIDATOR_RULES_VERSION
   readonly skillBundleSha256: string
-  readonly #client: CountryOutageToolBindingOptions['client']
   readonly #model: FixedModel
   readonly #modelRuntime: ModelRuntime
   readonly #modelSelection: PiModelRunSelection
@@ -767,7 +720,6 @@ export class PiReportNarrator implements ReportNarrator {
     ) {
       throw new FormalPiRunError('model_context_window_too_small')
     }
-    this.#client = options.client
     try {
       this.#model = capCountryOutageModelOutput(options.model)
     } catch {
@@ -897,8 +849,7 @@ export class PiReportNarrator implements ReportNarrator {
       structuredOutput: requiresDeepseekJsonObject(this.#model)
         ? {
             applicability: 'required',
-            mechanism:
-              'deepseek-json-object-after-required-tools-v1',
+            mechanism: 'deepseek-json-object-no-tools-v2',
             payloadPreparedCount: 0,
           }
         : {
@@ -1049,13 +1000,6 @@ export class PiReportNarrator implements ReportNarrator {
       throw new FormalPiRunError('report_payload_invalid')
     }
 
-    const toolExecutionBudget = new CountryOutageToolExecutionBudget()
-    const customTools = createCountryOutageTools({
-      reference: request.reference,
-      client: this.#client,
-      pinnedEvidence: request.evidence,
-      executionBudget: toolExecutionBudget,
-    })
     let created: Awaited<ReturnType<PiSessionFactory>>
     try {
       created = await this.#sessionFactory({
@@ -1064,10 +1008,10 @@ export class PiReportNarrator implements ReportNarrator {
         model: this.#model,
         modelRuntime: this.#modelRuntime,
         thinkingLevel: this.#modelSelection.profile.thinkingLevel,
-        noTools: 'builtin',
-        tools: [...COUNTRY_OUTAGE_TOOL_NAMES],
+        noTools: 'all',
+        tools: [],
         excludeTools: [...BUILTIN_AND_FILESYSTEM_TOOLS],
-        customTools,
+        customTools: [],
         resourceLoader,
         sessionManager: SessionManager.inMemory(runtimeCwd),
         settingsManager,
@@ -1173,9 +1117,6 @@ export class PiReportNarrator implements ReportNarrator {
           providerRequestGate.violationCode,
         )
       }
-      if (toolExecutionBudget.violationCode) {
-        throw new FormalPiRunError(toolExecutionBudget.violationCode)
-      }
       let stats: SessionStats
       try {
         stats = session.getSessionStats()
@@ -1227,9 +1168,6 @@ export class PiReportNarrator implements ReportNarrator {
             .maximumProviderRequestsPerReport
       ) {
         const messagesBeforeRepair = session.messages.length
-        const toolExecutionsBeforeRepair =
-          toolExecutionBudget.executionCount
-        toolExecutionBudget.freeze()
         if (
           typeof session.setActiveToolsByName !== 'function' ||
           typeof session.getActiveToolNames !== 'function'
@@ -1249,8 +1187,6 @@ export class PiReportNarrator implements ReportNarrator {
           languageRepairPrompt(languagePlan),
         )
         if (
-          toolExecutionBudget.executionCount !==
-            toolExecutionsBeforeRepair ||
           containsToolActivity(
             session.messages.slice(messagesBeforeRepair),
           )
@@ -1312,8 +1248,6 @@ export class PiReportNarrator implements ReportNarrator {
             ? 'aborted'
             : providerRequestGate.violationCode
               ? providerRequestGate.violationCode
-            : toolExecutionBudget.violationCode
-              ? toolExecutionBudget.violationCode
               : error instanceof FormalPiRunError
                 ? error.code
                 : 'provider_call_failed'
@@ -1355,9 +1289,6 @@ export class PiReportNarrator implements ReportNarrator {
           providerRequestGate.violationCode,
         )
       }
-      if (toolExecutionBudget.violationCode) {
-        throw new FormalPiRunError(toolExecutionBudget.violationCode)
-      }
       if (error instanceof FormalPiRunError) throw error
       throw new FormalPiRunError('provider_call_failed')
     } finally {
@@ -1369,8 +1300,8 @@ export class PiReportNarrator implements ReportNarrator {
 
 export const PI_REPORT_SECURITY_PROFILE = Object.freeze({
   piVersion: FORMAL_PI_VERSION,
-  noTools: 'builtin' as const,
-  allowedTools: [...COUNTRY_OUTAGE_TOOL_NAMES],
+  noTools: 'all' as const,
+  allowedTools: [],
   excludedTools: [...BUILTIN_AND_FILESYSTEM_TOOLS],
   trustedSkillName: TRUSTED_SKILL_NAME,
   resourceLoaderId: STATIC_RESOURCE_LOADER_ID,

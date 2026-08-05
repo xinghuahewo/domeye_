@@ -29,6 +29,15 @@ export const COUNTRY_OUTAGE_TOOL_NAMES = [
 export type CountryOutageToolName =
   (typeof COUNTRY_OUTAGE_TOOL_NAMES)[number]
 
+export interface CountryOutageToolExecutionLimits {
+  maximumToolExecutions: number
+  maximumToolExecutionsByName: Readonly<
+    Record<CountryOutageToolName, number>
+  >
+  maximumToolResultBytes: number
+  maximumCumulativeToolResultBytes: number
+}
+
 const COUNTRY_OUTAGE_REFERENCE =
   /^country_outage\/\d{4}-\d{2}-\d{2}[ +]\d{2}:\d{2}:\d{2}\/[A-Z]{2}\/[1-9]\d*\/[A-Za-z0-9_-]+$/
 
@@ -118,6 +127,11 @@ export class CountryOutageToolExecutionBudget {
   #violationCode: CountryOutageToolCapacityRejectionCode | undefined
   #frozen = false
 
+  constructor(
+    readonly limits: CountryOutageToolExecutionLimits =
+      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS,
+  ) {}
+
   get executionCount(): number {
     return this.#executionCount
   }
@@ -153,11 +167,10 @@ export class CountryOutageToolExecutionBudget {
     const perNameCount =
       (this.#executionCountByName.get(name) ?? 0) + 1
     const perNameLimit =
-      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS
-        .maximumToolExecutionsByName[name]
+      this.limits.maximumToolExecutionsByName[name]
     if (
       this.#executionCount + 1 >
-        FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumToolExecutions ||
+        this.limits.maximumToolExecutions ||
       perNameCount > perNameLimit
     ) {
       this.#violationCode = 'tool_execution_limit_exceeded'
@@ -181,10 +194,9 @@ export class CountryOutageToolExecutionBudget {
     )
     if (
       resultBytes >
-        FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumToolResultBytes ||
+        this.limits.maximumToolResultBytes ||
       this.#cumulativeResultBytes + resultBytes >
-        FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS
-          .maximumCumulativeToolResultBytes
+        this.limits.maximumCumulativeToolResultBytes
     ) {
       this.#violationCode = 'tool_result_limit_exceeded'
       throw new CountryOutageToolCapacityError(this.#violationCode)

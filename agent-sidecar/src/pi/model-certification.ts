@@ -178,7 +178,7 @@ export interface PiModelCandidate {
   execution: {
     maximumInputTokens: 64_000
     maximumOutputTokens: 16_384
-    maximumProviderRequestCount: 5
+    maximumProviderRequestCount: 2
     providerRetryAttempts: 0
   }
   adapterRequirement: {
@@ -228,7 +228,7 @@ export interface CandidatePiModelPreflight {
   modelCatalogNetworkRefreshEnabled: false
   modelsJsonEnabled: false
   providerRetryAttempts: 0
-  maximumProviderRequestCount: 5
+  maximumProviderRequestCount: 2
   maximumInputTokens: 64_000
   maximumOutputTokens: 16_384
   maximumIndependentReportRuns: 2
@@ -510,7 +510,8 @@ export function parsePiModelCandidate(
     value.execution.maximumInputTokens !== 64_000 ||
     value.execution.maximumOutputTokens !== 16_384 ||
     value.execution.maximumProviderRequestCount !==
-      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumToolExecutions + 1 ||
+      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS
+        .maximumProviderRequestsPerReport ||
     value.execution.providerRetryAttempts !== 0 ||
     !isRecord(value.adapterRequirement) ||
     !exactKeys(value.adapterRequirement, [
@@ -569,7 +570,7 @@ export function parsePiModelCandidate(
     execution: Object.freeze({
       maximumInputTokens: 64_000,
       maximumOutputTokens: 16_384,
-      maximumProviderRequestCount: 5,
+      maximumProviderRequestCount: 2,
       providerRetryAttempts: 0,
     }),
     adapterRequirement: Object.freeze({
@@ -1212,7 +1213,7 @@ export interface CandidateCertificationRunnerResult {
   providerRetryAttempts: number
   structuredOutput: {
     mechanism:
-      'deepseek-json-object-after-required-tools-v1'
+      'deepseek-json-object-no-tools-v2'
     payloadPreparedCount: number
   }
   artifactId: string
@@ -1270,7 +1271,7 @@ export interface CandidateCertificationRunEvidence {
     providerRetryAttempts: 0
     structuredOutput: {
       mechanism:
-        'deepseek-json-object-after-required-tools-v1'
+        'deepseek-json-object-no-tools-v2'
       payloadPreparedCount: number
     }
   }
@@ -1371,7 +1372,7 @@ export interface PiModelCertificationManifest {
   policy: {
     piVersion: typeof FORMAL_PI_VERSION
     providerRetryAttempts: 0
-    maximumProviderRequestCount: 5
+    maximumProviderRequestCount: 2
     maximumOutputTokens: 16_384
     requiredIndependentReportRuns: 2
     responseModelAdapterSourceSha256: string
@@ -1464,12 +1465,11 @@ function validateRunnerResult(
       'payloadPreparedCount',
     ]) ||
     result.structuredOutput.mechanism !==
-      'deepseek-json-object-after-required-tools-v1' ||
+      'deepseek-json-object-no-tools-v2' ||
     !finiteNonnegativeInteger(
       result.structuredOutput.payloadPreparedCount,
     ) ||
-    result.structuredOutput.payloadPreparedCount < 1 ||
-    result.structuredOutput.payloadPreparedCount >
+    result.structuredOutput.payloadPreparedCount !==
       result.providerRequestCount ||
     !isIsoTimestamp(result.completedAt) ||
     !SAFE_ID.test(result.artifactId) ||
@@ -1525,7 +1525,7 @@ function validateRunnerResult(
       providerRetryAttempts: 0 as const,
       structuredOutput: {
         mechanism:
-          'deepseek-json-object-after-required-tools-v1' as const,
+          'deepseek-json-object-no-tools-v2' as const,
         payloadPreparedCount:
           result.structuredOutput.payloadPreparedCount,
       },
@@ -2235,15 +2235,13 @@ function acceptedCandidateAudit(
     audit.runtimeSecurity.structuredOutput?.applicability !==
       'required' ||
     audit.runtimeSecurity.structuredOutput?.mechanism !==
-      'deepseek-json-object-after-required-tools-v1' ||
+      'deepseek-json-object-no-tools-v2' ||
     !Number.isSafeInteger(
       audit.runtimeSecurity.structuredOutput
         ?.payloadPreparedCount,
     ) ||
-    (audit.runtimeSecurity.structuredOutput
-      ?.payloadPreparedCount ?? 0) < 1 ||
-    (audit.runtimeSecurity.structuredOutput
-      ?.payloadPreparedCount ?? Number.POSITIVE_INFINITY) >
+    audit.runtimeSecurity.structuredOutput
+      ?.payloadPreparedCount !==
       audit.runtimeSecurity.forwardedProviderRequestCount ||
     audit.runtimeSecurity.explicitModel !== true ||
     audit.runtimeSecurity.packageManagerResolutionEnabled !== false ||
@@ -2575,7 +2573,7 @@ function buildA4RunnerResult(
         audit.runtimeSecurity.providerRetryAttempts,
       structuredOutput: {
         mechanism:
-          'deepseek-json-object-after-required-tools-v1',
+          'deepseek-json-object-no-tools-v2',
         payloadPreparedCount:
           audit.runtimeSecurity.structuredOutput
             .payloadPreparedCount,
@@ -3863,12 +3861,11 @@ function validRunEvidence(
       'payloadPreparedCount',
     ]) ||
     value.checks.structuredOutput.mechanism !==
-      'deepseek-json-object-after-required-tools-v1' ||
+      'deepseek-json-object-no-tools-v2' ||
     !finiteNonnegativeInteger(
       value.checks.structuredOutput.payloadPreparedCount,
     ) ||
-    value.checks.structuredOutput.payloadPreparedCount < 1 ||
-    value.checks.structuredOutput.payloadPreparedCount >
+    value.checks.structuredOutput.payloadPreparedCount !==
       value.checks.providerRequestCount ||
     !isRecord(value.artifacts) ||
     !exactKeys(value.artifacts, [
@@ -4202,7 +4199,7 @@ export function parsePiModelCertificationManifest(
     value.policy.piVersion !== FORMAL_PI_VERSION ||
     value.policy.providerRetryAttempts !== 0 ||
     value.policy.maximumProviderRequestCount !==
-      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumToolExecutions + 1 ||
+      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumProviderRequestsPerReport ||
     value.policy.maximumOutputTokens !== 16_384 ||
     value.policy.requiredIndependentReportRuns !== 2 ||
     typeof value.policy.responseModelAdapterSourceSha256 !== 'string' ||

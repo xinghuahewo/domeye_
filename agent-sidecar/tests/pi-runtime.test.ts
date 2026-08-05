@@ -404,6 +404,19 @@ async function executeToolWithSignal(
   )
 }
 
+function investigationToolBudget(): CountryOutageToolExecutionBudget {
+  return new CountryOutageToolExecutionBudget({
+    maximumToolExecutions: 4,
+    maximumToolExecutionsByName: {
+      country_outage_resolve: 1,
+      country_outage_get_observation: 1,
+      country_outage_get_asns: 1,
+    },
+    maximumToolResultBytes: 24_576,
+    maximumCumulativeToolResultBytes: 36_864,
+  })
+}
+
 test('只注册三个国家中断只读工具，参数不能切换 reference 或 URL', async () => {
   const evidence = makeEvidence()
   const client = {
@@ -418,6 +431,7 @@ test('只注册三个国家中断只读工具，参数不能切换 reference 或
     reference: REFERENCE,
     client,
     pinnedEvidence: evidence,
+    executionBudget: investigationToolBudget(),
   })
 
   assert.deepEqual(
@@ -494,6 +508,7 @@ test('观测工具返回紧凑事实，ASN 工具复用编译器固定的前十�
     reference: REFERENCE,
     client,
     pinnedEvidence: evidence,
+    executionBudget: investigationToolBudget(),
   })
 
   const observation = (await executeTool(tools[1]!))
@@ -540,6 +555,7 @@ test('未预取 ASN 明细时工具只读取固定第一页十项', async () => 
       },
     },
     pinnedEvidence: evidence,
+    executionBudget: investigationToolBudget(),
   })
 
   await executeTool(tools[2]!)
@@ -560,7 +576,7 @@ test('ASN 服务忽略固定分页并返回超出十项时失败关闭', async (
     asn: 34_369 + index,
     longest_fully_invisible_slots: 60,
   }))
-  const executionBudget = new CountryOutageToolExecutionBudget()
+  const executionBudget = investigationToolBudget()
   const tools = createCountryOutageTools({
     reference: REFERENCE,
     client: {
@@ -619,6 +635,7 @@ test('Pi 工具取消信号传入底层观测批次与 ASN 读取', async () => 
         throw new Error('本分支不应读取 ASN')
       },
     },
+    executionBudget: investigationToolBudget(),
   })
   const batchController = new AbortController()
   const pendingBatch = executeToolWithSignal(
@@ -668,6 +685,7 @@ test('Pi 工具取消信号传入底层观测批次与 ASN 读取', async () => 
         throw new Error('取消后不应返回 ASN 分页')
       },
     },
+    executionBudget: investigationToolBudget(),
   })
   const asnController = new AbortController()
   const pendingAsns = executeToolWithSignal(
@@ -685,8 +703,8 @@ test('Pi 工具取消信号传入底层观测批次与 ASN 读取', async () => 
   assert.equal(asnReads, 1)
 })
 
-test('国家中断工具预算硬限制总次数、单工具次数和结果字节数', () => {
-  const executionBudget = new CountryOutageToolExecutionBudget()
+test('调查工具预算硬限制总次数、单工具次数和结果字节数', () => {
+  const executionBudget = investigationToolBudget()
   executionBudget.begin('country_outage_resolve')
   executionBudget.begin('country_outage_get_observation')
   executionBudget.begin('country_outage_get_asns')
@@ -702,7 +720,7 @@ test('国家中断工具预算硬限制总次数、单工具次数和结果字�
     'tool_execution_limit_exceeded',
   )
 
-  const perToolBudget = new CountryOutageToolExecutionBudget()
+  const perToolBudget = investigationToolBudget()
   perToolBudget.begin('country_outage_resolve')
   assert.throws(
     () => perToolBudget.begin('country_outage_resolve'),
@@ -711,7 +729,7 @@ test('国家中断工具预算硬限制总次数、单工具次数和结果字�
       error.code === 'tool_execution_limit_exceeded',
   )
 
-  const resultBudget = new CountryOutageToolExecutionBudget()
+  const resultBudget = investigationToolBudget()
   resultBudget.begin('country_outage_get_observation')
   assert.throws(
     () =>
@@ -727,7 +745,7 @@ test('国家中断工具预算硬限制总次数、单工具次数和结果字�
     'tool_result_limit_exceeded',
   )
 
-  const cumulativeBudget = new CountryOutageToolExecutionBudget()
+  const cumulativeBudget = investigationToolBudget()
   cumulativeBudget.begin('country_outage_resolve')
   cumulativeBudget.result('country_outage_resolve', {
     chunk: 'x'.repeat(18_000),
@@ -744,7 +762,7 @@ test('国家中断工具预算硬限制总次数、单工具次数和结果字�
   )
   assert.equal(cumulativeBudget.cumulativeResultBytes, 18_018)
 
-  const frozenBudget = new CountryOutageToolExecutionBudget()
+  const frozenBudget = investigationToolBudget()
   frozenBudget.begin('country_outage_resolve')
   frozenBudget.freeze()
   assert.throws(
@@ -756,7 +774,7 @@ test('国家中断工具预算硬限制总次数、单工具次数和结果字�
   assert.equal(frozenBudget.executionCount, 1)
 })
 
-test('PiReportNarrator 即使模型吞掉工具超限错误也拒绝发布', async () => {
+test('PiReportNarrator 不向正式会话注册任何调查工具', async () => {
   const audits: FormalPiRunAuditRecord[] = []
   const narrator = new PiReportNarrator({
     client: {
@@ -775,21 +793,16 @@ test('PiReportNarrator 即使模型吞掉工具超限错误也拒绝发布', asy
       audits.push(record)
     },
     sessionFactory: async (options) => {
-      const resolveTool = options.customTools?.find(
-        (tool) => tool.name === 'country_outage_resolve',
-      )
-      assert.ok(resolveTool)
+      assert.equal(options.noTools, 'all')
+      assert.deepEqual(options.tools, [])
+      assert.deepEqual(options.customTools, [])
+      const agent = inertProviderAgent()
       return {
         session: {
-          agent: inertProviderAgent(),
+          agent,
           messages: validFormalMessages(),
           async prompt() {
-            await executeTool(resolveTool)
-            try {
-              await executeTool(resolveTool)
-            } catch (error) {
-              assert.ok(error instanceof CountryOutageToolCapacityError)
-            }
+            await forwardProviderRequests(agent, 1)
           },
           async abort() {},
           getSessionStats() {
@@ -801,19 +814,12 @@ test('PiReportNarrator 即使模型吞掉工具超限错误也拒绝发布', asy
     },
   })
 
-  await assert.rejects(
-    narrator.generate({
-      reference: REFERENCE,
-      evidence: makeEvidence(),
-    }),
-    (error: unknown) =>
-      error instanceof FormalPiRunError &&
-      error.code === 'tool_execution_limit_exceeded',
-  )
-  assert.equal(
-    audits[0]?.rejectionCode,
-    'tool_execution_limit_exceeded',
-  )
+  await narrator.generate({
+    reference: REFERENCE,
+    evidence: makeEvidence(),
+  })
+  assert.equal(audits[0]?.outcome, 'accepted')
+  assert.equal(audits[0]?.tools.executionCount, 0)
 })
 
 test('provider context 字节门在 900000 放行并在 900001 于上游前拒绝', async (context) => {
@@ -845,7 +851,7 @@ test('provider context 字节门在 900000 放行并在 900001 于上游前拒�
     {
       name: '900000 bytes',
       bytes: 900_000,
-      expectedUpstreamCalls: 3,
+      expectedUpstreamCalls: 1,
       expectedRejection: undefined,
     },
     {
@@ -889,7 +895,7 @@ test('provider context 字节门在 900000 放行并在 900001 于上游前拒�
             agent,
             messages: validFormalMessages(),
             async prompt() {
-              for (let index = 0; index < 3; index += 1) {
+              for (let index = 0; index < 1; index += 1) {
                 const stream = await agent.streamFunction(
                   model,
                   exactContextBytes(item.bytes),
@@ -968,7 +974,7 @@ test('最终 provider payload 在既有 hook 后执行 59904-byte 发送前硬�
       payloadBytes:
         FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumProviderPayloadBytes,
       existingHookExpansionBytes: 0,
-      expectedNetworkCalls: 3,
+      expectedNetworkCalls: 1,
       expectedRejection: undefined,
     },
     {
@@ -1032,7 +1038,7 @@ test('最终 provider payload 在既有 hook 后执行 59904-byte 发送前硬�
             agent,
             messages: validFormalMessages(),
             async prompt() {
-              for (let index = 0; index < 3; index += 1) {
+              for (let index = 0; index < 1; index += 1) {
                 const stream = await agent.streamFunction(
                   fakeModel(),
                   { messages: [] },
@@ -1195,7 +1201,7 @@ test('provider 下一轮只保留工具骨架并移除冗长 thinking 与被拒�
         agent,
         messages: validFormalMessages(),
         async prompt() {
-          for (let index = 0; index < 3; index += 1) {
+          for (let index = 0; index < 1; index += 1) {
             const stream = await agent.streamFunction(
               fakeModel(),
               verboseContext,
@@ -1219,7 +1225,7 @@ test('provider 下一轮只保留工具骨架并移除冗长 thinking 与被拒�
     evidence: makeEvidence(),
   })
 
-  assert.equal(capturedContexts.length, 3)
+  assert.equal(capturedContexts.length, 1)
   for (const context of capturedContexts) {
     const serialized = JSON.stringify(context)
     assert.doesNotMatch(serialized, /SENSITIVE_TOOL_THINKING_/)
@@ -1250,7 +1256,7 @@ test('provider 下一轮只保留工具骨架并移除冗长 thinking 与被拒�
   }
 })
 
-test('真实 Pi agent loop 在工具错误后继续时，第六轮于上游前被 provider gate 截断', async () => {
+test('真实 Pi agent loop 若违约持续请求，第三轮于上游前被 provider gate 截断', async () => {
   const model = {
     provider: 'acceptance-provider',
     id: 'acceptance-model',
@@ -1319,7 +1325,7 @@ test('真实 Pi agent loop 在工具错误后继续时，第六轮于上游前�
   } catch (error) {
     rejection = error
   }
-  assert.equal(upstreamCalls, 5)
+  assert.equal(upstreamCalls, 2)
   assert.equal(
     rejection instanceof FormalPiRunError
       ? rejection.code
@@ -1410,16 +1416,16 @@ function fakeSessionStats(
     sessionFile: undefined,
     sessionId: 'session-not-audited',
     userMessages: 1,
-    assistantMessages: 3,
-    toolCalls: 2,
-    toolResults: 2,
-    totalMessages: 6,
+    assistantMessages: 1,
+    toolCalls: 0,
+    toolResults: 0,
+    totalMessages: 2,
     tokens: {
-      input: 1200,
-      output: 300,
+      input: 400,
+      output: 100,
       cacheRead: 100,
       cacheWrite: 0,
-      total: 1600,
+      total: 600,
     },
     cost: 0.0042,
     ...overrides,
@@ -1430,46 +1436,6 @@ function validFormalMessages(
   draftText = VALID_LANGUAGE_SLOT_TEXT,
 ): unknown[] {
   return [
-    {
-      role: 'assistant',
-      provider: 'acceptance-provider',
-      model: 'acceptance-model',
-      responseModel: 'fixed-revision',
-      stopReason: 'toolUse',
-      usage: assistantUsage(400, 100),
-      content: [
-        {
-          type: 'toolCall',
-          name: 'country_outage_resolve',
-          arguments: { ignoredByAudit: 'secret-tool-argument' },
-        },
-      ],
-    },
-    {
-      role: 'toolResult',
-      toolName: 'country_outage_resolve',
-      content: [{ type: 'text', text: 'secret-tool-result' }],
-    },
-    {
-      role: 'assistant',
-      provider: 'acceptance-provider',
-      model: 'acceptance-model',
-      responseModel: 'fixed-revision',
-      stopReason: 'toolUse',
-      usage: assistantUsage(400, 100),
-      content: [
-        {
-          type: 'toolCall',
-          name: 'country_outage_get_observation',
-          arguments: {},
-        },
-      ],
-    },
-    {
-      role: 'toolResult',
-      toolName: 'country_outage_get_observation',
-      content: [{ type: 'text', text: 'another-secret-tool-result' }],
-    },
     {
       role: 'assistant',
       provider: 'acceptance-provider',
@@ -1521,52 +1487,33 @@ function asnAssistantAndResult(callId: string): unknown[] {
 
 function formalMessagesWithAsnRequests(
   draftText: string,
-  asnRequestCount: 1 | 2,
+  _asnRequestCount: 1 | 2,
 ): unknown[] {
-  const messages = validFormalMessages(draftText)
-  messages.splice(
-    messages.length - 1,
-    0,
-    ...asnAssistantAndResult('first'),
-    ...(asnRequestCount === 2
-      ? asnAssistantAndResult('second')
-      : []),
-  )
-  return messages
+  return validFormalMessages(draftText)
 }
 
 function formalMessagesWithFiveProviderRequests(
   draftText: string,
 ): unknown[] {
-  const messages = formalMessagesWithAsnRequests(draftText, 1)
-  messages.splice(messages.length - 1, 0, {
-    role: 'assistant',
-    provider: 'acceptance-provider',
-    model: 'acceptance-model',
-    responseModel: 'fixed-revision',
-    stopReason: 'toolUse',
-    usage: assistantUsage(200, 100, 100),
-    content: [],
-  })
-  return messages
+  return [
+    ...validFormalMessages(draftText),
+    repairAssistantMessage(draftText),
+  ]
 }
 
 function sessionStatsWithAsnRequests(
-  asnRequestCount: 1 | 2,
+  _asnRequestCount: 1 | 2,
   repaired = false,
 ): SessionStats {
-  const extraAssistantCount = asnRequestCount + (repaired ? 1 : 0)
-  const input = 1_200 + asnRequestCount * 200 + (repaired ? 200 : 0)
-  const output = 300 + extraAssistantCount * 100
-  const cacheRead =
-    100 + asnRequestCount * 100 + (repaired ? 100 : 0)
+  const input = repaired ? 600 : 400
+  const output = repaired ? 200 : 100
+  const cacheRead = repaired ? 200 : 100
   return fakeSessionStats({
     userMessages: repaired ? 2 : 1,
-    assistantMessages: 3 + extraAssistantCount,
-    toolCalls: 2 + asnRequestCount,
-    toolResults: 2 + asnRequestCount,
-    totalMessages:
-      6 + asnRequestCount * 2 + (repaired ? 2 : 0),
+    assistantMessages: repaired ? 2 : 1,
+    toolCalls: 0,
+    toolResults: 0,
+    totalMessages: repaired ? 4 : 2,
     tokens: {
       input,
       output,
@@ -1578,22 +1525,7 @@ function sessionStatsWithAsnRequests(
 }
 
 function sessionStatsWithFiveProviderRequests(): SessionStats {
-  const base = sessionStatsWithAsnRequests(1)
-  const input = base.tokens.input + 200
-  const output = base.tokens.output + 100
-  const cacheRead = base.tokens.cacheRead + 100
-  return {
-    ...base,
-    assistantMessages: base.assistantMessages + 1,
-    totalMessages: base.totalMessages + 1,
-    tokens: {
-      input,
-      output,
-      cacheRead,
-      cacheWrite: base.tokens.cacheWrite,
-      total: input + output + cacheRead + base.tokens.cacheWrite,
-    },
-  }
+  return sessionStatsWithAsnRequests(1, true)
 }
 
 test('正式静态 ResourceLoader 不触达 Pi PackageManager.resolve', async () => {
@@ -1970,7 +1902,7 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
         messages: validFormalMessages(),
         async prompt(text) {
           prompt = text
-          await forwardProviderRequests(agent, 3)
+          await forwardProviderRequests(agent, 1)
         },
         async abort() {},
         getSessionStats() {
@@ -2025,12 +1957,9 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
   assert.equal(configured.model, model)
   assert.equal(configured.modelRuntime, modelRuntime)
   assert.equal(configured.thinkingLevel, 'off')
-  assert.equal(configured.noTools, 'builtin')
-  assert.deepEqual(configured.tools, COUNTRY_OUTAGE_TOOL_NAMES)
-  assert.deepEqual(
-    configured.customTools?.map((tool) => tool.name),
-    COUNTRY_OUTAGE_TOOL_NAMES,
-  )
+  assert.equal(configured.noTools, 'all')
+  assert.deepEqual(configured.tools, [])
+  assert.deepEqual(configured.customTools, [])
   assert.deepEqual(configured.excludeTools, [
     'read',
     'bash',
@@ -2072,10 +2001,7 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
     finalV5: 'passed',
     modelOutputApplied: true,
   })
-  assert.deepEqual(audits[0]?.tools.executedNames, [
-    'country_outage_resolve',
-    'country_outage_get_observation',
-  ])
+  assert.deepEqual(audits[0]?.tools.executedNames, [])
   assert.equal(audits[0]?.usage?.estimatedCostUsd, 0.0042)
   assert.equal(audits[0]?.observed?.responseModel, 'fixed-revision')
   assert.deepEqual(audits[0]?.modelAttempt, {
@@ -2107,7 +2033,7 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
     modelCatalogNetworkRefreshEnabled: false,
     explicitModel: true,
     providerRetryAttempts: 0,
-    forwardedProviderRequestCount: 3,
+    forwardedProviderRequestCount: 1,
     structuredOutput: {
       applicability: 'not_applicable',
       mechanism: null,
@@ -2132,9 +2058,7 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
   assert.doesNotMatch(serializedAudit, /secret-tool/)
   assert.doesNotMatch(serializedAudit, /伊朗 BGP 路由可见性观测报告/)
   assert.doesNotMatch(serializedAudit, new RegExp(REFERENCE))
-  assert.deepEqual(PI_REPORT_SECURITY_PROFILE.allowedTools, [
-    ...COUNTRY_OUTAGE_TOOL_NAMES,
-  ])
+  assert.deepEqual(PI_REPORT_SECURITY_PROFILE.allowedTools, [])
   assert.equal(
     PI_REPORT_SECURITY_PROFILE.packageManagerResolutionEnabled,
     false,
@@ -2151,7 +2075,7 @@ test('PiReportNarrator 对已解析的语义失败草稿在同会话关闭工具
   const agent = inertProviderAgent()
   const prompts: string[] = []
   const activeToolTransitions: string[][] = []
-  let activeTools = [...COUNTRY_OUTAGE_TOOL_NAMES] as string[]
+  let activeTools: string[] = []
   let promptCalls = 0
   let sessionFactoryCalls = 0
   const audits: FormalPiRunAuditRecord[] = []
@@ -2188,7 +2112,7 @@ test('PiReportNarrator 对已解析的语义失败草稿在同会话关闭工具
             prompts.push(text)
             promptCalls += 1
             if (promptCalls === 1) {
-              await forwardProviderRequests(agent, 4)
+              await forwardProviderRequests(agent, 1)
               return
             }
             assert.deepEqual(activeTools, [])
@@ -2254,10 +2178,10 @@ test('PiReportNarrator 对已解析的语义失败草稿在同会话关闭工具
   })
   assert.equal(
     audits[0]?.runtimeSecurity.forwardedProviderRequestCount,
-    5,
+    2,
   )
-  assert.equal(audits[0]?.usage?.assistantMessages, 5)
-  assert.equal(audits[0]?.tools.executionCount, 3)
+  assert.equal(audits[0]?.usage?.assistantMessages, 2)
+  assert.equal(audits[0]?.tools.executionCount, 0)
   assert.doesNotMatch(JSON.stringify(audits[0]), /987654321/)
   assert.doesNotMatch(
     JSON.stringify(audits[0]),
@@ -2272,7 +2196,7 @@ test('PiReportNarrator 首轮非结构化输出在剩余请求内关闭工具后
     1,
   )
   const agent = inertProviderAgent()
-  let activeTools = [...COUNTRY_OUTAGE_TOOL_NAMES] as string[]
+  let activeTools: string[] = []
   let promptCalls = 0
   let activeToolMutationCalls = 0
   const prompts: string[] = []
@@ -2308,7 +2232,7 @@ test('PiReportNarrator 首轮非结构化输出在剩余请求内关闭工具后
           prompts.push(text)
           promptCalls += 1
           if (promptCalls === 1) {
-            await forwardProviderRequests(agent, 4)
+            await forwardProviderRequests(agent, 1)
             return
           }
           assert.deepEqual(activeTools, [])
@@ -2377,7 +2301,7 @@ test('PiReportNarrator 首轮非结构化输出在剩余请求内关闭工具后
   assert.equal(audits[0]?.modelAttempt.executedAttempts, 2)
   assert.equal(
     audits[0]?.runtimeSecurity.forwardedProviderRequestCount,
-    5,
+    2,
   )
 })
 
@@ -2407,7 +2331,7 @@ test('PiReportNarrator 以固定安全码区分整份修订的三类结构失败
         1,
       )
       const agent = inertProviderAgent()
-      let activeTools = [...COUNTRY_OUTAGE_TOOL_NAMES] as string[]
+      let activeTools: string[] = []
       let promptCalls = 0
       const audits: FormalPiRunAuditRecord[] = []
       const narrator = new PiReportNarrator({
@@ -2439,7 +2363,7 @@ test('PiReportNarrator 以固定安全码区分整份修订的三类结构失败
             async prompt() {
               promptCalls += 1
               if (promptCalls === 1) {
-                await forwardProviderRequests(agent, 4)
+                await forwardProviderRequests(agent, 1)
                 return
               }
               assert.deepEqual(activeTools, [])
@@ -2482,7 +2406,7 @@ test('PiReportNarrator 以固定安全码区分整份修订的三类结构失败
   }
 })
 
-test('首轮结构失败且五次 provider 请求已耗尽时保留固定安全诊断且不再修订', async () => {
+test('两次 provider 请求已耗尽时保留固定安全诊断且不再修订', async () => {
   const sensitivePayload = 'SENSITIVE_INITIAL_BODY'
   const messages =
     formalMessagesWithFiveProviderRequests(sensitivePayload)
@@ -2511,14 +2435,14 @@ test('首轮结构失败且五次 provider 请求已耗尽时保留固定安全�
         agent,
         messages,
         getActiveToolNames() {
-          return [...COUNTRY_OUTAGE_TOOL_NAMES]
+          return []
         },
         setActiveToolsByName() {
           activeToolMutationCalls += 1
         },
         async prompt() {
           promptCalls += 1
-          await forwardProviderRequests(agent, 5)
+          await forwardProviderRequests(agent, 2)
         },
         async abort() {},
         getSessionStats() {
@@ -2547,12 +2471,12 @@ test('首轮结构失败且五次 provider 请求已耗尽时保留固定安全�
   assert.equal(audits[0]?.modelAttempt.executedAttempts, 1)
   assert.equal(
     audits[0]?.runtimeSecurity.forwardedProviderRequestCount,
-    5,
+    2,
   )
   assert.doesNotMatch(JSON.stringify(audits[0]), new RegExp(sensitivePayload))
 })
 
-test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙述且不修改原对象', async () => {
+test('DeepSeek 每轮发送前均强制无工具 JSON 且不修改原对象', async () => {
   const model = {
     provider: 'deepseek',
     id: 'deepseek-v4-flash',
@@ -2667,7 +2591,7 @@ test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙
       response_format: { type: 'legacy-value' },
     }
   }
-  let activeTools = [...COUNTRY_OUTAGE_TOOL_NAMES] as string[]
+  let activeTools: string[] = []
   let promptCalls = 0
   const audits: FormalPiRunAuditRecord[] = []
   const forward = async (
@@ -2715,14 +2639,6 @@ test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙
           promptCalls += 1
           if (promptCalls === 1) {
             await forward(1, [])
-            await forward(1, [
-              {
-                role: 'toolResult',
-                toolName: 'country_outage_resolve',
-                isError: false,
-              },
-            ])
-            await forward(2, messages)
             return
           }
           assert.deepEqual(activeTools, [])
@@ -2751,29 +2667,9 @@ test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙
   })
 
   assert.equal(draft.title, '伊朗 BGP 路由可见性观测报告')
-  assert.equal(existingHookCalls, 5)
-  assert.equal(forwardedPayloads.length, 5)
-  assert.deepEqual(
-    (forwardedPayloads[0] as Record<string, unknown>).tool_choice,
-    {
-      type: 'function',
-      function: { name: 'country_outage_resolve' },
-    },
-  )
-  assert.deepEqual(
-    (forwardedPayloads[1] as Record<string, unknown>).tool_choice,
-    {
-      type: 'function',
-      function: { name: 'country_outage_get_observation' },
-    },
-  )
-  for (const payload of forwardedPayloads.slice(0, 2)) {
-    assert.deepEqual(
-      (payload as Record<string, unknown>).response_format,
-      { type: 'legacy-value' },
-    )
-  }
-  for (const payload of forwardedPayloads.slice(2)) {
+  assert.equal(existingHookCalls, 2)
+  assert.equal(forwardedPayloads.length, 2)
+  for (const payload of forwardedPayloads) {
     assert.deepEqual(
       (payload as Record<string, unknown>).response_format,
       { type: 'json_object' },
@@ -2784,20 +2680,20 @@ test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙
     )
   }
   assert.equal(
-    (forwardedPayloads[4] as Record<string, unknown>)
+    (forwardedPayloads[1] as Record<string, unknown>)
       .existing_hook_preserved,
     true,
   )
   assert.equal(
     Object.prototype.hasOwnProperty.call(
-      rawPayloads[4],
+      rawPayloads[1],
       'response_format',
     ),
     false,
   )
   assert.equal(
     Object.prototype.hasOwnProperty.call(
-      rawPayloads[4],
+      rawPayloads[1],
       'tool_choice',
     ),
     false,
@@ -2805,8 +2701,8 @@ test('DeepSeek 发送前依次强制 resolve、observation 与无工具 JSON 叙
   assert.deepEqual(audits[0]?.runtimeSecurity.structuredOutput, {
     applicability: 'required',
     mechanism:
-      'deepseek-json-object-after-required-tools-v1',
-    payloadPreparedCount: 3,
+      'deepseek-json-object-no-tools-v2',
+    payloadPreparedCount: 2,
   })
 })
 
@@ -2967,7 +2863,7 @@ test('DeepSeek 拒绝既有 payload hook 返回的非普通对象且不误增结
   assert.deepEqual(audits[0]?.runtimeSecurity.structuredOutput, {
     applicability: 'required',
     mechanism:
-      'deepseek-json-object-after-required-tools-v1',
+      'deepseek-json-object-no-tools-v2',
     payloadPreparedCount: 0,
   })
 })
@@ -2979,7 +2875,7 @@ test('PiReportNarrator 修订仍语义失败时在 accepted 审计前失败关�
     1,
   )
   const agent = inertProviderAgent()
-  let activeTools = [...COUNTRY_OUTAGE_TOOL_NAMES] as string[]
+  let activeTools: string[] = []
   let promptCalls = 0
   const audits: FormalPiRunAuditRecord[] = []
   const narrator = new PiReportNarrator({
@@ -3011,7 +2907,7 @@ test('PiReportNarrator 修订仍语义失败时在 accepted 审计前失败关�
         async prompt() {
           promptCalls += 1
           if (promptCalls === 1) {
-            await forwardProviderRequests(agent, 4)
+            await forwardProviderRequests(agent, 1)
             return
           }
           assert.deepEqual(activeTools, [])
@@ -3053,7 +2949,7 @@ test('PiReportNarrator 修订仍语义失败时在 accepted 审计前失败关�
   })
 })
 
-test('PiReportNarrator 首轮已用满五个 provider request 时不发起修订', async () => {
+test('PiReportNarrator 首轮已用满两个 provider request 时不发起修订', async () => {
   const invalidDraftText = semanticFailureDraftText()
   const messages =
     formalMessagesWithFiveProviderRequests(invalidDraftText)
@@ -3082,14 +2978,14 @@ test('PiReportNarrator 首轮已用满五个 provider request 时不发起修订
         agent,
         messages,
         getActiveToolNames() {
-          return [...COUNTRY_OUTAGE_TOOL_NAMES]
+          return []
         },
         setActiveToolsByName() {
           activeToolMutationCalls += 1
         },
         async prompt() {
           promptCalls += 1
-          await forwardProviderRequests(agent, 5)
+          await forwardProviderRequests(agent, 2)
         },
         async abort() {},
         getSessionStats() {
@@ -3116,7 +3012,7 @@ test('PiReportNarrator 首轮已用满五个 provider request 时不发起修订
   assert.equal(audits[0]?.rejectionCode, 'report_payload_invalid')
   assert.equal(
     audits[0]?.runtimeSecurity.forwardedProviderRequestCount,
-    5,
+    2,
   )
   assert.equal(audits[0]?.modelAttempt.executedAttempts, 1)
 })
@@ -3129,23 +3025,23 @@ test('PiReportNarrator 仅在每轮完整 usage 与转发数、SessionStats 三�
   }> = [
     {
       name: '单轮 usage 缺失',
-      forwardedProviderRequestCount: 3,
+      forwardedProviderRequestCount: 1,
       mutate(messages) {
-        delete messages[2]!.usage
+        delete messages[0]!.usage
       },
     },
     {
       name: '有输入但 completion 输出为零',
-      forwardedProviderRequestCount: 3,
+      forwardedProviderRequestCount: 1,
       mutate(messages) {
-        messages[2]!.usage = assistantUsage(400, 0)
+        messages[0]!.usage = assistantUsage(400, 0)
       },
     },
     {
       name: '逐轮 usage 合计与 SessionStats 不一致',
-      forwardedProviderRequestCount: 3,
+      forwardedProviderRequestCount: 1,
       mutate(messages) {
-        messages[2]!.usage = assistantUsage(401, 100)
+        messages[0]!.usage = assistantUsage(401, 100, 100)
       },
     },
     {
@@ -3251,9 +3147,9 @@ test('PiReportNarrator 将宿主 AbortSignal 转发到 Pi 会话并拒绝半成�
       getSessionStats() {
         return fakeSessionStats({
           assistantMessages: 2,
-          toolCalls: 2,
-          toolResults: 2,
-          totalMessages: 5,
+          toolCalls: 0,
+          toolResults: 0,
+          totalMessages: 3,
           tokens: {
             input: 800,
             output: 200,
@@ -3361,9 +3257,9 @@ test('PiReportNarrator 多轮后 75 秒超时会中止会话且不发布部分�
         getSessionStats() {
           return fakeSessionStats({
             assistantMessages: 2,
-            toolCalls: 2,
-            toolResults: 2,
-            totalMessages: 5,
+          toolCalls: 0,
+          toolResults: 0,
+          totalMessages: 3,
             tokens: {
               input: 800,
               output: 200,
@@ -3621,13 +3517,29 @@ test('PiReportNarrator 对供应方、模型、响应版本和停止原因逐项
 })
 
 test('PiReportNarrator 不记录未授权工具名、参数、结果或报告正文', async () => {
-  const messages = structuredClone(validFormalMessages())
-  const firstAssistant = messages[0] as {
-    content: Array<Record<string, unknown>>
-  }
-  firstAssistant.content[0]!.name = 'bash-secret-command'
-  const firstResult = messages[1] as Record<string, unknown>
-  firstResult.toolName = 'bash-secret-command'
+  const messages = [
+    {
+      role: 'assistant',
+      provider: 'acceptance-provider',
+      model: 'acceptance-model',
+      responseModel: 'fixed-revision',
+      stopReason: 'toolUse',
+      usage: assistantUsage(1, 1),
+      content: [
+        {
+          type: 'toolCall',
+          name: 'bash-secret-command',
+          arguments: { secret: 'secret-tool-argument' },
+        },
+      ],
+    },
+    {
+      role: 'toolResult',
+      toolName: 'bash-secret-command',
+      content: [{ type: 'text', text: 'secret-tool-result' }],
+    },
+    ...validFormalMessages(),
+  ]
   const audits: FormalPiRunAuditRecord[] = []
   const sessionFactory: PiSessionFactory = async () => ({
     session: {
@@ -3677,7 +3589,7 @@ test('PiReportNarrator 不记录未授权工具名、参数、结果或报告正
   assert.doesNotMatch(serializedAudit, /伊朗 BGP 路由可见性观测报告/)
 })
 
-test('PiReportNarrator 缺少必需工具结果、统计异常或审计写入失败时不发布草稿', async (context) => {
+test('PiReportNarrator 对工具结果、统计异常或审计写入失败时不发布草稿', async (context) => {
   const client = {
     async getObservationBatch() {
       throw new Error('叙述阶段不应重新读取观测批次')
@@ -3686,16 +3598,15 @@ test('PiReportNarrator 缺少必需工具结果、统计异常或审计写入失
       return makeAsnPage(snapshot)
     },
   }
-  await context.test('缺少必需工具结果', async () => {
-    const messages = validFormalMessages().filter(
-      (message) =>
-        !(
-          typeof message === 'object' &&
-          message !== null &&
-          'toolName' in message &&
-          message.toolName === 'country_outage_get_observation'
-        ),
-    )
+  await context.test('出现任何工具结果', async () => {
+    const messages = [
+      {
+        role: 'toolResult',
+        toolName: 'country_outage_get_observation',
+        content: [{ type: 'text', text: '不得进入正式叙述层' }],
+      },
+      ...validFormalMessages(),
+    ]
     const narrator = new PiReportNarrator({
       client,
       model: fakeModel(),
@@ -3718,7 +3629,7 @@ test('PiReportNarrator 缺少必需工具结果、统计异常或审计写入失
       narrator.generate({ reference: REFERENCE, evidence: makeEvidence() }),
       (error: unknown) =>
         error instanceof FormalPiRunError &&
-        error.code === 'required_tool_missing',
+        error.code === 'tool_not_allowed',
     )
   })
 
@@ -3758,8 +3669,6 @@ test('PiReportNarrator 缺少必需工具结果、统计异常或审计写入失
       Record<string, unknown>
     >
     messages[0]!.usage = assistantUsage(64_001, 100)
-    messages[2]!.usage = assistantUsage(1_000, 100)
-    messages[4]!.usage = assistantUsage(1_000, 100)
     const agent = inertProviderAgent()
     const narrator = new PiReportNarrator({
       client,
@@ -3775,17 +3684,17 @@ test('PiReportNarrator 缺少必需工具结果、统计异常或审计写入失
           agent,
           messages,
           async prompt() {
-            await forwardProviderRequests(agent, 3)
+            await forwardProviderRequests(agent, 1)
           },
           async abort() {},
           getSessionStats: () =>
             fakeSessionStats({
               tokens: {
-                input: 66_001,
-                output: 300,
+                input: 64_001,
+                output: 100,
                 cacheRead: 0,
                 cacheWrite: 0,
-                total: 66_301,
+                total: 64_101,
               },
             }),
           dispose() {},
@@ -3820,7 +3729,7 @@ test('PiReportNarrator 缺少必需工具结果、统计异常或审计写入失
           agent,
           messages: validFormalMessages(),
           async prompt() {
-            await forwardProviderRequests(agent, 3)
+            await forwardProviderRequests(agent, 1)
           },
           async abort() {},
           getSessionStats: () => fakeSessionStats(),

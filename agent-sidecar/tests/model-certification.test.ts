@@ -129,13 +129,13 @@ function successfulRun(
     observedProvider: 'deepseek',
     observedModel: 'deepseek-v4-flash',
     responseModel: 'deepseek-v4-flash',
-    // resolve + observation 的工具循环会产生多个正常请求轮次。
+    // 首轮 JSON 不合格时允许一次整轮修复，不存在模型工具循环。
     providerRequestCount: 2,
     providerRetryAttempts: 0,
     structuredOutput: {
       mechanism:
-        'deepseek-json-object-after-required-tools-v1',
-      payloadPreparedCount: 1,
+        'deepseek-json-object-no-tools-v2',
+      payloadPreparedCount: 2,
     },
     artifactId: `report-run-${runNumber}`,
     reportContentSha256: String(runNumber).repeat(64),
@@ -180,7 +180,7 @@ test('版本化 DeepSeek 候选资源固定身份、目录、价格和预算边�
   assert.equal(loaded.candidate.execution.maximumOutputTokens, 16_384)
   assert.equal(
     loaded.candidate.execution.maximumProviderRequestCount,
-    5,
+    2,
   )
   assert.equal(loaded.candidate.execution.providerRetryAttempts, 0)
   assert.equal(
@@ -312,10 +312,10 @@ test('候选预检复用冻结 CredentialStore，关闭 models.json/目录联网
     true,
   )
   assert.equal(binding.preflight.providerRetryAttempts, 0)
-  assert.equal(binding.preflight.maximumProviderRequestCount, 5)
+  assert.equal(binding.preflight.maximumProviderRequestCount, 2)
   assert.equal(
     binding.preflight.maximumCertificationCostCny,
-    1.0838016,
+    0.43352064,
   )
 })
 
@@ -477,7 +477,7 @@ test('同名 responseModel 缺失不得用 observedModel 补齐，失败时隔�
   assert.equal(readFileSync(registryPath, 'utf8'), before)
 })
 
-test('真实工具循环的两次 provider 请求可通过且不计作 retry', async () => {
+test('首轮加一次整包修复的两次 provider 请求可通过且不计作 retry', async () => {
   const registryPath = emptyRegistryPath('two-provider-requests')
   const manifest = await runPiModelCandidateCertification({
     loadedCandidate: await loadedCandidate(),
@@ -498,7 +498,7 @@ test('真实工具循环的两次 provider 请求可通过且不计作 retry', a
   )
 })
 
-test('候选完整报告超过五个请求轮次、发生 transport retry、聚合输入或输出超限时拒绝且 registry 零写入', async (context) => {
+test('候选完整报告超过两个请求轮次、发生 transport retry、聚合输入或输出超限时拒绝且 registry 零写入', async (context) => {
   const cases = [
     {
       id: 'provider-zero-requests',
@@ -509,11 +509,11 @@ test('候选完整报告超过五个请求轮次、发生 transport retry、聚�
       }),
     },
     {
-      id: 'provider-six-requests',
-      name: 'provider 请求轮次达到六次',
+      id: 'provider-three-requests',
+      name: 'provider 请求轮次达到三次',
       mutate: (result: CandidateCertificationRunnerResult) => ({
         ...result,
-        providerRequestCount: 6,
+        providerRequestCount: 3,
       }),
     },
     {

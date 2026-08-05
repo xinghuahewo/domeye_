@@ -51,7 +51,7 @@
     "maximum_queue_depth": 32,
     "maximum_snapshot_batch_retries": 2,
     "maximum_model_attempts": 2,
-    "maximum_provider_requests_per_report": 5,
+    "maximum_provider_requests_per_report": 2,
     "maximum_provider_context_utf8_bytes": 900000,
     "maximum_questions_per_minute": 6,
     "maximum_report_runs_per_user_per_hour": null,

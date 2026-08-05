@@ -17,7 +17,6 @@ import type {
   CreateAgentSessionOptions,
   ModelRuntime,
   SessionStats,
-  ToolDefinition,
 } from '@earendil-works/pi-coding-agent'
 
 import { assembleCountryOutageFacts } from '../src/domain/observation-assembler.js'
@@ -307,7 +306,7 @@ function compatibleAdapterInspection() {
 function activityPolicy(
   candidateResourceSha256: string,
 ): CandidateActivityBudgetPolicy {
-  const maximumSingleReportCostCny = 0.5419008
+  const maximumSingleReportCostCny = 0.21676032
   return {
     candidateId: 'deepseek-v4-flash-pi-0.82.1-v1',
     candidateResourceSha256,
@@ -332,29 +331,19 @@ function fakeStats(): SessionStats {
     sessionFile: undefined,
     sessionId: 'not-persisted',
     userMessages: 1,
-    assistantMessages: 2,
-    toolCalls: 2,
-    toolResults: 2,
-    totalMessages: 5,
+    assistantMessages: 1,
+    toolCalls: 0,
+    toolResults: 0,
+    totalMessages: 2,
     tokens: {
-      input: 10_000,
-      output: 2_000,
+      input: 5_000,
+      output: 1_000,
       cacheRead: 0,
       cacheWrite: 0,
-      total: 12_000,
+      total: 6_000,
     },
-    cost: 0.00196,
+    cost: 0.00098,
   }
-}
-
-async function executeTool(tool: ToolDefinition): Promise<void> {
-  await tool.execute(
-    'integration-call',
-    {} as never,
-    undefined,
-    undefined,
-    undefined as never,
-  )
 }
 
 async function validDraftText(): Promise<string> {
@@ -434,39 +423,7 @@ function sessionFactory(
     if (options.failSecondRun && runNumber === 2) {
       delete finalMessage.responseModel
     }
-    const messages = [
-      {
-        role: 'assistant',
-        provider: 'deepseek',
-        model: 'deepseek-v4-flash',
-        responseModel: 'deepseek-v4-flash',
-        stopReason: 'toolUse',
-        usage: assistantUsage(5_000, 1_000),
-        content: [
-          {
-            type: 'toolCall',
-            name: 'country_outage_resolve',
-            arguments: {},
-          },
-          {
-            type: 'toolCall',
-            name: 'country_outage_get_observation',
-            arguments: {},
-          },
-        ],
-      },
-      {
-        role: 'toolResult',
-        toolName: 'country_outage_resolve',
-        content: [{ type: 'text', text: 'not-persisted' }],
-      },
-      {
-        role: 'toolResult',
-        toolName: 'country_outage_get_observation',
-        content: [{ type: 'text', text: 'not-persisted' }],
-      },
-      finalMessage,
-    ]
+    const messages = [finalMessage]
     const agent = inertProviderAgent()
     let activeTools = [...(createOptions.tools ?? [])]
     let promptCalls = 0
@@ -482,23 +439,10 @@ function sessionFactory(
       async prompt() {
         promptCalls += 1
         if (promptCalls === 1) {
+          assert.equal(createOptions.noTools, 'all')
+          assert.deepEqual(createOptions.tools, [])
+          assert.deepEqual(createOptions.customTools, [])
           await forwardProviderRequests(agent, 1)
-          const resolveTool = createOptions.customTools?.find(
-            (tool) => tool.name === 'country_outage_resolve',
-          )
-          const observationTool = createOptions.customTools?.find(
-            (tool) => tool.name === 'country_outage_get_observation',
-          )
-          assert.ok(resolveTool)
-          assert.ok(observationTool)
-          await executeTool(resolveTool)
-          await executeTool(observationTool)
-          await forwardProviderRequests(
-            agent,
-            1,
-            fakeCatalogModel(),
-            { messages: messages as never[] },
-          )
           return
         }
         assert.deepEqual(activeTools, [])
@@ -530,16 +474,16 @@ function sessionFactory(
         return {
           ...fakeStats(),
           userMessages: 2,
-          assistantMessages: 3,
-          totalMessages: 7,
+          assistantMessages: 2,
+          totalMessages: 4,
           tokens: {
-            input: 15_000,
-            output: 3_000,
+            input: 10_000,
+            output: 2_000,
             cacheRead: 0,
             cacheWrite: 0,
-            total: 18_000,
+            total: 12_000,
           },
-          cost: 0.00294,
+          cost: 0.00196,
         }
       },
       dispose() {},
@@ -579,48 +523,7 @@ function rejectedAfterTwoProviderRoundsSessionFactory(
     const agent = inertProviderAgent()
     const session = {
       agent,
-      messages: [
-        {
-          role: 'assistant',
-          provider: 'deepseek',
-          model: 'deepseek-v4-flash',
-          responseModel: 'deepseek-v4-flash',
-          stopReason: 'toolUse',
-          usage: assistantUsage(5_000, 1_000),
-          content: [
-            {
-              type: 'toolCall',
-              name: 'country_outage_resolve',
-              arguments: {},
-            },
-          ],
-        },
-        {
-          role: 'toolResult',
-          toolName: 'country_outage_resolve',
-          content: [{ type: 'text', text: 'not-persisted' }],
-        },
-        {
-          role: 'assistant',
-          provider: 'deepseek',
-          model: 'deepseek-v4-flash',
-          responseModel: 'deepseek-v4-flash',
-          stopReason: 'toolUse',
-          usage: assistantUsage(5_000, 1_000),
-          content: [
-            {
-              type: 'toolCall',
-              name: 'country_outage_get_observation',
-              arguments: {},
-            },
-          ],
-        },
-        {
-          role: 'toolResult',
-          toolName: 'country_outage_get_observation',
-          content: [{ type: 'text', text: 'not-persisted' }],
-        },
-      ],
+      messages: [],
       async prompt() {
         await forwardProviderRequests(agent, 2)
         throw new FormalPiRunError(code)
@@ -1380,7 +1283,7 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
     result.manifest.runs.map(
       (run) => run.checks.providerRequestCount,
     ),
-    [2, 2],
+    [1, 1],
   )
   assert.deepEqual(
     result.manifest.runs.map(
@@ -1480,10 +1383,7 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
     assert.deepEqual(
       (piRunAudit.tools as { executedNames: string[] })
         .executedNames,
-      [
-        'country_outage_resolve',
-        'country_outage_get_observation',
-      ],
+      [],
     )
     assert.deepEqual(
       piRunAudit.runtimeSecurity,
@@ -1500,11 +1400,11 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
         modelsJsonEnabled: false,
         packageManagerResolutionEnabled: false,
         providerRetryAttempts: 0,
-        forwardedProviderRequestCount: 2,
+        forwardedProviderRequestCount: 1,
         structuredOutput: {
           applicability: 'required',
           mechanism:
-            'deepseek-json-object-after-required-tools-v1',
+            'deepseek-json-object-no-tools-v2',
           payloadPreparedCount: 1,
         },
         resourceLoaderId:
@@ -1610,13 +1510,13 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
     assert.equal(settlement?.costBasis, 'actual_usage')
     assert.ok(
       // 结算继续使用冻结候选价，而不是更低的供应商证明价。
-      Math.abs(Number(settlement?.chargedCostCny) - 0.01568) <
+      Math.abs(Number(settlement?.chargedCostCny) - 0.00784) <
         1e-12,
     )
     assert.deepEqual(settlement?.usage, {
-      providerRequestCount: 2,
-      inputTokens: 10_000,
-      outputTokens: 2_000,
+      providerRequestCount: 1,
+      inputTokens: 5_000,
+      outputTokens: 1_000,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
     })
@@ -1632,7 +1532,7 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
   assert.doesNotMatch(cliSource, /node:http|\.listen\s*\(/)
 })
 
-test('A4 五报告场景套件在 64K×5 次预算门内生成可核验别名证书与隔离制品', async () => {
+test('A4 五报告场景套件在每报告 64K×2 次预算门内生成可核验别名证书与隔离制品', async () => {
   const paths = await testDirectory('scenario-suite')
   const loadedCandidate = await loadPiModelCandidate()
   const representative = await validDraftText()
@@ -1708,12 +1608,12 @@ test('A4 五报告场景套件在 64K×5 次预算门内生成可核验别名证
   assert.deepEqual(pdfRuns, [1, 2, 3, 4, 5])
   assert.equal(
     result.manifest.budget.maximumCertificationCostCny,
-    2.709504,
+    1.0838016,
   )
   assert.ok(
     Math.abs(
       result.manifest.budget.actualCertificationCostCny -
-        0.0784,
+        0.0392,
     ) < 1e-12,
   )
   assert.equal(
@@ -1892,7 +1792,7 @@ test('两份报告均经一次受控整份修订后仍可通过完整 A4 runner 
     result.manifest.runs.map(
       (run) => run.checks.providerRequestCount,
     ),
-    [3, 3],
+    [2, 2],
   )
   assert.deepEqual(
     result.manifest.runs.map(
@@ -1936,14 +1836,14 @@ test('两份报告均经一次受控整份修订后仍可通过完整 A4 runner 
     }
     assert.equal(
       audit.runtimeSecurity.forwardedProviderRequestCount,
-      3,
+      2,
     )
     assert.deepEqual(
       audit.runtimeSecurity.structuredOutput,
       {
         applicability: 'required',
         mechanism:
-          'deepseek-json-object-after-required-tools-v1',
+          'deepseek-json-object-no-tools-v2',
         payloadPreparedCount: 2,
       },
     )
@@ -2150,7 +2050,7 @@ test('修订后报告语义校验失败时在 Pi accepted 审计前以固定安�
   assert.equal(records[2]?.candidateRejectionCode, null)
   assert.equal(records[2]?.costBasis, 'worst_case_reservation')
   assert.ok(
-    Math.abs(Number(records[2]?.chargedCostCny) - 0.5419008) <
+    Math.abs(Number(records[2]?.chargedCostCny) - 0.21676032) <
       1e-12,
   )
   assert.equal(records[2]?.usage, null)
@@ -2327,28 +2227,22 @@ test('真实候选多轮后最后一次 provider 失败按整份预留结算且�
           }),
         now: () => new Date('2026-07-29T13:00:00Z'),
         sessionFactory: async (createOptions) => {
+          assert.equal(createOptions.noTools, 'all')
+          assert.deepEqual(createOptions.tools, [])
+          assert.deepEqual(createOptions.customTools, [])
           let providerCalls = 0
           const agent: TestSessionAgent = {
             streamFunction(model) {
               providerCalls += 1
-              if (providerCalls === 3) {
+              if (providerCalls === 2) {
                 throw new Error(
                   `${secretMarkers.key}:${secretMarkers.answer}`,
                 )
               }
               return providerMessageStream(
                 model,
-                [
-                  {
-                    type: 'toolCall',
-                    name:
-                      providerCalls === 1
-                        ? 'country_outage_resolve'
-                        : 'country_outage_get_observation',
-                    arguments: {},
-                  },
-                ],
-                'toolUse',
+                [{ type: 'text', text: secretMarkers.answer }],
+                'stop',
               )
             },
           }
@@ -2367,54 +2261,12 @@ test('真实候选多轮后最后一次 provider 失败按整份预留结算且�
               provider: 'deepseek',
               model: 'deepseek-v4-flash',
               responseModel: 'deepseek-v4-flash',
-              stopReason: 'toolUse',
+              stopReason: 'stop',
               usage: assistantUsage(500, 100, 25),
               content: [
                 {
                   type: 'text',
                   text: secretMarkers.answer,
-                },
-                {
-                  type: 'toolCall',
-                  name: 'country_outage_resolve',
-                  arguments: {
-                    hidden: secretMarkers.toolArguments,
-                  },
-                },
-              ],
-            },
-            {
-              role: 'toolResult',
-              toolName: 'country_outage_resolve',
-              content: [
-                {
-                  type: 'text',
-                  text: secretMarkers.toolResult,
-                },
-              ],
-            },
-            {
-              role: 'assistant',
-              provider: 'deepseek',
-              model: 'deepseek-v4-flash',
-              responseModel: 'deepseek-v4-flash',
-              stopReason: 'toolUse',
-              usage: assistantUsage(500, 100, 25),
-              content: [
-                {
-                  type: 'toolCall',
-                  name: 'country_outage_get_observation',
-                  arguments: {},
-                },
-              ],
-            },
-            {
-              role: 'toolResult',
-              toolName: 'country_outage_get_observation',
-              content: [
-                {
-                  type: 'text',
-                  text: secretMarkers.toolResult,
                 },
               ],
             },
@@ -2423,26 +2275,12 @@ test('真实候选多轮后最后一次 provider 失败按整份预留结算且�
             agent,
             messages,
             async prompt() {
-              const resolveTool = createOptions.customTools?.find(
-                (tool) => tool.name === 'country_outage_resolve',
+              const stream = await session.agent.streamFunction(
+                fakeCatalogModel(),
+                { messages: [] },
               )
-              const observationTool =
-                createOptions.customTools?.find(
-                  (tool) =>
-                    tool.name ===
-                    'country_outage_get_observation',
-                )
-              assert.ok(resolveTool)
-              assert.ok(observationTool)
-              for (const tool of [resolveTool, observationTool]) {
-                const stream = await session.agent.streamFunction(
-                  fakeCatalogModel(),
-                  { messages: [] },
-                )
-                for await (const _event of stream) {
-                  // 模拟 Pi 已完成的前两轮 provider 回执。
-                }
-                await executeTool(tool)
+              for await (const _event of stream) {
+                // 模拟第一轮已有不合格文本，随后供应商调用失败。
               }
               await session.agent.streamFunction(
                 fakeCatalogModel(),
@@ -2455,18 +2293,18 @@ test('真实候选多轮后最后一次 provider 失败按整份预留结算且�
                 sessionFile: undefined,
                 sessionId: secretMarkers.sessionId,
                 userMessages: 1,
-                assistantMessages: 2,
-                toolCalls: 2,
-                toolResults: 2,
-                totalMessages: 5,
+                assistantMessages: 1,
+                toolCalls: 0,
+                toolResults: 0,
+                totalMessages: 2,
                 tokens: {
-                  input: 1_000,
-                  output: 200,
-                  cacheRead: 50,
+                  input: 500,
+                  output: 100,
+                  cacheRead: 25,
                   cacheWrite: 0,
-                  total: 1_250,
+                  total: 625,
                 },
-                cost: 0.000203,
+                cost: 0.0001015,
               }
             },
             dispose() {},
@@ -2530,7 +2368,7 @@ test('真实候选多轮后最后一次 provider 失败按整份预留结算且�
   assert.equal(records[2]?.recordType, 'settlement')
   assert.equal(records[2]?.outcome, 'rejected')
   assert.equal(records[2]?.costBasis, 'worst_case_reservation')
-  assert.equal(records[2]?.chargedCostCny, 0.5419008)
+  assert.equal(records[2]?.chargedCostCny, 0.21676032)
   assert.equal(records[2]?.formalRejectionCode, 'provider_call_failed')
   assert.equal(records[2]?.candidateRejectionCode, null)
   assert.equal(records[2]?.usage, null)
@@ -2611,7 +2449,7 @@ test('多轮后的 timeout 与用户取消审计均按整份预留结算', async
         records[2]?.costBasis,
         'worst_case_reservation',
       )
-      assert.equal(records[2]?.chargedCostCny, 0.5419008)
+      assert.equal(records[2]?.chargedCostCny, 0.21676032)
       assert.equal(records[2]?.formalRejectionCode, scenario.code)
       assert.equal(records[2]?.candidateRejectionCode, null)
       assert.equal(records[2]?.usage, null)
@@ -2686,13 +2524,13 @@ test('模型已接受但 PDF 后处理失败时记录 allowlist candidate code',
   )
   assert.equal(records[2]?.costBasis, 'actual_usage')
   assert.ok(
-    Math.abs(Number(records[2]?.chargedCostCny) - 0.01568) <
+    Math.abs(Number(records[2]?.chargedCostCny) - 0.00784) <
       1e-12,
   )
   assert.deepEqual(records[2]?.usage, {
-    providerRequestCount: 2,
-    inputTokens: 10_000,
-    outputTokens: 2_000,
+    providerRequestCount: 1,
+    inputTokens: 5_000,
+    outputTokens: 1_000,
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
   })

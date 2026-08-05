@@ -69,37 +69,38 @@ readiness 为
 | 模型目录最大输出 | 384,000 token |
 | 实际运行最大输入 | 64,000 token |
 | 实际运行最大输出 | 16,384 token |
-| 每份报告 provider 请求轮次上限 | 5（最多 4 次工具执行再加最终回答） |
+| 每份报告 provider 请求轮次上限 | 2（首轮渲染 + 最多一次整包修复） |
 | 进入 adapter 前的 Context 容量/DoS 上限 | 900,000 UTF-8 bytes |
 | HTTP 前最终 adapter payload 上限 | 59,904 UTF-8 bytes |
 | provider framing 预留 | 4,096 token |
-| 结构化输出 | 必需工具成功后，对后续 DeepSeek 请求强制 `response_format=json_object` |
+| 结构化输出 | 每轮 DeepSeek 请求均强制 `tool_choice=none` 与 `response_format=json_object` |
 | provider retry | 0 |
 | 完整报告认证套件 | 5 份：2 份代表事件重复性 + 3 份认证专用边界场景 |
 | 付费上限 | 20 CNY |
 | 保守折算 | 1 USD = 8 CNY |
 
-目录单价也固定在候选资源中。未来付费运行按真实可达的五轮 provider 请求逐轮
+目录单价也固定在候选资源中。未来付费运行按真实可达的两轮 provider 请求逐轮
 取正式执行上限，不再按模型目录的 1,000,000 token 能力预留：
 
 ```text
 单轮输入 = 64,000 × 0.14 USD / 1,000,000 × 8 = 0.07168 CNY
 单轮输出 = 16,384 × 0.28 USD / 1,000,000 × 8 = 0.03670016 CNY
 单轮合计 = 0.10838016 CNY
-单份报告 = 单轮 × 5 = 0.5419008 CNY
-五份报告 = 单份报告 × 5 = 2.709504 CNY
+单份报告 = 单轮 × 2 = 0.21676032 CNY
+五份报告 = 单份报告 × 5 = 1.0838016 CNY
 ```
 
-因此，完整认证套件启动前至少需要 `2.709504 CNY` 可用余额；每份报告实际开始前
-再单独预留 `0.5419008 CNY`。只有 Pi 审计已经接受，且每轮回执均完成
+因此，完整认证套件启动前至少需要 `1.0838016 CNY` 可用余额；每份报告实际开始前
+再单独预留 `0.21676032 CNY`。只有 Pi 审计已经接受，且每轮回执均完成
 下述 usage 一致性校验时，才可按全会话实际 usage 结算；这也适用于 Pi 已接受、
 但随后 PDF 等后处理失败的运行。Pi 审计本身只要拒绝，包括最后一轮 provider
 失败、超时、用户取消、回执缺失或统计不一致，就不得用已收到的部分统计释放
-预留，必须按整份 `0.5419008 CNY` 结算。缓存输入按 input、cacheRead、
+预留，必须按整份 `0.21676032 CNY` 结算。缓存输入按 input、cacheRead、
 cacheWrite 三者最高单价保守计费，不能靠缓存字段规避预算。
 
 本次认证启动前按五报告包络一次性检查预算是否足够，再按顺序逐份预留和结算；
-实际合计结算为 `0.08085616 CNY`。认证后剩余批准预算为
+以下真实费用与认证结果属于旧五轮工具合同的历史记录，不是当前零工具候选的成本
+证明。历史认证实际合计结算为 `0.08085616 CNY`。认证后剩余批准预算为
 `5.76034016 CNY`。历史账本没有因为 64K 公式修正而重置；上界收紧只来自发送前
 实际可达的运行时硬门。
 
@@ -120,7 +121,7 @@ PDF 环境失败隐藏为“未消费”。
 tokenizer 和服务端 chat framing 时采用的保守工程假设，不是精确 tokenizer
 证明。900,000 字节门继续只承担进入 adapter 前的容量/DoS 防护，不能作为计费
 上界。最终 payload 门位于既有 payload hook 和 `response_format` 注入之后，因而
-首轮、工具续轮和受控整份修订轮都无法绕过发送前检查。
+首轮和受控整份修订轮都无法绕过发送前检查。
 
 上述本地冻结单价只用于候选边界和离线预算计算，不能单独证明下一次调用时供应商
 仍采用该价格。下一次任何真实 provider 调用前，受信操作者还必须提供仍在有效期
@@ -129,7 +130,10 @@ cacheRead/cacheWrite 单价、取得时间、失效时间和证据 SHA-256；实
 单价不得低于该证据。若供应商支持项目或密钥级消费限额，还应先设置不高于本次
 批准余额的供应商侧硬限额。当前代码中的候选 JSON 和本文计算不替代该外部证据，
 在价格证据缺失或过期时不得再次发起真实调用。证据单价高于候选冻结值时，必须
-先更新候选资源、预算公式和回归证据，不能继续使用现有 `2.709504 CNY` 上界。
+先更新候选资源、预算公式和回归证据，不能继续使用现有 `1.0838016 CNY` 上界。
+当前零工具改造改变了候选资源 SHA-256；此前绑定旧候选摘要的价格证明即使尚未
+到期也不得复用。下一次真实调用前必须重新取得官方价格并生成绑定新候选摘要的
+价格证明。
 
 ## 3. 认证文件
 
@@ -259,7 +263,7 @@ npm run reconcile:model:a4-failure
 两文件都存在、只有 anchor 存在、既有账本为空或不是上述唯一合法记录时，命令
 拒绝执行。完成一次初始化或迁移后再次执行也会拒绝，不能用于普通恢复。
 
-`pre_ledger_reconciliation` 不能自动改按未来五轮上界收费，也不能直接视为
+`pre_ledger_reconciliation` 不能自动改按未来两轮上界收费，也不能直接视为
 已结清。历史结清有两种互斥依据：供应商实际用量，或供应商最终实扣金额。
 
 若受信操作者取得可核验的历史实际用量和对应证据 SHA-256，可在当前进程环境中
@@ -325,8 +329,8 @@ max(0.10838016 CNY, 向上取整后的实扣换算金额)
 
 因此供应商实扣低于 `0.10838016 CNY` 时仍可完成结清，但不释放原有保守 floor。
 实扣金额较高时也必须如实写账并标记历史状态为 `resolved`；随后仍由 20 CNY
-preflight 决定能否继续。五份未来报告的总包络为 `2.709504 CNY`，所以历史记账值
-只有不高于 `17.290496 CNY` 时才能继续。相同证据和规范化金额重复执行为不追加
+preflight 决定能否继续。五份未来报告的总包络为 `1.0838016 CNY`，所以历史记账值
+只有不高于 `18.9161984 CNY` 时才能继续。相同证据和规范化金额重复执行为不追加
 记录的幂等读取；证据或金额不同则拒绝。
 
 金额入口不接受证据路径、认证路径、provider、model、汇率或换算后金额，不读取
@@ -372,21 +376,20 @@ provider 转发计数，并要求
 retry 固定取自关闭 provider retry 的冻结 Settings 对应审计值，必须为零。
 
 请求轮次的执行时硬门直接包装每个新会话公开的
-`session.agent.streamFunction`，而不是依赖工具计数。Pi 的 agent loop 会把工具
-超限转成错误 tool result 后继续请求，因此第五轮转发完成后，第六轮必须在调用原始
-provider stream 之前以 `provider_request_limit_exceeded` 截断。每轮转发前还会
+`session.agent.streamFunction`。正式叙述层不注册工具；首轮完成后只允许一次整包
+修复，因此第二轮转发完成后，第三轮必须在调用原始 provider stream 之前以
+`provider_request_limit_exceeded` 截断。每轮转发前还会
 序列化完整 Context；UTF-8 JSON 超过 `900,000 bytes` 时以
 `provider_context_limit_exceeded` 零上游拒绝。该 900,000 字节门只是进入
 adapter 前的容量/DoS 上限，不参与费用计算。
 
-DeepSeek 固定候选在发送前按宿主确定性协议约束工具选择：第一轮只允许
-`country_outage_resolve`，取得其成功结果后下一轮只允许
-`country_outage_get_observation`；两项必需结果齐备后固定 `tool_choice=none`，
-不再允许模型重复工具或误调用 ASN。该协议不放宽工具次数、结果字节或供应商请求
-上限。随后为叙述请求组合受控 `onPayload` 并最终强制：
+DeepSeek 固定候选只接收宿主已经冻结的事实合同和语言槽计划。正式 Pi 会话使用
+`noTools=all`、`tools=[]`、`customTools=[]`，并在每一轮发送前组合受控
+`onPayload`，最终强制：
 
 ```json
 {
+  "tool_choice": "none",
   "response_format": {
     "type": "json_object"
   }
@@ -394,15 +397,15 @@ DeepSeek 固定候选在发送前按宿主确定性协议约束工具选择：�
 ```
 
 组合顺序固定为：先执行既有 payload hook，再核验返回值是保留 `model`、
-`messages` 和 `stream=true` 的普通对象，最后按当前协议阶段覆盖
-`tool_choice`，并仅在叙述阶段覆盖 `response_format`。任何数组、Date、类实例、
+`messages` 和 `stream=true` 的普通对象，最后覆盖 `tool_choice` 和
+`response_format`。任何数组、Date、类实例、
 字段缺失或 hook 异常都失败关闭；再由最外层发送前门序列化最终 payload，超过
 `59,904 UTF-8 bytes` 时以
 `provider_payload_limit_exceeded` 在 HTTP 前拒绝。59,904 字节与 4,096 token
 framing 预留共同服从 64,000 单请求输入预算；由于 DeepSeek 官方 tokenizer 与
 服务端 framing 尚未固定，这是保守工程假设，不是精确 token 换算证明。只有新
-payload 已成功构造才增加结构化输出审计计数。必需工具结果出现前不加入
-`response_format`，但最终 payload 门仍覆盖该轮，避免首轮绕过。
+payload 已成功构造才增加结构化输出审计计数。任何轮次都不得绕过零工具和 JSON
+对象约束。
 
 真实安装在 Pi `0.82.1` 依赖树中的 `openai-completions` adapter 已用假 API Key
 和 loopback `baseUrl` 完成 HTTP 序列化测试：本地服务实际捕获的
@@ -415,7 +418,7 @@ payload 已成功构造才增加结构化输出审计计数。必需工具结果
 ```json
 {
   "applicability": "required",
-  "mechanism": "deepseek-json-object-after-required-tools-v1",
+  "mechanism": "deepseek-json-object-no-tools-v2",
   "payloadPreparedCount": 1
 }
 ```
@@ -435,7 +438,7 @@ payload 已成功构造才增加结构化输出审计计数。必需工具结果
 `country_outage_report_validator_rules_v5` 拒绝空白阅读内容、空章节、未声明
 字段、无证据数字、国家身份漂移、英文叙事、方向矛盾以及全国性中断、用户或业务
 影响、原因、责任、完全恢复和事件结束等越界结论。若首轮槽包结构失败且仍有请求
-额度，只允许在同一会话关闭全部工具后进行一次整包修订；不重新读取数据、不局部
+额度，只允许在同一零工具会话进行一次整包修订；不重新读取数据、不局部
 修补，也不追加第二轮修订。
 
 Pi 审计的 `narration` 对象必须同时记录
@@ -509,16 +512,16 @@ Markdown 和 PDF。
 - 每个 assistant 请求的 `input + cacheRead + cacheWrite` 不超过 64,000 token，
   `output` 不超过 16,384 token；全会话聚合上限按实际 provider 请求数分别乘以
   这两个单请求上限；
-- 每份报告允许 1 至 5 个正常 provider 请求轮次。`resolve`、`observation`
-  等工具循环会自然产生多个请求，这不属于 retry；
+- 每份报告允许 1 至 2 个正常 provider 请求轮次；第二轮只能用于首轮槽包未通过
+  本地机器校验后的整包修复，不属于 retry；
 - provider 实际转发数、assistant 消息数和 SessionStats assistant 数必须相等；
   每轮 input-like 与 output 均大于零，逐轮 token 回执完整且合计与
   SessionStats 精确相等；
-- 第六轮必须在上游调用前被硬门拒绝；单轮 Context UTF-8 JSON 不得超过
+- 第三轮必须在上游调用前被硬门拒绝；单轮 Context UTF-8 JSON 不得超过
   900,000 bytes，最终 adapter payload 不得超过 59,904 UTF-8 bytes；
 - transport/provider retry 必须为 0；
-- 必需工具成功后至少有一个请求实际完成 JSON object payload 构造，机制和次数
-  必须进入 Pi 审计与候选 manifest，且次数不得超过 provider 转发数；
+- 每个 provider 请求都必须完成 `tool_choice=none` 与 JSON object payload 构造，
+  机制和次数必须进入 Pi 审计与候选 manifest，且次数等于 provider 转发数；
 - 报告必须通过 `country_outage_report_validator_rules_v5`，包括空白内容、
   未声明字段、五类关键数字分别覆盖、所有可发布文本块的数字证据，以及指标、
   时间、地址族、单位、冻结国家身份、中文、变化方向和控制面语义边界约束；

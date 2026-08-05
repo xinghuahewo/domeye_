@@ -69,10 +69,10 @@ test('正式运行容量常量与冻结验收配置的六项合同保持一致',
   )
 })
 
-test('工具次数、单结果与累计结果限制作为附加安全上限冻结', () => {
+test('正式叙述层冻结为零工具且保留结果容量安全门', () => {
   assert.equal(
     FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumToolExecutions,
-    4,
+    0,
   )
   assert.equal(
     FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumToolResultBytes,
@@ -87,9 +87,9 @@ test('工具次数、单结果与累计结果限制作为附加安全上限冻�
     FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS
       .maximumToolExecutionsByName,
     {
-      country_outage_resolve: 1,
-      country_outage_get_observation: 1,
-      country_outage_get_asns: 1,
+      country_outage_resolve: 0,
+      country_outage_get_observation: 0,
+      country_outage_get_asns: 0,
     },
   )
   assert.equal(

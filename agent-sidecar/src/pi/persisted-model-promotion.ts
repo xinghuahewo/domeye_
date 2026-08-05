@@ -351,11 +351,8 @@ function assertPersistedPiRunAudit(
       'unauthorizedAttemptCount',
     ]) ||
     !Array.isArray(value.tools.executedNames) ||
-    !value.tools.executedNames.includes('country_outage_resolve') ||
-    !value.tools.executedNames.includes(
-      'country_outage_get_observation',
-    ) ||
-    !nonnegativeSafeInteger(value.tools.executionCount) ||
+    value.tools.executedNames.length !== 0 ||
+    value.tools.executionCount !== 0 ||
     value.tools.unauthorizedAttemptCount !== 0 ||
     !isRecord(value.usage) ||
     !exactKeys(value.usage, [
@@ -368,6 +365,8 @@ function assertPersistedPiRunAudit(
     ]) ||
     value.usage.assistantMessages !==
       evidence.checks.providerRequestCount ||
+    value.usage.toolCalls !== 0 ||
+    value.usage.toolResults !== 0 ||
     !isRecord(value.usage.tokens) ||
     !exactKeys(value.usage.tokens, [
       'input',
