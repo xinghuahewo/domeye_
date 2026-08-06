@@ -178,6 +178,11 @@ func parseUpdateToSpool(
 			existing.EngineVersion == EngineVersion &&
 			existing.Artifact.FileSHA256 == artifact.FileSHA256 &&
 			len(existing.Shards) == shardCount {
+			if err := VerifySpoolFiles(filepath.Dir(spoolRoot), []SlotSpoolMeta{existing}); err != nil {
+				return SlotSpoolMeta{}, fmt.Errorf(
+					"existing spool verification failed at slot %d: %w", index, err,
+				)
+			}
 			return existing, nil
 		}
 		return SlotSpoolMeta{}, fmt.Errorf("existing spool metadata mismatch at slot %d", index)
@@ -347,6 +352,7 @@ func ParseAllUpdates(
 type spoolReader struct {
 	file   *os.File
 	buffer *bufio.Reader
+	hash   *sha256Writer
 }
 
 func openSpool(path string) (*spoolReader, error) {
@@ -354,7 +360,8 @@ func openSpool(path string) (*spoolReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer := bufio.NewReaderSize(file, 1<<20)
+	hash := &sha256Writer{hash: sha256.New()}
+	buffer := bufio.NewReaderSize(io.TeeReader(file, hash), 1<<20)
 	magic := make([]byte, len(spoolMagic))
 	if _, err := io.ReadFull(buffer, magic); err != nil {
 		file.Close()
@@ -364,7 +371,7 @@ func openSpool(path string) (*spoolReader, error) {
 		file.Close()
 		return nil, fmt.Errorf("invalid spool magic: %s", path)
 	}
-	return &spoolReader{file: file, buffer: buffer}, nil
+	return &spoolReader{file: file, buffer: buffer, hash: hash}, nil
 }
 
 func (reader *spoolReader) Next() (ParsedEvent, error) {
@@ -420,6 +427,15 @@ func (reader *spoolReader) Next() (ParsedEvent, error) {
 
 func (reader *spoolReader) Close() error {
 	return reader.file.Close()
+}
+
+func (reader *spoolReader) Verify(meta ShardSpoolMeta) error {
+	if reader == nil || reader.hash == nil ||
+		reader.hash.bytes != meta.SizeBytes ||
+		hex.EncodeToString(reader.hash.hash.Sum(nil)) != meta.SHA256 {
+		return fmt.Errorf("spool hash mismatch: %s", meta.Path)
+	}
+	return nil
 }
 
 func VerifySpoolFiles(outputRoot string, metas []SlotSpoolMeta) error {

@@ -269,7 +269,12 @@ func (writer *GlobalRIBCheckpointWriter) Finalize(
 		SchemaVersion: "rrc25-global-rib-checkpoint/v1",
 		EngineVersion: GlobalEngineVersion,
 		CreatedAt:     time.Now().UTC().Format(time.RFC3339),
-		CollectorID:   "rrc25", SeedObservedAt: CatchUpStartUTC,
+		CollectorID:   "rrc25", SeedObservedAt: func() string {
+			if state.SeedObservedAt != "" {
+				return state.SeedObservedAt
+			}
+			return CatchUpStartUTC
+		}(),
 		InputArtifact:    artifact,
 		MappingVersion:   state.Mapping.MappingVersion,
 		MappingBaseHash:  state.Mapping.CompatibleSHA256,
@@ -438,6 +443,12 @@ func LoadGlobalRIBCheckpoint(
 	state, err := NewGlobalReplayState(mapping, int(manifest.UniqueRouteCount))
 	if err != nil {
 		return nil, manifest, err
+	}
+	state.SeedObservedAt = manifest.SeedObservedAt
+	if parsed, err := time.Parse(time.RFC3339, manifest.SeedObservedAt); err == nil {
+		state.SeedEventMicros = parsed.UnixMicro()
+	} else {
+		return nil, manifest, fmt.Errorf("global RIB seed time is invalid")
 	}
 	shards := append([]GlobalCheckpointShard(nil), manifest.Shards...)
 	sort.Slice(shards, func(i, j int) bool { return shards[i].Shard < shards[j].Shard })

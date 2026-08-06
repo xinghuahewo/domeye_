@@ -156,13 +156,17 @@ type globalCountryPopulation struct {
 }
 
 type GlobalReplayState struct {
-	Mapping       *GlobalCountryMapping
-	Routes        map[RouteKey]globalRoute
-	Counters      map[globalASNKey]visibilityCounter
-	Countries     map[uint16]*globalCountryPopulation
-	CohortIDs     map[uint16]string
-	StateDigest   multisetDigest
-	SeedRouteRows int64
+	Mapping            *GlobalCountryMapping
+	SeedObservedAt     string
+	SeedEventMicros    int64
+	Routes             map[RouteKey]globalRoute
+	Counters           map[globalASNKey]visibilityCounter
+	Countries          map[uint16]*globalCountryPopulation
+	CohortIDs          map[uint16]string
+	StateDigest        multisetDigest
+	SeedRouteRows      int64
+	BaselineRouteCount int64
+	PresentRouteCount  int64
 }
 
 func NewGlobalReplayState(mapping *GlobalCountryMapping, capacity int) (*GlobalReplayState, error) {
@@ -173,11 +177,12 @@ func NewGlobalReplayState(mapping *GlobalCountryMapping, capacity int) (*GlobalR
 		return nil, fmt.Errorf("route capacity cannot be negative")
 	}
 	return &GlobalReplayState{
-		Mapping:   mapping,
-		Routes:    make(map[RouteKey]globalRoute, capacity),
-		Counters:  make(map[globalASNKey]visibilityCounter),
-		Countries: make(map[uint16]*globalCountryPopulation),
-		CohortIDs: make(map[uint16]string),
+		Mapping:         mapping,
+		SeedEventMicros: catchUpStart.UnixMicro(),
+		Routes:          make(map[RouteKey]globalRoute, capacity),
+		Counters:        make(map[globalASNKey]visibilityCounter),
+		Countries:       make(map[uint16]*globalCountryPopulation),
+		CohortIDs:       make(map[uint16]string),
 	}, nil
 }
 
@@ -244,6 +249,7 @@ func (state *GlobalReplayState) Seed(
 	if err != nil {
 		return err
 	}
+	_, existed := state.Routes[key]
 	if existing, exists := state.Routes[key]; exists {
 		if existing.Dynamic {
 			return fmt.Errorf("dynamic route exists during RIB seed")
@@ -266,10 +272,14 @@ func (state *GlobalReplayState) Seed(
 		CurrentCountryID:    countryID,
 		RIBRecordOrdinal:    recordOrdinal,
 		RIBElementOrdinal:   elementOrdinal,
-		LastEventMicros:     catchUpStart.UnixMicro(),
+		LastEventMicros:     state.SeedEventMicros,
 	}
 	state.Routes[key] = route
 	state.SeedRouteRows++
+	if !existed {
+		state.BaselineRouteCount++
+		state.PresentRouteCount++
+	}
 	country := state.country(countryID)
 	country.BaselinePrefixVP++
 	country.VisiblePrefixVP++
@@ -439,6 +449,9 @@ func (state *GlobalReplayState) Apply(
 	}
 	if event.Action == actionWithdraw {
 		if current.Dynamic {
+			if oldPresent {
+				state.PresentRouteCount--
+			}
 			delete(state.Routes, event.Key)
 			return nil
 		}
@@ -454,6 +467,13 @@ func (state *GlobalReplayState) Apply(
 			current.CurrentCountryID = state.Mapping.CountryID(event.OriginASN)
 		} else {
 			current.CurrentCountryID = 0
+		}
+	}
+	if oldPresent != current.CurrentPresent {
+		if current.CurrentPresent {
+			state.PresentRouteCount++
+		} else {
+			state.PresentRouteCount--
 		}
 	}
 	current.LastArtifactIndex = event.ArtifactIndex
@@ -539,6 +559,10 @@ func (state *GlobalReplayState) CohortID(countryID uint16) string {
 	}
 	population := state.country(countryID)
 	code := state.Mapping.CountryCode(countryID)
+	seedObservedAt := state.SeedObservedAt
+	if seedObservedAt == "" {
+		seedObservedAt = CatchUpStartUTC
+	}
 	var cohortID string
 	if code == "IR" {
 		members := make([]BaselineMember, 0, int(population.BaselinePrefixVP))
@@ -562,7 +586,7 @@ func (state *GlobalReplayState) CohortID(countryID uint16) string {
 			"collector_id":     "rrc25",
 			"country_code":     "IR",
 			"mapping_version":  state.Mapping.MappingVersion,
-			"seed_observed_at": CatchUpStartUTC,
+			"seed_observed_at": seedObservedAt,
 			"members":          members,
 		}, 32)
 	} else {
@@ -571,7 +595,7 @@ func (state *GlobalReplayState) CohortID(countryID uint16) string {
 			"collector_id":       "rrc25",
 			"country_code":       code,
 			"mapping_version":    state.Mapping.MappingVersion,
-			"seed_observed_at":   CatchUpStartUTC,
+			"seed_observed_at":   seedObservedAt,
 			"baseline_prefix_vp": population.BaselinePrefixVP,
 			"membership_digest":  population.CohortDigest.Hex(),
 		}, 32)
@@ -595,7 +619,19 @@ func (state *GlobalReplayState) SnapshotAll(
 	activity *GlobalSlotActivity,
 ) ([]GlobalCountryObservation, []GlobalASNStateRow, GlobalConservation, error) {
 	return state.snapshotAll(
-		observedAt, slotStart, slotEnd, role, activity, true,
+		observedAt, slotStart, slotEnd, role, activity, true, false,
+	)
+}
+
+// SnapshotAllFast 生成与 SnapshotAll 相同的国家和 ASN 状态，但使用已经由
+// Apply 维护的增量人口计数做快速守恒校验。它用于从已验真的长窗 spool 定向
+// 投影少量国家，避免在每个五分钟槽重复扫描全部固定路由。
+func (state *GlobalReplayState) SnapshotAllFast(
+	observedAt, slotStart, slotEnd, role string,
+	activity *GlobalSlotActivity,
+) ([]GlobalCountryObservation, []GlobalASNStateRow, GlobalConservation, error) {
+	return state.snapshotAll(
+		observedAt, slotStart, slotEnd, role, activity, true, true,
 	)
 }
 
@@ -604,7 +640,7 @@ func (state *GlobalReplayState) SnapshotCountries(
 	activity *GlobalSlotActivity,
 ) ([]GlobalCountryObservation, GlobalConservation, error) {
 	observations, _, conservation, err := state.snapshotAll(
-		observedAt, slotStart, slotEnd, role, activity, false,
+		observedAt, slotStart, slotEnd, role, activity, false, false,
 	)
 	return observations, conservation, err
 }
@@ -613,6 +649,7 @@ func (state *GlobalReplayState) snapshotAll(
 	observedAt, slotStart, slotEnd, role string,
 	activity *GlobalSlotActivity,
 	includeASNRows bool,
+	fastConservation bool,
 ) ([]GlobalCountryObservation, []GlobalASNStateRow, GlobalConservation, error) {
 	if activity == nil {
 		activity = NewGlobalSlotActivity()
@@ -807,14 +844,20 @@ func (state *GlobalReplayState) snapshotAll(
 			StateDigest:          state.StateDigest.Hex(),
 		})
 	}
-	conservation, err := state.ValidateConservation()
+	var conservation GlobalConservation
+	var err error
+	if fastConservation {
+		conservation, err = state.ValidateConservationFast()
+	} else {
+		conservation, err = state.ValidateConservation()
+	}
 	if err != nil {
 		return nil, nil, conservation, err
 	}
 	return observations, asnRows, conservation, nil
 }
 
-func (state *GlobalReplayState) ValidateConservation() (GlobalConservation, error) {
+func (state *GlobalReplayState) validateConservation(scanRoutes bool) (GlobalConservation, error) {
 	result := GlobalConservation{
 		GlobalBaselinePrefixVP: int64(0),
 		GlobalVisiblePrefixVP:  int64(0),
@@ -851,14 +894,18 @@ func (state *GlobalReplayState) ValidateConservation() (GlobalConservation, erro
 	result.GlobalBaselinePrefixVP = result.CountryBaselineSum
 	result.GlobalVisiblePrefixVP = result.CountryVisibleSum
 	result.GlobalCurrentPrefixVP = result.CountryCurrentSum
-	presentRoutes := int64(0)
-	baselineRoutes := int64(0)
-	for _, route := range state.Routes {
-		if !route.Dynamic {
-			baselineRoutes++
-		}
-		if route.CurrentPresent {
-			presentRoutes++
+	baselineRoutes := state.BaselineRouteCount
+	presentRoutes := state.PresentRouteCount
+	if scanRoutes {
+		baselineRoutes = 0
+		presentRoutes = 0
+		for _, route := range state.Routes {
+			if !route.Dynamic {
+				baselineRoutes++
+			}
+			if route.CurrentPresent {
+				presentRoutes++
+			}
 		}
 	}
 	if baselineRoutes != result.GlobalBaselinePrefixVP ||
@@ -880,6 +927,16 @@ func (state *GlobalReplayState) ValidateConservation() (GlobalConservation, erro
 		}
 	}
 	return result, nil
+}
+
+// ValidateConservationFast 核对增量维护的人口与 ASN 计数，不逐槽扫描数千万条
+// RouteState。完整 checkpoint 写出和最终验收仍调用 ValidateConservation。
+func (state *GlobalReplayState) ValidateConservationFast() (GlobalConservation, error) {
+	return state.validateConservation(false)
+}
+
+func (state *GlobalReplayState) ValidateConservation() (GlobalConservation, error) {
+	return state.validateConservation(true)
 }
 
 func ratioEqual(left, right float64) bool {

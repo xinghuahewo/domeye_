@@ -235,8 +235,11 @@ def _legacy_observation(
             "display_name": f"{country_name} BGP 路由观测",
         },
         "observation_scope": {
-            "collector_id": source,
-            "collector_ids": [source],
+            # 旧引用末段是业务事实表的 source code，不是 RIS collector。
+            # 正式国家中断观测产品始终且仅使用 RRC25；source 继续保留在
+            # legacy_summary 中用于旧事实追溯。
+            "collector_id": "rrc25",
+            "collector_ids": ["rrc25"],
             "collector_count": 1,
             "vantage_point_count": None,
             "vantage_point_semantics": "旧事实记录未保留观测点人口",
