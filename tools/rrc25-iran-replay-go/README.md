@@ -42,6 +42,11 @@ spool 和最新 checkpoint，可用同一命令加 `--resume` 继续，不重新
 `repair_provenance_sha256`。替换文件只能作为新 artifact 被选择，不能覆盖或冒充
 损坏原文件；修复血缘同时参与 import run 身份和全局内容身份。
 
+逻辑原始数据根固定为 `domeye://raw/rrc25-global-20260224-20260310-v1`；每个
+artifact 的稳定 URI 由该根与 `relative_path` 组合。只有完整读取 gzip、核对压缩
+字节数和 SHA-256 后，分区才写入
+`input_integrity_status=gzip_passed_and_stream_sha256_verified`，该字段属于内容身份。
+
 输出按原始 artifact 分区，每个分区包含：
 
 - `records.jsonl.gz`：MRT record ordinal、解压偏移、长度和 SHA-256；

@@ -56,6 +56,7 @@ type RouteEventStoreAuditResult struct {
 	StoreContentSHA256      string                       `json:"store_content_sha256"`
 	SelectionSHA256         string                       `json:"selection_sha256"`
 	CollectorID             string                       `json:"collector_id"`
+	SourceDatasetURI        string                       `json:"source_dataset_uri"`
 	WindowStartUTC          string                       `json:"window_start_utc"`
 	WindowEndExclusiveUTC   string                       `json:"window_end_exclusive_utc"`
 	ArtifactCount           int                          `json:"artifact_count"`
@@ -389,6 +390,7 @@ func AuditRouteEventStore(config RouteEventStoreAuditConfig) (RouteEventStoreAud
 		StoreContentSHA256:    manifest.ContentSHA256,
 		SelectionSHA256:       manifest.SelectionSHA256,
 		CollectorID:           manifest.CollectorID,
+		SourceDatasetURI:      manifest.SourceDatasetURI,
 		WindowStartUTC:        manifest.WindowStartUTC,
 		WindowEndExclusiveUTC: manifest.WindowEndExclusive,
 		ArtifactCount:         manifest.ArtifactCount,

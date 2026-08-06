@@ -175,9 +175,10 @@ func TestRouteEventPartitionContentIdentityBindsSemanticManifest(t *testing.T) {
 		SchemaVersion: RouteEventPartitionVersion,
 		ImportRunID:   "run", DatasetID: "dataset", ArtifactIndex: 1,
 		Artifact: Artifact{ArtifactID: "artifact"}, Role: "update",
-		IngestTimeUTC:   "2026-08-06T00:00:00Z",
-		ParseTimeUTC:    "2026-08-06T00:00:01Z",
-		PhysicalRecords: 10, RouteEvents: 20, Announces: 15, Withdraws: 5,
+		InputIntegrityStatus: RouteEventInputIntegrity,
+		IngestTimeUTC:        "2026-08-06T00:00:00Z",
+		ParseTimeUTC:         "2026-08-06T00:00:01Z",
+		PhysicalRecords:      10, RouteEvents: 20, Announces: 15, Withdraws: 5,
 		PathCount: 3, ParserWarnings: 1,
 		Records: RouteEventStoreFile{Path: "records", RowCount: 10, SHA256: "a"},
 		Events:  RouteEventStoreFile{Path: "events", RowCount: 20, SHA256: "b"},
@@ -191,7 +192,10 @@ func TestRouteEventPartitionContentIdentityBindsSemanticManifest(t *testing.T) {
 		t.Fatal("operation time changed semantic partition identity")
 	}
 	for name, mutate := range map[string]func(*RouteEventPartitionManifest){
-		"role":            func(value *RouteEventPartitionManifest) { value.Role = "rib" },
+		"role": func(value *RouteEventPartitionManifest) { value.Role = "rib" },
+		"input integrity": func(value *RouteEventPartitionManifest) {
+			value.InputIntegrityStatus = "unchecked"
+		},
 		"population":      func(value *RouteEventPartitionManifest) { value.RouteEvents++ },
 		"parser warnings": func(value *RouteEventPartitionManifest) { value.ParserWarnings++ },
 	} {

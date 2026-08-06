@@ -12,6 +12,7 @@
     "dataset_id",
     "collector_id",
     "source",
+    "source_dataset_uri",
     "window_start_utc",
     "window_end_exclusive_utc",
     "selection_sha256",
@@ -52,6 +53,9 @@
     },
     "source": {
       "const": "ripe_ris"
+    },
+    "source_dataset_uri": {
+      "const": "domeye://raw/rrc25-global-20260224-20260310-v1"
     },
     "window_start_utc": {
       "const": "2026-02-24T00:00:00Z"
@@ -289,6 +293,7 @@
         "artifact_index",
         "artifact",
         "role",
+        "input_integrity_status",
         "ingest_time_utc",
         "parse_time_utc",
         "physical_record_count",
@@ -326,6 +331,9 @@
             "rib",
             "update"
           ]
+        },
+        "input_integrity_status": {
+          "const": "gzip_passed_and_stream_sha256_verified"
         },
         "ingest_time_utc": {
           "$ref": "#/$defs/utcTimestamp"

@@ -26,6 +26,8 @@ const (
 	RouteEventParserVersion    = "1.0.0"
 	RouteEventImporterName     = "domeye_route_event_store"
 	RouteEventImporterVersion  = "1.0.0"
+	RouteEventSourceDatasetURI = "domeye://raw/rrc25-global-20260224-20260310-v1"
+	RouteEventInputIntegrity   = "gzip_passed_and_stream_sha256_verified"
 	RouteEventWindowStartUTC   = "2026-02-24T00:00:00Z"
 	RouteEventWindowEndUTC     = "2026-03-11T00:00:00Z"
 	RouteEventUpdateCount      = 4_320
@@ -53,6 +55,7 @@ type RouteEventStorePreflight struct {
 	ImportRunID         string                     `json:"import_run_id"`
 	DatasetID           string                     `json:"dataset_id"`
 	CollectorID         string                     `json:"collector_id"`
+	SourceDatasetURI    string                     `json:"source_dataset_uri"`
 	WindowStartUTC      string                     `json:"window_start_utc"`
 	WindowEndExclusive  string                     `json:"window_end_exclusive_utc"`
 	SelectionSHA256     string                     `json:"selection_sha256"`
@@ -112,25 +115,26 @@ type RouteEventStoreFile struct {
 }
 
 type RouteEventPartitionManifest struct {
-	SchemaVersion   string              `json:"schema_version"`
-	ImportRunID     string              `json:"import_run_id"`
-	DatasetID       string              `json:"dataset_id"`
-	ArtifactIndex   int                 `json:"artifact_index"`
-	Artifact        Artifact            `json:"artifact"`
-	Role            string              `json:"role"`
-	IngestTimeUTC   string              `json:"ingest_time_utc"`
-	ParseTimeUTC    string              `json:"parse_time_utc"`
-	PhysicalRecords int64               `json:"physical_record_count"`
-	RouteEvents     int64               `json:"route_event_count"`
-	Announces       int64               `json:"announce_count"`
-	Withdraws       int64               `json:"withdraw_count"`
-	RIBSnapshots    int64               `json:"rib_snapshot_count"`
-	PathCount       int64               `json:"path_count"`
-	ParserWarnings  int64               `json:"parser_warning_count"`
-	Records         RouteEventStoreFile `json:"raw_records"`
-	Events          RouteEventStoreFile `json:"route_events"`
-	Paths           RouteEventStoreFile `json:"as_paths"`
-	ContentSHA256   string              `json:"content_sha256"`
+	SchemaVersion        string              `json:"schema_version"`
+	ImportRunID          string              `json:"import_run_id"`
+	DatasetID            string              `json:"dataset_id"`
+	ArtifactIndex        int                 `json:"artifact_index"`
+	Artifact             Artifact            `json:"artifact"`
+	Role                 string              `json:"role"`
+	InputIntegrityStatus string              `json:"input_integrity_status"`
+	IngestTimeUTC        string              `json:"ingest_time_utc"`
+	ParseTimeUTC         string              `json:"parse_time_utc"`
+	PhysicalRecords      int64               `json:"physical_record_count"`
+	RouteEvents          int64               `json:"route_event_count"`
+	Announces            int64               `json:"announce_count"`
+	Withdraws            int64               `json:"withdraw_count"`
+	RIBSnapshots         int64               `json:"rib_snapshot_count"`
+	PathCount            int64               `json:"path_count"`
+	ParserWarnings       int64               `json:"parser_warning_count"`
+	Records              RouteEventStoreFile `json:"raw_records"`
+	Events               RouteEventStoreFile `json:"route_events"`
+	Paths                RouteEventStoreFile `json:"as_paths"`
+	ContentSHA256        string              `json:"content_sha256"`
 }
 
 type RouteEventStoreManifest struct {
@@ -140,6 +144,7 @@ type RouteEventStoreManifest struct {
 	DatasetID           string                        `json:"dataset_id"`
 	CollectorID         string                        `json:"collector_id"`
 	Source              string                        `json:"source"`
+	SourceDatasetURI    string                        `json:"source_dataset_uri"`
 	WindowStartUTC      string                        `json:"window_start_utc"`
 	WindowEndExclusive  string                        `json:"window_end_exclusive_utc"`
 	SelectionSHA256     string                        `json:"selection_sha256"`
@@ -697,37 +702,39 @@ func verifyRouteEventStoreFile(root string, meta RouteEventStoreFile) error {
 
 func routeEventPartitionContentSHA(manifest RouteEventPartitionManifest) string {
 	value := struct {
-		SchemaVersion   string              `json:"schema_version"`
-		ImportRunID     string              `json:"import_run_id"`
-		DatasetID       string              `json:"dataset_id"`
-		ArtifactIndex   int                 `json:"artifact_index"`
-		Artifact        Artifact            `json:"artifact"`
-		Role            string              `json:"role"`
-		PhysicalRecords int64               `json:"physical_record_count"`
-		RouteEvents     int64               `json:"route_event_count"`
-		Announces       int64               `json:"announce_count"`
-		Withdraws       int64               `json:"withdraw_count"`
-		RIBSnapshots    int64               `json:"rib_snapshot_count"`
-		PathCount       int64               `json:"path_count"`
-		ParserWarnings  int64               `json:"parser_warning_count"`
-		Records         RouteEventStoreFile `json:"records"`
-		Events          RouteEventStoreFile `json:"events"`
-		Paths           RouteEventStoreFile `json:"paths"`
+		SchemaVersion        string              `json:"schema_version"`
+		ImportRunID          string              `json:"import_run_id"`
+		DatasetID            string              `json:"dataset_id"`
+		ArtifactIndex        int                 `json:"artifact_index"`
+		Artifact             Artifact            `json:"artifact"`
+		Role                 string              `json:"role"`
+		InputIntegrityStatus string              `json:"input_integrity_status"`
+		PhysicalRecords      int64               `json:"physical_record_count"`
+		RouteEvents          int64               `json:"route_event_count"`
+		Announces            int64               `json:"announce_count"`
+		Withdraws            int64               `json:"withdraw_count"`
+		RIBSnapshots         int64               `json:"rib_snapshot_count"`
+		PathCount            int64               `json:"path_count"`
+		ParserWarnings       int64               `json:"parser_warning_count"`
+		Records              RouteEventStoreFile `json:"records"`
+		Events               RouteEventStoreFile `json:"events"`
+		Paths                RouteEventStoreFile `json:"paths"`
 	}{
 		SchemaVersion: manifest.SchemaVersion,
 		ImportRunID:   manifest.ImportRunID, DatasetID: manifest.DatasetID,
 		ArtifactIndex: manifest.ArtifactIndex, Artifact: manifest.Artifact,
-		Role:            manifest.Role,
-		PhysicalRecords: manifest.PhysicalRecords,
-		RouteEvents:     manifest.RouteEvents,
-		Announces:       manifest.Announces,
-		Withdraws:       manifest.Withdraws,
-		RIBSnapshots:    manifest.RIBSnapshots,
-		PathCount:       manifest.PathCount,
-		ParserWarnings:  manifest.ParserWarnings,
-		Records:         manifest.Records,
-		Events:          manifest.Events,
-		Paths:           manifest.Paths,
+		Role:                 manifest.Role,
+		InputIntegrityStatus: manifest.InputIntegrityStatus,
+		PhysicalRecords:      manifest.PhysicalRecords,
+		RouteEvents:          manifest.RouteEvents,
+		Announces:            manifest.Announces,
+		Withdraws:            manifest.Withdraws,
+		RIBSnapshots:         manifest.RIBSnapshots,
+		PathCount:            manifest.PathCount,
+		ParserWarnings:       manifest.ParserWarnings,
+		Records:              manifest.Records,
+		Events:               manifest.Events,
+		Paths:                manifest.Paths,
 	}
 	raw, _ := json.Marshal(value)
 	digest := sha256.Sum256(raw)
@@ -758,6 +765,9 @@ func loadAndVerifyRouteEventPartition(
 	}
 	if manifest.Role != expectedRole {
 		return manifest, fmt.Errorf("route-event partition %d role mismatch", index)
+	}
+	if manifest.InputIntegrityStatus != RouteEventInputIntegrity {
+		return manifest, fmt.Errorf("route-event partition %d input integrity mismatch", index)
 	}
 	ingestTime, ingestErr := time.Parse(time.RFC3339Nano, manifest.IngestTimeUTC)
 	parseTime, parseErr := time.Parse(time.RFC3339Nano, manifest.ParseTimeUTC)
@@ -888,7 +898,8 @@ func buildRouteEventPartition(
 		SchemaVersion: RouteEventPartitionVersion,
 		ImportRunID:   importRunID, DatasetID: datasetID,
 		ArtifactIndex: index, Artifact: artifact, Role: role,
-		IngestTimeUTC: ingestTimeUTC, ParseTimeUTC: operationTimeUTC(),
+		InputIntegrityStatus: RouteEventInputIntegrity,
+		IngestTimeUTC:        ingestTimeUTC, ParseTimeUTC: operationTimeUTC(),
 		PhysicalRecords: builder.physical, RouteEvents: builder.routeEvents,
 		Announces: builder.announces, Withdraws: builder.withdraws,
 		RIBSnapshots: builder.ribSnapshots, PathCount: int64(len(builder.paths)),
@@ -988,6 +999,7 @@ func routeEventStoreIdentity(
 		"selection_sha256":         selectionSHA,
 		"repair_provenance_sha256": repairProvenanceSHA,
 		"implementation_id":        implementationID,
+		"source_dataset_uri":       RouteEventSourceDatasetURI,
 		"parser_name":              RouteEventParserName,
 		"parser_version":           RouteEventParserVersion,
 		"importer_name":            RouteEventImporterName,
@@ -1048,7 +1060,9 @@ func PreflightRouteEventStore(config RouteEventStoreConfig) (RouteEventStorePref
 	return RouteEventStorePreflight{
 		SchemaVersion: RouteEventStoreVersion,
 		ImportRunID:   importRunID, DatasetID: datasetID,
-		CollectorID: "rrc25", WindowStartUTC: selection.WindowStartUTC,
+		CollectorID:        "rrc25",
+		SourceDatasetURI:   RouteEventSourceDatasetURI,
+		WindowStartUTC:     selection.WindowStartUTC,
 		WindowEndExclusive: selection.WindowEndExclusiveUTC,
 		SelectionSHA256:    selectionSHA,
 		ArtifactCount:      len(selection.Updates) + 1, UpdateCount: len(selection.Updates),
@@ -1237,6 +1251,7 @@ func routeEventStoreContentSHA(manifest RouteEventStoreManifest) string {
 		DatasetID           string              `json:"dataset_id"`
 		CollectorID         string              `json:"collector_id"`
 		Source              string              `json:"source"`
+		SourceDatasetURI    string              `json:"source_dataset_uri"`
 		WindowStartUTC      string              `json:"window_start_utc"`
 		WindowEndExclusive  string              `json:"window_end_exclusive_utc"`
 		SelectionSHA256     string              `json:"selection_sha256"`
@@ -1263,6 +1278,7 @@ func routeEventStoreContentSHA(manifest RouteEventStoreManifest) string {
 		DatasetID:           manifest.DatasetID,
 		CollectorID:         manifest.CollectorID,
 		Source:              manifest.Source,
+		SourceDatasetURI:    manifest.SourceDatasetURI,
 		WindowStartUTC:      manifest.WindowStartUTC,
 		WindowEndExclusive:  manifest.WindowEndExclusive,
 		SelectionSHA256:     manifest.SelectionSHA256,
@@ -1327,6 +1343,7 @@ func loadCompleteRouteEventStore(
 	if manifest.SchemaVersion != RouteEventStoreVersion || manifest.Status != "complete" ||
 		manifest.ImportRunID != importRunID || manifest.DatasetID != datasetID ||
 		manifest.CollectorID != "rrc25" || manifest.Source != "ripe_ris" ||
+		manifest.SourceDatasetURI != RouteEventSourceDatasetURI ||
 		manifest.WindowStartUTC != RouteEventWindowStartUTC ||
 		manifest.WindowEndExclusive != RouteEventWindowEndUTC ||
 		manifest.SelectionSHA256 != selectionSHA || manifest.SelectionPath != "input-selection.json" ||
@@ -1555,7 +1572,9 @@ func RunRouteEventStore(config RouteEventStoreConfig) (RouteEventStoreManifest, 
 	manifest := RouteEventStoreManifest{
 		SchemaVersion: RouteEventStoreVersion, Status: "complete",
 		ImportRunID: importRunID, DatasetID: datasetID,
-		CollectorID: "rrc25", Source: "ripe_ris",
+		CollectorID:         "rrc25",
+		Source:              "ripe_ris",
+		SourceDatasetURI:    RouteEventSourceDatasetURI,
 		WindowStartUTC:      selection.WindowStartUTC,
 		WindowEndExclusive:  selection.WindowEndExclusiveUTC,
 		SelectionSHA256:     selectionSHA,
