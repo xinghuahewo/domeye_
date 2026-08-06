@@ -86,9 +86,6 @@ export async function getEventObservation(reference: string) {
   ) {
     throw new Error('国家中断事件解析响应异常')
   }
-  if (resolution.observation_state === 'legacy_summary') {
-    throw new EventObservationNotConfiguredError()
-  }
   const incidentId = encodeURIComponent(resolution.incident_id)
   const publicationParams = { publication_id: resolution.publication_id }
   const [overview, series, asnPage, audit] = await Promise.all([
@@ -114,7 +111,10 @@ export async function getEventObservation(reference: string) {
     && typeof overview.publication_id === 'string'
     && typeof overview.revision === 'number'
     && typeof overview.data_through === 'string'
-  const trendProduct = hasPublishedObservationIdentity
+  const trendProduct = (
+    resolution.observation_state !== 'legacy_summary'
+    && hasPublishedObservationIdentity
+  )
     ? await apiV2Get<unknown>(`country-outages/${incidentId}/trend`, {
         params: publicationParams,
       }).catch((error: unknown) => {
