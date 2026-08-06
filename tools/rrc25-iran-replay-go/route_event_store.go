@@ -1278,6 +1278,27 @@ func routeEventStoreContentSHA(manifest RouteEventStoreManifest) string {
 	return hex.EncodeToString(digest[:])
 }
 
+func readIdenticalRouteEventStoreManifests(
+	output string,
+) (RouteEventStoreManifest, error) {
+	var complete RouteEventStoreManifest
+	completeRaw, err := readJSON(filepath.Join(output, "COMPLETE.json"), &complete)
+	if err != nil {
+		return complete, err
+	}
+	var published RouteEventStoreManifest
+	publishedRaw, err := readJSON(filepath.Join(output, "manifest.json"), &published)
+	if err != nil {
+		return complete, err
+	}
+	if !bytes.Equal(completeRaw, publishedRaw) {
+		return complete, fmt.Errorf(
+			"route-event COMPLETE.json and manifest.json are not byte-identical",
+		)
+	}
+	return complete, nil
+}
+
 func loadCompleteRouteEventStore(
 	config RouteEventStoreConfig,
 	selection GlobalWindowSelection,
@@ -1285,12 +1306,12 @@ func loadCompleteRouteEventStore(
 	importRunID string,
 	datasetID string,
 ) (RouteEventStoreManifest, error) {
-	var manifest RouteEventStoreManifest
-	repairs, repairSHA, err := routeEventStoreProvenance(selection)
+	manifest, err := readIdenticalRouteEventStoreManifests(config.Output)
 	if err != nil {
 		return manifest, err
 	}
-	if _, err := readJSON(filepath.Join(config.Output, "COMPLETE.json"), &manifest); err != nil {
+	repairs, repairSHA, err := routeEventStoreProvenance(selection)
+	if err != nil {
 		return manifest, err
 	}
 	if manifest.SchemaVersion != RouteEventStoreVersion || manifest.Status != "complete" ||

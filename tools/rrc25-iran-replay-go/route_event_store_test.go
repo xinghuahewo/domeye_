@@ -226,6 +226,33 @@ func TestRouteEventStoreContentIdentityBindsPopulation(t *testing.T) {
 	}
 }
 
+func TestRouteEventStoreRequiresIdenticalCompleteAndManifest(t *testing.T) {
+	output := t.TempDir()
+	manifest := RouteEventStoreManifest{
+		SchemaVersion: RouteEventStoreVersion,
+		Status:        "complete",
+		DatasetID:     "dataset",
+	}
+	if _, err := writeJSONImmutable(filepath.Join(output, "COMPLETE.json"), manifest); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writeJSONImmutable(filepath.Join(output, "manifest.json"), manifest); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readIdenticalRouteEventStoreManifests(output); err != nil {
+		t.Fatalf("identical global manifests were rejected: %v", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(output, "manifest.json"), []byte("{}\n"), 0o640,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readIdenticalRouteEventStoreManifests(output); err == nil ||
+		!strings.Contains(err.Error(), "not byte-identical") {
+		t.Fatalf("drifted global manifest was accepted: %v", err)
+	}
+}
+
 func mustAddress(value string) netip.Addr {
 	return netip.MustParseAddr(value)
 }
