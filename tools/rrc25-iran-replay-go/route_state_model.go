@@ -66,6 +66,15 @@ type RouteState struct {
 	ProcessedEventCount int64
 }
 
+// RouteStateTransition 只描述一次已经应用到唯一 RouteState 的前后值。
+// S3 投影器消费这个描述维护指标；它不保存另一套可独立推进的路由状态。
+type RouteStateTransition struct {
+	Event          routeStateEvent
+	Previous       RouteStateValue
+	PreviousExists bool
+	Current        RouteStateValue
+}
+
 func NewRouteState(capacity int) (*RouteState, error) {
 	if capacity < 0 {
 		return nil, fmt.Errorf("route-state capacity cannot be negative")
@@ -144,8 +153,17 @@ func routeStateRecordDigest(key RouteStateKey, value RouteStateValue) [32]byte {
 }
 
 func (state *RouteState) Apply(event routeStateEvent) error {
+	_, err := state.ApplyWithTransition(event)
+	return err
+}
+
+// ApplyWithTransition 与 Apply 使用同一条状态更新路径，并返回投影器所需的
+// 前后值。返回成功时，Current 就是唯一 RouteState 中已经提交的当前值。
+func (state *RouteState) ApplyWithTransition(
+	event routeStateEvent,
+) (RouteStateTransition, error) {
 	if event.Key.Collector != RouteStateCollectorRRC25 {
-		return fmt.Errorf("route-state collector is not rrc25")
+		return RouteStateTransition{}, fmt.Errorf("route-state collector is not rrc25")
 	}
 	previous, existed := state.Routes[event.Key]
 	if existed {
@@ -189,9 +207,11 @@ func (state *RouteState) Apply(event routeStateEvent) error {
 	state.StateDigest.Add(routeStateRecordDigest(event.Key, value))
 	state.ProcessedEventCount++
 	if state.VisibleRouteCount < 0 || state.VisibleRouteCount > int64(len(state.Routes)) {
-		return fmt.Errorf("route-state visible population is invalid")
+		return RouteStateTransition{}, fmt.Errorf("route-state visible population is invalid")
 	}
-	return nil
+	return RouteStateTransition{
+		Event: event, Previous: previous, PreviousExists: existed, Current: value,
+	}, nil
 }
 
 func routeStateDecodeID(value, prefix string, bytes int) ([]byte, error) {
