@@ -141,6 +141,34 @@ class CountryOutageTrendS4ApiTest(unittest.TestCase):
             )
         self.assertEqual(captured.exception.code, "resource_identity_conflict")
 
+    def test_asn_slot_population_indexes_rows_once(self):
+        class CountingAsn:
+            calls = 0
+
+            def __init__(self, value):
+                self.value = value
+
+            def __int__(self):
+                type(self).calls += 1
+                return self.value
+
+        overview, series, pages = resources()
+        template = pages[0]["items"][0]
+        pages[0]["items"] = [
+            {
+                **template,
+                "asn": CountingAsn(64500 + index),
+            }
+            for index in range(24)
+        ]
+
+        product = compile_country_outage_trend_product_from_resources(
+            overview, series, pages
+        )
+
+        self.assertEqual(product["contexts"]["asn"]["asn_count"], 24)
+        self.assertLessEqual(CountingAsn.calls, 24)
+
     @unittest.skipUnless(
         importlib.util.find_spec("flask") is not None,
         "当前 Python 环境未安装 Flask；由 backend uv 环境执行",

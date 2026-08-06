@@ -320,14 +320,17 @@ def _aggregate_asn_context(
         }
     )
     views = []
+    states_by_asn: dict[int, list[str]] = {}
     for row in items:
+        asn = int(row["asn"])
         raw_states = row.get("states") or []
         if len(raw_states) != expected_count:
             _fail("asn_slot_count_conflict", "asn_pages.items.states", "ASN 状态槽数与趋势不一致")
         states = [ASN_CODE_TO_STATE.get(value, "unknown") for value in raw_states]
+        states_by_asn.setdefault(asn, states)
         views.append(
             {
-                "asn": int(row["asn"]),
+                "asn": asn,
                 "address_families": [
                     "ipv4" if value == 4 else "ipv6"
                     for value in row.get("address_families", [])
@@ -374,12 +377,7 @@ def _aggregate_asn_context(
                 if sample["slot_index"] == index
             )
             if index in sample_indices
-            else ASN_CODE_TO_STATE.get(
-                next(
-                    item for item in items if int(item["asn"]) == view["asn"]
-                )["states"][index],
-                "unknown",
-            )
+            else states_by_asn[view["asn"]][index]
             for view in views
         )
         slot_population.append(
