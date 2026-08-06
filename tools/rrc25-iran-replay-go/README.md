@@ -104,3 +104,20 @@ go run ./cmd/rrc25-route-event-store \
 Prefix×VP Evidence、国家/ASN 指标或 Publication；Prefix×VP 只是后续 RouteState
 的主键维度。`implementation_id` 进入 import run、RUNNING 标记和最终清单，禁止
 不同实现身份在一次续跑中混用。
+
+全量完成后的独立审计入口：
+
+```bash
+go run ./cmd/rrc25-route-event-audit \
+  --raw-root /path/to/frozen-input \
+  --selection /path/to/224-310.selection.json \
+  --output /path/to/complete-route-event-store \
+  --store-implementation-id git:<生成器提交SHA> \
+  --audit-implementation-id git:<审计器提交SHA> \
+  --sample-count 100
+```
+
+审计器先通过完成态 `--resume` 重算 4,321 个分区全部文件 SHA-256，再确定性选取
+100 个 UPDATE 分区逐元素回到原始 gzip 复算；样本固定包含第一个 UPDATE、两个隔离
+修复 artifact，另含至少一个 withdraw。VP、动作、prefix、AS_PATH、属性摘要、
+record/element 坐标、raw record sidecar 和 RouteEvent ID 任一不一致即失败关闭。

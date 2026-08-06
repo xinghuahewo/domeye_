@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -251,6 +252,86 @@ func TestRouteEventStoreRequiresIdenticalCompleteAndManifest(t *testing.T) {
 	if _, err := readIdenticalRouteEventStoreManifests(output); err == nil ||
 		!strings.Contains(err.Error(), "not byte-identical") {
 		t.Fatalf("drifted global manifest was accepted: %v", err)
+	}
+}
+
+func TestRouteEventAuditSelectionIsDeterministicAndIncludesRepairs(t *testing.T) {
+	first, err := routeEventAuditPartitionIndexes("dataset", RouteEventStoreAuditSamples)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := routeEventAuditPartitionIndexes("dataset", RouteEventStoreAuditSamples)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first, second) || len(first) != RouteEventStoreAuditSamples {
+		t.Fatal("audit partition selection is not deterministic")
+	}
+	seen := make(map[int]struct{}, len(first))
+	for _, index := range first {
+		if index < 1 || index > RouteEventUpdateCount {
+			t.Fatalf("audit partition index is out of range: %d", index)
+		}
+		if _, found := seen[index]; found {
+			t.Fatalf("duplicate audit partition index: %d", index)
+		}
+		seen[index] = struct{}{}
+	}
+	for _, required := range []int{1, firstRepairPartitionIndex, secondRepairPartitionIndex} {
+		if _, found := seen[required]; !found {
+			t.Fatalf("required audit partition %d is absent", required)
+		}
+	}
+}
+
+func TestRouteEventAuditReplaysSyntheticRawElement(t *testing.T) {
+	rawRoot := t.TempDir()
+	output := t.TempDir()
+	_, updateManifest, _, update := buildSyntheticRouteEventPartitions(t, rawRoot, output)
+	candidate, err := selectAuditedRouteEvent(
+		filepath.Join(output, filepath.FromSlash(updateManifest.Events.Path)),
+		"dataset", 1, "announce",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawRow, err := readAuditedRawRecordRow(
+		filepath.Join(output, filepath.FromSlash(updateManifest.Records.Path)),
+		candidate.RecordOrdinal,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, record, err := replayAuditedUpdateElement(
+		rawRoot, update, 1, candidate.RecordOrdinal, candidate.ElementOrdinal,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rawRow.RecordSHA256 != record.RecordSHA256 ||
+		rawRow.UncompressedOffset != record.UncompressedOffset ||
+		rawRow.RecordLength != record.RecordLength {
+		t.Fatal("audit replay did not close the raw record sidecar")
+	}
+	expected, err := auditedRouteEventRow(update, replayed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(candidate, expected) {
+		t.Fatalf("audit replay did not reproduce RouteEvent: %+v %+v", candidate, expected)
+	}
+	if candidate.ASPathID == nil {
+		t.Fatal("synthetic announcement has no AS_PATH")
+	}
+	candidatePath, err := readAuditedASPath(
+		filepath.Join(output, filepath.FromSlash(updateManifest.Paths.Path)),
+		*candidate.ASPathID,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(candidatePath.ASPath, *replayed.ASPath) {
+		t.Fatal("audit replay did not reproduce AS_PATH dictionary content")
 	}
 }
 
