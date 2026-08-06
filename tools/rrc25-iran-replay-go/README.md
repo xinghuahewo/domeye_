@@ -51,6 +51,10 @@ spool 和最新 checkpoint，可用同一命令加 `--resume` 继续，不重新
   AS_PATH 字典；
 - `manifest.json`：输入 artifact、人口、文件摘要和分区内容身份。
 
+分区内容身份除三类文件外，还绑定 artifact role、物理记录/事件/动作/路径人口和
+解析告警人口；全局内容身份继续绑定全局窗口、来源、实现、修复血缘、聚合人口及
+全部分区身份。只有操作开始/完成时间不进入语义摘要，但恢复时仍需与分区清单原文一致。
+
 物理事件行不重复全局和分区字段。逻辑 RouteEvent 由全局清单、分区清单中的
 `ingest_time_utc` / `parse_time_utc`、事件行、AS_PATH 字典和 record sidecar
 确定性组合。操作时间不进入语义 content SHA，因此重跑可以有不同的处理时间，

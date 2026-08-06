@@ -697,19 +697,37 @@ func verifyRouteEventStoreFile(root string, meta RouteEventStoreFile) error {
 
 func routeEventPartitionContentSHA(manifest RouteEventPartitionManifest) string {
 	value := struct {
-		SchemaVersion string              `json:"schema_version"`
-		ImportRunID   string              `json:"import_run_id"`
-		DatasetID     string              `json:"dataset_id"`
-		ArtifactIndex int                 `json:"artifact_index"`
-		Artifact      Artifact            `json:"artifact"`
-		Records       RouteEventStoreFile `json:"records"`
-		Events        RouteEventStoreFile `json:"events"`
-		Paths         RouteEventStoreFile `json:"paths"`
+		SchemaVersion   string              `json:"schema_version"`
+		ImportRunID     string              `json:"import_run_id"`
+		DatasetID       string              `json:"dataset_id"`
+		ArtifactIndex   int                 `json:"artifact_index"`
+		Artifact        Artifact            `json:"artifact"`
+		Role            string              `json:"role"`
+		PhysicalRecords int64               `json:"physical_record_count"`
+		RouteEvents     int64               `json:"route_event_count"`
+		Announces       int64               `json:"announce_count"`
+		Withdraws       int64               `json:"withdraw_count"`
+		RIBSnapshots    int64               `json:"rib_snapshot_count"`
+		PathCount       int64               `json:"path_count"`
+		ParserWarnings  int64               `json:"parser_warning_count"`
+		Records         RouteEventStoreFile `json:"records"`
+		Events          RouteEventStoreFile `json:"events"`
+		Paths           RouteEventStoreFile `json:"paths"`
 	}{
 		SchemaVersion: manifest.SchemaVersion,
 		ImportRunID:   manifest.ImportRunID, DatasetID: manifest.DatasetID,
 		ArtifactIndex: manifest.ArtifactIndex, Artifact: manifest.Artifact,
-		Records: manifest.Records, Events: manifest.Events, Paths: manifest.Paths,
+		Role:            manifest.Role,
+		PhysicalRecords: manifest.PhysicalRecords,
+		RouteEvents:     manifest.RouteEvents,
+		Announces:       manifest.Announces,
+		Withdraws:       manifest.Withdraws,
+		RIBSnapshots:    manifest.RIBSnapshots,
+		PathCount:       manifest.PathCount,
+		ParserWarnings:  manifest.ParserWarnings,
+		Records:         manifest.Records,
+		Events:          manifest.Events,
+		Paths:           manifest.Paths,
 	}
 	raw, _ := json.Marshal(value)
 	digest := sha256.Sum256(raw)
@@ -733,6 +751,13 @@ func loadAndVerifyRouteEventPartition(
 		manifest.ArtifactIndex != index || manifest.Artifact != artifact ||
 		manifest.ContentSHA256 != routeEventPartitionContentSHA(manifest) {
 		return manifest, fmt.Errorf("route-event partition %d identity mismatch", index)
+	}
+	expectedRole := "update"
+	if index == 0 {
+		expectedRole = "rib"
+	}
+	if manifest.Role != expectedRole {
+		return manifest, fmt.Errorf("route-event partition %d role mismatch", index)
 	}
 	ingestTime, ingestErr := time.Parse(time.RFC3339Nano, manifest.IngestTimeUTC)
 	parseTime, parseErr := time.Parse(time.RFC3339Nano, manifest.ParseTimeUTC)
@@ -1197,18 +1222,55 @@ func routeEventStoreContentSHA(manifest RouteEventStoreManifest) string {
 	}
 	value := struct {
 		SchemaVersion       string              `json:"schema_version"`
+		Status              string              `json:"status"`
 		ImportRunID         string              `json:"import_run_id"`
 		DatasetID           string              `json:"dataset_id"`
+		CollectorID         string              `json:"collector_id"`
+		Source              string              `json:"source"`
+		WindowStartUTC      string              `json:"window_start_utc"`
+		WindowEndExclusive  string              `json:"window_end_exclusive_utc"`
 		SelectionSHA256     string              `json:"selection_sha256"`
+		SelectionPath       string              `json:"selection_path"`
+		SourceManifestSHA   string              `json:"source_manifest_sha256"`
+		RepairArtifactCount int                 `json:"repair_artifact_count"`
 		RepairProvenanceSHA string              `json:"repair_provenance_sha256"`
 		ImplementationID    string              `json:"implementation_id"`
+		ParserName          string              `json:"parser_name"`
+		ParserVersion       string              `json:"parser_version"`
+		ImporterName        string              `json:"importer_name"`
+		ImporterVersion     string              `json:"importer_version"`
+		ArtifactCount       int                 `json:"artifact_count"`
+		PhysicalRecords     int64               `json:"physical_record_count"`
+		RouteEvents         int64               `json:"route_event_count"`
+		Announces           int64               `json:"announce_count"`
+		Withdraws           int64               `json:"withdraw_count"`
+		RIBSnapshots        int64               `json:"rib_snapshot_count"`
 		Partitions          []partitionIdentity `json:"partitions"`
 	}{
-		SchemaVersion: manifest.SchemaVersion,
-		ImportRunID:   manifest.ImportRunID, DatasetID: manifest.DatasetID,
+		SchemaVersion:       manifest.SchemaVersion,
+		Status:              manifest.Status,
+		ImportRunID:         manifest.ImportRunID,
+		DatasetID:           manifest.DatasetID,
+		CollectorID:         manifest.CollectorID,
+		Source:              manifest.Source,
+		WindowStartUTC:      manifest.WindowStartUTC,
+		WindowEndExclusive:  manifest.WindowEndExclusive,
 		SelectionSHA256:     manifest.SelectionSHA256,
+		SelectionPath:       manifest.SelectionPath,
+		SourceManifestSHA:   manifest.SourceManifestSHA,
+		RepairArtifactCount: manifest.RepairArtifactCount,
 		RepairProvenanceSHA: manifest.RepairProvenanceSHA,
 		ImplementationID:    manifest.ImplementationID,
+		ParserName:          manifest.ParserName,
+		ParserVersion:       manifest.ParserVersion,
+		ImporterName:        manifest.ImporterName,
+		ImporterVersion:     manifest.ImporterVersion,
+		ArtifactCount:       manifest.ArtifactCount,
+		PhysicalRecords:     manifest.PhysicalRecords,
+		RouteEvents:         manifest.RouteEvents,
+		Announces:           manifest.Announces,
+		Withdraws:           manifest.Withdraws,
+		RIBSnapshots:        manifest.RIBSnapshots,
 		Partitions:          partitions,
 	}
 	raw, _ := json.Marshal(value)
@@ -1233,6 +1295,9 @@ func loadCompleteRouteEventStore(
 	}
 	if manifest.SchemaVersion != RouteEventStoreVersion || manifest.Status != "complete" ||
 		manifest.ImportRunID != importRunID || manifest.DatasetID != datasetID ||
+		manifest.CollectorID != "rrc25" || manifest.Source != "ripe_ris" ||
+		manifest.WindowStartUTC != RouteEventWindowStartUTC ||
+		manifest.WindowEndExclusive != RouteEventWindowEndUTC ||
 		manifest.SelectionSHA256 != selectionSHA || manifest.SelectionPath != "input-selection.json" ||
 		manifest.SourceManifestSHA != selection.SourceManifestSHA256 ||
 		manifest.RepairArtifactCount != RouteEventRepairCount ||
@@ -1240,11 +1305,21 @@ func loadCompleteRouteEventStore(
 		manifest.ImplementationID != config.ImplementationID ||
 		len(manifest.RepairArtifacts) != len(repairs) ||
 		repairProvenanceSHA256(manifest.RepairArtifacts) != repairSHA ||
+		manifest.ParserName != RouteEventParserName ||
+		manifest.ParserVersion != RouteEventParserVersion ||
+		manifest.ImporterName != RouteEventImporterName ||
+		manifest.ImporterVersion != RouteEventImporterVersion ||
+		manifest.ArtifactCount != len(selection.Updates)+1 ||
 		len(manifest.Partitions) != len(selection.Updates)+1 ||
 		manifest.ContentSHA256 != routeEventStoreContentSHA(manifest) {
 		return manifest, fmt.Errorf("complete route-event store identity mismatch")
 	}
 	artifacts := append([]Artifact{selection.RIB}, selection.Updates...)
+	var physicalRecords int64
+	var routeEvents int64
+	var announces int64
+	var withdraws int64
+	var ribSnapshots int64
 	for index, artifact := range artifacts {
 		loaded, err := loadAndVerifyRouteEventPartition(
 			config.Output, index, artifact, importRunID, datasetID,
@@ -1252,9 +1327,22 @@ func loadCompleteRouteEventStore(
 		if err != nil {
 			return manifest, err
 		}
-		if loaded.ContentSHA256 != manifest.Partitions[index].ContentSHA256 {
+		if loaded != manifest.Partitions[index] {
 			return manifest, fmt.Errorf("complete partition %d digest mismatch", index)
 		}
+		physicalRecords += loaded.PhysicalRecords
+		routeEvents += loaded.RouteEvents
+		announces += loaded.Announces
+		withdraws += loaded.Withdraws
+		ribSnapshots += loaded.RIBSnapshots
+	}
+	if manifest.PhysicalRecords != physicalRecords ||
+		manifest.RouteEvents != routeEvents ||
+		manifest.Announces != announces ||
+		manifest.Withdraws != withdraws ||
+		manifest.RIBSnapshots != ribSnapshots ||
+		announces+withdraws+ribSnapshots != routeEvents {
+		return manifest, fmt.Errorf("complete route-event store population mismatch")
 	}
 	return manifest, nil
 }

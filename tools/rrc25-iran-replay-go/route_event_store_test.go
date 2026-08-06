@@ -168,6 +168,64 @@ func TestRouteEventPartitionIsTraceableImmutableAndDeterministic(t *testing.T) {
 	}
 }
 
+func TestRouteEventPartitionContentIdentityBindsSemanticManifest(t *testing.T) {
+	manifest := RouteEventPartitionManifest{
+		SchemaVersion: RouteEventPartitionVersion,
+		ImportRunID:   "run", DatasetID: "dataset", ArtifactIndex: 1,
+		Artifact: Artifact{ArtifactID: "artifact"}, Role: "update",
+		IngestTimeUTC:   "2026-08-06T00:00:00Z",
+		ParseTimeUTC:    "2026-08-06T00:00:01Z",
+		PhysicalRecords: 10, RouteEvents: 20, Announces: 15, Withdraws: 5,
+		PathCount: 3, ParserWarnings: 1,
+		Records: RouteEventStoreFile{Path: "records", RowCount: 10, SHA256: "a"},
+		Events:  RouteEventStoreFile{Path: "events", RowCount: 20, SHA256: "b"},
+		Paths:   RouteEventStoreFile{Path: "paths", RowCount: 3, SHA256: "c"},
+	}
+	base := routeEventPartitionContentSHA(manifest)
+	operationTimeChanged := manifest
+	operationTimeChanged.IngestTimeUTC = "2026-08-07T00:00:00Z"
+	operationTimeChanged.ParseTimeUTC = "2026-08-07T00:00:01Z"
+	if routeEventPartitionContentSHA(operationTimeChanged) != base {
+		t.Fatal("operation time changed semantic partition identity")
+	}
+	for name, mutate := range map[string]func(*RouteEventPartitionManifest){
+		"role":            func(value *RouteEventPartitionManifest) { value.Role = "rib" },
+		"population":      func(value *RouteEventPartitionManifest) { value.RouteEvents++ },
+		"parser warnings": func(value *RouteEventPartitionManifest) { value.ParserWarnings++ },
+	} {
+		t.Run(name, func(t *testing.T) {
+			changed := manifest
+			mutate(&changed)
+			if routeEventPartitionContentSHA(changed) == base {
+				t.Fatal("semantic manifest drift did not change partition identity")
+			}
+		})
+	}
+}
+
+func TestRouteEventStoreContentIdentityBindsPopulation(t *testing.T) {
+	manifest := RouteEventStoreManifest{
+		SchemaVersion: RouteEventStoreVersion,
+		Status:        "complete", ImportRunID: "run", DatasetID: "dataset",
+		CollectorID: "rrc25", Source: "ripe_ris",
+		WindowStartUTC:     RouteEventWindowStartUTC,
+		WindowEndExclusive: RouteEventWindowEndUTC,
+		SelectionSHA256:    "selection", SelectionPath: "input-selection.json",
+		SourceManifestSHA: "source", RepairArtifactCount: 2,
+		RepairProvenanceSHA: "repair", ImplementationID: "git:" + strings.Repeat("1", 40),
+		ParserName: RouteEventParserName, ParserVersion: RouteEventParserVersion,
+		ImporterName: RouteEventImporterName, ImporterVersion: RouteEventImporterVersion,
+		ArtifactCount: 1, PhysicalRecords: 10, RouteEvents: 20,
+		Announces: 15, Withdraws: 5,
+		Partitions: []RouteEventPartitionManifest{{ArtifactIndex: 0, ContentSHA256: "partition"}},
+	}
+	base := routeEventStoreContentSHA(manifest)
+	manifest.RouteEvents++
+	if routeEventStoreContentSHA(manifest) == base {
+		t.Fatal("aggregate population drift did not change store identity")
+	}
+}
+
 func mustAddress(value string) netip.Addr {
 	return netip.MustParseAddr(value)
 }
