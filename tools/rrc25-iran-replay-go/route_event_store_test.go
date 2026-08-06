@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -287,6 +288,12 @@ func TestRouteEventStoreSelectionIsFrozenTo224310(t *testing.T) {
 		RepairArtifactCount:   RouteEventRepairCount,
 		Updates:               make([]Artifact, RouteEventUpdateCount),
 	}
+	selection.RIB.FileSHA256 = strings.Repeat("f", 64)
+	selection.RIB.RelativePath = "rrc25/test-rib.gz"
+	for index := range selection.Updates {
+		selection.Updates[index].FileSHA256 = fmt.Sprintf("%064x", index+1)
+		selection.Updates[index].RelativePath = fmt.Sprintf("rrc25/test-%04d.gz", index)
+	}
 	for repairIndex, repair := range frozenRouteEventRepairs {
 		selection.Updates[repairIndex] = Artifact{
 			ArtifactType: "update",
@@ -304,6 +311,12 @@ func TestRouteEventStoreSelectionIsFrozenTo224310(t *testing.T) {
 		t.Fatalf("drifted repair replacement was accepted: %v", err)
 	}
 	selection.Updates[0].FileSHA256 = frozenRouteEventRepairs[0].ReplacementSHA256
+	selection.Updates[10].FileSHA256 = selection.Updates[11].FileSHA256
+	if err := validateRouteEventStoreSelection(selection); err == nil ||
+		!strings.Contains(err.Error(), "duplicate source file SHA-256") {
+		t.Fatalf("duplicate source artifact content was accepted: %v", err)
+	}
+	selection.Updates[10].FileSHA256 = fmt.Sprintf("%064x", 11)
 	selection.WindowEndExclusiveUTC = "2026-03-10T00:00:00Z"
 	if err := validateRouteEventStoreSelection(selection); err == nil {
 		t.Fatal("drifted RouteEvent window was accepted")

@@ -1010,6 +1010,16 @@ func validateRouteEventStoreSelection(selection GlobalWindowSelection) error {
 			"RouteEvent store selection must be frozen rrc25 224-310 with 4320 updates and 2 repair artifacts",
 		)
 	}
+	seenFileSHA := make(map[string]string, len(selection.Updates)+1)
+	for _, artifact := range append([]Artifact{selection.RIB}, selection.Updates...) {
+		if previous, found := seenFileSHA[artifact.FileSHA256]; found {
+			return fmt.Errorf(
+				"duplicate source file SHA-256 would duplicate RouteEvent identity: %s and %s",
+				previous, artifact.RelativePath,
+			)
+		}
+		seenFileSHA[artifact.FileSHA256] = artifact.RelativePath
+	}
 	_, _, err := routeEventStoreProvenance(selection)
 	return err
 }
