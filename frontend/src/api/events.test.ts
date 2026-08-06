@@ -63,46 +63,24 @@ describe('event observation fallback boundary', () => {
     expect(apiV2Get).not.toHaveBeenCalled()
   })
 
-  it('keeps legacy summaries in the unified country-outage page', async () => {
-    const overview = {
-      schema_version: 'country_outage_overview_v2',
+  it('falls back to the available Evidence Bundle for legacy summaries', async () => {
+    vi.mocked(apiV2Get).mockResolvedValueOnce({
       incident_id: 'legacy-incident',
       publication_id: 'legacy-publication',
-      revision: 1,
-      data_through: null,
-    }
-    const series = { schema_version: 'country_outage_series_v2' }
-    const asnPage = { schema_version: 'country_outage_asn_page_v2' }
-    const audit = { schema_version: 'country_outage_audit_v2' }
-    vi.mocked(apiV2Get)
-      .mockResolvedValueOnce({
-        incident_id: 'legacy-incident',
-        publication_id: 'legacy-publication',
-        observation_state: 'legacy_summary',
-      })
-      .mockResolvedValueOnce(overview)
-      .mockResolvedValueOnce(series)
-      .mockResolvedValueOnce(asnPage)
-      .mockResolvedValueOnce(audit)
-
-    await expect(getEventObservation(
-      'country_outage/2026-03-09 22:09:38/MW/2/r',
-    )).resolves.toEqual({
-      parsed: expect.objectContaining({ kind: 'country_outage', problem: 'MW' }),
-      observation: { schema_version: 'country_outage_observation_v2' },
+      observation_state: 'legacy_summary',
     })
 
-    expect(apiV2Get).toHaveBeenCalledTimes(5)
-    expect(apiV2Get).not.toHaveBeenCalledWith(
-      'country-outages/legacy-incident/trend',
-      expect.anything(),
-    )
-    expect(normalizeCountryOutageObservation).toHaveBeenCalledWith(
-      overview,
-      series,
-      asnPage,
-      audit,
-    )
+    let thrown: unknown
+    try {
+      await getEventObservation(
+        'country_outage/2026-03-09 22:09:38/MW/2/r',
+      )
+    } catch (cause) {
+      thrown = cause
+    }
+
+    expect(isEventObservationNotConfigured(thrown)).toBe(true)
+    expect(apiV2Get).toHaveBeenCalledTimes(1)
   })
 
   it('pins overview, series, ASN and audit reads to the resolver publication', async () => {
