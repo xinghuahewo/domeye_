@@ -114,6 +114,46 @@ class DataLayer224310HookTest(unittest.TestCase):
             errors,
         )
 
+    def test_prefix_vp_is_route_state_dimension_not_parallel_fact_layer(self) -> None:
+        module = load_hook_module()
+        acceptance = module.ACCEPTANCE_PATH.read_text(encoding="utf-8")
+        plan = module.PLAN_PATH.read_text(encoding="utf-8")
+        self.assertIn(
+            "RouteState Key = collector + VP/peer + prefix + address_family",
+            acceptance,
+        )
+        self.assertIn("RouteState 是唯一状态事实", acceptance)
+        self.assertIn(
+            "Prefix×VP Evidence View 是派生视图，不是独立事实源",
+            acceptance,
+        )
+        self.assertIn(
+            "国家、ASN 和 collector 五分钟指标只从指定 RouteState",
+            plan,
+        )
+        reason = module.review_reason("S2")
+        self.assertIn("RouteState 是否只有一套逻辑事实", reason)
+        self.assertIn("是否出现平级事实库或双写", reason)
+
+    def test_parallel_prefix_vp_fact_drift_is_rejected(self) -> None:
+        module = load_hook_module()
+        acceptance = module.ACCEPTANCE_PATH.read_text(encoding="utf-8")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            drifted_path = Path(temporary_directory) / "acceptance.md"
+            drifted_path.write_text(
+                acceptance.replace(
+                    "Prefix×VP Evidence View 是派生视图，不是独立事实源",
+                    "Prefix×VP Evidence View 是独立事实源",
+                ),
+                encoding="utf-8",
+            )
+            module.ACCEPTANCE_PATH = drifted_path
+            errors = module.validate_documents()
+        self.assertTrue(
+            any("不是独立事实源" in error for error in errors),
+            errors,
+        )
+
     def test_hook_is_registered(self) -> None:
         hooks = json.loads(
             (REPOSITORY_ROOT / ".codex" / "hooks.json").read_text(

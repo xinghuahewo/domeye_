@@ -54,6 +54,12 @@ REQUIRED_ACCEPTANCE_PHRASES = (
     "底层证据和发布历史不可变",
     "完整 RouteEvent",
     "紧凑 RouteDelta 不冒充完整 RouteEvent",
+    "RouteState Key = collector + VP/peer + prefix + address_family",
+    "RouteState 是唯一状态事实",
+    "RouteState Checkpoint 是同一 RouteState 的可恢复快照",
+    "Prefix×VP Evidence View 是派生视图，不是独立事实源",
+    "国家、ASN 和 collector 五分钟指标只能由指定 RouteState",
+    "禁止在 RouteState 与 Prefix×VP Evidence 之间双写",
     "国家、ASN 和 collector 五分钟指标进入 PostgreSQL/TimescaleDB",
     "缺失不得以零值落库",
     "`attempted_through` 表示已尝试处理位置",
@@ -73,6 +79,11 @@ REQUIRED_PLAN_PHRASES = (
     "未达到当前阶段出口时不得进入下一阶段",
     "每个阶段结束必须调用 Domeye 数据层 224-310 最终验收防偏离 Hook",
     "Hook 结构检查通过不等于",
+    "RouteState 主键固定为 `collector + VP/peer + prefix + address_family`",
+    "Checkpoint 是同一 RouteState 的可恢复快照",
+    "国家、ASN 和 collector 五分钟指标只从指定 RouteState",
+    "Prefix×VP Evidence 只是从指定 RouteState/Publication",
+    "不对 RouteState 与 Prefix×VP Evidence 双写",
     "S6 只有在 DLAE-01 至 DLAE-16 全部",
     "python3 .codex/hooks/data_layer_224_310_review.py --stage S0",
 )
@@ -348,19 +359,21 @@ def review_reason(stage: str) -> str:
 2. collector 是否仍唯一为 rrc25，窗口是否仍为 [2026-02-24T00:00:00Z, 2026-03-11T00:00:00Z)，状态点、4,320 槽、241 桶和 mapping 是否一致；
 3. 原始对象是否不可变且有摘要；两个修复制品是否保留替代关系而没有覆盖原坏文件；
 4. RouteEvent 是否保留完整 AS_PATH、属性和原始坐标；是否把紧凑 RouteDelta 冒充完整 RouteEvent；
-5. Seed RIB、事件顺序、RouteState、检查点和投影器版本是否支持确定性恢复；缺槽或不兼容时是否失败关闭；
-6. 原始证据和高基数状态是否留在文件证据层，国家/ASN 五分钟指标是否进入统一在线时序层，事件与 Publication 是否进入事务层；
-7. 是否继续新增国家/月度业务表；缺失、unknown、不适用和真实零值是否被混淆；
-8. attempted_through 与 data_through 是否分离；data_through 是否越过未闭合缺口；
-9. 事件阶段、Observation Publication、revision、订正和 current 指针是否以追加与原子切换推进，旧版本是否仍可读；
-10. Observation 与 Analysis 是否各自有身份并公开滞后；正式输出是否绑定兼容版本；
-11. API 是否只读预计算快照；冷请求是否仍扫描 MRT、RouteEvent 或解压全量 ASN 状态；是否用扩大超时代替读模型；
-12. 报告是否冻结 incident、publication、revision、window、fact set、trend 和 evidence refs；当前指针推进是否改变旧报告；
-13. 旧表是否只读影子迁移、双读对账且可回退；是否发生原地改表、提前删除或部分切换；
-14. 当前任务是否修改 TASK.json 禁止路径、冻结核心、生产数据库、生产数据、部署配置或未授权范围；
-15. 是否把 RRC25 控制面观测扩大为全国断网、用户影响、原因、攻击、责任、传播或完全恢复；
-16. 是否把 Hook、文档、测试数量、API 200、静态截图、候选或历史记录写成最终或生产效果已通过；
-17. 后续 DLAE 是否仍然可达，是否通过删除、降低或改写最终验收文档规避偏离。
+5. RouteState 是否只有一套逻辑事实，主键是否为 collector + VP/peer + prefix + address_family；检查点是否只是同一状态的可恢复快照；
+6. Seed RIB、事件顺序、RouteState、检查点和投影器版本是否支持确定性恢复；缺槽或不兼容时是否失败关闭；
+7. 国家/ASN/collector 五分钟指标是否只从登记 RouteState 确定性投影；Prefix×VP Evidence 是否只是绑定 RouteState/Publication 的派生视图；是否出现平级事实库或双写；
+8. 原始证据和以 Prefix×VP 为键的 RouteState 是否留在文件证据层，国家/ASN 五分钟指标是否进入统一在线时序层，事件与 Publication 是否进入事务层；
+9. 是否继续新增国家/月度业务表；缺失、unknown、不适用和真实零值是否被混淆；
+10. attempted_through 与 data_through 是否分离；data_through 是否越过未闭合缺口；
+11. 事件阶段、Observation Publication、revision、订正和 current 指针是否以追加与原子切换推进，旧版本是否仍可读；
+12. Observation 与 Analysis 是否各自有身份并公开滞后；正式输出是否绑定兼容版本；
+13. API 是否只读预计算快照；冷请求是否仍扫描 MRT、RouteEvent 或解压全量 ASN 状态；是否用扩大超时代替读模型；
+14. 报告是否冻结 incident、publication、revision、window、fact set、trend 和 evidence refs；当前指针推进是否改变旧报告；
+15. 旧表是否只读影子迁移、双读对账且可回退；是否发生原地改表、提前删除或部分切换；
+16. 当前任务是否修改 TASK.json 禁止路径、冻结核心、生产数据库、生产数据、部署配置或未授权范围；
+17. 是否把 RRC25 控制面观测扩大为全国断网、用户影响、原因、攻击、责任、传播或完全恢复；
+18. 是否把 Hook、文档、测试数量、API 200、静态截图、候选或历史记录写成最终或生产效果已通过；
+19. 后续 DLAE 是否仍然可达，是否通过删除、降低或改写最终验收文档规避偏离。
 
 判定规则：
 - 一致：本阶段全部到期出口成立，未发现偏离；
