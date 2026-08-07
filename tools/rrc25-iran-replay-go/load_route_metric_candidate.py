@@ -368,8 +368,10 @@ def insert_evidence_objects(
     statements = ["BEGIN;"]
     for dataset, role, uri, digest, size, row_count, content in rows:
         statements.append(
-            "INSERT INTO domeye_data.evidence_object VALUES "
-            "({}, {}, {}, {}, {}, {}, {}, 'verified');".format(
+            "INSERT INTO domeye_data.evidence_object "
+            "(dataset_id,candidate_id,object_role,object_uri,sha256,size_bytes,"
+            "row_count,content_sha256,integrity_status) VALUES "
+            "({}, {}, {}, {}, {}, {}, {}, {}, 'verified');".format(
                 sql_literal(dataset), sql_literal(candidate), sql_literal(role), sql_literal(uri),
                 sql_literal(digest), size, "NULL" if row_count is None else row_count,
                 sql_literal(content),

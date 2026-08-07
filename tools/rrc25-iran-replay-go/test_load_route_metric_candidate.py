@@ -59,6 +59,49 @@ class RouteMetricCandidateLoaderTest(unittest.TestCase):
             with self.assertRaises(loader.LoadError):
                 loader.validate_metric_files(root, {"files": files})
 
+    def test_evidence_insert_keeps_content_sha_and_integrity_in_separate_columns(self) -> None:
+        class RecordingDatabase:
+            def __init__(self) -> None:
+                self.statements: list[str] = []
+
+            def psql(self, sql: str) -> None:
+                self.statements.append(sql)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            metric_manifest = root / "manifest.json"
+            route_event_manifest = root / "route-event-manifest.json"
+            route_state_manifest = root / "route-state-manifest.json"
+            for path, content in (
+                (metric_manifest, b"metric"),
+                (route_event_manifest, b"event"),
+                (route_state_manifest, b"state"),
+            ):
+                path.write_bytes(content)
+            database = RecordingDatabase()
+            manifest = {
+                "candidate_id": "candidate_v1",
+                "dataset_id": "metric_v1",
+                "content_sha256": "c" * 64,
+                "source_route_event_dataset_id": "event_v1",
+                "source_route_event_content_sha256": "e" * 64,
+                "source_route_state_dataset_id": "state_v1",
+                "source_route_state_content_sha256": "s" * 64,
+            }
+
+            loader.insert_evidence_objects(
+                database, root, metric_manifest, manifest, [],
+                route_event_manifest, route_state_manifest,
+            )
+
+            sql = database.statements[0]
+            self.assertIn(
+                "row_count,content_sha256,integrity_status) VALUES", sql,
+            )
+            self.assertIn("NULL, 'e" + "e" * 63 + "', 'verified');", sql)
+            self.assertIn("NULL, 's" + "s" * 63 + "', 'verified');", sql)
+            self.assertIn("NULL, 'c" + "c" * 63 + "', 'verified');", sql)
+
 
 if __name__ == "__main__":
     unittest.main()
