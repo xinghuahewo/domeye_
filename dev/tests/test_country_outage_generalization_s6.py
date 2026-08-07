@@ -45,6 +45,9 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "DOMEYE_P0_RUNTIME_MODE",
             "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE",
             "DOMEYE_COUNTRY_OUTAGE_GENERAL_READ_MODEL",
+            "/home/bgpdata/Domeye-Core-dev-data/state.json",
+            "固定数据库状态摘要与 Backend 绑定不一致",
+            "固定二三月只读数据库未监听 127.0.0.1:31627",
             "legacy_runtime_compatible",
             "domeye_backend_source_binding_v2",
             "general_mode_seen",
@@ -106,11 +109,16 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
     def test_runtime_verification_covers_repeat_concurrency_and_failure(self) -> None:
         shell = (DEPLOY / "verify-runtime.sh").read_text(encoding="utf-8")
         python = VERIFIER.read_text(encoding="utf-8")
+        embedded_python = shell.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+        compile(embedded_python, "verify-runtime.sh:<embedded-python>", "exec")
         for phrase in (
             "ThreadPoolExecutor",
             "repeat_order_concurrent_equal",
             "wrong_publication_http",
             "invalid_path_scope_http",
+            "wrong_as_event_window_http",
+            "event_window_selected_asn",
+            'len(as_window["selected_asn"]["series"]) == 540',
             "max_response_bytes",
         ):
             self.assertIn(phrase, shell)

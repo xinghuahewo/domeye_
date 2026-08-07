@@ -213,6 +213,23 @@ with ThreadPoolExecutor(max_workers=8) as executor:
 for item in concurrent:
     assert item["digest"] == first[item["country"]]["digest"]
 
+as_window_path = "/api/v1/features/ases/overview?" + urlencode({
+    "start_time": "2026-02-27 08:10:00",
+    "end_time": "2026-03-11 08:00:00",
+    "asn": "48715",
+    "limit": 6,
+    "event_window": "true",
+    "event_reference": references["IR"],
+})
+as_window, as_window_size, as_window_ms, as_window_etag = fetch(as_window_path)
+assert as_window_etag
+assert as_window["scope_kind"] == "event_window_selected_asn"
+assert as_window["scope_size"] == 1
+assert as_window["start_time"] == "2026-02-27 08:10:00"
+assert as_window["end_time"] == "2026-03-11 08:00:00"
+assert as_window["selected_asn"]["asn"] == "48715"
+assert len(as_window["selected_asn"]["series"]) == 540
+
 ir = first["IR"]
 mw = first["MW"]
 assert (ir["state_points"], ir["affected_as_total"], ir["path_total"]) == (3455, 525, 1956)
@@ -236,11 +253,28 @@ try:
     raise AssertionError("非法路径语义未失败关闭")
 except HTTPError as error:
     assert error.code == 400
+wrong_as_window_path = "/api/v1/features/ases/overview?" + urlencode({
+    "start_time": "2026-02-27 08:15:00",
+    "end_time": "2026-03-11 08:00:00",
+    "asn": "48715",
+    "event_window": "true",
+    "event_reference": references["IR"],
+})
+try:
+    fetch(wrong_as_window_path)
+    raise AssertionError("错误 AS 事件窗口未失败关闭")
+except HTTPError as error:
+    assert error.code == 400
 
 latencies = [value for event in [*first.values(), *second.values(), *concurrent] for value in event["latencies_ms"]]
+latencies.append(as_window_ms)
 latencies_sorted = sorted(latencies)
 p95 = latencies_sorted[max(0, int(len(latencies_sorted) * 0.95) - 1)]
-assert max(event["max_response_bytes"] for event in first.values()) < 1_000_000
+max_response_bytes = max(
+    as_window_size,
+    *(event["max_response_bytes"] for event in first.values()),
+)
+assert max_response_bytes < 1_000_000
 assert p95 < 2_000
 
 result = {
@@ -252,12 +286,22 @@ result = {
     "events": {key: {k: v for k, v in value.items() if k != "latencies_ms"} for key, value in first.items()},
     "repeat_order_concurrent_equal": True,
     "concurrent_runs": len(concurrent),
-    "failure_closed": {"wrong_publication_http": 404, "invalid_path_scope_http": 400},
+    "as_event_window": {
+        "asn": 48715,
+        "scope_kind": as_window["scope_kind"],
+        "series_points": len(as_window["selected_asn"]["series"]),
+        "response_bytes": as_window_size,
+    },
+    "failure_closed": {
+        "wrong_publication_http": 404,
+        "invalid_path_scope_http": 400,
+        "wrong_as_event_window_http": 400,
+    },
     "performance": {
         "sample_count": len(latencies),
         "p95_ms": round(p95, 3),
         "max_ms": round(max(latencies), 3),
-        "max_response_bytes": max(event["max_response_bytes"] for event in first.values()),
+        "max_response_bytes": max_response_bytes,
     },
     "boundaries": {
         "collector": "rrc25",

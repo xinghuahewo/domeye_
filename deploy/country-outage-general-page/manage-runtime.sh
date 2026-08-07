@@ -7,6 +7,7 @@ readonly DEFAULT_RUNTIME_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
 readonly RUNTIME_ROOT="${DOMEYE_COUNTRY_OUTAGE_RUNTIME_ROOT_OVERRIDE:-${DEFAULT_RUNTIME_ROOT}}"
 readonly MODE="${DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE:-production}"
 readonly DATABASE_CONFIG='/home/bgpdata/Domeye-Core-data/config/database.env'
+readonly DATABASE_STATE='/home/bgpdata/Domeye-Core-dev-data/state.json'
 readonly AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-agent.env'
 readonly INFO_DIR='/home/bgpdata/Domeye-Core-dev-data/api/info'
 readonly P0_DATA_DIR='/home/bgpdata/Domeye-Core-artifacts/releases/20260720T160000Z-p0-legacy/data-quality/api-candidate'
@@ -96,7 +97,8 @@ validate_runtime() {
         "${RUNTIME_ROOT}/backend/core.sha256" \
         "${RUNTIME_ROOT}/backend/run.py" \
         "${RUNTIME_ROOT}/data-layer/PRODUCTION-SELECTION.json" \
-        "${RUNTIME_ROOT}/country-outage-registry.json"; do
+        "${RUNTIME_ROOT}/country-outage-registry.json" \
+        "${DATABASE_STATE}"; do
         [[ -f "${file}" && ! -L "${file}" ]] || {
             error "运行时缺少普通文件：${file}"
             return 1
@@ -124,6 +126,21 @@ validate_runtime() {
          )' \
         "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" >/dev/null || {
         error 'Backend 来源绑定无效'
+        return 1
+    }
+    [[ "$(sha256_file "${DATABASE_STATE}")" \
+        == "$(jq -er '.database_state_sha256' "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")" ]] || {
+        error '固定数据库状态摘要与 Backend 绑定不一致'
+        return 1
+    }
+    jq -e '
+        .schema_version == 2
+        and .phase == "verified"
+        and .port == 31627
+        and .data_start == "2026-02-01 00:00:00"
+        and .data_end_exclusive == "2026-04-01 00:00:00"
+    ' "${DATABASE_STATE}" >/dev/null || {
+        error '固定数据库状态不是已验真的二三月只读档'
         return 1
     }
     (
@@ -228,7 +245,9 @@ serve_runtime() {
     local db_name db_port db_user db_password secret_key
     local agent_url agent_token agent_identity agent_user agent_config_sha
     db_name="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)"
-    db_port="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_PORT)"
+    # database.env 仍保留历史 29429；当前 feb-mar-2026 数据档的权威端口只来自
+    # 已由 Backend 绑定摘要保护的 state.json，禁止把旧配置漂移带入候选运行时。
+    db_port="$(jq -er '.port' "${DATABASE_STATE}")"
     db_user="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_USER)"
     db_password="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_PASSWORD)"
     secret_key="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_SECRET_KEY)"
@@ -245,6 +264,13 @@ serve_runtime() {
     if [[ -d "${RUNTIME_ROOT}/general-read-model" ]]; then
         general_read_model="${RUNTIME_ROOT}/general-read-model"
     fi
+    ss -H -ltn "sport = :${db_port}" | awk '
+        $4 == "127.0.0.1:31627" { found=1 }
+        END { exit(found ? 0 : 1) }
+    ' || {
+        error '固定二三月只读数据库未监听 127.0.0.1:31627'
+        return 1
+    }
 
     exec env -i \
             HOME=/home/bgpdata \
