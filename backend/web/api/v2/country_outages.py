@@ -35,6 +35,13 @@ from services.country_outage_trend_product import (
     TrendProductValidationError,
     get_country_outage_trend_product,
 )
+from services.country_outage_general_read_model import (
+    GeneralReadModelIntegrityError,
+    GeneralReadModelInvalidQuery,
+    GeneralReadModelNotConfigured,
+    GeneralReadModelPublicationNotFound,
+    country_outage_general_read_model,
+)
 
 
 def _not_found():
@@ -111,6 +118,21 @@ def _data_layer_call(method: str, *args):
     return payload is not None, payload
 
 
+def _general_read_call(method: str, *args, **kwargs):
+    """新版事件读模型一旦被选择，身份或摘要冲突必须失败关闭。"""
+    try:
+        runtime = country_outage_general_read_model()
+    except GeneralReadModelNotConfigured:
+        return False, None
+    except GeneralReadModelIntegrityError as error:
+        raise CountryOutageSourceUnavailable(str(error)) from error
+    try:
+        payload = getattr(runtime, method)(*args, **kwargs)
+    except GeneralReadModelIntegrityError as error:
+        raise CountryOutageSourceUnavailable(str(error)) from error
+    return payload is not None, payload
+
+
 class CountryOutageResolveResource(Resource):
     def get(self):
         legacy_reference = request.args.get("ref", "").strip()
@@ -121,6 +143,9 @@ class CountryOutageResolveResource(Resource):
                 "observation_state": "invalid_reference",
             }, 400
         try:
+            selected, payload = _general_read_call("resolve", legacy_reference)
+            if selected:
+                return _etag_response(payload, "resolve")
             selected, payload = _data_layer_call("resolve", legacy_reference)
             if selected:
                 return _etag_response(payload, "resolve")
@@ -145,6 +170,11 @@ class CountryOutageOverviewResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _general_read_call(
+                "overview", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "overview")
             selected, payload = _data_layer_call(
                 "overview", incident_id, publication_id
             )
@@ -156,7 +186,11 @@ class CountryOutageOverviewResource(Resource):
             )
         except CountryOutageNotFound:
             return _not_found()
-        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
+        except (
+            CountryOutagePublicationNotFound,
+            DataLayerPublicationNotFound,
+            GeneralReadModelPublicationNotFound,
+        ) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -171,6 +205,11 @@ class CountryOutageSeriesResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _general_read_call(
+                "series", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "series")
             selected, payload = _data_layer_call(
                 "series", incident_id, publication_id
             )
@@ -219,7 +258,11 @@ class CountryOutageSeriesResource(Resource):
             )
         except CountryOutageNotFound:
             return _not_found()
-        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
+        except (
+            CountryOutagePublicationNotFound,
+            DataLayerPublicationNotFound,
+            GeneralReadModelPublicationNotFound,
+        ) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -236,6 +279,20 @@ class CountryOutageAsnResource(Resource):
         try:
             page = _positive_int("page", 1)
             page_size = min(60, _positive_int("page_size", 60))
+            classification = request.args.get("classification", "all")
+            sort = request.args.get("sort", "default")
+            selected, payload = _general_read_call(
+                "affected_asns",
+                incident_id,
+                publication_id,
+                page=page,
+                page_size=page_size,
+                query=request.args.get("query", ""),
+                classification=classification,
+                sort=sort,
+            )
+            if selected:
+                return _etag_response(payload, "asns")
             selected, payload = _data_layer_call(
                 "empty_asn_page",
                 incident_id,
@@ -259,7 +316,17 @@ class CountryOutageAsnResource(Resource):
             )
         except CountryOutageNotFound:
             return _not_found()
-        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
+        except GeneralReadModelInvalidQuery as error:
+            return {
+                "status": False,
+                "msg": str(error),
+                "observation_state": "invalid_query",
+            }, 400
+        except (
+            CountryOutagePublicationNotFound,
+            DataLayerPublicationNotFound,
+            GeneralReadModelPublicationNotFound,
+        ) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -274,6 +341,11 @@ class CountryOutageAuditResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _general_read_call(
+                "audit", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "audit")
             selected, payload = _data_layer_call(
                 "audit", incident_id, publication_id
             )
@@ -285,7 +357,11 @@ class CountryOutageAuditResource(Resource):
             )
         except CountryOutageNotFound:
             return _not_found()
-        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
+        except (
+            CountryOutagePublicationNotFound,
+            DataLayerPublicationNotFound,
+            GeneralReadModelPublicationNotFound,
+        ) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -294,6 +370,55 @@ class CountryOutageAuditResource(Resource):
         ) as error:
             return _unavailable(error)
         return _etag_response(payload, "audit")
+
+
+class CountryOutagePathDownstreamResource(Resource):
+    """分页返回真实有序路径关联；不下发完整路径证据矩阵。"""
+
+    def get(self, incident_id):
+        publication_id = request.args.get("publication_id")
+        scope = request.args.get("scope", "all")
+        if scope not in {"all", "concurrent"}:
+            return {
+                "status": False,
+                "msg": "scope 参数无效",
+                "observation_state": "invalid_query",
+            }, 400
+        affected_asn = None
+        raw_asn = request.args.get("affected_asn")
+        if raw_asn not in (None, ""):
+            try:
+                affected_asn = int(raw_asn)
+            except ValueError:
+                affected_asn = -1
+            if not 0 <= affected_asn <= 4_294_967_295:
+                return {
+                    "status": False,
+                    "msg": "affected_asn 参数无效",
+                    "observation_state": "invalid_query",
+                }, 400
+        try:
+            selected, payload = _general_read_call(
+                "path_downstreams",
+                incident_id,
+                publication_id,
+                page=_positive_int("page", 1),
+                page_size=min(60, _positive_int("page_size", 60)),
+                affected_asn=affected_asn,
+                scope=scope,
+                query=request.args.get("query", ""),
+            )
+            if not selected:
+                return _unavailable(
+                    CountryOutageSourceUnavailable(
+                        "当前发布尚未提供路径关联分页能力"
+                    )
+                )
+        except GeneralReadModelPublicationNotFound as error:
+            return _publication_not_found(error)
+        except CountryOutageSourceUnavailable as error:
+            return _unavailable(error)
+        return _etag_response(payload, "path-downstreams")
 
 
 class CountryOutageTrendResource(Resource):

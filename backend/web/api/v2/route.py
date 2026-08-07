@@ -7,6 +7,7 @@ from .country_outages import (
     CountryOutageAsnResource,
     CountryOutageAuditResource,
     CountryOutageOverviewResource,
+    CountryOutagePathDownstreamResource,
     CountryOutageResolveResource,
     CountryOutageSeriesResource,
     CountryOutageTrendResource,
@@ -37,6 +38,10 @@ api.add_resource(
 api.add_resource(
     CountryOutageAsnResource,
     "/country-outages/<incident_id>/asns",
+)
+api.add_resource(
+    CountryOutagePathDownstreamResource,
+    "/country-outages/<incident_id>/path-downstreams",
 )
 api.add_resource(
     CountryOutageAuditResource,

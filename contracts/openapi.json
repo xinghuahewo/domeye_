@@ -136,7 +136,7 @@
           {"name": "ref", "in": "query", "required": true, "schema": {"type": "string"}}
         ],
         "responses": {
-          "200": {"description": "事件解析结果", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageResolutionV2"}}}},
+          "200": {"description": "事件解析结果", "content": {"application/json": {"schema": {"oneOf": [{"$ref": "#/components/schemas/CountryOutageResolutionV2"}, {"$ref": "#/components/schemas/CountryOutageGeneralResolutionV1"}]}}}},
           "400": {"description": "引用不是合法的 country_outage 五段式引用"},
           "404": {"description": "引用格式合法，但旧事实数据源中不存在该事件"},
           "503": {"description": "注册表或旧事实数据源暂不可用"}
@@ -151,7 +151,7 @@
           {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
           {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}}
         ],
-        "responses": {"200": {"description": "首屏、范围、能力和质量", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageOverviewV2"}}}}}
+        "responses": {"200": {"description": "首屏、范围、能力和质量", "content": {"application/json": {"schema": {"oneOf": [{"$ref": "#/components/schemas/CountryOutageOverviewV2"}, {"$ref": "#/components/schemas/CountryOutageGeneralOverviewV1"}]}}}}}
       }
     },
     "/api/v2/country-outages/{incident_id}/series": {
@@ -162,7 +162,7 @@
           {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
           {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}}
         ],
-        "responses": {"200": {"description": "共享时间轴的图表轨道", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageSeriesV2"}}}}}
+        "responses": {"200": {"description": "共享时间轴的图表轨道", "content": {"application/json": {"schema": {"oneOf": [{"$ref": "#/components/schemas/CountryOutageSeriesV2"}, {"$ref": "#/components/schemas/CountryOutageGeneralSeriesV1"}]}}}}}
       }
     },
     "/api/v2/country-outages/{incident_id}/asns": {
@@ -175,23 +175,46 @@
           {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1}},
           {"name": "page_size", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 60}},
           {"name": "query", "in": "query", "schema": {"type": "string"}},
+          {"name": "classification", "in": "query", "schema": {"type": "string", "enum": ["all", "affected", "route_interrupted"]}},
           {"name": "address_family", "in": "query", "schema": {"type": "string", "enum": ["all", "ipv4", "ipv6", "dual"]}},
           {"name": "state", "in": "query", "schema": {"type": "string", "enum": ["all", "partial", "invisible", "unknown"]}},
           {"name": "sort", "in": "query", "schema": {"type": "string"}}
         ],
-        "responses": {"200": {"description": "服务端筛选、排序和分页的 ASN 状态", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAsnPageV2"}}}}}
+        "responses": {"200": {"description": "服务端筛选、排序和分页的 ASN 状态", "content": {"application/json": {"schema": {"oneOf": [{"$ref": "#/components/schemas/CountryOutageAsnPageV2"}, {"$ref": "#/components/schemas/CountryOutageGeneralAffectedAsPageV1"}]}}}}}
+      }
+    },
+    "/api/v2/country-outages/{incident_id}/path-downstreams": {
+      "servers": [{"url": "/"}],
+      "get": {
+        "operationId": "getCountryOutagePathDownstreams",
+        "description": "分页返回 cohort 冻结点实际 RRC25 AS_PATH 中的有序路径关联和有界真实样本；不表示客户依赖、传播、用户影响或原因。",
+        "parameters": [
+          {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}},
+          {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1}},
+          {"name": "page_size", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 60}},
+          {"name": "affected_asn", "in": "query", "schema": {"type": "integer", "minimum": 0, "maximum": 4294967295}},
+          {"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["all", "concurrent"]}},
+          {"name": "query", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "稳定分页的路径关联下游", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageGeneralPathDownstreamPageV1"}}}},
+          "400": {"description": "筛选参数无效"},
+          "404": {"description": "事件或指定 publication 不存在"},
+          "503": {"description": "路径关联能力未配置、未就绪或完整性失败"}
+        }
       }
     },
     "/api/v2/country-outages/{incident_id}/audit": {
       "servers": [{"url": "/"}],
       "get": {
         "operationId": "getCountryOutageAudit",
-        "description": "仅在用户展开审计区时读取；不暴露服务器物理目录。",
+        "description": "仅供后台运维或审计入口读取，不进入普通事件页面；不暴露服务器物理目录。",
         "parameters": [
           {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string"}},
           {"name": "publication_id", "in": "query", "description": "由解析接口返回的不可变发布快照；用于固定本次页面读取。", "schema": {"type": "string"}}
         ],
-        "responses": {"200": {"description": "逻辑制品身份、质量与哈希", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAuditV2"}}}}}
+        "responses": {"200": {"description": "逻辑制品身份、质量与哈希", "content": {"application/json": {"schema": {"oneOf": [{"$ref": "#/components/schemas/CountryOutageAuditV2"}, {"$ref": "#/components/schemas/CountryOutageGeneralAuditV1"}]}}}}}
       }
     },
     "/api/v2/country-outages/{incident_id}/trend": {
@@ -899,6 +922,135 @@
           "capability_contract_version": {"type": "string", "const": "country_outage_capabilities_v1"},
           "capabilities": {"$ref": "#/components/schemas/CountryOutageCapabilities"}
         },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralCapabilitiesV1": {
+        "type": "object",
+        "required": ["overview", "event_series", "affected_as", "path_downstreams", "full_path_evidence"],
+        "properties": {
+          "overview": {"const": "available"},
+          "event_series": {"const": "available"},
+          "affected_as": {"const": "available"},
+          "path_downstreams": {"const": "available"},
+          "full_path_evidence": {"const": "audit_only"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralResolutionV1": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "is_final_in_data_range", "lifecycle_state", "quality_state", "missing_slot_count", "collector_id", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "legacy_reference", "event_type", "country_code", "latest_revision", "capabilities"],
+        "properties": {
+          "schema_version": {"const": "country_outage_general_resolution_v1"},
+          "revision": {"type": "integer", "minimum": 1},
+          "publication_id": {"type": "string"},
+          "publication_state": {"const": "published"},
+          "observation_state": {"const": "evidence_complete"},
+          "data_mode": {"const": "replay"},
+          "data_through": {"type": "string", "format": "date-time"},
+          "is_final_in_data_range": {"type": "boolean"},
+          "lifecycle_state": {"type": "string"},
+          "quality_state": {"const": "complete"},
+          "missing_slot_count": {"const": 0},
+          "collector_id": {"const": "rrc25"},
+          "incident_id": {"type": "string"},
+          "cohort_id": {"type": "string"},
+          "window_start_utc": {"type": "string", "format": "date-time"},
+          "window_end_utc": {"type": "string", "format": "date-time"},
+          "legacy_reference": {"type": "string"},
+          "event_type": {"const": "country_outage"},
+          "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
+          "latest_revision": {"type": "integer", "minimum": 1},
+          "capabilities": {"$ref": "#/components/schemas/CountryOutageGeneralCapabilitiesV1"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralOverviewV1": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "is_final_in_data_range", "lifecycle_state", "quality_state", "missing_slot_count", "collector_id", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "event", "interval_seconds", "state_point_count", "cohort", "current", "peaks", "affected_as_count", "route_interrupted_as_count", "path_downstream_relation_count", "concurrent_path_downstream_relation_count", "capabilities", "semantic_boundary"],
+        "properties": {
+          "schema_version": {"const": "country_outage_general_overview_v1"},
+          "revision": {"type": "integer", "minimum": 1},
+          "publication_id": {"type": "string"},
+          "publication_state": {"const": "published"},
+          "observation_state": {"const": "evidence_complete"},
+          "data_mode": {"const": "replay"},
+          "data_through": {"type": "string", "format": "date-time"},
+          "is_final_in_data_range": {"type": "boolean"},
+          "lifecycle_state": {"type": "string"},
+          "quality_state": {"const": "complete"},
+          "missing_slot_count": {"const": 0},
+          "collector_id": {"const": "rrc25"},
+          "incident_id": {"type": "string"},
+          "cohort_id": {"type": "string"},
+          "window_start_utc": {"type": "string", "format": "date-time"},
+          "window_end_utc": {"type": "string", "format": "date-time"},
+          "event": {"type": "object", "required": ["legacy_reference", "country_code", "detected_at_utc", "event_end_at_utc", "event_duration_seconds"], "properties": {"legacy_reference": {"type": "string"}, "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"}, "detected_at_utc": {"type": "string", "format": "date-time"}, "event_end_at_utc": {"type": ["string", "null"], "format": "date-time"}, "event_duration_seconds": {"type": ["integer", "null"], "minimum": 0}}, "additionalProperties": false},
+          "interval_seconds": {"const": 300},
+          "state_point_count": {"type": "integer", "minimum": 1},
+          "cohort": {"type": "object", "required": ["cohort_id", "fixed_prefix_count", "fixed_asn_count", "independent_direction_relation_count", "new_prefix_count"], "properties": {"cohort_id": {"type": "string"}, "fixed_prefix_count": {"type": "integer", "minimum": 1}, "fixed_asn_count": {"type": "integer", "minimum": 1}, "independent_direction_relation_count": {"type": "integer", "minimum": 1}, "new_prefix_count": {"type": "integer", "minimum": 0}}, "additionalProperties": false},
+          "current": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+          "peaks": {"type": "object", "additionalProperties": {"type": "object", "required": ["value", "state_point_utc"], "properties": {"value": {"type": "integer", "minimum": 0}, "state_point_utc": {"type": "string", "format": "date-time"}}, "additionalProperties": false}},
+          "affected_as_count": {"type": "integer", "minimum": 0},
+          "route_interrupted_as_count": {"type": "integer", "minimum": 0},
+          "path_downstream_relation_count": {"type": "integer", "minimum": 0},
+          "concurrent_path_downstream_relation_count": {"type": "integer", "minimum": 0},
+          "capabilities": {"$ref": "#/components/schemas/CountryOutageGeneralCapabilitiesV1"},
+          "semantic_boundary": {"const": "rrc25_control_plane_observation_not_user_impact_or_cause"}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralSeriesV1": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "is_final_in_data_range", "lifecycle_state", "quality_state", "missing_slot_count", "collector_id", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "interval_seconds", "point_count", "timestamps", "track_definitions", "tracks"],
+        "properties": {
+          "schema_version": {"const": "country_outage_general_series_v1"},
+          "revision": {"type": "integer", "minimum": 1}, "publication_id": {"type": "string"}, "publication_state": {"const": "published"}, "observation_state": {"const": "evidence_complete"}, "data_mode": {"const": "replay"}, "data_through": {"type": "string", "format": "date-time"}, "is_final_in_data_range": {"type": "boolean"}, "lifecycle_state": {"type": "string"}, "quality_state": {"const": "complete"}, "missing_slot_count": {"const": 0}, "collector_id": {"const": "rrc25"}, "incident_id": {"type": "string"}, "cohort_id": {"type": "string"}, "window_start_utc": {"type": "string", "format": "date-time"}, "window_end_utc": {"type": "string", "format": "date-time"},
+          "interval_seconds": {"const": 300},
+          "point_count": {"type": "integer", "minimum": 1},
+          "timestamps": {"type": "array", "items": {"type": "string", "format": "date-time"}},
+          "track_definitions": {"type": "object", "additionalProperties": {"type": "object", "required": ["label", "unit", "definition"], "properties": {"label": {"type": "string"}, "unit": {"type": "string"}, "definition": {"type": "string"}}, "additionalProperties": false}},
+          "tracks": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "integer", "minimum": 0}}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralAffectedAsItemV1": {
+        "type": "object",
+        "required": ["rank", "asn", "as_name", "organization", "nature", "name_state", "organization_state", "nature_state", "event_classification", "fixed_prefix_count", "peak_partial_prefix_count", "peak_complete_prefix_count", "peak_invisible_direction_count", "path_downstream_asn_count", "concurrent_downstream_asn_count"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1}, "asn": {"type": "integer", "minimum": 0, "maximum": 4294967295}, "as_name": {"type": ["string", "null"]}, "organization": {"type": ["string", "null"]}, "nature": {"type": ["string", "null"]}, "name_state": {"enum": ["observed", "unknown"]}, "organization_state": {"enum": ["observed", "unknown"]}, "nature_state": {"enum": ["observed", "unknown"]}, "event_classification": {"enum": ["affected", "route_interrupted"]}, "fixed_prefix_count": {"type": "integer", "minimum": 1}, "peak_partial_prefix_count": {"type": "integer", "minimum": 0}, "peak_complete_prefix_count": {"type": "integer", "minimum": 0}, "peak_invisible_direction_count": {"type": "integer", "minimum": 0}, "path_downstream_asn_count": {"type": "integer", "minimum": 0}, "concurrent_downstream_asn_count": {"type": "integer", "minimum": 0}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralAffectedAsPageV1": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "is_final_in_data_range", "lifecycle_state", "quality_state", "missing_slot_count", "collector_id", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "page", "page_size", "page_count", "total", "classification", "query", "sort", "items"],
+        "properties": {
+          "schema_version": {"const": "country_outage_general_affected_as_page_v1"}, "revision": {"type": "integer", "minimum": 1}, "publication_id": {"type": "string"}, "publication_state": {"const": "published"}, "observation_state": {"const": "evidence_complete"}, "data_mode": {"const": "replay"}, "data_through": {"type": "string", "format": "date-time"}, "is_final_in_data_range": {"type": "boolean"}, "lifecycle_state": {"type": "string"}, "quality_state": {"const": "complete"}, "missing_slot_count": {"const": 0}, "collector_id": {"const": "rrc25"}, "incident_id": {"type": "string"}, "cohort_id": {"type": "string"}, "window_start_utc": {"type": "string", "format": "date-time"}, "window_end_utc": {"type": "string", "format": "date-time"}, "page": {"type": "integer", "minimum": 1}, "page_size": {"type": "integer", "minimum": 1, "maximum": 60}, "page_count": {"type": "integer", "minimum": 1}, "total": {"type": "integer", "minimum": 0}, "classification": {"enum": ["all", "affected", "route_interrupted"]}, "query": {"type": "string"}, "sort": {"enum": ["default", "asn_asc"]}, "items": {"type": "array", "maxItems": 60, "items": {"$ref": "#/components/schemas/CountryOutageGeneralAffectedAsItemV1"}}
+        },
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralPathSampleV1": {
+        "type": "object",
+        "required": ["prefix", "address_family", "as_path_id", "as_path_canonical", "independent_peer_asns", "route_observation_count"],
+        "properties": {"prefix": {"type": "string"}, "address_family": {"enum": ["ipv4", "ipv6"]}, "as_path_id": {"type": "string"}, "as_path_canonical": {"type": "string"}, "independent_peer_asns": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 4294967295}}, "route_observation_count": {"type": "integer", "minimum": 1}},
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralPathDownstreamItemV1": {
+        "type": "object",
+        "required": ["affected_asn", "downstream_asn", "downstream_as_name", "downstream_organization", "downstream_nature", "downstream_name_state", "downstream_organization_state", "downstream_nature_state", "observed_path_count", "associated_fixed_prefix_count", "independent_direction_count", "route_observation_count", "concurrent_state_point_count", "first_concurrent_state_point_utc", "last_concurrent_state_point_utc", "peak_concurrent_interrupted_prefix_count", "peak_concurrent_ipv4_address_count", "peak_concurrent_ipv6_slash48_count", "path_samples", "relationship_semantics"],
+        "properties": {"affected_asn": {"type": "integer", "minimum": 0, "maximum": 4294967295}, "downstream_asn": {"type": "integer", "minimum": 0, "maximum": 4294967295}, "downstream_as_name": {"type": ["string", "null"]}, "downstream_organization": {"type": ["string", "null"]}, "downstream_nature": {"type": ["string", "null"]}, "downstream_name_state": {"enum": ["observed", "unknown"]}, "downstream_organization_state": {"enum": ["observed", "unknown"]}, "downstream_nature_state": {"enum": ["observed", "unknown"]}, "observed_path_count": {"type": "integer", "minimum": 1}, "associated_fixed_prefix_count": {"type": "integer", "minimum": 1}, "independent_direction_count": {"type": "integer", "minimum": 1}, "route_observation_count": {"type": "integer", "minimum": 1}, "concurrent_state_point_count": {"type": "integer", "minimum": 0}, "first_concurrent_state_point_utc": {"type": ["string", "null"], "format": "date-time"}, "last_concurrent_state_point_utc": {"type": ["string", "null"], "format": "date-time"}, "peak_concurrent_interrupted_prefix_count": {"type": "integer", "minimum": 0}, "peak_concurrent_ipv4_address_count": {"type": "integer", "minimum": 0}, "peak_concurrent_ipv6_slash48_count": {"type": "integer", "minimum": 0}, "path_samples": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "#/components/schemas/CountryOutageGeneralPathSampleV1"}}, "relationship_semantics": {"const": "observed_ordered_rrc25_path_association_not_dependency_or_cause"}},
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralPathDownstreamPageV1": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "is_final_in_data_range", "lifecycle_state", "quality_state", "missing_slot_count", "collector_id", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "page", "page_size", "page_count", "total", "affected_asn", "scope", "query", "relationship_semantics", "items"],
+        "properties": {"schema_version": {"const": "country_outage_general_path_downstream_page_v1"}, "revision": {"type": "integer", "minimum": 1}, "publication_id": {"type": "string"}, "publication_state": {"const": "published"}, "observation_state": {"const": "evidence_complete"}, "data_mode": {"const": "replay"}, "data_through": {"type": "string", "format": "date-time"}, "is_final_in_data_range": {"type": "boolean"}, "lifecycle_state": {"type": "string"}, "quality_state": {"const": "complete"}, "missing_slot_count": {"const": 0}, "collector_id": {"const": "rrc25"}, "incident_id": {"type": "string"}, "cohort_id": {"type": "string"}, "window_start_utc": {"type": "string", "format": "date-time"}, "window_end_utc": {"type": "string", "format": "date-time"}, "page": {"type": "integer", "minimum": 1}, "page_size": {"type": "integer", "minimum": 1, "maximum": 60}, "page_count": {"type": "integer", "minimum": 1}, "total": {"type": "integer", "minimum": 0}, "affected_asn": {"type": ["integer", "null"], "minimum": 0, "maximum": 4294967295}, "scope": {"enum": ["all", "concurrent"]}, "query": {"type": "string"}, "relationship_semantics": {"const": "observed_ordered_rrc25_path_association_not_dependency_or_cause"}, "items": {"type": "array", "maxItems": 60, "items": {"$ref": "#/components/schemas/CountryOutageGeneralPathDownstreamItemV1"}}},
+        "additionalProperties": false
+      },
+      "CountryOutageGeneralAuditV1": {
+        "type": "object",
+        "required": ["schema_version", "revision", "publication_id", "publication_state", "observation_state", "data_mode", "data_through", "is_final_in_data_range", "lifecycle_state", "quality_state", "missing_slot_count", "collector_id", "incident_id", "cohort_id", "window_start_utc", "window_end_utc", "run_id", "dataset_id", "implementation_id", "manifest_sha256", "event_read_model_id", "event_content_sha256", "source_identities", "files", "causal_boundary"],
+        "properties": {"schema_version": {"const": "country_outage_general_audit_v1"}, "revision": {"type": "integer", "minimum": 1}, "publication_id": {"type": "string"}, "publication_state": {"const": "published"}, "observation_state": {"const": "evidence_complete"}, "data_mode": {"const": "replay"}, "data_through": {"type": "string", "format": "date-time"}, "is_final_in_data_range": {"type": "boolean"}, "lifecycle_state": {"type": "string"}, "quality_state": {"const": "complete"}, "missing_slot_count": {"const": 0}, "collector_id": {"const": "rrc25"}, "incident_id": {"type": "string"}, "cohort_id": {"type": "string"}, "window_start_utc": {"type": "string", "format": "date-time"}, "window_end_utc": {"type": "string", "format": "date-time"}, "run_id": {"type": "string"}, "dataset_id": {"type": "string"}, "implementation_id": {"type": "string", "pattern": "^git:[0-9a-f]{40}$"}, "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "event_read_model_id": {"type": "string"}, "event_content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "source_identities": {"type": "object", "additionalProperties": {"type": "string"}}, "files": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": true}}, "causal_boundary": {"const": "rrc25_path_association_is_not_dependency_propagation_user_impact_or_cause"}},
         "additionalProperties": false
       },
       "CountryOutageObservationState": {

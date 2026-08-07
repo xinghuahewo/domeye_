@@ -46,6 +46,53 @@ def test_openapi_only_allows_narrow_ephemeral_agent_post_operations():
     assert actual_posts == expected_posts
 
 
+def test_openapi_country_outage_general_read_model_is_bounded_and_versioned():
+    project_root = Path(__file__).resolve().parents[3]
+    contract = json.loads(
+        (project_root / 'contracts' / 'openapi.json').read_text(encoding='utf-8')
+    )
+    schemas = contract['components']['schemas']
+    paths = contract['paths']
+
+    expected_variants = {
+        '/api/v2/events/resolve': 'CountryOutageGeneralResolutionV1',
+        '/api/v2/country-outages/{incident_id}/overview':
+            'CountryOutageGeneralOverviewV1',
+        '/api/v2/country-outages/{incident_id}/series':
+            'CountryOutageGeneralSeriesV1',
+        '/api/v2/country-outages/{incident_id}/asns':
+            'CountryOutageGeneralAffectedAsPageV1',
+        '/api/v2/country-outages/{incident_id}/audit':
+            'CountryOutageGeneralAuditV1',
+    }
+    for path, schema_name in expected_variants.items():
+        response_schema = paths[path]['get']['responses']['200'][
+            'content'
+        ]['application/json']['schema']
+        assert {'$ref': f'#/components/schemas/{schema_name}'} in response_schema[
+            'oneOf'
+        ]
+        assert schemas[schema_name]['additionalProperties'] is False
+
+    downstream_path = paths[
+        '/api/v2/country-outages/{incident_id}/path-downstreams'
+    ]['get']
+    assert set(downstream_path['responses']) == {'200', '400', '404', '503'}
+    parameters = {item['name']: item for item in downstream_path['parameters']}
+    assert parameters['page_size']['schema']['maximum'] == 60
+    assert parameters['scope']['schema']['enum'] == ['all', 'concurrent']
+    page_schema = schemas['CountryOutageGeneralPathDownstreamPageV1']
+    assert page_schema['properties']['items']['maxItems'] == 60
+    path_item = schemas['CountryOutageGeneralPathDownstreamItemV1']
+    assert path_item['properties']['path_samples']['maxItems'] == 3
+    assert path_item['properties']['relationship_semantics']['const'].endswith(
+        'not_dependency_or_cause'
+    )
+    assert schemas['CountryOutageGeneralCapabilitiesV1']['properties'][
+        'full_path_evidence'
+    ] == {'const': 'audit_only'}
+
+
 def test_openapi_country_outage_agent_contract_is_narrow_and_exact():
     project_root = Path(__file__).resolve().parents[3]
     contract = json.loads(
