@@ -61,6 +61,13 @@ def canonical_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def ordered_json_bytes(value: Any) -> bytes:
+    """复算 Go 结构体 json.Marshal 的声明字段顺序。"""
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=False, separators=(",", ":"),
+    ).encode("utf-8")
+
+
 def sha256_bytes(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
@@ -1034,7 +1041,7 @@ def verify_evidence_catalog(root: Path, expected: Mapping[str, Any]) -> dict[str
             ):
                 raise CandidateError(f"Prefix×VP Evidence 页人口冲突：{path}")
             for row in payload["rows"]:
-                country_hash.update(canonical_bytes(row) + b"\n")
+                country_hash.update(ordered_json_bytes(row) + b"\n")
             country_rows += len(payload["rows"])
         if country_rows != country["row_count"] or country_hash.hexdigest() != country["content_sha256"]:
             raise CandidateError(f"Prefix×VP Evidence 国家闭合失败：{country['country_code']}")
@@ -1043,7 +1050,7 @@ def verify_evidence_catalog(root: Path, expected: Mapping[str, Any]) -> dict[str
         raise CandidateError("Prefix×VP Evidence 总人口不闭合")
     semantic = dict(catalog)
     semantic["content_sha256"] = ""
-    if sha256_bytes(canonical_bytes(semantic)) != catalog["content_sha256"]:
+    if sha256_bytes(ordered_json_bytes(semantic)) != catalog["content_sha256"]:
         raise CandidateError("Prefix×VP Evidence catalog 内容身份错误")
     return catalog
 

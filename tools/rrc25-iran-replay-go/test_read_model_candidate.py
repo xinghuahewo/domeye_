@@ -44,6 +44,24 @@ class ReadModelCandidateTests(unittest.TestCase):
             },
         )
 
+    def test_go_struct_json_order_is_not_rewritten_during_evidence_audit(self) -> None:
+        row = {"collector_id": "rrc25", "peer_ip": "192.0.2.1", "peer_asn": 64496}
+        self.assertEqual(
+            module.ordered_json_bytes(row),
+            b'{"collector_id":"rrc25","peer_ip":"192.0.2.1","peer_asn":64496}',
+        )
+        self.assertNotEqual(
+            module.ordered_json_bytes(row), module.canonical_bytes(row),
+        )
+        catalog = {
+            "schema_version": "rrc25-prefix-vp-evidence-catalog/v1",
+            "status": "complete",
+            "content_sha256": "value",
+        }
+        semantic = dict(catalog)
+        semantic["content_sha256"] = ""
+        self.assertTrue(module.ordered_json_bytes(semantic).startswith(b'{"schema_version"'))
+
     def test_report_refresh_creates_new_version_without_rewriting_v1(self) -> None:
         event = {
             "incident": {
