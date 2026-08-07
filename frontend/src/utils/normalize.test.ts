@@ -207,6 +207,100 @@ describe('API 数据归一化', () => {
     )).toThrow('发布身份不一致：publication_id')
   })
 
+  it('把生产数据层紧凑序列展开为 4,320 个同发布状态点', () => {
+    const metadata = {
+      revision: 3,
+      publication_id: 'observation-publication-test',
+      publication_state: 'published',
+      observation_state: 'evidence_complete',
+      data_mode: 'replay',
+      data_through: '2026-03-11T00:00:00Z',
+      updated_at: '2026-08-07T00:00:00Z',
+      is_final: true,
+      processing_status: {
+        state: 'final',
+        updated_at: '2026-08-07T00:00:00Z',
+        attempted_through: '2026-03-11T00:00:00Z',
+        reason: null,
+        last_complete_data_through: '2026-03-11T00:00:00Z',
+      },
+      missing_slot_count: 0,
+      incident_id: 'incident-test',
+      cohort_id: 'cohort-test',
+      window_start_utc: '2026-02-24T00:05:00Z',
+      window_end_utc: '2026-03-11T00:00:00Z',
+      capability_contract_version: 'country_outage_capabilities_v1',
+    }
+    const overview = {
+      schema_version: 'country_outage_overview_v2',
+      ...metadata,
+      event_identity: {},
+      observation_scope: {},
+      cohort: {},
+      normal_band: {},
+      rule_marker: null,
+      capabilities: {
+        fixed_cohort: { state: 'available' },
+        asn_matrix: { state: 'unavailable' },
+      },
+      annotations: [],
+      limitations: [],
+    }
+    const vector = (value: number) => Array.from({ length: 4320 }, () => value)
+    const compact = {
+      schema_version: 'country_outage_compact_series_v1',
+      ...metadata,
+      metric_definitions: [],
+      series_contract: {
+        schema_version: 'rrc25-compact-country-series/v1',
+        collector_id: 'rrc25',
+        country_code: 'IR',
+        series_id: 'series-test',
+        first_state_point_utc: '2026-02-24T00:05:00Z',
+        point_count: 4320,
+        step_seconds: 300,
+        columns: [
+          'baseline_v4', 'baseline_v6', 'cohort_visible_v4',
+          'cohort_visible_v6', 'current_visible_v4', 'current_visible_v6',
+          'announcement_v4', 'announcement_v6', 'withdrawal_v4',
+          'withdrawal_v6',
+        ],
+        values: [
+          vector(100), vector(10), vector(90), vector(9), vector(91),
+          vector(9), vector(2), vector(0), vector(1), vector(0),
+        ],
+        quality: { status: 'complete', missing: 0, finality: 'final' },
+      },
+    }
+    const audit = {
+      schema_version: 'country_outage_audit_v2',
+      ...metadata,
+      engine_version: 'data-layer-test',
+      algorithm_version: 'test',
+      mapping_version: 'test',
+      quality_status: 'pass',
+      source_system: 'test',
+      source_table: 'test',
+      source_reference: 'test',
+      evidence_level: 'test',
+      consumed_deliverable_hashes_verified: true,
+      verified_hashes: {},
+      route_state_file: {},
+      input_summary: {},
+    }
+    const observation = normalizeCountryOutageObservation(
+      overview,
+      compact,
+      null,
+      audit,
+    )
+    expect(observation.series).toHaveLength(4320)
+    expect(observation.series[0]?.visible_prefix_vp_count).toBe(99)
+    expect(observation.series[0]?.visible_prefix_vp_ratio).toBe(0.9)
+    expect(observation.series.at(-1)?.observed_at_utc).toBe('2026-03-11T00:00:00Z')
+    expect(observation.asn_page?.total).toBe(0)
+  })
+
   it('归一化首页六类趋势、影响范围和排行', () => {
     const overview = normalizeDashboardOverview({
       start_time: '2026-03-31 00:00:00',

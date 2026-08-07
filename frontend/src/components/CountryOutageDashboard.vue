@@ -7,6 +7,7 @@ defineOptions({ name: 'CountryOutageDashboard' })
 import {
   getCountryOutageAsns,
   getCountryOutageAudit,
+  getCountryOutageTrend,
 } from '@/api/events'
 import AsnDurationChart, { type DurationSeries } from '@/components/AsnDurationChart.vue'
 import AsnStateHeatmap from '@/components/AsnStateHeatmap.vue'
@@ -111,6 +112,9 @@ const asnError = ref('')
 const audit = ref<EventObservationAudit | null>(props.observation.audit)
 const auditLoading = ref(false)
 const auditError = ref('')
+const trendProduct = ref(props.observation.trend_product ?? null)
+const trendLoading = ref(false)
+const trendError = ref('')
 const usesServerAsnPaging = computed(
   () => props.observation.schema_version === 'country_outage_observation_v2',
 )
@@ -624,6 +628,26 @@ async function loadAudit() {
   }
 }
 
+async function loadTrend() {
+  if (trendProduct.value || trendLoading.value) return
+  const publicationId = props.observation.publication_id
+  if (!publicationId) return
+  trendLoading.value = true
+  trendError.value = ''
+  try {
+    trendProduct.value = await getCountryOutageTrend(
+      props.observation.event_identity.incident_id,
+      publicationId,
+    )
+  } catch (cause) {
+    trendError.value = cause instanceof Error ? cause.message : '趋势分析暂不可用'
+  } finally {
+    trendLoading.value = false
+  }
+}
+
+void loadTrend()
+
 function onAuditToggle(event: Event) {
   if ((event.currentTarget as HTMLDetailsElement).open) void loadAudit()
 }
@@ -891,6 +915,9 @@ watch(
     asnResult.value = props.observation.asn_page ?? null
     audit.value = props.observation.audit
     auditError.value = ''
+    trendProduct.value = props.observation.trend_product ?? null
+    trendError.value = ''
+    void loadTrend()
   },
 )
 
@@ -1001,15 +1028,16 @@ const durationSeries = computed<DurationSeries[]>(() => [
     </header>
 
     <CountryOutageTrendAnalysis
-      v-if="observation.trend_product"
-      :product="observation.trend_product"
+      v-if="trendProduct"
+      :product="trendProduct"
     />
 
     <section v-else class="publication-notice" aria-label="趋势分析不可用">
       <article>
         <span>趋势分析</span>
-        <strong>当前快照不可用</strong>
-        <p>保留原始观测页；不跨快照补算，也不把缺失趋势解释为稳定。</p>
+        <strong>{{ trendLoading ? '正在读取冻结分析发布' : '当前快照不可用' }}</strong>
+        <p v-if="trendError">{{ trendError }}</p>
+        <p v-else>观测页已先显示；趋势只读取同一 Publication 的预计算快照。</p>
       </article>
     </section>
 

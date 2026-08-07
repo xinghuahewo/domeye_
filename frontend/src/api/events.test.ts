@@ -83,10 +83,9 @@ describe('event observation fallback boundary', () => {
     expect(apiV2Get).toHaveBeenCalledTimes(1)
   })
 
-  it('pins overview, series, ASN and audit reads to the resolver publication', async () => {
+  it('pins the compact homepage reads to the resolver publication', async () => {
     const overview = { schema_version: 'country_outage_overview_v2' }
     const series = { schema_version: 'country_outage_series_v2' }
-    const asnPage = { schema_version: 'country_outage_asn_page_v2' }
     const audit = { schema_version: 'country_outage_audit_v2' }
     vi.mocked(apiV2Get)
       .mockResolvedValueOnce({
@@ -95,7 +94,6 @@ describe('event observation fallback boundary', () => {
       })
       .mockResolvedValueOnce(overview)
       .mockResolvedValueOnce(series)
-      .mockResolvedValueOnce(asnPage)
       .mockResolvedValueOnce(audit)
 
     await getEventObservation(
@@ -112,16 +110,6 @@ describe('event observation fallback boundary', () => {
         { params: { publication_id: 'publication-test' } },
       ],
       [
-        'country-outages/incident-test/asns',
-        {
-          params: {
-            publication_id: 'publication-test',
-            page: 1,
-            page_size: 60,
-          },
-        },
-      ],
-      [
         'country-outages/incident-test/audit',
         { params: { publication_id: 'publication-test' } },
       ],
@@ -129,7 +117,7 @@ describe('event observation fallback boundary', () => {
     expect(normalizeCountryOutageObservation).toHaveBeenCalledWith(
       overview,
       series,
-      asnPage,
+      null,
       audit,
     )
   })

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/data/rrc25-read-model-snapshot.schema.json",
+  "title": "Domeye RRC25 事件与报告冻结快照",
+  "oneOf": [
+    {"$ref": "#/$defs/eventSnapshot"},
+    {"$ref": "#/$defs/reportSnapshot"},
+    {"$ref": "#/$defs/evidenceView"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "windowContract": {
+      "type": "object",
+      "required": [
+        "collector_id", "start_utc", "end_exclusive_utc", "state_point_count",
+        "state_point_semantics", "quality_status", "missing", "finality"
+      ],
+      "properties": {
+        "collector_id": {"const": "rrc25"},
+        "start_utc": {"const": "2026-02-24T00:00:00Z"},
+        "end_exclusive_utc": {"const": "2026-03-11T00:00:00Z"},
+        "state_point_count": {"const": 4320},
+        "state_point_semantics": {"const": "five_minute_slot_end"},
+        "quality_status": {"const": "complete"},
+        "missing": {"const": 0},
+        "finality": {"const": "final"}
+      }
+    },
+    "eventSnapshot": {
+      "type": "object",
+      "required": [
+        "schema_version", "candidate_id", "read_model_dataset_id", "incident",
+        "observation_publication", "analysis_publication", "window_contract",
+        "fact_set", "fact_set_sha256", "quality", "audit", "series_ref",
+        "evidence_refs", "limitations", "snapshot_id", "snapshot_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "rrc25-event-read-model/v1"},
+        "window_contract": {"$ref": "#/$defs/windowContract"},
+        "fact_set": {"type": "array", "minItems": 3},
+        "evidence_refs": {"type": "array", "minItems": 1},
+        "limitations": {"type": "array", "minItems": 1},
+        "snapshot_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "reportSnapshot": {
+      "type": "object",
+      "required": [
+        "schema_version", "candidate_id", "read_model_dataset_id", "report_version",
+        "report_request", "incident", "observation_publication",
+        "analysis_publication", "revision", "window_contract", "fact_set",
+        "fact_set_sha256", "trend_profile", "evidence_refs", "limitations",
+        "model_contract", "event_snapshot_id", "event_snapshot_sha256",
+        "report_snapshot_id", "snapshot_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "rrc25-report-snapshot/v1"},
+        "report_version": {"type": "integer", "minimum": 1},
+        "window_contract": {"$ref": "#/$defs/windowContract"},
+        "fact_set": {"type": "array", "minItems": 3},
+        "evidence_refs": {"type": "array", "minItems": 1},
+        "limitations": {"type": "array", "minItems": 1},
+        "model_contract": {
+          "type": "object",
+          "required": ["role", "forbidden"],
+          "properties": {
+            "role": {"const": "narrate_validated_whitelisted_facts_only"},
+            "forbidden": {"type": "array", "minItems": 5}
+          }
+        },
+        "snapshot_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidenceView": {
+      "type": "object",
+      "required": [
+        "schema_version", "candidate_id", "incident_id", "country_code",
+        "publication_id", "derived_from_route_state_id",
+        "source_route_state_dataset_id", "source_route_state_content_sha256",
+        "seed_route_state_id", "mapping_version", "projector", "row_count",
+        "page_count", "page_size", "page_uri_template",
+        "country_content_sha256", "limitations", "evidence_view_id",
+        "content_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "rrc25-prefix-vp-evidence-view/v1"},
+        "country_code": {"pattern": "^[A-Z]{2}$"},
+        "derived_from_route_state_id": {"pattern": "^route_state_checkpoint_v1_[0-9a-f]{32}$"},
+        "row_count": {"type": "integer", "minimum": 1},
+        "page_count": {"type": "integer", "minimum": 1},
+        "page_size": {"const": 1000},
+        "country_content_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -91,50 +91,25 @@ export async function getEventObservation(reference: string) {
   }
   const incidentId = encodeURIComponent(resolution.incident_id)
   const publicationParams = { publication_id: resolution.publication_id }
-  const [overview, series, asnPage, audit] = await Promise.all([
+  const [overview, series, audit] = await Promise.all([
     apiV2Get<unknown>(`country-outages/${incidentId}/overview`, {
       params: publicationParams,
     }),
     apiV2Get<unknown>(`country-outages/${incidentId}/series`, {
       params: publicationParams,
     }),
-    apiV2Get<unknown>(`country-outages/${incidentId}/asns`, {
-      params: {
-        ...publicationParams,
-        page: 1,
-        page_size: 60,
-      },
-    }),
     apiV2Get<unknown>(`country-outages/${incidentId}/audit`, {
       params: publicationParams,
     }),
   ])
-  const hasPublishedObservationIdentity = isRecord(overview)
-    && typeof overview.incident_id === 'string'
-    && typeof overview.publication_id === 'string'
-    && typeof overview.revision === 'number'
-    && typeof overview.data_through === 'string'
-  const trendProduct = hasPublishedObservationIdentity
-    ? await apiV2Get<unknown>(`country-outages/${incidentId}/trend`, {
-        params: publicationParams,
-      }).catch((error: unknown) => {
-        if (isAxiosError(error) && [404, 422].includes(error.response?.status ?? 0)) {
-          return null
-        }
-        throw error
-      })
-    : null
   return {
     parsed,
-    observation: trendProduct === null
-      ? normalizeCountryOutageObservation(overview, series, asnPage, audit)
-      : normalizeCountryOutageObservation(
-          overview,
-          series,
-          asnPage,
-          audit,
-          trendProduct,
-        ),
+    observation: normalizeCountryOutageObservation(
+      overview,
+      series,
+      null,
+      audit,
+    ),
   }
 }
 
