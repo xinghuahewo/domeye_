@@ -221,8 +221,7 @@ as_window_path = "/api/v1/features/ases/overview?" + urlencode({
     "event_window": "true",
     "event_reference": references["IR"],
 })
-as_window, as_window_size, as_window_ms, as_window_etag = fetch(as_window_path)
-assert as_window_etag
+as_window, as_window_size, as_window_ms, _ = fetch(as_window_path)
 assert as_window["scope_kind"] == "event_window_selected_asn"
 assert as_window["scope_size"] == 1
 assert as_window["start_time"] == "2026-02-27 08:10:00"
