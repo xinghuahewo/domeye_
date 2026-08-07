@@ -24,6 +24,7 @@ CORE_MANIFEST_PATH = REPOSITORY_ROOT / "backend" / "core.sha256"
 STAGE_VERIFIER_PATHS = {
     "S0": REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s0.py",
     "S1": REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s1.py",
+    "S2": REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s2.py",
 }
 
 STAGE_IDS = tuple(f"S{index}" for index in range(7))

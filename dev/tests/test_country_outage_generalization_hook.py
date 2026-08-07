@@ -84,6 +84,14 @@ class CountryOutageGeneralizationHookTest(unittest.TestCase):
             REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s1.py",
         )
 
+    def test_s2_stage_verifier_is_registered(self) -> None:
+        module = load_hook_module()
+        verifier = module.STAGE_VERIFIER_PATHS.get("S2")
+        self.assertEqual(
+            verifier,
+            REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s2.py",
+        )
+
     def test_every_explicit_stage_emits_review_without_claiming_acceptance(
         self,
     ) -> None:
