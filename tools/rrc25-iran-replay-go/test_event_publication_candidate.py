@@ -51,6 +51,22 @@ class EventPublicationCandidateTest(unittest.TestCase):
             candidate.receipt_content_sha(first), candidate.receipt_content_sha(second)
         )
 
+    def test_dataset_identity_changes_with_implementation(self) -> None:
+        common = {
+            "candidate_id": "candidate", "metric_dataset_id": "metric",
+            "metric_content_sha256": "a" * 64,
+            "legacy_registry_sha256": "b" * 64,
+            "lifecycle_algorithm": candidate.LIFECYCLE_ALGORITHM,
+            "analysis_algorithm": candidate.ANALYSIS_ALGORITHM,
+        }
+        first = candidate.stable_id(
+            "event_publication_dataset_v1_", {**common, "implementation_id": "1" * 40}
+        )
+        second = candidate.stable_id(
+            "event_publication_dataset_v1_", {**common, "implementation_id": "2" * 40}
+        )
+        self.assertNotEqual(first, second)
+
     def test_gzip_tsv_is_deterministic_and_counts_data_rows(self) -> None:
         with tempfile.TemporaryDirectory() as root_text:
             root = Path(root_text)

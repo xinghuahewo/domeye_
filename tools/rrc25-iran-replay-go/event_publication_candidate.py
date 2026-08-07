@@ -685,6 +685,7 @@ def build_candidate(args: argparse.Namespace) -> dict[str, Any]:
             "metric_dataset_id": receipt["metric_dataset_id"],
             "metric_content_sha256": receipt["metric_content_sha256"],
             "legacy_registry_sha256": registry_sha,
+            "implementation_id": args.implementation_id,
             "lifecycle_algorithm": LIFECYCLE_ALGORITHM,
             "analysis_algorithm": ANALYSIS_ALGORITHM,
         })
