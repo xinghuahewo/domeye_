@@ -1327,6 +1327,16 @@ FROM domeye_event.publication_pointer ORDER BY incident_id LIMIT 1;
         "'observation_publication_v1_00000000000000000000000000000000',NULL,3,'missing_publication_drill')",
         "invalid_observation_publication",
     )
+    pointer_regression = expect_sql_failure(
+        database,
+        "SELECT domeye_event.advance_publication_pointer("
+        "(SELECT incident_id FROM domeye_event.publication_pointer ORDER BY incident_id LIMIT 1),"
+        "(SELECT p.publication_id FROM domeye_event.publication_pointer current "
+        "JOIN domeye_event.publication p ON p.incident_id=current.incident_id "
+        "WHERE p.publication_kind='observation' ORDER BY current.incident_id,p.sequence_in_revision LIMIT 1),"
+        "NULL,3,'pointer_regression_drill')",
+        "invalid_pointer_regression",
+    )
     invalid_analysis = expect_sql_failure(
         database,
         "BEGIN; INSERT INTO domeye_event.publication("
@@ -1338,6 +1348,7 @@ FROM domeye_event.publication_pointer ORDER BY incident_id LIMIT 1;
 WITH expected(previous_stage,next_stage,allowed) AS (VALUES
  ('detected','ongoing',true),
  ('ongoing','recovery_candidate',true),
+ ('ongoing','recovered_observation',false),
  ('recovery_candidate','ongoing',true),
  ('recovery_candidate','recovered_observation',true),
  ('recovered_observation','ongoing',true),
@@ -1373,6 +1384,7 @@ FROM domeye_event.publication_pointer ORDER BY incident_id LIMIT 1;
             "event_fact_delete_rejected": immutable_fact,
             "stale_pointer_rejected_atomically": stale_pointer,
             "missing_publication_rejected_atomically": missing_publication,
+            "observation_pointer_regression_rejected_atomically": pointer_regression,
             "invalid_analysis_derivation_rejected": invalid_analysis,
             "legacy_publication_unchanged": before == after,
             "pointer_unchanged_after_failures": pointer_before == pointer_after,

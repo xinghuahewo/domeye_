@@ -101,9 +101,7 @@ LANGUAGE sql IMMUTABLE STRICT
 AS $$
     SELECT CASE previous_stage
         WHEN 'detected' THEN next_stage IN ('ongoing', 'final')
-        WHEN 'ongoing' THEN next_stage IN (
-            'recovery_candidate', 'recovered_observation', 'final'
-        )
+        WHEN 'ongoing' THEN next_stage IN ('recovery_candidate', 'final')
         WHEN 'recovery_candidate' THEN next_stage IN (
             'ongoing', 'recovered_observation', 'final'
         )
@@ -333,6 +331,8 @@ AS $$
 DECLARE
     observation_row domeye_event.publication%ROWTYPE;
     analysis_row domeye_event.publication%ROWTYPE;
+    old_observation_row domeye_event.publication%ROWTYPE;
+    old_analysis_row domeye_event.publication%ROWTYPE;
 BEGIN
     SELECT * INTO observation_row FROM domeye_event.publication
      WHERE publication_id = NEW.current_observation_publication_id;
@@ -349,6 +349,47 @@ BEGIN
            analysis_row.validation_state <> 'verified' OR
            analysis_row.data_through > observation_row.data_through THEN
             RAISE EXCEPTION 'invalid_analysis_publication';
+        END IF;
+    END IF;
+    IF TG_OP = 'UPDATE' THEN
+        SELECT * INTO old_observation_row FROM domeye_event.publication
+         WHERE publication_id = OLD.current_observation_publication_id;
+        IF NEW.current_observation_publication_id <>
+           OLD.current_observation_publication_id THEN
+            IF observation_row.publication_kind <> 'observation' OR
+               observation_row.data_through < old_observation_row.data_through OR
+               observation_row.revision < old_observation_row.revision OR
+               (observation_row.revision = old_observation_row.revision AND
+                observation_row.sequence_in_revision <=
+                old_observation_row.sequence_in_revision) OR
+               (old_observation_row.publication_kind = 'legacy_observation' AND
+                (observation_row.revision <= old_observation_row.revision OR
+                 observation_row.supersedes_publication_id IS DISTINCT FROM
+                 old_observation_row.publication_id)) OR
+               (old_observation_row.publication_kind = 'observation' AND
+                observation_row.revision > old_observation_row.revision AND
+                (NOT observation_row.is_final OR
+                 observation_row.supersedes_publication_id IS DISTINCT FROM
+                 old_observation_row.publication_id)) THEN
+                RAISE EXCEPTION 'invalid_pointer_regression';
+            END IF;
+        END IF;
+        IF OLD.current_analysis_publication_id IS NOT NULL THEN
+            IF NEW.current_analysis_publication_id IS NULL THEN
+                RAISE EXCEPTION 'invalid_analysis_pointer_regression';
+            END IF;
+            IF NEW.current_analysis_publication_id <>
+               OLD.current_analysis_publication_id THEN
+                SELECT * INTO old_analysis_row FROM domeye_event.publication
+                 WHERE publication_id = OLD.current_analysis_publication_id;
+                IF analysis_row.data_through < old_analysis_row.data_through OR
+                   analysis_row.revision < old_analysis_row.revision OR
+                   (analysis_row.revision = old_analysis_row.revision AND
+                    analysis_row.sequence_in_revision <=
+                    old_analysis_row.sequence_in_revision) THEN
+                    RAISE EXCEPTION 'invalid_analysis_pointer_regression';
+                END IF;
+            END IF;
         END IF;
     END IF;
     RETURN NEW;
