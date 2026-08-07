@@ -299,6 +299,198 @@ const assertMatchingCountryOutageRelease = (
   }
 }
 
+const normalizeCompactCountryOutageSeries = (
+  payload: Record<string, unknown>,
+): Record<string, unknown> => {
+  if (!isRecord(payload.series_contract)) {
+    throw new Error('国家中断紧凑序列缺少 series_contract')
+  }
+  const contract = payload.series_contract
+  if (
+    contract.schema_version !== 'rrc25-compact-country-series/v1'
+    || contract.collector_id !== 'rrc25'
+    || contract.point_count !== 4320
+    || contract.step_seconds !== 300
+    || typeof contract.first_state_point_utc !== 'string'
+    || !Array.isArray(contract.columns)
+    || !Array.isArray(contract.values)
+    || !isRecord(contract.quality)
+    || contract.quality.status !== 'complete'
+    || contract.quality.missing !== 0
+  ) {
+    throw new Error('国家中断紧凑序列身份或窗口合同无效')
+  }
+  const requiredColumns = [
+    'baseline_v4',
+    'baseline_v6',
+    'cohort_visible_v4',
+    'cohort_visible_v6',
+    'current_visible_v4',
+    'current_visible_v6',
+    'announcement_v4',
+    'announcement_v6',
+    'withdrawal_v4',
+    'withdrawal_v6',
+  ]
+  const vectors = new Map<string, number[]>()
+  const compactValues = contract.values as unknown[]
+  contract.columns.forEach((column, index) => {
+    const values = compactValues[index]
+    if (
+      typeof column !== 'string'
+      || !Array.isArray(values)
+      || values.length !== contract.point_count
+      || values.some((value) => typeof value !== 'number' || !Number.isFinite(value))
+    ) {
+      throw new Error('国家中断紧凑序列列无效')
+    }
+    vectors.set(column, values as number[])
+  })
+  if (!requiredColumns.every((column) => vectors.has(column))) {
+    throw new Error('国家中断紧凑序列缺少固定列')
+  }
+  const vector = (key: string) => vectors.get(key)!
+  const firstTimestamp = Date.parse(contract.first_state_point_utc)
+  if (!Number.isFinite(firstTimestamp)) throw new Error('国家中断紧凑序列起点无效')
+
+  const series: Array<Record<string, unknown>> = []
+  const countryUpdateSeries: Array<Record<string, unknown>> = []
+  for (let index = 0; index < Number(contract.point_count); index += 1) {
+    const observedAtUtc = new Date(firstTimestamp + index * 300_000).toISOString()
+      .replace('.000Z', 'Z')
+    const observedAtLocal = new Date(firstTimestamp + index * 300_000 + 8 * 3_600_000)
+      .toISOString()
+      .replace('.000Z', '+08:00')
+    const baselineV4 = vector('baseline_v4')[index]!
+    const baselineV6 = vector('baseline_v6')[index]!
+    const visibleV4 = vector('cohort_visible_v4')[index]!
+    const visibleV6 = vector('cohort_visible_v6')[index]!
+    const announce = vector('announcement_v4')[index]! + vector('announcement_v6')[index]!
+    const withdraw = vector('withdrawal_v4')[index]! + vector('withdrawal_v6')[index]!
+    const baseline = baselineV4 + baselineV6
+    const visible = visibleV4 + visibleV6
+    const previous = series.at(-1)
+    const previousVisible = typeof previous?.visible_prefix_vp_count === 'number'
+      ? previous.visible_prefix_vp_count
+      : null
+    const previousAnnounce = typeof previous?.announce_count === 'number'
+      ? previous.announce_count
+      : null
+    const previousWithdraw = typeof previous?.withdraw_count === 'number'
+      ? previous.withdraw_count
+      : null
+    const point = {
+      snapshot_id: `${String(contract.series_id)}:${index + 1}`,
+      observed_at_utc: observedAtUtc,
+      observed_at_local: observedAtLocal,
+      slot_state: 'observed',
+      missing_reason: null,
+      visible_prefix_vp_count: visible,
+      invisible_prefix_vp_count: baseline - visible,
+      visible_prefix_vp_ratio: baseline > 0 ? visible / baseline : null,
+      visible_prefix_vp_delta: previousVisible === null ? null : visible - previousVisible,
+      visible_prefix_vp_ratio_delta_pp: previousVisible === null || baseline === 0
+        ? null
+        : ((visible - previousVisible) / baseline) * 100,
+      visible_origin_asn_count: null,
+      visible_origin_asn_ratio: null,
+      visible_origin_asn_delta: null,
+      fully_visible_asn_count: null,
+      partially_visible_asn_count: null,
+      fully_invisible_asn_count: null,
+      non_fully_visible_asn_count: null,
+      ipv4_visible_prefix_vp_count: visibleV4,
+      ipv4_baseline_prefix_vp_count: baselineV4,
+      ipv4_visible_prefix_vp_ratio: baselineV4 > 0 ? visibleV4 / baselineV4 : null,
+      ipv4_visible_prefix_vp_delta: previous === undefined
+        ? null
+        : visibleV4 - Number(previous.ipv4_visible_prefix_vp_count),
+      ipv6_visible_prefix_vp_count: visibleV6,
+      ipv6_baseline_prefix_vp_count: baselineV6,
+      ipv6_visible_prefix_vp_ratio: baselineV6 > 0 ? visibleV6 / baselineV6 : null,
+      ipv6_visible_prefix_vp_delta: previous === undefined
+        ? null
+        : visibleV6 - Number(previous.ipv6_visible_prefix_vp_count),
+      announce_count: announce,
+      withdraw_count: withdraw,
+      update_total: announce + withdraw,
+      withdraw_ratio: announce + withdraw > 0 ? withdraw / (announce + withdraw) : 0,
+      announce_delta: previousAnnounce === null ? null : announce - previousAnnounce,
+      withdraw_delta: previousWithdraw === null ? null : withdraw - previousWithdraw,
+      country_announce_count: announce,
+      country_withdraw_count: withdraw,
+      country_update_total: announce + withdraw,
+      country_withdraw_ratio: announce + withdraw > 0 ? withdraw / (announce + withdraw) : 0,
+      country_announce_delta: previousAnnounce === null ? null : announce - previousAnnounce,
+      country_withdraw_delta: previousWithdraw === null ? null : withdraw - previousWithdraw,
+    }
+    series.push(point)
+    countryUpdateSeries.push({
+      observed_at_utc: observedAtUtc,
+      observed_at_local: observedAtLocal,
+      announce_count: announce,
+      withdraw_count: withdraw,
+      update_total: announce + withdraw,
+      withdraw_ratio: announce + withdraw > 0 ? withdraw / (announce + withdraw) : 0,
+      announce_delta: point.announce_delta,
+      withdraw_delta: point.withdraw_delta,
+    })
+  }
+
+  const extremaKeys = [
+    'visible_prefix_vp_count',
+    'visible_prefix_vp_ratio',
+    'visible_prefix_vp_delta',
+    'visible_prefix_vp_ratio_delta_pp',
+    'ipv4_visible_prefix_vp_count',
+    'ipv4_visible_prefix_vp_ratio',
+    'ipv4_visible_prefix_vp_delta',
+    'ipv6_visible_prefix_vp_count',
+    'ipv6_visible_prefix_vp_ratio',
+    'ipv6_visible_prefix_vp_delta',
+    'announce_count',
+    'withdraw_count',
+    'update_total',
+    'withdraw_ratio',
+    'announce_delta',
+    'withdraw_delta',
+  ]
+  const metricExtrema: Record<string, Record<string, unknown>> = {}
+  for (const key of extremaKeys) {
+    const candidates = series.filter((point) => typeof point[key] === 'number')
+    const sorted = [...candidates].sort(
+      (left, right) => Number(left[key]) - Number(right[key]),
+    )
+    const buildExtreme = (point: Record<string, unknown> | undefined) => point
+      ? {
+          metric: key,
+          observed_at_utc: point.observed_at_utc,
+          observed_at_local: point.observed_at_local,
+          value: point[key],
+        }
+      : null
+    metricExtrema[key] = {
+      min: buildExtreme(sorted[0]),
+      max: buildExtreme(sorted.at(-1)),
+    }
+  }
+  const countryUpdateMetricExtrema = Object.fromEntries(
+    ['announce_count', 'withdraw_count', 'update_total', 'withdraw_ratio', 'announce_delta', 'withdraw_delta']
+      .map((key) => [key, metricExtrema[key]]),
+  )
+  return {
+    ...payload,
+    schema_version: 'country_outage_series_v2',
+    interval_seconds: 300,
+    series,
+    metric_extrema: metricExtrema,
+    country_update_series: countryUpdateSeries,
+    country_update_metric_extrema: countryUpdateMetricExtrema,
+    resource_series: [],
+    resource_metric_extrema: {},
+  }
+}
+
 export const normalizeCountryOutageObservation = (
   overview: unknown,
   series: unknown,
@@ -310,11 +502,37 @@ export const normalizeCountryOutageObservation = (
     !isRecord(overview)
     || overview.schema_version !== 'country_outage_overview_v2'
     || !isRecord(series)
-    || series.schema_version !== 'country_outage_series_v2'
+    || ![
+      'country_outage_series_v2',
+      'country_outage_compact_series_v1',
+    ].includes(cleanText(series.schema_version))
   ) {
     throw new Error('国家中断观测 v2 响应格式异常')
   }
-  const normalizedAsns = normalizeCountryOutageAsnPage(asnPage)
+  const normalizedSeries = series.schema_version === 'country_outage_compact_series_v1'
+    ? normalizeCompactCountryOutageSeries(series)
+    : series
+  const normalizedAsns = asnPage === null
+    ? {
+        ...Object.fromEntries(
+          releaseMetadataKeys.map((key) => [key, overview[key]]),
+        ),
+        schema_version: 'country_outage_asn_page_v2' as const,
+        page: 1,
+        page_size: 60,
+        page_count: 1,
+        total: 0,
+        observed_at_utc: [],
+        observed_at_local: [],
+        state_codes: {},
+        duration_histogram: {
+          fully_visible: {},
+          partially_visible: {},
+          fully_invisible: {},
+        },
+        items: [],
+      }
+    : normalizeCountryOutageAsnPage(asnPage)
   const normalizedAudit = normalizeCountryOutageAudit(audit)
   const normalizedTrend = trendProduct === null
     ? null
@@ -322,7 +540,7 @@ export const normalizeCountryOutageObservation = (
   assertMatchingCountryOutageRelease(
     overview,
     [
-      series,
+      normalizedSeries,
       normalizedAsns as unknown as Record<string, unknown>,
       normalizedAudit as unknown as Record<string, unknown>,
     ],
@@ -344,7 +562,7 @@ export const normalizeCountryOutageObservation = (
   }
   return normalizeEventObservation({
     ...overview,
-    ...series,
+    ...normalizedSeries,
     schema_version: 'country_outage_observation_v2',
     asn_state: {
       state_codes: normalizedAsns.state_codes,

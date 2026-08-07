@@ -25,6 +25,12 @@ from services.country_outage_service import (
     resolve_country_outage,
 )
 from services.features_service import get_country_feature_series
+from services.data_layer_224_310_runtime import (
+    DataLayerIntegrityError,
+    DataLayerNotConfigured,
+    DataLayerPublicationNotFound,
+    data_layer_runtime,
+)
 from services.country_outage_trend_product import (
     TrendProductValidationError,
     get_country_outage_trend_product,
@@ -90,6 +96,21 @@ def _positive_int(name: str, default: int) -> int:
         return default
 
 
+def _data_layer_call(method: str, *args):
+    """命中生产选择时只读统一层；未配置或未收录事件时才允许旧路径。"""
+    try:
+        runtime = data_layer_runtime()
+    except DataLayerNotConfigured:
+        return False, None
+    except DataLayerIntegrityError as error:
+        raise CountryOutageSourceUnavailable(str(error)) from error
+    try:
+        payload = getattr(runtime, method)(*args)
+    except DataLayerIntegrityError as error:
+        raise CountryOutageSourceUnavailable(str(error)) from error
+    return payload is not None, payload
+
+
 class CountryOutageResolveResource(Resource):
     def get(self):
         legacy_reference = request.args.get("ref", "").strip()
@@ -100,6 +121,9 @@ class CountryOutageResolveResource(Resource):
                 "observation_state": "invalid_reference",
             }, 400
         try:
+            selected, payload = _data_layer_call("resolve", legacy_reference)
+            if selected:
+                return _etag_response(payload, "resolve")
             payload = resolve_country_outage(legacy_reference)
         except CountryOutageInvalidReference:
             return {
@@ -121,13 +145,18 @@ class CountryOutageOverviewResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _data_layer_call(
+                "overview", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "overview")
             payload = get_country_outage_overview(
                 incident_id,
                 publication_id=publication_id,
             )
         except CountryOutageNotFound:
             return _not_found()
-        except CountryOutagePublicationNotFound as error:
+        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -142,6 +171,11 @@ class CountryOutageSeriesResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _data_layer_call(
+                "series", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "series")
             context = get_country_outage_query_context(
                 incident_id,
                 publication_id=publication_id,
@@ -185,7 +219,7 @@ class CountryOutageSeriesResource(Resource):
             )
         except CountryOutageNotFound:
             return _not_found()
-        except CountryOutagePublicationNotFound as error:
+        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -200,11 +234,22 @@ class CountryOutageAsnResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            page = _positive_int("page", 1)
+            page_size = min(60, _positive_int("page_size", 60))
+            selected, payload = _data_layer_call(
+                "empty_asn_page",
+                incident_id,
+                publication_id,
+                page,
+                page_size,
+            )
+            if selected:
+                return _etag_response(payload, "asns")
             payload = get_country_outage_asns(
                 incident_id,
                 publication_id=publication_id,
-                page=_positive_int("page", 1),
-                page_size=min(60, _positive_int("page_size", 60)),
+                page=page,
+                page_size=page_size,
                 query=request.args.get("query", ""),
                 address_family=request.args.get("address_family", "all"),
                 state=request.args.get("state", "all"),
@@ -214,7 +259,7 @@ class CountryOutageAsnResource(Resource):
             )
         except CountryOutageNotFound:
             return _not_found()
-        except CountryOutagePublicationNotFound as error:
+        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -229,13 +274,18 @@ class CountryOutageAuditResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _data_layer_call(
+                "audit", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "audit")
             payload = get_country_outage_audit(
                 incident_id,
                 publication_id=publication_id,
             )
         except CountryOutageNotFound:
             return _not_found()
-        except CountryOutagePublicationNotFound as error:
+        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
             return _publication_not_found(error)
         except (
             CountryOutageRegistryError,
@@ -252,13 +302,18 @@ class CountryOutageTrendResource(Resource):
     def get(self, incident_id):
         publication_id = request.args.get("publication_id")
         try:
+            selected, payload = _data_layer_call(
+                "trend", incident_id, publication_id
+            )
+            if selected:
+                return _etag_response(payload, "trend")
             payload = get_country_outage_trend_product(
                 incident_id,
                 publication_id=publication_id,
             )
         except CountryOutageNotFound:
             return _not_found()
-        except CountryOutagePublicationNotFound as error:
+        except (CountryOutagePublicationNotFound, DataLayerPublicationNotFound) as error:
             return _publication_not_found(error)
         except TrendProductValidationError as error:
             return {
