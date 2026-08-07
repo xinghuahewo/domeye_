@@ -30,3 +30,123 @@ go run ./cmd/rrc25-replay \
 真实完整运行只允许在合成测试和 `updates.20260228.0925.gz` 单文件验证通过后启动。
 运行目录采用 create-only 语义；中途失败时保留 `RUNNING.json`、已解析 UPDATE
 spool 和最新 checkpoint，可用同一命令加 `--resume` 继续，不重新读取已完成阶段。
+
+## RRC25 224-310 RouteEvent 制品库
+
+`cmd/rrc25-route-event-store` 是数据层 S1 的独立入口。它只接受冻结的
+`[2026-02-24T00:00:00Z, 2026-03-11T00:00:00Z)`、`rrc25`、4,320 个 UPDATE
+和 2 个修复制品身份。
+
+输出根目录会逐字保留冻结输入清单为 `input-selection.json`。全局清单还会记录
+两个损坏原文件的 SHA-256/字节数、隔离替换 artifact 的完整身份、双方关系和
+`repair_provenance_sha256`。替换文件只能作为新 artifact 被选择，不能覆盖或冒充
+损坏原文件；修复血缘同时参与 import run 身份和全局内容身份。
+
+逻辑原始数据根固定为 `domeye://raw/rrc25-global-20260224-20260310-v1`；每个
+artifact 的稳定 URI 由该根与 `relative_path` 组合。只有完整读取 gzip、核对压缩
+字节数和 SHA-256 后，分区才写入
+`input_integrity_status=gzip_passed_and_stream_sha256_verified`，该字段属于内容身份。
+
+输出按原始 artifact 分区，每个分区包含：
+
+- `records.jsonl.gz`：MRT record ordinal、解压偏移、长度和 SHA-256；
+- `events.jsonl.gz`：稳定 RouteEvent ID、VP、prefix、动作、origin、AS_PATH 引用、
+  属性 SHA-256 和 record/element 坐标；
+- `paths.jsonl.gz`：保留 AS_SEQUENCE、AS_SET 和 confederation segment 的内容寻址
+  AS_PATH 字典；
+- `manifest.json`：输入 artifact、人口、文件摘要和分区内容身份。
+
+分区内容身份除三类文件外，还绑定 artifact role、物理记录/事件/动作/路径人口和
+解析告警人口；全局内容身份继续绑定全局窗口、来源、实现、修复血缘、聚合人口及
+全部分区身份。只有操作开始/完成时间不进入语义摘要，但恢复时仍需与分区清单原文一致。
+完成后 `manifest.json` 与 `COMPLETE.json` 必须逐字一致，任一副本漂移都拒绝恢复。
+
+物理事件行不重复全局和分区字段。逻辑 RouteEvent 由全局清单、分区清单中的
+`ingest_time_utc` / `parse_time_utc`、事件行、AS_PATH 字典和 record sidecar
+确定性组合。操作时间不进入语义 content SHA，因此重跑可以有不同的处理时间，
+但不会改变事件、文件和数据集内容身份。
+
+AS4_PATH 按 [RFC 6793](https://datatracker.ietf.org/doc/html/rfc6793) 重建，不将
+AS_SET 或 confederation 拍平。紧凑 RouteDelta 的既有二进制格式不变，也不被冒充为
+完整 RouteEvent。
+
+无写入 preflight：
+
+```bash
+go run ./cmd/rrc25-route-event-store \
+  --phase preflight \
+  --raw-root /path/to/frozen-input \
+  --selection /path/to/224-310.selection.json \
+  --implementation-id git:<40位提交SHA>
+```
+
+单 artifact 真实输入验证（0 为 Seed RIB，1 为第一个 UPDATE）：
+
+```bash
+go run ./cmd/rrc25-route-event-store \
+  --phase artifact \
+  --artifact-index 1 \
+  --raw-root /path/to/frozen-input \
+  --selection /path/to/224-310.selection.json \
+  --implementation-id git:<40位提交SHA> \
+  --output /path/to/create-only-output
+```
+
+全窗运行：
+
+```bash
+go run ./cmd/rrc25-route-event-store \
+  --phase run \
+  --raw-root /path/to/frozen-input \
+  --selection /path/to/224-310.selection.json \
+  --implementation-id git:<40位提交SHA> \
+  --output /path/to/create-only-output \
+  --workers 8
+```
+
+已完成的分区只能在 `--resume` 时逐文件重算大小和 SHA-256 后复用。该入口
+还使用输出目录级非阻塞写锁，拒绝两个进程同时写同一候选。它不生成 RouteState、
+Prefix×VP Evidence、国家/ASN 指标或 Publication；Prefix×VP 只是后续 RouteState
+的主键维度。`implementation_id` 进入 import run、RUNNING 标记和最终清单，禁止
+不同实现身份在一次续跑中混用。
+
+全量完成后的独立审计入口：
+
+```bash
+go run ./cmd/rrc25-route-event-audit \
+  --raw-root /path/to/frozen-input \
+  --selection /path/to/224-310.selection.json \
+  --output /path/to/complete-route-event-store \
+  --store-implementation-id git:<生成器提交SHA> \
+  --audit-implementation-id git:<审计器提交SHA> \
+  --sample-count 100
+```
+
+审计器先通过完成态 `--resume` 重算 4,321 个分区全部文件 SHA-256，再确定性选取
+100 个 UPDATE 分区逐元素回到原始 gzip 复算；样本固定包含第一个 UPDATE、两个隔离
+修复 artifact，另含至少一个 withdraw。VP、动作、prefix、AS_PATH、属性摘要、
+record/element 坐标、raw record sidecar 和 RouteEvent ID 任一不一致即失败关闭。
+
+## S6 旧库影子迁移与安全边界
+
+`shadow_migration_candidate.py` 只处理 `rrc25` 和
+`[2026-02-24T00:00:00Z, 2026-03-11T00:00:00Z)`。它在一个可重复读、只读事务中为
+旧 `bgp_project` 的 37 张逻辑表生成精确窗口人口、时间上下界、schema 片段和多集合
+指纹；不会修改旧库 ACL、数据或表结构。
+
+旧国家中断记录保留源表、合成源主键、上海时区解释、原始行摘要和导入处置。冻结窗口内
+111 条记录中，81 条精确对账到 S4 正式事件，29 条只用于追溯，1 条空国家码进入隔离；
+旧 ASN 比例与新 Prefix×VP RouteState 投影的统计人口不同，明确记为不可比较，不会被
+强行转换成新指标。
+
+每次提取生成独立 `import_batch_id`，将源库 schema、37 张表的只读事务快照和候选身份
+绑定在一起。37 张表的 534 个源字段逐一写入字段处置清单：能与新模型等价对应的标记为
+`mapped`，人口或语义不同的标记为 `not_comparable`，仅承担追溯用途的标记为
+`trace_only`；所有条目必须关闭，不能遗留待定字段，也不能把旧前缀指标强行解释为
+Prefix×VP RouteState。
+
+`accept` 只创建独立候选数据库和三个唯一 NOLOGIN 角色：迁移角色只读影子导入表，
+发布角色只能调用原子 bundle 切换函数，运行角色只能读取 `domeye_runtime` 正式视图。
+验收会依次拒绝 incomplete bundle、正向切换、回退、再次正向切换，并在写入 DLAE-16
+和最终回执前，以运行角色实测 IR、MW、81 个事件、报告和 43 个 4,320 点紧凑序列。
+该选择仅属于验收运行时，`selected_by_production` 始终为 false。

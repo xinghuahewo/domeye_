@@ -40,6 +40,102 @@ func asPath(origin uint32, width int) []byte {
 	return append(result, raw...)
 }
 
+func asPathSegments(width int, rows ...struct {
+	segmentType uint8
+	asns        []uint32
+}) []byte {
+	result := make([]byte, 0)
+	for _, row := range rows {
+		result = append(result, row.segmentType, uint8(len(row.asns)))
+		for _, asn := range row.asns {
+			if width == 2 {
+				raw := make([]byte, 2)
+				binary.BigEndian.PutUint16(raw, uint16(asn))
+				result = append(result, raw...)
+			} else {
+				raw := make([]byte, 4)
+				binary.BigEndian.PutUint32(raw, asn)
+				result = append(result, raw...)
+			}
+		}
+	}
+	return result
+}
+
+func TestASPathPreservesSegmentsAndReconstructsAS4Path(t *testing.T) {
+	base := asPathSegments(2,
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{3, []uint32{65000}},
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{2, []uint32{64500}},
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{3, []uint32{65001}},
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{2, []uint32{23456, 23456}},
+	)
+	as4 := asPathSegments(4,
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{2, []uint32{4_200_000_001, 4_200_000_002}},
+	)
+	attributes := bytes.Join([][]byte{
+		attribute(0x40, 2, base),
+		attribute(0xc0, 17, as4),
+	}, nil)
+	parsed, err := parseAttributes(attributes, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !parsed.OriginSeen || !parsed.Origin.Known ||
+		parsed.Origin.ASN != 4_200_000_002 {
+		t.Fatalf("unexpected reconstructed origin: %+v", parsed.Origin)
+	}
+	if parsed.Path.Canonical != "(65000) 64500 (65001) 4200000001 4200000002" {
+		t.Fatalf("unexpected canonical path: %q", parsed.Path.Canonical)
+	}
+	if len(parsed.Path.Segments) != 4 ||
+		parsed.Path.Segments[0].SegmentType != confedSequenceSegment ||
+		parsed.Path.Segments[1].SegmentType != asSequenceSegment ||
+		parsed.Path.Segments[2].SegmentType != confedSequenceSegment ||
+		parsed.Path.Segments[3].SegmentType != asSequenceSegment {
+		t.Fatalf("segment boundaries were not preserved: %+v", parsed.Path.Segments)
+	}
+	if parsed.Path.PathLength() != 3 {
+		t.Fatalf("unexpected RFC path length: %d", parsed.Path.PathLength())
+	}
+}
+
+func TestASSetRemainsExplicitAndOriginIsAmbiguous(t *testing.T) {
+	path, err := parseASPath(asPathSegments(4,
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{2, []uint32{64500}},
+		struct {
+			segmentType uint8
+			asns        []uint32
+		}{1, []uint32{64496, 64497}},
+	), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path.Canonical != "64500 {64496,64497}" || path.Origin().Known {
+		t.Fatalf("AS_SET semantics were flattened: %+v", path)
+	}
+	if path.PathLength() != 2 {
+		t.Fatalf("AS_SET must count as one path hop, got %d", path.PathLength())
+	}
+}
+
 func peerIndexFixture() []byte {
 	payload := bytes.NewBuffer(nil)
 	_ = binary.Write(payload, binary.BigEndian, uint32(0x01020304))
