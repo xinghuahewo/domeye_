@@ -50,6 +50,16 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             self.assertIn(phrase, text)
         for forbidden in ("pkill", "killall", "rm -rf"):
             self.assertNotIn(forbidden, text)
+        start_body = text.split("start_runtime() {", 1)[1].split(
+            "stop_runtime() {", 1
+        )[0]
+        for secret_argument in (
+            "DB_PASSWORD=",
+            "SECRET_KEY=",
+            "COUNTRY_OUTAGE_AGENT_SHARED_TOKEN=",
+        ):
+            self.assertNotIn(secret_argument, start_body)
+        self.assertIn('"${SCRIPT_DIR}/manage-runtime.sh" _serve', start_body)
 
     def test_prepare_is_create_only_and_reuses_frozen_data(self) -> None:
         text = (DEPLOY / "prepare-runtime-release.sh").read_text(encoding="utf-8")

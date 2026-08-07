@@ -207,22 +207,8 @@ session_process() {
     return 1
 }
 
-start_runtime() {
+serve_runtime() {
     validate_runtime
-    mapfile -t sessions < <(list_sessions)
-    if (( ${#sessions[@]} > 1 )); then
-        error "发现多个同名会话：${sessions[*]}"
-        return 1
-    fi
-    if (( ${#sessions[@]} == 1 )); then
-        session_process "${sessions[0]}" >/dev/null || {
-            error "既有会话身份不匹配：${sessions[0]}"
-            return 1
-        }
-        printf '运行时已启动：%s\n' "${sessions[0]}"
-        return 0
-    fi
-
     local db_name db_port db_user db_password secret_key
     local agent_url agent_token agent_identity agent_user agent_config_sha
     db_name="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)"
@@ -244,8 +230,7 @@ start_runtime() {
         general_read_model="${RUNTIME_ROOT}/general-read-model"
     fi
 
-    screen -L -Logfile "${log_root}/screen.log" -dmS "${SCREEN_NAME}" \
-        env -i \
+    exec env -i \
             HOME=/home/bgpdata \
             USER=root \
             LOGNAME=root \
@@ -281,6 +266,7 @@ start_runtime() {
             DOMEYE_P0_RELEASE_ID=20260806T054822Z-country-outage-224-310-scope-revert-prod20-backend \
             DOMEYE_P0_PRODUCTION_RELEASE_ID="${selected_release}" \
             DOMEYE_P0_RUNTIME_MODE="${RUNTIME_MODE}" \
+            DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE="${RUNTIME_MODE}" \
             P0_DATA_RELEASE_DIR="${P0_DATA_DIR}" \
             P0_DATA_PRODUCTION_ACTIVE=true \
             DOMEYE_DATA_LAYER_224_310_SELECTION="${RUNTIME_ROOT}/data-layer/PRODUCTION-SELECTION.json" \
@@ -296,6 +282,39 @@ start_runtime() {
             VIRTUAL_ENV="${RUNTIME_ROOT}/venv" \
             bash -c 'cd -- "$1" && exec "$2" run.py' \
                 _ "${RUNTIME_ROOT}/backend" "${RUNTIME_ROOT}/venv/bin/python"
+}
+
+start_runtime() {
+    validate_runtime
+    mapfile -t sessions < <(list_sessions)
+    if (( ${#sessions[@]} > 1 )); then
+        error "发现多个同名会话：${sessions[*]}"
+        return 1
+    fi
+    if (( ${#sessions[@]} == 1 )); then
+        session_process "${sessions[0]}" >/dev/null || {
+            error "既有会话身份不匹配：${sessions[0]}"
+            return 1
+        }
+        printf '运行时已启动：%s\n' "${sessions[0]}"
+        return 0
+    fi
+
+    local selected_release log_root
+    selected_release="$(release_id)"
+    log_root="/home/bgpdata/Domeye-Core-runtime/log/${selected_release}/${RUNTIME_MODE}"
+    install -d -o 0 -g 0 -m 0750 "${log_root}" "${log_root}/app"
+    screen -L -Logfile "${log_root}/screen.log" -dmS "${SCREEN_NAME}" \
+        env -i \
+            HOME=/home/bgpdata \
+            USER=root \
+            LOGNAME=root \
+            LANG=C.UTF-8 \
+            LC_ALL=C.UTF-8 \
+            PATH="${RUNTIME_PATH}" \
+            DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE="${MODE}" \
+            DOMEYE_COUNTRY_OUTAGE_RUNTIME_ROOT_OVERRIDE="${RUNTIME_ROOT}" \
+            "${SCRIPT_DIR}/manage-runtime.sh" _serve
 
     local attempt
     for (( attempt = 1; attempt <= 60; attempt++ )); do
@@ -376,6 +395,7 @@ case "$1" in
     start) start_runtime ;;
     stop) stop_runtime ;;
     status) status_runtime ;;
+    _serve) serve_runtime ;;
     *)
         error "未知命令：$1"
         exit 2
