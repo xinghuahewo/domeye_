@@ -637,6 +637,7 @@ def make_fact(
         "candidate_id": candidate_id, "incident_id": incident_id,
         "fact_sequence": sequence, "stage": stage, "observed_at": observed_at,
         "data_through": observed_at, "source_metric_dataset_id": metric_dataset_id,
+        "source_state_point_utc": observed_at,
         "source_metric_slot_sha256": row["metric_slot_sha256"],
         "previous_fact_id": previous_fact_id, "evidence": evidence,
         "limitations": limitation,

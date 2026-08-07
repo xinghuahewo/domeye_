@@ -87,6 +87,7 @@ class EventPublicationCandidateTest(unittest.TestCase):
             "route_metric_dataset_v1_" + "e" * 32, "event_fact_v1_" + "f" * 32,
         )
         self.assertEqual(fact["stage"], "final")
+        self.assertEqual(fact["source_state_point_utc"], "2026-03-11T00:00:00Z")
         self.assertEqual(fact["limitations"]["recovery_claim"], "not_assessed")
         self.assertEqual(
             fact["limitations"]["final_semantics"], "fixed_observation_window_closed"
