@@ -1500,10 +1500,11 @@ def drill_candidate(args: argparse.Namespace) -> dict[str, Any]:
         or receipt["summary"] != summary
     ):
         raise CandidateError("S5 文件、数据库与回执身份不一致")
-    before = database.scalar("""
-SELECT encode(digest(string_agg(report_snapshot_id||':'||snapshot_sha256,',' ORDER BY report_snapshot_id),'sha256'),'hex')
+    report_identity_sql = """
+SELECT string_agg(report_snapshot_id||':'||snapshot_sha256,',' ORDER BY report_snapshot_id)
 FROM domeye_read.report_snapshot
-""")
+"""
+    before = sha256_bytes(database.scalar(report_identity_sql).encode())
     immutable_event = expect_sql_failure(
         database,
         "UPDATE domeye_read.event_read_model SET payload='{}'::jsonb WHERE snapshot_id=(SELECT min(snapshot_id) FROM domeye_read.event_read_model)",
@@ -1528,10 +1529,7 @@ WHERE p.pointer_version=2""",
         "UPDATE domeye_read.report_pointer SET pointer_version=pointer_version+2 WHERE pointer_version=1",
         "version must advance by one",
     )
-    after = database.scalar("""
-SELECT encode(digest(string_agg(report_snapshot_id||':'||snapshot_sha256,',' ORDER BY report_snapshot_id),'sha256'),'hex')
-FROM domeye_read.report_snapshot
-""")
+    after = sha256_bytes(database.scalar(report_identity_sql).encode())
     if before != after:
         raise CandidateError("失败演练改变了不可变报告快照")
     reports = read_tsv_gzip(root / "report-snapshot.tsv.gz")
