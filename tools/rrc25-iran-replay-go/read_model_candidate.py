@@ -89,6 +89,16 @@ def utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def normalize_utc_strings(value: Any) -> Any:
+    if isinstance(value, str) and value.endswith("+00:00"):
+        return value[:-6] + "Z"
+    if isinstance(value, list):
+        return [normalize_utc_strings(item) for item in value]
+    if isinstance(value, dict):
+        return {key: normalize_utc_strings(item) for key, item in value.items()}
+    return value
+
+
 def run_command(
     command: Sequence[str], *, input_bytes: bytes | None = None,
     check: bool = True,
@@ -318,7 +328,10 @@ WHERE i.status='complete'
 ORDER BY i.incident_id
 ) TO STDOUT"""
     result = database.psql(sql)
-    events = [json.loads(line) for line in result.stdout.decode().splitlines() if line]
+    events = [
+        normalize_utc_strings(json.loads(line))
+        for line in result.stdout.decode().splitlines() if line
+    ]
     if len(events) != EVENT_COUNT:
         raise CandidateError("S4 当前事件人口不是 81")
     countries = {event["incident"]["country_code"] for event in events}

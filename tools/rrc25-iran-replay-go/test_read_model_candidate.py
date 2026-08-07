@@ -31,6 +31,19 @@ class ReadModelCandidateTests(unittest.TestCase):
         payload["value"] = 2
         self.assertNotEqual(module.snapshot_hash(payload), digest)
 
+    def test_postgresql_utc_rendering_is_normalized_before_identity(self) -> None:
+        value = {
+            "at": "2026-03-11T00:00:00+00:00",
+            "nested": ["2026-02-24T00:00:00+00:00", "unchanged"],
+        }
+        self.assertEqual(
+            module.normalize_utc_strings(value),
+            {
+                "at": "2026-03-11T00:00:00Z",
+                "nested": ["2026-02-24T00:00:00Z", "unchanged"],
+            },
+        )
+
     def test_report_refresh_creates_new_version_without_rewriting_v1(self) -> None:
         event = {
             "incident": {
