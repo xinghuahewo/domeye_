@@ -183,8 +183,14 @@ release_id() {
 
 session_process() {
     local session="$1"
-    local expected_release
+    local expected_release binding_schema legacy_runtime_compatible
     expected_release="$(release_id)"
+    binding_schema="$(jq -er '.schema_version' "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")"
+    legacy_runtime_compatible=false
+    if [[ "${binding_schema}" == domeye_backend_source_binding_v2 \
+        && "${RUNTIME_MODE}" == production ]]; then
+        legacy_runtime_compatible=true
+    fi
     local root_pid="${session%%.*}"
     local pid
     while IFS= read -r pid; do
@@ -194,11 +200,21 @@ session_process() {
             && tr '\0' '\n' < "/proc/${pid}/environ" | awk -F= \
                 -v release="${expected_release}" \
                 -v mode="${RUNTIME_MODE}" \
-                -v port="${API_PORT}" '
+                -v port="${API_PORT}" \
+                -v legacy_runtime_compatible="${legacy_runtime_compatible}" '
                     $1 == "DOMEYE_P0_PRODUCTION_RELEASE_ID" && $2 == release { a=1 }
-                    $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" && $2 == mode { b=1 }
+                    $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" {
+                        general_mode_seen=1
+                        if ($2 == mode) b=1
+                    }
                     $1 == "PORT" && $2 == port { c=1 }
-                    END { exit(a && b && c ? 0 : 1) }
+                    $1 == "DOMEYE_P0_RUNTIME_MODE" && $2 == mode { d=1 }
+                    END {
+                        if (legacy_runtime_compatible == "true") {
+                            exit(a && c && d && (!general_mode_seen || b) ? 0 : 1)
+                        }
+                        exit(a && b && c ? 0 : 1)
+                    }
                 '; then
             printf '%s\n' "${pid}"
             return 0

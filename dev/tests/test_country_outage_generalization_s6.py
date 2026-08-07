@@ -42,8 +42,12 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "/home/bgpdata/Domeye-Core-runtime/releases/*-backend",
             "session_process",
             "DOMEYE_P0_PRODUCTION_RELEASE_ID",
+            "DOMEYE_P0_RUNTIME_MODE",
             "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE",
             "DOMEYE_COUNTRY_OUTAGE_GENERAL_READ_MODEL",
+            "legacy_runtime_compatible",
+            "domeye_backend_source_binding_v2",
+            "general_mode_seen",
             "sha256sum -c core.sha256",
             "cd -- \"$1\" && exec \"$2\" run.py",
         ):
