@@ -23,6 +23,7 @@ func main() {
 	routeStateImplementation := flag.String("route-state-implementation-id", "", "正式 RouteState 实现身份")
 	peerSessionImplementation := flag.String("peer-session-implementation-id", "", "会话事实实现身份")
 	implementationID := flag.String("implementation-id", "", "当前候选实现身份，格式 git:<40位SHA>")
+	workers := flag.Int("workers", 8, "RouteEvent 分区预解析 worker 数")
 	resume := flag.Bool("resume", false, "校验并续跑同一输出身份")
 	flag.Parse()
 
@@ -34,7 +35,7 @@ func main() {
 		RouteEventImplementationID:  *routeEventImplementation,
 		RouteStateImplementationID:  *routeStateImplementation,
 		PeerSessionImplementationID: *peerSessionImplementation,
-		ImplementationID:            *implementationID, Resume: *resume,
+		ImplementationID:            *implementationID, Workers: *workers, Resume: *resume,
 		Progress: func(message string) { fmt.Fprintln(os.Stderr, message) },
 	})
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,7 @@ type EventCohortStoreConfig struct {
 	RouteStateImplementationID  string
 	PeerSessionImplementationID string
 	ImplementationID            string
+	Workers                     int
 	Resume                      bool
 	Progress                    func(string)
 }
@@ -452,6 +454,104 @@ func compareEventCohortStateSlot(
 	return nil
 }
 
+func replayEventCohortUpdates(
+	config EventCohortStoreConfig,
+	routeEvents RouteEventStoreManifest,
+	state *RouteState,
+	index eventCountryRouteIndex,
+	mapping *GlobalCountryMapping,
+	ledger []RouteStateSlotRecord,
+	startSlot int,
+	endSlot int,
+	afterSlot func(int) error,
+) error {
+	if startSlot < 1 || endSlot > RouteStateFinalSlot || startSlot > endSlot {
+		return fmt.Errorf("invalid event cohort replay slot range")
+	}
+	workers := config.Workers
+	if workers < 1 {
+		workers = RouteStateDefaultParseWorkers
+	}
+	if workers > endSlot-startSlot+1 {
+		workers = endSlot - startSlot + 1
+	}
+	type result struct {
+		value parsedRouteStatePartition
+		err   error
+	}
+	jobs := make(chan int)
+	results := make(chan result, workers)
+	var group sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			for slot := range jobs {
+				parsed, err := parseRouteStatePartition(
+					config.RouteEventRoot, routeEvents.Partitions[slot],
+				)
+				results <- result{value: parsed, err: err}
+			}
+		}()
+	}
+	nextSchedule := startSlot
+	inflight := 0
+	for inflight < workers && nextSchedule <= endSlot {
+		jobs <- nextSchedule
+		nextSchedule++
+		inflight++
+	}
+	pending := make(map[int]parsedRouteStatePartition, workers)
+	nextApply := startSlot
+	for nextApply <= endSlot {
+		item := <-results
+		inflight--
+		if item.err != nil {
+			close(jobs)
+			group.Wait()
+			return item.err
+		}
+		pending[item.value.Index] = item.value
+		for {
+			parsed, exists := pending[nextApply]
+			if !exists {
+				break
+			}
+			delete(pending, nextApply)
+			for _, event := range parsed.Events {
+				if err := applyEventCohortRouteState(state, index, mapping, event); err != nil {
+					close(jobs)
+					group.Wait()
+					return err
+				}
+			}
+			parsed.Events = nil
+			if err := compareEventCohortStateSlot(state, parsed, ledger[nextApply-1]); err != nil {
+				close(jobs)
+				group.Wait()
+				return err
+			}
+			if err := afterSlot(nextApply); err != nil {
+				close(jobs)
+				group.Wait()
+				return err
+			}
+			nextApply++
+			if nextSchedule <= endSlot {
+				jobs <- nextSchedule
+				nextSchedule++
+				inflight++
+			}
+		}
+	}
+	close(jobs)
+	group.Wait()
+	if inflight != 0 || len(pending) != 0 {
+		return fmt.Errorf("event cohort replay pipeline did not close")
+	}
+	return nil
+}
+
 func eventCohortKeyLess(left, right RouteStateKey) bool {
 	if left.Route.AFI != right.Route.AFI {
 		return left.Route.AFI < right.Route.AFI
@@ -795,28 +895,24 @@ func RunEventCohortStore(config EventCohortStoreConfig) (EventCohortStoreManifes
 		}
 		if targetAt < len(groupTargets) {
 			maximumSlot := groupTargets[len(groupTargets)-1].StateSlot
-			for slot := baseSlot + 1; slot <= maximumSlot; slot++ {
-				parsed, err := parseRouteStatePartitionWithConsumer(
-					config.RouteEventRoot, routeEvents.Partitions[slot], false,
-					func(event routeStateEvent) error {
-						return applyEventCohortRouteState(state, index, mapping, event)
-					},
-				)
-				if err != nil {
-					return EventCohortStoreManifest{}, err
-				}
-				if err := compareEventCohortStateSlot(state, parsed, ledger[slot-1]); err != nil {
-					return EventCohortStoreManifest{}, err
-				}
-				for targetAt < len(groupTargets) && groupTargets[targetAt].StateSlot == slot {
-					if err := materialize(groupTargets[targetAt]); err != nil {
-						return EventCohortStoreManifest{}, err
+			err := replayEventCohortUpdates(
+				config, routeEvents, state, index, mapping, ledger,
+				baseSlot+1, maximumSlot,
+				func(slot int) error {
+					for targetAt < len(groupTargets) && groupTargets[targetAt].StateSlot == slot {
+						if err := materialize(groupTargets[targetAt]); err != nil {
+							return err
+						}
+						targetAt++
 					}
-					targetAt++
-				}
-				if slot%96 == 0 {
-					config.progress(fmt.Sprintf("event cohort replay slot=%04d/%04d", slot, maximumSlot))
-				}
+					if slot%96 == 0 {
+						config.progress(fmt.Sprintf("event cohort replay slot=%04d/%04d", slot, maximumSlot))
+					}
+					return nil
+				},
+			)
+			if err != nil {
+				return EventCohortStoreManifest{}, err
 			}
 		}
 		state = nil
