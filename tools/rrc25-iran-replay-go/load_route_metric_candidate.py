@@ -75,6 +75,13 @@ def canonical_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def canonical_sorted_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, separators=(",", ":"), allow_nan=False,
+        sort_keys=True,
+    ).encode("utf-8")
+
+
 def sql_literal(value: str | None) -> str:
     if value is None:
         return "NULL"
@@ -518,7 +525,7 @@ def write_receipt(path: Path, receipt: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     content = dict(receipt)
     content["content_sha256"] = ""
-    content_sha = hashlib.sha256(canonical_bytes(content)).hexdigest()
+    content_sha = hashlib.sha256(canonical_sorted_bytes(content)).hexdigest()
     receipt["content_sha256"] = content_sha
     with path.open("x", encoding="utf-8") as target:
         json.dump(receipt, target, ensure_ascii=False, sort_keys=True, indent=2)

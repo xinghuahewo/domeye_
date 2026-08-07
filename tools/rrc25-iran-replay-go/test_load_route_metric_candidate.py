@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -101,6 +102,24 @@ class RouteMetricCandidateLoaderTest(unittest.TestCase):
             self.assertIn("NULL, 'e" + "e" * 63 + "', 'verified');", sql)
             self.assertIn("NULL, 's" + "s" * 63 + "', 'verified');", sql)
             self.assertIn("NULL, 'c" + "c" * 63 + "', 'verified');", sql)
+
+    def test_receipt_content_identity_survives_sorted_serialization(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "receipt.json"
+            loader.write_receipt(path, {
+                "schema_version": "receipt/v1",
+                "status": "complete",
+                "receipt_id": "receipt_1",
+                "candidate_id": "candidate_1",
+            })
+            receipt = json.loads(path.read_text(encoding="utf-8"))
+            expected = receipt["content_sha256"]
+            receipt["content_sha256"] = ""
+            actual = hashlib.sha256(loader.canonical_sorted_bytes(receipt)).hexdigest()
+            self.assertEqual(actual, expected)
+
+            with self.assertRaises(loader.LoadError):
+                loader.write_receipt(path, receipt)
 
 
 if __name__ == "__main__":
