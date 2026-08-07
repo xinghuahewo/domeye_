@@ -21,6 +21,9 @@ ACCEPTANCE_PATH = (
 PLAN_PATH = REPOSITORY_ROOT / "docs" / "国家中断通用观测页分阶段计划.md"
 TASK_PATH = REPOSITORY_ROOT / ".codex" / "TASK.json"
 CORE_MANIFEST_PATH = REPOSITORY_ROOT / "backend" / "core.sha256"
+STAGE_VERIFIER_PATHS = {
+    "S0": REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s0.py",
+}
 
 STAGE_IDS = tuple(f"S{index}" for index in range(7))
 ACCEPTANCE_IDS = tuple(f"GFA-{index:02d}" for index in range(1, 17))
@@ -315,6 +318,40 @@ def frozen_core_warnings() -> list[str]:
     return ["`backend/core/` 存在工作树改动。"] if changed.strip() else []
 
 
+def validate_stage_artifacts(stage: str) -> list[str]:
+    """运行当前已到期阶段的实际 verifier，不把文字回检冒充阶段证据。"""
+    verifier = STAGE_VERIFIER_PATHS.get(stage)
+    if verifier is None:
+        return []
+    if not verifier.is_file():
+        return [f"{stage} 阶段 verifier 不存在：{verifier}"]
+    try:
+        result = subprocess.run(
+            [sys.executable, str(verifier)],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        return [f"{stage} 阶段 verifier 无法执行：{error}"]
+    if result.returncode != 0:
+        detail = (result.stdout + result.stderr).strip()
+        return [f"{stage} 阶段 verifier 失败：{detail or '无错误详情'}"]
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        return [f"{stage} 阶段 verifier 输出不是 JSON：{error}"]
+    if not isinstance(payload, dict) or payload.get("status") != "pass":
+        return [f"{stage} 阶段 verifier 未返回 pass：{payload!r}"]
+    if payload.get("stage") != stage:
+        return [
+            f"{stage} 阶段 verifier 身份冲突：{payload.get('stage')!r}"
+        ]
+    return []
+
+
 def review_reason(stage: str) -> str:
     due_ids = "、".join(STAGE_DUE_IDS[stage])
     warnings = frozen_core_warnings()
@@ -361,7 +398,11 @@ Hook 机检只覆盖合同结构、阶段映射和当前 TASK.json 路径边界�
 
 
 def run_explicit_stage_review(stage: str) -> int:
-    errors = validate_documents() + validate_task_boundary()
+    errors = (
+        validate_documents()
+        + validate_task_boundary()
+        + validate_stage_artifacts(stage)
+    )
     if errors:
         sys.stderr.write("通用观测页最终验收防偏离 Hook：机器检查失败\n")
         for error in errors:
@@ -409,7 +450,11 @@ def run_stop_hook() -> int:
         emit({})
         return 0
 
-    errors = validate_documents() + validate_task_boundary()
+    errors = (
+        validate_documents()
+        + validate_task_boundary()
+        + validate_stage_artifacts(requested_stage)
+    )
     if errors:
         emit(
             {

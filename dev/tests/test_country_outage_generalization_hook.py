@@ -57,6 +57,24 @@ class CountryOutageGeneralizationHookTest(unittest.TestCase):
         module = load_hook_module()
         self.assertEqual(module.validate_documents(), [])
         self.assertEqual(module.validate_task_boundary(), [])
+        self.assertEqual(module.validate_stage_artifacts("S0"), [])
+
+    def test_s0_stage_verifier_failure_blocks_hook(self) -> None:
+        module = load_hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            failing = Path(directory) / "failing_s0.py"
+            failing.write_text(
+                "import json\n"
+                "print(json.dumps({'status': 'fail', 'stage': 'S0'}))\n"
+                "raise SystemExit(1)\n",
+                encoding="utf-8",
+            )
+            module.STAGE_VERIFIER_PATHS = {"S0": failing}
+            errors = module.validate_stage_artifacts("S0")
+        self.assertTrue(
+            any("S0 阶段 verifier 失败" in item for item in errors),
+            errors,
+        )
 
     def test_every_explicit_stage_emits_review_without_claiming_acceptance(
         self,
