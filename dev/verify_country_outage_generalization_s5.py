@@ -39,6 +39,7 @@ def main() -> int:
     asn_service = read(ASN_SERVICE)
     acceptance = read(ACCEPTANCE)
     evidence = json.loads(read(EVIDENCE))
+    candidate = evidence.get("候选提交", "")
 
     headings = (
         "前缀中断数量变化",
@@ -94,6 +95,14 @@ def main() -> int:
         require(text in asn_service, f"AS 服务端事件窗口门缺少：{text}")
 
     require(evidence["schema_version"] == "country_outage_general_page_s5_browser_evidence_v1", "浏览器证据版本冲突")
+    require(
+        isinstance(candidate, str)
+        and candidate.startswith("git:")
+        and len(candidate) == 44
+        and all(value in "0123456789abcdef" for value in candidate[4:]),
+        "浏览器证据没有绑定完整候选提交",
+    )
+    require(candidate in acceptance, "S5 验收记录没有绑定浏览器证据候选提交")
     require(evidence["伊朗"]["画布数"] == 4, "伊朗图表人口冲突")
     require(evidence["伊朗"]["受影响AS总数"] == 525, "伊朗 AS 人口冲突")
     require(evidence["伊朗"]["路径关联总数"] == 1956, "伊朗路径人口冲突")
@@ -123,7 +132,7 @@ def main() -> int:
         "status": "pass",
         "stage": "S5",
         "checks": 6,
-        "candidate": evidence["候选提交"],
+        "candidate": candidate,
         "browser_evidence_sha256": hashlib.sha256(EVIDENCE.read_bytes()).hexdigest(),
         "events": ["IR", "MW"],
         "as_window_asn": 48715,

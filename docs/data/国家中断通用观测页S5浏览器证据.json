@@ -1,6 +1,6 @@
 {
   "schema_version": "country_outage_general_page_s5_browser_evidence_v1",
-  "候选提交": "待功能提交",
+  "候选提交": "git:91069e25fc608629ce9fe57056f5b944c4d6dd41",
   "验收日期": "2026-08-08",
   "浏览器": "agent-browser Chromium",
   "隔离地址": "http://127.0.0.1:38671",
