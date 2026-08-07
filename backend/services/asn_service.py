@@ -7,6 +7,7 @@ import datetime
 import re
 import threading
 import time
+from zoneinfo import ZoneInfo
 
 from config.config import BIG_COUNTRY, FEATURE_OTHER_TABLE
 from config.database import conn_11
@@ -16,6 +17,11 @@ from database.asn_workbench import (
     get_as_feature_aggregates,
     get_as_feature_series,
     get_as_sparklines,
+)
+from services.country_outage_general_read_model import (
+    GeneralReadModelIntegrityError,
+    GeneralReadModelNotConfigured,
+    country_outage_general_read_model,
 )
 from utils import data_loader
 from utils.get_event import deal_event
@@ -65,7 +71,7 @@ def _store_asn_result(key, payload):
     return payload
 
 
-def _parse_range(start_time, end_time):
+def _parse_range(start_time, end_time, event_window=False):
     try:
         start = datetime.datetime.strptime(start_time or '', '%Y-%m-%d %H:%M:%S')
         end = datetime.datetime.strptime(end_time or '', '%Y-%m-%d %H:%M:%S')
@@ -73,9 +79,37 @@ def _parse_range(start_time, end_time):
         return None, None, ({'status': False, 'msg': '时间格式错误，应为 YYYY-MM-DD HH:MM:SS'}, 400)
     if start >= end:
         return None, None, ({'status': False, 'msg': '开始时间必须早于结束时间'}, 400)
-    if end - start > datetime.timedelta(days=1):
+    maximum = datetime.timedelta(days=45 if event_window else 1)
+    if end - start > maximum:
+        if event_window:
+            return None, None, ({'status': False, 'msg': 'ASN 事件窗口最多支持 45 天'}, 400)
         return None, None, ({'status': False, 'msg': 'ASN 工作台最多支持 24 小时窗口'}, 400)
     return start, end, None
+
+
+def _event_window_identity_error(start, end, event_reference):
+    reference = str(event_reference or '').strip()
+    if not reference:
+        return {'status': False, 'msg': '事件窗口缺少国家中断事件引用'}, 400
+    try:
+        resolution = country_outage_general_read_model().resolve(reference)
+    except (GeneralReadModelNotConfigured, GeneralReadModelIntegrityError):
+        return {'status': False, 'msg': '国家中断事件窗口暂不可核对'}, 503
+    if resolution is None:
+        return {'status': False, 'msg': '国家中断事件引用不存在'}, 400
+
+    timezone = ZoneInfo('Asia/Shanghai')
+
+    def local_time(value):
+        parsed = datetime.datetime.fromisoformat(value.replace('Z', '+00:00'))
+        return parsed.astimezone(timezone).replace(tzinfo=None)
+
+    if (
+        start != local_time(resolution['window_start_utc'])
+        or end != local_time(resolution['window_end_utc'])
+    ):
+        return {'status': False, 'msg': '请求范围与国家中断事件窗口不一致'}, 400
+    return None
 
 
 def _parse_limit(raw_value):
@@ -311,20 +345,35 @@ def _ranking(profiles, key, limit, predicate=None):
     )[:limit]
 
 
-def get_asn_workbench(start_time, end_time, asn='', limit=None, conn=conn_11):
-    start, end, error = _parse_range(start_time, end_time)
+def get_asn_workbench(
+    start_time,
+    end_time,
+    asn='',
+    limit=None,
+    event_window=False,
+    event_reference='',
+    conn=conn_11,
+):
+    start, end, error = _parse_range(start_time, end_time, event_window=event_window)
     if error:
         return error
     ranking_limit = _parse_limit(limit)
     selected_asn = _normalize_asn(asn)
     if asn and not selected_asn:
         return {'status': False, 'msg': 'ASN 必须是纯数字或 AS 加数字'}, 400
+    if event_window and not selected_asn:
+        return {'status': False, 'msg': '事件窗口必须指定 ASN'}, 400
+    if event_window:
+        identity_error = _event_window_identity_error(start, end, event_reference)
+        if identity_error:
+            return identity_error
 
     cache_key = (
         start.strftime('%Y-%m-%d %H:%M:%S'),
         end.strftime('%Y-%m-%d %H:%M:%S'),
         selected_asn,
         ranking_limit,
+        str(event_reference or '').strip() if event_window else '',
     ) if conn is conn_11 else None
     cached = _cached_asn_result(cache_key)
     if cached is not None:
@@ -334,13 +383,17 @@ def get_asn_workbench(start_time, end_time, asn='', limit=None, conn=conn_11):
     pool_asns = list(dict.fromkeys(str(item) for item in data_loader.ases_1000['asn'].tolist()))
     event_rows = get_as_event_counts(conn=conn, start_time=start, end_time=end)
     anomaly_counts, high_risk_counts = _event_counters(event_rows)
-    query_asns = _operational_candidates(
-        pool_asns,
-        anomaly_counts,
-        high_risk_counts,
-        selected_asn,
+    query_asns = (
+        [selected_asn]
+        if event_window
+        else _operational_candidates(
+            pool_asns,
+            anomaly_counts,
+            high_risk_counts,
+            selected_asn,
+        )
     )
-    previous_start = start - (end - start)
+    previous_start = start if event_window else start - (end - start)
     feature_rows = get_as_feature_aggregates(
         conn=conn,
         grouped_asns=_group_asns(query_asns),
@@ -446,8 +499,12 @@ def get_asn_workbench(start_time, end_time, asn='', limit=None, conn=conn_11):
         'end_time': end.strftime('%Y-%m-%d %H:%M:%S'),
         'timezone': 'Asia/Shanghai',
         'latest_observation': latest_observation,
-        'scope_kind': 'operational_asn_cohort',
-        'scope_note': '静态优先 100、重要 ASN 最多 50、窗口异常 ASN 最多 50，并加入指定 ASN；排行仅在该候选集内比较。',
+        'scope_kind': 'event_window_selected_asn' if event_window else 'operational_asn_cohort',
+        'scope_note': (
+            '按国家中断事件的完整窗口只读查询指定 ASN，不读取窗口外对比基线。'
+            if event_window
+            else '静态优先 100、重要 ASN 最多 50、窗口异常 ASN 最多 50，并加入指定 ASN；排行仅在该候选集内比较。'
+        ),
         'candidate_pool_size': len(pool_asns),
         'scope_size': len(query_asns),
         'feature_asn_count': len(data_profiles),
@@ -467,10 +524,22 @@ def get_asn_workbench(start_time, end_time, asn='', limit=None, conn=conn_11):
     return _store_asn_result(cache_key, payload)
 
 
-def get_asn_recent_events(start_time, end_time, asn='', page_size=None, conn=conn_11):
-    start, end, error = _parse_range(start_time, end_time)
+def get_asn_recent_events(
+    start_time,
+    end_time,
+    asn='',
+    page_size=None,
+    event_window=False,
+    event_reference='',
+    conn=conn_11,
+):
+    start, end, error = _parse_range(start_time, end_time, event_window=event_window)
     if error:
         return error
+    if event_window:
+        identity_error = _event_window_identity_error(start, end, event_reference)
+        if identity_error:
+            return identity_error
     normalized_asn = _normalize_asn(asn)
     if not normalized_asn:
         return {'status': False, 'msg': 'ASN 必须是纯数字或 AS 加数字'}, 400

@@ -738,6 +738,183 @@ export interface CountryOutageTrendProduct {
   capabilities: Record<string, EventObservationCapability>
 }
 
+export type CountryOutageGeneralTrackKey =
+  | 'interrupted_prefix_count'
+  | 'completely_interrupted_prefix_count'
+  | 'invisible_direction_count'
+  | 'affected_asn_count'
+  | 'route_interrupted_asn_count'
+  | 'fixed_visible_ipv4_address_count'
+  | 'fixed_visible_ipv6_slash48_count'
+  | 'new_visible_ipv4_prefix_count'
+  | 'new_visible_ipv6_prefix_count'
+  | 'new_visible_ipv4_address_count'
+  | 'new_visible_ipv6_slash48_count'
+  | 'new_cumulative_ipv4_prefix_count'
+  | 'new_cumulative_ipv6_prefix_count'
+  | 'new_cumulative_ipv4_address_count'
+  | 'new_cumulative_ipv6_slash48_count'
+
+export interface CountryOutageGeneralMetadata {
+  revision: number
+  publication_id: string
+  publication_state: 'published'
+  observation_state: 'evidence_complete'
+  data_mode: 'replay'
+  data_through: string
+  is_final_in_data_range: boolean
+  lifecycle_state: string
+  quality_state: 'complete'
+  missing_slot_count: 0
+  collector_id: 'rrc25'
+  incident_id: string
+  cohort_id: string
+  window_start_utc: string
+  window_end_utc: string
+}
+
+export interface CountryOutageGeneralCapabilities {
+  overview: 'available'
+  event_series: 'available'
+  affected_as: 'available'
+  path_downstreams: 'available'
+  full_path_evidence: 'audit_only'
+}
+
+export interface CountryOutageGeneralResolution extends CountryOutageGeneralMetadata {
+  schema_version: 'country_outage_general_resolution_v1'
+  legacy_reference: string
+  event_type: 'country_outage'
+  country_code: string
+  latest_revision: number
+  capabilities: CountryOutageGeneralCapabilities
+}
+
+export interface CountryOutageGeneralOverview extends CountryOutageGeneralMetadata {
+  schema_version: 'country_outage_general_overview_v1'
+  event: {
+    legacy_reference: string
+    country_code: string
+    detected_at_utc: string
+    event_end_at_utc: string | null
+    event_duration_seconds: number | null
+  }
+  interval_seconds: 300
+  state_point_count: number
+  cohort: {
+    cohort_id: string
+    fixed_prefix_count: number
+    fixed_asn_count: number
+    independent_direction_relation_count: number
+    new_prefix_count: number
+  }
+  current: Record<CountryOutageGeneralTrackKey, number>
+  peaks: Partial<Record<CountryOutageGeneralTrackKey, {
+    value: number
+    state_point_utc: string
+  }>>
+  affected_as_count: number
+  route_interrupted_as_count: number
+  path_downstream_relation_count: number
+  concurrent_path_downstream_relation_count: number
+  capabilities: CountryOutageGeneralCapabilities
+  semantic_boundary: 'rrc25_control_plane_observation_not_user_impact_or_cause'
+}
+
+export interface CountryOutageGeneralSeries extends CountryOutageGeneralMetadata {
+  schema_version: 'country_outage_general_series_v1'
+  interval_seconds: 300
+  point_count: number
+  timestamps: string[]
+  track_definitions: Record<CountryOutageGeneralTrackKey, {
+    label: string
+    unit: string
+    definition: string
+  }>
+  tracks: Record<CountryOutageGeneralTrackKey, number[]>
+}
+
+export interface CountryOutageGeneralAffectedAs {
+  rank: number
+  asn: number
+  as_name: string | null
+  organization: string | null
+  nature: string | null
+  name_state: 'observed' | 'unknown'
+  organization_state: 'observed' | 'unknown'
+  nature_state: 'observed' | 'unknown'
+  event_classification: 'affected' | 'route_interrupted'
+  fixed_prefix_count: number
+  peak_partial_prefix_count: number
+  peak_complete_prefix_count: number
+  peak_invisible_direction_count: number
+  path_downstream_asn_count: number
+  concurrent_downstream_asn_count: number
+}
+
+export interface CountryOutageGeneralAffectedAsPage extends CountryOutageGeneralMetadata {
+  schema_version: 'country_outage_general_affected_as_page_v1'
+  page: number
+  page_size: number
+  page_count: number
+  total: number
+  classification: 'all' | 'affected' | 'route_interrupted'
+  query: string
+  sort: 'default' | 'asn_asc'
+  items: CountryOutageGeneralAffectedAs[]
+}
+
+export interface CountryOutageGeneralPathSample {
+  prefix: string
+  address_family: 'ipv4' | 'ipv6'
+  as_path_id: string
+  as_path_canonical: string
+  independent_peer_asns: number[]
+  route_observation_count: number
+}
+
+export interface CountryOutageGeneralPathDownstream {
+  affected_asn: number
+  downstream_asn: number
+  downstream_as_name: string | null
+  downstream_organization: string | null
+  downstream_nature: string | null
+  downstream_name_state: 'observed' | 'unknown'
+  downstream_organization_state: 'observed' | 'unknown'
+  downstream_nature_state: 'observed' | 'unknown'
+  observed_path_count: number
+  associated_fixed_prefix_count: number
+  independent_direction_count: number
+  route_observation_count: number
+  concurrent_state_point_count: number
+  first_concurrent_state_point_utc: string | null
+  last_concurrent_state_point_utc: string | null
+  peak_concurrent_interrupted_prefix_count: number
+  peak_concurrent_ipv4_address_count: number
+  peak_concurrent_ipv6_slash48_count: number
+  path_samples: CountryOutageGeneralPathSample[]
+  relationship_semantics: 'observed_ordered_rrc25_path_association_not_dependency_or_cause'
+}
+
+export interface CountryOutageGeneralPathDownstreamPage extends CountryOutageGeneralMetadata {
+  schema_version: 'country_outage_general_path_downstream_page_v1'
+  page: number
+  page_size: number
+  page_count: number
+  total: number
+  affected_asn: number | null
+  scope: 'all' | 'concurrent'
+  query: string
+  relationship_semantics: 'observed_ordered_rrc25_path_association_not_dependency_or_cause'
+  items: CountryOutageGeneralPathDownstream[]
+}
+
+export interface CountryOutageGeneralPageModel {
+  resolution: CountryOutageGeneralResolution
+  overview: CountryOutageGeneralOverview
+  series: CountryOutageGeneralSeries
+}
+
 export interface EventObservation {
   schema_version: 'event_observation_v1' | 'country_outage_observation_v2'
   revision?: number

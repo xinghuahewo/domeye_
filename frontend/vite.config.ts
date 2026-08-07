@@ -43,6 +43,9 @@ export default defineConfig(({ mode }) => {
     || env.VITE_DATA_WINDOW_END
     || fixedDataWindow.end
   const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:28473'
+  const apiV2ProxyTarget = process.env.VITE_API_V2_PROXY_TARGET
+    || env.VITE_API_V2_PROXY_TARGET
+    || apiProxyTarget
   const agentControlProxyTarget = process.env.VITE_AGENT_CONTROL_PROXY_TARGET
     || env.VITE_AGENT_CONTROL_PROXY_TARGET
     || apiProxyTarget
@@ -56,7 +59,7 @@ export default defineConfig(({ mode }) => {
       changeOrigin: true,
     },
     '/api/v2': {
-      target: apiProxyTarget,
+      target: apiV2ProxyTarget,
       changeOrigin: true,
     },
   }

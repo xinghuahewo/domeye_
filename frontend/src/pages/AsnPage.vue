@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { getAsOverview, getAsRecentEvents, getASPrefixOutages, type FeatureRange } from '@/api/features'
 import EventTable from '@/components/EventTable.vue'
@@ -9,7 +9,7 @@ import PageState from '@/components/PageState.vue'
 import SparklinePair from '@/components/SparklinePair.vue'
 import type { AsnProfile, AsOverview, EventRow, OutagePoint } from '@/types/api'
 import { errorMessage } from '@/utils/normalize'
-import { recentRange, toBackendTime } from '@/utils/time'
+import { parseInputTime, recentRange, toBackendTime, toInputTime } from '@/utils/time'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +33,81 @@ const selectedAsn = computed(() => {
   return value.trim().replace(/^AS/i, '')
 })
 const selected = computed(() => overview.value?.selectedAsn ?? null)
+const eventContext = computed(() => {
+  const start = typeof route.query.event_start === 'string' ? route.query.event_start : ''
+  const end = typeof route.query.event_end === 'string' ? route.query.event_end : ''
+  const reference = typeof route.query.event_ref === 'string' ? route.query.event_ref : ''
+  if (!start || !end || !reference) return null
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  if (
+    Number.isNaN(startDate.getTime())
+    || Number.isNaN(endDate.getTime())
+    || startDate.getTime() >= endDate.getTime()
+  ) return null
+  return { start, end, reference, startDate, endDate }
+})
+
+const returnEventLink = computed(() => ({
+  name: 'event-detail',
+  query: {
+    ref: eventContext.value?.reference || '',
+    focus: typeof route.query.return_anchor === 'string' ? route.query.return_anchor : 'affected-as',
+    as_page: typeof route.query.as_page === 'string' ? route.query.as_page : undefined,
+    as_query: typeof route.query.as_query === 'string' ? route.query.as_query : undefined,
+    as_classification: typeof route.query.as_classification === 'string'
+      ? route.query.as_classification
+      : undefined,
+  },
+}))
+
+function eventWindowLabel(): string {
+  if (!eventContext.value) return ''
+  const formatter = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  return `${formatter.format(eventContext.value.startDate)} — ${formatter.format(eventContext.value.endDate)}`
+}
+
+const selectedSeries = computed(() => {
+  const source = selected.value?.series ?? []
+  if (!eventContext.value) return source
+  const start = parseInputTime(query.start)
+  const end = parseInputTime(query.end)
+  if (!start || !end) return source
+  const byTime = new Map(source.map((point) => [point.time, point]))
+  const result = []
+  for (
+    let cursor = start.getTime();
+    cursor <= end.getTime();
+    cursor += 5 * 60 * 1000
+  ) {
+    const time = toBackendTime(toInputTime(new Date(cursor)))
+    result.push(byTime.get(time) ?? {
+      time,
+      announce: null,
+      withdraw: null,
+      ipv4Prefixes: null,
+      ipv6Prefixes: null,
+      ipv4Addresses: null,
+    })
+  }
+  return result
+})
+
+function asnRoute(asn: string) {
+  return {
+    name: 'asn-detail',
+    params: { asn },
+    query: eventContext.value ? { ...route.query } : {},
+  }
+}
 
 const asnSuggestions = computed(() => {
   const profiles = new Map<string, AsnProfile>()
@@ -80,12 +155,12 @@ const messageSeries = computed<ChartSeries[]>(() => [
   {
     name: 'ANNOUNCE',
     color: '#0b57b7',
-    data: (selected.value?.series ?? []).map((point) => [point.time, point.announce]),
+    data: selectedSeries.value.map((point) => [point.time, point.announce]),
   },
   {
     name: 'WITHDRAW',
     color: '#35b6d4',
-    data: (selected.value?.series ?? []).map((point) => [point.time, point.withdraw]),
+    data: selectedSeries.value.map((point) => [point.time, point.withdraw]),
   },
 ])
 
@@ -93,13 +168,13 @@ const resourceSeries = computed<ChartSeries[]>(() => [
   {
     name: 'IPv4 /24 SEGMENTS',
     color: '#175cd3',
-    data: (selected.value?.series ?? [])
+    data: selectedSeries.value
       .map((point) => [point.time, point.ipv4Prefixes]),
   },
   {
     name: 'IPv6 /48 SEGMENTS',
     color: '#35b6d4',
-    data: (selected.value?.series ?? [])
+    data: selectedSeries.value
       .map((point) => [point.time, point.ipv6Prefixes]),
   },
 ])
@@ -143,7 +218,13 @@ async function load() {
   eventsLoading.value = Boolean(asn)
   let overviewReady = false
   try {
-    const result = await getAsOverview(range, asn || undefined, 6)
+    const result = await getAsOverview(
+      range,
+      asn || undefined,
+      6,
+      Boolean(eventContext.value),
+      eventContext.value?.reference,
+    )
     if (token !== loadToken) return
     overview.value = result
     overviewReady = true
@@ -157,7 +238,13 @@ async function load() {
   if (!overviewReady || !asn || token !== loadToken) return
 
   try {
-    const result = await getAsRecentEvents(asn, range, 10)
+    const result = await getAsRecentEvents(
+      asn,
+      range,
+      10,
+      Boolean(eventContext.value),
+      eventContext.value?.reference,
+    )
     if (token === loadToken) recentEvents.value = result.data
   } catch (cause) {
     if (token === loadToken) eventError.value = errorMessage(cause)
@@ -181,7 +268,7 @@ function openAsn(asn?: string) {
     error.value = '请输入纯数字 ASN 或 AS 加数字，例如 AS3356'
     return
   }
-  void router.push({ name: 'asn-detail', params: { asn: target } })
+  void router.push(asnRoute(target))
 }
 
 function openEvent(event: EventRow) {
@@ -190,8 +277,15 @@ function openEvent(event: EventRow) {
 }
 
 watch(
-  [() => route.params.asn, () => query.start, () => query.end],
+  [() => route.params.asn, () => route.query.event_start, () => route.query.event_end],
   () => {
+    if (eventContext.value) {
+      query.start = toInputTime(eventContext.value.startDate)
+      query.end = toInputTime(eventContext.value.endDate)
+    } else {
+      query.start = defaults.start
+      query.end = defaults.end
+    }
     asnInput.value = selectedAsn.value ? `AS${selectedAsn.value}` : ''
     void load()
   },
@@ -201,6 +295,13 @@ watch(
 
 <template>
   <article class="page asn-page">
+    <section v-if="eventContext" class="event-window-context" aria-label="国家中断事件窗口">
+      <div>
+        <span>按国家中断事件窗口查看</span>
+        <strong>{{ eventWindowLabel() }}</strong>
+      </div>
+      <RouterLink :to="returnEventLink">← 返回事件中的相关 AS</RouterLink>
+    </section>
     <header class="page-heading asn-heading">
       <div>
         <p class="eyebrow">重点 AS 态势 / ASN desk</p>
@@ -278,7 +379,7 @@ watch(
           <ol>
             <li v-for="(profile, index) in section.rows" :key="profile.asn">
               <span class="rank-index">{{ String(index + 1).padStart(2, '0') }}</span>
-              <RouterLink :to="{ name: 'asn-detail', params: { asn: profile.asn } }">
+              <RouterLink :to="asnRoute(profile.asn)">
                 <strong>AS{{ profile.asn }} <em v-if="profile.important">重点</em></strong>
                 <small>{{ profile.asName || profile.orgName || '静态名称未知' }} · {{ profile.country || '国家未知' }}</small>
               </RouterLink>
@@ -292,7 +393,7 @@ watch(
       <section v-if="selected" class="asn-dossier" aria-labelledby="asn-dossier-title">
         <header class="dossier-heading">
           <div>
-            <p>SELECTED ASN / 24H DOSSIER</p>
+            <p>{{ eventContext ? 'SELECTED ASN / EVENT WINDOW DOSSIER' : 'SELECTED ASN / 24H DOSSIER' }}</p>
             <h2 id="asn-dossier-title">AS{{ selected.asn }} · {{ selected.asName || '名称未知' }}</h2>
             <span>{{ selected.orgName || '组织未知' }} · {{ selected.country || '国家未知' }} · {{ selected.asType || '类型未知' }}</span>
           </div>
@@ -373,6 +474,21 @@ watch(
 
 <style scoped>
 .asn-heading { align-items: end; }
+
+.event-window-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 16px;
+  color: #e8f4f8;
+  background: #14384a;
+  border-left: 4px solid #e27839;
+}
+.event-window-context div { display: grid; gap: 4px; }
+.event-window-context span { color: #91c2d2; font-size: 9px; font-weight: 750; letter-spacing: .06em; }
+.event-window-context strong { font: 700 11px/1.4 var(--mono); }
+.event-window-context a { color: #ffd0ad; font-size: 10px; font-weight: 750; text-decoration: none; }
 
 .legacy-boundary {
   display: grid;

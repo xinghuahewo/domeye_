@@ -3,6 +3,10 @@ import { isAxiosError } from 'axios'
 import { apiGet, apiV2Get } from './client'
 import {
   CORE_EVENT_TYPES,
+  type CountryOutageGeneralAffectedAsPage,
+  type CountryOutageGeneralMetadata,
+  type CountryOutageGeneralPageModel,
+  type CountryOutageGeneralPathDownstreamPage,
   type CountryOutageAsnPage,
   type EventObservationAudit,
   type EventQuery,
@@ -23,6 +27,11 @@ import {
   isRecord,
   parseDetailUrl,
 } from '@/utils/normalize'
+import {
+  normalizeCountryOutageGeneralAffectedAsPage,
+  normalizeCountryOutageGeneralPage,
+  normalizeCountryOutageGeneralPathDownstreamPage,
+} from '@/utils/countryOutageGeneral'
 
 export async function getEvents(params: EventQuery) {
   return normalizeEventPage(await apiGet<unknown>('events', { params }))
@@ -61,6 +70,83 @@ class EventObservationNotConfiguredError extends Error {
     super('该事件类型未配置国家中断观测页')
     this.name = 'EventObservationNotConfiguredError'
   }
+}
+
+export async function getCountryOutageGeneralPage(reference: string): Promise<{
+  parsed: ParsedDetailRef
+  page: CountryOutageGeneralPageModel
+}> {
+  const parsed = parseDetailUrl(reference)
+  if (!parsed) throw new Error('事件详情引用无效')
+  if (parsed.kind !== 'country_outage') throw new EventObservationNotConfiguredError()
+  const canonicalReference = [
+    parsed.kind,
+    parsed.startTime,
+    parsed.problem,
+    parsed.eventId,
+    parsed.source,
+  ].join('/')
+  const resolution = await apiV2Get<unknown>('events/resolve', {
+    params: { ref: canonicalReference },
+  })
+  if (
+    !isRecord(resolution)
+    || resolution.schema_version !== 'country_outage_general_resolution_v1'
+  ) {
+    throw new EventObservationNotConfiguredError()
+  }
+  const incidentId = encodeURIComponent(String(resolution.incident_id))
+  const publicationParams = { publication_id: resolution.publication_id }
+  const [overview, series] = await Promise.all([
+    apiV2Get<unknown>(`country-outages/${incidentId}/overview`, {
+      params: publicationParams,
+    }),
+    apiV2Get<unknown>(`country-outages/${incidentId}/series`, {
+      params: publicationParams,
+    }),
+  ])
+  return {
+    parsed,
+    page: normalizeCountryOutageGeneralPage(resolution, overview, series),
+  }
+}
+
+export interface CountryOutageGeneralAffectedAsQuery {
+  page: number
+  page_size: number
+  query?: string
+  classification?: 'all' | 'affected' | 'route_interrupted'
+  sort?: 'default' | 'asn_asc'
+}
+
+export async function getCountryOutageGeneralAffectedAs(
+  metadata: CountryOutageGeneralMetadata,
+  params: CountryOutageGeneralAffectedAsQuery,
+): Promise<CountryOutageGeneralAffectedAsPage> {
+  const payload = await apiV2Get<unknown>(
+    `country-outages/${encodeURIComponent(metadata.incident_id)}/asns`,
+    { params: { ...params, publication_id: metadata.publication_id } },
+  )
+  return normalizeCountryOutageGeneralAffectedAsPage(payload, metadata)
+}
+
+export interface CountryOutageGeneralPathQuery {
+  page: number
+  page_size: number
+  affected_asn?: number
+  scope?: 'all' | 'concurrent'
+  query?: string
+}
+
+export async function getCountryOutageGeneralPathDownstreams(
+  metadata: CountryOutageGeneralMetadata,
+  params: CountryOutageGeneralPathQuery,
+): Promise<CountryOutageGeneralPathDownstreamPage> {
+  const payload = await apiV2Get<unknown>(
+    `country-outages/${encodeURIComponent(metadata.incident_id)}/path-downstreams`,
+    { params: { ...params, publication_id: metadata.publication_id } },
+  )
+  return normalizeCountryOutageGeneralPathDownstreamPage(payload, metadata)
 }
 
 export async function getEventObservation(reference: string) {

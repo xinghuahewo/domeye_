@@ -79,6 +79,8 @@ class ASWorkbenchResource(Resource):
             end_time=request.args.get('end_time'),
             asn=request.args.get('asn', ''),
             limit=request.args.get('limit'),
+            event_window=request.args.get('event_window') == 'true',
+            event_reference=request.args.get('event_reference', ''),
         )
 
 
@@ -91,6 +93,8 @@ class ASRecentEventsResource(Resource):
             end_time=request.args.get('end_time'),
             asn=request.args.get('asn', ''),
             page_size=request.args.get('page_size'),
+            event_window=request.args.get('event_window') == 'true',
+            event_reference=request.args.get('event_reference', ''),
         )
 
 

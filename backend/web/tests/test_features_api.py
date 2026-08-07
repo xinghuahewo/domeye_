@@ -324,6 +324,86 @@ def test_as_workbench_route_exists_and_rejects_windows_over_24_hours(client):
     }
 
 
+def test_as_workbench_accepts_a_bounded_event_window_only_for_one_asn(client):
+    pool = pd.DataFrame([{'asn': '48715', 'as_country_cn': '伊朗'}])
+    with patch('services.asn_service.data_loader.ensure_core_data_loaded'), \
+         patch.object(asn_service.data_loader, 'ases_1000', pool), \
+         patch.object(asn_service.data_loader, 'as_info', {'48715': {}}), \
+         patch.object(asn_service.data_loader, 'important_as_dict', {}), \
+         patch('services.asn_service.country_outage_general_read_model') as read_model, \
+         patch('services.asn_service.get_as_event_counts', return_value=[]), \
+         patch('services.asn_service.get_as_feature_aggregates', return_value=[]) as aggregates, \
+         patch('services.asn_service.get_as_sparklines', return_value=[]), \
+         patch('services.asn_service.get_as_feature_series', return_value=[]):
+        read_model.return_value.resolve.return_value = {
+            'window_start_utc': '2026-02-27T00:10:00Z',
+            'window_end_utc': '2026-03-11T00:00:00Z',
+        }
+        response = client.get(
+            '/api/v1/features/ases/overview',
+            query_string={
+                'start_time': '2026-02-27 08:10:00',
+                'end_time': '2026-03-11 08:00:00',
+                'asn': 'AS48715',
+                'event_window': 'true',
+                'event_reference': 'country_outage/2026-02-27 09:12:32/IR/1/r',
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['scope_kind'] == 'event_window_selected_asn'
+    assert payload['scope_size'] == 1
+    assert payload['selected_asn']['asn'] == '48715'
+    assert aggregates.call_args.kwargs['previous_start'] == datetime(2026, 2, 27, 8, 10, 0)
+    assert aggregates.call_args.kwargs['current_start'] == datetime(2026, 2, 27, 8, 10, 0)
+    assert list(aggregates.call_args.kwargs['grouped_asns'].values()) == [['48715']]
+    read_model.return_value.resolve.assert_called_once_with(
+        'country_outage/2026-02-27 09:12:32/IR/1/r',
+    )
+
+
+def test_as_workbench_event_window_rejects_a_missing_asn(client):
+    response = client.get(
+        '/api/v1/features/ases/overview',
+        query_string={
+            'start_time': '2026-02-27 08:10:00',
+            'end_time': '2026-03-11 08:00:00',
+            'event_window': 'true',
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        'status': False,
+        'msg': '事件窗口必须指定 ASN',
+    }
+
+
+def test_as_workbench_rejects_a_range_that_does_not_match_the_event(client):
+    with patch('services.asn_service.country_outage_general_read_model') as read_model:
+        read_model.return_value.resolve.return_value = {
+            'window_start_utc': '2026-02-27T00:10:00Z',
+            'window_end_utc': '2026-03-11T00:00:00Z',
+        }
+        response = client.get(
+            '/api/v1/features/ases/overview',
+            query_string={
+                'start_time': '2026-02-27 08:15:00',
+                'end_time': '2026-03-11 08:00:00',
+                'asn': 'AS48715',
+                'event_window': 'true',
+                'event_reference': 'country_outage/2026-02-27 09:12:32/IR/1/r',
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        'status': False,
+        'msg': '请求范围与国家中断事件窗口不一致',
+    }
+
+
 def test_as_workbench_overview_contract(client):
     feature_rows = [
         {

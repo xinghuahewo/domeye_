@@ -25,15 +25,39 @@ export async function getCountryOverview(range: FeatureRange, country?: string, 
   }))
 }
 
-export async function getAsOverview(range: FeatureRange, asn?: string, limit = 6) {
+export async function getAsOverview(
+  range: FeatureRange,
+  asn?: string,
+  limit = 6,
+  eventWindow = false,
+  eventReference = '',
+) {
   return normalizeAsOverview(await apiGet<unknown>('features/ases/overview', {
-    params: { ...range, asn: asn || undefined, limit },
+    params: {
+      ...range,
+      asn: asn || undefined,
+      limit,
+      event_window: eventWindow || undefined,
+      event_reference: eventWindow ? eventReference : undefined,
+    },
   }))
 }
 
-export async function getAsRecentEvents(asn: string, range: FeatureRange, pageSize = 10) {
+export async function getAsRecentEvents(
+  asn: string,
+  range: FeatureRange,
+  pageSize = 10,
+  eventWindow = false,
+  eventReference = '',
+) {
   return normalizeEventPage(await apiGet<unknown>('features/ases/events', {
-    params: { ...range, asn, page_size: pageSize },
+    params: {
+      ...range,
+      asn,
+      page_size: pageSize,
+      event_window: eventWindow || undefined,
+      event_reference: eventWindow ? eventReference : undefined,
+    },
   }))
 }
 

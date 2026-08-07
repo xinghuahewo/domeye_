@@ -219,6 +219,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/country-outages/{incident_id}/path-downstreams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 分页返回 cohort 冻结点实际 RRC25 AS_PATH 中的有序路径关联和有界真实样本；不表示客户依赖、传播、用户影响或原因。 */
+        get: operations["getCountryOutagePathDownstreams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/country-outages/{incident_id}/audit": {
         parameters: {
             query?: never;
@@ -226,7 +243,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description 仅在用户展开审计区时读取；不暴露服务器物理目录。 */
+        /** @description 仅供后台运维或审计入口读取，不进入普通事件页面；不暴露服务器物理目录。 */
         get: operations["getCountryOutageAudit"];
         put?: never;
         post?: never;
@@ -937,6 +954,337 @@ export interface components {
             /** @constant */
             capability_contract_version: "country_outage_capabilities_v1";
             capabilities: components["schemas"]["CountryOutageCapabilities"];
+        };
+        CountryOutageGeneralCapabilitiesV1: {
+            /** @constant */
+            overview: "available";
+            /** @constant */
+            event_series: "available";
+            /** @constant */
+            affected_as: "available";
+            /** @constant */
+            path_downstreams: "available";
+            /** @constant */
+            full_path_evidence: "audit_only";
+        };
+        CountryOutageGeneralResolutionV1: {
+            /** @constant */
+            schema_version: "country_outage_general_resolution_v1";
+            revision: number;
+            publication_id: string;
+            /** @constant */
+            publication_state: "published";
+            /** @constant */
+            observation_state: "evidence_complete";
+            /** @constant */
+            data_mode: "replay";
+            /** Format: date-time */
+            data_through: string;
+            is_final_in_data_range: boolean;
+            lifecycle_state: string;
+            /** @constant */
+            quality_state: "complete";
+            /** @constant */
+            missing_slot_count: 0;
+            /** @constant */
+            collector_id: "rrc25";
+            incident_id: string;
+            cohort_id: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            legacy_reference: string;
+            /** @constant */
+            event_type: "country_outage";
+            country_code: string;
+            latest_revision: number;
+            capabilities: components["schemas"]["CountryOutageGeneralCapabilitiesV1"];
+        };
+        CountryOutageGeneralOverviewV1: {
+            /** @constant */
+            schema_version: "country_outage_general_overview_v1";
+            revision: number;
+            publication_id: string;
+            /** @constant */
+            publication_state: "published";
+            /** @constant */
+            observation_state: "evidence_complete";
+            /** @constant */
+            data_mode: "replay";
+            /** Format: date-time */
+            data_through: string;
+            is_final_in_data_range: boolean;
+            lifecycle_state: string;
+            /** @constant */
+            quality_state: "complete";
+            /** @constant */
+            missing_slot_count: 0;
+            /** @constant */
+            collector_id: "rrc25";
+            incident_id: string;
+            cohort_id: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            event: {
+                legacy_reference: string;
+                country_code: string;
+                /** Format: date-time */
+                detected_at_utc: string;
+                /** Format: date-time */
+                event_end_at_utc: string | null;
+                event_duration_seconds: number | null;
+            };
+            /** @constant */
+            interval_seconds: 300;
+            state_point_count: number;
+            cohort: {
+                cohort_id: string;
+                fixed_prefix_count: number;
+                fixed_asn_count: number;
+                independent_direction_relation_count: number;
+                new_prefix_count: number;
+            };
+            current: {
+                [key: string]: number;
+            };
+            peaks: {
+                [key: string]: {
+                    value: number;
+                    /** Format: date-time */
+                    state_point_utc: string;
+                };
+            };
+            affected_as_count: number;
+            route_interrupted_as_count: number;
+            path_downstream_relation_count: number;
+            concurrent_path_downstream_relation_count: number;
+            capabilities: components["schemas"]["CountryOutageGeneralCapabilitiesV1"];
+            /** @constant */
+            semantic_boundary: "rrc25_control_plane_observation_not_user_impact_or_cause";
+        };
+        CountryOutageGeneralSeriesV1: {
+            /** @constant */
+            schema_version: "country_outage_general_series_v1";
+            revision: number;
+            publication_id: string;
+            /** @constant */
+            publication_state: "published";
+            /** @constant */
+            observation_state: "evidence_complete";
+            /** @constant */
+            data_mode: "replay";
+            /** Format: date-time */
+            data_through: string;
+            is_final_in_data_range: boolean;
+            lifecycle_state: string;
+            /** @constant */
+            quality_state: "complete";
+            /** @constant */
+            missing_slot_count: 0;
+            /** @constant */
+            collector_id: "rrc25";
+            incident_id: string;
+            cohort_id: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            /** @constant */
+            interval_seconds: 300;
+            point_count: number;
+            timestamps: string[];
+            track_definitions: {
+                [key: string]: {
+                    label: string;
+                    unit: string;
+                    definition: string;
+                };
+            };
+            tracks: {
+                [key: string]: number[];
+            };
+        };
+        CountryOutageGeneralAffectedAsItemV1: {
+            rank: number;
+            asn: number;
+            as_name: string | null;
+            organization: string | null;
+            nature: string | null;
+            /** @enum {unknown} */
+            name_state: "observed" | "unknown";
+            /** @enum {unknown} */
+            organization_state: "observed" | "unknown";
+            /** @enum {unknown} */
+            nature_state: "observed" | "unknown";
+            /** @enum {unknown} */
+            event_classification: "affected" | "route_interrupted";
+            fixed_prefix_count: number;
+            peak_partial_prefix_count: number;
+            peak_complete_prefix_count: number;
+            peak_invisible_direction_count: number;
+            path_downstream_asn_count: number;
+            concurrent_downstream_asn_count: number;
+        };
+        CountryOutageGeneralAffectedAsPageV1: {
+            /** @constant */
+            schema_version: "country_outage_general_affected_as_page_v1";
+            revision: number;
+            publication_id: string;
+            /** @constant */
+            publication_state: "published";
+            /** @constant */
+            observation_state: "evidence_complete";
+            /** @constant */
+            data_mode: "replay";
+            /** Format: date-time */
+            data_through: string;
+            is_final_in_data_range: boolean;
+            lifecycle_state: string;
+            /** @constant */
+            quality_state: "complete";
+            /** @constant */
+            missing_slot_count: 0;
+            /** @constant */
+            collector_id: "rrc25";
+            incident_id: string;
+            cohort_id: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            page: number;
+            page_size: number;
+            page_count: number;
+            total: number;
+            /** @enum {unknown} */
+            classification: "all" | "affected" | "route_interrupted";
+            query: string;
+            /** @enum {unknown} */
+            sort: "default" | "asn_asc";
+            items: components["schemas"]["CountryOutageGeneralAffectedAsItemV1"][];
+        };
+        CountryOutageGeneralPathSampleV1: {
+            prefix: string;
+            /** @enum {unknown} */
+            address_family: "ipv4" | "ipv6";
+            as_path_id: string;
+            as_path_canonical: string;
+            independent_peer_asns: number[];
+            route_observation_count: number;
+        };
+        CountryOutageGeneralPathDownstreamItemV1: {
+            affected_asn: number;
+            downstream_asn: number;
+            downstream_as_name: string | null;
+            downstream_organization: string | null;
+            downstream_nature: string | null;
+            /** @enum {unknown} */
+            downstream_name_state: "observed" | "unknown";
+            /** @enum {unknown} */
+            downstream_organization_state: "observed" | "unknown";
+            /** @enum {unknown} */
+            downstream_nature_state: "observed" | "unknown";
+            observed_path_count: number;
+            associated_fixed_prefix_count: number;
+            independent_direction_count: number;
+            route_observation_count: number;
+            concurrent_state_point_count: number;
+            /** Format: date-time */
+            first_concurrent_state_point_utc: string | null;
+            /** Format: date-time */
+            last_concurrent_state_point_utc: string | null;
+            peak_concurrent_interrupted_prefix_count: number;
+            peak_concurrent_ipv4_address_count: number;
+            peak_concurrent_ipv6_slash48_count: number;
+            path_samples: components["schemas"]["CountryOutageGeneralPathSampleV1"][];
+            /** @constant */
+            relationship_semantics: "observed_ordered_rrc25_path_association_not_dependency_or_cause";
+        };
+        CountryOutageGeneralPathDownstreamPageV1: {
+            /** @constant */
+            schema_version: "country_outage_general_path_downstream_page_v1";
+            revision: number;
+            publication_id: string;
+            /** @constant */
+            publication_state: "published";
+            /** @constant */
+            observation_state: "evidence_complete";
+            /** @constant */
+            data_mode: "replay";
+            /** Format: date-time */
+            data_through: string;
+            is_final_in_data_range: boolean;
+            lifecycle_state: string;
+            /** @constant */
+            quality_state: "complete";
+            /** @constant */
+            missing_slot_count: 0;
+            /** @constant */
+            collector_id: "rrc25";
+            incident_id: string;
+            cohort_id: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            page: number;
+            page_size: number;
+            page_count: number;
+            total: number;
+            affected_asn: number | null;
+            /** @enum {unknown} */
+            scope: "all" | "concurrent";
+            query: string;
+            /** @constant */
+            relationship_semantics: "observed_ordered_rrc25_path_association_not_dependency_or_cause";
+            items: components["schemas"]["CountryOutageGeneralPathDownstreamItemV1"][];
+        };
+        CountryOutageGeneralAuditV1: {
+            /** @constant */
+            schema_version: "country_outage_general_audit_v1";
+            revision: number;
+            publication_id: string;
+            /** @constant */
+            publication_state: "published";
+            /** @constant */
+            observation_state: "evidence_complete";
+            /** @constant */
+            data_mode: "replay";
+            /** Format: date-time */
+            data_through: string;
+            is_final_in_data_range: boolean;
+            lifecycle_state: string;
+            /** @constant */
+            quality_state: "complete";
+            /** @constant */
+            missing_slot_count: 0;
+            /** @constant */
+            collector_id: "rrc25";
+            incident_id: string;
+            cohort_id: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            run_id: string;
+            dataset_id: string;
+            implementation_id: string;
+            manifest_sha256: string;
+            event_read_model_id: string;
+            event_content_sha256: string;
+            source_identities: {
+                [key: string]: string;
+            };
+            files: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** @constant */
+            causal_boundary: "rrc25_path_association_is_not_dependency_propagation_user_impact_or_cause";
         };
         /** @enum {string} */
         CountryOutageObservationState: "legacy_summary" | "aggregate_available" | "state_partial" | "state_complete" | "evidence_complete";
@@ -3254,7 +3602,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CountryOutageResolutionV2"];
+                    "application/json": components["schemas"]["CountryOutageResolutionV2"] | components["schemas"]["CountryOutageGeneralResolutionV1"];
                 };
             };
             /** @description 引用不是合法的 country_outage 五段式引用 */
@@ -3300,7 +3648,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CountryOutageOverviewV2"];
+                    "application/json": components["schemas"]["CountryOutageOverviewV2"] | components["schemas"]["CountryOutageGeneralOverviewV1"];
                 };
             };
         };
@@ -3325,7 +3673,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CountryOutageSeriesV2"];
+                    "application/json": components["schemas"]["CountryOutageSeriesV2"] | components["schemas"]["CountryOutageGeneralSeriesV1"];
                 };
             };
         };
@@ -3338,6 +3686,7 @@ export interface operations {
                 page?: number;
                 page_size?: number;
                 query?: string;
+                classification?: "all" | "affected" | "route_interrupted";
                 address_family?: "all" | "ipv4" | "ipv6" | "dual";
                 state?: "all" | "partial" | "invisible" | "unknown";
                 sort?: string;
@@ -3356,8 +3705,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CountryOutageAsnPageV2"];
+                    "application/json": components["schemas"]["CountryOutageAsnPageV2"] | components["schemas"]["CountryOutageGeneralAffectedAsPageV1"];
                 };
+            };
+        };
+    };
+    getCountryOutagePathDownstreams: {
+        parameters: {
+            query?: {
+                /** @description 由解析接口返回的不可变发布快照；用于固定本次页面读取。 */
+                publication_id?: string;
+                page?: number;
+                page_size?: number;
+                affected_asn?: number;
+                scope?: "all" | "concurrent";
+                query?: string;
+            };
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 稳定分页的路径关联下游 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageGeneralPathDownstreamPageV1"];
+                };
+            };
+            /** @description 筛选参数无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 事件或指定 publication 不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 路径关联能力未配置、未就绪或完整性失败 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3381,7 +3781,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CountryOutageAuditV2"];
+                    "application/json": components["schemas"]["CountryOutageAuditV2"] | components["schemas"]["CountryOutageGeneralAuditV1"];
                 };
             };
         };

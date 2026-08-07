@@ -3,11 +3,13 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import {
+  getCountryOutageGeneralPage,
   getEventEvidenceBundle,
   getEventObservation,
   isEventObservationNotConfigured,
 } from '@/api/events'
 import CountryOutageDashboard from '@/components/CountryOutageDashboard.vue'
+import CountryOutageGeneralPage from '@/components/CountryOutageGeneralPage.vue'
 import CountryOutageReportWorkbench from '@/components/CountryOutageReportWorkbench.vue'
 import PageState from '@/components/PageState.vue'
 import type {
@@ -15,6 +17,7 @@ import type {
   EvidenceItem,
   EvidencePhase,
   EvidencePhaseCoverage,
+  CountryOutageGeneralPageModel,
   EventObservation,
   ParsedDetailRef,
 } from '@/types/api'
@@ -49,6 +52,7 @@ const error = ref('')
 const parsed = ref<ParsedDetailRef | null>(null)
 const bundle = ref<EvidenceBundle | null>(null)
 const observation = ref<EventObservation | null>(null)
+const generalPage = ref<CountryOutageGeneralPageModel | null>(null)
 const observationRefreshNotice = ref('')
 const countryOutageView = ref<CountryOutageView>('observation')
 const observationTab = ref<HTMLButtonElement | null>(null)
@@ -202,8 +206,21 @@ async function load() {
   parsed.value = null
   bundle.value = null
   observation.value = null
+  generalPage.value = null
   observationRefreshNotice.value = ''
   try {
+    try {
+      const response = await getCountryOutageGeneralPage(targetReference)
+      if (!observationRequests.isCurrent(token)) return
+      parsed.value = response.parsed
+      generalPage.value = response.page
+      return
+    } catch (generalCause) {
+      if (!observationRequests.isCurrent(token)) return
+      if (!isEventObservationNotConfigured(generalCause)) {
+        throw new Error(`事件观测数据暂不可用：${errorMessage(generalCause)}`)
+      }
+    }
     try {
       const response = await getEventObservation(targetReference)
       if (!observationRequests.isCurrent(token)) return
@@ -281,15 +298,15 @@ onBeforeUnmount(() => {
 
 <template>
   <article class="page evidence-page">
-    <header v-if="!observation" class="incident-header">
+    <header v-if="!observation && !generalPage" class="incident-header">
       <div class="incident-title">
         <RouterLink class="back-link" to="/events">← 返回异常事件</RouterLink>
-        <p class="eyebrow">事件研判 / Evidence Bundle</p>
+        <p class="eyebrow">事件观测</p>
         <h1 v-if="bundle">
           <span>{{ bundle.event.label }}</span>
           {{ bundle.event.object }}
         </h1>
-        <h1 v-else>事件证据包</h1>
+        <h1 v-else>事件观测</h1>
         <div v-if="bundle" class="incident-badges">
           <span :class="['risk-badge', `is-${bundle.event.level || 'unknown'}`]">
             {{ bundle.event.level || 'unknown' }} risk
@@ -314,15 +331,21 @@ onBeforeUnmount(() => {
     <PageState
       v-if="loading"
       kind="loading"
-      title="正在组装只读 Evidence Bundle"
-      detail="回查业务事实记录，并生成稳定事件与证据标识"
+      title="正在读取事件观测"
+      detail="正在准备本次事件窗口内的趋势与相关网络"
     />
     <PageState
       v-else-if="error"
       kind="error"
-      title="Evidence Bundle 暂不可用"
+      title="事件观测暂不可用"
       :detail="error"
       @retry="load"
+    />
+
+    <CountryOutageGeneralPage
+      v-else-if="generalPage"
+      :page="generalPage"
+      :reference="reference"
     />
 
     <template v-else-if="observation">
