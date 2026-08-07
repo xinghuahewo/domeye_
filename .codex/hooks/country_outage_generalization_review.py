@@ -23,6 +23,7 @@ TASK_PATH = REPOSITORY_ROOT / ".codex" / "TASK.json"
 CORE_MANIFEST_PATH = REPOSITORY_ROOT / "backend" / "core.sha256"
 STAGE_VERIFIER_PATHS = {
     "S0": REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s0.py",
+    "S1": REPOSITORY_ROOT / "dev" / "verify_country_outage_generalization_s1.py",
 }
 
 STAGE_IDS = tuple(f"S{index}" for index in range(7))
@@ -331,7 +332,7 @@ def validate_stage_artifacts(stage: str) -> list[str]:
             cwd=REPOSITORY_ROOT,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=300,
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as error:
