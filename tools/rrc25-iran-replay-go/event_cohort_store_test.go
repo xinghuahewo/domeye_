@@ -106,8 +106,8 @@ func decodeSingleCohortMember(t *testing.T, path string) EventCohortMember {
 }
 
 func TestEventCohortGroupsMultipleSessionsIntoPeerASNDirection(t *testing.T) {
-	mapping := newSyntheticGlobalCountryMapping(map[uint32]string{64510: "IR"})
-	state, err := NewRouteState(3)
+	mapping := newSyntheticGlobalCountryMapping(map[uint32]string{64510: "IR", 64520: "US"})
+	state, err := NewRouteState(5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,21 +115,25 @@ func TestEventCohortGroupsMultipleSessionsIntoPeerASNDirection(t *testing.T) {
 		syntheticCohortEvent("192.0.2.1", 64500, "203.0.113.0/24", 64510, actionAnnounce, 1),
 		syntheticCohortEvent("192.0.2.2", 64500, "203.0.113.0/24", 64510, actionAnnounce, 2),
 		syntheticCohortEvent("192.0.2.3", 64501, "203.0.113.0/24", 64510, actionAnnounce, 3),
+		syntheticCohortEvent("192.0.2.4", 64502, "203.0.113.0/24", 64520, actionAnnounce, 4),
+		syntheticCohortEvent("192.0.2.5", 64503, "203.0.113.0/24", 0, actionAnnounce, 5),
 	}
+	events[4].OriginKnown = false
+	events[4].ASPathKnown = false
 	for _, event := range events {
 		if err := state.Apply(event); err != nil {
 			t.Fatal(err)
 		}
 	}
 	wanted := map[uint16]struct{}{mapping.CountryID(64510): {}}
-	index := newEventCountryRouteIndex(state, mapping, wanted)
-	withdrew := syntheticCohortEvent("192.0.2.1", 64500, "203.0.113.0/24", 0, actionWithdraw, 4)
+	index := newEventCohortRouteIndex(state, mapping, wanted)
+	withdrew := syntheticCohortEvent("192.0.2.1", 64500, "203.0.113.0/24", 0, actionWithdraw, 6)
 	if err := applyEventCohortRouteState(state, index, mapping, withdrew); err != nil {
 		t.Fatal(err)
 	}
 	withdrew.OriginASN = 64510
 	withdrew.Key.Route.PeerIP = netip.MustParseAddr("192.0.2.2")
-	withdrew.RecordOrdinal = 5
+	withdrew.RecordOrdinal = 7
 	if err := applyEventCohortRouteState(state, index, mapping, withdrew); err != nil {
 		t.Fatal(err)
 	}
@@ -140,28 +144,39 @@ func TestEventCohortGroupsMultipleSessionsIntoPeerASNDirection(t *testing.T) {
 		StatePoint: RouteEventWindowStartUTC, StateSlot: 0,
 	}
 	manifest, err := writeEventCohort(
-		EventCohortStoreConfig{Output: root}, target, state, index[target.CountryID],
+		EventCohortStoreConfig{Output: root}, target, state, index, mapping,
 		RouteStateStoreManifest{DatasetID: "route-state-v1"}, strings.Repeat("a", 64),
 		RouteStateCheckpointManifest{CheckpointID: "checkpoint-v1", ProcessedSlot: 0},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manifest.MemberCount != 1 || manifest.ExpectedDirectionRelationCount != 1 ||
-		manifest.RouteObservationCount != 1 {
+	if manifest.MemberCount != 1 || manifest.ExpectedDirectionRelationCount != 3 ||
+		manifest.RouteObservationCount != 3 || manifest.CountryOriginASNCount != 1 ||
+		manifest.ObservedOriginASNCount != 2 || manifest.UnknownOriginObservationCount != 1 {
 		t.Fatalf("direction/session aggregation mismatch: %+v", manifest)
 	}
 	member := decodeSingleCohortMember(
 		t, filepath.Join(root, filepath.FromSlash(manifest.Members.Path)),
 	)
-	if member.ExpectedDirectionCount != 1 || member.ExpectedDirections[0].PeerASN != 64501 ||
+	if member.ExpectedDirectionCount != 3 || member.ExpectedDirections[0].PeerASN != 64501 ||
 		member.ExpectedDirections[0].RouteObservationCount != 1 ||
-		member.OriginASNs[0] != 64510 {
+		len(member.CountryOriginASNs) != 1 || member.CountryOriginASNs[0] != 64510 ||
+		len(member.ObservedOriginASNs) != 2 || member.ObservedOriginASNs[0] != 64510 ||
+		member.ObservedOriginASNs[1] != 64520 || member.UnknownOriginRouteObservationCount != 1 {
 		t.Fatalf("unexpected cohort member: %+v", member)
 	}
 	if member.ExpectedDirections[0].RouteObservations[0].ASPathStatus != "known" ||
 		!strings.HasPrefix(member.ExpectedDirections[0].RouteObservations[0].ASPathID, "asp_v1_") {
 		t.Fatalf("AS_PATH reference was not preserved: %+v", member)
+	}
+	nonCountry := member.ExpectedDirections[1].RouteObservations[0]
+	if nonCountry.OriginStatus != "known" || nonCountry.OriginASN == nil || *nonCountry.OriginASN != 64520 {
+		t.Fatalf("non-country origin direction was not included: %+v", nonCountry)
+	}
+	unknown := member.ExpectedDirections[2].RouteObservations[0]
+	if unknown.OriginStatus != "unknown" || unknown.OriginASN != nil || unknown.ASPathStatus != "unknown" {
+		t.Fatalf("unknown-origin direction was not included: %+v", unknown)
 	}
 }
 

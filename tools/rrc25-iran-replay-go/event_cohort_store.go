@@ -86,14 +86,15 @@ type EventLifecycleSnapshot struct {
 }
 
 type EventCohortRouteObservation struct {
-	VPID               string `json:"vp_id"`
-	PeerIP             string `json:"peer_ip"`
-	OriginASN          uint32 `json:"origin_asn"`
-	ASPathStatus       string `json:"as_path_status"`
-	ASPathID           string `json:"as_path_id,omitempty"`
-	RouteQualityStatus string `json:"route_quality_status"`
-	LastRouteEventID   string `json:"last_route_event_id"`
-	LastUpdatedUTC     string `json:"last_updated_utc"`
+	VPID               string  `json:"vp_id"`
+	PeerIP             string  `json:"peer_ip"`
+	OriginStatus       string  `json:"origin_status"`
+	OriginASN          *uint32 `json:"origin_asn,omitempty"`
+	ASPathStatus       string  `json:"as_path_status"`
+	ASPathID           string  `json:"as_path_id,omitempty"`
+	RouteQualityStatus string  `json:"route_quality_status"`
+	LastRouteEventID   string  `json:"last_route_event_id"`
+	LastUpdatedUTC     string  `json:"last_updated_utc"`
 }
 
 type EventCohortDirection struct {
@@ -103,15 +104,17 @@ type EventCohortDirection struct {
 }
 
 type EventCohortMember struct {
-	SchemaVersion          string                 `json:"schema_version"`
-	CohortID               string                 `json:"cohort_id"`
-	CohortMemberID         string                 `json:"cohort_member_id"`
-	CountryCode            string                 `json:"country_code"`
-	Prefix                 string                 `json:"prefix"`
-	AddressFamily          string                 `json:"address_family"`
-	OriginASNs             []uint32               `json:"origin_asns"`
-	ExpectedDirectionCount int                    `json:"expected_direction_count"`
-	ExpectedDirections     []EventCohortDirection `json:"expected_directions"`
+	SchemaVersion                      string                 `json:"schema_version"`
+	CohortID                           string                 `json:"cohort_id"`
+	CohortMemberID                     string                 `json:"cohort_member_id"`
+	CountryCode                        string                 `json:"country_code"`
+	Prefix                             string                 `json:"prefix"`
+	AddressFamily                      string                 `json:"address_family"`
+	CountryOriginASNs                  []uint32               `json:"country_origin_asns"`
+	ObservedOriginASNs                 []uint32               `json:"observed_origin_asns"`
+	UnknownOriginRouteObservationCount int                    `json:"unknown_origin_route_observation_count"`
+	ExpectedDirectionCount             int                    `json:"expected_direction_count"`
+	ExpectedDirections                 []EventCohortDirection `json:"expected_directions"`
 }
 
 type EventCohortManifest struct {
@@ -132,7 +135,9 @@ type EventCohortManifest struct {
 	MemberCount                    int64               `json:"member_count"`
 	IPv4MemberCount                int64               `json:"ipv4_member_count"`
 	IPv6MemberCount                int64               `json:"ipv6_member_count"`
-	OriginASNCount                 int                 `json:"origin_asn_count"`
+	CountryOriginASNCount          int                 `json:"country_origin_asn_count"`
+	ObservedOriginASNCount         int                 `json:"observed_origin_asn_count"`
+	UnknownOriginObservationCount  int64               `json:"unknown_origin_observation_count"`
 	ExpectedDirectionRelationCount int64               `json:"expected_direction_relation_count"`
 	RouteObservationCount          int64               `json:"route_observation_count"`
 	Members                        RouteEventStoreFile `json:"members"`
@@ -339,7 +344,7 @@ func eventCohortID(datasetID, country, statePoint, stateDigest string) string {
 		"country_code":              country,
 		"cohort_state_point_utc":    statePoint,
 		"source_route_state_digest": stateDigest,
-		"population_semantics":      "visible_country_origin_routes_grouped_by_unique_prefix_and_peer_asn",
+		"population_semantics":      "prefix_selected_by_country_origin_then_all_visible_peer_asn_directions_frozen",
 	}, 32)
 }
 
@@ -392,48 +397,130 @@ func buildEventCohortTargets(
 	return targets, byReference, nil
 }
 
-type eventCountryRouteIndex map[uint16]map[RouteStateKey]struct{}
+type eventCohortPrefixKey struct {
+	AFI    uint8
+	Prefix netip.Prefix
+}
 
-func newEventCountryRouteIndex(
+// eventCohortRouteIndex 是从唯一 RouteState 派生的运行时索引，不是第二套事实。
+// PrefixRoutes 保存每个可见前缀的全部会话路由；CountryPrefixCounts 只负责判断
+// 哪些前缀因至少一条目标国家 origin 路由而进入该国 cohort。
+type eventCohortRouteIndex struct {
+	PrefixRoutes        map[eventCohortPrefixKey]map[RouteStateKey]struct{}
+	CountryPrefixCounts map[uint16]map[eventCohortPrefixKey]int
+}
+
+func eventCohortPrefixFromRoute(key RouteStateKey) eventCohortPrefixKey {
+	return eventCohortPrefixKey{AFI: key.Route.AFI, Prefix: key.Route.Prefix}
+}
+
+func newEventCohortRouteIndex(
 	state *RouteState,
 	mapping *GlobalCountryMapping,
 	wanted map[uint16]struct{},
-) eventCountryRouteIndex {
-	result := make(eventCountryRouteIndex, len(wanted))
+) *eventCohortRouteIndex {
+	result := &eventCohortRouteIndex{
+		PrefixRoutes:        make(map[eventCohortPrefixKey]map[RouteStateKey]struct{}),
+		CountryPrefixCounts: make(map[uint16]map[eventCohortPrefixKey]int, len(wanted)),
+	}
 	for id := range wanted {
-		result[id] = make(map[RouteStateKey]struct{})
+		result.CountryPrefixCounts[id] = make(map[eventCohortPrefixKey]int)
 	}
 	for key, value := range state.Routes {
-		if !value.Visible || !value.OriginKnown {
+		if !value.Visible {
 			continue
 		}
-		countryID := mapping.CountryID(value.OriginASN)
-		if routes, exists := result[countryID]; exists {
-			routes[key] = struct{}{}
+		prefix := eventCohortPrefixFromRoute(key)
+		routes := result.PrefixRoutes[prefix]
+		if routes == nil {
+			routes = make(map[RouteStateKey]struct{})
+			result.PrefixRoutes[prefix] = routes
+		}
+		routes[key] = struct{}{}
+		if value.OriginKnown {
+			if counts, exists := result.CountryPrefixCounts[mapping.CountryID(value.OriginASN)]; exists {
+				counts[prefix]++
+			}
 		}
 	}
 	return result
 }
 
+func (index *eventCohortRouteIndex) removeVisibleRoute(
+	key RouteStateKey,
+	value RouteStateValue,
+	mapping *GlobalCountryMapping,
+) error {
+	prefix := eventCohortPrefixFromRoute(key)
+	routes := index.PrefixRoutes[prefix]
+	if _, exists := routes[key]; !exists {
+		return fmt.Errorf("event cohort prefix index is missing a visible route")
+	}
+	delete(routes, key)
+	if len(routes) == 0 {
+		delete(index.PrefixRoutes, prefix)
+	}
+	if !value.OriginKnown {
+		return nil
+	}
+	counts, wanted := index.CountryPrefixCounts[mapping.CountryID(value.OriginASN)]
+	if !wanted {
+		return nil
+	}
+	count := counts[prefix]
+	if count < 1 {
+		return fmt.Errorf("event cohort country prefix index underflow")
+	}
+	if count == 1 {
+		delete(counts, prefix)
+	} else {
+		counts[prefix] = count - 1
+	}
+	return nil
+}
+
+func (index *eventCohortRouteIndex) addVisibleRoute(
+	key RouteStateKey,
+	value RouteStateValue,
+	mapping *GlobalCountryMapping,
+) error {
+	prefix := eventCohortPrefixFromRoute(key)
+	routes := index.PrefixRoutes[prefix]
+	if routes == nil {
+		routes = make(map[RouteStateKey]struct{})
+		index.PrefixRoutes[prefix] = routes
+	}
+	if _, exists := routes[key]; exists {
+		return fmt.Errorf("event cohort prefix index already contains route")
+	}
+	routes[key] = struct{}{}
+	if value.OriginKnown {
+		if counts, wanted := index.CountryPrefixCounts[mapping.CountryID(value.OriginASN)]; wanted {
+			counts[prefix]++
+		}
+	}
+	return nil
+}
+
 func applyEventCohortRouteState(
 	state *RouteState,
-	index eventCountryRouteIndex,
+	index *eventCohortRouteIndex,
 	mapping *GlobalCountryMapping,
 	event routeStateEvent,
 ) error {
 	previous, existed := state.Routes[event.Key]
-	if existed && previous.Visible && previous.OriginKnown {
-		if routes, wanted := index[mapping.CountryID(previous.OriginASN)]; wanted {
-			delete(routes, event.Key)
+	if existed && previous.Visible {
+		if err := index.removeVisibleRoute(event.Key, previous, mapping); err != nil {
+			return err
 		}
 	}
 	transition, err := state.ApplyWithTransition(event)
 	if err != nil {
 		return err
 	}
-	if transition.Current.Visible && transition.Current.OriginKnown {
-		if routes, wanted := index[mapping.CountryID(transition.Current.OriginASN)]; wanted {
-			routes[event.Key] = struct{}{}
+	if transition.Current.Visible {
+		if err := index.addVisibleRoute(event.Key, transition.Current, mapping); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -458,7 +545,7 @@ func replayEventCohortUpdates(
 	config EventCohortStoreConfig,
 	routeEvents RouteEventStoreManifest,
 	state *RouteState,
-	index eventCountryRouteIndex,
+	index *eventCohortRouteIndex,
 	mapping *GlobalCountryMapping,
 	ledger []RouteStateSlotRecord,
 	startSlot int,
@@ -573,14 +660,21 @@ func eventCohortObservation(key RouteStateKey, value RouteStateValue) EventCohor
 		pathStatus = "known"
 		pathID = "asp_v1_" + hex.EncodeToString(value.ASPathDigest[:])
 	}
-	return EventCohortRouteObservation{
-		VPID:   VPIdentifier(key.Route.PeerIP, key.Route.PeerASN),
-		PeerIP: key.Route.PeerIP.String(), OriginASN: value.OriginASN,
+	observation := EventCohortRouteObservation{
+		VPID:         VPIdentifier(key.Route.PeerIP, key.Route.PeerASN),
+		PeerIP:       key.Route.PeerIP.String(),
+		OriginStatus: "unknown",
 		ASPathStatus: pathStatus, ASPathID: pathID,
 		RouteQualityStatus: routeStateQualityName(value.QualityStatus),
 		LastRouteEventID:   "rte_v1_" + hex.EncodeToString(value.LastRouteEventID[:]),
 		LastUpdatedUTC:     canonicalTimeFromMicros(value.LastUpdatedMicros),
 	}
+	if value.OriginKnown {
+		origin := value.OriginASN
+		observation.OriginStatus = "known"
+		observation.OriginASN = &origin
+	}
+	return observation
 }
 
 func eventCohortMemberID(cohortID string, prefix netip.Prefix, afi uint8) string {
@@ -593,7 +687,8 @@ func writeEventCohort(
 	config EventCohortStoreConfig,
 	target eventCohortTarget,
 	state *RouteState,
-	routes map[RouteStateKey]struct{},
+	index *eventCohortRouteIndex,
+	mapping *GlobalCountryMapping,
 	routeState RouteStateStoreManifest,
 	formalSlotSHA string,
 	baseCheckpoint RouteStateCheckpointManifest,
@@ -627,31 +722,59 @@ func writeEventCohort(
 			writer.Abort()
 		}
 	}()
-	keys := make([]RouteStateKey, 0, len(routes))
-	for key := range routes {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool { return eventCohortKeyLess(keys[i], keys[j]) })
-	var memberCount, ipv4Count, ipv6Count, relationCount, observationCount int64
-	originPopulation := make(map[uint32]struct{})
-	for start := 0; start < len(keys); {
-		end := start + 1
-		for end < len(keys) && keys[end].Route.AFI == keys[start].Route.AFI &&
-			keys[end].Route.Prefix == keys[start].Route.Prefix {
-			end++
+	selectedPrefixes := index.CountryPrefixCounts[target.CountryID]
+	prefixes := make([]eventCohortPrefixKey, 0, len(selectedPrefixes))
+	for prefix, count := range selectedPrefixes {
+		if count < 1 {
+			return EventCohortManifest{}, fmt.Errorf("event cohort selected prefix count is invalid")
 		}
-		originSet := make(map[uint32]struct{})
+		prefixes = append(prefixes, prefix)
+	}
+	sort.Slice(prefixes, func(i, j int) bool {
+		if prefixes[i].AFI != prefixes[j].AFI {
+			return prefixes[i].AFI < prefixes[j].AFI
+		}
+		return prefixes[i].Prefix.String() < prefixes[j].Prefix.String()
+	})
+	var memberCount, ipv4Count, ipv6Count, relationCount, observationCount int64
+	var unknownOriginObservationCount int64
+	countryOriginPopulation := make(map[uint32]struct{})
+	observedOriginPopulation := make(map[uint32]struct{})
+	for _, prefix := range prefixes {
+		routes := index.PrefixRoutes[prefix]
+		if len(routes) == 0 {
+			return EventCohortManifest{}, fmt.Errorf("event cohort selected prefix has no visible routes")
+		}
+		keys := make([]RouteStateKey, 0, len(routes))
+		for key := range routes {
+			keys = append(keys, key)
+		}
+		sort.Slice(keys, func(i, j int) bool { return eventCohortKeyLess(keys[i], keys[j]) })
+		countryOriginSet := make(map[uint32]struct{})
+		observedOriginSet := make(map[uint32]struct{})
+		countryOriginRouteCount := 0
+		unknownMemberObservations := 0
 		directions := make([]EventCohortDirection, 0)
-		for at := start; at < end; {
+		for at := 0; at < len(keys); {
 			peerASN := keys[at].Route.PeerASN
 			direction := EventCohortDirection{PeerASN: peerASN}
-			for at < end && keys[at].Route.PeerASN == peerASN {
+			for at < len(keys) && keys[at].Route.PeerASN == peerASN {
 				value, exists := state.Routes[keys[at]]
-				if !exists || !value.Visible || !value.OriginKnown {
+				if !exists || !value.Visible || eventCohortPrefixFromRoute(keys[at]) != prefix {
 					return EventCohortManifest{}, fmt.Errorf("event cohort index contains a non-visible route")
 				}
-				originSet[value.OriginASN] = struct{}{}
-				originPopulation[value.OriginASN] = struct{}{}
+				if value.OriginKnown {
+					observedOriginSet[value.OriginASN] = struct{}{}
+					observedOriginPopulation[value.OriginASN] = struct{}{}
+					if mapping.CountryID(value.OriginASN) == target.CountryID {
+						countryOriginRouteCount++
+						countryOriginSet[value.OriginASN] = struct{}{}
+						countryOriginPopulation[value.OriginASN] = struct{}{}
+					}
+				} else {
+					unknownMemberObservations++
+					unknownOriginObservationCount++
+				}
 				direction.RouteObservations = append(
 					direction.RouteObservations, eventCohortObservation(keys[at], value),
 				)
@@ -661,15 +784,19 @@ func writeEventCohort(
 			observationCount += int64(direction.RouteObservationCount)
 			directions = append(directions, direction)
 		}
-		origins := sortedUint32(originSet)
+		countryOrigins := sortedUint32(countryOriginSet)
+		observedOrigins := sortedUint32(observedOriginSet)
 		member := EventCohortMember{
 			SchemaVersion: EventCohortMemberVersion, CohortID: cohortID,
-			CohortMemberID: eventCohortMemberID(cohortID, keys[start].Route.Prefix, keys[start].Route.AFI),
-			CountryCode:    target.CountryCode, Prefix: keys[start].Route.Prefix.String(),
-			AddressFamily: map[uint8]string{4: "ipv4", 6: "ipv6"}[keys[start].Route.AFI],
-			OriginASNs:    origins, ExpectedDirectionCount: len(directions), ExpectedDirections: directions,
+			CohortMemberID: eventCohortMemberID(cohortID, prefix.Prefix, prefix.AFI),
+			CountryCode:    target.CountryCode, Prefix: prefix.Prefix.String(),
+			AddressFamily:     map[uint8]string{4: "ipv4", 6: "ipv6"}[prefix.AFI],
+			CountryOriginASNs: countryOrigins, ObservedOriginASNs: observedOrigins,
+			UnknownOriginRouteObservationCount: unknownMemberObservations,
+			ExpectedDirectionCount:             len(directions), ExpectedDirections: directions,
 		}
-		if member.AddressFamily == "" || len(origins) == 0 || len(directions) == 0 {
+		if member.AddressFamily == "" || len(countryOrigins) == 0 || len(directions) == 0 ||
+			selectedPrefixes[prefix] != countryOriginRouteCount {
 			return EventCohortManifest{}, fmt.Errorf("invalid event cohort member population")
 		}
 		if err := writer.Write(member); err != nil {
@@ -677,12 +804,11 @@ func writeEventCohort(
 		}
 		memberCount++
 		relationCount += int64(len(directions))
-		if keys[start].Route.AFI == 4 {
+		if prefix.AFI == 4 {
 			ipv4Count++
 		} else {
 			ipv6Count++
 		}
-		start = end
 	}
 	relativeMembers := filepath.ToSlash(filepath.Join(
 		"cohorts", target.CountryCode, fmt.Sprintf("slot-%04d", target.StateSlot), "members.jsonl.gz",
@@ -700,11 +826,12 @@ func writeEventCohort(
 		ReplayStartCheckpointID:   baseCheckpoint.CheckpointID,
 		ReplayStartCheckpointSlot: baseCheckpoint.ProcessedSlot,
 		ReplayedUpdateSlotCount:   target.StateSlot - baseCheckpoint.ProcessedSlot,
-		PopulationSemantics:       "one_member_per_unique_prefix_and_address_family_visible_from_country_origin_at_last_complete_state_point_before_detection",
-		DirectionSemantics:        "one_expected_direction_per_unique_rrc25_peer_asn_with_one_or_more_route_observation_sessions",
+		PopulationSemantics:       "one_member_per_unique_prefix_and_address_family_selected_by_at_least_one_country_origin_route_then_frozen_with_all_visible_rrc25_directions",
+		DirectionSemantics:        "one_expected_direction_per_unique_rrc25_peer_asn_that_sees_the_selected_prefix_regardless_of_observed_origin",
 		MemberCount:               memberCount, IPv4MemberCount: ipv4Count, IPv6MemberCount: ipv6Count,
-		OriginASNCount: len(originPopulation), ExpectedDirectionRelationCount: relationCount,
-		RouteObservationCount: observationCount, Members: members,
+		CountryOriginASNCount: len(countryOriginPopulation), ObservedOriginASNCount: len(observedOriginPopulation),
+		UnknownOriginObservationCount:  unknownOriginObservationCount,
+		ExpectedDirectionRelationCount: relationCount, RouteObservationCount: observationCount, Members: members,
 	}
 	manifest.ContentSHA256 = eventCohortContentSHA(manifest)
 	if _, err := writeJSONImmutable(filepath.Join(temporary, "manifest.json"), manifest); err != nil {
@@ -868,7 +995,7 @@ func RunEventCohortStore(config EventCohortStoreConfig) (EventCohortStoreManifes
 		if err != nil {
 			return EventCohortStoreManifest{}, err
 		}
-		index := newEventCountryRouteIndex(state, mapping, wanted)
+		index := newEventCohortRouteIndex(state, mapping, wanted)
 		targetAt := 0
 		materialize := func(target eventCohortTarget) error {
 			formalSlotSHA := checkpoint.ContentSHA256
@@ -876,7 +1003,7 @@ func RunEventCohortStore(config EventCohortStoreConfig) (EventCohortStoreManifes
 				formalSlotSHA = ledger[target.StateSlot-1].ContentSHA256
 			}
 			manifest, err := writeEventCohort(
-				config, target, state, index[target.CountryID], routeState, formalSlotSHA, checkpoint,
+				config, target, state, index, mapping, routeState, formalSlotSHA, checkpoint,
 			)
 			if err != nil {
 				return err

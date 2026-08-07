@@ -105,8 +105,14 @@ func TestPeerSessionNonStateRecordIsNotMaterialized(t *testing.T) {
 func TestPeerSessionIdentityDistinguishesSessionsButDirectionUsesPeerASN(t *testing.T) {
 	first := peerSessionID(mustAddr("192.0.2.1"), 64500, 64496, mustAddr("192.0.2.2"), 0, 1)
 	second := peerSessionID(mustAddr("192.0.2.3"), 64500, 64496, mustAddr("192.0.2.2"), 0, 1)
+	if first != "session_v1_ad750e8c3d8a6c74cde1273a20282604" {
+		t.Fatalf("session identity canonicalization drifted: %s", first)
+	}
 	if first == second {
 		t.Fatal("two BGP sessions collapsed to one session identity")
+	}
+	if peerSessionObservationID(strings.Repeat("a", 64), 9) != "pso_v1_9adea27fb94f287db542af51aa02015d" {
+		t.Fatal("peer-session observation identity canonicalization drifted")
 	}
 	if peerSessionObservationID(strings.Repeat("a", 64), 1) == peerSessionObservationID(strings.Repeat("a", 64), 2) {
 		t.Fatal("raw record coordinates did not affect observation identity")
