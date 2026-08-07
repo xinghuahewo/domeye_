@@ -45,6 +45,7 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE",
             "DOMEYE_COUNTRY_OUTAGE_GENERAL_READ_MODEL",
             "sha256sum -c core.sha256",
+            "cd -- \"$1\" && exec \"$2\" run.py",
         ):
             self.assertIn(phrase, text)
         for forbidden in ("pkill", "killall", "rm -rf"):

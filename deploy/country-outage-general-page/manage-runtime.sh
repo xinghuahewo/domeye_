@@ -294,7 +294,8 @@ start_runtime() {
             PYTHONUNBUFFERED=1 \
             PYTHONDONTWRITEBYTECODE=1 \
             VIRTUAL_ENV="${RUNTIME_ROOT}/venv" \
-            "${RUNTIME_ROOT}/venv/bin/python" run.py
+            bash -c 'cd -- "$1" && exec "$2" run.py' \
+                _ "${RUNTIME_ROOT}/backend" "${RUNTIME_ROOT}/venv/bin/python"
 
     local attempt
     for (( attempt = 1; attempt <= 60; attempt++ )); do
