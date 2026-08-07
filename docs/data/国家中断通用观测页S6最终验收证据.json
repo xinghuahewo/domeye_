@@ -1,0 +1,173 @@
+{
+  "schema_version": "country_outage_general_page_s6_acceptance_v1",
+  "status": "pass",
+  "release_id": "20260807T201846Z-country-outage-general-page-prod27",
+  "candidate_commit": "604979f1584d34f7efa5b6110af8730f8a50bb7c",
+  "annotated_tag": "20260807T201846Z-country-outage-general-page-prod27",
+  "frozen_data": {
+    "dataset_id": "general_read_model_dataset_v1_63be5d12ef847d74824efe5be9892f8a",
+    "manifest_sha256": "1d1e0463af18cf1320ce37f918ed47fdfb4e1a4f78a73f198923db50a4fca5b9",
+    "event_count": 81,
+    "state_point_count": 13488
+  },
+  "gfa": {
+    "GFA-01": {
+      "status": "pass",
+      "evidence": [
+        "同一通用读模型覆盖 81 个合法事件；伊朗与马拉维由相同 resolve、overview、series、asns、path-downstreams 合同读取。",
+        "生产浏览器两页具有相同六段阅读结构，非法事件进入独立不可用状态。"
+      ]
+    },
+    "GFA-02": {
+      "status": "pass",
+      "evidence": [
+        "S1 已冻结事件首次检测前 12 个完整五分钟槽、活动事件末端和最终事件窗口。",
+        "伊朗窗口为 2026-02-27T00:10:00Z 至 2026-03-11T00:00:00Z；页面无全窗切换。"
+      ]
+    },
+    "GFA-03": {
+      "status": "pass",
+      "evidence": [
+        "S1 cohort 以事件前最后完整状态点冻结，独立方向按 RRC25 peer ASN 去重，同 ASN 多会话不重复计数。",
+        "S2、S3 和生产读模型均复用该 cohort 与方向人口。"
+      ]
+    },
+    "GFA-04": {
+      "status": "pass",
+      "evidence": [
+        "S1 会话事实、路由不可见和未知状态分离；会话掉线不伪造 WITHDRAW。",
+        "前台只陈述当前路由是否可见，不使用全国断网、服务中断或主动撤回结论。"
+      ]
+    },
+    "GFA-05": {
+      "status": "pass",
+      "evidence": [
+        "S2 以唯一固定前缀投影部分中断、完全中断及不可见方向，禁止以 Prefix×VP 行数冒充前缀人口。",
+        "伊朗生产页峰值为中断前缀 3855、完全中断前缀 1553、不可见独立方向 65783。"
+      ]
+    },
+    "GFA-06": {
+      "status": "pass",
+      "evidence": [
+        "S2 受影响 AS 与 AS 路由中断仅由固定 cohort 前缀状态确定性投影，新前缀不抵消中断。",
+        "生产 AS 列表保持前缀、AS 与观察方向三类人口分离。"
+      ]
+    },
+    "GFA-07": {
+      "status": "pass",
+      "evidence": [
+        "生产页独立展示前缀中断数量变化，含中断前缀与完全不可见前缀两条五分钟趋势。",
+        "伊朗与马拉维页面均渲染 4 个真实图表且无空图回退。"
+      ]
+    },
+    "GFA-08": {
+      "status": "pass",
+      "evidence": [
+        "生产页将 AS 中断数量变化与前缀趋势分图展示，口径来自 S2 确定性状态。",
+        "浏览器标题、图例、整数纵轴与页面摘要使用统一 AS 分类。"
+      ]
+    },
+    "GFA-09": {
+      "status": "pass",
+      "evidence": [
+        "S2 对唯一前缀去重后分别投影 IPv4 地址量与 IPv6 /48 等价量，并将新前缀独立成轨。",
+        "生产页保留 IPv4 与 IPv6 两个图表，不合成为单一 IP 影响数字。"
+      ]
+    },
+    "GFA-10": {
+      "status": "pass",
+      "evidence": [
+        "S3 受影响 AS 列表冻结身份、名称、性质、前缀规模、不可见方向和路径关联数量及稳定排序。",
+        "伊朗生产页分页总数为 525，马拉维页面列出 8 个 AS；未知属性不通过在线查询猜测。"
+      ]
+    },
+    "GFA-11": {
+      "status": "pass",
+      "evidence": [
+        "生产浏览器从伊朗页点击 AS48715 后继承 2026-02-27T00:10:00Z 至 2026-03-11T00:00:00Z，同窗 API 返回 540 个实际观测点并渲染 3 个图表。",
+        "点击页面返回入口后回到原事件，保留 as_page=1、as_classification=all 并滚动到受影响 AS 区域。"
+      ]
+    },
+    "GFA-12": {
+      "status": "pass",
+      "evidence": [
+        "S3 路径关联只来自事件前 RRC25 AS_PATH，不使用 relationship、customer cone 或外部拓扑。",
+        "生产浏览器以 affected_asn=49666、scope=concurrent 筛选，首个关联卡展示 3 条实际路径及同期前缀、IPv4、IPv6 /48 指标。"
+      ]
+    },
+    "GFA-13": {
+      "status": "pass",
+      "evidence": [
+        "伊朗与马拉维普通页面的 PRODUCT、PUBLICATION、REVISION、DATA THROUGH、Prefix×VP、内部身份及同一冻结制品文案命中均为空。",
+        "页面按概览、前缀、AS、IP、受影响 AS、路径关联下游顺序组织。"
+      ]
+    },
+    "GFA-14": {
+      "status": "pass",
+      "evidence": [
+        "生产 API 对错误 publication 返回 404、非法路径语义返回 400、错误 AS 事件窗口返回 400。",
+        "非法事件浏览器显示事件观测暂不可用、0 个图表、不回退旧结果，且不泄漏服务器路径或堆栈。"
+      ]
+    },
+    "GFA-15": {
+      "status": "pass",
+      "evidence": [
+        "国家页最大响应 383693 字节，AS 同窗响应 667920 字节；生产验证 p95 为 136.95 毫秒。",
+        "AS 每页 20 条、路径每页 15 条；首开不下载完整 AS×时间、前缀×方向或 AS_PATH 矩阵。"
+      ]
+    },
+    "GFA-16": {
+      "status": "pass",
+      "evidence": [
+        "伊朗与马拉维在同一候选完成前缀规模、AS 规模、IP 趋势、AS 性质和路径关联五类任务。",
+        "重复、倒序和 8 路并发摘要一致；页面不声明原因、用户影响、客户依赖、责任或窗口外恢复。"
+      ]
+    }
+  },
+  "canary": {
+    "status": "passed",
+    "evidence_path": "/home/bgpdata/Domeye-Core-runtime/unified-releases/20260807T201846Z-country-outage-general-page-prod27/CANARY-VERIFICATION.json",
+    "sha256": "c83e75eb3dd0e71e04b11c80b40823ea75dbcdb07ff18d2f94604d55192de76c",
+    "repeat_order_concurrent_equal": true,
+    "as_event_window_series_points": 540
+  },
+  "production": {
+    "status": "passed",
+    "evidence_path": "/home/bgpdata/Domeye-Core-runtime/unified-releases/20260807T201846Z-country-outage-general-page-prod27/PRODUCTION-VERIFICATION.json",
+    "sha256": "34c21a98cc52cd04f5deb5c4440872917195bba51dad411956ff6d4755a37d09",
+    "repeat_order_concurrent_equal": true,
+    "p95_ms": 136.95,
+    "max_response_bytes": 667920,
+    "rollback": "ready"
+  },
+  "browser": {
+    "status": "passed",
+    "evidence_path": "/home/bgpdata/Domeye-Core-runtime/unified-releases/20260807T201846Z-country-outage-general-page-prod27/BROWSER-ACCEPTANCE.json",
+    "sha256": "ba0acf510c87b49cb69247ebb04b50d4657787c1a4657e7f0a2bcf2a64e2ccd0",
+    "javascript_errors": 0,
+    "forbidden_terms": [],
+    "iran_desktop_sha256": "7557905e1541f6b55f086deb70134ae7e4af4e0228b0dc8892b56b481b744156",
+    "as48715_sha256": "ccda7b14648c4e008a87115d6ac6f7094639aab90668d15d1e10809342625276",
+    "malawi_desktop_sha256": "157214e063113278d8382d639936b7686ddcfe1e3b57bc1288fbdd8632cef66a",
+    "malawi_mobile_sha256": "cd3f571d18a9cb20b1cd4361f5f156f38c61491e5790816a56e18eb9c3913bc3",
+    "invalid_event_sha256": "d4b4e3ba2efde298d715514b43e84622902adba33c4feb840eac6d04639739a1"
+  },
+  "deployment": {
+    "status": "deployed",
+    "backend_release_id": "20260807T201846Z-country-outage-general-page-prod27-backend",
+    "frontend_release_id": "20260807T201846Z-country-outage-general-page-prod27-frontend",
+    "source_commit_equals_runtime": true,
+    "candidate_canary_production_same_artifacts": true,
+    "artifacts_rebuilt_during_promotion": false,
+    "final_verification_sha256": "190d703e1fa5d6f515ea8dcc53c683efbc7bd1b52327d11ac2e223d493d01c3f"
+  },
+  "boundaries": {
+    "collector": "rrc25",
+    "window": "[2026-02-24T00:00:00Z,2026-03-11T00:00:00Z)",
+    "database_changed": false,
+    "nginx_changed": false,
+    "sidecar_changed": false,
+    "paid_model_calls": 0,
+    "raw_data_rerun": false
+  }
+}

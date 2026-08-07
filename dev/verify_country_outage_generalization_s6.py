@@ -54,6 +54,7 @@ jq -n \
     --arg process_general_root "${process_general_root}" \
     --arg frontend_release "$(< /home/bgpdata/Domeye-Core-runtime/web/state/frontend-current)" \
     --arg expected_frontend_release "${frontend_release}" \
+    --arg frontend_path "${frontend_path}" \
     --arg frontend_tree "$(domeye_frontend_tree_sha256 /home/bgpdata/Domeye-Core-runtime/web/dist)" \
     --arg expected_frontend_tree "$(jq -er '.components.frontend.tree_sha256' "${candidate}")" \
     --arg general_manifest_sha "$(sha256sum "${backend}/general-read-model/manifest.json" | awk '{print $1}')" \
