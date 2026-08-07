@@ -60,6 +60,10 @@ REQUIRED_ACCEPTANCE_PHRASES = (
     "路径关联下游只从 cohort 冻结点实际观测到的 RRC25 AS_PATH 提取",
     "第一版不使用 AS relationship、customer cone",
     "前台不出现 `Prefix×VP`",
+    "普通页面不得展示 `PRODUCT`、`PUBLICATION`、`REVISION`、`DATA THROUGH`",
+    "`incident_go_v1_*`、`trend_product_v1_*`、`observation_publication_v1_*`",
+    "冻结一致性是系统责任，不是需要向用户解释的页面内容",
+    "不占用普通页面、折叠区、提示框或页尾",
     "一次加载全部 AS×时间",
     "GFA-01 至 GFA-16 全部",
 )
@@ -336,7 +340,7 @@ def review_reason(stage: str) -> str:
 6. IPv4 是否按唯一前缀计算，IPv6 是否使用 /48 等价量；是否因方向、会话、路径或重叠前缀重复计数；
 7. AS 名称与性质缺失是否保持未知；AS 详情是否继承同一事件窗口并能返回原阅读位置；
 8. 路径关联下游是否只来自事件前实际 RRC25 AS_PATH；是否混入 relationship、customer cone、依赖或因果；
-9. 页面是否仍按概览、前缀趋势、AS 趋势、IP 趋势、受影响 AS、路径下游组织；前台是否出现审计身份或 Prefix×VP 术语；
+9. 页面是否仍按概览、前缀趋势、AS 趋势、IP 趋势、受影响 AS、路径下游组织；前台、折叠区、提示框或页尾是否出现 Prefix×VP、内部制品 ID、PRODUCT、PUBLICATION、REVISION、DATA THROUGH 或“同一冻结制品、证据、限制与未知”等工程自证文字；
 10. 首屏和趋势是否有界，大集合是否稳定分页；是否默认下发 AS×时间、前缀×方向或完整路径矩阵；
 11. 缺槽、未知、身份冲突和未就绪能力是否失败关闭；是否用零、空图、旧结果或其他事件结果伪装正常；
 12. 是否把路由控制面事实写成全国断网、用户影响、原因、客户依赖、责任或窗口外恢复；

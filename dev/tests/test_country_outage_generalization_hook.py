@@ -147,6 +147,37 @@ class CountryOutageGeneralizationHookTest(unittest.TestCase):
             errors,
         )
 
+    def test_internal_artifact_copy_drift_is_rejected(self) -> None:
+        checks = (
+            (
+                "普通页面不得展示 `PRODUCT`、`PUBLICATION`、`REVISION`、`DATA THROUGH`",
+                "普通页面可以展示 `PRODUCT`、`PUBLICATION`、`REVISION`、`DATA THROUGH`",
+            ),
+            (
+                "`incident_go_v1_*`、`trend_product_v1_*`、`observation_publication_v1_*`",
+                "内部身份可以直接展示",
+            ),
+            (
+                "冻结一致性是系统责任，不是需要向用户解释的页面内容",
+                "冻结一致性需要在页面向用户解释",
+            ),
+        )
+        for required, replacement in checks:
+            with self.subTest(required=required):
+                module = load_hook_module()
+                original = module.ACCEPTANCE_PATH.read_text(encoding="utf-8")
+                changed = original.replace(required, replacement)
+                self.assertNotEqual(changed, original)
+                with tempfile.TemporaryDirectory() as directory:
+                    candidate = Path(directory) / module.ACCEPTANCE_PATH.name
+                    candidate.write_text(changed, encoding="utf-8")
+                    module.ACCEPTANCE_PATH = candidate
+                    errors = module.validate_documents()
+                self.assertTrue(
+                    any(required in item for item in errors),
+                    errors,
+                )
+
     def test_plan_cannot_add_implementation_steps(self) -> None:
         module = load_hook_module()
         original = module.PLAN_PATH.read_text(encoding="utf-8")
