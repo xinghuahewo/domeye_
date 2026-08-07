@@ -126,3 +126,27 @@ go run ./cmd/rrc25-route-event-audit \
 100 个 UPDATE 分区逐元素回到原始 gzip 复算；样本固定包含第一个 UPDATE、两个隔离
 修复 artifact，另含至少一个 withdraw。VP、动作、prefix、AS_PATH、属性摘要、
 record/element 坐标、raw record sidecar 和 RouteEvent ID 任一不一致即失败关闭。
+
+## S6 旧库影子迁移与安全边界
+
+`shadow_migration_candidate.py` 只处理 `rrc25` 和
+`[2026-02-24T00:00:00Z, 2026-03-11T00:00:00Z)`。它在一个可重复读、只读事务中为
+旧 `bgp_project` 的 37 张逻辑表生成精确窗口人口、时间上下界、schema 片段和多集合
+指纹；不会修改旧库 ACL、数据或表结构。
+
+旧国家中断记录保留源表、合成源主键、上海时区解释、原始行摘要和导入处置。冻结窗口内
+111 条记录中，81 条精确对账到 S4 正式事件，29 条只用于追溯，1 条空国家码进入隔离；
+旧 ASN 比例与新 Prefix×VP RouteState 投影的统计人口不同，明确记为不可比较，不会被
+强行转换成新指标。
+
+每次提取生成独立 `import_batch_id`，将源库 schema、37 张表的只读事务快照和候选身份
+绑定在一起。37 张表的 534 个源字段逐一写入字段处置清单：能与新模型等价对应的标记为
+`mapped`，人口或语义不同的标记为 `not_comparable`，仅承担追溯用途的标记为
+`trace_only`；所有条目必须关闭，不能遗留待定字段，也不能把旧前缀指标强行解释为
+Prefix×VP RouteState。
+
+`accept` 只创建独立候选数据库和三个唯一 NOLOGIN 角色：迁移角色只读影子导入表，
+发布角色只能调用原子 bundle 切换函数，运行角色只能读取 `domeye_runtime` 正式视图。
+验收会依次拒绝 incomplete bundle、正向切换、回退、再次正向切换，并在写入 DLAE-16
+和最终回执前，以运行角色实测 IR、MW、81 个事件、报告和 43 个 4,320 点紧凑序列。
+该选择仅属于验收运行时，`selected_by_production` 始终为 false。
