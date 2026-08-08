@@ -1,0 +1,62 @@
+{
+  "schema_version": "country_outage_p0_manifest_v1",
+  "revision": "p0-v1-20260808-ir-r1",
+  "created_at": "2026-08-08T19:23:58+08:00",
+  "base_contract_commit": "558e28596d70f6610b7fcda9689f13ff84ca3d71",
+  "tested_object": "evaluation_contract_and_reference_answers",
+  "case_counts": {
+    "direct": 20,
+    "multi_turn": 5,
+    "boundary": 5,
+    "exception": 5,
+    "total": 35
+  },
+  "case_set_path": "evaluation/country-outage/p0-v1/cases.json",
+  "case_schema_path": "evaluation/country-outage/p0-v1/case-schema.json",
+  "evidence_snapshot_path": "evaluation/country-outage/p0-v1/evidence/ir-20260227-r1.json",
+  "stage_receipts_path": "evaluation/country-outage/p0-v1/stage-receipts.json",
+  "baseline_record_path": "docs/agent/P0-需求与评测/P0-v1-基线验收记录.md",
+  "p1_handoff_path": "docs/agent/P0-需求与评测/P1入口回执.md",
+  "artifacts": [
+    {
+      "role": "case_set",
+      "path": "evaluation/country-outage/p0-v1/cases.json",
+      "sha256": "1e878d43f010dc701fadb630ede380f085d33cecbcde23db9db9c1662d47c14b"
+    },
+    {
+      "role": "case_schema",
+      "path": "evaluation/country-outage/p0-v1/case-schema.json",
+      "sha256": "58c8fa556d6f80ea55d724c9374c9040a5b54af93caf73cd4eb7b05652249b72"
+    },
+    {
+      "role": "evidence_snapshot",
+      "path": "evaluation/country-outage/p0-v1/evidence/ir-20260227-r1.json",
+      "sha256": "5544fb46ab6665c254a9ebe5aec2f417816889e9514e461c3a999a87c7515a48"
+    },
+    {
+      "role": "stage_receipts",
+      "path": "evaluation/country-outage/p0-v1/stage-receipts.json",
+      "sha256": "def69d6d01fb5894ddf21bab99b549b7369e818f25eccd7f469ca038eecd4fcc"
+    },
+    {
+      "role": "baseline_record",
+      "path": "docs/agent/P0-需求与评测/P0-v1-基线验收记录.md",
+      "sha256": "294291b8fc56edadf89c78c8fe5babb44210a2b3dc1d672e89122885c32931f7"
+    },
+    {
+      "role": "p1_handoff",
+      "path": "docs/agent/P0-需求与评测/P1入口回执.md",
+      "sha256": "b78bb519d58df9a78b79b62ddf0566575ed9aa86a66bbb04fe55f212a370b9c6"
+    },
+    {
+      "role": "deterministic_validator",
+      "path": "dev/tools/validate_country_outage_p0_baseline.py",
+      "sha256": "70e4c15683d4e7d7008813a06e7cfa8195f7ac0237d078e087b6e0cdde2e7196"
+    },
+    {
+      "role": "regression_tests",
+      "path": "dev/tests/test_country_outage_p0_baseline.py",
+      "sha256": "1300b98ab614d55a4434cc763d27870abe45d05aa5c7b2c605c7c4bc1b264440"
+    }
+  ]
+}
