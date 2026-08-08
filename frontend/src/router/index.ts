@@ -20,6 +20,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '事件证据', section: '异常监测' },
   },
   {
+    path: '/events/chat',
+    name: 'country-outage-chat',
+    component: () => import('@/pages/CountryOutageChatPage.vue'),
+    meta: { title: '事件问答', section: '异常监测' },
+  },
+  {
     path: '/features',
     name: 'features',
     component: () => import('@/pages/FeaturesPage.vue'),

@@ -1,0 +1,17 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v1",
+  "stage": "S2",
+  "stage_name": "混合意图与短期多轮状态闭合",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "conclusion": "已修正",
+  "hook_exit_code": 0,
+  "requirements": ["P1-FE-05", "P1-FE-06", "P1-FE-07", "P1-BE-02", "P1-BE-03", "P1-BE-07", "P1-BE-08", "P1-SCE-05", "P1-SCE-06", "P1-SCE-07", "P1-SCE-10"],
+  "evidence": [
+    "P0 5 个多轮旅程在同一候选上 5/5 通过",
+    "ASN 修正、地址族到路径切换、事件切换澄清与原因边界状态均按 inherit/set/clear 提交",
+    "幂等重试复用同一 turn；取消不提交答案或实体状态；SSE 按事件号重放",
+    "浏览器发现原因问法未清旧 ASN 后已修正规则，并把 boundary 状态隔离加入硬门禁"
+  ],
+  "corrected_deviation": "“谁造成的”已纳入边界状态转换，清除 ASN、地址族与指标槽位；回归后 5/5 多轮通过。",
+  "boundary": "短期状态不是证据，不承诺跨设备永久历史或进程重启后恢复旧会话。"
+}

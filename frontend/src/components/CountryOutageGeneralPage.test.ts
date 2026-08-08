@@ -65,4 +65,12 @@ describe('国家中断通用观测页用户效果', () => {
     expect(source).toContain('同期 IPv4 地址量峰值')
     expect(source).toContain('同期 IPv6 /48 峰值')
   })
+
+  it('opens P1 chat with the exact current event publication identity', () => {
+    expect(source).toContain("name: 'country-outage-chat'")
+    expect(source).toContain('ref: props.reference')
+    expect(source).toContain('publication_id: props.page.resolution.publication_id')
+    expect(source).toContain('revision: String(props.page.resolution.revision)')
+    expect(source).toContain('围绕此事件提问')
+  })
 })

@@ -1,0 +1,1075 @@
+{
+  "schema_version": "country_outage_p1_candidate_result_v1",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "p0_case_set_revision": "p0-v1-20260808-ir-r1",
+  "p1_contract_revision": "p1-contract-v1",
+  "evaluated_at": "2026-08-08T13:07:13.604Z",
+  "api_base_url": "http://10.99.8.16:28471/api/v2/",
+  "collector_id": "rrc25",
+  "implementation_source_sha256": "61354911c7793d75889e6279c210ff59493aeec5207467259af516d4619437c4",
+  "base_commit": "8eb33343166df6f98b97e80cad79cc21c24aff77",
+  "counts": {
+    "direct": {
+      "total": 20,
+      "passed": 20
+    },
+    "multi_turn": {
+      "total": 5,
+      "passed": 5
+    },
+    "boundary": {
+      "total": 5,
+      "passed": 5
+    },
+    "exception": {
+      "total": 5,
+      "passed": 5
+    }
+  },
+  "hard_gates": {
+    "all_35_passed": true,
+    "event_binding_percent": 100,
+    "publication_binding_percent": 100,
+    "forbidden_assertion_hits": 0,
+    "invalid_answer_publications": 0
+  },
+  "results": [
+    {
+      "case_id": "P0-D-01",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 3,
+      "matched_fact_count": 3,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "cohort.fixed_prefix_count",
+            "scope_counts.affected_as_count",
+            "peaks.interrupted_prefix_count.value"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-02",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "event.window_start_local",
+            "event.window_end_local"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-03",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "partial",
+          "evidence_refs": [
+            "event.detected_at_local",
+            "event.detection_is_not_true_onset"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-04",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.state_point_local",
+            "peaks.interrupted_prefix_count.value"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-05",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "address_family_extrema.ipv4.maximum_visible_address_count",
+            "address_family_extrema.ipv4.minimum_visible_address_count",
+            "address_family_extrema.ipv4.max_to_min_drop",
+            "address_family_extrema.ipv4.max_to_min_drop_percent"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-06",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 3,
+      "matched_fact_count": 3,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "partial",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.value",
+            "current.interrupted_prefix_count",
+            "identity.lifecycle_state"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-07",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "current.interrupted_prefix_count",
+            "current.completely_interrupted_prefix_count",
+            "current.invisible_direction_count",
+            "current.affected_asn_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-08",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "cohort.fixed_asn_count",
+            "cohort.fixed_prefix_count",
+            "cohort.independent_direction_relation_count",
+            "scope_counts.affected_as_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-09",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 5,
+      "matched_fact_count": 5,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "asns.top_items.0.asn",
+            "asns.top_items.1.asn",
+            "asns.top_items.2.asn",
+            "asns.top_items.3.asn",
+            "asns.top_items.4.asn"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-10",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "asns.top_items.0.fixed_prefix_count",
+            "asns.top_items.0.peak_complete_prefix_count",
+            "asns.top_items.0.peak_invisible_direction_count",
+            "asns.top_items.0.path_downstream_asn_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-11",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "partial",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.state_point_local",
+            "peaks.interrupted_prefix_count.value",
+            "current.interrupted_prefix_count",
+            "identity.lifecycle_state"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-12",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "address_family_extrema.ipv4.maximum_visible_address_count",
+            "address_family_extrema.ipv4.minimum_visible_address_count",
+            "address_family_extrema.ipv4.max_to_min_drop",
+            "address_family_extrema.ipv4.max_to_min_drop_percent",
+            "address_family_extrema.ipv6.max_to_min_drop",
+            "current.new_cumulative_ipv4_prefix_count",
+            "current.new_cumulative_ipv6_prefix_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-13",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "expected_fact_count": 1,
+      "matched_fact_count": 1,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "unsupported",
+          "evidence_refs": [
+            "capability_observations.update_activity.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-14",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 3,
+      "matched_fact_count": 3,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "series.track_definitions.interrupted_prefix_count",
+            "series.track_definitions.completely_interrupted_prefix_count",
+            "series.track_definitions.invisible_direction_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-15",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "address_family_extrema.ipv4.maximum_visible_address_count",
+            "address_family_extrema.ipv4.minimum_visible_address_count",
+            "address_family_extrema.ipv4.max_to_min_drop",
+            "address_family_extrema.ipv4.max_to_min_drop_percent",
+            "address_family_extrema.ipv6.max_to_min_drop",
+            "current.new_cumulative_ipv4_prefix_count",
+            "current.new_cumulative_ipv6_prefix_count",
+            "current.new_visible_ipv4_prefix_count",
+            "current.new_visible_ipv6_prefix_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-16",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "paths.first_relation.affected_asn",
+            "paths.first_relation.downstream_asn",
+            "paths.first_relation.sample.as_path_canonical",
+            "paths.first_relation.sample.prefix"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-17",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 3,
+      "matched_fact_count": 3,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "audit.dataset_id",
+            "audit.implementation_id",
+            "audit.event_content_sha256"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-18",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "partial",
+          "evidence_refs": [
+            "identity.quality_state",
+            "identity.missing_slot_count",
+            "series.point_count",
+            "capability_observations.update_activity.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-19",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 4,
+      "matched_fact_count": 4,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "identity.publication_id",
+            "identity.revision",
+            "identity.data_through",
+            "identity.is_final_in_data_range"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-D-20",
+      "category": "direct",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "identity.collector_id",
+            "semantic_boundaries.overview"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-M-01",
+      "category": "multi_turn",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "cohort.fixed_prefix_count",
+            "scope_counts.affected_as_count",
+            "peaks.interrupted_prefix_count.value"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 2,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.state_point_local",
+            "peaks.interrupted_prefix_count.value"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 3,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "current.interrupted_prefix_count",
+            "current.completely_interrupted_prefix_count",
+            "current.invisible_direction_count",
+            "current.affected_asn_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-M-02",
+      "category": "multi_turn",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 3,
+      "matched_fact_count": 3,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "asns.top_items.0.fixed_prefix_count",
+            "asns.top_items.0.peak_complete_prefix_count",
+            "asns.top_items.0.peak_invisible_direction_count",
+            "asns.top_items.0.path_downstream_asn_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 2,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "asns.top_items.1.fixed_prefix_count",
+            "asns.top_items.1.peak_complete_prefix_count",
+            "asns.top_items.1.peak_invisible_direction_count",
+            "asns.top_items.1.path_downstream_asn_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-M-03",
+      "category": "multi_turn",
+      "passed": true,
+      "expected_answerability": "answerable",
+      "actual_answerability": "answerable",
+      "expected_fact_count": 3,
+      "matched_fact_count": 3,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "address_family_extrema.ipv4.maximum_visible_address_count",
+            "address_family_extrema.ipv4.minimum_visible_address_count",
+            "address_family_extrema.ipv4.max_to_min_drop",
+            "address_family_extrema.ipv4.max_to_min_drop_percent",
+            "address_family_extrema.ipv6.max_to_min_drop",
+            "current.new_cumulative_ipv4_prefix_count",
+            "current.new_cumulative_ipv6_prefix_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 2,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "paths.first_relation.affected_asn",
+            "paths.first_relation.downstream_asn",
+            "paths.first_relation.sample.as_path_canonical",
+            "paths.first_relation.sample.prefix"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-M-04",
+      "category": "multi_turn",
+      "passed": true,
+      "expected_answerability": "clarify",
+      "actual_answerability": "clarify",
+      "expected_fact_count": 0,
+      "matched_fact_count": 0,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.state_point_local",
+            "peaks.interrupted_prefix_count.value"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 2,
+          "answerability": "clarify",
+          "evidence_refs": [],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 3,
+          "answerability": "clarify",
+          "evidence_refs": [],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-M-05",
+      "category": "multi_turn",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.state_point_local",
+            "peaks.interrupted_prefix_count.value"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 2,
+          "answerability": "answerable",
+          "evidence_refs": [
+            "audit.dataset_id",
+            "audit.implementation_id",
+            "audit.event_content_sha256"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        },
+        {
+          "turn_number": 3,
+          "answerability": "partial",
+          "evidence_refs": [
+            "peaks.interrupted_prefix_count.value",
+            "audit.dataset_id"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-B-01",
+      "category": "boundary",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "partial",
+          "evidence_refs": [
+            "current.interrupted_prefix_count",
+            "semantic_boundaries.overview",
+            "identity.collector_id",
+            "capability_observations.dns_http_traffic_user_experience.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-B-02",
+      "category": "boundary",
+      "passed": true,
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "expected_fact_count": 1,
+      "matched_fact_count": 1,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "unsupported",
+          "evidence_refs": [
+            "capability_observations.update_activity.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-B-03",
+      "category": "boundary",
+      "passed": true,
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "unsupported",
+          "evidence_refs": [
+            "current.interrupted_prefix_count",
+            "semantic_boundaries.overview",
+            "identity.collector_id",
+            "capability_observations.dns_http_traffic_user_experience.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-B-04",
+      "category": "boundary",
+      "passed": true,
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "expected_fact_count": 1,
+      "matched_fact_count": 1,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "unsupported",
+          "evidence_refs": [
+            "capability_observations.dns_http_traffic_user_experience.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-B-05",
+      "category": "boundary",
+      "passed": true,
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "expected_fact_count": 1,
+      "matched_fact_count": 1,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "unsupported",
+          "evidence_refs": [
+            "semantic_boundaries.overview"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-X-01",
+      "category": "exception",
+      "passed": true,
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "partial",
+          "evidence_refs": [
+            "event.event_end_at_utc",
+            "event.event_duration_seconds"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": true
+        }
+      ]
+    },
+    {
+      "case_id": "P0-X-02",
+      "category": "exception",
+      "passed": true,
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data",
+      "expected_fact_count": 1,
+      "matched_fact_count": 1,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "invalid_data",
+          "evidence_refs": [
+            "capability_observations.update_activity.status"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": false
+        }
+      ]
+    },
+    {
+      "case_id": "P0-X-03",
+      "category": "exception",
+      "passed": true,
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data",
+      "expected_fact_count": 1,
+      "matched_fact_count": 1,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "invalid_data",
+          "evidence_refs": [
+            "asns.not_found_probe.total"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": false
+        }
+      ]
+    },
+    {
+      "case_id": "P0-X-04",
+      "category": "exception",
+      "passed": true,
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data",
+      "expected_fact_count": 0,
+      "matched_fact_count": 0,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "invalid_data",
+          "evidence_refs": [],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": false
+        }
+      ]
+    },
+    {
+      "case_id": "P0-X-05",
+      "category": "exception",
+      "passed": true,
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data",
+      "expected_fact_count": 2,
+      "matched_fact_count": 2,
+      "forbidden_assertion_hits": [],
+      "identity_failure_count": 0,
+      "context_failures": [],
+      "failures": [],
+      "turns": [
+        {
+          "turn_number": 1,
+          "answerability": "invalid_data",
+          "evidence_refs": [
+            "series.point_count",
+            "series.timestamp_count"
+          ],
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "validation_passed": false
+        }
+      ]
+    }
+  ]
+}

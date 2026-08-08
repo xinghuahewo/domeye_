@@ -1,0 +1,90 @@
+{
+  "schema_version": "country_outage_p1_browser_acceptance_v1",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "observed_at": "2026-08-08T21:12:20+08:00",
+  "passed": true,
+  "runtime_scope": "local_acceptance_only_not_deployed_or_production_verified",
+  "entry_url": "http://127.0.0.1:28571/events/detail?ref=country_outage%2F2026-02-27%2B09%3A12%3A32%2FIR%2F1%2Fr",
+  "chat_url": "http://127.0.0.1:28571/events/chat?ref=country_outage/2026-02-27%2B09:12:32/IR/1/r&publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+  "binding": {
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "data_through": "2026-03-11T00:00:00Z",
+    "is_final_in_data_range": false
+  },
+  "checks": [
+    {
+      "check_id": "P1-BROWSER-01",
+      "passed": true,
+      "observation": "事件证据页提供 EVENT-BOUND Q&A 入口，点击后保留 ref、publication_id 和 revision。"
+    },
+    {
+      "check_id": "P1-BROWSER-02",
+      "passed": true,
+      "observation": "聊天首屏持续显示 publication、R1、RRC25、data through 和 END UNKNOWN。"
+    },
+    {
+      "check_id": "P1-BROWSER-03",
+      "passed": true,
+      "observation": "首轮概述显示 9,257、3,855、525 与 RRC25 控制面限制，字段级证据可展开。"
+    },
+    {
+      "check_id": "P1-BROWSER-04",
+      "passed": true,
+      "observation": "AS49556 回答显示 50、50、2,103，未混入 AS48715 数值。"
+    },
+    {
+      "check_id": "P1-BROWSER-05",
+      "passed": true,
+      "observation": "追问谁造成时降级为部分回答，显示原因未知，并把上下文清为 boundary。"
+    },
+    {
+      "check_id": "P1-BROWSER-06",
+      "passed": true,
+      "observation": "Update 缺轨道问题显示数据无效与 FAILED CLOSED，未把能力缺失补成 0。"
+    },
+    {
+      "check_id": "P1-BROWSER-07",
+      "passed": true,
+      "observation": "刷新后同一有效 conversation 恢复会话 ID 与已完成轮次，EventSource 重连为 200。"
+    },
+    {
+      "check_id": "P1-BROWSER-08",
+      "passed": true,
+      "observation": "模拟旧会话不可恢复时显示会话恢复说明，并按同一事件身份创建新会话。"
+    },
+    {
+      "check_id": "P1-BROWSER-09",
+      "passed": true,
+      "observation": "桌面 1440x1000 下身份轨、上下文、消息、证据和输入区层级清晰。"
+    },
+    {
+      "check_id": "P1-BROWSER-10",
+      "passed": true,
+      "observation": "窄屏 390x844 下入口、身份、五级状态、证据、键盘输入和发送操作仍可达。"
+    },
+    {
+      "check_id": "P1-BROWSER-11",
+      "passed": true,
+      "observation": "Enter 可发送，Shift+Enter 提示可见，状态使用文字而非只依赖颜色。"
+    },
+    {
+      "check_id": "P1-BROWSER-12",
+      "passed": true,
+      "observation": "浏览器只访问同源 /api/v2/country-outage/chat，未获得 Sidecar 地址、内部 Token 或模型入口。"
+    }
+  ],
+  "screenshots": [
+    {
+      "viewport": "1440x1000",
+      "path": "evaluation/country-outage/p1-v1/browser-desktop.png",
+      "sha256": "f23b60a1d0a002f37b37242cc7570046ea3c983f03d9672ba3997e4f92bd402f"
+    },
+    {
+      "viewport": "390x844",
+      "path": "evaluation/country-outage/p1-v1/browser-narrow.png",
+      "sha256": "d101965a6a4e753574a65886914e73b048474c1a2aa715d8e82a2585e586a01d"
+    }
+  ]
+}

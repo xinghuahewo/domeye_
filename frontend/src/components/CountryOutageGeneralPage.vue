@@ -243,6 +243,20 @@ function asProfileLink(asn: number) {
   }
 }
 
+const chatLink = computed(() => ({
+  name: 'country-outage-chat',
+  query: {
+    ref: props.reference,
+    publication_id: props.page.resolution.publication_id,
+    revision: String(props.page.resolution.revision),
+    incident_id: props.page.resolution.incident_id,
+    collector_id: props.page.resolution.collector_id,
+    data_through: props.page.resolution.data_through || undefined,
+    final: String(props.page.resolution.is_final_in_data_range),
+    country: props.page.resolution.country_code,
+  },
+}))
+
 onMounted(() => {
   void loadAffectedAs()
   void loadPaths()
@@ -260,6 +274,10 @@ onMounted(() => {
         <p>国家路由可见性观测</p>
         <h1>{{ countryName }}网络中断事件</h1>
         <strong>{{ lifecycleText }}</strong>
+        <RouterLink class="chat-entry" :to="chatLink">
+          <span>EVENT-BOUND Q&amp;A</span>
+          围绕此事件提问 <b>→</b>
+        </RouterLink>
       </div>
       <dl class="event-window">
         <div><dt>检测时间</dt><dd>{{ formatTime(overview.event.detected_at_utc) }}</dd></div>
@@ -411,6 +429,10 @@ onMounted(() => {
 .hero-copy p { margin: 28px 0 7px; color: #83c4d7; font: 750 10px/1.2 var(--mono); letter-spacing: .11em; }
 .hero-copy h1 { margin: 0; font-size: clamp(30px, 4vw, 50px); line-height: 1.04; letter-spacing: -.05em; }
 .hero-copy strong { display: inline-block; margin-top: 14px; color: #f5b17f; font-size: 12px; }
+.chat-entry { display: flex; width: fit-content; align-items: center; gap: 10px; margin-top: 22px; padding: 10px 12px; color: #102a3a; background: #f5b17f; border: 1px solid rgba(255,255,255,.34); border-radius: 3px; font-size: 11px; font-weight: 800; text-decoration: none; transition: transform .18s ease, background .18s ease; }
+.chat-entry span { color: #5b321e; font: 800 8px/1 var(--mono); letter-spacing: .08em; }
+.chat-entry:hover { transform: translateY(-1px); background: #ffc79d; }
+.chat-entry:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .event-window { display: grid; gap: 1px; margin: 0; background: rgba(255,255,255,.17); }
 .event-window div { padding: 13px 15px; background: rgba(8, 29, 40, .64); }
 .event-window dt { color: #8fb2c1; font-size: 9px; }

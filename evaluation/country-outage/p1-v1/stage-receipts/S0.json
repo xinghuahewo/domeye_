@@ -1,0 +1,16 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v1",
+  "stage": "S0",
+  "stage_name": "事件绑定会话合同与可见壳层",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "conclusion": "一致",
+  "hook_exit_code": 0,
+  "requirements": ["P1-FE-01", "P1-FE-02", "P1-FE-03", "P1-FE-09", "P1-BE-01", "P1-BE-03", "P1-BE-06", "P1-BE-09", "P1-SCE-01"],
+  "evidence": [
+    "合法 country_outage 引用、publication、revision 与 RRC25 绑定后才创建会话",
+    "聊天页持续显示 publication、revision、collector、data_through 与 finality",
+    "五级回答状态、字段白名单和同源代理已闭合",
+    "非法引用、额外字段和身份冲突在 Sidecar 前或回答发布前失败关闭"
+  ],
+  "boundary": "只证明入口、身份、状态与壳层；事实、多轮和最终验收由后续阶段回执证明。"
+}
