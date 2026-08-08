@@ -1,0 +1,22 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v1",
+  "stage": "S3",
+  "stage_name": "可靠性、全量候选验收与 P2 入口",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "conclusion": "已修正",
+  "hook_exit_code": 0,
+  "requirements": ["P1-FE-01 至 P1-FE-10", "P1-BE-01 至 P1-BE-12", "P1-SCE-01 至 P1-SCE-12"],
+  "evidence": [
+    "P0 35 个案例为 20/20、5/5、5/5、5/5，事件与 publication 绑定均为 100%",
+    "禁止断言命中 0，无效答案发布 0",
+    "Sidecar 全量 568/568、前端定向 12/12、代理 3/3、候选校验 3/3",
+    "桌面与 390px 窄屏浏览器 12 项检查通过，刷新恢复、失败关闭与字段证据可见",
+    "P1 S0 至 S3 Hook 均以 exit code 0 完成结构、合同与 TASK 边界回检"
+  ],
+  "corrected_deviations": [
+    "浏览器发现原因边界未清旧实体，修正并加入多轮硬门禁",
+    "服务重启后旧会话不可恢复原为静默新建，现显示明确恢复说明",
+    "Hook 发现临时 node_modules 软链接越界，已从最终工作树移除"
+  ],
+  "boundary": "验收结论只适用于 RRC25 事件绑定聊天问答；未部署、未生产验证，P2、外部证据、假设与 RCA 均未实现。"
+}

@@ -21,6 +21,10 @@ import {
   createCountryOutageAgentHttpHandler,
 } from '../server/index.js'
 import {
+  HttpP1GeneralReadModelProvider,
+  P1ConversationManager,
+} from '../chat/index.js'
+import {
   assertCountryOutageLoopbackHost,
   countryOutageScopeAllowsEvent,
   createCountryOutageInternalAuthenticator,
@@ -45,6 +49,45 @@ async function main(): Promise<void> {
   if (sharedToken.length < 24) {
     throw new Error('COUNTRY_OUTAGE_AGENT_SHARED_TOKEN 至少需要 24 字符')
   }
+  if (process.env.COUNTRY_OUTAGE_AGENT_P1_CHAT_ONLY === 'true') {
+    const apiBaseUrl = requiredEnvironmentValue(process.env, 'DOMEYE_API_BASE_URL')
+    const apiTimeoutMs = positiveIntegerEnvironmentValue(
+      process.env,
+      'DOMEYE_API_TIMEOUT_MS',
+      10_000,
+    )
+    const chat = new P1ConversationManager({
+      provider: new HttpP1GeneralReadModelProvider(apiBaseUrl, apiTimeoutMs),
+    })
+    const server = createServer(createCountryOutageAgentHttpHandler({
+      // chat-only 只用于 P1 浏览器/机器验收；报告路径保持未配置，不能冒充正式报告入口。
+      application: {} as CountryOutageAgentOrchestrator,
+      chat,
+      authenticate: createCountryOutageInternalAuthenticator(sharedToken),
+    }))
+    server.requestTimeout = 125_000
+    server.headersTimeout = 10_000
+    server.keepAliveTimeout = 20_000
+    const shutdown = (): void => {
+      server.close(() => process.exit(0))
+    }
+    process.once('SIGINT', shutdown)
+    process.once('SIGTERM', shutdown)
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject)
+      server.listen(port, host, () => resolve())
+    })
+    process.stdout.write(`${JSON.stringify({
+      event: 'country_outage_p1_chat_acceptance_ready',
+      host,
+      port,
+      collector: 'rrc25',
+      persistence: 'ephemeral',
+      reportCapability: 'not_configured',
+      p1Chat: 'event-bound-deterministic',
+    })}\n`)
+    return
+  }
   const narratorMode = requiredEnvironmentValue(
     process.env,
     'COUNTRY_OUTAGE_AGENT_NARRATOR',
@@ -55,13 +98,15 @@ async function main(): Promise<void> {
     )
   }
 
-  const client = new DomeyeCountryOutageClient({
-    baseUrl: requiredEnvironmentValue(process.env, 'DOMEYE_API_BASE_URL'),
-    timeoutMs: positiveIntegerEnvironmentValue(
+  const apiBaseUrl = requiredEnvironmentValue(process.env, 'DOMEYE_API_BASE_URL')
+  const apiTimeoutMs = positiveIntegerEnvironmentValue(
       process.env,
       'DOMEYE_API_TIMEOUT_MS',
       10_000,
-    ),
+    )
+  const client = new DomeyeCountryOutageClient({
+    baseUrl: apiBaseUrl,
+    timeoutMs: apiTimeoutMs,
     maximumSnapshotBatchRetries: 2,
   })
   const artifactBuilder = new CountryOutageArtifactBuilder(
@@ -111,9 +156,13 @@ async function main(): Promise<void> {
       new DisabledExternalEvidenceProvider(),
     annexComposer: new DisabledAnnexComposer(),
   })
+  const chat = new P1ConversationManager({
+    provider: new HttpP1GeneralReadModelProvider(apiBaseUrl, apiTimeoutMs),
+  })
   const server = createServer(
     createCountryOutageAgentHttpHandler({
       application: orchestrator,
+      chat,
       authenticate: createCountryOutageInternalAuthenticator(sharedToken),
     }),
   )
@@ -141,6 +190,7 @@ async function main(): Promise<void> {
       persistence: 'ephemeral',
       piVersion: '0.82.1',
       externalEvidence: 'disabled',
+      p1Chat: 'event-bound-deterministic',
     })}\n`,
   )
 }

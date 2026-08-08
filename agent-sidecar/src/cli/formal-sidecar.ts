@@ -36,6 +36,10 @@ import {
   type CountryOutageReportServiceIdentity,
 } from '../server/index.js'
 import {
+  HttpP1GeneralReadModelProvider,
+  P1ConversationManager,
+} from '../chat/index.js'
+import {
   frozenAcceptanceEnvironmentInteger,
   loadFormalCountryOutageAcceptanceRuntime,
   type FormalCountryOutageAcceptanceRuntime,
@@ -91,6 +95,7 @@ export interface FormalCountryOutageSidecar {
   server: Server
   core: CountryOutageCoreSessionManager
   orchestrator: CountryOutageAgentOrchestrator
+  chat: P1ConversationManager
   /** @deprecated 使用 orchestrator；仅保留既有调用兼容。 */
   manager: CountryOutageAgentOrchestrator
   narrator: PiReportNarrator
@@ -443,8 +448,15 @@ export async function createFormalCountryOutageSidecar(
       new DisabledExternalEvidenceProvider(),
     annexComposer: new DisabledAnnexComposer(),
   })
+  const chat = new P1ConversationManager({
+    provider: new HttpP1GeneralReadModelProvider(
+      config.apiBaseUrl,
+      config.apiTimeoutMs,
+    ),
+  })
   const requestListener = createCountryOutageAgentHttpHandler({
     application: orchestrator,
+    chat,
     authenticate: createCountryOutageInternalAuthenticator(
       config.sharedToken,
     ),
@@ -462,6 +474,7 @@ export async function createFormalCountryOutageSidecar(
     server,
     core,
     orchestrator,
+    chat,
     manager: orchestrator,
     narrator,
     binding,

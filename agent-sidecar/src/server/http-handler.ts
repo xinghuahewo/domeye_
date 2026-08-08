@@ -19,6 +19,12 @@ import type {
 } from '../application/contracts.js'
 import type { CountryOutageSessionManager } from './country-outage-session-manager.js'
 import { CountryOutageHttpError } from './errors.js'
+import type {
+  CreateP1ConversationRequest,
+  CreateP1TurnRequest,
+  P1ChatApplication,
+  P1ChatEvent,
+} from '../chat/contracts.js'
 
 const BASE_PATH = '/country-outage'
 const MAX_REQUEST_BYTES = 64 * 1024
@@ -30,9 +36,78 @@ export interface CountryOutageAgentHttpHandlerOptions {
    */
   application?: CountryOutageAgentOrchestrator
   manager?: CountryOutageSessionManager
+  /** P1 事件绑定聊天是独立于报告追问的窄应用。 */
+  chat?: P1ChatApplication
   authenticate: AuthenticateCountryOutageRequest
   basePath?: string
   sseHeartbeatMs?: number
+}
+
+function createP1ConversationBody(
+  request: IncomingMessage,
+  value: unknown,
+): CreateP1ConversationRequest {
+  const body = objectBody(value)
+  exactKeys(body, [
+    'event_reference',
+    'publication_id',
+    'revision',
+    'idempotency_key',
+  ])
+  const eventReference = body.event_reference
+  if (
+    typeof eventReference !== 'string' ||
+    !/^country_outage\/\d{4}-\d{2}-\d{2}[ +]\d{2}:\d{2}:\d{2}\/[A-Z]{2}\/[1-9]\d*\/r$/.test(eventReference)
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_event_reference',
+      'event_reference 不是合法 country_outage 引用',
+    )
+  }
+  if (
+    typeof body.publication_id !== 'string' ||
+    body.publication_id.length < 1 ||
+    body.publication_id.length > 256
+  ) {
+    throw new CountryOutageHttpError(400, 'invalid_publication_id', 'publication_id 无效')
+  }
+  if (
+    typeof body.revision !== 'number' ||
+    !Number.isSafeInteger(body.revision) ||
+    body.revision < 1
+  ) {
+    throw new CountryOutageHttpError(400, 'invalid_revision', 'revision 必须是正整数')
+  }
+  return {
+    event_reference: eventReference,
+    publication_id: body.publication_id,
+    revision: body.revision,
+    idempotency_key: idempotencyKey(request, body),
+  }
+}
+
+function createP1TurnBody(
+  request: IncomingMessage,
+  value: unknown,
+): CreateP1TurnRequest {
+  const body = objectBody(value)
+  exactKeys(body, ['question', 'idempotency_key'])
+  if (
+    typeof body.question !== 'string' ||
+    body.question.trim().length < 1 ||
+    body.question.length > 2_000
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_question',
+      'question 必须是 1 至 2,000 字符的非空文本',
+    )
+  }
+  return {
+    question: body.question.trim(),
+    idempotency_key: idempotencyKey(request, body),
+  }
 }
 
 function writeJson(
@@ -342,6 +417,15 @@ function writeSseEvent(
   response.write(`data: ${JSON.stringify(event)}\n\n`)
 }
 
+function writeP1SseEvent(
+  response: ServerResponse,
+  event: P1ChatEvent,
+): void {
+  response.write(`id: ${event.event_id}\n`)
+  response.write(`event: ${event.event_type}\n`)
+  response.write(`data: ${JSON.stringify(event)}\n\n`)
+}
+
 async function authenticate(
   options: CountryOutageAgentHttpHandlerOptions,
   request: IncomingMessage,
@@ -418,6 +502,157 @@ export function createCountryOutageAgentHttpHandler(
     void (async () => {
       const url = new URL(request.url ?? '/', 'http://sidecar.invalid')
       const pathname = url.pathname
+
+      if (pathname === `${basePath}/chat/conversations`) {
+        if (!options.chat) {
+          throw new CountryOutageHttpError(503, 'p1_chat_not_configured', 'P1 事件聊天尚未配置')
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createP1ConversationBody(request, await readJson(request))
+        const result = await options.chat.createConversation(principal, body)
+        writeJson(response, result.deduplicated ? 200 : 201, result)
+        return
+      }
+
+      const chatConversationMatch = pathname.match(
+        new RegExp(`^${basePath}/chat/conversations/([^/]+)$`),
+      )
+      if (chatConversationMatch) {
+        if (!options.chat) {
+          throw new CountryOutageHttpError(503, 'p1_chat_not_configured', 'P1 事件聊天尚未配置')
+        }
+        if (request.method !== 'GET') {
+          methodNotAllowed(response, 'GET')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const result = await options.chat.getConversation(
+          principal,
+          decodeURIComponent(chatConversationMatch[1]!),
+        )
+        writeJson(response, 200, result)
+        return
+      }
+
+      const chatTurnsMatch = pathname.match(
+        new RegExp(`^${basePath}/chat/conversations/([^/]+)/turns$`),
+      )
+      if (chatTurnsMatch) {
+        if (!options.chat) {
+          throw new CountryOutageHttpError(503, 'p1_chat_not_configured', 'P1 事件聊天尚未配置')
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createP1TurnBody(request, await readJson(request))
+        const result = await options.chat.createTurn(
+          principal,
+          decodeURIComponent(chatTurnsMatch[1]!),
+          body,
+        )
+        writeJson(response, result.deduplicated ? 200 : 201, result)
+        return
+      }
+
+      const chatCancelMatch = pathname.match(
+        new RegExp(`^${basePath}/chat/conversations/([^/]+)/turns/([^/]+)/cancel$`),
+      )
+      if (chatCancelMatch) {
+        if (!options.chat) {
+          throw new CountryOutageHttpError(503, 'p1_chat_not_configured', 'P1 事件聊天尚未配置')
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const body = objectBody(await readJson(request))
+        exactKeys(body, [])
+        const principal = await authenticate(options, request)
+        const result = await options.chat.cancelTurn(
+          principal,
+          decodeURIComponent(chatCancelMatch[1]!),
+          decodeURIComponent(chatCancelMatch[2]!),
+        )
+        writeJson(response, 200, result)
+        return
+      }
+
+      const chatRebindMatch = pathname.match(
+        new RegExp(`^${basePath}/chat/conversations/([^/]+)/rebind$`),
+      )
+      if (chatRebindMatch) {
+        if (!options.chat) {
+          throw new CountryOutageHttpError(503, 'p1_chat_not_configured', 'P1 事件聊天尚未配置')
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createP1ConversationBody(request, await readJson(request))
+        const result = await options.chat.rebind(
+          principal,
+          decodeURIComponent(chatRebindMatch[1]!),
+          body,
+        )
+        writeJson(response, 201, result)
+        return
+      }
+
+      const chatEventsMatch = pathname.match(
+        new RegExp(`^${basePath}/chat/conversations/([^/]+)/events$`),
+      )
+      if (chatEventsMatch) {
+        if (!options.chat) {
+          throw new CountryOutageHttpError(503, 'p1_chat_not_configured', 'P1 事件聊天尚未配置')
+        }
+        if (request.method !== 'GET') {
+          methodNotAllowed(response, 'GET')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const conversationId = decodeURIComponent(chatEventsMatch[1]!)
+        const afterEventId = parseAfterEventId(request, url)
+        let closed = false
+        let heartbeat: ReturnType<typeof setInterval> | undefined
+        const subscription = await options.chat.subscribe(
+          principal,
+          conversationId,
+          afterEventId,
+          (event) => {
+            if (!closed) writeP1SseEvent(response, event)
+          },
+        )
+        const close = (): void => {
+          if (closed) return
+          closed = true
+          subscription.close()
+          if (heartbeat) clearInterval(heartbeat)
+          if (!response.writableEnded) response.end()
+        }
+        response.writeHead(200, {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-store, no-transform',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+          'X-Content-Type-Options': 'nosniff',
+        })
+        response.write('retry: 3000\n\n')
+        for (const event of subscription.replay) writeP1SseEvent(response, event)
+        subscription.activate()
+        heartbeat = setInterval(() => {
+          if (!closed) response.write(': heartbeat\n\n')
+        }, heartbeatMs)
+        heartbeat.unref()
+        request.once('close', close)
+        return
+      }
 
       if (
         pathname ===

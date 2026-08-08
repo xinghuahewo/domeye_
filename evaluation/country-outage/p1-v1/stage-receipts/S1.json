@@ -1,0 +1,16 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v1",
+  "stage": "S1",
+  "stage_name": "当前事实单轮问答纵向闭合",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "conclusion": "一致",
+  "hook_exit_code": 0,
+  "requirements": ["P1-FE-03", "P1-FE-04", "P1-FE-05", "P1-BE-04", "P1-BE-05", "P1-BE-06", "P1-BE-07", "P1-SCE-02", "P1-SCE-03", "P1-SCE-04", "P1-SCE-05"],
+  "evidence": [
+    "P0 20 个直接问题在同一候选上 20/20 通过",
+    "事实、单位、时间、ASN 与证据引用由确定性逻辑生成",
+    "Update/Withdraw 未暴露返回 unsupported，缺失能力不补零",
+    "浏览器回答先给结论，再显示字段级证据、限制与未知"
+  ],
+  "boundary": "只验收当前页面/API 白名单事实，不构成组合调查或 Evidence Graph。"
+}
