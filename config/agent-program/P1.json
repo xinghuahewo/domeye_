@@ -1,0 +1,130 @@
+{
+  "schema_version": "country_outage_agent_program_review_config_v1",
+  "project": "P1",
+  "project_name": "RRC25 事件绑定聊天问答",
+  "acceptance_path": "docs/agent/P1-聊天问答/Task-Spec-最终验收文档.md",
+  "plan_path": "docs/agent/P1-聊天问答/Plan-分阶段计划.md",
+  "stage_ids": ["S0", "S1", "S2", "S3", "S4"],
+  "stage_names": {
+    "S0": "运行能力与执行合同冻结",
+    "S1": "确定性单轮问答垂直切片",
+    "S2": "开放目标到封闭计划",
+    "S3": "多轮状态与事件切换",
+    "S4": "同候选最终验收与 P2 入口"
+  },
+  "requirement_groups": {
+    "用户与前端要求": {
+      "prefix": "P1-UX",
+      "first": 1,
+      "last": 10
+    },
+    "确定性合同": {
+      "prefix": "P1-CTR",
+      "first": 1,
+      "last": 16
+    },
+    "联合场景": {
+      "prefix": "P1-SCE",
+      "first": 1,
+      "last": 12
+    }
+  },
+  "stage_subheadings": [
+    "#### 入口",
+    "#### 前端与使用效果",
+    "#### 后端与评测效果",
+    "#### 出口",
+    "#### 边界"
+  ],
+  "stage_due": {
+    "S0": {
+      "用户与前端要求": ["P1-UX-01", "P1-UX-04", "P1-UX-05", "P1-UX-09"],
+      "确定性合同": ["P1-CTR-01", "P1-CTR-02", "P1-CTR-03", "P1-CTR-04", "P1-CTR-05", "P1-CTR-06", "P1-CTR-07", "P1-CTR-09"],
+      "联合场景": []
+    },
+    "S1": {
+      "用户与前端要求": ["P1-UX-01", "P1-UX-03", "P1-UX-04", "P1-UX-05", "P1-UX-10"],
+      "确定性合同": ["P1-CTR-04", "P1-CTR-05", "P1-CTR-06", "P1-CTR-07", "P1-CTR-08", "P1-CTR-09", "P1-CTR-10", "P1-CTR-16"],
+      "联合场景": ["P1-SCE-01"]
+    },
+    "S2": {
+      "用户与前端要求": ["P1-UX-02", "P1-UX-05", "P1-UX-06", "P1-UX-08"],
+      "确定性合同": ["P1-CTR-08", "P1-CTR-09", "P1-CTR-10", "P1-CTR-11", "P1-CTR-12", "P1-CTR-13"],
+      "联合场景": ["P1-SCE-06", "P1-SCE-08", "P1-SCE-11"]
+    },
+    "S3": {
+      "用户与前端要求": ["P1-UX-07", "P1-UX-08", "P1-UX-09", "P1-UX-10"],
+      "确定性合同": ["P1-CTR-02", "P1-CTR-10", "P1-CTR-14", "P1-CTR-15", "P1-CTR-16"],
+      "联合场景": ["P1-SCE-07", "P1-SCE-09", "P1-SCE-10", "P1-SCE-12"]
+    },
+    "S4": {
+      "用户与前端要求": ["P1-UX-01", "P1-UX-02", "P1-UX-03", "P1-UX-04", "P1-UX-05", "P1-UX-06", "P1-UX-07", "P1-UX-08", "P1-UX-09", "P1-UX-10"],
+      "确定性合同": ["P1-CTR-01", "P1-CTR-02", "P1-CTR-03", "P1-CTR-04", "P1-CTR-05", "P1-CTR-06", "P1-CTR-07", "P1-CTR-08", "P1-CTR-09", "P1-CTR-10", "P1-CTR-11", "P1-CTR-12", "P1-CTR-13", "P1-CTR-14", "P1-CTR-15", "P1-CTR-16"],
+      "联合场景": ["P1-SCE-01", "P1-SCE-02", "P1-SCE-03", "P1-SCE-04", "P1-SCE-05", "P1-SCE-06", "P1-SCE-07", "P1-SCE-08", "P1-SCE-09", "P1-SCE-10", "P1-SCE-11", "P1-SCE-12"]
+    }
+  },
+  "required_acceptance_phrases": [
+    "本文只设计 P1 最终效果",
+    "自然语言体验足够灵活",
+    "事实、证据、权限、执行和状态仍然确定可控",
+    "RRC25 事件绑定聊天问答",
+    "P0 v1.3 是唯一入口能力依据",
+    "每次事件绑定后",
+    "当前 IR publication 的能力不得静默外推到其他事件",
+    "开放 UserGoalPlan",
+    "封闭 GroundingPlan",
+    "`UserGoalPlan` 目标保真率不低于 95%",
+    "`GroundingPlan` 合法性是 100% 硬门",
+    "任何非法节点到达执行器",
+    "`supported`、`partial`、`clarify`、`unsupported`",
+    "35 个案例",
+    "独立专家角色只审核产品语义真值",
+    "Hook 通过只能证明合同结构"
+  ],
+  "required_plan_phrases": [
+    "本计划不是固定任务清单",
+    "只定义阶段入口、前端与使用效果、后端与评测效果、出口和边界",
+    "路线可以调整",
+    "S0 至 S4",
+    "Tool 可以拆分或",
+    "不能因为实现困难或模型表现不佳而降低最终验收门",
+    "不因 S1 的一条垂直切片提前宣告通过",
+    "未达到当前阶段出口时不得把阶段标记为完成",
+    "每个阶段结束必须调用 P1 Alignment Hook",
+    "独立产品语义审核",
+    "Hook 结构检查通过不等于",
+    "--stage S0",
+    "--stage S4",
+    "可以改 Plan"
+  ],
+  "forbidden_acceptance_headings": [
+    "## 技术栈",
+    "## 实施步骤",
+    "## 代码结构",
+    "## 人员排期"
+  ],
+  "forbidden_plan_headings": [
+    "#### 固定任务清单",
+    "#### 固定技术方案",
+    "#### 具体文件改动",
+    "#### 人员工期"
+  ],
+  "review_questions": [
+    "本阶段入口是否有同一候选证据，还是借用了文档、旧分支、源码存在或其他运行进程",
+    "P1 能力是否从 P0 v1.3 adopt 候选明确选择，defer/reject 是否没有被模型或 Prompt 绕过",
+    "是否在每次事件绑定后验证事件级 capabilities、incident、publication、revision、RRC25 和 data through，而不是外推当前 IR",
+    "Capability 与 Tool 是否分层，Tool 拆分或合并后是否仍保留完整用户结果、身份、单位、错误和禁止用途",
+    "开放 UserGoalPlan 是否完整保留用户原意，封闭 GroundingPlan 是否只包含获权且通过 Oracle 的执行节点",
+    "事实、数值、时点、ASN、路径和 evidence refs 是否全部来自确定性结果，模型是否创造了事实或能力",
+    "多目标问题是否逐子目标裁决，可回答部分、越界部分、证据不足和执行失败是否没有互相污染",
+    "null、unknown、unavailable、not_configured 和 0 是否保持不同，地址族单位、逐槽峰值和累计人口是否没有混淆",
+    "原因、责任、政府行为、全国中断、真实用户影响、恢复、DNS、HTTP、流量和外部事实是否正确降级",
+    "EvidenceState 与 DialogState 是否分离，计划、权限、执行和回答全部通过后才提交状态，事件切换是否清理旧上下文",
+    "同义、省略、口语、多意图和上下文灵活性是否通过冻结评测证明，而不是通过手写样例或一次演示宣称",
+    "独立专家角色是否审核产品语义真值并明确给出 PASS 或阻断，代码规范审核是否没有冒充产品审核",
+    "当前改动是否只在 TASK.json 允许路径内，是否修改冻结核心、P0 真值、旧 P1/P1.1、产品实现、生产配置或未授权范围",
+    "是否把 Hook、单元测试、离线模型分数、HTTP 200、截图或本地候选越级写成 P1 验收、部署或生产验证",
+    "若路线调整，是否记录触发证据、受影响要求和回归范围，是否没有通过降低 Task Spec 消除偏离"
+  ],
+  "final_response_template": "国家中断 Agent P1 最终验收回检：{stage} 一致 / 已修正 / 存在待处理偏离（要求编号、证据与原因）"
+}
