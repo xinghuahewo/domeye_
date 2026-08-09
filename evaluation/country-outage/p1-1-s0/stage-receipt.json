@@ -1,0 +1,56 @@
+{
+  "schema_version": "country_outage_p1_1_stage_receipt_v1",
+  "stage": "S0",
+  "stage_name": "语义合同、能力目录与基线",
+  "contract_candidate_id": "p1-1-s0-contract-7e534af51d92",
+  "conclusion": "一致",
+  "completed_at": "2026-08-09T13:49:08+08:00",
+  "requirements": [
+    "P1.1-EFF-04",
+    "P1.1-EFF-05",
+    "P1.1-EFF-13",
+    "P1.1-EFF-16",
+    "P1.1-GATE-01",
+    "P1.1-GATE-02",
+    "P1.1-GATE-08",
+    "P1.1-GATE-14",
+    "P1.1-SCE-01",
+    "P1.1-SCE-02"
+  ],
+  "evidence_paths": [
+    "contracts/agent/country-outage-semantic-plan-p1-1.schema.json",
+    "contracts/agent/country-outage-semantic-case-p1-1.schema.json",
+    "contracts/agent/country-outage-capability-catalog-p1-1.json",
+    "contracts/agent/country-outage-semantic-policy-p1-1.json",
+    "evaluation/country-outage/p1-1-s0/semantic-contrast-set.json",
+    "evaluation/country-outage/p1-1-s0/p1-v1-baseline-receipt.json",
+    "docs/agent/P1.1-受控语义规划/S0-语义合同与评测说明.md",
+    "dev/tools/validate_country_outage_p1_1_s0.py",
+    "dev/tests/test_country_outage_p1_1_s0.py"
+  ],
+  "observed_results": [
+    "Semantic Plan 顶层、goal、entities、operator、状态提案与澄清提案均使用字段白名单和 additionalProperties=false",
+    "incident、publication、revision、rrc25、事实、证据、answerability、trace 和状态提交结果均由系统拥有",
+    "Capability Catalog 完整覆盖 17 个受控 requested_goal、9 个 capability 和 8 个规范 operator",
+    "20 条语义对照已审核：地址变化 6、事件切换 6、待澄清或复合表达 7、边界安全 1",
+    "合法计划 fixture 通过；伪造身份、发明算子和错误 capability/operator 配对均被拒绝",
+    "P1-v1 候选 p1-candidate-61354911c7793d75 保持 35/35，RRC25 身份与禁止断言门禁通过"
+  ],
+  "hook": {
+    "command": "python3 .codex/hooks/country_outage_agent_program_review.py --project P1.1 --stage S0",
+    "exit_code": 0,
+    "machine_scope": "只检查合同结构、要求映射、TASK 路径边界和冻结核心偏离信号"
+  },
+  "status_boundary": {
+    "contract_complete": true,
+    "fixtures_tested": true,
+    "p1_baseline_reverified": true,
+    "semantic_planner_implemented": false,
+    "model_provider_connected": false,
+    "shadow_running": false,
+    "deployed": false,
+    "production_verified": false
+  },
+  "next_stage_entry": "S1 只能在本候选合同、对照集和基线身份上生成完全隔离的 Shadow 计划；不得执行、发布或提交状态。",
+  "boundary": "本回执证明 P1.1 S0 合同候选闭合，不证明模型语义质量、Shadow、Validator 运行时、产品接管、部署或生产效果。"
+}

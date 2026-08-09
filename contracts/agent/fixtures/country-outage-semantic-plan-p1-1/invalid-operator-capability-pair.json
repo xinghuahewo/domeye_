@@ -1,0 +1,33 @@
+{
+  "schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "plan_kind": "untrusted_semantic_plan_proposal",
+  "goals": [
+    {
+      "goal_id": "goal_1",
+      "requested_goal": "asn_detail",
+      "capability_proposal": "asn_observation",
+      "entities": {
+        "asn": 49556,
+        "reference_kind": "current_event"
+      },
+      "operator_proposal": {
+        "operator_id": "read_path_sample",
+        "parameters": {
+          "asn": 49556
+        }
+      },
+      "reason_codes": ["explicit_goal", "explicit_asn"]
+    }
+  ],
+  "state_transition_proposal": {
+    "inherit": [],
+    "set": {
+      "topic": "asn",
+      "asn": 49556
+    },
+    "clear": ["address_family"],
+    "reason_codes": ["explicit_asn"]
+  },
+  "clarification_proposal": null,
+  "reason_codes": ["explicit_goal", "explicit_asn"]
+}

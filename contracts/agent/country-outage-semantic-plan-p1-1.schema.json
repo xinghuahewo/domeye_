@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/agent/country-outage-semantic-plan-p1-1.schema.json",
+  "title": "国家中断 Agent P1.1 不可信 Semantic Plan 提案",
+  "description": "只描述模型可提出的语言目标、实体、白名单能力、算子和状态变更建议；事实、证据、事件身份、answerability 与状态提交不属于本 Schema。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_revision",
+    "plan_kind",
+    "goals",
+    "state_transition_proposal",
+    "clarification_proposal",
+    "reason_codes"
+  ],
+  "properties": {
+    "schema_revision": {
+      "const": "country_outage_semantic_plan_p1_1_v1"
+    },
+    "plan_kind": {
+      "const": "untrusted_semantic_plan_proposal"
+    },
+    "goals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/goal"
+      }
+    },
+    "state_transition_proposal": {
+      "$ref": "#/$defs/state_transition_proposal"
+    },
+    "clarification_proposal": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/clarification_proposal"
+        }
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/reason_code"
+      }
+    }
+  },
+  "$defs": {
+    "requested_goal": {
+      "type": "string",
+      "enum": [
+        "event_summary",
+        "timeline_peak",
+        "recovery_status",
+        "current_state",
+        "asn_detail",
+        "asn_ranking",
+        "address_family_change",
+        "address_family_compare",
+        "path_sample",
+        "metric_semantics",
+        "evidence_identity",
+        "event_switch",
+        "cause_request",
+        "responsibility_request",
+        "user_impact_request",
+        "external_evidence_request",
+        "unsupported_metric_request"
+      ]
+    },
+    "capability_id": {
+      "type": ["string", "null"],
+      "enum": [
+        "event_overview",
+        "timeline_extrema",
+        "asn_observation",
+        "address_family_observation",
+        "path_observation",
+        "metric_definition",
+        "evidence_identity",
+        "event_binding",
+        "boundary_policy",
+        null
+      ]
+    },
+    "operator_id": {
+      "type": "string",
+      "enum": [
+        "read_overview",
+        "series_extrema",
+        "query_asn",
+        "read_asn_ranking",
+        "read_path_sample",
+        "read_metric_definitions",
+        "read_binding",
+        "read_audit_identity"
+      ]
+    },
+    "metric_id": {
+      "type": "string",
+      "enum": [
+        "interrupted_prefix_count",
+        "completely_interrupted_prefix_count",
+        "invisible_direction_count",
+        "visible_address_count",
+        "affected_asn_count",
+        "update_activity"
+      ]
+    },
+    "state_field": {
+      "type": "string",
+      "enum": [
+        "topic",
+        "asn",
+        "address_family",
+        "metric",
+        "evidence_anchor",
+        "pending_clarification"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "enum": [
+        "explicit_goal",
+        "explicit_asn",
+        "explicit_address_family",
+        "explicit_event_reference",
+        "explicit_topic_switch",
+        "compound_request",
+        "context_reference",
+        "state_inheritance",
+        "state_clear_requested",
+        "event_switch_requested",
+        "event_switch_requires_reference",
+        "ambiguous_reference",
+        "boundary_request_detected",
+        "unsupported_metric_detected",
+        "prompt_injection_text_ignored"
+      ]
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address_family": {
+          "type": "string",
+          "enum": ["ipv4", "ipv6", "both", "unspecified"]
+        },
+        "asn": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "metric": {
+          "$ref": "#/$defs/metric_id"
+        },
+        "event_reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "reference_kind": {
+          "type": "string",
+          "enum": ["current_event", "explicit_event", "context_entity", "ambiguous"]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "operator_proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator_id", "parameters"],
+      "properties": {
+        "operator_id": {
+          "$ref": "#/$defs/operator_id"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "address_family": {
+              "type": "string",
+              "enum": ["ipv4", "ipv6", "both", "unspecified"]
+            },
+            "asn": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "metric": {
+              "$ref": "#/$defs/metric_id"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          }
+        }
+      }
+    },
+    "goal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "goal_id",
+        "requested_goal",
+        "capability_proposal",
+        "entities",
+        "operator_proposal",
+        "reason_codes"
+      ],
+      "properties": {
+        "goal_id": {
+          "type": "string",
+          "pattern": "^goal_[1-8]$"
+        },
+        "requested_goal": {
+          "$ref": "#/$defs/requested_goal"
+        },
+        "capability_proposal": {
+          "$ref": "#/$defs/capability_id"
+        },
+        "entities": {
+          "$ref": "#/$defs/entities"
+        },
+        "operator_proposal": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/operator_proposal"
+            }
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reason_code"
+          }
+        }
+      }
+    },
+    "pending_clarification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "missing_fields", "source_turn_id", "source_goal_id"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["event_binding", "entity_resolution"]
+        },
+        "missing_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["event_reference", "asn", "address_family", "metric", "reference_target"]
+          }
+        },
+        "source_turn_id": {
+          "type": "string",
+          "pattern": "^turn_[A-Za-z0-9_-]+$"
+        },
+        "source_goal_id": {
+          "type": "string",
+          "pattern": "^goal_[1-8]$"
+        }
+      }
+    },
+    "state_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "topic": {
+          "type": ["string", "null"],
+          "enum": ["summary", "timeline", "asn", "address_family", "path", "metric", "evidence", "boundary", null]
+        },
+        "asn": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "address_family": {
+          "type": ["string", "null"],
+          "enum": ["ipv4", "ipv6", "both", null]
+        },
+        "metric": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/metric_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_anchor": {
+          "type": ["string", "null"],
+          "maxLength": 256
+        },
+        "pending_clarification": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/pending_clarification"
+            }
+          ]
+        }
+      }
+    },
+    "state_transition_proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inherit", "set", "clear", "reason_codes"],
+      "properties": {
+        "inherit": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/state_field"
+          }
+        },
+        "set": {
+          "$ref": "#/$defs/state_set"
+        },
+        "clear": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/state_field"
+          }
+        },
+        "reason_codes": {
+          "type": "array",
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reason_code"
+          }
+        }
+      }
+    },
+    "clarification_proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal_id", "missing_fields", "prompt_key", "reason_code"],
+      "properties": {
+        "goal_id": {
+          "type": "string",
+          "pattern": "^goal_[1-8]$"
+        },
+        "missing_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["event_reference", "asn", "address_family", "metric", "reference_target"]
+          }
+        },
+        "prompt_key": {
+          "type": "string",
+          "enum": ["ask_event_reference", "ask_asn", "ask_address_family", "ask_metric", "ask_reference_target"]
+        },
+        "reason_code": {
+          "$ref": "#/$defs/reason_code"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "plan_kind": "untrusted_semantic_plan_proposal",
+  "goals": [
+    {
+      "goal_id": "goal_1",
+      "requested_goal": "address_family_change",
+      "capability_proposal": "address_family_observation",
+      "entities": {
+        "address_family": "unspecified",
+        "metric": "visible_address_count",
+        "reference_kind": "current_event"
+      },
+      "operator_proposal": {
+        "operator_id": "series_extrema",
+        "parameters": {
+          "address_family": "unspecified",
+          "metric": "visible_address_count"
+        }
+      },
+      "reason_codes": ["explicit_goal"]
+    }
+  ],
+  "state_transition_proposal": {
+    "inherit": [],
+    "set": {
+      "topic": "address_family",
+      "metric": "visible_address_count"
+    },
+    "clear": ["asn"],
+    "reason_codes": ["explicit_goal"]
+  },
+  "clarification_proposal": null,
+  "reason_codes": ["explicit_goal"]
+}

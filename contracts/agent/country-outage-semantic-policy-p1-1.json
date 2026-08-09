@@ -1,0 +1,179 @@
+{
+  "schema_version": "country_outage_semantic_policy_contract_v1",
+  "policy_revision": "country_outage_semantic_policy_p1_1_v1",
+  "semantic_plan_schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "capability_catalog_revision": "country_outage_capability_catalog_p1_1_v1",
+  "field_ownership": {
+    "model_proposal_fields": [
+      "requested_goal",
+      "capability_proposal",
+      "entities",
+      "operator_proposal",
+      "state_transition_proposal",
+      "clarification_proposal",
+      "reason_codes"
+    ],
+    "system_owned_identity_fields": [
+      "incident_id",
+      "legacy_reference",
+      "publication_id",
+      "revision",
+      "collector_id",
+      "cohort_id",
+      "country_code",
+      "window_start_utc",
+      "window_end_utc",
+      "data_through",
+      "is_final_in_data_range",
+      "lifecycle_state"
+    ],
+    "system_owned_result_fields": [
+      "answerability",
+      "fact_values",
+      "evidence_refs",
+      "units",
+      "observed_at_utc",
+      "limitations",
+      "unknowns",
+      "validation_result",
+      "state_commit_result"
+    ],
+    "system_owned_trace_fields": [
+      "provider_alias",
+      "model_alias",
+      "model_revision",
+      "model_parameters_revision",
+      "prompt_revision",
+      "semantic_plan_schema_revision",
+      "capability_catalog_revision",
+      "validator_revision",
+      "baseline_rule_revision",
+      "input_fingerprint",
+      "latency_ms",
+      "input_tokens",
+      "output_tokens",
+      "estimated_cost",
+      "failure_classification"
+    ]
+  },
+  "answerability_policy": [
+    {
+      "requested_goals": [
+        "event_summary",
+        "timeline_peak",
+        "recovery_status",
+        "current_state",
+        "asn_detail",
+        "asn_ranking",
+        "address_family_change",
+        "address_family_compare",
+        "path_sample",
+        "metric_semantics",
+        "evidence_identity"
+      ],
+      "decision": "validate_then_execute",
+      "owner": "deterministic_policy_and_fact_layer"
+    },
+    {
+      "requested_goals": ["event_switch"],
+      "decision": "validate_or_clarify_event_binding",
+      "owner": "deterministic_binding_service"
+    },
+    {
+      "requested_goals": ["cause_request"],
+      "decision": "insufficient_evidence",
+      "owner": "deterministic_boundary_policy"
+    },
+    {
+      "requested_goals": ["responsibility_request", "user_impact_request", "external_evidence_request", "unsupported_metric_request"],
+      "decision": "unsupported",
+      "owner": "deterministic_boundary_policy"
+    }
+  ],
+  "state_contract": {
+    "proposal_fields": ["topic", "asn", "address_family", "metric", "evidence_anchor", "pending_clarification"],
+    "operations": ["inherit", "set", "clear"],
+    "commit_owner": "conversation_manager",
+    "atomic_commit_prerequisites": [
+      "proposal_schema_valid",
+      "identity_valid",
+      "capability_valid",
+      "parameters_valid",
+      "boundary_valid",
+      "operator_success",
+      "facts_valid",
+      "evidence_valid",
+      "answer_publication_success",
+      "turn_is_current_and_not_cancelled"
+    ],
+    "must_not_commit_when": [
+      "shadow_plan",
+      "schema_invalid",
+      "policy_invalid",
+      "operator_failed",
+      "fact_or_evidence_invalid",
+      "provider_timeout_or_failure",
+      "turn_cancelled",
+      "turn_completed_out_of_order",
+      "revision_drift"
+    ],
+    "pending_clarification_rules": [
+      "必须绑定 missing_fields、source_turn_id 和 source_goal_id",
+      "当前表达补齐缺失字段时完成澄清并清除 pending_clarification",
+      "当前表达明确切换主题时清除旧 pending_clarification 并重新规划",
+      "只有当前表达与旧澄清联合解析后仍不唯一时才继续澄清",
+      "待澄清状态不得覆盖当前事件的系统身份"
+    ]
+  },
+  "plan_identities": [
+    {
+      "plan_kind": "baseline",
+      "may_execute": true,
+      "may_publish": true,
+      "may_commit_state_after_validation": true,
+      "purpose": "P1-v1 冻结确定性规则基线"
+    },
+    {
+      "plan_kind": "shadow",
+      "may_execute": false,
+      "may_publish": false,
+      "may_commit_state_after_validation": false,
+      "purpose": "只用于结构化差异观测"
+    },
+    {
+      "plan_kind": "reviewed",
+      "may_execute": false,
+      "may_publish": false,
+      "may_commit_state_after_validation": false,
+      "purpose": "人工审核后的评测参考真值"
+    },
+    {
+      "plan_kind": "executed",
+      "may_execute": true,
+      "may_publish": true,
+      "may_commit_state_after_validation": true,
+      "purpose": "经 Validator 选择的唯一执行计划；S0 不产生此类运行结果"
+    }
+  ],
+  "diff_dimensions": [
+    "goal_completeness",
+    "goal_overreach",
+    "entity_resolution",
+    "capability_mapping",
+    "operator_mapping",
+    "policy_decision",
+    "clarification_need",
+    "state_inherit_set_clear",
+    "identity_injection_attempt",
+    "schema_validity"
+  ],
+  "security_contract": {
+    "browser_direct_provider_access": false,
+    "model_dynamic_tool_discovery": false,
+    "model_external_url_access": false,
+    "model_identity_override": false,
+    "model_fact_or_evidence_generation": false,
+    "untrusted_inputs": ["user_utterance", "chat_text", "user_url", "quoted_text", "model_output"]
+  },
+  "boundary": "本合同只冻结 S0 字段所有权、政策、状态提交和差异语义；不代表 Validator、Provider 或执行接管已经实现。"
+}

@@ -1,0 +1,43 @@
+{
+  "schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "plan_kind": "untrusted_semantic_plan_proposal",
+  "goals": [
+    {
+      "goal_id": "goal_1",
+      "requested_goal": "timeline_peak",
+      "capability_proposal": "timeline_extrema",
+      "entities": {
+        "metric": "interrupted_prefix_count",
+        "reference_kind": "current_event"
+      },
+      "operator_proposal": {
+        "operator_id": "series_extrema",
+        "parameters": {
+          "metric": "interrupted_prefix_count"
+        }
+      },
+      "reason_codes": ["explicit_goal", "compound_request"]
+    },
+    {
+      "goal_id": "goal_2",
+      "requested_goal": "cause_request",
+      "capability_proposal": "boundary_policy",
+      "entities": {
+        "reference_kind": "current_event"
+      },
+      "operator_proposal": null,
+      "reason_codes": ["boundary_request_detected", "compound_request"]
+    }
+  ],
+  "state_transition_proposal": {
+    "inherit": [],
+    "set": {
+      "topic": "timeline",
+      "metric": "interrupted_prefix_count"
+    },
+    "clear": ["asn", "address_family"],
+    "reason_codes": ["compound_request"]
+  },
+  "clarification_proposal": null,
+  "reason_codes": ["compound_request", "boundary_request_detected"]
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/agent/country-outage-semantic-case-p1-1.schema.json",
+  "title": "国家中断 Agent P1.1 语义对照案例",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "category",
+    "utterance",
+    "context",
+    "expected_goals",
+    "expected_state_effect",
+    "expected_clarification",
+    "prohibited_outcomes",
+    "review"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^P1\\.1-SEM-[0-9]{2}$"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["address_change", "event_switch", "pending_or_compound", "boundary_security"]
+    },
+    "utterance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current_event_binding", "prior_committed_state", "pending_clarification"],
+      "properties": {
+        "current_event_binding": {
+          "type": "boolean"
+        },
+        "prior_committed_state": {
+          "type": "object"
+        },
+        "pending_clarification": {
+          "type": ["object", "null"]
+        }
+      }
+    },
+    "expected_goals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requested_goal", "capability", "operator", "entities", "policy_decision"],
+        "properties": {
+          "requested_goal": {
+            "$ref": "country-outage-semantic-plan-p1-1.schema.json#/$defs/requested_goal"
+          },
+          "capability": {
+            "$ref": "country-outage-semantic-plan-p1-1.schema.json#/$defs/capability_id"
+          },
+          "operator": {
+            "oneOf": [
+              {
+                "$ref": "country-outage-semantic-plan-p1-1.schema.json#/$defs/operator_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entities": {
+            "$ref": "country-outage-semantic-plan-p1-1.schema.json#/$defs/entities"
+          },
+          "policy_decision": {
+            "type": "string",
+            "enum": ["validate_then_execute", "clarify", "insufficient_evidence", "unsupported", "reject"]
+          }
+        }
+      }
+    },
+    "expected_state_effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inherit", "set", "clear"],
+      "properties": {
+        "inherit": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "set": {
+          "type": "object"
+        },
+        "clear": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "expected_clarification": {
+      "type": ["object", "null"]
+    },
+    "prohibited_outcomes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewed_by", "rationale"],
+      "properties": {
+        "status": {
+          "const": "approved"
+        },
+        "reviewed_by": {
+          "const": "P1.1-S0-contract-review"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 8
+        }
+      }
+    }
+  }
+}

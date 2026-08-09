@@ -1,0 +1,65 @@
+{
+  "schema_version": "country_outage_p1_1_s0_baseline_receipt_v1",
+  "verified_at": "2026-08-09T13:49:08+08:00",
+  "candidate_id": "p1-candidate-61354911c7793d75",
+  "p0_case_set_revision": "p0-v1-20260808-ir-r1",
+  "p1_contract_revision": "p1-contract-v1",
+  "collector_id": "rrc25",
+  "source_artifacts": [
+    {
+      "path": "evaluation/country-outage/p1-v1/manifest.json",
+      "sha256": "592ef8ecaef96311544fdb00569ccb8753585135486542c1be77353f8af5d63f"
+    },
+    {
+      "path": "evaluation/country-outage/p1-v1/candidate-result.json",
+      "sha256": "6f4a4924de47806d8033bf549154215f320538ffd9407e3d0dc8b0281c0f6e9f"
+    },
+    {
+      "path": "agent-sidecar/src/chat/contracts.ts",
+      "sha256": "7c9f6404f8ff2ed88640656207ead464b15c7ca06c2ae026c5e90d1a521ae10a"
+    },
+    {
+      "path": "agent-sidecar/src/chat/deterministic-engine.ts",
+      "sha256": "1ecbf94d07a987c810e94f02189f22ab22d7f320254629d416c0ead19eb7e33d"
+    },
+    {
+      "path": "agent-sidecar/src/chat/conversation-manager.ts",
+      "sha256": "dc55a1770a2d149754cb651573fff898b6ada94bdfe062479be8e51c02b09c5e"
+    }
+  ],
+  "counts": {
+    "direct": {
+      "passed": 20,
+      "total": 20
+    },
+    "multi_turn": {
+      "passed": 5,
+      "total": 5
+    },
+    "boundary": {
+      "passed": 5,
+      "total": 5
+    },
+    "exception": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "hard_gates": {
+    "all_35_passed": true,
+    "event_binding_percent": 100,
+    "publication_binding_percent": 100,
+    "forbidden_assertion_hits": 0,
+    "invalid_answer_publications": 0
+  },
+  "verification_command": "python3 dev/tools/validate_country_outage_p1_candidate.py evaluation/country-outage/p1-v1/manifest.json",
+  "verification_result": "PASS: p1-candidate-61354911c7793d75，P0 35/35，RRC25 身份与禁止断言门禁通过",
+  "boundary": {
+    "implemented": true,
+    "tested": true,
+    "accepted": true,
+    "deployed": false,
+    "production_verified": false,
+    "p1_1_implemented": false
+  }
+}

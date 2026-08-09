@@ -1,0 +1,15 @@
+{
+  "schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "plan_kind": "untrusted_semantic_plan_proposal",
+  "collector_id": "rrc00",
+  "publication_id": "forged-publication",
+  "goals": [],
+  "state_transition_proposal": {
+    "inherit": [],
+    "set": {},
+    "clear": [],
+    "reason_codes": []
+  },
+  "clarification_proposal": null,
+  "reason_codes": []
+}

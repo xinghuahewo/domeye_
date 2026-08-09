@@ -1,0 +1,158 @@
+{
+  "schema_version": "country_outage_capability_catalog_v1",
+  "catalog_revision": "country_outage_capability_catalog_p1_1_v1",
+  "semantic_plan_schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "source_contract_revision": "p1-contract-v1",
+  "collector_binding": {
+    "value": "rrc25",
+    "owner": "system",
+    "model_mutable": false
+  },
+  "capabilities": [
+    {
+      "capability_id": "event_overview",
+      "execution_kind": "operator",
+      "requested_goals": ["event_summary", "current_state"],
+      "operators": ["read_overview"],
+      "allowed_entities": ["reference_kind"],
+      "source_operator_aliases": ["read_event_summary", "read_current_state", "read_scope"],
+      "answer_boundary": "只返回当前 publication/revision 下的 RRC25 概述与末端状态，不证明全国断网或用户影响。"
+    },
+    {
+      "capability_id": "timeline_extrema",
+      "execution_kind": "operator",
+      "requested_goals": ["timeline_peak", "recovery_status"],
+      "operators": ["series_extrema"],
+      "allowed_entities": ["metric", "reference_kind"],
+      "source_operator_aliases": ["read_primary_peak", "read_recovery", "series_extrema"],
+      "answer_boundary": "窗口内极值和峰后变化不等于真实起点、事件结束或用户连接恢复。"
+    },
+    {
+      "capability_id": "asn_observation",
+      "execution_kind": "operator",
+      "requested_goals": ["asn_detail", "asn_ranking"],
+      "operators": ["query_asn", "read_asn_ranking"],
+      "allowed_entities": ["asn", "limit", "reference_kind"],
+      "source_operator_aliases": ["query_asn", "read_asn_ranking"],
+      "answer_boundary": "AS 观测和排名不是原因、责任或因果贡献排名。"
+    },
+    {
+      "capability_id": "address_family_observation",
+      "execution_kind": "operator",
+      "requested_goals": ["address_family_change", "address_family_compare"],
+      "operators": ["series_extrema"],
+      "allowed_entities": ["address_family", "metric", "reference_kind"],
+      "source_operator_aliases": ["series_extrema"],
+      "answer_boundary": "地址规模是固定前缀的控制面可见地址并集，不是活跃地址、用户数或流量。"
+    },
+    {
+      "capability_id": "path_observation",
+      "execution_kind": "operator",
+      "requested_goals": ["path_sample"],
+      "operators": ["read_path_sample"],
+      "allowed_entities": ["asn", "limit", "reference_kind"],
+      "source_operator_aliases": ["read_path_sample"],
+      "answer_boundary": "路径样本只用于审计和关联下钻，不是依赖关系、原因或责任证据。"
+    },
+    {
+      "capability_id": "metric_definition",
+      "execution_kind": "operator",
+      "requested_goals": ["metric_semantics"],
+      "operators": ["read_metric_definitions"],
+      "allowed_entities": ["metric"],
+      "source_operator_aliases": ["read_metric_definitions"],
+      "answer_boundary": "只解释当前页面/API 指标定义和缺失语义。"
+    },
+    {
+      "capability_id": "evidence_identity",
+      "execution_kind": "operator",
+      "requested_goals": ["evidence_identity"],
+      "operators": ["read_binding", "read_audit_identity"],
+      "allowed_entities": ["reference_kind"],
+      "source_operator_aliases": ["read_binding", "read_audit_identity"],
+      "answer_boundary": "只读取系统绑定身份；模型提取的 event_reference 不能覆盖 publication/revision。"
+    },
+    {
+      "capability_id": "event_binding",
+      "execution_kind": "state_binding",
+      "requested_goals": ["event_switch"],
+      "operators": [],
+      "allowed_entities": ["event_reference", "reference_kind"],
+      "source_operator_aliases": [],
+      "answer_boundary": "必须由系统解析合法 country_outage 引用并重新绑定；缺少唯一引用时只允许澄清。"
+    },
+    {
+      "capability_id": "boundary_policy",
+      "execution_kind": "policy_only",
+      "requested_goals": [
+        "cause_request",
+        "responsibility_request",
+        "user_impact_request",
+        "external_evidence_request",
+        "unsupported_metric_request"
+      ],
+      "operators": [],
+      "allowed_entities": ["metric", "reference_kind"],
+      "source_operator_aliases": [],
+      "answer_boundary": "只能由确定性 Policy 给出证据不足、不支持或拒绝；模型不得将这些目标改写成可执行事实查询。"
+    }
+  ],
+  "operator_contracts": [
+    {
+      "operator_id": "read_overview",
+      "parameters": ["reference_kind"],
+      "reads": ["overview", "resolution"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "series_extrema",
+      "parameters": ["address_family", "metric", "reference_kind"],
+      "reads": ["series", "derived"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "query_asn",
+      "parameters": ["asn", "reference_kind"],
+      "reads": ["asns"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "read_asn_ranking",
+      "parameters": ["limit", "reference_kind"],
+      "reads": ["asns"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "read_path_sample",
+      "parameters": ["asn", "limit", "reference_kind"],
+      "reads": ["paths"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "read_metric_definitions",
+      "parameters": ["metric"],
+      "reads": ["overview.metric_definitions"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "read_binding",
+      "parameters": ["reference_kind"],
+      "reads": ["resolution"],
+      "writes_state": false
+    },
+    {
+      "operator_id": "read_audit_identity",
+      "parameters": ["reference_kind"],
+      "reads": ["audit"],
+      "writes_state": false
+    }
+  ],
+  "forbidden_operator_examples": [
+    "traffic_root_cause",
+    "government_shutdown_analysis",
+    "user_impact_estimation",
+    "open_url",
+    "query_external_source"
+  ],
+  "boundary": "本目录是 P1.1 S0 的可执行能力白名单合同，不表示这些规范名称已经接入运行主路径。"
+}

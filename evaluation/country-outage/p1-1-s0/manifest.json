@@ -1,0 +1,120 @@
+{
+  "schema_version": "country_outage_p1_1_s0_manifest_v1",
+  "contract_candidate_id": "p1-1-s0-contract-7e534af51d92",
+  "contract_source_digest": "7e534af51d925019dbacc93ded4dfb1ef142b96d2134f8199d7446f55f0c671f",
+  "base_commit": "46c7a002b78867340d475d6e1d272192a3fa1817",
+  "p1_baseline_candidate_id": "p1-candidate-61354911c7793d75",
+  "semantic_plan_schema_revision": "country_outage_semantic_plan_p1_1_v1",
+  "capability_catalog_revision": "country_outage_capability_catalog_p1_1_v1",
+  "semantic_policy_revision": "country_outage_semantic_policy_p1_1_v1",
+  "semantic_case_set_revision": "country_outage_semantic_contrast_p1_1_s0_v1",
+  "collector_id": "rrc25",
+  "created_at": "2026-08-09T13:49:08+08:00",
+  "artifact_count": 16,
+  "artifacts": [
+    {
+      "path": "contracts/agent/country-outage-semantic-plan-p1-1.schema.json",
+      "size_bytes": 9905,
+      "sha256": "0ffd6ea6bc5ac68580573ea9ec3fe710f378e132402103382a29623fcca433d3"
+    },
+    {
+      "path": "contracts/agent/country-outage-semantic-case-p1-1.schema.json",
+      "size_bytes": 3476,
+      "sha256": "9015b9638a1953a6ed5322758f4eeadb3ae80da8da9b8e0356f1273c0347a45f"
+    },
+    {
+      "path": "contracts/agent/country-outage-capability-catalog-p1-1.json",
+      "size_bytes": 6018,
+      "sha256": "f3124998af5cb03509c04d8057d4103acbdde74e71a0ce7e60c7ea986f9ece05"
+    },
+    {
+      "path": "contracts/agent/country-outage-semantic-policy-p1-1.json",
+      "size_bytes": 5502,
+      "sha256": "26c235fcb2b3caa018ed339e064831915b3698e7c43ad50dde5e1a624c257ecd"
+    },
+    {
+      "path": "contracts/agent/fixtures/country-outage-semantic-plan-p1-1/valid-address-change.json",
+      "size_bytes": 956,
+      "sha256": "cd2d0a689b4d38dbcfcc972ac5a55680d676dd08a1d9e963b9c4655836caf7b6"
+    },
+    {
+      "path": "contracts/agent/fixtures/country-outage-semantic-plan-p1-1/valid-compound-boundary.json",
+      "size_bytes": 1235,
+      "sha256": "96ba90277a9ee5f7dc08fab0a5b89ac7ed1ef40319584b0a3d652d483d21980c"
+    },
+    {
+      "path": "contracts/agent/fixtures/country-outage-semantic-plan-p1-1/invalid-system-identity.json",
+      "size_bytes": 367,
+      "sha256": "d2f0459e93da6491addd01b09b9e2bb7205220f57fa48416ab55d55c89f9ca3e"
+    },
+    {
+      "path": "contracts/agent/fixtures/country-outage-semantic-plan-p1-1/invalid-invented-operator.json",
+      "size_bytes": 745,
+      "sha256": "f0053a8c3adf7dc4cb168ce380da8dd2f2c3753067374e4e34f13b3742486567"
+    },
+    {
+      "path": "contracts/agent/fixtures/country-outage-semantic-plan-p1-1/invalid-operator-capability-pair.json",
+      "size_bytes": 820,
+      "sha256": "ed420a39eab337212f23ac44f47c5aaff53511f103d6f911888839bbc82a9f5b"
+    },
+    {
+      "path": "dev/tools/validate_country_outage_p1_1_s0.py",
+      "size_bytes": 32308,
+      "sha256": "8fc00e33bb1486f7cacb41d22c7201fcd145014e2c213d17717a67960b5499af"
+    },
+    {
+      "path": "dev/tests/test_country_outage_p1_1_s0.py",
+      "size_bytes": 3718,
+      "sha256": "1bb3304cd1df5b87654319ded6acebdd9853d4dd172ef8e8d2d9af4f2dd4738c"
+    },
+    {
+      "path": "docs/agent/P1.1-受控语义规划/S0-语义合同与评测说明.md",
+      "size_bytes": 8900,
+      "sha256": "5bbf8d701931e7f05a2ef19a1b05287e06f7c0f5d87d1c215bc3a3133a2c3f38"
+    },
+    {
+      "path": "evaluation/country-outage/p1-1-s0/semantic-contrast-set.json",
+      "size_bytes": 31041,
+      "sha256": "6a88bf9fd29d85033a19869a1a51365128113446d81d69cf6444313ffd3d93f5"
+    },
+    {
+      "path": "evaluation/country-outage/p1-1-s0/p1-v1-baseline-receipt.json",
+      "size_bytes": 1996,
+      "sha256": "75d72f495a8fdb47fff1b0a7e34af9203a8a9f150234e931436c191620bfe0e8"
+    },
+    {
+      "path": "evaluation/country-outage/p1-1-s0/stage-receipt.json",
+      "size_bytes": 2701,
+      "sha256": "a9daea12113de4e0820f6f7233edd0ecde669231924183a2bd2fe89956eab675"
+    },
+    {
+      "path": "evaluation/country-outage/p1-1-s0/README.md",
+      "size_bytes": 423,
+      "sha256": "dfebece741535220844928b86be0c8d29b1cb921881e91660a437ef500968c1d"
+    }
+  ],
+  "case_counts": {
+    "total": 20,
+    "address_change": 6,
+    "event_switch": 6,
+    "pending_or_compound": 7,
+    "boundary_security": 1,
+    "reviewed_and_approved": 20
+  },
+  "fixture_counts": {
+    "valid": 2,
+    "invalid": 3
+  },
+  "boundary": {
+    "contract_complete": true,
+    "fixtures_tested": true,
+    "p1_baseline_reverified": true,
+    "semantic_planner_implemented": false,
+    "model_provider_connected": false,
+    "shadow_running": false,
+    "validator_runtime_integrated": false,
+    "deployed": false,
+    "production_verified": false,
+    "p2_or_rca": false
+  }
+}
