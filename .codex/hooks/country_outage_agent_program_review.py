@@ -19,7 +19,7 @@ CONFIG_ROOT = REPOSITORY_ROOT / "config" / "agent-program"
 TASK_PATH = REPOSITORY_ROOT / ".codex" / "TASK.json"
 CORE_MANIFEST_PATH = REPOSITORY_ROOT / "backend" / "core.sha256"
 CONFIG_SCHEMA_VERSION = "country_outage_agent_program_review_config_v1"
-PROJECT_PATTERN = re.compile(r"P[0-5]")
+PROJECT_PATTERN = re.compile(r"P(?:1\.1|[0-5])")
 STAGE_PATTERN = re.compile(r"S\d+")
 
 
@@ -34,7 +34,7 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--project",
-        help="工程编号，例如 P0；与 --stage 同时提供时执行显式阶段回检。",
+        help="工程编号，例如 P0 或 P1.1；与 --stage 同时提供时执行显式阶段回检。",
     )
     parser.add_argument(
         "--stage",
@@ -79,7 +79,7 @@ def safe_repository_path(value: object, label: str) -> Path:
 
 def config_path(project: str) -> Path:
     if not PROJECT_PATTERN.fullmatch(project):
-        raise RuntimeError(f"工程编号必须为 P0 至 P5：{project!r}")
+        raise RuntimeError(f"工程编号必须为 P0 至 P5 或已登记衍生工程 P1.1：{project!r}")
     return CONFIG_ROOT / f"{project}.json"
 
 
@@ -121,7 +121,7 @@ def validate_config(
         errors.append(f"schema_version 必须为 {CONFIG_SCHEMA_VERSION}")
     project = config.get("project")
     if not isinstance(project, str) or not PROJECT_PATTERN.fullmatch(project):
-        errors.append("project 必须为 P0 至 P5")
+        errors.append("project 必须为 P0 至 P5 或已登记衍生工程 P1.1")
     elif expected_project is not None and project != expected_project:
         errors.append(f"project 必须为 {expected_project}")
 

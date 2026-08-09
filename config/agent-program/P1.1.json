@@ -1,0 +1,118 @@
+{
+  "schema_version": "country_outage_agent_program_review_config_v1",
+  "project": "P1.1",
+  "project_name": "受控 Semantic Planner",
+  "acceptance_path": "docs/agent/P1.1-受控语义规划/Task-Spec-最终验收文档.md",
+  "plan_path": "docs/agent/P1.1-受控语义规划/Plan-分阶段计划.md",
+  "stage_ids": ["S0", "S1", "S2", "S3", "S4"],
+  "stage_names": {
+    "S0": "语义合同、能力目录与基线",
+    "S1": "Shadow 规划与差异观测",
+    "S2": "计划校验、策略与受控执行",
+    "S3": "多轮状态、澄清与失败降级",
+    "S4": "同候选全量验收与晋级决策"
+  },
+  "requirement_groups": {
+    "目标效果": {
+      "prefix": "P1.1-EFF",
+      "first": 1,
+      "last": 16
+    },
+    "硬门禁": {
+      "prefix": "P1.1-GATE",
+      "first": 1,
+      "last": 14
+    },
+    "联合场景": {
+      "prefix": "P1.1-SCE",
+      "first": 1,
+      "last": 12
+    }
+  },
+  "stage_subheadings": [
+    "#### 入口",
+    "#### 本阶段目标效果",
+    "#### 可调整空间",
+    "#### 出口",
+    "#### 边界"
+  ],
+  "stage_due": {
+    "S0": {
+      "目标效果": ["P1.1-EFF-04", "P1.1-EFF-05", "P1.1-EFF-13", "P1.1-EFF-16"],
+      "硬门禁": ["P1.1-GATE-01", "P1.1-GATE-02", "P1.1-GATE-08", "P1.1-GATE-14"],
+      "联合场景": ["P1.1-SCE-01", "P1.1-SCE-02"]
+    },
+    "S1": {
+      "目标效果": ["P1.1-EFF-01", "P1.1-EFF-02", "P1.1-EFF-03", "P1.1-EFF-12", "P1.1-EFF-13"],
+      "硬门禁": ["P1.1-GATE-02", "P1.1-GATE-09", "P1.1-GATE-10", "P1.1-GATE-11", "P1.1-GATE-13"],
+      "联合场景": ["P1.1-SCE-01", "P1.1-SCE-02", "P1.1-SCE-03", "P1.1-SCE-11"]
+    },
+    "S2": {
+      "目标效果": ["P1.1-EFF-04", "P1.1-EFF-05", "P1.1-EFF-06", "P1.1-EFF-07", "P1.1-EFF-08", "P1.1-EFF-12"],
+      "硬门禁": ["P1.1-GATE-02", "P1.1-GATE-03", "P1.1-GATE-04", "P1.1-GATE-05", "P1.1-GATE-07", "P1.1-GATE-11"],
+      "联合场景": ["P1.1-SCE-06", "P1.1-SCE-07", "P1.1-SCE-08", "P1.1-SCE-12"]
+    },
+    "S3": {
+      "目标效果": ["P1.1-EFF-03", "P1.1-EFF-09", "P1.1-EFF-10", "P1.1-EFF-11", "P1.1-EFF-14", "P1.1-EFF-15"],
+      "硬门禁": ["P1.1-GATE-04", "P1.1-GATE-06", "P1.1-GATE-07", "P1.1-GATE-10", "P1.1-GATE-12"],
+      "联合场景": ["P1.1-SCE-04", "P1.1-SCE-05", "P1.1-SCE-09", "P1.1-SCE-10"]
+    },
+    "S4": {
+      "目标效果": ["P1.1-EFF-01", "P1.1-EFF-02", "P1.1-EFF-03", "P1.1-EFF-04", "P1.1-EFF-05", "P1.1-EFF-06", "P1.1-EFF-07", "P1.1-EFF-08", "P1.1-EFF-09", "P1.1-EFF-10", "P1.1-EFF-11", "P1.1-EFF-12", "P1.1-EFF-13", "P1.1-EFF-14", "P1.1-EFF-15", "P1.1-EFF-16"],
+      "硬门禁": ["P1.1-GATE-01", "P1.1-GATE-02", "P1.1-GATE-03", "P1.1-GATE-04", "P1.1-GATE-05", "P1.1-GATE-06", "P1.1-GATE-07", "P1.1-GATE-08", "P1.1-GATE-09", "P1.1-GATE-10", "P1.1-GATE-11", "P1.1-GATE-12", "P1.1-GATE-13", "P1.1-GATE-14"],
+      "联合场景": ["P1.1-SCE-01", "P1.1-SCE-02", "P1.1-SCE-03", "P1.1-SCE-04", "P1.1-SCE-05", "P1.1-SCE-06", "P1.1-SCE-07", "P1.1-SCE-08", "P1.1-SCE-09", "P1.1-SCE-10", "P1.1-SCE-11", "P1.1-SCE-12"]
+    }
+  },
+  "required_acceptance_phrases": [
+    "本文定义 P1.1 受控 Semantic Planner 完成后的最终效果与验收合同",
+    "P1-v1 继续作为不可改写的确定性规则基线",
+    "模型输出是不可信计划提案",
+    "`answerability` 由确定性策略裁决",
+    "Shadow 计划不得执行、发布或提交状态",
+    "IP地址变换情况",
+    "p1-candidate-61354911c7793d75",
+    "P1.1 通过仍只能称为 RRC25 事件绑定聊天问答的语义规划增强",
+    "P1.1 通过不表示 P2、Evidence Graph 或 RCA 已实现",
+    "Hook 通过只能证明合同结构"
+  ],
+  "required_plan_phrases": [
+    "本计划规定阶段目标、入口、出口、可调整空间和不可突破边界",
+    "路线允许根据实测结果调整",
+    "不得跳过硬门禁",
+    "未达到当前阶段出口时不得进入下一阶段",
+    "每个阶段结束必须调用国家中断 Agent 计划防偏离 Hook",
+    "Hook 结构检查通过不等于",
+    "S4 Hook 给出最终“一致”或“已修正”结论",
+    "--project P1.1",
+    "--stage S0"
+  ],
+  "forbidden_acceptance_headings": [
+    "## 技术栈",
+    "## 实施方案",
+    "## 代码结构",
+    "## 开发步骤"
+  ],
+  "forbidden_plan_headings": [
+    "#### 实施步骤",
+    "#### 任务清单",
+    "#### 具体做法",
+    "#### 技术方案",
+    "#### 文件改动"
+  ],
+  "review_questions": [
+    "本阶段入口是否真实成立，到期目标效果、硬门禁和联合场景是否具有同一 revision 与候选身份的实际证据",
+    "P1-v1 冻结候选、35 例、manifest 和验收记录是否保持不变且仍可复验",
+    "模型是否仍只提出不可信 Semantic Plan，事件身份、能力、事实、证据、answerability 和状态提交是否由确定性系统拥有",
+    "同义、口语、复合目标、实体、指代和省略是否按审核标准处理，是否再次出现单字规则劫持语义",
+    "Schema、Capability Catalog、Validator、Policy、Prompt、模型和基线 revision 是否清晰且可追溯",
+    "Shadow 是否保持算子调用、回答发布和业务状态写入均为 0，实际执行是否只有一个明确计划",
+    "未登记算子、参数、冲突身份、Prompt Injection、原因、责任、用户影响和外部证据是否在执行或发布前失败关闭",
+    "所有数字、单位、时间、ASN、前缀和 evidence ref 是否来自同一身份下的确定性事实层，模型是否没有新增事实",
+    "pending_clarification、继承、覆盖、清除、取消、超时、乱序和 revision 漂移是否没有造成幽灵状态或旧问题劫持",
+    "模型不可用、限流、非法输出和 Provider 错误是否真实降级到 P1-v1、安全澄清或明确失败，而不是伪造成功",
+    "阶段路线调整是否有受影响要求、revision、重验范围和理由，是否擅自跳过硬门禁或扩大到 P2 至 P5",
+    "当前改动是否只在 TASK.json 允许路径内，是否修改冻结核心、P0/P1 真值、产品实现、数据、部署或生产配置",
+    "是否把文档、Hook、Schema、局部测试、模型演示、HTTP 200、页面截图或部署状态越级写成 P1.1 已验收或已生产验证"
+  ],
+  "final_response_template": "国家中断 Agent P1.1 最终验收回检：{stage} 一致 / 已修正 / 无影响 / 存在待处理偏离（要求编号与原因）"
+}

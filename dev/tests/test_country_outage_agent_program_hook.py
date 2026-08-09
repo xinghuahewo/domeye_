@@ -65,6 +65,13 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
         self.assertEqual(module.validate_documents(config), [])
         self.assertEqual(module.validate_task_boundary(), [])
 
+    def test_p1_1_config_documents_and_task_boundary_are_valid(self) -> None:
+        module = load_hook_module()
+        config = module.load_project_config("P1.1")
+        self.assertEqual(module.validate_config(config, expected_project="P1.1"), [])
+        self.assertEqual(module.validate_documents(config), [])
+        self.assertEqual(module.validate_task_boundary(), [])
+
     def test_document_validation_detects_boundary_and_numbering_drift(self) -> None:
         module = load_hook_module()
         config = module.load_project_config("P0")
@@ -120,6 +127,41 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
         )
         self.assertTrue(any("P1-BE-01 至 P1-BE-12" in error for error in errors))
 
+    def test_p1_1_document_validation_detects_boundary_and_numbering_drift(self) -> None:
+        module = load_hook_module()
+        config = module.load_project_config("P1.1")
+        acceptance_path = module.safe_repository_path(
+            config["acceptance_path"], "acceptance_path"
+        )
+        plan_path = module.safe_repository_path(config["plan_path"], "plan_path")
+        acceptance = module.read_text(acceptance_path)
+        plan = module.read_text(plan_path)
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace(
+                "模型输出是不可信计划提案",
+                "模型输出可以直接执行",
+            ),
+            plan,
+        )
+        self.assertTrue(
+            any("模型输出是不可信计划提案" in error for error in errors)
+        )
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace(
+                "### P1.1-GATE-14：",
+                "### P1.1-GATE-15：",
+                1,
+            ),
+            plan,
+        )
+        self.assertTrue(
+            any("P1.1-GATE-01 至 P1.1-GATE-14" in error for error in errors)
+        )
+
     def test_every_p0_stage_emits_review_without_claiming_effect_acceptance(self) -> None:
         for stage in (f"S{index}" for index in range(4)):
             with self.subTest(stage=stage):
@@ -146,10 +188,23 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
                     result.stdout,
                 )
 
+    def test_every_p1_1_stage_emits_review_without_claiming_effect_acceptance(self) -> None:
+        for stage in (f"S{index}" for index in range(5)):
+            with self.subTest(stage=stage):
+                result = self.run_hook("--project", "P1.1", "--stage", stage)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f"阶段结束回检：{stage}", result.stdout)
+                self.assertIn("本阶段到期或必须继续保持可达的要求", result.stdout)
+                self.assertIn("不代表验收案例、参考真值、基线执行、评测", result.stdout)
+                self.assertIn(
+                    f"国家中断 Agent P1.1 最终验收回检：{stage}",
+                    result.stdout,
+                )
+
     def test_unknown_project_and_stage_are_rejected(self) -> None:
         unknown_project = self.run_hook("--project", "P6", "--stage", "S0")
         self.assertEqual(unknown_project.returncode, 1)
-        self.assertIn("工程编号必须为 P0 至 P5", unknown_project.stderr)
+        self.assertIn("工程编号必须为 P0 至 P5 或已登记衍生工程 P1.1", unknown_project.stderr)
 
         unknown_stage = self.run_hook("--project", "P0", "--stage", "S4")
         self.assertEqual(unknown_stage.returncode, 2)
@@ -210,6 +265,32 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
         self.assertIn("P1-FE-05、P1-FE-06、P1-FE-07", reason)
         self.assertIn("P1-BE-02、P1-BE-03、P1-BE-07、P1-BE-08", reason)
         self.assertIn("P1-SCE-05、P1-SCE-06、P1-SCE-07、P1-SCE-10", reason)
+        self.assertIn("Hook 机检只覆盖", reason)
+
+    def test_stop_hook_requests_p1_1_review_for_declared_stage(self) -> None:
+        result = self.run_hook(
+            input_text=json.dumps({"hook_event_name": "Stop"}),
+            environment={
+                "DOMEYE_COUNTRY_OUTAGE_AGENT_PROJECT": "P1.1",
+                "DOMEYE_COUNTRY_OUTAGE_AGENT_STAGE": "S3",
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload.get("decision"), "block")
+        reason = payload.get("reason", "")
+        self.assertIn(
+            "P1.1-EFF-03、P1.1-EFF-09、P1.1-EFF-10、P1.1-EFF-11、P1.1-EFF-14、P1.1-EFF-15",
+            reason,
+        )
+        self.assertIn(
+            "P1.1-GATE-04、P1.1-GATE-06、P1.1-GATE-07、P1.1-GATE-10、P1.1-GATE-12",
+            reason,
+        )
+        self.assertIn(
+            "P1.1-SCE-04、P1.1-SCE-05、P1.1-SCE-09、P1.1-SCE-10",
+            reason,
+        )
         self.assertIn("Hook 机检只覆盖", reason)
 
     def test_stop_hook_avoids_recursion(self) -> None:
