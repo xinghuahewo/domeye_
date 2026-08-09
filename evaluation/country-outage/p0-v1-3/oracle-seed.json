@@ -1,0 +1,141 @@
+{
+  "schema_version": "country_outage_p0_oracle_seed_v1",
+  "revision": "p0-v1.3-20260809-ir-r1",
+  "status": "seed_only_not_tool_registry",
+  "identity": {
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25"
+  },
+  "tie_policy": "first_observed_occurrence",
+  "seeds": [
+    {
+      "oracle_id": "ORC-01",
+      "capability_ids": ["CAP-001", "CAP-002", "CAP-014"],
+      "operation": "bind_and_verify_identity",
+      "inputs": {"event_ref": "country_outage/2026-02-27 09:12:32/IR/1/r"},
+      "expected": {
+        "http_status": 200,
+        "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+        "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+        "collector_id": "rrc25",
+        "lifecycle_state": "event_end_unknown"
+      },
+      "evidence_refs": ["live.identity", "live.audit"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-02",
+      "capability_ids": ["CAP-003", "CAP-004", "CAP-005", "CAP-008", "CAP-009", "CAP-016"],
+      "operation": "series_extrema",
+      "inputs": {"metric": "interrupted_prefix_count", "null_policy": "exclude_null"},
+      "expected": {"minimum": 0, "maximum": 3855, "maximum_at_utc": "2026-02-27T23:15:00Z", "last": 1024, "unit": "prefix"},
+      "evidence_refs": ["live.series", "live.overview_facts"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-03",
+      "capability_ids": ["CAP-006", "CAP-007", "CAP-017"],
+      "operation": "compare_address_families_without_unit_collapse",
+      "inputs": {"metrics": ["fixed_visible_ipv4_address_count", "fixed_visible_ipv6_slash48_count"]},
+      "expected": {
+        "ipv4": {"maximum": 10156800, "minimum": 9577728, "drop": 579072, "unit": "unique_ipv4_address"},
+        "ipv6": {"maximum": 267292, "minimum": 267288, "drop": 4, "unit": "ipv6_slash48_equivalent"},
+        "combined_absolute_total": "forbidden"
+      },
+      "evidence_refs": ["live.series.selected_extrema.fixed_visible_ipv4_address_count", "live.series.selected_extrema.fixed_visible_ipv6_slash48_count"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-04",
+      "capability_ids": ["CAP-010", "CAP-011"],
+      "operation": "query_asn",
+      "inputs": {"query": "48715", "classification": "all", "page": 1, "page_size": 5},
+      "expected": {"total": 1, "asn": 48715, "event_classification": "route_interrupted", "fixed_prefix_count": 73, "peak_complete_prefix_count": 73},
+      "evidence_refs": ["live.sample_queries.asn_48715"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-05",
+      "capability_ids": ["CAP-012", "CAP-013"],
+      "operation": "query_path_association",
+      "inputs": {"affected_asn": 49666, "scope": "concurrent", "page": 1, "page_size": 2},
+      "expected": {
+        "total": 498,
+        "first_downstream_asn": 58224,
+        "first_sample": "33874 6758 1273 3257 49666 48159 58224",
+        "relationship_semantics": "observed_ordered_rrc25_path_association_not_dependency_or_cause"
+      },
+      "evidence_refs": ["live.sample_queries.path_49666_concurrent", "live.api_probes.path_downstreams"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-06",
+      "capability_ids": ["CAP-001"],
+      "operation": "fail_closed_on_wrong_publication",
+      "inputs": {"publication_id": "p0-intentionally-invalid-publication"},
+      "expected": {"http_status": 404, "observation_state": "publication_not_found", "no_state_commit": true},
+      "evidence_refs": ["live.api_probes.wrong_publication"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-07",
+      "capability_ids": ["CAP-015"],
+      "operation": "read_trend_for_current_publication",
+      "inputs": {"publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f"},
+      "expected": {"http_status": 404, "observation_state": "publication_not_found", "capability_state": "unavailable"},
+      "evidence_refs": ["live.api_probes.trend"],
+      "result": "expected_unavailable"
+    },
+    {
+      "oracle_id": "ORC-08",
+      "capability_ids": ["CAP-021"],
+      "operation": "read_external_evidence_capability",
+      "inputs": {},
+      "expected": {"http_status": 200, "state": "not_configured", "provider": "disabled", "reason_code": "external_evidence_not_configured"},
+      "evidence_refs": ["live.external_evidence"],
+      "result": "expected_unavailable"
+    },
+    {
+      "oracle_id": "ORC-09",
+      "capability_ids": ["CAP-018"],
+      "operation": "compose_fact_timeline",
+      "inputs": {"identity": "same publication", "peak_metrics": ["interrupted_prefix_count", "completely_interrupted_prefix_count", "affected_asn_count"], "include_terminal_state": true},
+      "expected": {
+        "ordered_fact_nodes": [
+          {"kind": "window_start", "at_utc": "2026-02-27T00:10:00Z", "evidence_ref": "live.identity.window_start_utc"},
+          {"kind": "detected", "at_utc": "2026-02-27T01:12:32Z", "evidence_ref": "live.identity.detected_at_utc"},
+          {"kind": "interrupted_prefix_peak", "at_utc": "2026-02-27T23:15:00Z", "value": 3855, "unit": "prefix", "evidence_ref": "live.overview_facts.peak_interrupted_prefix_count"},
+          {"kind": "completely_interrupted_prefix_peak", "at_utc": "2026-02-28T14:35:00Z", "value": 1553, "unit": "prefix", "evidence_ref": "base.peaks.completely_interrupted_prefix_count"},
+          {"kind": "affected_asn_peak", "at_utc": "2026-03-02T11:30:00Z", "value": 350, "unit": "asn", "evidence_ref": "live.series.selected_extrema.affected_asn_count"},
+          {"kind": "data_through", "at_utc": "2026-03-11T00:00:00Z", "interrupted_prefix_count": 1024, "evidence_ref": "live.overview_facts.current_interrupted_prefix_count"}
+        ],
+        "terminal_unknown": {"lifecycle_state": "event_end_unknown", "event_end_at_utc": null},
+        "causal_edges": "forbidden"
+      },
+      "evidence_refs": ["live.identity", "live.overview_facts", "live.series", "base.P0-D-01.expected"],
+      "result": "pass"
+    },
+    {
+      "oracle_id": "ORC-10",
+      "capability_ids": ["CAP-005", "CAP-016"],
+      "operation": "series_extrema_batch",
+      "inputs": {"metrics": ["affected_asn_count", "route_interrupted_asn_count"], "null_policy": "exclude_null", "tie_policy": "first_observed_occurrence"},
+      "expected": {
+        "affected_asn_count": {"maximum": 350, "maximum_at_utc": "2026-03-02T11:30:00Z", "last": 121, "unit": "asn"},
+        "route_interrupted_asn_count": {"maximum": 94, "maximum_at_utc": "2026-02-28T14:35:00Z", "last": 35, "unit": "asn"},
+        "same_peak_time": false,
+        "population_boundary": {"affected_as_count": 525, "route_interrupted_as_count": 151, "semantics": "distinct_as_population_over_window_not_slot_peak"}
+      },
+      "evidence_refs": ["live.series.selected_extrema.affected_asn_count", "live.series.selected_extrema.route_interrupted_asn_count", "live.overview_facts.affected_as_count", "live.overview_facts.route_interrupted_as_count"],
+      "result": "pass"
+    }
+  ],
+  "limitations": [
+    "这些 seed 证明候选输入输出和失败语义可验证，不注册 P1 工具",
+    "未对报告、追问或其他写路径执行 feasibility",
+    "每个 seed 只绑定当前 IR publication，不外推到所有事件",
+    "P1 adopt 后必须形成 Typed Tool Contract、完整 Oracle 和权限/状态验证"
+  ]
+}

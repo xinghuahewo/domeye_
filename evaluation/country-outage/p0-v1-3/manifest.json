@@ -1,0 +1,50 @@
+{
+  "schema_version": "country_outage_p0_v1_3_manifest_v1",
+  "revision": "p0-v1.3-20260809-ir-r1",
+  "created_at": "2026-08-09T16:33:00+08:00",
+  "base_commit": "585f03c079271205e40ed69b39c035dfb513051b",
+  "tested_object": "capability_discovery_evaluation_contract_and_p1_handoff",
+  "scope": {
+    "event_type": "country_outage",
+    "collector_id": "rrc25",
+    "representative_event": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "probe_mode": "read_only"
+  },
+  "case_counts": {"direct": 20, "multi_turn": 5, "boundary": 5, "exception": 5, "total": 35},
+  "capability_counts": {
+    "total": 26,
+    "page_visible": 13,
+    "api_published": 1,
+    "backend_available_unpublished": 0,
+    "deterministically_derivable_unproductized": 3,
+    "semantics_unfrozen": 0,
+    "unavailable": 3,
+    "out_of_scope": 4,
+    "unknown": 2,
+    "p1_adopt": 17,
+    "p1_defer": 5,
+    "p1_reject": 4
+  },
+  "immutable_predecessor": {
+    "case_set_path": "evaluation/country-outage/p0-v1/cases.json",
+    "case_set_sha256": "1e878d43f010dc701fadb630ede380f085d33cecbcde23db9db9c1662d47c14b",
+    "policy": "reference_only_not_modified"
+  },
+  "artifacts": [
+    {"role": "live_evidence", "path": "evaluation/country-outage/p0-v1-3/evidence/live-probe-20260809.json", "sha256": "c907dd99beb89b6d279449b8a4b160c2990188db99c428046983018397fa79d2"},
+    {"role": "system_surface", "path": "evaluation/country-outage/p0-v1-3/system-surface.json", "sha256": "2622c93c555d79350cd434308d29f0789c348f29afbd9cb3bc1db9b57f5a29b0"},
+    {"role": "capability_ledger", "path": "evaluation/country-outage/p0-v1-3/capability-ledger.json", "sha256": "4b37445392ee1cea25f56d4a11084d58e94c96b4dd4628ac3d39657977f9964d"},
+    {"role": "unknown_ledger", "path": "evaluation/country-outage/p0-v1-3/unknown-ledger.json", "sha256": "fc11a77d0f7fe97bb18772805ba08050098a5512e9a00f3629b03cb0a53c8e9c"},
+    {"role": "oracle_seed", "path": "evaluation/country-outage/p0-v1-3/oracle-seed.json", "sha256": "9d69766af84fc4e7846c77597449e2e62cb558806b5c0b0074b20cabe78e73f8"},
+    {"role": "case_set", "path": "evaluation/country-outage/p0-v1-3/cases.json", "sha256": "86a64a6df3b1c5849946dd471bb9c23d30efa9d92b7246543b9731bf67af38c3"},
+    {"role": "p1_disposition", "path": "evaluation/country-outage/p0-v1-3/p1-disposition.json", "sha256": "8d9febc2562d320dd8a9e571687aa4b2512e26736c46bb6914544862fe990207"},
+    {"role": "stage_receipts", "path": "evaluation/country-outage/p0-v1-3/stage-receipts.json", "sha256": "8c8b865b2e0b9abd4ed0602a824fed2515dde8d98d0151a893bde7f33f5e4f4d"},
+    {"role": "execution_contract", "path": "docs/agent/P0-需求与评测/P0-v1.3-系统能力普查执行合同.md", "sha256": "cc9835bbe834a4e392da136c8a0dee62031c6dd51304c170a0f74a629ad906e9"},
+    {"role": "discovery_report", "path": "docs/agent/P0-需求与评测/P0-v1.3-系统能力普查报告.md", "sha256": "1057eb1964180e8918949174712b458ec807d2ee8d4ab6ac4b2dfe0183cb9f1a"},
+    {"role": "p1_receipt", "path": "docs/agent/P0-需求与评测/P0-v1.3-P1入口回执.md", "sha256": "473b5dd36d1b6ea0468606f0f6b0b4370272e3c298ba2cc02fb428bc2eb9d2e7"},
+    {"role": "discovery_probe", "path": "dev/tools/discover_country_outage_capabilities.py", "sha256": "947d7ac8eeef28e5cff0ce22bb4deda96ba406d520a81ccb7943492b4a812d13"},
+    {"role": "deterministic_validator", "path": "dev/tools/validate_country_outage_p0_v1_3.py", "sha256": "6ed11f95c9e737d461dda64ea0756e2f4f27bddd6bf754cf9d1dfa8013fa30b3"},
+    {"role": "stage_hook", "path": "dev/tools/review_country_outage_p0_v1_3_stage.py", "sha256": "f87460670abca32f8f3e9f8f4f79a77e75fd226d6d63c680379747baa8ef2e1e"},
+    {"role": "regression_tests", "path": "dev/tests/test_country_outage_p0_v1_3.py", "sha256": "fa9939344b1acf0638dc32237d99e0d698f3c071757812ce9a8f0e5d6b0f149d"}
+  ]
+}
