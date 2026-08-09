@@ -118,6 +118,7 @@ class CountryOutageAgentP1AlignmentTest(unittest.TestCase):
         )
         acceptance = module.read_text(acceptance_path)
         self.assertIn("`UserGoalPlan` 目标保真率不低于 95%", acceptance)
+        self.assertIn("不能通过虚构额外目标抬高保真率", acceptance)
         self.assertIn("`GroundingPlan` 合法性是 100% 硬门", acceptance)
         self.assertIn("任何非法节点到达执行器", acceptance)
         self.assertNotIn("Semantic Plan 正确率", acceptance)
