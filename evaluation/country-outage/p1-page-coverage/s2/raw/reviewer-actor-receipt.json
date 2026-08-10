@@ -1,0 +1,34 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s2_actor_receipt_v1",
+  "evidence_kind": "reviewer_actor_receipt",
+  "candidate_id": "p1-page-coverage-s2-9ca11dce72d0",
+  "candidate_identity_sha256": "9ca11dce72d0968066141fd27e3a1fed976d4d7253d4bf540b05c72f1ce18b2c",
+  "stage": "S2",
+  "review_phase": "blind_bound_prereveal",
+  "reviewer_role": "independent_product_semantic_reviewer",
+  "run_id": "s2-canonical-blind-review-fb2c718d98144d4ea2395b3e6116718c",
+  "actor_id": "s2-product-semantic-blind-reviewer-080beca9ce9a42c488a82d56ade4ef9a",
+  "captured_at": "2026-08-10T19:06:21Z",
+  "orchestrator_receipt_id": "s2-canonical-blind-review-orchestrator-d939e19639bd43919701b77e5e23930d",
+  "allowed_actions": [
+    "bind_existing_truth_items",
+    "review_revealed_outputs_after_reveal",
+    "write_final_review_after_reveal"
+  ],
+  "denied_actions": [
+    "generate_probe_cases",
+    "modify_implementation",
+    "modify_test",
+    "modify_contract",
+    "modify_oracle",
+    "write_system_output",
+    "read_unrevealed_system_output",
+    "mark_pass_before_reveal"
+  ],
+  "reviewed_input_sha256": "19d60565d535cdd6c44188d8bb8592bb79e915c79fc05e7e8e0c45107a1efff2",
+  "case_author_actor_receipt_sha256": "8a904ce8e30ea9b11b890139ceac7f68e1d46c6374349c854d48cd1ccd508e35",
+  "question_explorer_receipt_sha256": "21e200326e89e5a5ef24aded909ecbf0449ce2ac47025feca2a39a1b664e520f",
+  "question_explorer_cases_sha256": "86e19c076482df2e9c5fab88eee558fe4d98f24b29c75d541df70f928e31e6ff",
+  "truth_items_count": 28,
+  "normalized_truth_items_sha256": "34172e68b7ebc57e5529a78c3a2f0aa4da796cbe6d8ce6d1abf4f16389538b87"
+}

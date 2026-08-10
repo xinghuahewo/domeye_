@@ -1,0 +1,30 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s2_single_turn_semantic_diff_v1",
+  "artifact_kind": "single_turn_semantic_diff",
+  "stage": "S2",
+  "candidate_id": "p1-page-coverage-s2-9ca11dce72d0",
+  "status": "PASS",
+  "captured_at": "2026-08-10T18:59:41Z",
+  "reviewed_case_count": 28,
+  "reference_goal_count": 52,
+  "preserved_reference_goal_count": 52,
+  "omitted_reference_goal_count": 0,
+  "extra_system_goal_count": 0,
+  "user_goal_fidelity_percent": 100,
+  "grounding_and_execution": "83/83",
+  "evidence_items_verified": "575/575",
+  "semantic_diff": [],
+  "summary": "28 个冻结单轮案例和 52 个参考目标均忠实保留；开放 UserGoalPlan 经封闭 Grounding 后，83 个节点均真实执行且证据闭合，无剩余产品语义差异。",
+  "evidence_refs": [
+    {
+      "kind": "review_result",
+      "path": "evaluation/country-outage/p1-page-coverage/s2/raw/review-result.json",
+      "sha256": "fe1d6d504632da0a98527cccc368639955bac2fafdeb5c65d2975acf71f2c8de"
+    },
+    {
+      "kind": "review_system_output",
+      "path": "evaluation/country-outage/p1-page-coverage/s2/raw/review-system-output.json",
+      "sha256": "c22f7308927b750af1d4aaac2b9e09774bfa085e8a3b05c1801dc87a153668c6"
+    }
+  ]
+}
