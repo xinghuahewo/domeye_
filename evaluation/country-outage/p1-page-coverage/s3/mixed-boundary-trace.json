@@ -1,0 +1,42 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s3_mixed_boundary_trace_v1",
+  "artifact_kind": "mixed_boundary_trace",
+  "stage": "S3",
+  "candidate_id": "p1-page-coverage-s3-776431e8bd75",
+  "status": "PASS",
+  "captured_at": "2026-08-10T20:48:12.204Z",
+  "run_id": "s3-live-final-005",
+  "reviewed_turn_ids": [
+    "S3-J04-T02",
+    "S3-J05-T01",
+    "S3-J05-T02",
+    "S3-J07-T01",
+    "S3-J07-T02",
+    "S3-J07-T03",
+    "S3-J07-T04"
+  ],
+  "verified_effects": [
+    "支持事实与越界目标逐子目标裁决",
+    "越界目标零执行且不覆盖既有 DialogState",
+    "IPv4 与 IPv6 单位不做绝对合计",
+    "正式历史趋势与原因问题不升级为 P2/P5",
+    "Update 轨道不可用按 invalid_data 处理，不能解释为 0"
+  ],
+  "evidence_refs": [
+    {
+      "kind": "candidate_identity",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/candidate-identity.json",
+      "sha256": "19f5f9ae2388441043df292155445c6998953e32855516f5bae83200041afb31"
+    },
+    {
+      "kind": "multiturn_journey_set",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/journey-set.json",
+      "sha256": "e48b8c6cf7b637ceb9d2bcecaaef09440ccac03245f9a25dda6f09ed2d49b641"
+    },
+    {
+      "kind": "system_output",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/system-output-reveal.json",
+      "sha256": "007d912c643c28bf9a20c7688988f31173e49ea3ad30663c48a6924df2418824"
+    }
+  ]
+}

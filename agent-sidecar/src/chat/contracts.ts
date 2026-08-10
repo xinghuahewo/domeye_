@@ -53,6 +53,10 @@ export interface P1ConversationState {
   asn: number | null
   address_family: 'ipv4' | 'ipv6' | 'both' | null
   metric: string | null
+  population: 'fixed_cohort' | 'new_prefix_only' | null
+  include_new_prefixes: boolean | null
+  analysis_mode: string | null
+  time_scope: string | null
   evidence_anchor: string | null
   pending_clarification: string | null
   last_committed_turn_number: number
@@ -60,7 +64,7 @@ export interface P1ConversationState {
 
 export interface P1StateTransition {
   inherit: string[]
-  set: Record<string, string | number | null>
+  set: Record<string, string | number | boolean | null>
   clear: string[]
   reason_codes: string[]
 }

@@ -432,6 +432,11 @@ function renderAddress(
       lines.push(
         `${label} 固定 cohort：从 ${numberText(item.first)} ${unit}（${item.first_at_utc}）变为 ${numberText(item.last)} ${unit}（${item.last_at_utc}），净变化 ${numberText(item.net_change)}；窗口最小值 ${numberText(item.minimum)}（${item.minimum_at_utc}），最大值 ${numberText(item.maximum)}（${item.maximum_at_utc}）；最低点到 data-through ${minimumToLast >= 0 ? '增加' : '减少'} ${numberText(Math.abs(minimumToLast))}。`,
       )
+      if (goal.normalized_kind === 'address_family_compare') {
+        lines.push(
+          `${label} 窗口最大值到最小值的下降幅度为 ${numberText(item.difference)} ${unit}；这与首末净变化是两个不同量。`,
+        )
+      }
     }
     lines.push(
       `${label} 轨道共 ${numberText(item.observed_point_count + item.null_point_count)} 个时间槽：有效观测 ${numberText(item.observed_point_count)} 个，null ${numberText(item.null_point_count)} 个；null 未按 0 处理。`,
@@ -655,6 +660,7 @@ function renderGoal(
       text = `当前 publication 的观测窗口内，累计涉及 ${numberText(pathValue(overview, '/affected_as_count'))} 个不同受影响 AS，其中 ${numberText(pathValue(overview, '/route_interrupted_as_count'))} 个曾出现整 AS 固定前缀同时中断。这是窗口去重人口，不是某一时间槽的同时峰值。`
       break
     case 'current_prefix_state':
+    case 'metric_followup':
       values = [
         evidence('overview', '/current/interrupted_prefix_count', overview, binding, 'prefix', binding.data_through),
         evidence('overview', '/current/completely_interrupted_prefix_count', overview, binding, 'prefix', binding.data_through),
@@ -883,6 +889,13 @@ function renderGoal(
           .includes(item.field_path)
       )
       text = `publication 身份为 ${binding.publication_id}，revision=${binding.revision}，collector=${binding.collector_id}，incident=${binding.incident_id}；本轮不会跨 publication 或来源拼接。`
+      break
+    case 'event_switch':
+      values = identityEvidence(binding).filter((item) =>
+        ['/event_type', '/incident_id', '/publication_id', '/revision', '/collector_id']
+          .includes(item.field_path)
+      )
+      text = `已验证并原子切换到 publication ${binding.publication_id}（revision ${binding.revision}、collector ${binding.collector_id}）；旧事件回答保留原身份，地址族、ASN、指标和待澄清上下文已清除。`
       break
     case 'data_completeness':
       values = [

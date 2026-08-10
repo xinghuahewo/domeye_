@@ -1,0 +1,207 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s3_journey_set_v1",
+  "evidence_kind": "multiturn_journey_set",
+  "stage": "S3",
+  "candidate_id": "p1-page-coverage-s3-776431e8bd75",
+  "run_id": "s3-live-final-005",
+  "actor_id": "s3-question-explorer-agent",
+  "captured_at": "2026-08-10T20:38:15.762Z",
+  "model_identity": "codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+  "case_source_ref": "contracts/agent/country-outage-p1-page-coverage/s3/journeys.json",
+  "case_source_sha256": "380d04275dc34fbd38d2423e10f68112f0ac0b3bffe433f05a7d12430d8726e4",
+  "case_set_sha256": "337bf58925a6b36e67e90a0896687ce708c39a74c7d18dee7652786e3c543519",
+  "page_outcome_ids": [
+    "PCO-01",
+    "PCO-02",
+    "PCO-03",
+    "PCO-04",
+    "PCO-05",
+    "PCO-06",
+    "PCO-07",
+    "PCO-08"
+  ],
+  "journeys": [
+    {
+      "journey_id": "S3-J01",
+      "page_outcome_ids": [
+        "PCO-03",
+        "PCO-04"
+      ],
+      "persona": "普通分析用户",
+      "purpose": "地址族省略、人口继承、新前缀显式加入和否定覆盖",
+      "turns": [
+        {
+          "turn_id": "S3-J01-T01",
+          "question": "IPv4地址变化情况"
+        },
+        {
+          "turn_id": "S3-J01-T02",
+          "question": "那 IPv6 呢"
+        },
+        {
+          "turn_id": "S3-J01-T03",
+          "question": "把新出现前缀也带上"
+        },
+        {
+          "turn_id": "S3-J01-T04",
+          "question": "不看新增，只看原来的"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J01.json",
+      "raw_receipt_sha256": "b0241689f8cdcd8d758aaa2626d5b06afb63de83d5e0ad8f85b2f909ce7ef5ee",
+      "completed_turns": 4,
+      "failed_turns": 0
+    },
+    {
+      "journey_id": "S3-J02",
+      "page_outcome_ids": [
+        "PCO-01",
+        "PCO-02",
+        "PCO-07"
+      ],
+      "persona": "值班分析员",
+      "purpose": "事件概述后的峰值与 prior metric 省略追问",
+      "turns": [
+        {
+          "turn_id": "S3-J02-T01",
+          "question": "这次事件发生了什么"
+        },
+        {
+          "turn_id": "S3-J02-T02",
+          "question": "它什么时候最严重"
+        },
+        {
+          "turn_id": "S3-J02-T03",
+          "question": "到最后还剩多少"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J02.json",
+      "raw_receipt_sha256": "cd058b451c6874d9428505c4a1d46868579b42c3b0ca1857ab7d3111780e5151",
+      "completed_turns": 3,
+      "failed_turns": 0
+    },
+    {
+      "journey_id": "S3-J03",
+      "page_outcome_ids": [
+        "PCO-05"
+      ],
+      "persona": "网络工程师",
+      "purpose": "ASN 显式选择与修正覆盖",
+      "turns": [
+        {
+          "turn_id": "S3-J03-T01",
+          "question": "AS48715 的情况"
+        },
+        {
+          "turn_id": "S3-J03-T02",
+          "question": "改成 AS49556"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J03.json",
+      "raw_receipt_sha256": "97910cc152204449ad7282f77215ce7971f4bcff81e085e68a0ee2559de7708d",
+      "completed_turns": 2,
+      "failed_turns": 0
+    },
+    {
+      "journey_id": "S3-J04",
+      "page_outcome_ids": [
+        "PCO-06",
+        "PCO-08"
+      ],
+      "persona": "路由专家",
+      "purpose": "路径样本与依赖推断边界",
+      "turns": [
+        {
+          "turn_id": "S3-J04-T01",
+          "question": "看一条 AS48715 的实际路径样本"
+        },
+        {
+          "turn_id": "S3-J04-T02",
+          "question": "这能说明它依赖谁吗"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J04.json",
+      "raw_receipt_sha256": "aa8ff45628f5501eb6450c6f88c5afb998ece3a0b19fe8581530e28eea443b0e",
+      "completed_turns": 2,
+      "failed_turns": 0
+    },
+    {
+      "journey_id": "S3-J05",
+      "page_outcome_ids": [
+        "PCO-02",
+        "PCO-08"
+      ],
+      "persona": "管理者",
+      "purpose": "支持事实与全国用户影响混合边界",
+      "turns": [
+        {
+          "turn_id": "S3-J05-T01",
+          "question": "现在还有多少前缀不可见，是不是全国都断了"
+        },
+        {
+          "turn_id": "S3-J05-T02",
+          "question": "那到底是不是政府关网"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J05.json",
+      "raw_receipt_sha256": "6cf9e9bd39d71a41f0cc99cf6ff060545e5f02e822d9539d0313a79ec3125909",
+      "completed_turns": 2,
+      "failed_turns": 0
+    },
+    {
+      "journey_id": "S3-J06",
+      "page_outcome_ids": [
+        "PCO-01",
+        "PCO-02"
+      ],
+      "persona": "审计用户",
+      "purpose": "事件切换暂停、原子 rebind 和 generation 幂等隔离",
+      "turns": [
+        {
+          "turn_id": "S3-J06-T01",
+          "question": "请切换到 country_outage/2026-02-27 09:12:32/IR/1/r"
+        },
+        {
+          "turn_id": "S3-J06-T02",
+          "question": "当前中断前缀"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J06.json",
+      "raw_receipt_sha256": "0fae0bd51c51e6302b7c4595fa43f500121c2d0878be33498e28227b399ffb5c",
+      "completed_turns": 2,
+      "failed_turns": 0
+    },
+    {
+      "journey_id": "S3-J07",
+      "page_outcome_ids": [
+        "PCO-03",
+        "PCO-07",
+        "PCO-08"
+      ],
+      "persona": "非技术用户",
+      "purpose": "跨单位合计、原因和正式趋势边界",
+      "turns": [
+        {
+          "turn_id": "S3-J07-T01",
+          "question": "IPv4 和 IPv6 一共少了多少 IP"
+        },
+        {
+          "turn_id": "S3-J07-T02",
+          "question": "帮我看最近三个月的正式历史趋势"
+        },
+        {
+          "turn_id": "S3-J07-T03",
+          "question": "这是不是配置错误导致的"
+        },
+        {
+          "turn_id": "S3-J07-T04",
+          "question": "页面没有 Update 轨道，是不是说明 Update 一直为 0"
+        }
+      ],
+      "raw_receipt_ref": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/S3-J07.json",
+      "raw_receipt_sha256": "a3a543f411af361328a2fb027554fc47f5ac45a6e06a42929eb46419c61932a2",
+      "completed_turns": 4,
+      "failed_turns": 0
+    }
+  ]
+}

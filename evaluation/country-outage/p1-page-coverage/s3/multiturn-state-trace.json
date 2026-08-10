@@ -1,0 +1,49 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s3_multiturn_state_trace_v1",
+  "artifact_kind": "multiturn_state_trace",
+  "stage": "S3",
+  "candidate_id": "p1-page-coverage-s3-776431e8bd75",
+  "status": "PASS",
+  "captured_at": "2026-08-10T20:48:12.204Z",
+  "run_id": "s3-live-final-005",
+  "journey_count": 7,
+  "turn_count": 19,
+  "completed_turn_count": 19,
+  "grounding_node_count": 40,
+  "evidence_count": 318,
+  "state_committed_turn_count": 14,
+  "state_none_turn_count": 5,
+  "page_outcome_ids": [
+    "PCO-01",
+    "PCO-02",
+    "PCO-03",
+    "PCO-04",
+    "PCO-05",
+    "PCO-06",
+    "PCO-07",
+    "PCO-08"
+  ],
+  "verified_effects": [
+    "省略仅继承经验证的地址族、人口、指标和 ASN",
+    "显式修正与否定覆盖旧槽位",
+    "事件切换暂停旧绑定并在原子 rebind 后增加 generation",
+    "事实始终来自当前 publication 的 Tool 与 Evidence，不来自聊天文本"
+  ],
+  "evidence_refs": [
+    {
+      "kind": "candidate_identity",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/candidate-identity.json",
+      "sha256": "19f5f9ae2388441043df292155445c6998953e32855516f5bae83200041afb31"
+    },
+    {
+      "kind": "multiturn_journey_set",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/journey-set.json",
+      "sha256": "e48b8c6cf7b637ceb9d2bcecaaef09440ccac03245f9a25dda6f09ed2d49b641"
+    },
+    {
+      "kind": "system_output",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/system-output-reveal.json",
+      "sha256": "007d912c643c28bf9a20c7688988f31173e49ea3ad30663c48a6924df2418824"
+    }
+  ]
+}
