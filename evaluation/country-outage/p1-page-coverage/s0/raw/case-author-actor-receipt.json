@@ -1,0 +1,20 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_actor_receipt_v1",
+  "artifact_kind": "product_semantic_truth",
+  "evidence_kind": "case_author_actor_receipt",
+  "candidate_id": "p1-page-coverage-s0-aa8e16b63317",
+  "stage": "S0",
+  "run_id": "s0-product-owner-seed-run-001",
+  "captured_at": "2026-08-10T22:23:00+08:00",
+  "actor_id": "product-owner-seed",
+  "role": "case_author",
+  "allowed_actions": [
+    "submit_product_questions",
+    "submit_context"
+  ],
+  "denied_actions": [
+    "mark_pass",
+    "modify_implementation"
+  ],
+  "orchestrator_receipt_id": "goal-019fe586-s0-case-author-001"
+}

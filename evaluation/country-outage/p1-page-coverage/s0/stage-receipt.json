@@ -1,0 +1,68 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_stage_receipt_v1",
+  "stage": "S0",
+  "task_spec_version": "p1-task-spec-v1.1-page-capability-coverage",
+  "plan_version": "p1-plan-v1.1-page-capability-coverage",
+  "candidate_id": "p1-page-coverage-s0-aa8e16b63317",
+  "status": "PASS",
+  "requirement_ids": [
+    "P1-UX-01",
+    "P1-UX-04",
+    "P1-UX-05",
+    "P1-UX-09",
+    "P1-CTR-01",
+    "P1-CTR-02",
+    "P1-CTR-03",
+    "P1-CTR-04",
+    "P1-CTR-05",
+    "P1-CTR-06",
+    "P1-CTR-07",
+    "P1-CTR-09",
+    "P1-CTR-17",
+    "P1-CTR-18",
+    "P1-CTR-20",
+    "P1-CTR-21",
+    "P1-CTR-22",
+    "P1-CTR-23",
+    "P1-CTR-24"
+  ],
+  "page_outcome_ids": [
+    "PCO-01",
+    "PCO-02",
+    "PCO-03",
+    "PCO-04",
+    "PCO-05",
+    "PCO-06",
+    "PCO-07",
+    "PCO-08"
+  ],
+  "artifacts": [
+    {
+      "kind": "page_capability_outcome_map",
+      "path": "evaluation/country-outage/p1-page-coverage/s0/page-capability-outcome-map.json",
+      "sha256": "679391e90ef259a29dc8a7fe263227f6f0d496244139e0c2e3a816b44e7545b7"
+    },
+    {
+      "kind": "product_semantic_truth",
+      "path": "evaluation/country-outage/p1-page-coverage/s0/product-semantic-truth.json",
+      "sha256": "17ac0f97f5b2e5684543a0878d95f4e2906895420b21fd21639d54d3ac50fc63"
+    },
+    {
+      "kind": "question_explorer_contract",
+      "path": "evaluation/country-outage/p1-page-coverage/s0/question-explorer-contract.json",
+      "sha256": "e0b3954cec1cb115a38beac56ef6a9cb55333d5ecc51f274adfb5291b70b40d2"
+    }
+  ],
+  "semantic_review": {
+    "role_separated": true,
+    "verdict": "PASS",
+    "receipt_ref": "evaluation/country-outage/p1-page-coverage/s0/product-semantic-truth.json"
+  },
+  "unresolved_blockers": [],
+  "prohibited_claims": {
+    "p2_complete": false,
+    "rca_complete": false,
+    "deployed": false,
+    "production_verified": false
+  }
+}

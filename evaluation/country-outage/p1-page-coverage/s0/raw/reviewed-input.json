@@ -1,0 +1,33 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_raw_evidence_v1",
+  "artifact_kind": "product_semantic_truth",
+  "evidence_kind": "reviewed_input",
+  "candidate_id": "p1-page-coverage-s0-aa8e16b63317",
+  "stage": "S0",
+  "run_id": "s0-product-owner-seed-run-001",
+  "captured_at": "2026-08-10T22:24:00+08:00",
+  "actor_id": "product-owner-seed",
+  "questions": [
+    {
+      "case_id": "S0-IP-001",
+      "question": "IP\u5730\u5740\u53d8\u5316\u60c5\u51b5"
+    },
+    {
+      "case_id": "S0-IP-002",
+      "question": "ip\u5730\u5740\u53d8\u5316\u8d8b\u52bf"
+    }
+  ],
+  "contract_scope": [
+    "PCO-03",
+    "PCO-04",
+    "PCO-07",
+    "PCO-08"
+  ],
+  "event_identity": {
+    "event_type": "country_outage",
+    "country_code": "IR",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25"
+  }
+}

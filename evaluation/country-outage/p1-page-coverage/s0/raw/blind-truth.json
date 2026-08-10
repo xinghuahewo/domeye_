@@ -1,0 +1,108 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_blind_truth_v1",
+  "artifact_kind": "product_semantic_truth",
+  "evidence_kind": "blind_truth",
+  "candidate_id": "p1-page-coverage-s0-aa8e16b63317",
+  "stage": "S0",
+  "run_id": "agent-root-s0-blind-semantic-reviewer-turn-001",
+  "captured_at": "2026-08-10T22:28:18+08:00",
+  "actor_id": "s0-blind-semantic-reviewer",
+  "reviewed_input_sha256": "31f60b4afe39162648a7c8ff097e4e803b042523378264f7637f0e8616e4f155",
+  "blind_review_provenance": {
+    "read_before_truth": [
+      "AGENTS.md",
+      "docs/agent/P1-\u804a\u5929\u95ee\u7b54/Task-Spec-\u6700\u7ec8\u9a8c\u6536\u6587\u6863.md",
+      "docs/agent/P1-\u804a\u5929\u95ee\u7b54/Plan-\u5206\u9636\u6bb5\u8ba1\u5212.md",
+      "evaluation/country-outage/p0-v1-3/capability-ledger.json",
+      "evaluation/country-outage/p0-v1-3/unknown-ledger.json",
+      "evaluation/country-outage/p0-v1-3/p1-disposition.json"
+    ],
+    "forbidden_before_truth": "evaluation/country-outage/p1-page-coverage/s0/**",
+    "reviewer_asserted_forbidden_files_not_read": true
+  },
+  "truth_items": [
+    {
+      "case_id": "S0-IP-001",
+      "expected_goals": [
+        "fixed_cohort_address_change",
+        "new_prefix_supplement"
+      ],
+      "expected_entities": {
+        "address_family": "both",
+        "address_family_default_reason": "generic_ip_defaults_to_ipv4_and_ipv6",
+        "population": "fixed_cohort_primary",
+        "supplement_population": "new_prefixes_separate",
+        "analysis_mode": "event_window_change_summary",
+        "time_scope": "current_publication_window",
+        "collector_id": "rrc25",
+        "ipv4_unit": "unique_ipv4_address",
+        "ipv6_unit": "ipv6_slash48_equivalent",
+        "finality": "event_end_unknown"
+      },
+      "answerability": "supported",
+      "degradation_rules": {
+        "one_family_missing": "partial",
+        "all_required_tracks_unavailable_or_identity_conflict": "invalid_data",
+        "event_binding_missing": "clarify",
+        "runtime_not_yet_implemented": "does_not_change_product_answerability"
+      },
+      "required_answer_points": [
+        "IPv4 \u4e0e IPv6 \u5fc5\u987b\u5206\u5f00\u56de\u7b54\u5e76\u4fdd\u7559\u5404\u81ea\u5355\u4f4d",
+        "\u56fa\u5b9a cohort \u662f\u4e3b\u7b54\uff0c\u7a97\u53e3\u5185\u65b0\u51fa\u73b0\u524d\u7f00\u53ea\u4f5c\u72ec\u7acb\u8865\u5145",
+        "\u7ed1\u5b9a incident\u3001publication\u3001revision\u3001RRC25\u3001\u89c2\u6d4b\u7a97\u53e3\u548c data through",
+        "\u7ed9\u51fa\u9996\u672b\u503c\u3001\u6781\u503c\u4e0e\u65f6\u70b9\u3001\u51c0\u53d8\u5316\u3001\u89c2\u6d4b\u70b9\u548c\u7f3a\u5931\u72b6\u6001",
+        "\u82e5\u8f68\u9053\u7f3a\u5931\uff0c\u5982\u5b9e\u8868\u8fbe unavailable\u3001unknown \u6216 null \u800c\u4e0d\u662f 0"
+      ],
+      "forbidden_claims": [
+        "\u4e0d\u5f97\u628a IPv4 \u548c IPv6 \u76f8\u52a0\u3001\u76f8\u51cf\u6216\u5408\u5e76\u6210\u4e00\u4e2a\u4e25\u91cd\u5ea6",
+        "\u4e0d\u5f97\u628a\u5730\u5740\u6570\u91cf\u89e3\u91ca\u4e3a\u7528\u6237\u3001\u6d41\u91cf\u6216\u5168\u56fd\u4e2d\u65ad",
+        "\u4e0d\u5f97\u5224\u65ad\u539f\u56e0\u3001\u8d23\u4efb\u6216\u6062\u590d",
+        "\u4e0d\u5f97\u5c06\u65b0\u524d\u7f00\u5e76\u5165\u56fa\u5b9a cohort"
+      ]
+    },
+    {
+      "case_id": "S0-IP-002",
+      "expected_goals": [
+        "event_window_address_series_trend",
+        "new_prefix_supplement"
+      ],
+      "expected_entities": {
+        "address_family": "both",
+        "address_family_default_reason": "generic_ip_defaults_to_ipv4_and_ipv6",
+        "population": "fixed_cohort_primary",
+        "supplement_population": "new_prefixes_separate",
+        "analysis_mode": "event_window_series_summary",
+        "formal_historical_trend": false,
+        "time_scope": "current_publication_window",
+        "collector_id": "rrc25",
+        "ipv4_unit": "unique_ipv4_address",
+        "ipv6_unit": "ipv6_slash48_equivalent",
+        "finality": "event_end_unknown"
+      },
+      "answerability": "supported",
+      "degradation_rules": {
+        "one_family_missing": "partial",
+        "all_required_tracks_unavailable_or_identity_conflict": "invalid_data",
+        "event_binding_missing": "clarify",
+        "explicit_historical_or_cross_event_scope": "renegotiate_trend_capability_boundary"
+      },
+      "required_answer_points": [
+        "\u5c06\u8d8b\u52bf\u7406\u89e3\u4e3a\u5f53\u524d publication \u89c2\u6d4b\u7a97\u53e3\u5185\u5df2\u767b\u8bb0 series \u8d70\u52bf",
+        "IPv4 \u4e0e IPv6 \u5206\u5f00\u8868\u8fbe\u9996\u672b\u3001\u6781\u503c\u3001\u65f6\u70b9\u548c\u53d8\u5316\u65b9\u5411\uff0c\u5e76\u5206\u522b\u4fdd\u7559 unique IPv4 address \u4e0e IPv6 /48-equivalent \u5355\u4f4d",
+        "\u56fa\u5b9a cohort \u4e3b\u7b54\u4e4b\u540e\u9644\u5e26\u65b0\u524d\u7f00\u72ec\u7acb\u8865\u5145",
+        "\u7ed1\u5b9a incident\u3001publication\u3001revision\u3001RRC25\u3001\u89c2\u6d4b\u7a97\u53e3\u5e76\u660e\u793a data through \u548c event_end_unknown",
+        "\u53ea\u4f7f\u7528\u7248\u672c\u5316\u786e\u5b9a\u6027\u89c4\u5219\u63cf\u8ff0\u8d70\u52bf\uff0c\u4e0d\u751f\u6210\u65e0\u89c4\u5219\u66f2\u7ebf\u6545\u4e8b"
+      ],
+      "forbidden_claims": [
+        "\u4e0d\u5f97\u56e0\u4e3a\u51fa\u73b0\u8d8b\u52bf\u4e00\u8bcd\u5c31\u8bef\u8c03\u4e0d\u53ef\u7528\u7684\u6b63\u5f0f\u5386\u53f2\u8d8b\u52bf\u4ea7\u54c1",
+        "\u4e0d\u5f97\u6269\u5c55\u4e3a\u8de8\u4e8b\u4ef6\u3001\u8de8\u56fd\u5bb6\u6216\u957f\u671f\u8d8b\u52bf",
+        "\u4e0d\u5f97\u628a IPv4 \u4e0e IPv6 \u5408\u5e76\u6210\u5355\u4e00\u6570\u91cf\u3001\u51c0\u53d8\u5316\u6216\u4e25\u91cd\u5ea6",
+        "\u4e0d\u5f97\u628a\u5730\u5740\u6570\u91cf\u89e3\u91ca\u4e3a\u7528\u6237\u6570\u91cf\u3001\u6d41\u91cf\u3001\u4e1a\u52a1\u635f\u5931\u6216\u5168\u56fd\u4e2d\u65ad",
+        "\u4e0d\u5f97\u636e\u6b64\u5224\u65ad\u539f\u56e0\u3001\u8d23\u4efb\u4e3b\u4f53\u6216\u653f\u5e9c\u884c\u4e3a",
+        "\u4e0d\u5f97\u628a\u6781\u503c\u540e\u53d8\u5316\u79f0\u4e3a\u6062\u590d",
+        "\u4e0d\u5f97\u4e3a\u7d2f\u8ba1\u65b0\u524d\u7f00\u5957\u7528\u4e0b\u964d\u540e\u56de\u5347\u8bed\u4e49",
+        "\u4e0d\u5f97\u628a\u5171\u540c\u53d8\u5316\u3001\u65f6\u95f4\u5148\u540e\u6216\u76f8\u5173\u8d70\u52bf\u5199\u6210\u56e0\u679c"
+      ]
+    }
+  ]
+}
