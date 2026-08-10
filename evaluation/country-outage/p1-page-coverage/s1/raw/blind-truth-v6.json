@@ -1,0 +1,90 @@
+{
+  "schema_version": "country_outage_p1_s1_blind_truth_lineage_v6",
+  "evidence_kind": "blind_truth",
+  "candidate_id": "p1-page-coverage-s1-229b8de96d3c",
+  "stage": "S1",
+  "run_id": "s1-v6-independent-reviewer-run-001",
+  "captured_at": "2026-08-10T23:26:12+08:00",
+  "actor_id": "independent-product-semantic-reviewer",
+  "reviewed_input_sha256": "80e3aedd3a3ea64722ec3c781e59de38e13c1d92f763b6e373f8bff4e116d2fe",
+  "lineage": {
+    "kind": "exact_carry_forward",
+    "canonical_path": "evaluation/country-outage/p1-page-coverage/s1/raw/blind-truth.json",
+    "canonical_sha256": "59dd62311984199714defd7a452b4fb1246748c632363777b6595f0cf1a15a47",
+    "canonical_captured_at": "2026-08-10T22:48:30+08:00",
+    "semantic_changes": []
+  },
+  "common_expected_grounding": {
+    "G0": "CAP-001/CAP-002 真实事件身份验证",
+    "G1_G2": "CAP-006/CAP-007 双地址族 series",
+    "G3_G4": "CAP-016 分地址族确定性摘要",
+    "G5": "CAP-017 只并列不跨单位合并",
+    "G6": "CAP-008 新前缀独立补充",
+    "G7": "CAP-009 定义、单位、人口与 null 语义门"
+  },
+  "truth_items": [
+    {
+      "case_id": "S1-IP-001",
+      "expected_goals": ["fixed_cohort_address_change", "new_prefix_supplement"],
+      "expected_entities": {
+        "address_family": "both",
+        "population": "fixed_cohort_primary",
+        "supplement_population": "newly_observed_prefixes_separate",
+        "analysis_mode": "event_window_change_summary",
+        "time_scope": "current_publication_window",
+        "collector_id": "rrc25",
+        "finality": "event_end_unknown"
+      },
+      "answerability": "supported",
+      "required_answer_points": [
+        "IPv4 与 IPv6 分别给出 metric definition、population、unit、首末值与时点、极值与首次观测时点、净变化、观测与缺失点状态",
+        "新前缀分别给出地址族、人口定义、前缀数量和当前可见 IPv4 唯一地址或 IPv6 /48 等价规模",
+        "所有事实绑定 event、incident、publication、revision、RRC25、窗口、data through、finality、Tool/Operator 版本和原始 evidence ref",
+        "固定 cohort 主答，新前缀独立补充",
+        "共享身份、Schema、能力、权限、Tool、Operator、证据和回答边界全部通过后才提交状态"
+      ],
+      "forbidden_claims": [
+        "不得省略 IPv6、只答最大下降或把 max-to-min 冒充首末净变化",
+        "不得合并 IPv4 与 IPv6 单位、总量或严重度",
+        "不得把地址数解释为用户、流量、业务或全国中断",
+        "不得判断原因、责任、政府行为、攻击、配置错误、恢复或事件结束",
+        "不得把新前缀并入 fixed cohort 或解释成新用户、流量迁移或恢复",
+        "不得把 null、unknown、unavailable 当成 0，也不得编造数值、时点、publication 或 evidence ref"
+      ],
+      "required_contract": "继承 canonical blind truth 的全部必答字段、证据身份、降级与事务提交条件。",
+      "forbidden_contract": "不合并地址族单位，不外推用户、流量、全国中断、原因、责任、恢复或事件结束。"
+    },
+    {
+      "case_id": "S1-IP-002",
+      "expected_goals": ["event_window_address_series_trend", "new_prefix_supplement"],
+      "expected_entities": {
+        "address_family": "both",
+        "population": "fixed_cohort_primary",
+        "supplement_population": "newly_observed_prefixes_separate",
+        "analysis_mode": "event_window_series_summary",
+        "time_scope": "current_publication_window",
+        "formal_historical_trend": false,
+        "cross_event_or_cross_period": false,
+        "collector_id": "rrc25",
+        "finality": "event_end_unknown"
+      },
+      "answerability": "supported",
+      "required_answer_points": [
+        "继承 S1-IP-001 的全部事实字段、证据身份和人口分层",
+        "每个地址族增加由版本化规则确定的 change_direction",
+        "明确 trend_scope=current_publication_window 与 formal_historical_trend=false",
+        "走势必须来自登记的确定性算子，累计新前缀只呈现累计或当前可见事实",
+        "确认计划不含 CAP-015 后才允许提交当前事件内走势上下文"
+      ],
+      "forbidden_claims": [
+        "不得因趋势一词调用 CAP-015 或误拒绝当前事件内走势",
+        "不得扩展为历史、跨事件、跨周期、跨国家或长期趋势",
+        "不得生成无版本规则的曲线故事、因果或恢复结论",
+        "不得为累计新前缀套用下降、反弹或恢复语义",
+        "不得用单一地址族、单一极值或固定规范问题替换事件内走势目标"
+      ],
+      "required_contract": "继承 S1-IP-001 并增加确定性 direction；显式正式历史请求必须保留实体后零执行拒绝。",
+      "forbidden_contract": "不得调用 CAP-015，不扩展成正式历史、跨事件、曲线故事、因果或恢复。"
+    }
+  ]
+}

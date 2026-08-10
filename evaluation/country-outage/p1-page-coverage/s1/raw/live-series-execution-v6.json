@@ -1,0 +1,2397 @@
+{
+  "schema_version": "country_outage_p1_page_series_live_execution_v6",
+  "evidence_kind": "live_series_execution",
+  "candidate_id": "p1-page-coverage-s1-229b8de96d3c",
+  "stage": "S1",
+  "run_id": "s1-live-20260810T152419142Z",
+  "captured_at": "2026-08-10T15:24:19.142Z",
+  "candidate_components": {
+    "implementation": "229b8de96d3c68f80314e39d9893230af54e759ef6038873f1e130a2995eaee2",
+    "test": "8654570b29f76ad1cd4f1d4182f48b00fe915b5aca5649fc42f225b92d5d85c3",
+    "tool_contract": "d6c06855c31dbcea100ac93e20b9203b10ec5d3d2ce875b699da986250e0f43d",
+    "grounding_matrix": "1a42155eeb678b01f68284c772a47759755b5a64815b843e43f49bbdfcef2f29",
+    "oracle": "1e6eb6a4f3e38eaa6ac63b05e57e06d2dcc03bd4a829962b78cb760f951345d3"
+  },
+  "source_documents": [
+    {
+      "path": "evaluation/country-outage/p1-page-coverage/s1/raw/live-resolver-response-v6.json",
+      "url": "http://10.99.8.16:28471/api/v2/events/resolve?ref=country_outage%2F2026-02-27+09%3A12%3A32%2FIR%2F1%2Fr",
+      "status": 200,
+      "response_sha256": "c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64"
+    },
+    {
+      "path": "evaluation/country-outage/p1-page-coverage/s1/raw/live-overview-response-v6.json",
+      "url": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+      "status": 200,
+      "response_sha256": "7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733"
+    },
+    {
+      "path": "evaluation/country-outage/p1-page-coverage/s1/raw/live-series-response-v6.json",
+      "url": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+      "status": 200,
+      "response_sha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6"
+    }
+  ],
+  "executions": [
+    {
+      "question": "IP地址变化情况",
+      "result": {
+        "goalId": "S1-LIVE-001",
+        "answerability": "supported",
+        "reasonCode": "verified_series_answer",
+        "answerText": "IPv4 固定 cohort（规范化、去重并合重叠后的 IPv4 唯一地址并集。）：从 10,156,800 个唯一 IPv4 地址（2026-02-27T00:10:00Z）变为 10,069,760 个唯一 IPv4 地址（2026-03-11T00:00:00Z），净减少 87,040；窗口最小值 9,577,728（2026-02-28T14:35:00Z），最大值 10,156,800（2026-02-27T00:10:00Z）；有效观测 3455 点，null 0 点。\nIPv6 固定 cohort（规范化、去重并合后的 IPv6 /48 等价并集。）：从 267,292 个 IPv6 /48 等价块（2026-02-27T00:10:00Z）变为 267,288 个 IPv6 /48 等价块（2026-03-11T00:00:00Z），净减少 4；窗口最小值 267,288（2026-03-04T08:55:00Z），最大值 267,292（2026-02-27T00:10:00Z）；有效观测 3455 点，null 0 点。\nIPV4 新前缀补充：在 data-through 点 2026-03-11T00:00:00Z，窗口累计出现 700 条；“当前可见”轨道为 111 条，对应 19,523 个唯一 IPv4 地址。任一 data-through 点为 null 时整项标记 unavailable，不向前回填。\nIPV6 新前缀补充：在 data-through 点 2026-03-11T00:00:00Z，窗口累计出现 1 条；“当前可见”轨道为 1 条，对应 524,288 个 IPv6 /48 等价块。任一 data-through 点为 null 时整项标记 unavailable，不向前回填。\n证据身份：country_outage / IR / incident_go_v1_a1de26f854831330c616a72af21597eb / country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f / revision 1 / RRC25；观测窗口 2026-02-27T00:10:00Z 至 2026-03-11T00:00:00Z，数据截止 2026-03-11T00:00:00Z，事件结束仍未知。\n限制：这些是 RRC25 控制面可见性事实，不代表用户数、流量、全国中断、原因、责任或恢复。",
+        "groundingPlan": {
+          "goalId": "S1-LIVE-001",
+          "normalizedUserGoal": {
+            "goalId": "S1-LIVE-001",
+            "requestedText": "IP地址变化情况",
+            "requestedGoal": "fixed_cohort_address_change",
+            "supplementGoal": "new_prefix_supplement",
+            "addressFamily": "both",
+            "primaryPopulation": "fixed_cohort",
+            "supplementPopulation": "new_prefix",
+            "analysisMode": "event_window_change_summary",
+            "timeScope": "current_publication_window",
+            "formalHistoricalTrend": false
+          },
+          "analysisMode": "change_summary",
+          "addressFamily": "both",
+          "includeFixedCohort": true,
+          "includeNewPrefixes": true,
+          "formalHistoricalTrend": false,
+          "answerability": "supported",
+          "reasonCode": "generic_ip_defaults_to_ipv4_and_ipv6",
+          "nodes": [
+            {
+              "nodeId": "S1-LIVE-001:identity",
+              "nodeKind": "identity_gate",
+              "capabilityIds": [
+                "CAP-001",
+                "CAP-002"
+              ],
+              "toolId": "TOOL-P1-EVENT-BINDING-VERIFY",
+              "operatorId": "OP-P1-IDENTITY-GATE",
+              "metrics": [],
+              "dependsOn": []
+            },
+            {
+              "nodeId": "S1-LIVE-001:fixed:ipv4",
+              "nodeKind": "series_analysis",
+              "capabilityIds": [
+                "CAP-006",
+                "CAP-016"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-SERIES-EXTREMA",
+              "metrics": [
+                "fixed_visible_ipv4_address_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-001:identity"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-001:fixed:ipv6",
+              "nodeKind": "series_analysis",
+              "capabilityIds": [
+                "CAP-007",
+                "CAP-016"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-SERIES-EXTREMA",
+              "metrics": [
+                "fixed_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-001:identity"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-001:compare",
+              "nodeKind": "composition",
+              "capabilityIds": [
+                "CAP-017"
+              ],
+              "toolId": null,
+              "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+              "metrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-001:fixed:ipv4",
+                "S1-LIVE-001:fixed:ipv6"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-001:new",
+              "nodeKind": "series_analysis",
+              "capabilityIds": [
+                "CAP-008"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-CURRENT-VALUE",
+              "metrics": [
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-001:identity"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-001:definitions",
+              "nodeKind": "definition_gate",
+              "capabilityIds": [
+                "CAP-009"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-METRIC-DEFINITION-GATE",
+              "metrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count",
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-001:identity"
+              ]
+            }
+          ]
+        },
+        "summaries": [
+          {
+            "metric": "fixed_visible_ipv4_address_count",
+            "unit": "unique_ipv4_address",
+            "definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。",
+            "population": "fixed_cohort",
+            "temporalSemantics": "state_gauge",
+            "first": 10156800,
+            "firstAtUtc": "2026-02-27T00:10:00Z",
+            "last": 10069760,
+            "lastAtUtc": "2026-03-11T00:00:00Z",
+            "minimum": 9577728,
+            "minimumAtUtc": "2026-02-28T14:35:00Z",
+            "maximum": 10156800,
+            "maximumAtUtc": "2026-02-27T00:10:00Z",
+            "netChange": -87040,
+            "observedPointCount": 3455,
+            "nullPointCount": 0,
+            "direction": "decreased",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+              "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+            ]
+          },
+          {
+            "metric": "fixed_visible_ipv6_slash48_count",
+            "unit": "ipv6_slash48_equivalent",
+            "definition": "规范化、去重并合后的 IPv6 /48 等价并集。",
+            "population": "fixed_cohort",
+            "temporalSemantics": "state_gauge",
+            "first": 267292,
+            "firstAtUtc": "2026-02-27T00:10:00Z",
+            "last": 267288,
+            "lastAtUtc": "2026-03-11T00:00:00Z",
+            "minimum": 267288,
+            "minimumAtUtc": "2026-03-04T08:55:00Z",
+            "maximum": 267292,
+            "maximumAtUtc": "2026-02-27T00:10:00Z",
+            "netChange": -4,
+            "observedPointCount": 3455,
+            "nullPointCount": 0,
+            "direction": "decreased",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+              "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+            ]
+          }
+        ],
+        "currentValues": [
+          {
+            "metric": "new_cumulative_ipv4_prefix_count",
+            "unit": "prefix",
+            "definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 700,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_cumulative_ipv4_address_count",
+            "unit": "unique_ipv4_address",
+            "definition": "累计新 IPv4 前缀的唯一地址并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 244291,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv4_prefix_count",
+            "unit": "prefix",
+            "definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 111,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv4_address_count",
+            "unit": "unique_ipv4_address",
+            "definition": "当前可见新 IPv4 前缀的唯一地址并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 19523,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+            ]
+          },
+          {
+            "metric": "new_cumulative_ipv6_prefix_count",
+            "unit": "prefix",
+            "definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 1,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_cumulative_ipv6_slash48_count",
+            "unit": "ipv6_slash48_equivalent",
+            "definition": "累计新 IPv6 前缀的 /48 等价并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 524288,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv6_prefix_count",
+            "unit": "prefix",
+            "definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 1,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv6_slash48_count",
+            "unit": "ipv6_slash48_equivalent",
+            "definition": "当前可见新 IPv6 前缀的 /48 等价并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 524288,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+            ]
+          }
+        ],
+        "comparison": {
+          "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+          "operatorVersion": "v1",
+          "ipv4Metric": "fixed_visible_ipv4_address_count",
+          "ipv6Metric": "fixed_visible_ipv6_slash48_count",
+          "unitPolicy": "separate_units_only",
+          "combinedAbsoluteTotal": "forbidden",
+          "evidenceRefs": [
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+            "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+            "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count",
+            "operator:OP-P1-ADDRESS-FAMILY-COMPARE:v1"
+          ]
+        },
+        "bindingVerification": {
+          "toolId": "TOOL-P1-EVENT-BINDING-VERIFY",
+          "verificationMode": "live_resolver",
+          "verified": true,
+          "resolverEndpoint": "http://10.99.8.16:28471/api/v2/events/resolve?ref=country_outage%2F2026-02-27+09%3A12%3A32%2FIR%2F1%2Fr",
+          "resolverResponseSha256": "c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+          "overviewEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+          "overviewResponseSha256": "7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+          "resolverIdentity": {
+            "eventType": "country_outage",
+            "countryCode": "IR",
+            "incidentId": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publicationId": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collectorId": "rrc25",
+            "windowStartUtc": "2026-02-27T00:10:00Z",
+            "windowEndUtc": "2026-03-11T00:00:00Z",
+            "dataThrough": "2026-03-11T00:00:00Z",
+            "lifecycleState": "event_end_unknown"
+          },
+          "sourceCapabilities": {
+            "eventSeries": "available",
+            "overview": "available"
+          },
+          "negotiatedCapabilityIds": [
+            "CAP-001",
+            "CAP-002",
+            "CAP-006",
+            "CAP-007",
+            "CAP-008",
+            "CAP-009",
+            "CAP-016",
+            "CAP-017"
+          ],
+          "evidenceRefs": [
+            "resolver:/api/v2/events/resolve?ref=country_outage%2F2026-02-27%2009%3A12%3A32%2FIR%2F1%2Fr",
+            "sha256:c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+            "overview:/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "sha256:7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+            "resolver:/capabilities/event_series=available",
+            "resolver:/capabilities/overview=available"
+          ]
+        },
+        "evidenceRefs": [
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+          "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+          "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count",
+          "operator:OP-P1-ADDRESS-FAMILY-COMPARE:v1",
+          "live-resolver-response-v6.json",
+          "live-overview-response-v6.json",
+          "resolver:/api/v2/events/resolve?ref=country_outage%2F2026-02-27%2009%3A12%3A32%2FIR%2F1%2Fr",
+          "sha256:c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+          "overview:/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+          "sha256:7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+          "resolver:/capabilities/event_series=available",
+          "resolver:/capabilities/overview=available"
+        ],
+        "evidenceBindings": [
+          {
+            "evidenceId": "resolver:event-binding",
+            "sourceId": "country_outage_general_resolution_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/events/resolve?ref=country_outage%2F2026-02-27+09%3A12%3A32%2FIR%2F1%2Fr",
+            "responseSha256": "c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+            "jsonPointers": [
+              "/event_type",
+              "/country_code",
+              "/incident_id",
+              "/publication_id",
+              "/revision",
+              "/collector_id",
+              "/window_start_utc",
+              "/window_end_utc",
+              "/data_through",
+              "/lifecycle_state",
+              "/capabilities/event_series",
+              "/capabilities/overview"
+            ]
+          },
+          {
+            "evidenceId": "overview:event-binding",
+            "sourceId": "country_outage_general_overview_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+            "jsonPointers": [
+              "/incident_id",
+              "/publication_id",
+              "/revision",
+              "/collector_id",
+              "/window_start_utc",
+              "/window_end_utc",
+              "/data_through",
+              "/lifecycle_state"
+            ]
+          },
+          {
+            "evidenceId": "series:fixed_visible_ipv4_address_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/fixed_visible_ipv4_address_count",
+              "/track_definitions/fixed_visible_ipv4_address_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:fixed_visible_ipv6_slash48_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/fixed_visible_ipv6_slash48_count",
+              "/track_definitions/fixed_visible_ipv6_slash48_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv4_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv4_prefix_count",
+              "/track_definitions/new_cumulative_ipv4_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv4_address_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv4_address_count",
+              "/track_definitions/new_cumulative_ipv4_address_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv4_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv4_prefix_count",
+              "/track_definitions/new_visible_ipv4_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv4_address_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv4_address_count",
+              "/track_definitions/new_visible_ipv4_address_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv6_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv6_prefix_count",
+              "/track_definitions/new_cumulative_ipv6_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv6_slash48_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv6_slash48_count",
+              "/track_definitions/new_cumulative_ipv6_slash48_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv6_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv6_prefix_count",
+              "/track_definitions/new_visible_ipv6_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv6_slash48_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv6_slash48_count",
+              "/track_definitions/new_visible_ipv6_slash48_count",
+              "/timestamps"
+            ]
+          }
+        ],
+        "operatorReceipts": [
+          {
+            "receiptId": "operator:extrema:fixed_visible_ipv4_address_count",
+            "nodeId": "S1-LIVE-001:fixed:ipv4",
+            "operatorId": "OP-P1-SERIES-EXTREMA",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:fixed_visible_ipv4_address_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "fixed_visible_ipv4_address_count",
+              "unit": "unique_ipv4_address",
+              "definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。",
+              "population": "fixed_cohort",
+              "temporalSemantics": "state_gauge",
+              "first": 10156800,
+              "firstAtUtc": "2026-02-27T00:10:00Z",
+              "last": 10069760,
+              "lastAtUtc": "2026-03-11T00:00:00Z",
+              "minimum": 9577728,
+              "minimumAtUtc": "2026-02-28T14:35:00Z",
+              "maximum": 10156800,
+              "maximumAtUtc": "2026-02-27T00:10:00Z",
+              "netChange": -87040,
+              "observedPointCount": 3455,
+              "nullPointCount": 0,
+              "direction": "decreased",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:extrema:fixed_visible_ipv6_slash48_count",
+            "nodeId": "S1-LIVE-001:fixed:ipv6",
+            "operatorId": "OP-P1-SERIES-EXTREMA",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:fixed_visible_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "fixed_visible_ipv6_slash48_count",
+              "unit": "ipv6_slash48_equivalent",
+              "definition": "规范化、去重并合后的 IPv6 /48 等价并集。",
+              "population": "fixed_cohort",
+              "temporalSemantics": "state_gauge",
+              "first": 267292,
+              "firstAtUtc": "2026-02-27T00:10:00Z",
+              "last": 267288,
+              "lastAtUtc": "2026-03-11T00:00:00Z",
+              "minimum": 267288,
+              "minimumAtUtc": "2026-03-04T08:55:00Z",
+              "maximum": 267292,
+              "maximumAtUtc": "2026-02-27T00:10:00Z",
+              "netChange": -4,
+              "observedPointCount": 3455,
+              "nullPointCount": 0,
+              "direction": "decreased",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv4_prefix_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv4_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv4_prefix_count",
+              "unit": "prefix",
+              "definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 700,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv4_address_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv4_address_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv4_address_count",
+              "unit": "unique_ipv4_address",
+              "definition": "累计新 IPv4 前缀的唯一地址并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 244291,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv4_prefix_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv4_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv4_prefix_count",
+              "unit": "prefix",
+              "definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 111,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv4_address_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv4_address_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv4_address_count",
+              "unit": "unique_ipv4_address",
+              "definition": "当前可见新 IPv4 前缀的唯一地址并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 19523,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv6_prefix_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv6_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv6_prefix_count",
+              "unit": "prefix",
+              "definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 1,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv6_slash48_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv6_slash48_count",
+              "unit": "ipv6_slash48_equivalent",
+              "definition": "累计新 IPv6 前缀的 /48 等价并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 524288,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv6_prefix_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv6_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv6_prefix_count",
+              "unit": "prefix",
+              "definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 1,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv6_slash48_count",
+            "nodeId": "S1-LIVE-001:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv6_slash48_count",
+              "unit": "ipv6_slash48_equivalent",
+              "definition": "当前可见新 IPv6 前缀的 /48 等价并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 524288,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:address-family-compare:v1",
+            "nodeId": "S1-LIVE-001:compare",
+            "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [],
+            "inputOperatorReceiptIds": [
+              "operator:extrema:fixed_visible_ipv4_address_count",
+              "operator:extrema:fixed_visible_ipv6_slash48_count"
+            ],
+            "output": {
+              "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+              "operatorVersion": "v1",
+              "ipv4Metric": "fixed_visible_ipv4_address_count",
+              "ipv6Metric": "fixed_visible_ipv6_slash48_count",
+              "unitPolicy": "separate_units_only",
+              "combinedAbsoluteTotal": "forbidden",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count",
+                "operator:OP-P1-ADDRESS-FAMILY-COMPARE:v1"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:metric-definition-gate:v1",
+            "nodeId": "S1-LIVE-001:definitions",
+            "operatorId": "OP-P1-METRIC-DEFINITION-GATE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:fixed_visible_ipv4_address_count",
+              "series:fixed_visible_ipv6_slash48_count",
+              "series:new_cumulative_ipv4_prefix_count",
+              "series:new_cumulative_ipv4_address_count",
+              "series:new_visible_ipv4_prefix_count",
+              "series:new_visible_ipv4_address_count",
+              "series:new_cumulative_ipv6_prefix_count",
+              "series:new_cumulative_ipv6_slash48_count",
+              "series:new_visible_ipv6_prefix_count",
+              "series:new_visible_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "fixed_visible_ipv4_address_count": {
+                "definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。",
+                "label": "固定前缀可见 IPv4 地址量",
+                "unit": "unique_ipv4_address",
+                "family": "ipv4",
+                "population": "fixed_cohort",
+                "temporalSemantics": "state_gauge"
+              },
+              "fixed_visible_ipv6_slash48_count": {
+                "definition": "规范化、去重并合后的 IPv6 /48 等价并集。",
+                "label": "固定前缀可见 IPv6 /48 等价量",
+                "unit": "ipv6_slash48_equivalent",
+                "family": "ipv6",
+                "population": "fixed_cohort",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_cumulative_ipv4_prefix_count": {
+                "definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。",
+                "label": "累计出现新 IPv4 前缀",
+                "unit": "prefix",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_cumulative_ipv4_address_count": {
+                "definition": "累计新 IPv4 前缀的唯一地址并集。",
+                "label": "累计出现新 IPv4 地址量",
+                "unit": "unique_ipv4_address",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_visible_ipv4_prefix_count": {
+                "definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。",
+                "label": "当前可见新 IPv4 前缀",
+                "unit": "prefix",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_visible_ipv4_address_count": {
+                "definition": "当前可见新 IPv4 前缀的唯一地址并集。",
+                "label": "当前可见新 IPv4 地址量",
+                "unit": "unique_ipv4_address",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_cumulative_ipv6_prefix_count": {
+                "definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。",
+                "label": "累计出现新 IPv6 前缀",
+                "unit": "prefix",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_cumulative_ipv6_slash48_count": {
+                "definition": "累计新 IPv6 前缀的 /48 等价并集。",
+                "label": "累计出现新 IPv6 /48 等价量",
+                "unit": "ipv6_slash48_equivalent",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_visible_ipv6_prefix_count": {
+                "definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。",
+                "label": "当前可见新 IPv6 前缀",
+                "unit": "prefix",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_visible_ipv6_slash48_count": {
+                "definition": "当前可见新 IPv6 前缀的 /48 等价并集。",
+                "label": "当前可见新 IPv6 /48 等价量",
+                "unit": "ipv6_slash48_equivalent",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              }
+            }
+          }
+        ],
+        "stateCommit": "committed",
+        "stateReceipt": {
+          "before": {
+            "dialog": {
+              "topic": null,
+              "addressFamily": null,
+              "primaryPopulation": null,
+              "includeNewPrefixes": null,
+              "analysisMode": null,
+              "formalHistoricalTrend": null
+            },
+            "evidence": {
+              "bindingIdentity": null,
+              "verifiedGoalIds": [],
+              "verifiedMetrics": [],
+              "metricEvidenceRefs": {}
+            }
+          },
+          "proposal": {
+            "dialog": {
+              "topic": "address_visibility",
+              "addressFamily": "both",
+              "primaryPopulation": "fixed_cohort",
+              "includeNewPrefixes": true,
+              "analysisMode": "change_summary",
+              "formalHistoricalTrend": false
+            },
+            "evidence": {
+              "bindingIdentity": "incident_go_v1_a1de26f854831330c616a72af21597eb:country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f:1:rrc25:2026-03-11T00:00:00Z",
+              "verifiedGoalIds": [
+                "S1-LIVE-001"
+              ],
+              "verifiedMetrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count",
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "metricEvidenceRefs": {
+                "fixed_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+                ],
+                "fixed_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+                ],
+                "new_cumulative_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+                ],
+                "new_cumulative_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+                ],
+                "new_visible_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+                ],
+                "new_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+                ],
+                "new_cumulative_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+                ],
+                "new_cumulative_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+                ],
+                "new_visible_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+                ],
+                "new_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+                ]
+              }
+            }
+          },
+          "after": {
+            "dialog": {
+              "topic": "address_visibility",
+              "addressFamily": "both",
+              "primaryPopulation": "fixed_cohort",
+              "includeNewPrefixes": true,
+              "analysisMode": "change_summary",
+              "formalHistoricalTrend": false
+            },
+            "evidence": {
+              "bindingIdentity": "incident_go_v1_a1de26f854831330c616a72af21597eb:country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f:1:rrc25:2026-03-11T00:00:00Z",
+              "verifiedGoalIds": [
+                "S1-LIVE-001"
+              ],
+              "verifiedMetrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count",
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "metricEvidenceRefs": {
+                "fixed_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+                ],
+                "fixed_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+                ],
+                "new_cumulative_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+                ],
+                "new_cumulative_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+                ],
+                "new_visible_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+                ],
+                "new_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+                ],
+                "new_cumulative_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+                ],
+                "new_cumulative_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+                ],
+                "new_visible_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+                ],
+                "new_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+                ]
+              }
+            }
+          },
+          "commit": "committed",
+          "committedVerifiedFamilies": [
+            "ipv4",
+            "ipv6"
+          ],
+          "rejectedOrMissingMetrics": []
+        },
+        "limitations": [
+          "IPv4 与 IPv6 /48 等价量保持不同单位，不生成合并总量或严重度。",
+          "数据截止和最低点后的变化不等于恢复。",
+          "新前缀与固定 cohort 是不同统计人口。"
+        ]
+      }
+    },
+    {
+      "question": "ip地址变化趋势",
+      "result": {
+        "goalId": "S1-LIVE-002",
+        "answerability": "supported",
+        "reasonCode": "verified_series_answer",
+        "answerText": "IPv4 固定 cohort（规范化、去重并合重叠后的 IPv4 唯一地址并集。）：从 10,156,800 个唯一 IPv4 地址（2026-02-27T00:10:00Z）变为 10,069,760 个唯一 IPv4 地址（2026-03-11T00:00:00Z），净减少 87,040；窗口最小值 9,577,728（2026-02-28T14:35:00Z），最大值 10,156,800（2026-02-27T00:10:00Z）；有效观测 3455 点，null 0 点。 这是当前 publication 观测窗口内的确定性时序概括。\nIPv6 固定 cohort（规范化、去重并合后的 IPv6 /48 等价并集。）：从 267,292 个 IPv6 /48 等价块（2026-02-27T00:10:00Z）变为 267,288 个 IPv6 /48 等价块（2026-03-11T00:00:00Z），净减少 4；窗口最小值 267,288（2026-03-04T08:55:00Z），最大值 267,292（2026-02-27T00:10:00Z）；有效观测 3455 点，null 0 点。 这是当前 publication 观测窗口内的确定性时序概括。\nIPV4 新前缀补充：在 data-through 点 2026-03-11T00:00:00Z，窗口累计出现 700 条；“当前可见”轨道为 111 条，对应 19,523 个唯一 IPv4 地址。任一 data-through 点为 null 时整项标记 unavailable，不向前回填。\nIPV6 新前缀补充：在 data-through 点 2026-03-11T00:00:00Z，窗口累计出现 1 条；“当前可见”轨道为 1 条，对应 524,288 个 IPv6 /48 等价块。任一 data-through 点为 null 时整项标记 unavailable，不向前回填。\n证据身份：country_outage / IR / incident_go_v1_a1de26f854831330c616a72af21597eb / country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f / revision 1 / RRC25；观测窗口 2026-02-27T00:10:00Z 至 2026-03-11T00:00:00Z，数据截止 2026-03-11T00:00:00Z，事件结束仍未知。\n限制：这些是 RRC25 控制面可见性事实，不代表用户数、流量、全国中断、原因、责任或恢复。",
+        "groundingPlan": {
+          "goalId": "S1-LIVE-002",
+          "normalizedUserGoal": {
+            "goalId": "S1-LIVE-002",
+            "requestedText": "ip地址变化趋势",
+            "requestedGoal": "event_window_address_series_trend",
+            "supplementGoal": "new_prefix_supplement",
+            "addressFamily": "both",
+            "primaryPopulation": "fixed_cohort",
+            "supplementPopulation": "new_prefix",
+            "analysisMode": "event_window_series_summary",
+            "timeScope": "current_publication_window",
+            "formalHistoricalTrend": false
+          },
+          "analysisMode": "event_window_trend",
+          "addressFamily": "both",
+          "includeFixedCohort": true,
+          "includeNewPrefixes": true,
+          "formalHistoricalTrend": false,
+          "answerability": "supported",
+          "reasonCode": "generic_ip_defaults_to_ipv4_and_ipv6",
+          "nodes": [
+            {
+              "nodeId": "S1-LIVE-002:identity",
+              "nodeKind": "identity_gate",
+              "capabilityIds": [
+                "CAP-001",
+                "CAP-002"
+              ],
+              "toolId": "TOOL-P1-EVENT-BINDING-VERIFY",
+              "operatorId": "OP-P1-IDENTITY-GATE",
+              "metrics": [],
+              "dependsOn": []
+            },
+            {
+              "nodeId": "S1-LIVE-002:fixed:ipv4",
+              "nodeKind": "series_analysis",
+              "capabilityIds": [
+                "CAP-006",
+                "CAP-016"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-SERIES-EXTREMA",
+              "metrics": [
+                "fixed_visible_ipv4_address_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-002:identity"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-002:fixed:ipv6",
+              "nodeKind": "series_analysis",
+              "capabilityIds": [
+                "CAP-007",
+                "CAP-016"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-SERIES-EXTREMA",
+              "metrics": [
+                "fixed_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-002:identity"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-002:compare",
+              "nodeKind": "composition",
+              "capabilityIds": [
+                "CAP-017"
+              ],
+              "toolId": null,
+              "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+              "metrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-002:fixed:ipv4",
+                "S1-LIVE-002:fixed:ipv6"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-002:new",
+              "nodeKind": "series_analysis",
+              "capabilityIds": [
+                "CAP-008"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-CURRENT-VALUE",
+              "metrics": [
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-002:identity"
+              ]
+            },
+            {
+              "nodeId": "S1-LIVE-002:definitions",
+              "nodeKind": "definition_gate",
+              "capabilityIds": [
+                "CAP-009"
+              ],
+              "toolId": "TOOL-P1-PAGE-SERIES-READ",
+              "operatorId": "OP-P1-METRIC-DEFINITION-GATE",
+              "metrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count",
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "dependsOn": [
+                "S1-LIVE-002:identity"
+              ]
+            }
+          ]
+        },
+        "summaries": [
+          {
+            "metric": "fixed_visible_ipv4_address_count",
+            "unit": "unique_ipv4_address",
+            "definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。",
+            "population": "fixed_cohort",
+            "temporalSemantics": "state_gauge",
+            "first": 10156800,
+            "firstAtUtc": "2026-02-27T00:10:00Z",
+            "last": 10069760,
+            "lastAtUtc": "2026-03-11T00:00:00Z",
+            "minimum": 9577728,
+            "minimumAtUtc": "2026-02-28T14:35:00Z",
+            "maximum": 10156800,
+            "maximumAtUtc": "2026-02-27T00:10:00Z",
+            "netChange": -87040,
+            "observedPointCount": 3455,
+            "nullPointCount": 0,
+            "direction": "decreased",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+              "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+            ]
+          },
+          {
+            "metric": "fixed_visible_ipv6_slash48_count",
+            "unit": "ipv6_slash48_equivalent",
+            "definition": "规范化、去重并合后的 IPv6 /48 等价并集。",
+            "population": "fixed_cohort",
+            "temporalSemantics": "state_gauge",
+            "first": 267292,
+            "firstAtUtc": "2026-02-27T00:10:00Z",
+            "last": 267288,
+            "lastAtUtc": "2026-03-11T00:00:00Z",
+            "minimum": 267288,
+            "minimumAtUtc": "2026-03-04T08:55:00Z",
+            "maximum": 267292,
+            "maximumAtUtc": "2026-02-27T00:10:00Z",
+            "netChange": -4,
+            "observedPointCount": 3455,
+            "nullPointCount": 0,
+            "direction": "decreased",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+              "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+            ]
+          }
+        ],
+        "currentValues": [
+          {
+            "metric": "new_cumulative_ipv4_prefix_count",
+            "unit": "prefix",
+            "definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 700,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_cumulative_ipv4_address_count",
+            "unit": "unique_ipv4_address",
+            "definition": "累计新 IPv4 前缀的唯一地址并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 244291,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv4_prefix_count",
+            "unit": "prefix",
+            "definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 111,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv4_address_count",
+            "unit": "unique_ipv4_address",
+            "definition": "当前可见新 IPv4 前缀的唯一地址并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 19523,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+            ]
+          },
+          {
+            "metric": "new_cumulative_ipv6_prefix_count",
+            "unit": "prefix",
+            "definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 1,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_cumulative_ipv6_slash48_count",
+            "unit": "ipv6_slash48_equivalent",
+            "definition": "累计新 IPv6 前缀的 /48 等价并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "cumulative",
+            "value": 524288,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv6_prefix_count",
+            "unit": "prefix",
+            "definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 1,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+            ]
+          },
+          {
+            "metric": "new_visible_ipv6_slash48_count",
+            "unit": "ipv6_slash48_equivalent",
+            "definition": "当前可见新 IPv6 前缀的 /48 等价并集。",
+            "population": "new_prefix",
+            "temporalSemantics": "state_gauge",
+            "value": 524288,
+            "observedAtUtc": "2026-03-11T00:00:00Z",
+            "evidenceRefs": [
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+              "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+              "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+            ]
+          }
+        ],
+        "comparison": {
+          "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+          "operatorVersion": "v1",
+          "ipv4Metric": "fixed_visible_ipv4_address_count",
+          "ipv6Metric": "fixed_visible_ipv6_slash48_count",
+          "unitPolicy": "separate_units_only",
+          "combinedAbsoluteTotal": "forbidden",
+          "evidenceRefs": [
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+            "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+            "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+            "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count",
+            "operator:OP-P1-ADDRESS-FAMILY-COMPARE:v1"
+          ]
+        },
+        "bindingVerification": {
+          "toolId": "TOOL-P1-EVENT-BINDING-VERIFY",
+          "verificationMode": "live_resolver",
+          "verified": true,
+          "resolverEndpoint": "http://10.99.8.16:28471/api/v2/events/resolve?ref=country_outage%2F2026-02-27+09%3A12%3A32%2FIR%2F1%2Fr",
+          "resolverResponseSha256": "c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+          "overviewEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+          "overviewResponseSha256": "7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+          "resolverIdentity": {
+            "eventType": "country_outage",
+            "countryCode": "IR",
+            "incidentId": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publicationId": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collectorId": "rrc25",
+            "windowStartUtc": "2026-02-27T00:10:00Z",
+            "windowEndUtc": "2026-03-11T00:00:00Z",
+            "dataThrough": "2026-03-11T00:00:00Z",
+            "lifecycleState": "event_end_unknown"
+          },
+          "sourceCapabilities": {
+            "eventSeries": "available",
+            "overview": "available"
+          },
+          "negotiatedCapabilityIds": [
+            "CAP-001",
+            "CAP-002",
+            "CAP-006",
+            "CAP-007",
+            "CAP-008",
+            "CAP-009",
+            "CAP-016",
+            "CAP-017"
+          ],
+          "evidenceRefs": [
+            "resolver:/api/v2/events/resolve?ref=country_outage%2F2026-02-27%2009%3A12%3A32%2FIR%2F1%2Fr",
+            "sha256:c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+            "overview:/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "sha256:7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+            "resolver:/capabilities/event_series=available",
+            "resolver:/capabilities/overview=available"
+          ]
+        },
+        "evidenceRefs": [
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+          "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+          "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+          "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+          "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+          "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count",
+          "operator:OP-P1-ADDRESS-FAMILY-COMPARE:v1",
+          "live-resolver-response-v6.json",
+          "live-overview-response-v6.json",
+          "resolver:/api/v2/events/resolve?ref=country_outage%2F2026-02-27%2009%3A12%3A32%2FIR%2F1%2Fr",
+          "sha256:c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+          "overview:/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+          "sha256:7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+          "resolver:/capabilities/event_series=available",
+          "resolver:/capabilities/overview=available"
+        ],
+        "evidenceBindings": [
+          {
+            "evidenceId": "resolver:event-binding",
+            "sourceId": "country_outage_general_resolution_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/events/resolve?ref=country_outage%2F2026-02-27+09%3A12%3A32%2FIR%2F1%2Fr",
+            "responseSha256": "c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64",
+            "jsonPointers": [
+              "/event_type",
+              "/country_code",
+              "/incident_id",
+              "/publication_id",
+              "/revision",
+              "/collector_id",
+              "/window_start_utc",
+              "/window_end_utc",
+              "/data_through",
+              "/lifecycle_state",
+              "/capabilities/event_series",
+              "/capabilities/overview"
+            ]
+          },
+          {
+            "evidenceId": "overview:event-binding",
+            "sourceId": "country_outage_general_overview_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/overview?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733",
+            "jsonPointers": [
+              "/incident_id",
+              "/publication_id",
+              "/revision",
+              "/collector_id",
+              "/window_start_utc",
+              "/window_end_utc",
+              "/data_through",
+              "/lifecycle_state"
+            ]
+          },
+          {
+            "evidenceId": "series:fixed_visible_ipv4_address_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/fixed_visible_ipv4_address_count",
+              "/track_definitions/fixed_visible_ipv4_address_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:fixed_visible_ipv6_slash48_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/fixed_visible_ipv6_slash48_count",
+              "/track_definitions/fixed_visible_ipv6_slash48_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv4_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv4_prefix_count",
+              "/track_definitions/new_cumulative_ipv4_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv4_address_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv4_address_count",
+              "/track_definitions/new_cumulative_ipv4_address_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv4_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv4_prefix_count",
+              "/track_definitions/new_visible_ipv4_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv4_address_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv4_address_count",
+              "/track_definitions/new_visible_ipv4_address_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv6_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv6_prefix_count",
+              "/track_definitions/new_cumulative_ipv6_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_cumulative_ipv6_slash48_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_cumulative_ipv6_slash48_count",
+              "/track_definitions/new_cumulative_ipv6_slash48_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv6_prefix_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv6_prefix_count",
+              "/track_definitions/new_visible_ipv6_prefix_count",
+              "/timestamps"
+            ]
+          },
+          {
+            "evidenceId": "series:new_visible_ipv6_slash48_count",
+            "sourceId": "country_outage_general_series_v1",
+            "sourceEndpoint": "http://10.99.8.16:28471/api/v2/country-outages/incident_go_v1_a1de26f854831330c616a72af21597eb/series?publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+            "responseSha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+            "jsonPointers": [
+              "/tracks/new_visible_ipv6_slash48_count",
+              "/track_definitions/new_visible_ipv6_slash48_count",
+              "/timestamps"
+            ]
+          }
+        ],
+        "operatorReceipts": [
+          {
+            "receiptId": "operator:extrema:fixed_visible_ipv4_address_count",
+            "nodeId": "S1-LIVE-002:fixed:ipv4",
+            "operatorId": "OP-P1-SERIES-EXTREMA",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:fixed_visible_ipv4_address_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "fixed_visible_ipv4_address_count",
+              "unit": "unique_ipv4_address",
+              "definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。",
+              "population": "fixed_cohort",
+              "temporalSemantics": "state_gauge",
+              "first": 10156800,
+              "firstAtUtc": "2026-02-27T00:10:00Z",
+              "last": 10069760,
+              "lastAtUtc": "2026-03-11T00:00:00Z",
+              "minimum": 9577728,
+              "minimumAtUtc": "2026-02-28T14:35:00Z",
+              "maximum": 10156800,
+              "maximumAtUtc": "2026-02-27T00:10:00Z",
+              "netChange": -87040,
+              "observedPointCount": 3455,
+              "nullPointCount": 0,
+              "direction": "decreased",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:extrema:fixed_visible_ipv6_slash48_count",
+            "nodeId": "S1-LIVE-002:fixed:ipv6",
+            "operatorId": "OP-P1-SERIES-EXTREMA",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:fixed_visible_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "fixed_visible_ipv6_slash48_count",
+              "unit": "ipv6_slash48_equivalent",
+              "definition": "规范化、去重并合后的 IPv6 /48 等价并集。",
+              "population": "fixed_cohort",
+              "temporalSemantics": "state_gauge",
+              "first": 267292,
+              "firstAtUtc": "2026-02-27T00:10:00Z",
+              "last": 267288,
+              "lastAtUtc": "2026-03-11T00:00:00Z",
+              "minimum": 267288,
+              "minimumAtUtc": "2026-03-04T08:55:00Z",
+              "maximum": 267292,
+              "maximumAtUtc": "2026-02-27T00:10:00Z",
+              "netChange": -4,
+              "observedPointCount": 3455,
+              "nullPointCount": 0,
+              "direction": "decreased",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv4_prefix_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv4_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv4_prefix_count",
+              "unit": "prefix",
+              "definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 700,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv4_address_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv4_address_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv4_address_count",
+              "unit": "unique_ipv4_address",
+              "definition": "累计新 IPv4 前缀的唯一地址并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 244291,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv4_prefix_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv4_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv4_prefix_count",
+              "unit": "prefix",
+              "definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 111,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv4_address_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv4_address_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv4_address_count",
+              "unit": "unique_ipv4_address",
+              "definition": "当前可见新 IPv4 前缀的唯一地址并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 19523,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv6_prefix_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv6_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv6_prefix_count",
+              "unit": "prefix",
+              "definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 1,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_cumulative_ipv6_slash48_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_cumulative_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_cumulative_ipv6_slash48_count",
+              "unit": "ipv6_slash48_equivalent",
+              "definition": "累计新 IPv6 前缀的 /48 等价并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "cumulative",
+              "value": 524288,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv6_prefix_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv6_prefix_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv6_prefix_count",
+              "unit": "prefix",
+              "definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 1,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:current:new_visible_ipv6_slash48_count",
+            "nodeId": "S1-LIVE-002:new",
+            "operatorId": "OP-P1-CURRENT-VALUE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:new_visible_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "metric": "new_visible_ipv6_slash48_count",
+              "unit": "ipv6_slash48_equivalent",
+              "definition": "当前可见新 IPv6 前缀的 /48 等价并集。",
+              "population": "new_prefix",
+              "temporalSemantics": "state_gauge",
+              "value": 524288,
+              "observedAtUtc": "2026-03-11T00:00:00Z",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:address-family-compare:v1",
+            "nodeId": "S1-LIVE-002:compare",
+            "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [],
+            "inputOperatorReceiptIds": [
+              "operator:extrema:fixed_visible_ipv4_address_count",
+              "operator:extrema:fixed_visible_ipv6_slash48_count"
+            ],
+            "output": {
+              "operatorId": "OP-P1-ADDRESS-FAMILY-COMPARE",
+              "operatorVersion": "v1",
+              "ipv4Metric": "fixed_visible_ipv4_address_count",
+              "ipv6Metric": "fixed_visible_ipv6_slash48_count",
+              "unitPolicy": "separate_units_only",
+              "combinedAbsoluteTotal": "forbidden",
+              "evidenceRefs": [
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count",
+                "operator:OP-P1-ADDRESS-FAMILY-COMPARE:v1"
+              ]
+            }
+          },
+          {
+            "receiptId": "operator:metric-definition-gate:v1",
+            "nodeId": "S1-LIVE-002:definitions",
+            "operatorId": "OP-P1-METRIC-DEFINITION-GATE",
+            "operatorVersion": "v1",
+            "inputEvidenceIds": [
+              "series:fixed_visible_ipv4_address_count",
+              "series:fixed_visible_ipv6_slash48_count",
+              "series:new_cumulative_ipv4_prefix_count",
+              "series:new_cumulative_ipv4_address_count",
+              "series:new_visible_ipv4_prefix_count",
+              "series:new_visible_ipv4_address_count",
+              "series:new_cumulative_ipv6_prefix_count",
+              "series:new_cumulative_ipv6_slash48_count",
+              "series:new_visible_ipv6_prefix_count",
+              "series:new_visible_ipv6_slash48_count"
+            ],
+            "inputOperatorReceiptIds": [],
+            "output": {
+              "fixed_visible_ipv4_address_count": {
+                "definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。",
+                "label": "固定前缀可见 IPv4 地址量",
+                "unit": "unique_ipv4_address",
+                "family": "ipv4",
+                "population": "fixed_cohort",
+                "temporalSemantics": "state_gauge"
+              },
+              "fixed_visible_ipv6_slash48_count": {
+                "definition": "规范化、去重并合后的 IPv6 /48 等价并集。",
+                "label": "固定前缀可见 IPv6 /48 等价量",
+                "unit": "ipv6_slash48_equivalent",
+                "family": "ipv6",
+                "population": "fixed_cohort",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_cumulative_ipv4_prefix_count": {
+                "definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。",
+                "label": "累计出现新 IPv4 前缀",
+                "unit": "prefix",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_cumulative_ipv4_address_count": {
+                "definition": "累计新 IPv4 前缀的唯一地址并集。",
+                "label": "累计出现新 IPv4 地址量",
+                "unit": "unique_ipv4_address",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_visible_ipv4_prefix_count": {
+                "definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。",
+                "label": "当前可见新 IPv4 前缀",
+                "unit": "prefix",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_visible_ipv4_address_count": {
+                "definition": "当前可见新 IPv4 前缀的唯一地址并集。",
+                "label": "当前可见新 IPv4 地址量",
+                "unit": "unique_ipv4_address",
+                "family": "ipv4",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_cumulative_ipv6_prefix_count": {
+                "definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。",
+                "label": "累计出现新 IPv6 前缀",
+                "unit": "prefix",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_cumulative_ipv6_slash48_count": {
+                "definition": "累计新 IPv6 前缀的 /48 等价并集。",
+                "label": "累计出现新 IPv6 /48 等价量",
+                "unit": "ipv6_slash48_equivalent",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "cumulative"
+              },
+              "new_visible_ipv6_prefix_count": {
+                "definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。",
+                "label": "当前可见新 IPv6 前缀",
+                "unit": "prefix",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              },
+              "new_visible_ipv6_slash48_count": {
+                "definition": "当前可见新 IPv6 前缀的 /48 等价并集。",
+                "label": "当前可见新 IPv6 /48 等价量",
+                "unit": "ipv6_slash48_equivalent",
+                "family": "ipv6",
+                "population": "new_prefix",
+                "temporalSemantics": "state_gauge"
+              }
+            }
+          }
+        ],
+        "stateCommit": "committed",
+        "stateReceipt": {
+          "before": {
+            "dialog": {
+              "topic": null,
+              "addressFamily": null,
+              "primaryPopulation": null,
+              "includeNewPrefixes": null,
+              "analysisMode": null,
+              "formalHistoricalTrend": null
+            },
+            "evidence": {
+              "bindingIdentity": null,
+              "verifiedGoalIds": [],
+              "verifiedMetrics": [],
+              "metricEvidenceRefs": {}
+            }
+          },
+          "proposal": {
+            "dialog": {
+              "topic": "address_visibility",
+              "addressFamily": "both",
+              "primaryPopulation": "fixed_cohort",
+              "includeNewPrefixes": true,
+              "analysisMode": "event_window_trend",
+              "formalHistoricalTrend": false
+            },
+            "evidence": {
+              "bindingIdentity": "incident_go_v1_a1de26f854831330c616a72af21597eb:country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f:1:rrc25:2026-03-11T00:00:00Z",
+              "verifiedGoalIds": [
+                "S1-LIVE-002"
+              ],
+              "verifiedMetrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count",
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "metricEvidenceRefs": {
+                "fixed_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+                ],
+                "fixed_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+                ],
+                "new_cumulative_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+                ],
+                "new_cumulative_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+                ],
+                "new_visible_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+                ],
+                "new_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+                ],
+                "new_cumulative_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+                ],
+                "new_cumulative_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+                ],
+                "new_visible_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+                ],
+                "new_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+                ]
+              }
+            }
+          },
+          "after": {
+            "dialog": {
+              "topic": "address_visibility",
+              "addressFamily": "both",
+              "primaryPopulation": "fixed_cohort",
+              "includeNewPrefixes": true,
+              "analysisMode": "event_window_trend",
+              "formalHistoricalTrend": false
+            },
+            "evidence": {
+              "bindingIdentity": "incident_go_v1_a1de26f854831330c616a72af21597eb:country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f:1:rrc25:2026-03-11T00:00:00Z",
+              "verifiedGoalIds": [
+                "S1-LIVE-002"
+              ],
+              "verifiedMetrics": [
+                "fixed_visible_ipv4_address_count",
+                "fixed_visible_ipv6_slash48_count",
+                "new_cumulative_ipv4_prefix_count",
+                "new_cumulative_ipv4_address_count",
+                "new_visible_ipv4_prefix_count",
+                "new_visible_ipv4_address_count",
+                "new_cumulative_ipv6_prefix_count",
+                "new_cumulative_ipv6_slash48_count",
+                "new_visible_ipv6_prefix_count",
+                "new_visible_ipv6_slash48_count"
+              ],
+              "metricEvidenceRefs": {
+                "fixed_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv4_address_count"
+                ],
+                "fixed_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/fixed_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps",
+                  "operator:OP-P1-SERIES-EXTREMA:fixed_visible_ipv6_slash48_count"
+                ],
+                "new_cumulative_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_prefix_count"
+                ],
+                "new_cumulative_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv4_address_count"
+                ],
+                "new_visible_ipv4_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_prefix_count"
+                ],
+                "new_visible_ipv4_address_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv4_address_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv4_address_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv4_address_count"
+                ],
+                "new_cumulative_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_prefix_count"
+                ],
+                "new_cumulative_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_cumulative_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_cumulative_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_cumulative_ipv6_slash48_count"
+                ],
+                "new_visible_ipv6_prefix_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_prefix_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_prefix_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_prefix_count"
+                ],
+                "new_visible_ipv6_slash48_count": [
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/tracks/new_visible_ipv6_slash48_count/3454",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/track_definitions/new_visible_ipv6_slash48_count",
+                  "source:country_outage_general_series_v1:sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6#/timestamps/3454",
+                  "operator:OP-P1-CURRENT-VALUE:new_visible_ipv6_slash48_count"
+                ]
+              }
+            }
+          },
+          "commit": "committed",
+          "committedVerifiedFamilies": [
+            "ipv4",
+            "ipv6"
+          ],
+          "rejectedOrMissingMetrics": []
+        },
+        "limitations": [
+          "IPv4 与 IPv6 /48 等价量保持不同单位，不生成合并总量或严重度。",
+          "数据截止和最低点后的变化不等于恢复。",
+          "新前缀与固定 cohort 是不同统计人口。"
+        ]
+      }
+    }
+  ]
+}
