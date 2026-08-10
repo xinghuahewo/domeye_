@@ -1,0 +1,16 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_component_policy_v1",
+  "evidence_kind": "component_policy",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-browser-api-live-001",
+  "captured_at": "2026-08-10T21:30:26.390Z",
+  "component": "policy",
+  "identity": "grounding-policy:ad677516425d1b4bb7c0b6899417f1cb4797bdf45b837cf5ddb1e6df6c723905",
+  "source_files": [
+    {
+      "path": "contracts/agent/country-outage-p1-page-coverage/s2/policy.json",
+      "sha256": "807267fc5b04cc0300fcee7d9523d30b2a2b70b5b1955618379d16e1cd82665e"
+    }
+  ]
+}

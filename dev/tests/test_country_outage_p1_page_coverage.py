@@ -9,6 +9,89 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CountryOutageP1PageCoverageTest(unittest.TestCase):
+    def test_s4_user_surface_and_narrow_proxy_exist(self) -> None:
+        for relative in (
+            "frontend/src/pages/CountryOutageChatPage.vue",
+            "frontend/src/api/countryOutageChat.ts",
+            "backend/web/api/v2/country_outage_chat_proxy.py",
+            "agent-sidecar/tests/p1-page-capability-http.test.ts",
+            "dev/tools/capture_country_outage_p1_page_coverage_s4.mjs",
+            "dev/tools/validate_country_outage_p1_page_coverage.py",
+        ):
+            self.assertTrue((ROOT / relative).is_file(), relative)
+
+    def test_s4_live_receipt_keeps_two_ip_goals_and_execution_chain(self) -> None:
+        path = (
+            ROOT
+            / "evaluation/country-outage/p1-page-coverage/s4/raw/api-receipt.json"
+        )
+        conversation = json.loads(path.read_text(encoding="utf-8"))[
+            "response"
+        ]["conversation"]
+        self.assertEqual(
+            [turn["question"] for turn in conversation["turns"]],
+            ["IP地址变化情况", "IP地址变化趋势"],
+        )
+        for turn in conversation["turns"]:
+            answer = turn["answer"]
+            self.assertEqual(answer["answerability"], "supported")
+            self.assertEqual(
+                [
+                    goal["normalized_kind"]
+                    for goal in answer["semantic_plan"]["user_goal_plan"]["goals"]
+                ],
+                ["address_family_change", "new_prefix_resources"],
+            )
+            self.assertEqual(
+                {
+                    goal["entities"]["address_family"]
+                    for goal in answer["semantic_plan"]["user_goal_plan"]["goals"]
+                },
+                {"both"},
+            )
+            self.assertEqual(
+                len(answer["semantic_plan"]["grounding_plan"]["nodes"]), 6
+            )
+            self.assertEqual(len(answer["execution_trace"]["nodes"]), 6)
+            self.assertEqual(answer["state_receipt"]["status"], "committed")
+            self.assertFalse(
+                any(item["source"] == "model" for item in answer["evidence"])
+            )
+
+    def test_s4_component_and_journey_identity_are_cross_bound(self) -> None:
+        root = ROOT / "evaluation/country-outage/p1-page-coverage/s4"
+        candidate = json.loads(
+            (root / "same-candidate-manifest.json").read_text(encoding="utf-8")
+        )
+        trace = json.loads(
+            (root / "browser-api-tool-evidence-state-trace.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            set(candidate["component_identities"]),
+            {
+                "frontend",
+                "backend",
+                "runtime",
+                "semantic_planner",
+                "model",
+                "prompt",
+                "schema",
+                "capability_catalog",
+                "policy",
+                "tool_contracts",
+                "operator_contracts",
+                "oracle",
+                "data_publication",
+            },
+        )
+        self.assertEqual(len(trace["journeys"]), 1)
+        self.assertEqual(
+            trace["journeys"][0]["candidate_identity_sha256"],
+            candidate["candidate_identity_sha256"],
+        )
+
     def test_s3_runtime_sources_exist(self) -> None:
         for relative in (
             "agent-sidecar/src/chat/runtime-v2-conversation.ts",

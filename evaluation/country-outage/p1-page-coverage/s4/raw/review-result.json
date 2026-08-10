@@ -1,0 +1,202 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_semantic_review_result_v1",
+  "evidence_kind": "semantic_review_result",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "candidate_identity_sha256": "3317fbf78cf69b6a132bd17e2b10352b854e213579612dbb174050bdd491717f",
+  "run_id": "s4-blind-semantic-review-exact-002",
+  "captured_at": "2026-08-10T21:34:09Z",
+  "actor_id": "s4-independent-product-semantic-truth-reviewer",
+  "reviewed_input_sha256": "536d02b5938e8fcc7982cc752f9bdab0261a57b44303b00b6bcff0d950877c00",
+  "blind_truth_sha256": "14937ba055ba0e66b91cd6806719b24d0b1ccf817b7646c4c9e3a3dfc878f42b",
+  "system_output_sha256": "e895bbd8a26ec28edd29ae4dccc462c9e7ff46727f48e7d1d8f3e8a5915c5294",
+  "case_author_actor_receipt_sha256": "ce8b21a2c0eea87ae20a9cf3c4f0e30b819bd55bcb8b1669a5843c6d269cac0c",
+  "reviewer_actor_receipt_sha256": "d74c61fe607882619435a7252b58061b61bac20a079e38f5b7ff914e289db5f2",
+  "truth_items_sha256": "1290afa62be9077da071e5a5d6041da70957bc2cb488074e2bd69c0d25dd0bb1",
+  "verdict": "PASS",
+  "reviewed_items": [
+    {
+      "case_id": "S4-IP-001",
+      "verdict": "PASS",
+      "expected_answerability": "supported",
+      "actual_answerability": "supported",
+      "semantic_diff": [],
+      "checks": {
+        "goals_preserved": true,
+        "generic_ip_resolved_to_ipv4_and_ipv6": true,
+        "fixed_cohort_is_primary": true,
+        "new_prefixes_are_separate_supplement": true,
+        "units_kept_separate": true,
+        "null_semantics_explicit": true,
+        "same_publication_identity": true,
+        "data_through_not_recovery": true,
+        "event_end_unknown_preserved": true,
+        "evidence_refs_resolved": true,
+        "forbidden_claim_count": 0
+      },
+      "observed_truth": {
+        "ipv4_fixed_cohort": {
+          "first": 10156800,
+          "last": 10069760,
+          "net_change": -87040,
+          "minimum": 9577728,
+          "minimum_at_utc": "2026-02-28T14:35:00Z",
+          "unit": "unique_ipv4_address"
+        },
+        "ipv6_fixed_cohort": {
+          "first": 267292,
+          "last": 267288,
+          "net_change": -4,
+          "minimum": 267288,
+          "minimum_at_utc": "2026-03-04T08:55:00Z",
+          "unit": "ipv6_slash48_equivalent"
+        },
+        "new_prefix_supplement": {
+          "ipv4_cumulative_prefix_count": 700,
+          "ipv4_current_visible_prefix_count": 111,
+          "ipv4_current_visible_address_count": 19523,
+          "ipv6_cumulative_prefix_count": 1,
+          "ipv6_current_visible_prefix_count": 1,
+          "ipv6_current_visible_slash48_count": 524288
+        },
+        "window_start_utc": "2026-02-27T00:10:00Z",
+        "data_through": "2026-03-11T00:00:00Z",
+        "lifecycle_state": "event_end_unknown"
+      },
+      "evidence_summary": "固定 cohort 与新前缀被拆为两个 supported 子目标；6 个执行节点均真实闭合，回答数字、时点、单位和限制均可回到本轮 evidence refs。"
+    },
+    {
+      "case_id": "S4-IP-002",
+      "verdict": "PASS",
+      "expected_answerability": "supported",
+      "actual_answerability": "supported",
+      "semantic_diff": [],
+      "checks": {
+        "goals_preserved": true,
+        "same_binding_inherited": true,
+        "generic_ip_resolved_to_ipv4_and_ipv6": true,
+        "analysis_mode_is_event_window_trend": true,
+        "time_scope_is_current_publication_window": true,
+        "not_misrouted_to_unavailable_formal_trend": true,
+        "formal_historical_trend_not_claimed": true,
+        "fixed_cohort_is_primary": true,
+        "new_prefixes_are_separate_supplement": true,
+        "units_kept_separate": true,
+        "data_through_not_recovery": true,
+        "event_end_unknown_preserved": true,
+        "prior_answer_not_used_as_evidence": true,
+        "forbidden_claim_count": 0
+      },
+      "observed_truth": {
+        "analysis_mode": "event_window_trend",
+        "time_scope": "current_publication_window",
+        "answer_boundary": "当前 publication 观测窗口内确定性时序趋势概括，不是正式历史趋势制品",
+        "address_family": "both",
+        "population": "fixed_cohort_primary_with_new_prefix_supplement",
+        "data_through": "2026-03-11T00:00:00Z",
+        "lifecycle_state": "event_end_unknown"
+      },
+      "evidence_summary": "第二轮未误拒趋势问题，仍执行 6 个登记节点并使用同一 publication 的 Tool/算子结果；上一轮文本未进入 EvidenceState。"
+    },
+    {
+      "case_id": "S4-UX-001",
+      "verdict": "PASS",
+      "expected_answerability": "supported",
+      "actual_answerability": "supported",
+      "semantic_diff": [],
+      "checks": {
+        "desktop_identity_visible": true,
+        "narrow_identity_visible": true,
+        "per_goal_decisions_visible": true,
+        "evidence_drilldown_visible": true,
+        "user_goal_plan_visible": true,
+        "grounding_plan_visible": true,
+        "tool_operator_visible": true,
+        "dialog_state_visible": true,
+        "desktop_readable": true,
+        "narrow_readable_without_horizontal_overflow": true,
+        "hidden_chain_of_thought_exposed": false,
+        "state_transaction_auditable": true,
+        "candidate_identity_consistent": true
+      },
+      "observed_truth": {
+        "desktop_viewport": "1440x1000",
+        "desktop_image_sha256": "27bbfb1da1056da202000d498ca4f4808d935e5708b45538e4df2361455b9c91",
+        "narrow_viewport": "390x844",
+        "narrow_image_sha256": "7716e707ac2c46a7e7328bf6be9bfdd0a85db641fb4b1541789d0f4ad3287253",
+        "visible_identity": [
+          "incident_id",
+          "publication_id",
+          "revision",
+          "collector_id",
+          "data_through",
+          "event_end_unknown"
+        ],
+        "visible_audit_layers": [
+          "evidence",
+          "UserGoalPlan",
+          "GroundingPlan",
+          "Tool/Operator",
+          "DialogState"
+        ],
+        "dialog_state_status": "committed",
+        "hidden_chain_of_thought": "not_recorded_and_not_rendered"
+      },
+      "evidence_summary": "桌面与 390px 窄屏滚动页面均呈现身份、逐子目标裁决、证据与四层审计入口；详细 UserGoal/Grounding/Tool/EvidenceState/DialogState 原始回执与 API 精确一致。"
+    }
+  ],
+  "integrity_checks": [
+    {
+      "check_id": "candidate_identity",
+      "verdict": "PASS",
+      "details": "14/14 component receipts 的 SHA 与 envelope 一致；对 component_identities 执行排序 JSON SHA-256 后得到 3317fbf78cf69b6a132bd17e2b10352b854e213579612dbb174050bdd491717f。"
+    },
+    {
+      "check_id": "revealed_artifact_hashes",
+      "verdict": "PASS",
+      "details": "review-system-output 列出的 10/10 当前 S4 JSON 制品 SHA 一致；浏览器回执列出的 2/2 final PNG SHA 一致。"
+    },
+    {
+      "check_id": "api_split_receipt_equivalence",
+      "verdict": "PASS",
+      "details": "2/2 UserGoalPlan、2/2 GroundingPlan、2/2 Tool execution trace、2/2 answer/evidence 与 API 原始响应逐对象一致。"
+    },
+    {
+      "check_id": "execution_node_output_hashes",
+      "verdict": "PASS",
+      "details": "12/12 节点按 sha256-json-stringify-v1 复算 output_sha256 一致；每轮 6 个节点均为 passed 或 reused_preflight，error_code 均为 null。"
+    },
+    {
+      "check_id": "evidence_reference_closure",
+      "verdict": "PASS",
+      "details": "两轮各 56 个唯一 answer evidence refs 和 56 个唯一 node evidence refs 均零缺失；共 112 个 evidence 对象身份均绑定同一 incident/publication/revision/rrc25。"
+    },
+    {
+      "check_id": "evidence_value_integrity",
+      "verdict": "PASS",
+      "details": "102/102 标量 evidence 值与真实 resolution/series 路径一致；6/6 整轨哈希一致；4/4 derived evidence 序列化与 OP-01 输出一致。"
+    },
+    {
+      "check_id": "state_transaction",
+      "verdict": "PASS",
+      "details": "初始 before、turn1 after、turn2 before 与 final state 连续；两轮事务检查全部闭合后 committed，EvidenceState immutable，model_generated_fact_count 均为 0。"
+    },
+    {
+      "check_id": "semantic_and_ui_boundary",
+      "verdict": "PASS",
+      "details": "未发现 IPv4 静默缩窄、人口混合、跨单位合计、正式历史趋势冒充、恢复/全国/用户/原因/责任断言或隐藏思维链暴露。"
+    }
+  ],
+  "incremental_comparison": {
+    "truth_items_unchanged": true,
+    "truth_items_sha256_before": "1290afa62be9077da071e5a5d6041da70957bc2cb488074e2bd69c0d25dd0bb1",
+    "truth_items_sha256_after": "1290afa62be9077da071e5a5d6041da70957bc2cb488074e2bd69c0d25dd0bb1",
+    "transport_refactor_semantic_diff": false,
+    "navigation_highlight_semantic_diff": false,
+    "non_blocking_differences": [
+      "桌面侧栏不再沿用旧候选的蓝色异常事件高亮；当前页面仍由面包屑异常监测 > 事件问答、页面标题及窄屏标题明确定位，未影响三个冻结真值项。",
+      "第二轮新前缀补充使用事件窗口内确定性变化概括，而固定 cohort 主答案明确标注事件窗口时序趋势且不是正式历史趋势制品；该人口分层措辞更保守，不构成目标丢失或趋势误拒。"
+    ]
+  },
+  "unresolved_blockers": []
+}

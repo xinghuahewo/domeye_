@@ -1,0 +1,16 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_component_capability_catalog_v1",
+  "evidence_kind": "component_capability_catalog",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-browser-api-live-001",
+  "captured_at": "2026-08-10T21:30:26.390Z",
+  "component": "capability_catalog",
+  "identity": "capability-catalog:35189a0c6635c36c55600eae5738f9f0be8aceab6c6de78fd9eb868b49e1c7d0",
+  "source_files": [
+    {
+      "path": "contracts/agent/country-outage-p1-page-coverage/s2/capability-catalog.json",
+      "sha256": "6492fbcb1552797c4fdc6780597e8a35f1ca8c6c52fdfe69438524c24a960a99"
+    }
+  ]
+}

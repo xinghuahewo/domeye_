@@ -260,6 +260,12 @@ onMounted(() => {
         <p>国家路由可见性观测</p>
         <h1>{{ countryName }}网络中断事件</h1>
         <strong>{{ lifecycleText }}</strong>
+        <RouterLink
+          class="chat-entry"
+          :to="{ name: 'country-outage-chat', query: { ref: reference } }"
+        >
+          用自然语言询问当前事件 <span>↗</span>
+        </RouterLink>
       </div>
       <dl class="event-window">
         <div><dt>检测时间</dt><dd>{{ formatTime(overview.event.detected_at_utc) }}</dd></div>
@@ -411,6 +417,9 @@ onMounted(() => {
 .hero-copy p { margin: 28px 0 7px; color: #83c4d7; font: 750 10px/1.2 var(--mono); letter-spacing: .11em; }
 .hero-copy h1 { margin: 0; font-size: clamp(30px, 4vw, 50px); line-height: 1.04; letter-spacing: -.05em; }
 .hero-copy strong { display: inline-block; margin-top: 14px; color: #f5b17f; font-size: 12px; }
+.chat-entry { display: flex; width: fit-content; gap: 12px; align-items: center; margin-top: 19px; padding: 10px 13px; color: #eff9fb; background: rgba(18, 95, 120, .42); border: 1px solid rgba(145, 211, 226, .4); border-radius: 2px; font-size: 10px; font-weight: 750; text-decoration: none; transition: .18s ease; }
+.chat-entry:hover { background: rgba(29, 117, 145, .58); border-color: #8ed3e3; transform: translateY(-1px); }
+.chat-entry span { color: #f5a66c; font-size: 14px; }
 .event-window { display: grid; gap: 1px; margin: 0; background: rgba(255,255,255,.17); }
 .event-window div { padding: 13px 15px; background: rgba(8, 29, 40, .64); }
 .event-window dt { color: #8fb2c1; font-size: 9px; }

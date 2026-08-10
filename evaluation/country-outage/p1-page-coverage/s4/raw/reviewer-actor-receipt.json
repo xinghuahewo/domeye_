@@ -1,0 +1,23 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_reviewer_actor_receipt_v1",
+  "evidence_kind": "reviewer_actor_receipt",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-blind-semantic-review-exact-002",
+  "captured_at": "2026-08-10T21:33:25Z",
+  "actor_id": "s4-independent-product-semantic-truth-reviewer",
+  "orchestrator_receipt_id": "s4-independent-review-exact-orchestrator-receipt-002",
+  "allowed_actions": [
+    "read_whitelisted_product_truth_inputs",
+    "write_blind_truth_before_system_output_reveal",
+    "write_reviewer_actor_receipt"
+  ],
+  "denied_actions": [
+    "generate_probe_cases",
+    "modify_implementation",
+    "modify_tests",
+    "modify_contracts",
+    "read_system_output_before_blind_truth",
+    "mark_pass_before_system_output_reveal"
+  ]
+}

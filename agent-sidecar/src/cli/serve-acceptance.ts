@@ -2,6 +2,12 @@ import { createServer } from 'node:http'
 
 import { DomeyeCountryOutageClient } from '../domain/index.js'
 import {
+  HttpP1GeneralReadModelProvider,
+  P1CodexCliSemanticModel,
+  P1ModelUserGoalPlanner,
+  P1RuntimeV2ConversationService,
+} from '../chat/index.js'
+import {
   CountryOutageAgentOrchestrator,
   DisabledAnnexComposer,
   DisabledExternalEvidenceProvider,
@@ -111,13 +117,54 @@ async function main(): Promise<void> {
       new DisabledExternalEvidenceProvider(),
     annexComposer: new DisabledAnnexComposer(),
   })
+  const p1ChatEnabled = process.env.COUNTRY_OUTAGE_P1_CHAT_ENABLED === 'true'
+  const p1TurnTimeoutMs = positiveIntegerEnvironmentValue(
+    process.env,
+    'COUNTRY_OUTAGE_P1_TURN_TIMEOUT_MS',
+    200_000,
+  )
+  const chatService = p1ChatEnabled
+    ? new P1RuntimeV2ConversationService({
+        provider: new HttpP1GeneralReadModelProvider(
+          requiredEnvironmentValue(
+            process.env,
+            'COUNTRY_OUTAGE_P1_API_BASE_URL',
+          ),
+          positiveIntegerEnvironmentValue(
+            process.env,
+            'COUNTRY_OUTAGE_P1_API_TIMEOUT_MS',
+            15_000,
+          ),
+        ),
+        planner: new P1ModelUserGoalPlanner(
+          new P1CodexCliSemanticModel({
+            executable: requiredEnvironmentValue(
+              process.env,
+              'COUNTRY_OUTAGE_P1_CODEX_EXECUTABLE',
+            ),
+            model: process.env.COUNTRY_OUTAGE_P1_MODEL?.trim()
+              || 'gpt-5.6-sol',
+            timeoutMs: positiveIntegerEnvironmentValue(
+              process.env,
+              'COUNTRY_OUTAGE_P1_MODEL_TIMEOUT_MS',
+              180_000,
+            ),
+          }),
+        ),
+        ttlMs: 30 * 60 * 1000,
+        turnTimeoutMs: p1TurnTimeoutMs,
+      })
+    : undefined
   const server = createServer(
     createCountryOutageAgentHttpHandler({
       application: orchestrator,
+      ...(chatService ? { chatService } : {}),
       authenticate: createCountryOutageInternalAuthenticator(sharedToken),
     }),
   )
-  server.requestTimeout = 125_000
+  server.requestTimeout = p1ChatEnabled
+    ? Math.max(125_000, p1TurnTimeoutMs + 5_000)
+    : 125_000
   server.headersTimeout = 10_000
   server.keepAliveTimeout = 20_000
 
@@ -141,6 +188,7 @@ async function main(): Promise<void> {
       persistence: 'ephemeral',
       piVersion: '0.82.1',
       externalEvidence: 'disabled',
+      p1Chat: p1ChatEnabled ? 'enabled_candidate' : 'disabled',
     })}\n`,
   )
 }

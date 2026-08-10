@@ -1,0 +1,32 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_component_runtime_v1",
+  "evidence_kind": "component_runtime",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-browser-api-live-001",
+  "captured_at": "2026-08-10T21:30:26.390Z",
+  "component": "runtime",
+  "identity": "runtime-source:d5e43184b414cb7ab5fb6d06b3e361ebb62065508e0afb5e15119f0ca258d3a5",
+  "source_files": [
+    {
+      "path": "agent-sidecar/src/chat/runtime-v2-conversation.ts",
+      "sha256": "75f5e3f50c25932f059ff44db830801f045620c888e642af868a3936c4a5c2f4"
+    },
+    {
+      "path": "agent-sidecar/src/chat/page-capability-executor.ts",
+      "sha256": "dbf3b8ae51afbf710f552f237b9cd5047a133c770c7bc274b2d2a5508e12fed5"
+    },
+    {
+      "path": "agent-sidecar/src/chat/general-read-model-provider.ts",
+      "sha256": "a99bcb0742ac7ae39bdf53c0c51f4de5dbeb4321f7a88e2e8cb6a2c26b242845"
+    },
+    {
+      "path": "agent-sidecar/src/server/http-handler.ts",
+      "sha256": "a778aaf9f890d859b7a658e00a9d989074b010b124d6c9be3bbdc88ec69d56da"
+    },
+    {
+      "path": "agent-sidecar/src/cli/serve-acceptance.ts",
+      "sha256": "3b15ccd68b164bc4f9146d5ba4fe64c6c6508482332d3d63c227041e932e9c9a"
+    }
+  ]
+}

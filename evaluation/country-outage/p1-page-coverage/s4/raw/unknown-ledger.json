@@ -1,0 +1,33 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_unknown_ledger_v1",
+  "evidence_kind": "unknown_ledger",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-browser-api-live-001",
+  "captured_at": "2026-08-10T21:30:26.390Z",
+  "candidate_identity_sha256": "3317fbf78cf69b6a132bd17e2b10352b854e213579612dbb174050bdd491717f",
+  "unknowns": [
+    {
+      "unknown_id": "S4-UNK-001",
+      "subject": "当前候选尚未合并、部署或经过生产流量验证",
+      "blocking": false,
+      "next_validation": "仅在获得发布授权后进入独立发布与生产验证流程",
+      "owner": "P1 release owner"
+    },
+    {
+      "unknown_id": "S4-UNK-002",
+      "subject": "正式历史或跨事件趋势制品仍不在 P1 能力范围内",
+      "blocking": false,
+      "next_validation": "后续能力阶段先建立正式趋势合同与 Oracle，再决定是否开放",
+      "owner": "P2 capability owner"
+    },
+    {
+      "unknown_id": "S4-UNK-003",
+      "subject": "本地 Codex CLI 语义模型不是生产认证模型入口",
+      "blocking": false,
+      "next_validation": "生产接入前完成固定模型、Prompt、成本和运行环境认证",
+      "owner": "P1 model runtime owner"
+    }
+  ],
+  "blocking_count": 0
+}

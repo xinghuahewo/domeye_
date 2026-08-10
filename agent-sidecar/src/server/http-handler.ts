@@ -17,6 +17,7 @@ import type {
 import type {
   CreateOrchestratedQuestionRequest,
 } from '../application/contracts.js'
+import type { P1RuntimeV2ConversationService } from '../chat/runtime-v2-conversation.js'
 import type { CountryOutageSessionManager } from './country-outage-session-manager.js'
 import { CountryOutageHttpError } from './errors.js'
 
@@ -30,6 +31,11 @@ export interface CountryOutageAgentHttpHandlerOptions {
    */
   application?: CountryOutageAgentOrchestrator
   manager?: CountryOutageSessionManager
+  /**
+   * P1 页面能力覆盖候选的只读聊天入口。未显式注入时路由不存在，
+   * 不影响正式报告 application。
+   */
+  chatService?: P1RuntimeV2ConversationService
   authenticate: AuthenticateCountryOutageRequest
   basePath?: string
   sseHeartbeatMs?: number
@@ -56,6 +62,37 @@ function writeError(response: ServerResponse, error: unknown): void {
   if (error instanceof CountryOutageHttpError) {
     writeJson(response, error.status, {
       error: error.toPublicError(),
+    })
+    return
+  }
+  if (
+    error instanceof Error
+    && 'code' in error
+    && typeof error.code === 'string'
+    && [
+      'P1SemanticPlanError',
+      'P1RuntimeV2SingleTurnError',
+      'P1ReadModelError',
+    ].includes(error.name)
+  ) {
+    const code = error.code
+    const status = code === 'permission_denied' ? 403
+      : code === 'conversation_not_found' || code === 'turn_not_found' ? 404
+        : code === 'conversation_expired' ? 410
+          : code === 'tool_timeout' ? 504
+            : code === 'data_api_unavailable' ? 503
+              : [
+                  'binding_conflict', 'idempotency_conflict',
+                  'conversation_busy', 'event_binding_suspended_until_rebind',
+                  'stale_idempotency_generation', 'revision_drift',
+                ].includes(code) ? 409
+                : 400
+    writeJson(response, status, {
+      error: {
+        code,
+        message: error.message,
+        retryable: 'retryable' in error && error.retryable === true,
+      },
     })
     return
   }
@@ -173,6 +210,26 @@ function createReportBody(
       typeof body.publication_id === 'string' ? body.publication_id : '',
     revision:
       typeof body.revision === 'number' ? body.revision : Number.NaN,
+    idempotency_key: idempotencyKey(request, body),
+  }
+}
+
+function createChatTurnBody(
+  request: IncomingMessage,
+  value: unknown,
+): { question: string; idempotency_key: string } {
+  const body = objectBody(value)
+  exactKeys(body, ['question', 'idempotency_key'])
+  const question = typeof body.question === 'string' ? body.question : ''
+  if (!question.trim() || question.length > 2_000) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_question',
+      'question 必须是 1 至 2,000 字符的非空文本',
+    )
+  }
+  return {
+    question,
     idempotency_key: idempotencyKey(request, body),
   }
 }
@@ -418,6 +475,112 @@ export function createCountryOutageAgentHttpHandler(
     void (async () => {
       const url = new URL(request.url ?? '/', 'http://sidecar.invalid')
       const pathname = url.pathname
+
+      if (
+        options.chatService
+        && pathname === `${basePath}/chat/conversations`
+      ) {
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createReportBody(request, await readJson(request))
+        const result = await options.chatService.createConversation(
+          principal,
+          body,
+        )
+        writeJson(response, result.deduplicated ? 200 : 201, result)
+        return
+      }
+
+      const chatConversationMatch = options.chatService
+        ? pathname.match(
+            new RegExp(`^${basePath}/chat/conversations/([^/]+)$`),
+          )
+        : null
+      if (chatConversationMatch) {
+        if (request.method !== 'GET') {
+          methodNotAllowed(response, 'GET')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const conversationId = decodeURIComponent(chatConversationMatch[1]!)
+        const conversation = await options.chatService!.getConversation(
+          principal,
+          conversationId,
+        )
+        writeJson(response, 200, { conversation })
+        return
+      }
+
+      const chatTurnsMatch = options.chatService
+        ? pathname.match(
+            new RegExp(`^${basePath}/chat/conversations/([^/]+)/turns$`),
+          )
+        : null
+      if (chatTurnsMatch) {
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const conversationId = decodeURIComponent(chatTurnsMatch[1]!)
+        const body = createChatTurnBody(request, await readJson(request))
+        const result = await options.chatService!.createTurn(
+          principal,
+          conversationId,
+          body,
+        )
+        writeJson(response, result.deduplicated ? 200 : 201, result)
+        return
+      }
+
+      const chatRebindMatch = options.chatService
+        ? pathname.match(
+            new RegExp(`^${basePath}/chat/conversations/([^/]+)/rebind$`),
+          )
+        : null
+      if (chatRebindMatch) {
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const conversationId = decodeURIComponent(chatRebindMatch[1]!)
+        const body = createReportBody(request, await readJson(request))
+        const result = await options.chatService!.rebind(
+          principal,
+          conversationId,
+          body,
+        )
+        writeJson(response, 200, result)
+        return
+      }
+
+      const chatCancelMatch = options.chatService
+        ? pathname.match(
+            new RegExp(
+              `^${basePath}/chat/conversations/([^/]+)/turns/([^/]+)/cancel$`,
+            ),
+          )
+        : null
+      if (chatCancelMatch) {
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = objectBody(await readJson(request))
+        exactKeys(body, [])
+        const result = await options.chatService!.cancelTurn(
+          principal,
+          decodeURIComponent(chatCancelMatch[1]!),
+          decodeURIComponent(chatCancelMatch[2]!),
+        )
+        writeJson(response, 200, result)
+        return
+      }
 
       if (
         pathname ===

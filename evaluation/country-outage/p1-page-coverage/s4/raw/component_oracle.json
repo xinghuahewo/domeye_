@@ -1,0 +1,16 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_component_oracle_v1",
+  "evidence_kind": "component_oracle",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-browser-api-live-001",
+  "captured_at": "2026-08-10T21:30:26.390Z",
+  "component": "oracle",
+  "identity": "oracle:a6c1249cb12e6eb8819e3e3e58363eaf57d3283bd259a014ba09448bb7bc656c",
+  "source_files": [
+    {
+      "path": "contracts/agent/country-outage-p1-page-coverage/s2/oracle.json",
+      "sha256": "11854ee5be1e376944a849eceb117aa3548a29776328295c1569441c418fb309"
+    }
+  ]
+}

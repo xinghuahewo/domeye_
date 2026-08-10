@@ -21,6 +21,13 @@ from .country_outage_agent_proxy import (
     CountryOutageAgentQuestionResource,
     CountryOutageAgentReportCollectionResource,
 )
+from .country_outage_chat_proxy import (
+    CountryOutageChatCancelResource,
+    CountryOutageChatConversationCollectionResource,
+    CountryOutageChatConversationResource,
+    CountryOutageChatRebindResource,
+    CountryOutageChatTurnCollectionResource,
+)
 
 
 api_v2_bp = Blueprint("api_v2", __name__)
@@ -80,5 +87,28 @@ api.add_resource(
     (
         "/country-outage/reports/<report_id>/questions/<question_id>/"
         "artifacts/external-appendix"
+    ),
+)
+api.add_resource(
+    CountryOutageChatConversationCollectionResource,
+    "/country-outage/chat/conversations",
+)
+api.add_resource(
+    CountryOutageChatConversationResource,
+    "/country-outage/chat/conversations/<conversation_id>",
+)
+api.add_resource(
+    CountryOutageChatTurnCollectionResource,
+    "/country-outage/chat/conversations/<conversation_id>/turns",
+)
+api.add_resource(
+    CountryOutageChatRebindResource,
+    "/country-outage/chat/conversations/<conversation_id>/rebind",
+)
+api.add_resource(
+    CountryOutageChatCancelResource,
+    (
+        "/country-outage/chat/conversations/<conversation_id>/turns/"
+        "<turn_id>/cancel"
     ),
 )
