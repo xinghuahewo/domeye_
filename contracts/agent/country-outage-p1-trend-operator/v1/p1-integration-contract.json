@@ -1,0 +1,54 @@
+{
+  "schema_version": "country_outage_p1_event_window_trend_integration_v1",
+  "status": "production_release_candidate",
+  "scope": {
+    "event_type": "country_outage",
+    "collector_id": "rrc25",
+    "time_scope": "current_publication_window",
+    "analysis_mode": "event_window_trend"
+  },
+  "grounding": {
+    "execution_unit": "OP-04",
+    "capability_id": "CAP-TREND-001",
+    "source_execution_unit": "TOOL-03",
+    "dependency_rule": "同一 goal 的 OP-04 必须唯一依赖已经通过基础 Grounding 校验的 TOOL-03",
+    "metric_rule": "OP-04 的 metrics 必须与其 TOOL-03 来源节点逐项完全一致",
+    "profile_registry_version": "country-outage-p1-trend-profile-v1",
+    "planner_authority": "模型只能保留用户的 event_window_trend 目标；不得选择 OP-04、指标、Profile 或阈值",
+    "host_authority": "宿主只对 supported 或 partial 的 event_window_trend 目标机械追加并校验 OP-04"
+  },
+  "operator": {
+    "operator_id": "event-window-trend",
+    "operator_version": "1.2.0",
+    "model_dependency": "none",
+    "determinism": "same_identity_same_series_same_profile_same_result",
+    "input_sources": [
+      "TOOL-03 series",
+      "host-frozen trend profile registry"
+    ],
+    "published_output": "compact_chat_output 或受控 compact bundle",
+    "audit_output": "完整结果只以摘要、计数、digest 和逐事实 Evidence lineage 进入执行回执"
+  },
+  "publication": {
+    "facts_must_have_evidence": true,
+    "cross_unit_aggregation": "forbidden",
+    "null_as_zero": "forbidden",
+    "tail_forward_fill": "forbidden",
+    "formal_historical_trend": "unsupported"
+  },
+  "forbidden_claims": [
+    "原因",
+    "责任主体",
+    "政府行为",
+    "恢复",
+    "真实用户影响",
+    "全国影响"
+  ],
+  "failure_policy": {
+    "unknown_metric": "fail_closed",
+    "identity_conflict": "fail_closed",
+    "profile_drift": "fail_closed",
+    "missing_source_node": "fail_closed",
+    "state_commit_on_failure": "none"
+  }
+}
