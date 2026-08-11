@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import shutil
 import tempfile
@@ -321,6 +322,110 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
 
         self._mutate_json(relative, mutate)
         self._assert_error("path_direction_population_empty", stage="S1D-2")
+
+    def test_s1d2_rejects_missing_native_path_digest(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            tool12 = next(item for item in payload["tools"] if item["unit_id"] == "TOOL-12")
+            tool12["output_member_fields"].remove("path_digest")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_digest_source_missing", stage="S1D-2")
+
+    def test_s1d2_rejects_unfrozen_path_profile_digest(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            payload["path_canonicalization_profile"]["profile_digest"] = "0" * 64
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_digest_profile_unfrozen", stage="S1D-2")
+
+    def test_s1d2_rejects_silent_path_profile_rewrite_with_matching_digest(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            profile = payload["path_canonicalization_profile"]
+            profile["set_rule"] = "静默改写同一版本规则"
+            body = dict(profile)
+            body.pop("profile_digest")
+            digest = hashlib.sha256(
+                json.dumps(
+                    body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
+            ).hexdigest()
+            profile["profile_digest"] = digest
+            for tool in payload["tools"]:
+                if tool["unit_id"] in {"TOOL-11", "TOOL-12"}:
+                    tool["output_field_schemas"][
+                        "path_canonicalization_profile_digest"
+                    ] = {"const": digest}
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_digest_profile_unfrozen", stage="S1D-2")
+
+    def test_s1d2_rejects_path_digest_schema_drift(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            tool12 = next(item for item in payload["tools"] if item["unit_id"] == "TOOL-12")
+            tool12["output_field_schemas"]["path_digest"]["pattern"] = ".*"
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_digest_schema_drift", stage="S1D-2")
+
+    def test_s1d2_rejects_missing_known_path_digest_binding(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            tool11 = next(item for item in payload["tools"] if item["unit_id"] == "TOOL-11")
+            tool11["output_row_constraints"]["allOf"] = [
+                branch
+                for branch in tool11["output_row_constraints"]["allOf"]
+                if set(
+                    branch.get("if", {})
+                    .get("properties", {})
+                    .get("path_status", {})
+                    .get("enum", [])
+                )
+                != {"known_ordered", "known_unordered"}
+            ]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_digest_known_binding_missing", stage="S1D-2")
+
+    def test_s1d2_rejects_missing_null_path_digest_binding(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            tool11 = next(item for item in payload["tools"] if item["unit_id"] == "TOOL-11")
+            tool11["output_row_constraints"]["allOf"] = [
+                branch
+                for branch in tool11["output_row_constraints"]["allOf"]
+                if set(
+                    branch.get("if", {})
+                    .get("properties", {})
+                    .get("path_status", {})
+                    .get("enum", [])
+                )
+                != {"unknown", "not_applicable"}
+            ]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_digest_null_binding_missing", stage="S1D-2")
 
     def test_receipt_is_written_atomically_with_self_digest(self) -> None:
         receipt = HOOK.run_alignment(self.root, "S1D-0")

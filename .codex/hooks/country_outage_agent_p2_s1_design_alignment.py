@@ -907,6 +907,40 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         "unknown",
         "not_applicable",
     }
+    path_profile = payload.get("path_canonicalization_profile")
+    if not isinstance(path_profile, dict):
+        _fail("path_digest_profile_unfrozen", "缺少目录级路径规范化Profile")
+    expected_path_profile = {
+        "profile_id": "AS-PATH-CANONICALIZATION-1.0.0",
+        "profile_version": "1.0.0",
+        "input_schema_id": (
+            "https://domeye.example/contracts/data/route-event.schema.json"
+            "#/$defs/asPathSegment"
+        ),
+        "segment_order_rule": "保留输入segment顺序",
+        "sequence_rule": "as_sequence与confederation_sequence内ASN顺序和prepend重复均原样保留",
+        "set_rule": "as_set与confederation_set内ASN按数值升序稳定排序且不去重",
+        "segment_type_rule": "segment_type进入摘要且不得拍平、合并或转换",
+        "encoding_rule": "对规范化segment数组执行RFC8785 canonical JSON UTF-8编码",
+        "path_digest_algorithm": "sha256_rfc8785_canonical_json",
+        "empty_path_forbidden": True,
+        "source_native_required": True,
+        "profile_digest": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966",
+    }
+    if path_profile != expected_path_profile:
+        _fail("path_digest_profile_unfrozen", "路径规范化Profile 1.0.0正文或固定摘要漂移")
+    path_profile_body = dict(path_profile)
+    declared_path_profile_digest = path_profile_body.pop("profile_digest", None)
+    computed_path_profile_digest = hashlib.sha256(
+        json.dumps(
+            path_profile_body,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if declared_path_profile_digest != computed_path_profile_digest:
+        _fail("path_digest_profile_unfrozen", "路径规范化Profile摘要与内容不一致")
     for tool in (tool11, tool12):
         unit_id = tool["unit_id"]
         if "common_path_status" not in tool.get("output_member_fields", []):
@@ -921,6 +955,47 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         )
         if "common_path_status" not in constraints_text:
             _fail("common_path_status_mapping_missing", f"{unit_id} 缺少原生状态映射约束")
+        required_path_identity_fields = {
+            "path_digest",
+            "path_canonicalization_profile_id",
+            "path_canonicalization_profile_digest",
+        }
+        if not required_path_identity_fields.issubset(
+            tool.get("output_member_fields", [])
+        ) or not required_path_identity_fields.issubset(
+            tool.get("output_field_schemas", {})
+        ):
+            _fail("path_digest_source_missing", f"{unit_id} 未原生发布规范路径摘要身份")
+        path_digest_schema = tool["output_field_schemas"]["path_digest"]
+        expected_path_digest_type = ["string", "null"] if unit_id == "TOOL-11" else "string"
+        if (
+            path_digest_schema.get("type") != expected_path_digest_type
+            or path_digest_schema.get("pattern") != "^[a-f0-9]{64}$"
+        ):
+            _fail("path_digest_schema_drift", f"{unit_id} path_digest类型或格式漂移")
+        if tool["output_field_schemas"]["path_canonicalization_profile_id"].get(
+            "const"
+        ) != path_profile["profile_id"] or tool["output_field_schemas"][
+            "path_canonicalization_profile_digest"
+        ].get("const") != declared_path_profile_digest:
+            _fail("path_digest_profile_unfrozen", f"{unit_id} 路径规范化Profile未冻结")
+    tool11_constraints = tool11["output_row_constraints"].get("allOf", [])
+
+    def _has_path_digest_branch(statuses: set[str], digest_type: str) -> bool:
+        for branch in tool11_constraints:
+            condition = branch.get("if", {}).get("properties", {}).get("path_status", {})
+            condition_values = set(condition.get("enum", []))
+            effect = branch.get("then", {}).get("properties", {}).get("path_digest", {})
+            if condition_values == statuses and effect.get("type") == digest_type:
+                if digest_type == "string":
+                    return effect.get("pattern") == "^[a-f0-9]{64}$"
+                return True
+        return False
+
+    if not _has_path_digest_branch({"known_ordered", "known_unordered"}, "string"):
+        _fail("path_digest_known_binding_missing", "TOOL-11 known path必须绑定非空path_digest")
+    if not _has_path_digest_branch({"unknown", "not_applicable"}, "null"):
+        _fail("path_digest_null_binding_missing", "TOOL-11 unknown/not_applicable必须绑定null path_digest")
     source_requirements = {
         item.get("source_population_id"): item
         for item in payload.get("source_view_requirements", [])
@@ -930,12 +1005,18 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         "materialized_route_state_rows_at_exact_time",
         "window_path_association_evidence_rows",
     ):
-        if "common_path_status" not in source_requirements.get(population_id, {}).get(
-            "required_source_fields", []
-        ):
+        source_fields = set(
+            source_requirements.get(population_id, {}).get("required_source_fields", [])
+        )
+        if not {
+            "common_path_status",
+            "path_digest",
+            "path_canonicalization_profile_id",
+            "path_canonicalization_profile_digest",
+        }.issubset(source_fields):
             _fail(
-                "common_path_status_source_missing",
-                f"{population_id} 必须原生存储统一路径状态，禁止Operator隐式适配",
+                "path_digest_source_missing",
+                f"{population_id} 必须原生存储统一状态与路径摘要，禁止Operator隐式适配",
             )
     deferred = [
         item

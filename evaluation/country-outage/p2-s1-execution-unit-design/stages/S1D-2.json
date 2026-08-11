@@ -34,13 +34,13 @@
     "S1D-1": "ef8de002f02e8e9c13263d694358f434f7fb3faf8287f1df6bc132af5d5cfb3c"
   },
   "production_deployed": false,
-  "receipt_digest": "a49cc186298828106f14cd9e0ae8d6ba53c64667aa7d88c932c526e9e3ee7ed2",
+  "receipt_digest": "fd2b4370c1bffc4d5f86623e38da9bb0029150e85d31caebce9fc3e12a1d1e58",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-2",
   "stage_artifact_sha256": {
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-atomicity-review.json": "4c7323b636b3ab413ab195749cd6e9437fc254efb7cf8a22e0377208c70f73d7",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-catalog.json": "d882ff4e2cdd46100a7ff5c93d14243391be030ea40d8938b7a5dae92d139bda",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-atomicity-review.json": "42dd1d20bd23a775789624b24a594a508cb6725a21a7051fd0c8d6ba322574dd",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-catalog.json": "8935f19bd8c82e2fe91af1e5bd14d26cf053d807725254dc0ebc6ccef67607d2",
     "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-contract.schema.json": "1567e2ca2194fbed4fa3c967a07bdc4b3137af8b91bf7dac995a60430762bd45"
   },
   "status": "alignment_passed",

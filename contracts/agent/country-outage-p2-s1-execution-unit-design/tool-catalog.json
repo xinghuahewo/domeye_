@@ -11,6 +11,20 @@
     "runtime_implemented": false,
     "production_deployed": false
   },
+  "path_canonicalization_profile": {
+    "profile_id": "AS-PATH-CANONICALIZATION-1.0.0",
+    "profile_version": "1.0.0",
+    "input_schema_id": "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment",
+    "segment_order_rule": "保留输入segment顺序",
+    "sequence_rule": "as_sequence与confederation_sequence内ASN顺序和prepend重复均原样保留",
+    "set_rule": "as_set与confederation_set内ASN按数值升序稳定排序且不去重",
+    "segment_type_rule": "segment_type进入摘要且不得拍平、合并或转换",
+    "encoding_rule": "对规范化segment数组执行RFC8785 canonical JSON UTF-8编码",
+    "path_digest_algorithm": "sha256_rfc8785_canonical_json",
+    "empty_path_forbidden": true,
+    "source_native_required": true,
+    "profile_digest": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+  },
   "common_identity_contract": {
     "required_fields": [
       "incident_id",
@@ -337,6 +351,9 @@
         "path_status",
         "common_path_status",
         "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
         "path_segments",
         "last_event_id",
         "last_update_utc",
@@ -355,6 +372,9 @@
         "prefix",
         "afi",
         "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
         "path_segments",
         "path_parse_status",
         "common_path_status",
@@ -1166,6 +1186,9 @@
         "path_status",
         "common_path_status",
         "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
         "path_segments",
         "last_event_id",
         "last_update_utc",
@@ -1247,6 +1270,16 @@
             "null"
           ]
         },
+        "path_digest": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "path_canonicalization_profile_id": {
+          "const": "AS-PATH-CANONICALIZATION-1.0.0"
+        },
+        "path_canonicalization_profile_digest": {
+          "const": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+        },
         "path_segments": {
           "oneOf": [
             {
@@ -1300,6 +1333,9 @@
           "path_status",
           "common_path_status",
           "path_id",
+          "path_digest",
+          "path_canonicalization_profile_id",
+          "path_canonicalization_profile_digest",
           "path_segments"
         ],
         "allOf": [
@@ -1411,6 +1447,10 @@
                 "path_id": {
                   "type": "string"
                 },
+                "path_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
                 "path_segments": {
                   "type": "array",
                   "minItems": 1
@@ -1435,6 +1475,9 @@
             "then": {
               "properties": {
                 "path_id": {
+                  "type": "null"
+                },
+                "path_digest": {
                   "type": "null"
                 },
                 "path_segments": {
@@ -1469,6 +1512,9 @@
                   "const": "not_applicable"
                 },
                 "path_id": {
+                  "type": "null"
+                },
+                "path_digest": {
                   "type": "null"
                 },
                 "path_segments": {
@@ -1624,6 +1670,9 @@
         "prefix",
         "afi",
         "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
         "path_segments",
         "path_parse_status",
         "common_path_status",
@@ -1650,6 +1699,16 @@
         },
         "path_id": {
           "type": "string"
+        },
+        "path_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "path_canonicalization_profile_id": {
+          "const": "AS-PATH-CANONICALIZATION-1.0.0"
+        },
+        "path_canonicalization_profile_digest": {
+          "const": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
         },
         "path_segments": {
           "type": "array",
