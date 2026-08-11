@@ -871,6 +871,10 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         _fail("typed_path_segment_schema_missing", "TOOL-11 必须保留类型化 AS_PATH segment")
     if not isinstance(tool11.get("output_row_constraints"), dict):
         _fail("route_state_cross_field_constraints_missing", "TOOL-11 缺少状态联动约束")
+    if tool11.get("active_path_rule") != (
+        "只有visibility=visible且common_path_status属于ordered或unordered的path可称该时点活动观测路径"
+    ):
+        _fail("active_path_rule_drift", "TOOL-11 活动路径规则必须使用合法统一状态枚举")
     tool12 = tools_by_id["TOOL-12"]
     if (
         tool12.get("source_population") != "window_path_association_evidence_rows"
@@ -893,6 +897,44 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         tool12_fields.get("path_segments", {}), sort_keys=True
     ):
         _fail("typed_path_segment_schema_missing", "TOOL-12 必须保留类型化 AS_PATH segment")
+    common_path_status_enum = {
+        "ordered",
+        "unordered",
+        "ambiguous",
+        "invalid",
+        "unknown",
+        "not_applicable",
+    }
+    for tool in (tool11, tool12):
+        unit_id = tool["unit_id"]
+        if "common_path_status" not in tool.get("output_member_fields", []):
+            _fail("common_path_status_missing", f"{unit_id} 缺少统一路径状态字段")
+        status_schema = tool.get("output_field_schemas", {}).get(
+            "common_path_status", {}
+        )
+        if set(status_schema.get("enum", [])) != common_path_status_enum:
+            _fail("common_path_status_drift", f"{unit_id} 统一路径状态枚举漂移")
+        constraints_text = json.dumps(
+            tool.get("output_row_constraints", {}), ensure_ascii=False, sort_keys=True
+        )
+        if "common_path_status" not in constraints_text:
+            _fail("common_path_status_mapping_missing", f"{unit_id} 缺少原生状态映射约束")
+    source_requirements = {
+        item.get("source_population_id"): item
+        for item in payload.get("source_view_requirements", [])
+        if isinstance(item, dict)
+    }
+    for population_id in (
+        "materialized_route_state_rows_at_exact_time",
+        "window_path_association_evidence_rows",
+    ):
+        if "common_path_status" not in source_requirements.get(population_id, {}).get(
+            "required_source_fields", []
+        ):
+            _fail(
+                "common_path_status_source_missing",
+                f"{population_id} 必须原生存储统一路径状态，禁止Operator隐式适配",
+            )
     deferred = [
         item
         for item in payload["tools"]
@@ -1170,6 +1212,23 @@ def _required_stages(stage: str) -> tuple[str, ...]:
     return STAGES[: STAGES.index(stage) + 1]
 
 
+def _stage_artifact_digests(repo_root: Path, stage: str) -> dict[str, str]:
+    if stage == "S1D-0":
+        return {}
+    if stage == "final":
+        relatives = [
+            relative
+            for candidate_stage in STAGES[1:]
+            for relative in ARTIFACTS_BY_STAGE[candidate_stage]
+        ]
+    else:
+        relatives = list(ARTIFACTS_BY_STAGE[stage])
+    return {
+        relative.as_posix(): _sha256(repo_root / relative)
+        for relative in relatives
+    }
+
+
 def _validate_prior_receipts(repo_root: Path, stage: str) -> dict[str, str]:
     required = _required_stages(stage)
     prior = required[:-1] if stage != "final" else required
@@ -1189,6 +1248,9 @@ def _validate_prior_receipts(repo_root: Path, stage: str) -> dict[str, str]:
             _fail("prior_receipt_stale", f"阶段回执未绑定当前 Task Spec：{path}")
         if payload.get("phase_plan_sha256") != current_phase_plan_sha256:
             _fail("prior_receipt_stale", f"阶段回执未绑定当前阶段计划：{path}")
+        expected_artifacts = _stage_artifact_digests(repo_root, prior_stage)
+        if payload.get("stage_artifact_sha256") != expected_artifacts:
+            _fail("prior_receipt_stale", f"阶段回执未绑定当前阶段制品：{path}")
         for key, expected in (
             ("design_only", True),
             ("runtime_implemented", False),
@@ -1234,6 +1296,7 @@ def run_alignment(
         "status": "alignment_passed",
         "task_spec_sha256": _sha256(spec_path),
         "phase_plan_sha256": _sha256(plan_path),
+        "stage_artifact_sha256": _stage_artifact_digests(repo_root, stage),
         "prior_receipts": prior_receipts,
         "checks": checks,
         "design_only": True,

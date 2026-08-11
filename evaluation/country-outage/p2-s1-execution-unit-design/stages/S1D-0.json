@@ -18,10 +18,11 @@
   "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
   "prior_receipts": {},
   "production_deployed": false,
-  "receipt_digest": "01c82364689784d4cdd354022e9ee7fa4c4e38c77d6e247601a3ee78f975f334",
+  "receipt_digest": "bfa0a5c188931c21ac579e139ebdc9b579030111945f37ac9e0e09692b877d30",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-0",
+  "stage_artifact_sha256": {},
   "status": "alignment_passed",
   "task_spec_sha256": "18a8d44528be0ba78bbb97e845aaf78bf0cbd903e86b88f1ea00ffacd930c2b1"
 }

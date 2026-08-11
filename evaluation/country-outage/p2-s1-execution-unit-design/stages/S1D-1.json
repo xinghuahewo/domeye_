@@ -23,13 +23,19 @@
   "design_only": true,
   "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
   "prior_receipts": {
-    "S1D-0": "01c82364689784d4cdd354022e9ee7fa4c4e38c77d6e247601a3ee78f975f334"
+    "S1D-0": "bfa0a5c188931c21ac579e139ebdc9b579030111945f37ac9e0e09692b877d30"
   },
   "production_deployed": false,
-  "receipt_digest": "8c92be15b43a352dc8e5c27fafe1668467f0e1946b63ee4f771ba4367ea51a15",
+  "receipt_digest": "ef8de002f02e8e9c13263d694358f434f7fb3faf8287f1df6bc132af5d5cfb3c",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-1",
+  "stage_artifact_sha256": {
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/execution-unit-decomposition.json": "993705aec8a4a5addbbaea32725e3fd45234ca9686c44452091b9ad9c8857f4f",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/model-role-contract.json": "260c51f577f20f92c26a42b9eff7944db747cd7f54c01e3d267a83ac5ce34a2b",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/question-capability-map.json": "4ff8c508d1e233cc00a9366b7ac688cf2de52d3da77dee31f5e12abcefde2997",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/question-oracle-seed.json": "987b0477d0f1c93ff9dabfd4ad9d0afeabe05bec91d8eb94a4f48a1646fff3fa"
+  },
   "status": "alignment_passed",
   "task_spec_sha256": "18a8d44528be0ba78bbb97e845aaf78bf0cbd903e86b88f1ea00ffacd930c2b1"
 }
