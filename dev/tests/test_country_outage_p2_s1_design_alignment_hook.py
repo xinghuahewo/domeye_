@@ -255,6 +255,22 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self._mutate_json(relative, mutate)
         self._assert_error("runtime_claim_forbidden", stage="S1D-2")
 
+    def test_s1d2_rejects_duplicate_json_key(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+        path = self.root / relative
+        text = path.read_text(encoding="utf-8")
+        needle = '"required": ["identity", "page_size"],\n        "optional": ["page_token"],'
+        replacement = (
+            '"required": ["identity", "page_size"],\n'
+            '        "optional": ["page_token"],\n'
+            '        "optional": ["page_token"],'
+        )
+        self.assertIn(needle, text)
+        path.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+        self._assert_error("artifact_json_duplicate_key", stage="S1D-2")
+
     def test_s1d2_rejects_empty_ordered_path_contract(self) -> None:
         self._copy_stage_artifacts("S1D-1")
         self._copy_stage_artifacts("S1D-2")

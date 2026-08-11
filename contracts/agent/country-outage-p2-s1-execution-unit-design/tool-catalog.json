@@ -168,7 +168,6 @@
       "input_contract": {
         "required": ["identity", "page_size"],
         "optional": ["page_token"],
-        "optional": ["page_token"],
         "optional_filters": ["asn", "prefix", "afi"],
         "mutually_exclusive": [],
         "page_size_min": 1,

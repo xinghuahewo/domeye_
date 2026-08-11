@@ -189,8 +189,20 @@ def _read_text(path: Path) -> str:
 
 def _load_json(path: Path) -> Any:
     text = _read_text(path)
+
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                _fail(
+                    "artifact_json_duplicate_key",
+                    f"JSON 包含重复键，无法形成唯一规范化语义：{path}: {key}",
+                )
+            result[key] = value
+        return result
+
     try:
-        return json.loads(text)
+        return json.loads(text, object_pairs_hook=reject_duplicate_keys)
     except json.JSONDecodeError as exc:
         _fail("artifact_json_invalid", f"JSON 无法解析：{path}: {exc}")
     raise AssertionError("unreachable")
