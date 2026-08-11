@@ -51,7 +51,12 @@ if (
   readiness?.business_cost_limit !== null ||
   readiness?.usage_and_estimated_cost_audit !== 'required_per_provider_call' ||
   readiness?.report_capability !== 'disabled' ||
-  readiness?.external_evidence !== 'disabled'
+  readiness?.external_evidence !== 'disabled' ||
+  readiness?.event_window_trend_operator?.execution_unit !== 'OP-04' ||
+  readiness?.event_window_trend_operator?.capability_id !== 'CAP-TREND-001' ||
+  readiness?.event_window_trend_operator?.operator_id !== 'event-window-trend' ||
+  readiness?.event_window_trend_operator?.operator_version !== '1.2.0' ||
+  readiness?.event_window_trend_operator?.model_dependency !== 'none'
 ) fail('readiness 合同漂移')
 
 const reportResponse = await fetch(`${baseUrl}/country-outage/reports`, {
@@ -68,6 +73,7 @@ process.stdout.write(`${JSON.stringify({
   model_profile: readiness.model_profile,
   registry_version: readiness.registry_version,
   certification_evidence_id: readiness.certification_evidence_id,
+  event_window_trend_operator: readiness.event_window_trend_operator,
   report_capability: 'disabled',
   per_call_cost_audit: 'required',
 })}\n`)

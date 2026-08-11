@@ -9,6 +9,7 @@ import type {
 import type { P1PageCapabilityReadProvider } from './general-read-model-provider.js'
 import {
   P1SemanticPlanError,
+  P1RuntimeV2Grounder,
   P1RuntimeV2SemanticTurnService,
   type P1RuntimeV2SemanticAnswer,
   type P1SemanticGoalResult,
@@ -132,6 +133,7 @@ export interface CreateP1RuntimeV2ConversationTurnRequest {
 export interface P1RuntimeV2ConversationServiceOptions {
   provider: P1PageCapabilityReadProvider
   planner: P1UserGoalPlanner
+  grounder?: P1RuntimeV2Grounder
   ttlMs?: number
   turnTimeoutMs?: number
   now?: () => Date
@@ -471,7 +473,7 @@ export class P1RuntimeV2ConversationService {
     this.#semantic = new P1RuntimeV2SemanticTurnService(
       options.provider,
       options.planner,
-      undefined,
+      options.grounder,
       options.now,
     )
     this.#ttlMs = options.ttlMs ?? 30 * 60 * 1000

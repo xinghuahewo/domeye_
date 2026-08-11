@@ -62,6 +62,22 @@ const registryPath = join(
   'agent-sidecar/resources/certified-models/country-outage-p1-semantic-models-v1.json',
 )
 const registry = readJson(registryPath)
+const trendContractRoot = join(
+  releaseRoot,
+  'contracts/agent/country-outage-p1-trend-operator/v1',
+)
+const trendIdentityPath = join(releaseRoot, 'TREND-OPERATOR-IDENTITY.json')
+const trendIdentity = readJson(trendIdentityPath)
+const trendIntegrationPath = join(
+  trendContractRoot,
+  'p1-integration-contract.json',
+)
+const trendIntegration = readJson(trendIntegrationPath)
+const trendProfilesPath = join(trendContractRoot, 'trend-profiles.json')
+const trendProfiles = readJson(trendProfilesPath)
+const trendOperatorContract = readJson(
+  join(trendContractRoot, 'operator-contract.json'),
+)
 const profile = registry.profiles?.[0]
 const payload = { ...certification }
 delete payload.evidence_id
@@ -79,8 +95,70 @@ if (
   release.billing?.per_provider_call_usage_and_estimated_cost !== 'required' ||
   release.runtime?.host !== '127.0.0.1' ||
   release.runtime?.port !== 28475 ||
-  release.runtime?.maximum_provider_request_count_per_turn !== 1
+  release.runtime?.maximum_provider_request_count_per_turn !== 1 ||
+  release.runtime?.event_window_trend_operator?.execution_unit !== 'OP-04' ||
+  release.runtime?.event_window_trend_operator?.capability_id !==
+    'CAP-TREND-001' ||
+  release.runtime?.event_window_trend_operator?.operator_id !==
+    'event-window-trend' ||
+  release.runtime?.event_window_trend_operator?.operator_version !== '1.2.0' ||
+  release.runtime?.event_window_trend_operator?.model_dependency !== 'none'
 ) fail('release 边界或运行时合同漂移')
+
+if (
+  trendIntegration.schema_version !==
+    'country_outage_p1_event_window_trend_integration_v1' ||
+  trendIntegration.scope?.event_type !== 'country_outage' ||
+  trendIntegration.scope?.collector_id !== 'rrc25' ||
+  trendIntegration.scope?.time_scope !== 'current_publication_window' ||
+  trendIntegration.scope?.analysis_mode !== 'event_window_trend' ||
+  trendIntegration.grounding?.execution_unit !== 'OP-04' ||
+  trendIntegration.grounding?.capability_id !== 'CAP-TREND-001' ||
+  trendIntegration.grounding?.source_execution_unit !== 'TOOL-03' ||
+  trendIntegration.operator?.operator_id !== 'event-window-trend' ||
+  trendIntegration.operator?.operator_version !== '1.2.0' ||
+  trendIntegration.operator?.model_dependency !== 'none' ||
+  trendOperatorContract.operator_id !== 'event-window-trend' ||
+  trendOperatorContract.operator_version !== '1.2.0' ||
+  trendProfiles.registry_revision !== 3
+) fail('P1 趋势算子接入合同漂移')
+
+const expectedTrendIdentityPaths = [
+  'agent-sidecar/src/chat/event-window-trend.ts',
+  'agent-sidecar/src/chat/trend-aware-grounder.ts',
+  'agent-sidecar/src/chat/page-capability-executor.ts',
+  'agent-sidecar/src/chat/runtime-v2-conversation.ts',
+  'agent-sidecar/src/cli/formal-p1-sidecar.ts',
+  'agent-sidecar/dist/src/chat/event-window-trend.js',
+  'agent-sidecar/dist/src/chat/trend-aware-grounder.js',
+  'agent-sidecar/dist/src/chat/page-capability-executor.js',
+  'agent-sidecar/dist/src/chat/runtime-v2-conversation.js',
+  'agent-sidecar/dist/src/cli/formal-p1-sidecar.js',
+  'contracts/agent/country-outage-p1-trend-operator/v1/operator-contract.json',
+  'contracts/agent/country-outage-p1-trend-operator/v1/trend-profiles.json',
+  'contracts/agent/country-outage-p1-trend-operator/v1/p1-integration-contract.json',
+]
+if (
+  trendIdentity.schema_version !==
+    'country_outage_p1_trend_operator_identity_v1' ||
+  trendIdentity.execution_unit !== 'OP-04' ||
+  trendIdentity.capability_id !== 'CAP-TREND-001' ||
+  trendIdentity.operator_id !== 'event-window-trend' ||
+  trendIdentity.operator_version !== '1.2.0' ||
+  trendIdentity.profile_registry_version !==
+    'country-outage-p1-trend-profile-v1' ||
+  trendIdentity.model_dependency !== 'none' ||
+  !Array.isArray(trendIdentity.files) ||
+  trendIdentity.files.length !== expectedTrendIdentityPaths.length ||
+  trendIdentity.files.map((item) => item.path).join('\n') !==
+    expectedTrendIdentityPaths.join('\n')
+) fail('趋势算子候选身份漂移')
+for (const item of trendIdentity.files) {
+  const path = regularFile(join(releaseRoot, item.path))
+  if (sha256(readFileSync(path)) !== item.sha256) {
+    fail(`趋势算子身份文件漂移 ${item.path}`)
+  }
+}
 
 if (
   certification.schema_version !==
@@ -140,7 +218,12 @@ for (const fileName of [
 
 if (
   release.hashes?.certification_manifest !== sha256(readFileSync(certificationPath)) ||
-  release.hashes?.certified_registry !== sha256(readFileSync(registryPath))
+  release.hashes?.certified_registry !== sha256(readFileSync(registryPath)) ||
+  release.hashes?.trend_operator_identity !==
+    sha256(readFileSync(trendIdentityPath)) ||
+  release.hashes?.trend_integration_contract !==
+    sha256(readFileSync(trendIntegrationPath)) ||
+  release.hashes?.trend_profiles !== sha256(readFileSync(trendProfilesPath))
 ) fail('release 摘要与正式制品不一致')
 
 process.stdout.write(`${JSON.stringify({
@@ -153,5 +236,6 @@ process.stdout.write(`${JSON.stringify({
   certification_valid_until: certification.valid_until,
   user_goal_fidelity: certification.metrics.user_goal_fidelity,
   grounding_legality_rate: certification.metrics.grounding_legality_rate,
+  event_window_trend_operator: release.runtime.event_window_trend_operator,
   report_capability: 'disabled',
 })}\n`)

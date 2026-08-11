@@ -216,6 +216,18 @@ prepare_release() {
         cp "${candidate}/source-identity/${runtime_contract_root}/${runtime_contract}" \
             "${candidate}/${runtime_contract_root}/${runtime_contract}"
     done
+    local trend_contract_root='contracts/agent/country-outage-p1-trend-operator/v1'
+    install -d -m 0700 "${candidate}/${trend_contract_root}"
+    local trend_contract
+    for trend_contract in operator-contract.json trend-profiles.json \
+        synthetic-oracle.json p1-integration-contract.json; do
+        [[ -f "${extracted}/${trend_contract_root}/${trend_contract}" \
+            && ! -L "${extracted}/${trend_contract_root}/${trend_contract}" ]] || {
+            error "趋势算子合同缺失 ${trend_contract}"; return 1;
+        }
+        cp "${extracted}/${trend_contract_root}/${trend_contract}" \
+            "${candidate}/${trend_contract_root}/${trend_contract}"
+    done
     (
         # 全量 Sidecar 测试会读取仓库根目录下的 contracts、dev 与评测制品，
         # 因此必须在完整源码归档中执行；通过并裁剪生产依赖后再复制运行制品。
@@ -236,6 +248,37 @@ prepare_release() {
     find "${candidate}" -type l -print -quit | grep -q . && {
         error '运行制品包含符号链接'; return 1;
     }
+    local trend_identity="${candidate}/TREND-OPERATOR-IDENTITY.json"
+    jq -n \
+        --arg created_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        '{schema_version:"country_outage_p1_trend_operator_identity_v1",created_at:$created_at,execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",profile_registry_version:"country-outage-p1-trend-profile-v1",model_dependency:"none",files:[]}' \
+        > "${trend_identity}"
+    local trend_identity_path trend_identity_tmp
+    for trend_identity_path in \
+        agent-sidecar/src/chat/event-window-trend.ts \
+        agent-sidecar/src/chat/trend-aware-grounder.ts \
+        agent-sidecar/src/chat/page-capability-executor.ts \
+        agent-sidecar/src/chat/runtime-v2-conversation.ts \
+        agent-sidecar/src/cli/formal-p1-sidecar.ts \
+        agent-sidecar/dist/src/chat/event-window-trend.js \
+        agent-sidecar/dist/src/chat/trend-aware-grounder.js \
+        agent-sidecar/dist/src/chat/page-capability-executor.js \
+        agent-sidecar/dist/src/chat/runtime-v2-conversation.js \
+        agent-sidecar/dist/src/cli/formal-p1-sidecar.js \
+        "${trend_contract_root}/operator-contract.json" \
+        "${trend_contract_root}/trend-profiles.json" \
+        "${trend_contract_root}/p1-integration-contract.json"; do
+        [[ -f "${candidate}/${trend_identity_path}" \
+            && ! -L "${candidate}/${trend_identity_path}" ]] || {
+            error "趋势身份文件缺失 ${trend_identity_path}"; return 1;
+        }
+        trend_identity_tmp="${trend_identity}.tmp"
+        jq --arg path "${trend_identity_path}" \
+            --arg sha "$(sha256_file "${candidate}/${trend_identity_path}")" \
+            '.files += [{path:$path,sha256:$sha}]' \
+            "${trend_identity}" > "${trend_identity_tmp}"
+        mv "${trend_identity_tmp}" "${trend_identity}"
+    done
     registry="${candidate}/agent-sidecar/resources/certified-models/country-outage-p1-semantic-models-v1.json"
     source_sha="$(sha256_file "${source_archive}")"
     jq -n \
@@ -246,7 +289,10 @@ prepare_release() {
         --arg source_sha "${source_sha}" \
         --arg cert_sha "$(sha256_file "${certification}")" \
         --arg registry_sha "$(sha256_file "${registry}")" \
-        '{schema_version:"country_outage_p1_chat_release_v1",component:"country_outage_p1_chat_sidecar",release_id:$release_id,created_at:$created_at,source:{commit:$commit,annotated_tag:$tag,archive_sha256:$source_sha},runtime:{host:"127.0.0.1",port:28475,node_version:"v22.23.1",pi_version:"0.84.1",maximum_provider_request_count_per_turn:1},billing:{business_cost_limit:null,per_provider_call_usage_and_estimated_cost:"required"},boundaries:{collector:"rrc25",event_type:"country_outage",report_capability:"disabled",external_evidence:"disabled",network_rca:false},hashes:{certification_manifest:$cert_sha,certified_registry:$registry_sha},checks:{agent_sidecar_tests:"passed",production_dependency_audit:"passed",vendor_patch:"verified"}}' \
+        --arg trend_identity_sha "$(sha256_file "${trend_identity}")" \
+        --arg trend_integration_sha "$(sha256_file "${candidate}/${trend_contract_root}/p1-integration-contract.json")" \
+        --arg trend_profiles_sha "$(sha256_file "${candidate}/${trend_contract_root}/trend-profiles.json")" \
+        '{schema_version:"country_outage_p1_chat_release_v1",component:"country_outage_p1_chat_sidecar",release_id:$release_id,created_at:$created_at,source:{commit:$commit,annotated_tag:$tag,archive_sha256:$source_sha},runtime:{host:"127.0.0.1",port:28475,node_version:"v22.23.1",pi_version:"0.84.1",maximum_provider_request_count_per_turn:1,event_window_trend_operator:{execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",model_dependency:"none"}},billing:{business_cost_limit:null,per_provider_call_usage_and_estimated_cost:"required"},boundaries:{collector:"rrc25",event_type:"country_outage",report_capability:"disabled",external_evidence:"disabled",network_rca:false},hashes:{certification_manifest:$cert_sha,certified_registry:$registry_sha,trend_operator_identity:$trend_identity_sha,trend_integration_contract:$trend_integration_sha,trend_profiles:$trend_profiles_sha},checks:{agent_sidecar_tests:"passed",production_dependency_audit:"passed",vendor_patch:"verified",event_window_trend_integration:"verified"}}' \
         > "${candidate}/RELEASE-MANIFEST.json"
     "${NODE}" "${candidate}/deployment/verify-release.mjs" "${candidate}" >/dev/null
     (

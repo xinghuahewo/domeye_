@@ -16,6 +16,11 @@ import {
   type P1UserGoalPlanner,
   type P1UserGoalPlannerContext,
 } from '../src/chat/runtime-v2-semantic.js'
+import {
+  P1_EVENT_WINDOW_TREND_CAPABILITY,
+  P1_EVENT_WINDOW_TREND_EXECUTION_UNIT,
+  P1TrendAwareGrounder,
+} from '../src/chat/trend-aware-grounder.js'
 
 const reference = 'country_outage/2026-02-27 09:12:32/IR/1/r'
 const publication = 'country_outage_publication_v1_test'
@@ -363,15 +368,88 @@ test('S2 IP 趋势默认当前 publication 窗口而非正式历史趋势', asyn
   const answer = await new P1RuntimeV2SemanticTurnService(
     provider,
     planner,
+    new P1TrendAwareGrounder(),
   ).answer(principal, request(question))
 
   assert.equal(answer.answerability, 'supported')
   assert.match(answer.answer_text, /观测窗口/)
+  assert.match(answer.answer_text, /10,156,800/)
+  assert.match(answer.answer_text, /9,577,728/)
+  assert.match(answer.answer_text, /10,069,760/)
+  assert.match(answer.answer_text, /267,292/)
+  assert.match(answer.answer_text, /267,288/)
+  assert.match(answer.answer_text, /不合并/)
+  assert.match(answer.answer_text, /不用于判断.*恢复|不等于恢复/)
+  assert.doesNotMatch(
+    answer.answer_text,
+    /median|threshold|fact_id|profile_id|metric_id/i,
+  )
   assert.doesNotMatch(answer.answer_text, /趋势制品不可用/)
   assert.ok(answer.execution_trace.nodes.some((node) =>
     node.execution_unit === 'TOOL-03' && node.status === 'passed'
   ))
+  const trendNodes = answer.semantic_plan.grounding_plan.nodes.filter(
+    (node) => node.execution_unit === P1_EVENT_WINDOW_TREND_EXECUTION_UNIT,
+  )
+  assert.equal(trendNodes.length, 1)
+  assert.deepEqual(trendNodes[0]!.capability_ids, [
+    P1_EVENT_WINDOW_TREND_CAPABILITY,
+  ])
+  assert.deepEqual(trendNodes[0]!.depends_on, [
+    trendNodes[0]!.inputs.source_node_id,
+  ])
+  assert.ok(answer.execution_trace.nodes.some((node) =>
+    node.execution_unit === P1_EVENT_WINDOW_TREND_EXECUTION_UNIT
+      && node.status === 'passed'
+  ))
+  const evidenceIds = new Set(answer.evidence.map((item) => item.evidence_ref))
+  assert.ok(answer.results[0]!.evidence_refs.length > 0)
+  assert.ok(answer.results[0]!.evidence_refs.every((ref) => evidenceIds.has(ref)))
   assert.equal(answer.results.length, 2)
+})
+
+test('趋势 Grounding 扩展逐节点闭合并拒绝指标或节点篡改', () => {
+  const grounder = new P1TrendAwareGrounder()
+  const trendPlan = plan('ip地址变化趋势', [
+    goal('ip地址变化趋势', 'address_family_change', {
+      address_family: 'both',
+      population: 'fixed_cohort',
+      include_new_prefixes: false,
+      time_scope: 'current_publication_window',
+      analysis_mode: 'event_window_trend',
+    }),
+  ])
+  const semanticPlan = grounder.ground(trendPlan, binding, reference)
+  assert.deepEqual(grounder.validate(semanticPlan, binding), [])
+
+  const tamperedMetrics = structuredClone(semanticPlan)
+  const tamperedNode = tamperedMetrics.grounding_plan.nodes.find(
+    (node) => node.execution_unit === P1_EVENT_WINDOW_TREND_EXECUTION_UNIT,
+  )!
+  tamperedNode.inputs.metrics = ['interrupted_prefix_count']
+  assert.match(
+    grounder.validate(tamperedMetrics, binding).join('\n'),
+    /TREND-GND-03/,
+  )
+
+  const missingNode = structuredClone(semanticPlan)
+  const removedIds = new Set(
+    missingNode.grounding_plan.nodes
+      .filter((node) =>
+        node.execution_unit === P1_EVENT_WINDOW_TREND_EXECUTION_UNIT
+      )
+      .map((node) => node.node_id),
+  )
+  missingNode.grounding_plan.nodes = missingNode.grounding_plan.nodes.filter(
+    (node) => !removedIds.has(node.node_id),
+  )
+  for (const decision of missingNode.grounding_plan.decisions) {
+    decision.node_ids = decision.node_ids.filter((id) => !removedIds.has(id))
+  }
+  assert.match(
+    grounder.validate(missingNode, binding).join('\n'),
+    /TREND-GND-01/,
+  )
 })
 
 test('S2 真实断网起点拆分页面检测事实与真实起点边界', async () => {
