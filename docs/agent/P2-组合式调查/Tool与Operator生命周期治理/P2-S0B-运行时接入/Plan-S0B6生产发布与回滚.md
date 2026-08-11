@@ -1,6 +1,6 @@
 # P2-S0B6 Tool/Operator Registry 生产发布与回滚计划
 
-版本：`country-outage-agent-p2-s0b6-production-release-v1`
+版本：`country-outage-agent-p2-s0b6-production-release-v2`
 
 状态：已获生产上线授权；执行中
 
@@ -44,6 +44,22 @@ Promotion identity 必须绑定 source commit、annotated tag、release ID、sha
 Snapshot、验收 manifest、产品语义 Reviewer 和明确回滚 release。生产模式拒绝 shadow 快照，
 shadow 模式也拒绝 production 快照；不得跨模式静默回退。
 
+### 3.1 认证责任拆分
+
+prod33 的首次 Prepare 在切换生产前被旧 P1 认证源码摘要门阻断，阻断文件仅为
+`runtime-v2-semantic.ts`。该失败候选从未部署，标签保留且不得重写。
+
+prod34 不删除摘要门，也不把旧 P1 模型认证改写成覆盖新执行层。认证责任固定拆分为：
+
+- 旧 P1 模型认证只覆盖逐字节不变的模型、提示、Profile、解析器和 P1 合同；
+- 15 个旧认证源码中 14 个必须与原认证摘要完全相同；
+- 唯一允许差异是内容寻址的 `runtime-v2-semantic.ts` Registry Admission；
+- 新执行层由 P2 Oracle、同候选验收、产品语义 Reviewer、发布影响 Reviewer 和防篡改测试认证；
+- 最终还必须以一次、最多一个 provider request 的生产事实问题验证真实接线；
+- 任一第二文件变化、目标摘要变化、Reviewer 变化或 P2 Evidence 变化都必须失败关闭，不能沿用本影响结论。
+
+这不是“免认证”：旧模型认证和新 Registry 执行影响认证必须同时有效，任何一份都不能替代另一份。
+
 ## 四、发布步骤
 
 ### 4.1 生产前冻结
@@ -59,9 +75,9 @@ shadow 模式也拒绝 production 快照；不得跨模式静默回退。
 在仓库外 runtime root：
 
 1. 解包源码归档到临时候选；
-2. 在完整源码中重跑 Sidecar 与 P2 门；
+2. 在完整源码中重跑 Sidecar、P2 门和独立发布影响 Reviewer；
 3. 裁剪生产依赖；
-4. 复制 P1 认证、P1/OP-04 合同、P2 shadow 合同和同候选证据；
+4. 复制 P1 认证、P1/OP-04 合同、P2 shadow 合同、同候选证据和认证影响证据；
 5. 生成 production promotion、production Snapshot、release manifest 与 SHA256SUMS；
 6. 完整校验后原子移动为不可变 release 目录。
 

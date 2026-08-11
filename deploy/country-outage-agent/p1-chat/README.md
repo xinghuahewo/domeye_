@@ -7,7 +7,8 @@
 - 每轮最多一次真实模型请求，工具执行由宿主确定性控制；
 - 生产发布不设费用审计硬门；保留既有单次模型用量记录，但发布只审核 CPU、RSS、调用量和错误日志；
 - 报告生成、报告下载、外部证据和 RCA 均关闭；
-- 正式运行只能加载 P1 专用认证注册表及其同候选认证回执。
+- 正式运行只能加载 P1 专用认证注册表；模型层沿用证据只覆盖未变化的模型、提示、
+  Profile、解析器和 P1 合同，新增 Registry 准入由独立影响认证负责，二者不得互相冒充。
 - Tool/Operator 只能从同 release 派生的 `production_active` P2 Registry Snapshot 准入；
   shadow 快照与 production 快照禁止跨模式回退。
 
@@ -30,6 +31,8 @@
 5. 用 `manage.sh status` 复核；失败时按 Frontend、Backend、P1 Sidecar 的逆序回滚。
 
 `prepare` 会执行 Sidecar 全量测试、生产依赖审计、Vendor Patch 摘要检查、P2
-Alignment Hook 和独立产品语义 Reviewer，并逐项校验模型认证的源码、28 条回执、
-正式注册表和有效期。生产进程由发布脚本注入 P2 production 模式及同 release 快照路径，
-不需要人工编辑生产配置文件。
+Alignment Hook、独立产品语义 Reviewer 和独立发布影响 Reviewer。旧 P1 认证的 28 条回执、
+注册表和有效期仍逐项校验；15 个认证源码中 14 个必须逐字节不变，唯一允许差异是
+`runtime-v2-semantic.ts` 的内容寻址 Registry 准入改动，并必须由影响政策、P2 同候选证据、
+Reviewer 回执和一次生产真实烟测共同闭合。生产进程由发布脚本注入 P2 production 模式及
+同 release 快照路径，不需要人工编辑生产配置文件。

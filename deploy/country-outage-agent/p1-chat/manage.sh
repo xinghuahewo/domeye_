@@ -209,6 +209,7 @@ prepare_release() {
         "${candidate}/certification/"
     cp "${SCRIPT_DIR}/verify-release.mjs" "${SCRIPT_DIR}/probe.mjs" \
         "${SCRIPT_DIR}/promote-p2-registry.mjs" \
+        "${SCRIPT_DIR}/certification-impact-policy.json" \
         "${candidate}/deployment/"
     certification="${candidate}/certification/manifest.json"
     while IFS= read -r relative_path; do
@@ -240,6 +241,7 @@ prepare_release() {
     done
     local p2_contract_root='contracts/agent/country-outage-p2-s0b-runtime'
     local p2_evidence_root='evaluation/country-outage/p2-s0b-runtime'
+    local p2_release_evidence_root='evaluation/country-outage/p2-s0b-prod34-release'
     install -d -m 0700 "${candidate}/${p2_contract_root}" \
         "${candidate}/certification/p2-s0b"
     local p2_contract
@@ -262,6 +264,10 @@ prepare_release() {
         cp "${extracted}/${p2_evidence_root}/${p2_evidence}" \
             "${candidate}/certification/p2-s0b/${p2_evidence}"
     done
+    cp "${extracted}/${p2_release_evidence_root}/certification-impact-review.json" \
+        "${candidate}/certification/p2-s0b/certification-impact-review.json"
+    cp "${extracted}/dev/tools/review_country_outage_p2_s0b_release_impact.py" \
+        "${candidate}/certification/p2-s0b/certification-impact-reviewer.py"
     (
         # 全量 Sidecar 测试会读取仓库根目录下的 contracts、dev 与评测制品，
         # 因此必须在完整源码归档中执行；通过并裁剪生产依赖后再复制运行制品。
@@ -285,6 +291,10 @@ prepare_release() {
             --candidate "${p2_contract_root}/candidate.json" \
             --output "${p2_evidence_root}/product-semantic-review.json" \
             --check
+        python3 dev/tools/review_country_outage_p2_s0b_release_impact.py \
+            --repo-root . \
+            --output "${p2_release_evidence_root}/certification-impact-review.json" \
+            --check
     )
     cp -R "${extracted}/agent-sidecar/." "${candidate}/agent-sidecar/"
     while IFS= read -r bin_directory; do find "${bin_directory}" -depth -delete; done < <(
@@ -298,6 +308,9 @@ prepare_release() {
         "${rollback_release_id}" >/dev/null
     local trend_identity="${candidate}/TREND-OPERATOR-IDENTITY.json"
     local p2_promotion="${candidate}/P2-REGISTRY-PROMOTION.json"
+    local p2_impact_policy="${candidate}/deployment/certification-impact-policy.json"
+    local p2_impact_review="${candidate}/certification/p2-s0b/certification-impact-review.json"
+    local p2_impact_reviewer="${candidate}/certification/p2-s0b/certification-impact-reviewer.py"
     jq -n \
         --arg created_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '{schema_version:"country_outage_p1_trend_operator_identity_v1",created_at:$created_at,execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",profile_registry_version:"country-outage-p1-trend-profile-v1",model_dependency:"none",files:[]}' \
@@ -342,11 +355,14 @@ prepare_release() {
         --arg trend_integration_sha "$(sha256_file "${candidate}/${trend_contract_root}/p1-integration-contract.json")" \
         --arg trend_profiles_sha "$(sha256_file "${candidate}/${trend_contract_root}/trend-profiles.json")" \
         --arg p2_promotion_sha "$(sha256_file "${p2_promotion}")" \
+        --arg p2_impact_policy_sha "$(sha256_file "${p2_impact_policy}")" \
+        --arg p2_impact_review_sha "$(sha256_file "${p2_impact_review}")" \
+        --arg p2_impact_reviewer_sha "$(sha256_file "${p2_impact_reviewer}")" \
         --arg p2_candidate_id "$(jq -er '.production_candidate_id' "${p2_promotion}")" \
         --arg p2_snapshot_id "$(jq -er '.production_registry_snapshot_id' "${p2_promotion}")" \
         --argjson p2_revision "$(jq -er '.production_registry_revision' "${p2_promotion}")" \
         --arg rollback_release_id "${rollback_release_id}" \
-        '{schema_version:"country_outage_p1_chat_release_v2",component:"country_outage_p1_chat_sidecar",release_id:$release_id,created_at:$created_at,source:{commit:$commit,annotated_tag:$tag,archive_sha256:$source_sha},runtime:{host:"127.0.0.1",port:28475,node_version:"v22.23.1",pi_version:"0.84.1",maximum_provider_request_count_per_turn:1,event_window_trend_operator:{execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",model_dependency:"none"},tool_operator_registry:{candidate_id:$p2_candidate_id,registry_snapshot_id:$p2_snapshot_id,registry_revision:$p2_revision,activation_scope:"production_active",runtime_integration:"deployed",production_deployed:true}},resource_observation:{release_gate:"cpu_rss_call_count_and_error_log",fee_audit_gate:"not_required"},rollback:{release_id:$rollback_release_id},boundaries:{collector:"rrc25",event_type:"country_outage",report_capability:"disabled",external_evidence:"disabled",network_rca:false},hashes:{certification_manifest:$cert_sha,certified_registry:$registry_sha,trend_operator_identity:$trend_identity_sha,trend_integration_contract:$trend_integration_sha,trend_profiles:$trend_profiles_sha,p2_registry_promotion:$p2_promotion_sha},checks:{agent_sidecar_tests:"passed",production_dependency_audit:"passed",vendor_patch:"verified",event_window_trend_integration:"verified",p2_registry_shadow_acceptance:"passed",p2_registry_production_promotion:"verified"}}' \
+        '{schema_version:"country_outage_p1_chat_release_v2",component:"country_outage_p1_chat_sidecar",release_id:$release_id,created_at:$created_at,source:{commit:$commit,annotated_tag:$tag,archive_sha256:$source_sha},runtime:{host:"127.0.0.1",port:28475,node_version:"v22.23.1",pi_version:"0.84.1",maximum_provider_request_count_per_turn:1,event_window_trend_operator:{execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",model_dependency:"none"},tool_operator_registry:{candidate_id:$p2_candidate_id,registry_snapshot_id:$p2_snapshot_id,registry_revision:$p2_revision,activation_scope:"production_active",runtime_integration:"deployed",production_deployed:true}},certification_scope:{base_model_certification:"unchanged_model_scope_only",registry_runtime_impact_certification:"required_and_passed",production_live_smoke:"required_maximum_one_provider_request"},resource_observation:{release_gate:"cpu_rss_call_count_and_error_log",fee_audit_gate:"not_required"},rollback:{release_id:$rollback_release_id},boundaries:{collector:"rrc25",event_type:"country_outage",report_capability:"disabled",external_evidence:"disabled",network_rca:false},hashes:{certification_manifest:$cert_sha,certified_registry:$registry_sha,trend_operator_identity:$trend_identity_sha,trend_integration_contract:$trend_integration_sha,trend_profiles:$trend_profiles_sha,p2_registry_promotion:$p2_promotion_sha,p2_certification_impact_policy:$p2_impact_policy_sha,p2_certification_impact_review:$p2_impact_review_sha,p2_certification_impact_reviewer:$p2_impact_reviewer_sha},checks:{agent_sidecar_tests:"passed",production_dependency_audit:"passed",vendor_patch:"verified",event_window_trend_integration:"verified",p2_registry_shadow_acceptance:"passed",p2_registry_production_promotion:"verified",p2_registry_certification_impact:"passed"}}' \
         > "${candidate}/RELEASE-MANIFEST.json"
     "${NODE}" "${candidate}/deployment/verify-release.mjs" "${candidate}" >/dev/null
     (

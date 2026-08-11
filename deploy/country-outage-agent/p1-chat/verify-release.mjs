@@ -136,8 +136,22 @@ const p2ReviewPath = join(
   releaseRoot,
   'certification/p2-s0b/product-semantic-review.json',
 )
+const p2ImpactPolicyPath = join(
+  releaseRoot,
+  'deployment/certification-impact-policy.json',
+)
+const p2ImpactReviewPath = join(
+  releaseRoot,
+  'certification/p2-s0b/certification-impact-review.json',
+)
+const p2ImpactReviewerPath = join(
+  releaseRoot,
+  'certification/p2-s0b/certification-impact-reviewer.py',
+)
 const p2Acceptance = readJson(p2AcceptancePath)
 const p2Review = readJson(p2ReviewPath)
+const p2ImpactPolicy = readJson(p2ImpactPolicyPath)
+const p2ImpactReview = readJson(p2ImpactReviewPath)
 const profile = registry.profiles?.[0]
 const payload = { ...certification }
 delete payload.evidence_id
@@ -175,7 +189,13 @@ if (
   release.runtime?.tool_operator_registry?.activation_scope !==
     'production_active' ||
   release.runtime?.tool_operator_registry?.runtime_integration !== 'deployed' ||
-  release.runtime?.tool_operator_registry?.production_deployed !== true
+  release.runtime?.tool_operator_registry?.production_deployed !== true ||
+  release.certification_scope?.base_model_certification !==
+    'unchanged_model_scope_only' ||
+  release.certification_scope?.registry_runtime_impact_certification !==
+    'required_and_passed' ||
+  release.certification_scope?.production_live_smoke !==
+    'required_maximum_one_provider_request'
 ) fail('release 边界或运行时合同漂移')
 
 if (
@@ -264,10 +284,89 @@ for (const item of certification.case_receipts) {
   const path = regularFile(join(releaseRoot, 'certification', item.path))
   if (sha256(readFileSync(path)) !== item.sha256) fail(`逐案回执漂移 ${item.path}`)
 }
+const allowedImpactChanges = p2ImpactPolicy.allowed_source_changes ?? []
+const allowedImpactByPath = new Map(
+  allowedImpactChanges.map((item) => [item.path, item]),
+)
+if (
+  p2ImpactPolicy.schema_version !==
+    'country_outage_p2_s0b6_certification_impact_policy_v1' ||
+  p2ImpactPolicy.base_certification?.candidate_id !== certification.candidate_id ||
+  p2ImpactPolicy.base_certification?.evidence_id !== certification.evidence_id ||
+  p2ImpactPolicy.base_certification?.manifest_sha256 !==
+    `sha256:${sha256(readFileSync(certificationPath))}` ||
+  allowedImpactChanges.length !== 1 ||
+  allowedImpactByPath.size !== 1 ||
+  p2ImpactPolicy.decision?.base_model_certification_reused_as_new_runtime_certification !== false ||
+  p2ImpactPolicy.decision?.base_model_certification_remains_valid_for_unchanged_scope !== true ||
+  p2ImpactPolicy.decision?.new_registry_runtime_impact_certification_required !== true ||
+  p2ImpactPolicy.decision?.full_model_recertification_required !== false ||
+  p2ImpactPolicy.decision?.production_live_smoke_required !== true ||
+  p2ImpactPolicy.decision?.maximum_provider_request_count_for_live_smoke !== 1 ||
+  p2ImpactPolicy.decision?.fee_audit_gate !== 'not_required' ||
+  p2ImpactPolicy.decision?.resource_gate !== 'cpu_rss_call_count_and_error_log'
+) fail('P2 Registry 认证影响政策无效')
+
+const certificationSourceMismatches = []
 for (const item of certification.source_identity?.files ?? []) {
-  const path = regularFile(join(releaseRoot, 'source-identity', item.path))
-  if (sha256(readFileSync(path)) !== item.sha256) fail(`认证源码漂移 ${item.path}`)
+  const sourceIdentityPath = regularFile(
+    join(releaseRoot, 'source-identity', item.path),
+  )
+  const actual = `sha256:${sha256(readFileSync(sourceIdentityPath))}`
+  const certified = `sha256:${item.sha256}`
+  if (actual === certified) continue
+  certificationSourceMismatches.push(item.path)
+  const rule = allowedImpactByPath.get(item.path)
+  const runtimeSourcePath = regularFile(join(releaseRoot, item.path))
+  if (
+    !rule ||
+    rule.certified_sha256 !== certified ||
+    rule.release_sha256 !== actual ||
+    rule.classification !== 'deterministic_post_grounding_registry_admission' ||
+    `sha256:${sha256(readFileSync(runtimeSourcePath))}` !== actual ||
+    !Array.isArray(rule.allowed_effects) || rule.allowed_effects.length !== 2 ||
+    !Array.isArray(rule.forbidden_effects) || rule.forbidden_effects.length !== 3
+  ) fail(`认证源码影响未闭合 ${item.path}`)
 }
+if (
+  certificationSourceMismatches.join('\n') !==
+  [...allowedImpactByPath.keys()].sort().join('\n')
+) fail('认证源码实际差异与影响政策不一致')
+
+const impactReviewPayload = { ...p2ImpactReview }
+delete impactReviewPayload.receipt_digest
+if (
+  p2ImpactReview.schema_version !==
+    'country_outage_p2_s0b6_certification_impact_review_v1' ||
+  p2ImpactReview.status !== 'PASS' ||
+  p2ImpactReview.blocking_count !== 0 ||
+  p2ImpactReview.model_provider_calls !== 0 ||
+  p2ImpactReview.fee_audit_gate !== 'not_required' ||
+  p2ImpactReview.base_certification_evidence_id !== certification.evidence_id ||
+  p2ImpactReview.p2_candidate_id !== p2Acceptance.candidate_id ||
+  p2ImpactReview.policy_digest !==
+    `sha256:${sha256(canonical(p2ImpactPolicy))}` ||
+  p2ImpactReview.reviewer_source_digest !==
+    `sha256:${sha256(readFileSync(regularFile(p2ImpactReviewerPath)))}` ||
+  p2ImpactReview.source_mismatch_paths?.join('\n') !==
+    certificationSourceMismatches.join('\n') ||
+  !Array.isArray(p2ImpactReview.findings) ||
+  p2ImpactReview.findings.some((item) => item.status !== 'PASS') ||
+  p2ImpactReview.receipt_digest !==
+    `sha256:${sha256(canonical(impactReviewPayload))}` ||
+  p2ImpactPolicy.p2_runtime_evidence?.candidate_id !== p2Acceptance.candidate_id ||
+  p2ImpactPolicy.p2_runtime_evidence?.acceptance_manifest_sha256 !==
+    `sha256:${sha256(readFileSync(p2AcceptancePath))}` ||
+  p2ImpactPolicy.p2_runtime_evidence?.acceptance_manifest_digest !==
+    p2Acceptance.manifest_digest ||
+  p2ImpactPolicy.p2_runtime_evidence?.product_semantic_review_sha256 !==
+    `sha256:${sha256(readFileSync(p2ReviewPath))}` ||
+  p2ImpactPolicy.p2_runtime_evidence?.product_semantic_review_digest !==
+    p2Review.receipt_digest ||
+  p2ImpactPolicy.p2_runtime_evidence?.required_status !== p2Review.status ||
+  p2ImpactPolicy.p2_runtime_evidence?.required_blocking_count !==
+    p2Review.blocking_count
+) fail('P2 Registry 认证影响 Reviewer 证据无效')
 
 const runtimeContractRoot =
   'contracts/agent/country-outage-p1-page-coverage/s2'
@@ -375,7 +474,13 @@ if (
   release.hashes?.trend_integration_contract !==
     sha256(readFileSync(trendIntegrationPath)) ||
   release.hashes?.trend_profiles !== sha256(readFileSync(trendProfilesPath)) ||
-  release.hashes?.p2_registry_promotion !== sha256(readFileSync(p2PromotionPath))
+  release.hashes?.p2_registry_promotion !== sha256(readFileSync(p2PromotionPath)) ||
+  release.hashes?.p2_certification_impact_policy !==
+    sha256(readFileSync(p2ImpactPolicyPath)) ||
+  release.hashes?.p2_certification_impact_review !==
+    sha256(readFileSync(p2ImpactReviewPath)) ||
+  release.hashes?.p2_certification_impact_reviewer !==
+    sha256(readFileSync(p2ImpactReviewerPath))
 ) fail('release 摘要与正式制品不一致')
 
 process.stdout.write(`${JSON.stringify({
@@ -390,6 +495,7 @@ process.stdout.write(`${JSON.stringify({
   grounding_legality_rate: certification.metrics.grounding_legality_rate,
   event_window_trend_operator: release.runtime.event_window_trend_operator,
   tool_operator_registry: release.runtime.tool_operator_registry,
+  certification_scope: release.certification_scope,
   rollback_release_id: release.rollback.release_id,
   fee_audit_gate: release.resource_observation.fee_audit_gate,
   report_capability: 'disabled',
