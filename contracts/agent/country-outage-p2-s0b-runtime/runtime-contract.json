@@ -2,6 +2,20 @@
   "schema_version": "country_outage_p2_s0b_runtime_contract_v1",
   "contract_version": "country-outage-agent-p2-s0b-governed-auto-invocation-v1",
   "goal": "通过不可变 Registry Snapshot 管住当前 Tool/Operator 的按需自动调用",
+  "runtime_modes": {
+    "shadow": {
+      "activation_scope": "runtime_candidate_shadow_only",
+      "runtime_integration": "implemented_not_deployed",
+      "production_deployed": false
+    },
+    "production": {
+      "activation_scope": "production_active",
+      "runtime_integration": "deployed",
+      "production_deployed": true,
+      "entry": "只接受由同候选验收清单和正式release身份派生的内容寻址promotion快照"
+    },
+    "cross_mode_fallback": "forbidden"
+  },
   "interfaces": {
     "snapshot_loader": {
       "authority": "host_only",
@@ -78,6 +92,8 @@
     "registry_snapshot_unsafe",
     "registry_snapshot_invalid",
     "registry_snapshot_digest_mismatch",
+    "registry_runtime_mode_invalid",
+    "registry_runtime_mode_mismatch",
     "capability_not_active",
     "execution_unit_not_active",
     "execution_handler_missing",
@@ -94,7 +110,7 @@
     "collector_id": "rrc25",
     "permission": "country_outage:read",
     "registry_write_from_runtime": false,
-    "production_deployed": false,
+    "production_deployed": "由显式运行模式决定，shadow=false，production=true",
     "prod32_switched": false,
     "network_rca": false
   }

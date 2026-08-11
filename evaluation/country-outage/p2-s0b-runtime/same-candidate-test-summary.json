@@ -1,5 +1,5 @@
 {
-  "candidate_id": "p2-s0b-61f83f6f0e218c46",
+  "candidate_id": "p2-s0b-763eb09a654b8b29",
   "checks": [
     {
       "command": [
@@ -10,8 +10,8 @@
       ],
       "exit_code": 0,
       "name": "P2-S0B Python候选测试",
-      "output_digest": "sha256:cdd2173eba220c80ceb6deb3ed8af6e5c715dafccc8ec86a8944266788f29646",
-      "output_tail": "..........\n----------------------------------------------------------------------\nRan 10 tests in 0.048s\n\nOK\n"
+      "output_digest": "sha256:7113510254859a25fd51a67566b4a2edd527f7bf5883b8868a9383bb875d9cf9",
+      "output_tail": "..........\n----------------------------------------------------------------------\nRan 10 tests in 0.047s\n\nOK\n"
     },
     {
       "command": [
@@ -21,8 +21,8 @@
       ],
       "exit_code": 0,
       "name": "P2-S0B TypeScript专项及P1回归",
-      "output_digest": "sha256:3db1d11233ad82c4e14bed2bd11a0430d2b7621d737f472c5f8b1f54b4e8955f",
-      "output_tail": "7\n  type: 'test'\n  ...\n# Subtest: S0B 可执行事实计划缺少必需身份预检时拒绝\nok 47 - S0B 可执行事实计划缺少必需身份预检时拒绝\n  ---\n  duration_ms: 6.343417\n  type: 'test'\n  ...\n# Subtest: S0B 越界问题零工具执行但保留禁止调用决策\nok 48 - S0B 越界问题零工具执行但保留禁止调用决策\n  ---\n  duration_ms: 4.3205\n  type: 'test'\n  ...\n# Subtest: S0B 非active单元在Executor之前拒绝\nok 49 - S0B 非active单元在Executor之前拒绝\n  ---\n  duration_ms: 9.282708\n  type: 'test'\n  ...\n# Subtest: S0B 快照未重封的篡改失败关闭\nok 50 - S0B 快照未重封的篡改失败关闭\n  ---\n  duration_ms: 4.489208\n  type: 'test'\n  ...\n# Subtest: S0B Capability与Unit摘要冲突在执行前拒绝\nok 51 - S0B Capability与Unit摘要冲突在执行前拒绝\n  ---\n  duration_ms: 8.082292\n  type: 'test'\n  ...\n# Subtest: S0B active单元缺少Host Handler时拒绝执行\nok 52 - S0B active单元缺少Host Handler时拒绝执行\n  ---\n  duration_ms: 4.395917\n  type: 'test'\n  ...\n# Subtest: S0B OP-04缺少TOOL-03依赖节点时拒绝\nok 53 - S0B OP-04缺少TOOL-03依赖节点时拒绝\n  ---\n  duration_ms: 6.92875\n  type: 'test'\n  ...\n# Subtest: S0B 同轮保持旧快照，下一轮才读取新快照\nok 54 - S0B 同轮保持旧快照，下一轮才读取新快照\n  ---\n  duration_ms: 11.665875\n  type: 'test'\n  ...\n# Subtest: S0B 缺失与关键身份null均失败关闭\nok 55 - S0B 缺失与关键身份null均失败关闭\n  ---\n  duration_ms: 2.446125\n  type: 'test'\n  ...\n1..55\n# tests 55\n# suites 0\n# pass 55\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 302.128041\n"
+      "output_digest": "sha256:17b25f81c1494849d0d32e9ddd310422523501b309d54854ae3217a3e880e621",
+      "output_tail": " type: 'test'\n  ...\n# Subtest: S0B 可执行事实计划缺少必需身份预检时拒绝\nok 48 - S0B 可执行事实计划缺少必需身份预检时拒绝\n  ---\n  duration_ms: 5.224625\n  type: 'test'\n  ...\n# Subtest: S0B 越界问题零工具执行但保留禁止调用决策\nok 49 - S0B 越界问题零工具执行但保留禁止调用决策\n  ---\n  duration_ms: 5.190167\n  type: 'test'\n  ...\n# Subtest: S0B 非active单元在Executor之前拒绝\nok 50 - S0B 非active单元在Executor之前拒绝\n  ---\n  duration_ms: 7.843125\n  type: 'test'\n  ...\n# Subtest: S0B 快照未重封的篡改失败关闭\nok 51 - S0B 快照未重封的篡改失败关闭\n  ---\n  duration_ms: 3.975375\n  type: 'test'\n  ...\n# Subtest: S0B Capability与Unit摘要冲突在执行前拒绝\nok 52 - S0B Capability与Unit摘要冲突在执行前拒绝\n  ---\n  duration_ms: 9.113583\n  type: 'test'\n  ...\n# Subtest: S0B active单元缺少Host Handler时拒绝执行\nok 53 - S0B active单元缺少Host Handler时拒绝执行\n  ---\n  duration_ms: 4.414292\n  type: 'test'\n  ...\n# Subtest: S0B OP-04缺少TOOL-03依赖节点时拒绝\nok 54 - S0B OP-04缺少TOOL-03依赖节点时拒绝\n  ---\n  duration_ms: 5.645917\n  type: 'test'\n  ...\n# Subtest: S0B 同轮保持旧快照，下一轮才读取新快照\nok 55 - S0B 同轮保持旧快照，下一轮才读取新快照\n  ---\n  duration_ms: 12.137792\n  type: 'test'\n  ...\n# Subtest: S0B 缺失与关键身份null均失败关闭\nok 56 - S0B 缺失与关键身份null均失败关闭\n  ---\n  duration_ms: 2.551458\n  type: 'test'\n  ...\n1..56\n# tests 56\n# suites 0\n# pass 56\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 308.281959\n"
     },
     {
       "command": [
@@ -38,8 +38,8 @@
       ],
       "exit_code": 0,
       "name": "独立产品语义Reviewer复核",
-      "output_digest": "sha256:9802d1cb760eaab09ad433cfa447f19bbfee3569c1e453848f879025dbd3b20e",
-      "output_tail": "{\"blocking_count\": 0, \"candidate_id\": \"p2-s0b-61f83f6f0e218c46\", \"receipt_digest\": \"sha256:2ebea3808327016e3d9eb4ded130837426f07a7cef3633435892b9618f472287\", \"status\": \"PASS\"}\n"
+      "output_digest": "sha256:c884499a93dd5dbbcb8d40ebc6f04cce72bed3c8e291cce4b2727b9c3501bf8f",
+      "output_tail": "{\"blocking_count\": 0, \"candidate_id\": \"p2-s0b-763eb09a654b8b29\", \"receipt_digest\": \"sha256:12c9e54eb4dc82cd2aeb56c0045c508d089a0be62a62c26ac35805350e024490\", \"status\": \"PASS\"}\n"
     }
   ],
   "does_not_prove": [
@@ -53,12 +53,12 @@
     "production_deployment_count": 0,
     "python_test_count": 10,
     "remote_write_count": 0,
-    "typescript_and_p1_pass_count": 55,
-    "typescript_and_p1_test_count": 55
+    "typescript_and_p1_pass_count": 56,
+    "typescript_and_p1_test_count": 56
   },
   "production_deployed": false,
-  "receipt_digest": "sha256:9344f9b1d6086836d9ff40efdd102a7130add0e5161288061bb0b9c52c77c8a1",
-  "registry_snapshot_id": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
+  "receipt_digest": "sha256:ca58abdb2607d329508e68e6bafd7f5ffefedc5c78f2623348da8d4f80f33861",
+  "registry_snapshot_id": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2",
   "runtime_integration": "implemented_not_deployed",
   "schema_version": "country_outage_p2_s0b_same_candidate_test_summary_v1",
   "status": "PASS"

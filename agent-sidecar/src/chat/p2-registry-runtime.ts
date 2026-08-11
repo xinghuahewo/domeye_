@@ -13,8 +13,10 @@ import type {
 type JsonObject = Record<string, unknown>
 
 const SNAPSHOT_SCHEMA = 'country_outage_p2_s0b_registry_snapshot_v1'
-const RUNTIME_INTEGRATION = 'implemented_not_deployed'
-const ACTIVATION_SCOPE = 'runtime_candidate_shadow_only'
+const SHADOW_RUNTIME_INTEGRATION = 'implemented_not_deployed'
+const SHADOW_ACTIVATION_SCOPE = 'runtime_candidate_shadow_only'
+const PRODUCTION_RUNTIME_INTEGRATION = 'deployed'
+const PRODUCTION_ACTIVATION_SCOPE = 'production_active'
 const DIGEST = /^sha256:[a-f0-9]{64}$/
 const SNAPSHOT_ID = /^registry-snapshot-sha256:[a-f0-9]{64}$/
 const MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
@@ -23,6 +25,8 @@ export const P2_SUPPORTED_EXECUTION_UNITS = [
   'TOOL-01', 'TOOL-02', 'TOOL-03', 'TOOL-04', 'TOOL-05', 'TOOL-06',
   'OP-01', 'OP-02', 'OP-03', 'OP-04',
 ] as const
+
+export type P2RegistryRuntimeMode = 'shadow' | 'production'
 
 export interface P2RegistryNodeBinding {
   registry_snapshot_id: string
@@ -47,6 +51,8 @@ export interface P2RegistryAdmissionReceipt {
   registry_snapshot_id: string
   registry_revision: number
   candidate_id: string
+  activation_scope: 'runtime_candidate_shadow_only' | 'production_active'
+  runtime_integration: 'implemented_not_deployed' | 'deployed'
   event_identity: {
     event_type: 'country_outage'
     incident_id: string
@@ -70,7 +76,7 @@ export interface P2RegistryAdmissionReceipt {
     capability_ids: string[]
   }>
   execution_started: false
-  production_deployed: false
+  production_deployed: boolean
 }
 
 export interface P2AdmittedSemanticPlan {
@@ -118,8 +124,8 @@ interface RegistryExecutionUnit {
 interface RegistrySnapshotPayload {
   candidate_id: string
   registry_revision: number
-  activation_scope: string
-  runtime_integration: string
+  activation_scope: 'runtime_candidate_shadow_only' | 'production_active'
+  runtime_integration: 'implemented_not_deployed' | 'deployed'
   capability_registry: { entries: RegistryCapability[] }
   execution_unit_registry: { entries: RegistryExecutionUnit[] }
 }
@@ -129,7 +135,7 @@ export interface P2RegistrySnapshot {
   registry_snapshot_id: string
   snapshot_digest: string
   created_at: string
-  production_deployed: false
+  production_deployed: boolean
   snapshot_payload: RegistrySnapshotPayload
 }
 
@@ -211,6 +217,16 @@ function defaultSnapshotPath(): string {
   )
 }
 
+function defaultRuntimeMode(): P2RegistryRuntimeMode {
+  const configured = process.env.COUNTRY_OUTAGE_P2_REGISTRY_MODE?.trim()
+  if (!configured || configured === 'shadow') return 'shadow'
+  if (configured === 'production') return 'production'
+  throw new P2RegistryRuntimeError(
+    'registry_runtime_mode_invalid',
+    'COUNTRY_OUTAGE_P2_REGISTRY_MODE 只能是 shadow 或 production',
+  )
+}
+
 function requireDigest(value: unknown, label: string): string {
   if (typeof value !== 'string' || !DIGEST.test(value)) {
     throw new P2RegistryRuntimeError(
@@ -254,17 +270,18 @@ function validateEntryIdentities(payload: RegistrySnapshotPayload): void {
 
 export function validateP2RegistrySnapshot(
   value: unknown,
+  mode: P2RegistryRuntimeMode = 'shadow',
 ): P2RegistrySnapshot {
   const snapshot = object(value, 'registry_snapshot') as unknown as P2RegistrySnapshot
   if (
     snapshot.schema_version !== SNAPSHOT_SCHEMA
     || typeof snapshot.registry_snapshot_id !== 'string'
     || !SNAPSHOT_ID.test(snapshot.registry_snapshot_id)
-    || snapshot.production_deployed !== false
+    || typeof snapshot.production_deployed !== 'boolean'
   ) {
     throw new P2RegistryRuntimeError(
       'registry_snapshot_invalid',
-      'Registry Snapshot 顶层身份或非部署边界无效',
+      'Registry Snapshot 顶层身份无效',
     )
   }
   const payload = object(
@@ -272,17 +289,30 @@ export function validateP2RegistrySnapshot(
     'registry_snapshot.snapshot_payload',
   ) as unknown as RegistrySnapshotPayload
   if (
-    !/^p2-s0b-[a-f0-9]{16}$/.test(payload.candidate_id)
+    !/^p2-s0b6?-[a-f0-9]{16}$/.test(payload.candidate_id)
     || !Number.isSafeInteger(payload.registry_revision)
     || payload.registry_revision < 1
-    || payload.activation_scope !== ACTIVATION_SCOPE
-    || payload.runtime_integration !== RUNTIME_INTEGRATION
     || !Array.isArray(payload.capability_registry?.entries)
     || !Array.isArray(payload.execution_unit_registry?.entries)
   ) {
     throw new P2RegistryRuntimeError(
       'registry_snapshot_invalid',
       'Registry Snapshot payload 身份、范围或双 Registry 无效',
+    )
+  }
+  const modeValid = mode === 'shadow'
+    ? snapshot.production_deployed === false
+      && payload.activation_scope === SHADOW_ACTIVATION_SCOPE
+      && payload.runtime_integration === SHADOW_RUNTIME_INTEGRATION
+      && /^p2-s0b-[a-f0-9]{16}$/.test(payload.candidate_id)
+    : snapshot.production_deployed === true
+      && payload.activation_scope === PRODUCTION_ACTIVATION_SCOPE
+      && payload.runtime_integration === PRODUCTION_RUNTIME_INTEGRATION
+      && /^p2-s0b6-[a-f0-9]{16}$/.test(payload.candidate_id)
+  if (!modeValid) {
+    throw new P2RegistryRuntimeError(
+      'registry_runtime_mode_mismatch',
+      `Registry Snapshot 不满足 ${mode} 运行模式边界`,
     )
   }
   const expectedDigest = digestValue(payload)
@@ -303,6 +333,7 @@ export function validateP2RegistrySnapshot(
 export class P2RegistrySnapshotLoader {
   constructor(
     private readonly path: string = defaultSnapshotPath(),
+    private readonly mode: P2RegistryRuntimeMode = defaultRuntimeMode(),
   ) {}
 
   load(): P2RegistrySnapshot {
@@ -330,7 +361,7 @@ export class P2RegistrySnapshotLoader {
         'Registry Snapshot 不是合法 JSON',
       )
     }
-    return validateP2RegistrySnapshot(parsed)
+    return validateP2RegistrySnapshot(parsed, this.mode)
   }
 }
 
@@ -541,6 +572,8 @@ export class P2GovernedRegistryRuntime {
         registry_snapshot_id: snapshot.registry_snapshot_id,
         registry_revision: snapshot.snapshot_payload.registry_revision,
         candidate_id: snapshot.snapshot_payload.candidate_id,
+        activation_scope: snapshot.snapshot_payload.activation_scope,
+        runtime_integration: snapshot.snapshot_payload.runtime_integration,
         event_identity: {
           event_type: 'country_outage',
           incident_id: binding.incident_id,
@@ -557,7 +590,7 @@ export class P2GovernedRegistryRuntime {
           capability_ids: [...node.capability_ids],
         })),
         execution_started: false,
-        production_deployed: false,
+        production_deployed: snapshot.production_deployed,
       },
     }
   }

@@ -187,6 +187,9 @@ export interface P1RuntimeV2SemanticAnswer {
     registry_candidate_id: string
     registry_snapshot_id: string
     registry_revision: number
+    registry_activation_scope: 'runtime_candidate_shadow_only' | 'production_active'
+    registry_runtime_integration: 'implemented_not_deployed' | 'deployed'
+    registry_production_deployed: boolean
   }
   completed_at: string
 }
@@ -2316,6 +2319,9 @@ export class P1RuntimeV2SemanticTurnService {
         registry_candidate_id: admitted.receipt.candidate_id,
         registry_snapshot_id: admitted.receipt.registry_snapshot_id,
         registry_revision: admitted.receipt.registry_revision,
+        registry_activation_scope: admitted.receipt.activation_scope,
+        registry_runtime_integration: admitted.receipt.runtime_integration,
+        registry_production_deployed: admitted.receipt.production_deployed,
       },
       completed_at: this.now().toISOString(),
     }

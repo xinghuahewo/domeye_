@@ -123,6 +123,13 @@ def check_contracts(repo_root: Path, checks: List[str]) -> None:
         raise AlignmentError("runtime_contract_drift", "快照摘要算法未冻结")
     if runtime.get("interfaces", {}).get("plan_admission", {}).get("must_precede_executor") is not True:
         raise AlignmentError("runtime_contract_drift", "Admission 未冻结为 Executor 前置门")
+    modes = runtime.get("runtime_modes", {})
+    if (
+        modes.get("shadow", {}).get("production_deployed") is not False
+        or modes.get("production", {}).get("production_deployed") is not True
+        or modes.get("cross_mode_fallback") != "forbidden"
+    ):
+        raise AlignmentError("runtime_contract_drift", "shadow/production 模式隔离合同漂移")
     handlers = {item.get("unit_id") for item in runtime.get("supported_handlers", [])}
     expected = {f"TOOL-{index:02d}" for index in range(1, 7)} | {f"OP-{index:02d}" for index in range(1, 5)}
     if handlers != expected:
@@ -130,9 +137,12 @@ def check_contracts(repo_root: Path, checks: List[str]) -> None:
     categories = set(oracle.get("categories", []))
     if len(categories) != 14 or len(oracle.get("cases", [])) < 14:
         raise AlignmentError("oracle_coverage_missing", "Shadow Oracle 未覆盖 14 类")
-    if schema.get("properties", {}).get("production_deployed", {}).get("const") is not False:
-        raise AlignmentError("boundary_violation", "Admission Schema 缺少非部署边界")
-    checks.extend(["runtime_interfaces", "handler_allowlist", "shadow_oracle_14_categories", "admission_schema"])
+    if (
+        schema.get("properties", {}).get("production_deployed", {}).get("type") != "boolean"
+        or len(schema.get("allOf", [])) != 1
+    ):
+        raise AlignmentError("boundary_violation", "Admission Schema 缺少运行模式部署一致性门")
+    checks.extend(["runtime_interfaces", "runtime_mode_isolation", "handler_allowlist", "shadow_oracle_14_categories", "admission_schema"])
 
 
 def check_candidate(repo_root: Path, checks: List[str]) -> str:

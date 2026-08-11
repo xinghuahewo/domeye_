@@ -10,6 +10,8 @@
     "registry_snapshot_id",
     "registry_revision",
     "candidate_id",
+    "activation_scope",
+    "runtime_integration",
     "event_identity",
     "goal_resolutions",
     "admitted_nodes",
@@ -21,7 +23,9 @@
     "status": {"const": "admitted"},
     "registry_snapshot_id": {"type": "string", "pattern": "^registry-snapshot-sha256:[a-f0-9]{64}$"},
     "registry_revision": {"type": "integer", "minimum": 1},
-    "candidate_id": {"type": "string", "pattern": "^p2-s0b-[a-f0-9]{16}$"},
+    "candidate_id": {"type": "string", "pattern": "^p2-s0b6?-[a-f0-9]{16}$"},
+    "activation_scope": {"enum": ["runtime_candidate_shadow_only", "production_active"]},
+    "runtime_integration": {"enum": ["implemented_not_deployed", "deployed"]},
     "event_identity": {
       "type": "object",
       "additionalProperties": false,
@@ -66,6 +70,24 @@
       }
     },
     "execution_started": {"const": false},
-    "production_deployed": {"const": false}
-  }
+    "production_deployed": {"type": "boolean"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"activation_scope": {"const": "production_active"}}, "required": ["activation_scope"]},
+      "then": {
+        "properties": {
+          "runtime_integration": {"const": "deployed"},
+          "production_deployed": {"const": true}
+        }
+      },
+      "else": {
+        "properties": {
+          "activation_scope": {"const": "runtime_candidate_shadow_only"},
+          "runtime_integration": {"const": "implemented_not_deployed"},
+          "production_deployed": {"const": false}
+        }
+      }
+    }
+  ]
 }

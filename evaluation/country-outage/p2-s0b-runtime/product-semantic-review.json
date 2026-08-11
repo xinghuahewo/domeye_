@@ -3,7 +3,7 @@
   "blocking_items": [],
   "builder_role_id": "p2-s0b-runtime-candidate-builder-v1",
   "builder_source_digest": "sha256:b0559b7d81166d34c4587ee63b6489ffe2189c50afdd0f2ae893cbcff4fcd048",
-  "candidate_id": "p2-s0b-61f83f6f0e218c46",
+  "candidate_id": "p2-s0b-763eb09a654b8b29",
   "does_not_prove": [
     "production_deployment",
     "production_traffic",
@@ -81,16 +81,16 @@
       "status": "PASS"
     },
     {
-      "actual": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
+      "actual": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2",
       "check_id": "ID-SNAPSHOT",
       "prior_truth": "快照为 p2-s0b-canonical-json-v1 内容寻址",
       "status": "PASS"
     },
     {
       "actual": {
-        "candidate": "p2-s0b-61f83f6f0e218c46",
+        "candidate": "p2-s0b-763eb09a654b8b29",
         "revision": 2,
-        "snapshot": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729"
+        "snapshot": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2"
       },
       "check_id": "ID-CANDIDATE",
       "prior_truth": "candidate、snapshot 与 revision 身份闭合",
@@ -143,8 +143,8 @@
     },
     {
       "actual": {
-        "admission_offset": 84523,
-        "executor_offset": 85369
+        "admission_offset": 84724,
+        "executor_offset": 85570
       },
       "check_id": "RUNTIME-ORDER",
       "prior_truth": "真实语义轮在 Executor 前调用 Registry Admission",
@@ -204,161 +204,212 @@
     },
     {
       "actual": {
-        "admitted_nodes": {
-          "items": {
-            "additionalProperties": false,
-            "properties": {
-              "capability_ids": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
+        "mode_rules": [
+          {
+            "else": {
+              "properties": {
+                "activation_scope": {
+                  "const": "runtime_candidate_shadow_only"
                 },
-                "minItems": 1,
-                "type": "array",
-                "uniqueItems": true
-              },
-              "execution_unit_id": {
-                "pattern": "^(TOOL|OP)-[0-9]{2}$",
-                "type": "string"
-              },
-              "execution_unit_version": {
-                "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-                "type": "string"
-              },
-              "goal_id": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "node_id": {
-                "minLength": 1,
-                "type": "string"
+                "production_deployed": {
+                  "const": false
+                },
+                "runtime_integration": {
+                  "const": "implemented_not_deployed"
+                }
               }
             },
-            "required": [
-              "node_id",
-              "goal_id",
-              "execution_unit_id",
-              "execution_unit_version",
-              "capability_ids"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "candidate_id": {
-          "pattern": "^p2-s0b-[a-f0-9]{16}$",
-          "type": "string"
-        },
-        "event_identity": {
-          "additionalProperties": false,
-          "properties": {
-            "collector_id": {
-              "const": "rrc25"
+            "if": {
+              "properties": {
+                "activation_scope": {
+                  "const": "production_active"
+                }
+              },
+              "required": [
+                "activation_scope"
+              ]
             },
-            "event_type": {
-              "const": "country_outage"
-            },
-            "incident_id": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "publication_id": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "revision": {
-              "minimum": 1,
-              "type": "integer"
+            "then": {
+              "properties": {
+                "production_deployed": {
+                  "const": true
+                },
+                "runtime_integration": {
+                  "const": "deployed"
+                }
+              }
             }
+          }
+        ],
+        "properties": {
+          "activation_scope": {
+            "enum": [
+              "runtime_candidate_shadow_only",
+              "production_active"
+            ]
           },
-          "required": [
-            "event_type",
-            "incident_id",
-            "publication_id",
-            "revision",
-            "collector_id"
-          ],
-          "type": "object"
-        },
-        "execution_started": {
-          "const": false
-        },
-        "goal_resolutions": {
-          "items": {
+          "admitted_nodes": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "capability_ids": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "execution_unit_id": {
+                  "pattern": "^(TOOL|OP)-[0-9]{2}$",
+                  "type": "string"
+                },
+                "execution_unit_version": {
+                  "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+                  "type": "string"
+                },
+                "goal_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "node_id": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "goal_id",
+                "execution_unit_id",
+                "execution_unit_version",
+                "capability_ids"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "candidate_id": {
+            "pattern": "^p2-s0b6?-[a-f0-9]{16}$",
+            "type": "string"
+          },
+          "event_identity": {
             "additionalProperties": false,
             "properties": {
-              "call_policy": {
-                "enum": [
-                  "required",
-                  "conditional",
-                  "forbidden"
-                ]
+              "collector_id": {
+                "const": "rrc25"
               },
-              "capability_ids": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array",
-                "uniqueItems": true
+              "event_type": {
+                "const": "country_outage"
               },
-              "disposition": {
-                "enum": [
-                  "supported",
-                  "partial",
-                  "pending_clarification",
-                  "unsupported"
-                ]
-              },
-              "execution_unit_ids": {
-                "items": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array",
-                "uniqueItems": true
-              },
-              "goal_id": {
+              "incident_id": {
                 "minLength": 1,
                 "type": "string"
               },
-              "normalized_kind": {
+              "publication_id": {
                 "minLength": 1,
                 "type": "string"
+              },
+              "revision": {
+                "minimum": 1,
+                "type": "integer"
               }
             },
             "required": [
-              "goal_id",
-              "normalized_kind",
-              "disposition",
-              "capability_ids",
-              "execution_unit_ids",
-              "call_policy"
+              "event_type",
+              "incident_id",
+              "publication_id",
+              "revision",
+              "collector_id"
             ],
             "type": "object"
           },
-          "type": "array"
-        },
-        "production_deployed": {
-          "const": false
-        },
-        "registry_revision": {
-          "minimum": 1,
-          "type": "integer"
-        },
-        "registry_snapshot_id": {
-          "pattern": "^registry-snapshot-sha256:[a-f0-9]{64}$",
-          "type": "string"
-        },
-        "schema_version": {
-          "const": "country_outage_p2_s0b_registry_admission_v1"
-        },
-        "status": {
-          "const": "admitted"
+          "execution_started": {
+            "const": false
+          },
+          "goal_resolutions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "call_policy": {
+                  "enum": [
+                    "required",
+                    "conditional",
+                    "forbidden"
+                  ]
+                },
+                "capability_ids": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "disposition": {
+                  "enum": [
+                    "supported",
+                    "partial",
+                    "pending_clarification",
+                    "unsupported"
+                  ]
+                },
+                "execution_unit_ids": {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "goal_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "normalized_kind": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "goal_id",
+                "normalized_kind",
+                "disposition",
+                "capability_ids",
+                "execution_unit_ids",
+                "call_policy"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "production_deployed": {
+            "type": "boolean"
+          },
+          "registry_revision": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "registry_snapshot_id": {
+            "pattern": "^registry-snapshot-sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "runtime_integration": {
+            "enum": [
+              "implemented_not_deployed",
+              "deployed"
+            ]
+          },
+          "schema_version": {
+            "const": "country_outage_p2_s0b_registry_admission_v1"
+          },
+          "status": {
+            "const": "admitted"
+          }
         }
       },
       "check_id": "SCHEMA-ADMISSION",
-      "prior_truth": "Admission 回执明确执行未开始且未部署",
+      "prior_truth": "Admission 回执明确执行未开始，并强制 shadow/production 模式与部署标志一致",
       "status": "PASS"
     },
     {
@@ -392,13 +443,13 @@
     }
   ],
   "production_deployed": false,
-  "receipt_digest": "sha256:2ebea3808327016e3d9eb4ded130837426f07a7cef3633435892b9618f472287",
+  "receipt_digest": "sha256:12c9e54eb4dc82cd2aeb56c0045c508d089a0be62a62c26ac35805350e024490",
   "receipt_path": "evaluation/country-outage/p2-s0b-runtime/product-semantic-review.json",
-  "registry_snapshot_id": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
+  "registry_snapshot_id": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2",
   "reviewed_at": "2026-08-11T08:00:00Z",
-  "reviewed_input_digest": "sha256:0f16f403d3d05cfae088c38b45fd7ae4d2484d012fae51177de863a9091cedcc",
+  "reviewed_input_digest": "sha256:5c41f9155cb55a96864a39721d4a748588f1de66c86c2130f367484c2da55da0",
   "reviewer_role_id": "p2-s0b-product-semantic-reviewer-v1",
-  "reviewer_source_digest": "sha256:55c6b5bf2a6f6136508045f26a4bd6b3377cc94c20d5819905b22dd8a2141c09",
+  "reviewer_source_digest": "sha256:c0952c2b530c566526df26df251efb4e173f8be9eb6681eb4f26d023c72f7bf0",
   "runtime_integration": "implemented_not_deployed",
   "schema_version": "country_outage_p2_s0b_product_semantic_review_v1",
   "status": "PASS",

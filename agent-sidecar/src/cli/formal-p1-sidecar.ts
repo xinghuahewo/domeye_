@@ -10,6 +10,7 @@ import {
   P1PiSemanticModel,
   P1RuntimeV2ConversationService,
   P1TrendAwareGrounder,
+  P2RegistrySnapshotLoader,
   type P1PiSemanticModelAuditRecord,
 } from '../chat/index.js'
 import {
@@ -39,7 +40,10 @@ export const FORMAL_P1_CERTIFIED_INPUT_SCOPE =
   'country_outage_p1_rrc25_event_bound_chat_v1' as const
 
 export type FormalP1SidecarEnvironment =
-  FormalPiProductionEnvironment & SidecarEnvironment
+  FormalPiProductionEnvironment & SidecarEnvironment & {
+    COUNTRY_OUTAGE_P2_REGISTRY_MODE?: 'shadow' | 'production'
+    COUNTRY_OUTAGE_P2_REGISTRY_SNAPSHOT?: string
+  }
 
 export interface FormalP1SidecarDependencies {
   bindingFactory?: (options: {
@@ -82,6 +86,14 @@ export interface FormalP1Sidecar {
       operatorId: 'event-window-trend'
       operatorVersion: '1.2.0'
       modelDependency: 'none'
+    }
+    toolOperatorRegistry: {
+      candidateId: string
+      registrySnapshotId: string
+      registryRevision: number
+      activationScope: 'runtime_candidate_shadow_only' | 'production_active'
+      runtimeIntegration: 'implemented_not_deployed' | 'deployed'
+      productionDeployed: boolean
     }
   }
 }
@@ -128,6 +140,13 @@ function validateConfiguration(env: FormalP1SidecarEnvironment) {
   ) {
     throw new Error('P1 正式超时配置无效')
   }
+  const registryModeValue = env.COUNTRY_OUTAGE_P2_REGISTRY_MODE?.trim() || 'shadow'
+  if (registryModeValue !== 'shadow' && registryModeValue !== 'production') {
+    throw new Error('P2 Registry 运行模式无效')
+  }
+  const registryMode: 'shadow' | 'production' = registryModeValue
+  const registrySnapshotPath =
+    env.COUNTRY_OUTAGE_P2_REGISTRY_SNAPSHOT?.trim() || undefined
   return {
     host,
     port,
@@ -136,6 +155,8 @@ function validateConfiguration(env: FormalP1SidecarEnvironment) {
     apiTimeoutMs,
     modelTimeoutMs,
     turnTimeoutMs,
+    registryMode,
+    registrySnapshotPath,
     auditDirectory: requiredEnvironmentValue(
       env,
       'COUNTRY_OUTAGE_PI_AUDIT_DIRECTORY',
@@ -165,6 +186,10 @@ export async function createFormalP1Sidecar(
   const binding = await (
     dependencies.bindingFactory ?? createFormalPiModelBindingFromEnvironment
   )({ env })
+  const registrySnapshot = new P2RegistrySnapshotLoader(
+    config.registrySnapshotPath,
+    config.registryMode,
+  ).load()
   if (
     binding.preflight.certifiedScenarioSetId !==
       FORMAL_P1_CERTIFIED_SCENARIO_SET_ID ||
@@ -224,6 +249,14 @@ export async function createFormalP1Sidecar(
         operator_version: '1.2.0',
         model_dependency: 'none',
       },
+      tool_operator_registry: {
+        candidate_id: registrySnapshot.snapshot_payload.candidate_id,
+        registry_snapshot_id: registrySnapshot.registry_snapshot_id,
+        registry_revision: registrySnapshot.snapshot_payload.registry_revision,
+        activation_scope: registrySnapshot.snapshot_payload.activation_scope,
+        runtime_integration: registrySnapshot.snapshot_payload.runtime_integration,
+        production_deployed: registrySnapshot.production_deployed,
+      },
     }),
     authenticate: createCountryOutageInternalAuthenticator(
       config.sharedToken,
@@ -265,6 +298,14 @@ export async function createFormalP1Sidecar(
         operatorId: 'event-window-trend',
         operatorVersion: '1.2.0',
         modelDependency: 'none',
+      },
+      toolOperatorRegistry: {
+        candidateId: registrySnapshot.snapshot_payload.candidate_id,
+        registrySnapshotId: registrySnapshot.registry_snapshot_id,
+        registryRevision: registrySnapshot.snapshot_payload.registry_revision,
+        activationScope: registrySnapshot.snapshot_payload.activation_scope,
+        runtimeIntegration: registrySnapshot.snapshot_payload.runtime_integration,
+        productionDeployed: registrySnapshot.production_deployed,
       },
     },
   }

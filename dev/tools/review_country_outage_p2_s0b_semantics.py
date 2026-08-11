@@ -242,7 +242,14 @@ def review(repo_root: Path, candidate_path: Path, output_path: Path) -> Dict[str
     check("ORACLE-CATEGORIES", set(oracle.get("categories", [])) == expected_categories and len(oracle.get("cases", [])) >= 14, "Shadow Oracle 覆盖 14 类正常、边界和篡改真值", oracle.get("categories"))
     gates = oracle.get("gates", {})
     check("ORACLE-GATES", gates.get("should_call_coverage") == 1.0 and gates.get("should_not_call_rate") == 0.0 and gates.get("snapshot_drift_count") == 0 and gates.get("product_semantic_blocking_count") == 0, "量化门要求应调用 100%、误调用 0、漂移 0、语义阻断 0", gates)
-    check("SCHEMA-ADMISSION", admission_schema.get("properties", {}).get("production_deployed", {}).get("const") is False and admission_schema.get("properties", {}).get("execution_started", {}).get("const") is False, "Admission 回执明确执行未开始且未部署", admission_schema.get("properties"))
+    check(
+        "SCHEMA-ADMISSION",
+        admission_schema.get("properties", {}).get("production_deployed", {}).get("type") == "boolean"
+        and admission_schema.get("properties", {}).get("execution_started", {}).get("const") is False
+        and len(admission_schema.get("allOf", [])) == 1,
+        "Admission 回执明确执行未开始，并强制 shadow/production 模式与部署标志一致",
+        {"properties": admission_schema.get("properties"), "mode_rules": admission_schema.get("allOf")},
+    )
 
     required_doc_markers = ("最终效果", "Host Handler", "required", "conditional", "forbidden", "同轮快照漂移次数 = 0", "本 Task Spec 通过不等于生产可用")
     check("DOC-SPEC", all(marker in task_spec for marker in required_doc_markers), "Task Spec 冻结产品效果、调用策略、Handler 边界、量化门和非生产声明", [marker for marker in required_doc_markers if marker not in task_spec])

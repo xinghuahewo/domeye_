@@ -61,4 +61,48 @@ if PATH="${FIXTURE_ROOT}/tools/bin:${PATH}" \
     exit 1
 fi
 
+promotion_root="${FIXTURE_ROOT}/p2-promotion"
+p2_contract_root='contracts/agent/country-outage-p2-s0b-runtime'
+mkdir -p "${promotion_root}/${p2_contract_root}" \
+    "${promotion_root}/certification/p2-s0b"
+cp -R "${DEPLOY_DIR}/../../../${p2_contract_root}/." \
+    "${promotion_root}/${p2_contract_root}/"
+cp "${DEPLOY_DIR}/../../../evaluation/country-outage/p2-s0b-runtime/acceptance-manifest.json" \
+    "${promotion_root}/certification/p2-s0b/acceptance-manifest.json"
+cp "${DEPLOY_DIR}/../../../evaluation/country-outage/p2-s0b-runtime/product-semantic-review.json" \
+    "${promotion_root}/certification/p2-s0b/product-semantic-review.json"
+while IFS= read -r relative_path; do
+    mkdir -p "${promotion_root}/$(dirname -- "${relative_path}")"
+    cp "${DEPLOY_DIR}/../../../${relative_path}" \
+        "${promotion_root}/${relative_path}"
+done < <(
+    jq -r '
+      .source_identity.runtime_material[]?.path,
+      (.snapshot_payload.execution_unit_registry.entries[]?.implementation_files[]?.path)
+    ' \
+      "${promotion_root}/${p2_contract_root}/candidate.json" \
+      "${promotion_root}/${p2_contract_root}/registry-snapshot.json" | sort -u
+)
+node "${DEPLOY_DIR}/promote-p2-registry.mjs" \
+    "${promotion_root}" \
+    '20260811T120000Z-country-outage-p1-chat-fixture' \
+    '0123456789abcdef0123456789abcdef01234567' \
+    '20260811T120000Z-country-outage-p1-chat-fixture' \
+    '20260811T043105Z-country-outage-p1-chat-prod32' >/dev/null
+jq -e '
+  .production_deployed == true and
+  .snapshot_payload.activation_scope == "production_active" and
+  .snapshot_payload.runtime_integration == "deployed" and
+  (.snapshot_payload.candidate_id | test("^p2-s0b6-[a-f0-9]{16}$"))
+' "${promotion_root}/${p2_contract_root}/registry-snapshot.json" >/dev/null
+if node "${DEPLOY_DIR}/promote-p2-registry.mjs" \
+    "${promotion_root}" \
+    '20260811T120000Z-country-outage-p1-chat-fixture' \
+    '0123456789abcdef0123456789abcdef01234567' \
+    '20260811T120000Z-country-outage-p1-chat-fixture' \
+    '20260811T043105Z-country-outage-p1-chat-prod32' >/dev/null 2>&1; then
+    printf '失败：P2 production promotion 接受了已晋级快照的重复晋级\n' >&2
+    exit 1
+fi
+
 printf 'P1 Chat deployment fixtures passed\n'

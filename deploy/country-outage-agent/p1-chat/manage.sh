@@ -170,15 +170,24 @@ prepare_release() {
     (( $# == 4 )) || { error '用法：prepare <release-id> <source.tar.gz> <commit> <annotated-tag>'; return 2; }
     local release_id="$1" source_archive="$2" source_commit="$3" source_tag="$4"
     validate_release_id "${release_id}"
-    [[ "${source_commit}" =~ ^[0-9a-f]{40}$ && -n "${source_tag}" ]] || {
+    [[ "${source_commit}" =~ ^[0-9a-f]{40}$ && "${source_tag}" == "${release_id}" ]] || {
         error '提交或 tag 身份无效'; return 1;
     }
     [[ -f "${source_archive}" && ! -L "${source_archive}" ]] || {
         error '源码归档无效'; return 1;
     }
-    local target candidate extracted certification registry source_sha
+    local target candidate extracted certification registry source_sha rollback_release_id
     target="$(release_directory "${release_id}")"
     [[ ! -e "${target}" && ! -L "${target}" ]] || { error 'release 已存在'; return 1; }
+    [[ -f "${ACTIVE_STATE}" && ! -L "${ACTIVE_STATE}" ]] || {
+        error 'P2 production promotion 要求已有可回滚 active release'; return 1;
+    }
+    rollback_release_id="$(jq -er '.release_id' "${ACTIVE_STATE}")"
+    validate_release_id "${rollback_release_id}"
+    [[ "$(readlink -f -- "${CURRENT_LINK}")" == "$(release_directory "${rollback_release_id}")" ]] || {
+        error 'active 状态与 current release 不一致'; return 1;
+    }
+    verify_release "${rollback_release_id}"
     candidate="$(mktemp -d "${RELEASE_ROOT}/.prepare-${release_id}.XXXXXX")"
     extracted="$(mktemp -d "${RELEASE_ROOT}/.source-${release_id}.XXXXXX")"
     cleanup_prepare() {
@@ -199,6 +208,7 @@ prepare_release() {
     cp -R "${extracted}/evaluation/country-outage/p1-prod-release/attempt-004/." \
         "${candidate}/certification/"
     cp "${SCRIPT_DIR}/verify-release.mjs" "${SCRIPT_DIR}/probe.mjs" \
+        "${SCRIPT_DIR}/promote-p2-registry.mjs" \
         "${candidate}/deployment/"
     certification="${candidate}/certification/manifest.json"
     while IFS= read -r relative_path; do
@@ -228,6 +238,30 @@ prepare_release() {
         cp "${extracted}/${trend_contract_root}/${trend_contract}" \
             "${candidate}/${trend_contract_root}/${trend_contract}"
     done
+    local p2_contract_root='contracts/agent/country-outage-p2-s0b-runtime'
+    local p2_evidence_root='evaluation/country-outage/p2-s0b-runtime'
+    install -d -m 0700 "${candidate}/${p2_contract_root}" \
+        "${candidate}/certification/p2-s0b"
+    local p2_contract
+    for p2_contract in candidate.json registry-snapshot.json runtime-contract.json \
+        runtime-plan-admission.schema.json shadow-oracle.json; do
+        [[ -f "${extracted}/${p2_contract_root}/${p2_contract}" \
+            && ! -L "${extracted}/${p2_contract_root}/${p2_contract}" ]] || {
+            error "P2 Registry 合同缺失 ${p2_contract}"; return 1;
+        }
+        cp "${extracted}/${p2_contract_root}/${p2_contract}" \
+            "${candidate}/${p2_contract_root}/${p2_contract}"
+    done
+    local p2_evidence
+    for p2_evidence in acceptance-manifest.json product-semantic-review.json \
+        same-candidate-test-summary.json; do
+        [[ -f "${extracted}/${p2_evidence_root}/${p2_evidence}" \
+            && ! -L "${extracted}/${p2_evidence_root}/${p2_evidence}" ]] || {
+            error "P2 Registry 验收证据缺失 ${p2_evidence}"; return 1;
+        }
+        cp "${extracted}/${p2_evidence_root}/${p2_evidence}" \
+            "${candidate}/certification/p2-s0b/${p2_evidence}"
+    done
     (
         # 全量 Sidecar 测试会读取仓库根目录下的 contracts、dev 与评测制品，
         # 因此必须在完整源码归档中执行；通过并裁剪生产依赖后再复制运行制品。
@@ -241,6 +275,17 @@ prepare_release() {
         "${NODE}" scripts/apply_pi_response_model_patch.mjs --apply
         "${NODE}" scripts/apply_pi_response_model_patch.mjs --verify
     )
+    (
+        cd -- "${extracted}"
+        python3 -m unittest dev.tests.test_country_outage_p2_s0b_candidate
+        python3 .codex/hooks/country_outage_agent_p2_s0b_alignment.py \
+            --repo-root . --stage final
+        python3 dev/tools/review_country_outage_p2_s0b_semantics.py \
+            --repo-root . \
+            --candidate "${p2_contract_root}/candidate.json" \
+            --output "${p2_evidence_root}/product-semantic-review.json" \
+            --check
+    )
     cp -R "${extracted}/agent-sidecar/." "${candidate}/agent-sidecar/"
     while IFS= read -r bin_directory; do find "${bin_directory}" -depth -delete; done < <(
         find "${candidate}/agent-sidecar/node_modules" -type d -name .bin -print
@@ -248,7 +293,11 @@ prepare_release() {
     find "${candidate}" -type l -print -quit | grep -q . && {
         error '运行制品包含符号链接'; return 1;
     }
+    "${NODE}" "${candidate}/deployment/promote-p2-registry.mjs" \
+        "${candidate}" "${release_id}" "${source_commit}" "${source_tag}" \
+        "${rollback_release_id}" >/dev/null
     local trend_identity="${candidate}/TREND-OPERATOR-IDENTITY.json"
+    local p2_promotion="${candidate}/P2-REGISTRY-PROMOTION.json"
     jq -n \
         --arg created_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '{schema_version:"country_outage_p1_trend_operator_identity_v1",created_at:$created_at,execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",profile_registry_version:"country-outage-p1-trend-profile-v1",model_dependency:"none",files:[]}' \
@@ -292,7 +341,12 @@ prepare_release() {
         --arg trend_identity_sha "$(sha256_file "${trend_identity}")" \
         --arg trend_integration_sha "$(sha256_file "${candidate}/${trend_contract_root}/p1-integration-contract.json")" \
         --arg trend_profiles_sha "$(sha256_file "${candidate}/${trend_contract_root}/trend-profiles.json")" \
-        '{schema_version:"country_outage_p1_chat_release_v1",component:"country_outage_p1_chat_sidecar",release_id:$release_id,created_at:$created_at,source:{commit:$commit,annotated_tag:$tag,archive_sha256:$source_sha},runtime:{host:"127.0.0.1",port:28475,node_version:"v22.23.1",pi_version:"0.84.1",maximum_provider_request_count_per_turn:1,event_window_trend_operator:{execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",model_dependency:"none"}},billing:{business_cost_limit:null,per_provider_call_usage_and_estimated_cost:"required"},boundaries:{collector:"rrc25",event_type:"country_outage",report_capability:"disabled",external_evidence:"disabled",network_rca:false},hashes:{certification_manifest:$cert_sha,certified_registry:$registry_sha,trend_operator_identity:$trend_identity_sha,trend_integration_contract:$trend_integration_sha,trend_profiles:$trend_profiles_sha},checks:{agent_sidecar_tests:"passed",production_dependency_audit:"passed",vendor_patch:"verified",event_window_trend_integration:"verified"}}' \
+        --arg p2_promotion_sha "$(sha256_file "${p2_promotion}")" \
+        --arg p2_candidate_id "$(jq -er '.production_candidate_id' "${p2_promotion}")" \
+        --arg p2_snapshot_id "$(jq -er '.production_registry_snapshot_id' "${p2_promotion}")" \
+        --argjson p2_revision "$(jq -er '.production_registry_revision' "${p2_promotion}")" \
+        --arg rollback_release_id "${rollback_release_id}" \
+        '{schema_version:"country_outage_p1_chat_release_v2",component:"country_outage_p1_chat_sidecar",release_id:$release_id,created_at:$created_at,source:{commit:$commit,annotated_tag:$tag,archive_sha256:$source_sha},runtime:{host:"127.0.0.1",port:28475,node_version:"v22.23.1",pi_version:"0.84.1",maximum_provider_request_count_per_turn:1,event_window_trend_operator:{execution_unit:"OP-04",capability_id:"CAP-TREND-001",operator_id:"event-window-trend",operator_version:"1.2.0",model_dependency:"none"},tool_operator_registry:{candidate_id:$p2_candidate_id,registry_snapshot_id:$p2_snapshot_id,registry_revision:$p2_revision,activation_scope:"production_active",runtime_integration:"deployed",production_deployed:true}},resource_observation:{release_gate:"cpu_rss_call_count_and_error_log",fee_audit_gate:"not_required"},rollback:{release_id:$rollback_release_id},boundaries:{collector:"rrc25",event_type:"country_outage",report_capability:"disabled",external_evidence:"disabled",network_rca:false},hashes:{certification_manifest:$cert_sha,certified_registry:$registry_sha,trend_operator_identity:$trend_identity_sha,trend_integration_contract:$trend_integration_sha,trend_profiles:$trend_profiles_sha,p2_registry_promotion:$p2_promotion_sha},checks:{agent_sidecar_tests:"passed",production_dependency_audit:"passed",vendor_patch:"verified",event_window_trend_integration:"verified",p2_registry_shadow_acceptance:"passed",p2_registry_production_promotion:"verified"}}' \
         > "${candidate}/RELEASE-MANIFEST.json"
     "${NODE}" "${candidate}/deployment/verify-release.mjs" "${candidate}" >/dev/null
     (
@@ -337,6 +391,11 @@ start_runtime() {
     (( ${#sessions[@]} == 0 )) || { error 'P1 Sidecar 已运行，请先 stop'; return 1; }
     if [[ -f "${ACTIVE_STATE}" ]]; then
         previous="$(jq -er '.release_id' "${ACTIVE_STATE}")"
+        validate_release_id "${previous}"
+        [[ "$(readlink -f -- "${CURRENT_LINK}")" == "$(release_directory "${previous}")" ]] || {
+            error '启动前 active 状态与 current release 不一致'; return 1;
+        }
+        verify_release "${previous}"
         cp "${ACTIVE_STATE}" "${ROLLBACK_STATE}"
     fi
     link_candidate="${RUNTIME_ROOT}/.current-${release_id}"
@@ -346,6 +405,10 @@ start_runtime() {
         [[ -z "${line}" || "${line}" == \#* ]] && continue
         environment+=("${line}")
     done < "${CONFIG_FILE}"
+    environment+=(
+        'COUNTRY_OUTAGE_P2_REGISTRY_MODE=production'
+        "COUNTRY_OUTAGE_P2_REGISTRY_SNAPSHOT=${CURRENT_LINK}/contracts/agent/country-outage-p2-s0b-runtime/registry-snapshot.json"
+    )
     log_file="${RUNTIME_ROOT}/p1-chat-${release_id}.log"
     screen -L -Logfile "${log_file}" -dmS "${SCREEN_NAME}" \
         env -i HOME=/home/bgpdata USER=root LOGNAME=root LANG=C.UTF-8 LC_ALL=C.UTF-8 \

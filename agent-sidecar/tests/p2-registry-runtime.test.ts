@@ -277,6 +277,33 @@ test('S0B 快照内容寻址有效且候选保持未部署', () => {
   assert.equal(snapshot.production_deployed, false)
 })
 
+test('S0B6 production快照只在production模式加载且回执如实标记已部署', () => {
+  const snapshot = loadSnapshot()
+  const payload = snapshot.snapshot_payload as JsonObject
+  payload.candidate_id = 'p2-s0b6-0123456789abcdef'
+  payload.registry_revision = Number(payload.registry_revision) + 1
+  payload.activation_scope = 'production_active'
+  payload.runtime_integration = 'deployed'
+  snapshot.production_deployed = true
+  const path = writeSnapshot('production.json', reseal(snapshot))
+  expectCode(
+    'registry_runtime_mode_mismatch',
+    () => new P2RegistrySnapshotLoader(path, 'shadow').load(),
+  )
+  const loader = new P2RegistrySnapshotLoader(path, 'production')
+  const loaded = loader.load()
+  assert.equal(loaded.production_deployed, true)
+  const { userGoalPlan, semanticPlan } = planFor('event_summary')
+  const admitted = new P2GovernedRegistryRuntime(loader).admitPlan(
+    semanticPlan,
+    userGoalPlan,
+    binding,
+  )
+  assert.equal(admitted.receipt.activation_scope, 'production_active')
+  assert.equal(admitted.receipt.runtime_integration, 'deployed')
+  assert.equal(admitted.receipt.production_deployed, true)
+})
+
 test('S0B 事实问题按需自动调用并把快照版本摘要写入执行回执', async () => {
   const question = '当前事件概况是什么？'
   const provider = new FixtureProvider()

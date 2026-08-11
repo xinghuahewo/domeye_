@@ -3,19 +3,19 @@
   "artifacts": [
     {
       "path": "contracts/agent/country-outage-p2-s0b-runtime/candidate.json",
-      "sha256": "sha256:bd561def112e257aea16e1afef428237a2870c3639f3222895a5a5ed516ef869"
+      "sha256": "sha256:9e281a75c2ece55ec6d53deb665fa4a66944dd656c544cd3d0f878a0c2da3a4c"
     },
     {
       "path": "contracts/agent/country-outage-p2-s0b-runtime/registry-snapshot.json",
-      "sha256": "sha256:863697519b2b9149d822b41b0f0de1101d7a37da9efd7f427abb96cbc2bd3193"
+      "sha256": "sha256:bfaa8f060002e3abd583eff13238996924fa215ddb888f6e90a70a37d999809e"
     },
     {
       "path": "contracts/agent/country-outage-p2-s0b-runtime/runtime-contract.json",
-      "sha256": "sha256:5f4b540461deff6cb0df7c46feb973005eb27dd46b76dff37e3c37b75683e5e3"
+      "sha256": "sha256:a663f50a8b780c7c233a08e5877c64f5e3d58b1d15b58b202541f4919583aa03"
     },
     {
       "path": "contracts/agent/country-outage-p2-s0b-runtime/runtime-plan-admission.schema.json",
-      "sha256": "sha256:4696a71f7f4f27819291844fd4a1eaf74d69cb7c1aecc63763e26e1f5bf4de34"
+      "sha256": "sha256:105cff8684a7d4ba5d5e0cb3fbb3b7ad52bfcfddedd8cc8fe35ac0acd62d8a9d"
     },
     {
       "path": "contracts/agent/country-outage-p2-s0b-runtime/shadow-oracle.json",
@@ -23,11 +23,11 @@
     },
     {
       "path": "agent-sidecar/src/chat/p2-registry-runtime.ts",
-      "sha256": "sha256:5dce91e5b3496fb3f784bb26223394172583cb751159aac6be0fd680691a0735"
+      "sha256": "sha256:07e55a99ac3da0210398df7d44dbee6bbce7de2b94d98aa21feaea34b192b080"
     },
     {
       "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-      "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+      "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
     },
     {
       "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -35,7 +35,7 @@
     },
     {
       "path": "agent-sidecar/tests/p2-registry-runtime.test.ts",
-      "sha256": "sha256:37cf83a5165242002cbb578c348d8b2de1b69812c043e524d983675bbf7ef10a"
+      "sha256": "sha256:4bb4b804b849fe69d78ab8dad0eae2a47391d612e3f0958ecf327fca95790fe4"
     },
     {
       "path": "dev/tests/test_country_outage_p2_s0b_candidate.py",
@@ -43,44 +43,44 @@
     },
     {
       "path": "dev/tools/review_country_outage_p2_s0b_semantics.py",
-      "sha256": "sha256:55c6b5bf2a6f6136508045f26a4bd6b3377cc94c20d5819905b22dd8a2141c09"
+      "sha256": "sha256:c0952c2b530c566526df26df251efb4e173f8be9eb6681eb4f26d023c72f7bf0"
     },
     {
       "path": "docs/agent/P2-组合式调查/Tool与Operator生命周期治理/P2-S0B-运行时接入/Task-Spec-最终验收文档.md",
-      "sha256": "sha256:0e4c024739c6f0e70fc37661b2346bc373a51b0ac509b7d983a2d757f47b2226"
+      "sha256": "sha256:62c131ecec613d93de03cfa2dbdd39a8942a289391d0e8c160007ce9131200cf"
     },
     {
       "path": "docs/agent/P2-组合式调查/Tool与Operator生命周期治理/P2-S0B-运行时接入/Plan-执行与验收.md",
-      "sha256": "sha256:daf602fbae3fe6c198d15686a873667aeae3e3708de71387dca4a5e12b02d409"
+      "sha256": "sha256:22e79d3a57a134a80974a294e265eebcc618969c51fe043e67c803ebd551eee4"
     },
     {
       "path": "evaluation/country-outage/p2-s0b-runtime/product-semantic-review.json",
-      "sha256": "sha256:22fcfc7cac3ff8d2b0221acdafde199ce4f41f62dde42e49915fe298606f7a6f"
+      "sha256": "sha256:20bbbb7970f62f37b29e7d59b81137e43da2cc43ff3371f934d27ee163b627ca"
     },
     {
       "path": "evaluation/country-outage/p2-s0b-runtime/same-candidate-test-summary.json",
-      "sha256": "sha256:a3daed5cdb8e52f10f39888229f356e005d3340998bc7000e82e20219175c675"
+      "sha256": "sha256:b3daff4878b119a65267e8f874e52de6924ee1208fa15a0477300e94fee29662"
     }
   ],
-  "candidate_id": "p2-s0b-61f83f6f0e218c46",
+  "candidate_id": "p2-s0b-763eb09a654b8b29",
   "gates": {
     "prod32_switch_count": 0,
     "product_semantic_blocking_count": 0,
     "production_deployment_count": 0,
     "python_test_count": 10,
     "remote_write_count": 0,
-    "typescript_and_p1_pass_count": 55,
-    "typescript_and_p1_test_count": 55
+    "typescript_and_p1_pass_count": 56,
+    "typescript_and_p1_test_count": 56
   },
-  "manifest_digest": "sha256:eca5a93d1a49665c131e696b55cf90f5ea395c1df5d92240f92190f88fb86d7c",
+  "manifest_digest": "sha256:fd14644d5af67ae5c117858206345d5b785cb38add358003bed3c1b292c57810",
   "next_gate": "独立生产灰度任务与明确授权",
   "prod32_switched": false,
   "production_deployed": false,
   "registry_revision": 2,
-  "registry_snapshot_id": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
-  "review_receipt_digest": "sha256:2ebea3808327016e3d9eb4ded130837426f07a7cef3633435892b9618f472287",
+  "registry_snapshot_id": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2",
+  "review_receipt_digest": "sha256:12c9e54eb4dc82cd2aeb56c0045c508d089a0be62a62c26ac35805350e024490",
   "runtime_integration": "implemented_not_deployed",
   "schema_version": "country_outage_p2_s0b_acceptance_manifest_v1",
   "status": "accepted_local_shadow_candidate",
-  "test_summary_digest": "sha256:9344f9b1d6086836d9ff40efdd102a7130add0e5161288061bb0b9c52c77c8a1"
+  "test_summary_digest": "sha256:ca58abdb2607d329508e68e6bafd7f5ffefedc5c78f2623348da8d4f80f33861"
 }

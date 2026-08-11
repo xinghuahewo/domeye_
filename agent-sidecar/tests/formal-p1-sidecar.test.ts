@@ -78,7 +78,7 @@ function binding(): FormalPiModelBinding {
   }
 }
 
-test('正式 P1 Sidecar 只接线聊天并冻结费用审计和报告关闭边界', async () => {
+test('正式 P1 Sidecar 只接线聊天并冻结Registry、资源观测和报告关闭边界', async () => {
   const auditDirectory = realpathSync(
     mkdtempSync(join(tmpdir(), 'domeye-p1-audit-')),
   )
@@ -115,6 +115,14 @@ test('正式 P1 Sidecar 只接线聊天并冻结费用审计和报告关闭边�
       operatorVersion: '1.2.0',
       modelDependency: 'none',
     })
+    assert.equal(sidecar.runtime.toolOperatorRegistry.activationScope, 'runtime_candidate_shadow_only')
+    assert.equal(sidecar.runtime.toolOperatorRegistry.runtimeIntegration, 'implemented_not_deployed')
+    assert.equal(sidecar.runtime.toolOperatorRegistry.productionDeployed, false)
+    assert.match(sidecar.runtime.toolOperatorRegistry.candidateId, /^p2-s0b-[a-f0-9]{16}$/)
+    assert.match(
+      sidecar.runtime.toolOperatorRegistry.registrySnapshotId,
+      /^registry-snapshot-sha256:[a-f0-9]{64}$/,
+    )
     assert.match(sidecar.modelIdentity, /p1-user-goal-plan-v1$/)
     assert.equal(server.requestTimeout, 125_000)
   } finally {

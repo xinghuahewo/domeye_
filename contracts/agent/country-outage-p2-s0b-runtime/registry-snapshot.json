@@ -1,12 +1,12 @@
 {
   "created_at": "2026-08-11T08:00:00Z",
   "production_deployed": false,
-  "registry_snapshot_id": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
+  "registry_snapshot_id": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2",
   "schema_version": "country_outage_p2_s0b_registry_snapshot_v1",
-  "snapshot_digest": "sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
+  "snapshot_digest": "sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2",
   "snapshot_payload": {
     "activation_scope": "runtime_candidate_shadow_only",
-    "candidate_id": "p2-s0b-61f83f6f0e218c46",
+    "candidate_id": "p2-s0b-763eb09a654b8b29",
     "capability_registry": {
       "entries": [
         {
@@ -60,7 +60,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:fd9169810375f1f8181e9a7c8fbd7c8fdfe24e7715d79dd8f2c0f50a160d0b21",
-              "implementation_digest": "sha256:921e0ac8a5138f73879e34438601a8adb824db21a4856c8e31b99b526d1213dd",
+              "implementation_digest": "sha256:72fc464bf871a9688c23bd550479440cdcd9c53ce8d724b73deb4bbec17c38aa",
               "semantic_digest": "sha256:cc510ef729059e8413cfcf1e263845900c92c378cea0b169b773f788010d9216",
               "unit_id": "TOOL-01",
               "version": "1.0.0"
@@ -75,7 +75,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:283492b62e389e24eefae4e5202c49703c42c25896d20e04f04f7b09e4963407",
+          "implementation_digest": "sha256:729d60fab39330a29c235824b8560cfd8c07a53fc1d172de977bc16608de128e",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -243,7 +243,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:725df69fec23ea3511230964963059e7cf267e04c3ec43bd3057322d68c04fb4",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:714d4b4e7ab70ea0513ea54b47e926845412aca4d396be0d0274d621178fee35",
               "unit_id": "TOOL-02",
               "version": "1.0.0"
@@ -260,7 +260,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:ab7b54d4cbe86ac78c991f47adc6a131d313624e83ce42bb81cd25787ec5eff1",
+          "implementation_digest": "sha256:346b3ebde3b10b00a04083bda6c69adbd9839b9e9e41489077caf75749995df9",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -433,7 +433,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:725df69fec23ea3511230964963059e7cf267e04c3ec43bd3057322d68c04fb4",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:714d4b4e7ab70ea0513ea54b47e926845412aca4d396be0d0274d621178fee35",
               "unit_id": "TOOL-02",
               "version": "1.0.0"
@@ -452,7 +452,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:ab7b54d4cbe86ac78c991f47adc6a131d313624e83ce42bb81cd25787ec5eff1",
+          "implementation_digest": "sha256:346b3ebde3b10b00a04083bda6c69adbd9839b9e9e41489077caf75749995df9",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -619,7 +619,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:725df69fec23ea3511230964963059e7cf267e04c3ec43bd3057322d68c04fb4",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:714d4b4e7ab70ea0513ea54b47e926845412aca4d396be0d0274d621178fee35",
               "unit_id": "TOOL-02",
               "version": "1.0.0"
@@ -635,7 +635,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:ab7b54d4cbe86ac78c991f47adc6a131d313624e83ce42bb81cd25787ec5eff1",
+          "implementation_digest": "sha256:346b3ebde3b10b00a04083bda6c69adbd9839b9e9e41489077caf75749995df9",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -796,7 +796,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:725df69fec23ea3511230964963059e7cf267e04c3ec43bd3057322d68c04fb4",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:714d4b4e7ab70ea0513ea54b47e926845412aca4d396be0d0274d621178fee35",
               "unit_id": "TOOL-02",
               "version": "1.0.0"
@@ -812,7 +812,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:ab7b54d4cbe86ac78c991f47adc6a131d313624e83ce42bb81cd25787ec5eff1",
+          "implementation_digest": "sha256:346b3ebde3b10b00a04083bda6c69adbd9839b9e9e41489077caf75749995df9",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -972,7 +972,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:67c6a2dafb95fb0f238f3c66e9cbc055da29ba9ffc486b963db622eedde3f281",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:b1b724e4c940328fcdb0db8be61ead9b71487a2e841066ec2debb30f03fe241e",
               "unit_id": "TOOL-03",
               "version": "1.0.0"
@@ -987,7 +987,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:4d67aae5dfc74adf3aa61d07989a8d0adf27d5fde7e064e8ec9f4f432581dcce",
+          "implementation_digest": "sha256:2d3a86bbc3a33b2979978b89ec057b89a4d9dd16a95c239bba99a4174865cdbf",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -1146,7 +1146,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:67c6a2dafb95fb0f238f3c66e9cbc055da29ba9ffc486b963db622eedde3f281",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:b1b724e4c940328fcdb0db8be61ead9b71487a2e841066ec2debb30f03fe241e",
               "unit_id": "TOOL-03",
               "version": "1.0.0"
@@ -1161,7 +1161,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:4d67aae5dfc74adf3aa61d07989a8d0adf27d5fde7e064e8ec9f4f432581dcce",
+          "implementation_digest": "sha256:2d3a86bbc3a33b2979978b89ec057b89a4d9dd16a95c239bba99a4174865cdbf",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -1323,7 +1323,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:67c6a2dafb95fb0f238f3c66e9cbc055da29ba9ffc486b963db622eedde3f281",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:b1b724e4c940328fcdb0db8be61ead9b71487a2e841066ec2debb30f03fe241e",
               "unit_id": "TOOL-03",
               "version": "1.0.0"
@@ -1337,7 +1337,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:4d67aae5dfc74adf3aa61d07989a8d0adf27d5fde7e064e8ec9f4f432581dcce",
+          "implementation_digest": "sha256:2d3a86bbc3a33b2979978b89ec057b89a4d9dd16a95c239bba99a4174865cdbf",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -1497,7 +1497,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:67c6a2dafb95fb0f238f3c66e9cbc055da29ba9ffc486b963db622eedde3f281",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:b1b724e4c940328fcdb0db8be61ead9b71487a2e841066ec2debb30f03fe241e",
               "unit_id": "TOOL-03",
               "version": "1.0.0"
@@ -1511,7 +1511,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:4d67aae5dfc74adf3aa61d07989a8d0adf27d5fde7e064e8ec9f4f432581dcce",
+          "implementation_digest": "sha256:2d3a86bbc3a33b2979978b89ec057b89a4d9dd16a95c239bba99a4174865cdbf",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -1671,7 +1671,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:d51bbd522e659ecbbb595dab938c5e48280548036b452c327922d44d2bf54f58",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:068d8320c80d8ee4b7f664e5faeae7fb3420ba26232ef1f6cda9a9548d103fe8",
               "unit_id": "TOOL-04",
               "version": "1.0.0"
@@ -1686,7 +1686,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:f03511421bf72c21e3986dd9dc1b2756424be66bdf5ab7fe69cb3854469d550b",
+          "implementation_digest": "sha256:a1751b98ff127e39eb9324992574f55287c261004f7b15748541940c69795a85",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -1847,7 +1847,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:d51bbd522e659ecbbb595dab938c5e48280548036b452c327922d44d2bf54f58",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:068d8320c80d8ee4b7f664e5faeae7fb3420ba26232ef1f6cda9a9548d103fe8",
               "unit_id": "TOOL-04",
               "version": "1.0.0"
@@ -1861,7 +1861,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:f03511421bf72c21e3986dd9dc1b2756424be66bdf5ab7fe69cb3854469d550b",
+          "implementation_digest": "sha256:a1751b98ff127e39eb9324992574f55287c261004f7b15748541940c69795a85",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -2026,7 +2026,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:b3fe51012e0d3cdd5353d3e3cb7c8313d05db283b8c3ce2e3a6d173a492e6ab4",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:042b266ffd70e52a686a7b05c286acd975a2bf7aeb50a6e22879afe51f761bce",
               "unit_id": "TOOL-05",
               "version": "1.0.0"
@@ -2041,7 +2041,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:e1111e2ce494ba27810bdea008bd5c9f4a8399a69bafdb74f6d297f595de9106",
+          "implementation_digest": "sha256:29c9892bf119de79457011867251e353cea254e7f6e91268b4a980bf089de120",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -2210,7 +2210,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:b3fe51012e0d3cdd5353d3e3cb7c8313d05db283b8c3ce2e3a6d173a492e6ab4",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:042b266ffd70e52a686a7b05c286acd975a2bf7aeb50a6e22879afe51f761bce",
               "unit_id": "TOOL-05",
               "version": "1.0.0"
@@ -2224,7 +2224,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:e1111e2ce494ba27810bdea008bd5c9f4a8399a69bafdb74f6d297f595de9106",
+          "implementation_digest": "sha256:29c9892bf119de79457011867251e353cea254e7f6e91268b4a980bf089de120",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -2391,7 +2391,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:87ec6561e380364a2121fc469d5087515b23ef2127f2eb3e0790cc2111c82835",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:712ba2d218e4662a72731a08ad0f32b0c5b30788b15fcc653bdb90bd74c47318",
               "unit_id": "TOOL-06",
               "version": "1.0.0"
@@ -2406,7 +2406,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:b12be2d4fa3701c053c85b98c296b192da09c82b7fdc0611108734680cdce912",
+          "implementation_digest": "sha256:97b3118e358ac49891b3bad24736df5f583227e8c6a06c206ed24dca3f366d69",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -2572,7 +2572,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:ff4fbf668aab182bb4599411bb5f63936f79b2bc48491703607d448252e52f0a",
-              "implementation_digest": "sha256:503fcf736dd0ae47a26bd8cdc811c9b933a20e033dd82ebd63be7966dbf4345a",
+              "implementation_digest": "sha256:6417d74dc5817a98ef7a07121af0a7c5fafe53d8e17d960a47469bee5724529e",
               "semantic_digest": "sha256:d9efbf68294395467efa56efb6c464d75fdf5a309471b0b1b73b6a5d630ae9a2",
               "unit_id": "OP-01",
               "version": "1.0.0"
@@ -2589,7 +2589,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:dc4aa178b2195a5c5def32bc1619a9444a6be372af2001d3ed46024e9dce6e0c",
+          "implementation_digest": "sha256:841de26179ecc21dd6d8adc6ff456a6b33e27a8131b74f1c2e5b437a904c5c60",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -2756,7 +2756,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:3efbfd119822d4d3ec5462d732a61c3cf15516212add6681fb1c73865aca19d2",
-              "implementation_digest": "sha256:503fcf736dd0ae47a26bd8cdc811c9b933a20e033dd82ebd63be7966dbf4345a",
+              "implementation_digest": "sha256:6417d74dc5817a98ef7a07121af0a7c5fafe53d8e17d960a47469bee5724529e",
               "semantic_digest": "sha256:94dd09561fc7524e5a544407b8e836c85d1b82ecf0b701c4b5fdac73204507de",
               "unit_id": "OP-02",
               "version": "1.0.0"
@@ -2770,7 +2770,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:17e1793377cb2bf857466b4911e4ca7399782a15c0c409f267b69d5ffcc883c3",
+          "implementation_digest": "sha256:9e13e870a5db390b1d2527c45384270e83d843198f3761cdfbc03da82fffb041",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -2943,7 +2943,7 @@
           "execution_units": [
             {
               "contract_digest": "sha256:135ff293d766117cc8951a7a3b88a79701b0f840253c3db08a4fc78f733f9eb2",
-              "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+              "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
               "semantic_digest": "sha256:39a37b19b5569ea3b8889ea082c63772b6b3b6a0a0ff92b37fa1fb95124b99d0",
               "unit_id": "OP-03",
               "version": "1.0.0"
@@ -2958,7 +2958,7 @@
             "collector_id": "rrc25",
             "event_type": "country_outage"
           },
-          "implementation_digest": "sha256:1ad3d495407bac2c7dd04c42518c5d7d73612a3d2a369bd9a59d162c82cc07c6",
+          "implementation_digest": "sha256:1f2a1ae4f089df1b63a3d5df7b21edb86fcac6d284de3ed06e44e6ae41a0fc5a",
           "lifecycle_history": [
             {
               "action": "legacy_migration",
@@ -3400,7 +3400,7 @@
             "把当前事件 capabilities 外推到其他事件",
             "无合法新引用时切换事件"
           ],
-          "implementation_digest": "sha256:921e0ac8a5138f73879e34438601a8adb824db21a4856c8e31b99b526d1213dd",
+          "implementation_digest": "sha256:72fc464bf871a9688c23bd550479440cdcd9c53ce8d724b73deb4bbec17c38aa",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/runtime-v2-single-turn.ts",
@@ -3408,7 +3408,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "read_tool",
@@ -3654,7 +3654,7 @@
             "把 data_through 推为恢复或结束",
             "把逐槽峰值推为窗口累计人口"
           ],
-          "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+          "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -3662,7 +3662,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "read_tool",
@@ -3950,7 +3950,7 @@
             "把新前缀推为新用户接入",
             "外推窗口外状态"
           ],
-          "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+          "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -3958,7 +3958,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "read_tool",
@@ -4252,7 +4252,7 @@
             "把列表顺序写成因果重要性",
             "把 observed AS 写成责任主体"
           ],
-          "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+          "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -4260,7 +4260,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "read_tool",
@@ -4552,7 +4552,7 @@
             "将相邻关系解释为依赖、传播或原因",
             "将最多三个样本当成全网拓扑"
           ],
-          "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+          "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -4560,7 +4560,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "read_tool",
@@ -4820,7 +4820,7 @@
             "把数据 implementation_id 写成 Web release 提交",
             "声称服务器文件已独立验签"
           ],
-          "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+          "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -4828,7 +4828,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "read_tool",
@@ -5046,7 +5046,7 @@
             "把逐槽峰值写成累计人口",
             "外推因果或恢复"
           ],
-          "implementation_digest": "sha256:503fcf736dd0ae47a26bd8cdc811c9b933a20e033dd82ebd63be7966dbf4345a",
+          "implementation_digest": "sha256:6417d74dc5817a98ef7a07121af0a7c5fafe53d8e17d960a47469bee5724529e",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-series.ts",
@@ -5054,7 +5054,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "deterministic_operator",
@@ -5257,7 +5257,7 @@
             "跨单位相加",
             "比较推出用户或流量影响"
           ],
-          "implementation_digest": "sha256:503fcf736dd0ae47a26bd8cdc811c9b933a20e033dd82ebd63be7966dbf4345a",
+          "implementation_digest": "sha256:6417d74dc5817a98ef7a07121af0a7c5fafe53d8e17d960a47469bee5724529e",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-series.ts",
@@ -5265,7 +5265,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "deterministic_operator",
@@ -5472,7 +5472,7 @@
             "生成因果边",
             "把 data_through 当事件结束或恢复"
           ],
-          "implementation_digest": "sha256:53a0ea4978eb8b891f53a3d39d0ee073b33a4ff35009798c255eef48dcec7fe4",
+          "implementation_digest": "sha256:4750353955db8ba263559a611df2ba746db76eb4a0774f840b2e714c3bcc18e0",
           "implementation_files": [
             {
               "path": "agent-sidecar/src/chat/page-capability-executor.ts",
@@ -5480,7 +5480,7 @@
             },
             {
               "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
-              "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+              "sha256": "sha256:e4bef03176ef266a9955a0bad33b0390c6077e3b4dfebe16d05625d02a92647f"
             }
           ],
           "kind": "deterministic_operator",
