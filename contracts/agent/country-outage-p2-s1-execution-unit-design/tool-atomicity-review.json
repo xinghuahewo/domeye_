@@ -61,6 +61,14 @@
       "round": 6,
       "disposition": "passed",
       "remaining_blockers": []
+    },
+    {
+      "round": 7,
+      "disposition": "passed",
+      "resolved_findings": [
+        "TOOL-12每条窗口路径关联至少包含一个peer ASN观察方向"
+      ],
+      "remaining_blockers": []
     }
   ],
   "reviews": [
@@ -141,7 +149,8 @@
         "不证明path-at-time",
         "路径segment保留类型且ordered路径非空",
         "预览属于Renderer",
-        "source人口原生提供common_path_status并保留原始path_parse_status"
+        "source人口原生提供common_path_status并保留原始path_parse_status",
+        "peer_asn_direction_ids非空，可直接供方向集合投影"
       ]
     },
     {

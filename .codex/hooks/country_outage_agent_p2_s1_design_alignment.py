@@ -891,6 +891,8 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
     tool12_fields = tool12.get("output_field_schemas", {})
     if tool12_fields.get("route_observation_count", {}).get("minimum") != 1:
         _fail("path_association_count_invalid", "TOOL-12 关联行必须至少有一次观测")
+    if tool12_fields.get("peer_asn_direction_ids", {}).get("minItems") != 1:
+        _fail("path_direction_population_empty", "TOOL-12 每条路径关联至少必须有一个观察方向")
     if tool12_fields.get("path_segments", {}).get("minItems") != 1:
         _fail("empty_ordered_path_allowed", "TOOL-12 不得允许空路径进入路径Operator")
     if "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment" not in json.dumps(

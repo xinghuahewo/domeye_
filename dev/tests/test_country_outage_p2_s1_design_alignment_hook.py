@@ -310,6 +310,18 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self._mutate_json(relative, mutate)
         self._assert_error("common_path_status_missing", stage="S1D-2")
 
+    def test_s1d2_rejects_empty_path_direction_population(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            tool12 = next(item for item in payload["tools"] if item["unit_id"] == "TOOL-12")
+            del tool12["output_field_schemas"]["peer_asn_direction_ids"]["minItems"]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("path_direction_population_empty", stage="S1D-2")
+
     def test_receipt_is_written_atomically_with_self_digest(self) -> None:
         receipt = HOOK.run_alignment(self.root, "S1D-0")
         output = HOOK.RECEIPT_ROOT / "S1D-0.json"
