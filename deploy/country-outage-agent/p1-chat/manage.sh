@@ -208,6 +208,14 @@ prepare_release() {
         install -d -m 0700 "${candidate}/source-identity/$(dirname -- "${relative_path}")"
         cp "${extracted}/${relative_path}" "${candidate}/source-identity/${relative_path}"
     done < <(jq -er '.source_identity.files[].path' "${certification}")
+    local runtime_contract_root='contracts/agent/country-outage-p1-page-coverage/s2'
+    install -d -m 0700 "${candidate}/${runtime_contract_root}"
+    local runtime_contract
+    for runtime_contract in semantic-plan.schema.json capability-catalog.json \
+        tool-contracts.json oracle.json policy.json; do
+        cp "${candidate}/source-identity/${runtime_contract_root}/${runtime_contract}" \
+            "${candidate}/${runtime_contract_root}/${runtime_contract}"
+    done
     (
         # 全量 Sidecar 测试会读取仓库根目录下的 contracts、dev 与评测制品，
         # 因此必须在完整源码归档中执行；通过并裁剪生产依赖后再复制运行制品。

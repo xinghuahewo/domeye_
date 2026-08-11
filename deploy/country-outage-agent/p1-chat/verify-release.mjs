@@ -119,6 +119,25 @@ for (const item of certification.source_identity?.files ?? []) {
   if (sha256(readFileSync(path)) !== item.sha256) fail(`认证源码漂移 ${item.path}`)
 }
 
+const runtimeContractRoot =
+  'contracts/agent/country-outage-p1-page-coverage/s2'
+for (const fileName of [
+  'semantic-plan.schema.json',
+  'capability-catalog.json',
+  'tool-contracts.json',
+  'oracle.json',
+  'policy.json',
+]) {
+  const relativePath = `${runtimeContractRoot}/${fileName}`
+  const runtimePath = regularFile(join(releaseRoot, relativePath))
+  const certifiedPath = regularFile(
+    join(releaseRoot, 'source-identity', relativePath),
+  )
+  if (sha256(readFileSync(runtimePath)) !== sha256(readFileSync(certifiedPath))) {
+    fail(`运行合同与认证源码不一致 ${relativePath}`)
+  }
+}
+
 if (
   release.hashes?.certification_manifest !== sha256(readFileSync(certificationPath)) ||
   release.hashes?.certified_registry !== sha256(readFileSync(registryPath))
