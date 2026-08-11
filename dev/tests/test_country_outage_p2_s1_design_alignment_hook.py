@@ -283,6 +283,101 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self._mutate_json(relative, mutate)
         self._assert_error("empty_ordered_path_allowed", stage="S1D-2")
 
+    def test_s1d3_passes_with_closed_atomic_operator_contracts(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        receipt = HOOK.run_alignment(
+            self.root,
+            "S1D-3",
+            require_prior_receipts=False,
+        )
+        self.assertEqual("alignment_passed", receipt["status"])
+        self.assertIn("operator_function_atomicity", receipt["checks"])
+        self.assertIn("operator_typed_contract_closure", receipt["checks"])
+
+    def test_s1d3_rejects_question_ref_drift(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][0]
+
+        def mutate(payload) -> None:
+            op05 = next(item for item in payload["operators"] if item["unit_id"] == "OP-05")
+            op05["question_refs"].append("Q33")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("operator_question_ref_drift", stage="S1D-3")
+
+    def test_s1d3_rejects_open_payload_schema(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][1]
+
+        def mutate(payload) -> None:
+            payload["$defs"]["op09InputPayload"]["additionalProperties"] = True
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("operator_payload_schema_open", stage="S1D-3")
+
+    def test_s1d3_rejects_profile_binding_drift(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][0]
+
+        def mutate(payload) -> None:
+            payload["profile_binding_contract"]["profile_instance_input_paths"].pop("OP-36")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("operator_profile_binding_open", stage="S1D-3")
+
+    def test_s1d3_rejects_output_profile_binding_drift(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][0]
+
+        def mutate(payload) -> None:
+            payload["profile_binding_contract"]["profile_result_output_paths"].pop("OP-37")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("operator_profile_binding_open", stage="S1D-3")
+
+    def test_s1d3_rejects_silent_profile_contract_rewrite(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][0]
+
+        def mutate(payload) -> None:
+            profile = next(
+                item
+                for item in payload["parameter_profiles"]
+                if item["profile_id"] == "PROFILE-FIRST-CROSSING-1.0.0"
+            )
+            profile["parameters"]["grid_step_seconds"] = 600
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("operator_profile_unfrozen", stage="S1D-3")
+
+    def test_s1d3_rejects_op15_pathless_schema_open(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][1]
+
+        def mutate(payload) -> None:
+            payload["$defs"]["op15InputPayload"]["allOf"] = []
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("op15_pathless_state_open", stage="S1D-3")
+
+    def test_s1d3_rejects_empty_output_evidence(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][1]
+
+        def mutate(payload) -> None:
+            del payload["$defs"]["operatorOutputEnvelope"]["properties"]["evidence_refs"]["minItems"]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("operator_output_evidence_empty", stage="S1D-3")
+
     def test_receipt_is_written_atomically_with_self_digest(self) -> None:
         receipt = HOOK.run_alignment(self.root, "S1D-0")
         output = HOOK.RECEIPT_ROOT / "S1D-0.json"

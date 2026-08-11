@@ -981,6 +981,403 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
         population_key="output_semantic",
         kind="operator",
     )
+    scope = payload.get("scope")
+    if not isinstance(scope, dict):
+        _fail("operator_scope_missing", "Operator catalog 缺少设计边界")
+    expected_scope_flags = {
+        "pure_deterministic_transforms_only": True,
+        "external_data_forbidden": True,
+        "model_inference_forbidden": True,
+        "runtime_implemented": False,
+        "production_deployed": False,
+    }
+    for field, expected in expected_scope_flags.items():
+        if scope.get(field) is not expected:
+            _fail("operator_scope_drift", f"Operator scope 漂移：{field}")
+    common_execution = payload.get("common_execution_contract")
+    if not isinstance(common_execution, dict):
+        _fail("operator_execution_contract_missing", "缺少纯函数执行合同")
+    for field, expected in {
+        "pure_function": True,
+        "network_access": False,
+        "source_read": False,
+        "state_mutation": False,
+        "clock_read": False,
+        "randomness": False,
+        "partial_success_publishable": False,
+    }.items():
+        if common_execution.get(field) is not expected:
+            _fail("operator_purity_drift", f"Operator 纯函数边界漂移：{field}")
+    common_types = payload.get("common_typed_fields")
+    if not isinstance(common_types, dict) or not common_types:
+        _fail("operator_type_closure_missing", "缺少 common_typed_fields")
+    profiles = payload.get("parameter_profiles")
+    if not isinstance(profiles, list):
+        _fail("operator_profile_missing", "缺少 parameter_profiles")
+    profile_ids = _object_list_ids(
+        payload, "parameter_profiles", "profile_id", catalog_path
+    )
+    expected_profiles = {
+        "PROFILE-AS-SEVERITY-RANK-1.0.0",
+        "PROFILE-STATE-TARGET-1.0.0",
+        "PROFILE-STATE-INTERVAL-1.0.0",
+        "PROFILE-PEAK-SEVERITY-1.0.0",
+        "PROFILE-FIRST-CROSSING-1.0.0",
+        "PROFILE-TEMPORAL-COMPARABILITY-1.0.0",
+        "PROFILE-EVIDENCE-CONSISTENCY-1.0.0",
+        "PROFILE-VP-CONSISTENCY-1.0.0",
+        "PROFILE-ROUTE-CHANGE-1.0.0",
+    }
+    if set(profile_ids) != expected_profiles or len(profile_ids) != len(expected_profiles):
+        _fail("operator_profile_population_drift", "Operator parameter profile 人口漂移")
+    profiles_by_id = {item["profile_id"]: item for item in profiles}
+    expected_profile_contract_digests = {
+        "PROFILE-AS-SEVERITY-RANK-1.0.0": "012bf52458d4115c97c52716635345d9a64b79bf964aac8f7cbe4c433af103b2",
+        "PROFILE-STATE-TARGET-1.0.0": "84e62744a3e688c2346c7062ac6d1d9367fa8786652b0e1a6a39e2608a0ea5b3",
+        "PROFILE-STATE-INTERVAL-1.0.0": "907c6a44b300a4c105ff41f30bf737e4d8c8454d988d4192171f0131a0f50cf5",
+        "PROFILE-PEAK-SEVERITY-1.0.0": "bff91f99198f646913b9bf169c700c1a4c08091fd17bb154edbbeaf1d94eaecc",
+        "PROFILE-FIRST-CROSSING-1.0.0": "f16290ec21950def8dd11597764b3bc90d196aa38f47e2b469caa6d2b3997173",
+        "PROFILE-TEMPORAL-COMPARABILITY-1.0.0": "00799ab935da941491819473bd1f96d34b59ac3a853136fce92f0ed355f91ef8",
+        "PROFILE-EVIDENCE-CONSISTENCY-1.0.0": "e3d92bfdafec1d6f68d48ff62b95267e87fe7009b6e55eded06b7c7765ac7661",
+        "PROFILE-VP-CONSISTENCY-1.0.0": "1877cab88025d964e9c42a634b9bfe35d1039bb05870b2c1947c8274e89b9e70",
+        "PROFILE-ROUTE-CHANGE-1.0.0": "09931100517e16b985176c87446aec6ffabc509af1c8777a5ff0eff8e76a2b74",
+    }
+    for profile_id, profile in profiles_by_id.items():
+        if set(profile) != {"profile_id", "profile_contract_digest", "purpose", "parameters"}:
+            _fail("operator_profile_unfrozen", f"{profile_id} 合同字段不闭合")
+        profile_body = dict(profile)
+        declared_digest = profile_body.pop("profile_contract_digest")
+        computed_digest = hashlib.sha256(
+            json.dumps(
+                profile_body,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        if declared_digest != computed_digest or declared_digest != (
+            expected_profile_contract_digests[profile_id]
+        ):
+            _fail("operator_profile_unfrozen", f"{profile_id} 内容或固定摘要漂移")
+    profile_binding = payload.get("profile_binding_contract")
+    expected_profile_instance_paths = {
+        "OP-29": "inputs.comparability_profile.profile_digest",
+        "OP-36": "inputs.threshold_profile_instance.profile_digest",
+        "OP-37": "inputs.consistency_profile.profile_digest",
+    }
+    if not isinstance(profile_binding, dict) or (
+        profile_binding.get("contract_id") != "P2-S1-PROFILE-BINDING-1.0.0"
+        or profile_binding.get("no_profile_invariant_id")
+        != "PROFILE-BINDING-NONE-1.0.0"
+        or profile_binding.get("profile_digest_equality_invariant_id")
+        != "PROFILE-BINDING-DIGEST-EQUALITY-1.0.0"
+        or profile_binding.get("profile_instance_input_paths")
+        != expected_profile_instance_paths
+        or profile_binding.get("profile_result_output_paths")
+        != {unit_id: "result.profile_digest" for unit_id in expected_profile_instance_paths}
+        or profile_binding.get("runtime_validator_contract_id")
+        != "VALIDATOR-P2-S1-PROFILE-BINDING-1.0.0"
+        or profile_binding.get("runtime_validator_implemented") is not False
+    ):
+        _fail("operator_profile_binding_open", "Profile ID、实例摘要和Envelope绑定合同未闭合")
+    profile_binding_rules = profile_binding.get("rules", [])
+    if not isinstance(profile_binding_rules, list) or not all(
+        marker in "\n".join(profile_binding_rules)
+        for marker in (
+            "当且仅当",
+            "输入Envelope与输出Envelope",
+            "OP-29",
+            "OP-36",
+            "OP-37",
+            "不得发布Evidence",
+        )
+    ):
+        _fail("operator_profile_binding_open", "Profile绑定不变量规则不完整")
+    first_crossing_profile = profiles_by_id["PROFILE-FIRST-CROSSING-1.0.0"].get(
+        "parameters", {}
+    )
+    if first_crossing_profile.get("grid_step_seconds") != 300 or set(
+        first_crossing_profile.get("profile_instance_required_fields", [])
+    ) != {
+        "metric_field",
+        "threshold_exact",
+        "comparison",
+        "grid_step_seconds",
+        "gap_policy",
+    } or "indeterminate" not in first_crossing_profile.get("gap_policy", ""):
+        _fail("threshold_profile_unfrozen", "首次越阈Profile未冻结参数和缺口规则")
+    temporal_profile = profiles_by_id[
+        "PROFILE-TEMPORAL-COMPARABILITY-1.0.0"
+    ].get("parameters", {})
+    if temporal_profile.get("tolerance_seconds") != 300 or temporal_profile.get(
+        "allowed_granularity_seconds"
+    ) != 300 or temporal_profile.get("fact_temporal_kind_matrix") != {
+        "exact_point:exact_point": "comparable",
+        "exact_point:interval": "not_comparable",
+        "interval:exact_point": "not_comparable",
+        "interval:interval": "not_comparable",
+    }:
+        _fail("temporal_profile_unfrozen", "时间可比性Profile未冻结矩阵和容差")
+    consistency_profile = profiles_by_id[
+        "PROFILE-EVIDENCE-CONSISTENCY-1.0.0"
+    ].get("parameters", {})
+    if consistency_profile.get("peak_time_misalignment_alone_is_conflict") is not False:
+        _fail("consistency_profile_unfrozen", "峰值错位不得自动映射为冲突")
+    consistency_mapping = consistency_profile.get("mapping")
+    if not isinstance(consistency_mapping, dict) or set(consistency_mapping.values()) != {
+        "missing",
+        "not_comparable",
+        "consistent",
+        "partially_consistent",
+        "conflict",
+    }:
+        _fail("consistency_profile_unfrozen", "证据一致性Profile映射不闭合")
+    if (
+        consistency_mapping.get(
+            "same_slot+verified_mutually_exclusive_true_assertions"
+        )
+        != "conflict"
+        or "any_temporal_relation+verified_mutually_exclusive_true_assertions"
+        in consistency_mapping
+        or consistency_mapping.get("any_temporal_relation+unknown_assertion_relation")
+        != "not_comparable"
+    ):
+        _fail("consistency_cross_time_conflict", "冲突只允许同槽互斥断言且unknown必须不可比较")
+    vp_profile = profiles_by_id["PROFILE-VP-CONSISTENCY-1.0.0"].get(
+        "parameters", {}
+    )
+    if vp_profile.get("classification_precedence") != [
+        "empty_expected",
+        "missing_present",
+        "unknown_present",
+        "mixed_or_divergent",
+        "single_consistent_group",
+    ]:
+        _fail("vp_profile_unfrozen", "VP一致性分类优先级未冻结")
+    route_profile = profiles_by_id["PROFILE-ROUTE-CHANGE-1.0.0"].get(
+        "parameters", {}
+    )
+    if route_profile.get("class_predicate_precedence") != [
+        "state_unknown",
+        "explicit_withdraw",
+        "origin_change",
+        "replacement_path",
+        "path_only_change",
+        "reannouncement",
+    ] or len(route_profile.get("predicate_contract", {})) != 6:
+        _fail("route_change_profile_unfrozen", "Route change谓词和优先级未冻结")
+
+    type_contract = payload.get("type_expression_contract")
+    registered_types = payload.get("registered_type_refs")
+    if not isinstance(type_contract, dict) or not isinstance(registered_types, dict):
+        _fail("operator_type_registry_missing", "缺少机器类型表达式与注册表")
+    primitive_types = set(type_contract.get("primitive_types", []))
+    container_names = {"array", "nonempty_array", "set", "complete_array", "complete_set"}
+
+    def validate_type_expression(expression: Any, *, context: str) -> None:
+        if not isinstance(expression, str) or not expression:
+            _fail("operator_type_unresolved", f"{context} 类型表达式无效")
+        base = expression[:-5] if expression.endswith("|null") else expression
+        if base.startswith("enum:"):
+            if len(base.removeprefix("enum:").split("|")) < 2:
+                _fail("operator_type_unresolved", f"{context} enum人口不足")
+            return
+        if base.startswith("const:"):
+            if not base.removeprefix("const:"):
+                _fail("operator_type_unresolved", f"{context} const为空")
+            return
+        container = re.fullmatch(r"([a-z_]+)<([^<>]+)>", base)
+        if container:
+            if container.group(1) not in container_names:
+                _fail("operator_type_unresolved", f"{context} 容器类型未登记")
+            validate_type_expression(container.group(2), context=context)
+            return
+        if base not in primitive_types and base not in registered_types:
+            _fail("operator_type_unresolved", f"{context} 未登记类型：{base}")
+
+    for field, expression in common_types.items():
+        validate_type_expression(expression, context=f"common_typed_fields.{field}")
+    compiler_contract = payload.get("payload_schema_compilation_contract")
+    if not isinstance(compiler_contract, dict) or compiler_contract.get(
+        "compiler_contract_id"
+    ) != "p2_s1_operator_payload_schema_compiler_v1":
+        _fail("operator_payload_schema_compiler_missing", "缺少payload schema编译合同")
+    compiler_rules = compiler_contract.get("rules", [])
+    if not isinstance(compiler_rules, list) or not any(
+        "additionalProperties=false" in rule for rule in compiler_rules
+    ) or compiler_contract.get("runtime_compilation_implemented") is not False:
+        _fail("operator_payload_schema_compiler_open", "payload schema必须闭合且不得声称已实现")
+    envelope = payload.get("common_output_envelope")
+    if not isinstance(envelope, dict) or envelope.get("applies_to_all_operators") is not True:
+        _fail("operator_output_envelope_missing", "公共输出Envelope未应用到全部Operator")
+    required_envelope_fields = {
+        "identity",
+        "operator_id",
+        "operator_version",
+        "parameter_profile_id",
+        "parameter_profile_digest",
+        "input_digests",
+        "input_completeness",
+        "result_state",
+        "completeness",
+        "result",
+        "evidence_refs",
+        "fact_lineage",
+        "output_digest",
+    }
+    if set(envelope.get("required_fields", [])) != required_envelope_fields or set(
+        envelope.get("field_types", {})
+    ) != required_envelope_fields:
+        _fail("operator_output_envelope_incomplete", "公共输出Envelope字段不闭合")
+    for field, expression in envelope["field_types"].items():
+        validate_type_expression(expression, context=f"common_output_envelope.{field}")
+    if envelope.get("unclosed_evidence_publishable") is not False:
+        _fail("operator_output_envelope_incomplete", "未闭合Evidence不得发布")
+
+    decomposition = _load_json(
+        repo_root / CONTRACT_ROOT / "execution-unit-decomposition.json"
+    )
+    decomposed = {
+        item["unit_id"]: item
+        for item in decomposition.get("atomic_units", [])
+        if isinstance(item, dict) and str(item.get("unit_id", "")).startswith("OP-")
+    }
+    capability_ids: list[str] = []
+    output_semantics: list[str] = []
+    operators_by_id = {item["unit_id"]: item for item in payload["operators"]}
+    capability_map = _load_json(
+        repo_root / CONTRACT_ROOT / "question-capability-map.json"
+    )
+    capability_units = {
+        item["capability_id"]: set(item.get("unit_ids", []))
+        for item in capability_map.get("capabilities", [])
+        if isinstance(item, dict)
+    }
+    expected_question_refs: dict[str, set[str]] = {
+        unit_id: set() for unit_id in EXPECTED_OPERATORS
+    }
+    for question in capability_map.get("questions", []):
+        capability_refs = list(question.get("required_capability_ids", [])) + list(
+            question.get("optional_capability_ids", [])
+        )
+        units = set().union(
+            *(capability_units.get(capability_id, set()) for capability_id in capability_refs)
+        )
+        for unit_id in units & set(EXPECTED_OPERATORS):
+            expected_question_refs[unit_id].add(question["question_id"])
+    for item in payload["operators"]:
+        unit_id = item["unit_id"]
+        capability_ids.append(item.get("atomic_capability_id"))
+        output_semantics.append(item.get("output_semantic"))
+        expected = decomposed.get(unit_id)
+        if expected is None:
+            _fail("operator_decomposition_missing", f"{unit_id} 无S1D-1原子人口")
+        if item.get("input_semantic") != expected.get("source_population"):
+            _fail(
+                "operator_input_semantic_drift",
+                f"{unit_id} input_semantic 与S1D-1不一致",
+            )
+        if item.get("output_semantic") != expected.get("output_semantic"):
+            _fail(
+                "operator_output_semantic_drift",
+                f"{unit_id} output_semantic 与S1D-1不一致",
+            )
+        if item.get("atomic_capability_id") != expected.get("atomic_capability_id"):
+            _fail(
+                "operator_capability_drift",
+                f"{unit_id} atomic_capability_id 与S1D-1不一致",
+            )
+        if item.get("runtime_ready_claim") is not False:
+            _fail("runtime_claim_forbidden", f"{unit_id} 不得声称runtime ready")
+        schema_prefix = unit_id.lower().replace("-", "")
+        expected_input_ref = (
+            f"operator-contract.schema.json#/$defs/{schema_prefix}InputEnvelope"
+        )
+        expected_output_ref = (
+            f"operator-contract.schema.json#/$defs/{schema_prefix}OutputEnvelope"
+        )
+        if item.get("input_schema_ref") != expected_input_ref or item.get(
+            "output_schema_ref"
+        ) != expected_output_ref:
+            _fail("operator_schema_ref_missing", f"{unit_id} 未绑定自身闭合输入输出Envelope")
+        for field in (
+            "input_contract",
+            "output_contract",
+            "algorithm_contract",
+            "result_state_contract",
+            "complexity_contract",
+        ):
+            if not isinstance(item.get(field), dict):
+                _fail("operator_contract_incomplete", f"{unit_id} 缺少 {field}")
+        input_contract = item["input_contract"]
+        output_contract = item["output_contract"]
+        if input_contract.get("identity_equality_required") is not True:
+            _fail("operator_identity_boundary_missing", f"{unit_id} 未冻结输入身份一致")
+        profile_id = input_contract.get("parameter_profile_id")
+        if profile_id is not None and profile_id not in expected_profiles:
+            _fail("operator_profile_unknown", f"{unit_id} 引用了未知Profile")
+        for contract_name, contract in (
+            ("input", input_contract),
+            ("output", output_contract),
+        ):
+            required_fields = contract.get("required_fields")
+            local_types = contract.get("field_types")
+            if not isinstance(required_fields, list) or not isinstance(local_types, dict):
+                _fail(
+                    "operator_type_closure_missing",
+                    f"{unit_id} {contract_name} typed contract不完整",
+                )
+            missing_types = set(required_fields) - set(local_types) - set(common_types)
+            if missing_types:
+                _fail(
+                    "operator_type_closure_missing",
+                    f"{unit_id} {contract_name}字段未定型：{sorted(missing_types)}",
+                )
+            for field, expression in {
+                **{key: common_types[key] for key in required_fields if key in common_types},
+                **{key: value for key, value in local_types.items() if key in required_fields},
+            }.items():
+                validate_type_expression(
+                    expression,
+                    context=f"{unit_id}.{contract_name}.{field}",
+                )
+        algorithm = item["algorithm_contract"]
+        if not all(
+            isinstance(algorithm.get(field), str) and algorithm[field].strip()
+            for field in ("operation", "rule", "tie_rule")
+        ):
+            _fail("operator_algorithm_incomplete", f"{unit_id} 算法合同不完整")
+        states = item["result_state_contract"]
+        if set(states) != {"empty", "missing", "unknown", "not_computable"}:
+            _fail("operator_value_state_incomplete", f"{unit_id} 值状态合同不闭合")
+        if not isinstance(item.get("evidence_inheritance"), str) or not item[
+            "evidence_inheritance"
+        ].strip():
+            _fail("operator_evidence_inheritance_missing", f"{unit_id} 缺Evidence继承")
+        if not isinstance(item.get("forbidden_conclusions"), list) or not item[
+            "forbidden_conclusions"
+        ]:
+            _fail("operator_boundary_missing", f"{unit_id} 缺禁止结论")
+        if set(item.get("question_refs", [])) != expected_question_refs[unit_id]:
+            _fail(
+                "operator_question_ref_drift",
+                f"{unit_id} question_refs 与能力图反向索引不一致",
+            )
+        split = item.get("split_test")
+        expected_split = {
+            "business_transform_count": 1,
+            "primary_output_semantic_count": 1,
+            "mode_changes_semantic": False,
+            "independently_publishable_subtransforms": False,
+            "internally_invokes_other_units": False,
+            "disposition": "atomic_as_designed",
+        }
+        if split != expected_split:
+            _fail("atomic_split_test_failed", f"{unit_id} 功能原子性拆分测试失败")
+    if len(capability_ids) != len(set(capability_ids)):
+        _fail("operator_capability_duplicate", "Operator atomic_capability_id 必须唯一")
+    if len(output_semantics) != len(set(output_semantics)):
+        _fail("operator_output_semantic_duplicate", "Operator主输出语义必须唯一")
     deferred = [
         item
         for item in payload["operators"]
@@ -996,18 +1393,336 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
     ]
     if op05.get("default_sort") != expected_sort:
         _fail("as_sort_contract_drift", f"OP-05 默认排序漂移：{op05.get('default_sort')}")
+    op06 = operators_by_id["OP-06"]
+    if "left_censored" not in op06["output_contract"]["field_types"].get(
+        "outcome", ""
+    ) or "首个有效槽" not in op06["algorithm_contract"]["rule"]:
+        _fail("first_occurrence_censoring_missing", "OP-06 缺少左删失语义")
+    op35 = operators_by_id["OP-35"]
+    if "right_censored" not in op35["output_contract"]["field_types"].get(
+        "outcome", ""
+    ):
+        _fail("last_occurrence_censoring_missing", "OP-35 缺少右删失语义")
+    op36 = operators_by_id["OP-36"]
+    op36_outcomes = op36["output_contract"]["field_types"].get("outcome", "")
+    if not all(
+        marker in op36_outcomes
+        for marker in ("crossed", "left_censored", "no_crossing", "indeterminate_gap")
+    ) or "false_to_true" not in op36["algorithm_contract"]["operation"] or (
+        "全部相邻槽可比较" not in op36["algorithm_contract"]["rule"]
+    ):
+        _fail("threshold_crossing_contract_incomplete", "OP-36 首次越阈语义不闭合")
+    if op36["input_contract"].get("required_fields") != [
+        "identity",
+        "ordered_numeric_points",
+        "threshold_profile_instance",
+        "series_digest",
+    ] or op36["input_contract"].get("field_types", {}).get(
+        "threshold_profile_instance"
+    ) != "first_crossing_profile_instance":
+        _fail("threshold_profile_instance_unbound", "OP-36 必须直接消费闭合Profile实例")
+    op12 = operators_by_id["OP-12"]
+    if "unranked_indeterminate_gap" not in op12["output_contract"][
+        "required_fields"
+    ] or "indeterminate_gap" not in op12["algorithm_contract"]["rule"]:
+        _fail("crossing_rank_gap_population_missing", "OP-12 必须隔离不确定缺口人口")
+    op16 = operators_by_id["OP-16"]
+    if "op15_position_receipt" not in op16["input_contract"]["required_fields"] or (
+        "再次搜索" not in op16["algorithm_contract"]["rule"]
+    ):
+        _fail("path_operator_composite", "OP-16 必须只消费OP-15位置回执")
+    op17 = operators_by_id["OP-17"]
+    if not {"left_position_receipt", "right_position_receipt", "path_digest"}.issubset(
+        op17["input_contract"]["required_fields"]
+    ) or "再次解析" not in op17["algorithm_contract"]["rule"]:
+        _fail("path_operator_composite", "OP-17 必须只比较同路径双位置回执")
+    op19 = operators_by_id["OP-19"]
+    if "population_filter_receipt_digest" not in op19["input_contract"][
+        "required_fields"
+    ] or "不在Operator内判断contains/order" not in op19["algorithm_contract"]["rule"]:
+        _fail("downstream_projection_composite", "OP-19 不得内嵌路径定位或顺序判断")
+    op15 = operators_by_id["OP-15"]
+    if "common_path_status" not in op15["input_contract"]["required_fields"] or (
+        "path_parse_status" in op15["input_contract"]["required_fields"]
+    ) or "absent" in json.dumps(op15, ensure_ascii=False):
+        _fail("common_path_status_not_consumed", "OP-15 必须直接消费统一路径状态且不得残留absent")
+    op10 = operators_by_id["OP-10"]
+    if op10["input_contract"].get("invariants") != [
+        "peak_complete_prefix_count <= fixed_prefix_count"
+    ]:
+        _fail("ratio_input_invariant_missing", "OP-10 缺少分子不大于分母约束")
+    op09 = operators_by_id["OP-09"]
+    if op09["input_contract"].get("parameter_profile_id") != (
+        "PROFILE-PEAK-SEVERITY-1.0.0"
+    ):
+        _fail("peak_severity_profile_missing", "OP-09 severity字段未绑定登记Profile")
+    if operators_by_id["OP-22"].get("input_semantic") != "complete_canonical_path_set":
+        _fail("path_count_population_drift", "OP-22 只能计算唯一路径数")
+    if operators_by_id["OP-23"].get("input_semantic") != "complete_prefix_set":
+        _fail("prefix_count_population_drift", "OP-23 只能计算唯一前缀数")
+    for unit_id in ("OP-22", "OP-23", "OP-24"):
+        if operators_by_id[unit_id]["complexity_contract"].get("time") != "O(n)":
+            _fail("count_complexity_drift", f"{unit_id} 对账复杂度必须为O(n)")
+    op21 = operators_by_id["OP-21"]
+    if "peer_asn_direction_ids" not in op21["algorithm_contract"]["rule"] or (
+        "并集展平" not in op21["algorithm_contract"]["rule"]
+    ):
+        _fail("peer_direction_projection_drift", "OP-21 必须直接展平Tool路径行的方向集合")
+    op29 = operators_by_id["OP-29"]
+    temporal_outcomes = op29["output_contract"]["field_types"].get("relation", "")
+    required_temporal = {
+        "same_slot",
+        "left_precedes_within",
+        "right_precedes_within",
+        "left_precedes_outside",
+        "right_precedes_outside",
+        "missing_left",
+        "missing_right",
+        "missing_both",
+        "not_comparable",
+    }
+    if not all(marker in temporal_outcomes for marker in required_temporal):
+        _fail("temporal_relation_enum_incomplete", "OP-29 有向时间关系人口不闭合")
+    expected_profile_invariants = {
+        "OP-29": "comparability_profile.profile_digest == Envelope.parameter_profile_digest",
+        "OP-36": "threshold_profile_instance.profile_digest == Envelope.parameter_profile_digest",
+        "OP-37": "consistency_profile.profile_digest == Envelope.parameter_profile_digest",
+    }
+    for unit_id, invariant in expected_profile_invariants.items():
+        if operators_by_id[unit_id]["input_contract"].get("invariants") != [invariant]:
+            _fail("operator_profile_binding_open", f"{unit_id} Profile实例摘要未绑定Envelope")
+        if operators_by_id[unit_id]["output_contract"].get("invariants") != [
+            "profile_digest == Envelope.parameter_profile_digest"
+        ]:
+            _fail("operator_profile_binding_open", f"{unit_id} 输出Profile摘要未绑定Envelope")
+    op37 = operators_by_id["OP-37"]
+    if "op29_temporal_receipt" not in op37["input_contract"]["required_fields"] or (
+        "不重新计算时间关系" not in op37["algorithm_contract"]["rule"]
+    ):
+        _fail("consistency_operator_composite", "OP-37 必须消费OP-29回执且不得重算")
+    if op37["result_state_contract"].get("unknown") != "not_comparable":
+        _fail("consistency_unknown_mapping_drift", "OP-37 unknown必须唯一映射为not_comparable")
     _validate_schema_file(_load_json(schema_path), schema_path)
+    schema = _load_json(schema_path)
+    required_schema_fields = set(schema.get("required", []))
+    for field in (
+        "input_contract",
+        "output_contract",
+        "algorithm_contract",
+        "result_state_contract",
+        "evidence_inheritance",
+        "complexity_contract",
+        "split_test",
+        "runtime_ready_claim",
+    ):
+        if field not in required_schema_fields:
+            _fail("operator_schema_open", f"Operator schema required缺少 {field}")
+    if schema.get("additionalProperties") is not False:
+        _fail("operator_schema_open", "Operator schema顶层必须闭合")
+    schema_defs = schema.get("$defs")
+    if not isinstance(schema_defs, dict):
+        _fail("operator_schema_defs_missing", "Operator schema缺少$defs")
+    required_defs = {
+        "publicationIdentity",
+        "evidenceRef",
+        "operatorInputEnvelope",
+        "operatorOutputEnvelope",
+        "typedStatePoint",
+        "typedNumericPoint",
+        "halfOpenStateInterval",
+        "typedTimedFact",
+        "typedFact",
+        "op10Receipt",
+        "op11Receipt",
+        "op15Receipt",
+        "op29Receipt",
+        "op36Receipt",
+        "pathEvidence",
+        "verifiedAnchorBeforeKnownOriginAssociation",
+        "routeObservationKey",
+        "newPrefixState",
+        "routeStateAtTime",
+        "routeEvent",
+    }
+    if not required_defs.issubset(schema_defs):
+        _fail("operator_schema_defs_missing", "Operator关键typed $defs不闭合")
+    for type_name, reference in registered_types.items():
+        if reference.startswith("operator-contract.schema.json#/$defs/"):
+            def_name = reference.rsplit("/", 1)[-1]
+            if def_name not in schema_defs:
+                _fail(
+                    "operator_type_ref_unresolved",
+                    f"登记类型未解析：{type_name} -> {def_name}",
+                )
+    output_envelope_schema = schema_defs["operatorOutputEnvelope"]
+    input_envelope_schema = schema_defs["operatorInputEnvelope"]
+    if set(output_envelope_schema.get("required", [])) != required_envelope_fields or (
+        output_envelope_schema.get("additionalProperties") is not False
+    ):
+        _fail("operator_output_envelope_incomplete", "输出Envelope schema不闭合")
+    evidence_schema = output_envelope_schema.get("properties", {}).get(
+        "evidence_refs", {}
+    )
+    if evidence_schema.get("minItems") != 1:
+        _fail("operator_output_evidence_empty", "Operator输出必须至少继承一个Evidence引用")
+
+    def _has_profile_id_digest_binding(envelope_schema: Mapping[str, Any]) -> bool:
+        null_branch = False
+        nonnull_branch = False
+        for branch in envelope_schema.get("allOf", []):
+            profile_condition = (
+                branch.get("if", {})
+                .get("properties", {})
+                .get("parameter_profile_id", {})
+            )
+            digest_effect = (
+                branch.get("then", {})
+                .get("properties", {})
+                .get("parameter_profile_digest", {})
+            )
+            if profile_condition.get("type") == "null" and digest_effect.get("type") == "null":
+                null_branch = True
+            if profile_condition.get("type") == "string" and digest_effect.get("$ref") == "#/$defs/digest":
+                nonnull_branch = True
+        return null_branch and nonnull_branch
+
+    if not _has_profile_id_digest_binding(input_envelope_schema) or not (
+        _has_profile_id_digest_binding(output_envelope_schema)
+    ):
+        _fail("operator_profile_binding_open", "输入输出Envelope未机器约束Profile ID与摘要同时为空或同时存在")
+    for item in payload["operators"]:
+        prefix = item["unit_id"].lower().replace("-", "")
+        expected_definitions = {
+            f"{prefix}InputPayload",
+            f"{prefix}ResultPayload",
+            f"{prefix}InputEnvelope",
+            f"{prefix}OutputEnvelope",
+        }
+        if not expected_definitions.issubset(schema_defs):
+            _fail("operator_payload_schema_missing", f"{item['unit_id']} 缺少独立payload schema")
+        for side, definition_name in (
+            ("input", f"{prefix}InputPayload"),
+            ("output", f"{prefix}ResultPayload"),
+        ):
+            payload_schema = schema_defs[definition_name]
+            required_fields = item[f"{side}_contract"]["required_fields"]
+            if (
+                payload_schema.get("type") != "object"
+                or payload_schema.get("additionalProperties") is not False
+                or payload_schema.get("required") != required_fields
+                or set(payload_schema.get("properties", {})) != set(required_fields)
+            ):
+                _fail(
+                    "operator_payload_schema_open",
+                    f"{item['unit_id']} {side} payload schema未与合同闭合",
+                )
+    op09_schema = schema_defs["typedSeverityStatePoint"]
+    expected_severity_refs = {
+        "#/$defs/prefixSeverityStatePoint",
+        "#/$defs/asnSeverityStatePoint",
+    }
+    if {
+        item.get("$ref") for item in op09_schema.get("oneOf", [])
+    } != expected_severity_refs:
+        _fail("peak_input_value_type_missing", "OP-09 必须使用来源可构造的同质前缀或ASN状态点")
+    prefix_severity = schema_defs.get("prefixSeverityStatePoint", {})
+    asn_severity = schema_defs.get("asnSeverityStatePoint", {})
+    if not {
+        "expected_direction_count",
+        "visible_direction_count",
+        "invisible_direction_count",
+        "unknown_direction_count",
+    }.issubset(prefix_severity.get("required", [])) or not {
+        "fixed_prefix_count",
+        "partial_prefix_count",
+        "complete_prefix_count",
+        "unknown_prefix_count",
+        "invisible_direction_count",
+    }.issubset(asn_severity.get("required", [])):
+        _fail("peak_input_value_type_missing", "OP-09 severity状态点与TOOL-08/09原生字段不闭合")
+    op09_payload_variants = schema_defs["op09InputPayload"].get("oneOf", [])
+    op09_variant_text = json.dumps(op09_payload_variants, sort_keys=True)
+    if len(op09_payload_variants) != 2 or not all(
+        marker in op09_variant_text
+        for marker in (
+            "#/$defs/prefixSeverityStatePoint",
+            "#/$defs/asnSeverityStatePoint",
+            '"const": "invisible_direction_count"',
+            '"complete_prefix_count"',
+            '"partial_prefix_count"',
+        )
+    ):
+        _fail("peak_input_population_mixed", "OP-09 schema必须拒绝前缀与ASN状态点混合序列")
+    if "firstCrossingProfileInstance" not in schema_defs:
+        _fail("threshold_profile_instance_unbound", "缺少首次越阈Profile实例schema")
+    path_evidence_schema = schema_defs["pathEvidence"]
+    if "peer_asn_direction_ids" not in path_evidence_schema.get("required", []) or (
+        "peer_direction_id" in path_evidence_schema.get("required", [])
+    ):
+        _fail("path_direction_population_drift", "pathEvidence必须保留一行多方向集合")
+    expected_path_profile_digest = (
+        "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+    )
+    for def_name in (
+        "op15Receipt",
+        "pathEvidence",
+        "verifiedAnchorBeforeKnownOriginAssociation",
+        "routeStateAtTime",
+        "op15InputPayload",
+        "op15ResultPayload",
+    ):
+        definition = schema_defs[def_name]
+        if definition.get("properties", {}).get(
+            "path_canonicalization_profile_digest", {}
+        ).get("const") != expected_path_profile_digest:
+            _fail("path_digest_profile_unfrozen", f"{def_name} 未绑定冻结路径Profile摘要")
+    route_state_schema = schema_defs["routeStateAtTime"]
+    if not {
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
+    }.issubset(route_state_schema.get("required", [])):
+        _fail("path_digest_source_missing", "routeStateAtTime未保留Tool原生路径身份")
+    op15_input_schema = schema_defs["op15InputPayload"]
+    op15_input_text = json.dumps(op15_input_schema.get("allOf", []), sort_keys=True)
+    if not all(
+        marker in op15_input_text
+        for marker in (
+            '"ordered"',
+            '"unordered"',
+            '"unknown"',
+            '"not_applicable"',
+            '"path_digest"',
+            '"type": "null"',
+        )
+    ):
+        _fail("op15_pathless_state_open", "OP-15 known与pathless输入条件未闭合")
+    review = _load_json(review_path)
     _validate_atomicity_review(
-        _load_json(review_path),
+        review,
         expected_ids=EXPECTED_OPERATORS,
         path=review_path,
         kind="operator",
     )
+    if review.get("overall_disposition") != "passed" or review.get(
+        "remaining_blockers"
+    ) != []:
+        _fail("atomicity_review_failed", "Operator 独立审查仍有阻断项")
+    boundary = review.get("boundary")
+    if not isinstance(boundary, dict) or any(
+        boundary.get(field) is not False
+        for field in ("runtime_implemented", "production_deployed")
+    ):
+        _fail("runtime_claim_forbidden", "Operator审查不得声称已实现或部署")
     return [
         "operator_catalog_closure",
         "op_05_sort",
         "op_34_deferred",
         "operator_function_atomicity",
+        "operator_typed_contract_closure",
+        "operator_value_state_closure",
+        "operator_path_receipt_composition_boundary",
+        "operator_temporal_consistency_boundary",
     ]
 
 
