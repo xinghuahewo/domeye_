@@ -68,7 +68,7 @@ EXPECTED_QUESTIONS = (
 )
 
 EXPECTED_TOOLS = tuple(f"TOOL-{index:02d}" for index in range(7, 14))
-EXPECTED_OPERATORS = tuple(f"OP-{index:02d}" for index in range(5, 35))
+EXPECTED_OPERATORS = tuple(f"OP-{index:02d}" for index in range(5, 38))
 EXPECTED_HOST_UNITS = (
     "PLAN-CAP-01",
     "GATE-01",
@@ -86,7 +86,7 @@ EXPECTED_EXECUTION_UNITS = EXPECTED_TOOLS + EXPECTED_OPERATORS + EXPECTED_HOST_U
 EXISTING_EXECUTION_UNITS = tuple(f"TOOL-{index:02d}" for index in range(1, 7)) + tuple(
     f"OP-{index:02d}" for index in range(1, 5)
 )
-EXPECTED_CAPABILITIES = tuple(f"CAP-P2-{index:03d}" for index in range(1, 59))
+EXPECTED_CAPABILITIES = tuple(f"CAP-P2-{index:03d}" for index in range(1, 62))
 S1D1_SCENARIOS = (
     "normal",
     "empty",
@@ -417,6 +417,9 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         capability_ids, EXPECTED_CAPABILITIES, kind="capability"
     )
     capability_set = set(capability_ids)
+    capabilities_by_id = {
+        item["capability_id"]: item for item in capability_map["capabilities"]
+    }
     allowed_units = set(EXISTING_EXECUTION_UNITS + EXPECTED_EXECUTION_UNITS)
     referenced_capabilities: list[str] = []
     for index, capability in enumerate(capability_map["capabilities"]):
@@ -467,6 +470,46 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
     q24 = next(item for item in capability_map["questions"] if item["question_id"] == "Q24")
     if q24.get("answerability") != "deferred_p2_1":
         _fail("deferred_boundary_missing", "Q24 必须标记 answerability=deferred_p2_1")
+    required_source_populations = {
+        "CAP-P2-011": "fixed_cohort_member_rows",
+        "CAP-P2-015": "materialized_route_state_rows_at_exact_time",
+        "CAP-P2-016": "window_path_association_evidence_rows",
+        "CAP-P2-029": "one_structured_path_and_op15_position_receipt",
+        "CAP-P2-030": "two_op15_position_receipts_with_same_path_digest",
+        "CAP-P2-032": "complete_anchor_before_known_origin_path_association_set",
+        "CAP-P2-042": "two_typed_timed_facts_and_comparability_profile",
+    }
+    for capability_id, expected_population in required_source_populations.items():
+        if capabilities_by_id[capability_id].get("source_population") != expected_population:
+            _fail(
+                "review_semantic_fix_missing",
+                f"{capability_id} source_population 必须为 {expected_population}",
+            )
+    if capabilities_by_id["CAP-P2-015"].get("disposition") != "new_p2_v1_source_view_required":
+        _fail(
+            "route_state_source_view_boundary_missing",
+            "TOOL-11 必须显式声明 source_view_required",
+        )
+    questions_by_id = {item["question_id"]: item for item in capability_map["questions"]}
+    required_question_capabilities = {
+        "Q06": {"CAP-P2-059"},
+        "Q08": {"CAP-P2-060"},
+        "Q16": {"CAP-P2-021", "CAP-P2-048"},
+        "Q18": {"CAP-P2-011"},
+        "Q21": {"CAP-P2-028", "CAP-P2-029"},
+        "Q22": {"CAP-P2-036"},
+        "Q23": {"CAP-P2-003", "CAP-P2-007", "CAP-P2-048"},
+        "Q31": {"CAP-P2-061"},
+        "Q32": {"CAP-P2-061"},
+    }
+    for question_id, expected_refs in required_question_capabilities.items():
+        actual_refs = set(questions_by_id[question_id]["required_capability_ids"])
+        missing_refs = sorted(expected_refs - actual_refs)
+        if missing_refs:
+            _fail(
+                "question_capability_review_gap",
+                f"{question_id} 缺少独立审查要求的 capability：{missing_refs}",
+            )
 
     decomposition = _load_json(decomposition_path)
     if not isinstance(decomposition, dict) or not isinstance(
@@ -520,6 +563,22 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         atomic_capability_ids.append(item["atomic_capability_id"])
     if len(atomic_capability_ids) != len(set(atomic_capability_ids)):
         _fail("atomic_capability_duplicate", "atomic_capability_id 必须全局唯一")
+    units_by_id = {item["unit_id"]: item for item in decomposition["atomic_units"]}
+    required_unit_populations = {
+        "TOOL-07": "fixed_cohort_member_rows",
+        "TOOL-11": "materialized_route_state_rows_at_exact_time",
+        "TOOL-12": "window_path_association_evidence_rows",
+        "OP-16": "one_structured_path_and_op15_position_receipt",
+        "OP-17": "two_op15_position_receipts_with_same_path_digest",
+        "OP-19": "complete_anchor_before_known_origin_path_association_set",
+        "OP-29": "two_typed_timed_facts_and_comparability_profile",
+    }
+    for unit_id, expected_population in required_unit_populations.items():
+        if units_by_id[unit_id].get("source_population") != expected_population:
+            _fail(
+                "review_semantic_fix_missing",
+                f"{unit_id} source_population 必须为 {expected_population}",
+            )
     common = decomposition.get("atomic_unit_common_contract")
     if not isinstance(common, dict):
         _fail("execution_unit_atomicity_invalid", "缺少 atomic_unit_common_contract")
@@ -937,6 +996,8 @@ def _validate_prior_receipts(repo_root: Path, stage: str) -> dict[str, str]:
     required = _required_stages(stage)
     prior = required[:-1] if stage != "final" else required
     result: dict[str, str] = {}
+    current_task_spec_sha256 = _sha256(repo_root / TASK_SPEC)
+    current_phase_plan_sha256 = _sha256(repo_root / PHASE_PLAN)
     for prior_stage in prior:
         path = repo_root / RECEIPT_ROOT / f"{prior_stage}.json"
         payload = _load_json(path)
@@ -946,6 +1007,10 @@ def _validate_prior_receipts(repo_root: Path, stage: str) -> dict[str, str]:
             _fail("prior_receipt_invalid", f"阶段回执状态或阶段错误：{path}")
         if payload.get("receipt_digest") != _canonical_digest(payload):
             _fail("prior_receipt_digest_mismatch", f"阶段回执摘要不匹配：{path}")
+        if payload.get("task_spec_sha256") != current_task_spec_sha256:
+            _fail("prior_receipt_stale", f"阶段回执未绑定当前 Task Spec：{path}")
+        if payload.get("phase_plan_sha256") != current_phase_plan_sha256:
+            _fail("prior_receipt_stale", f"阶段回执未绑定当前阶段计划：{path}")
         for key, expected in (
             ("design_only", True),
             ("runtime_implemented", False),

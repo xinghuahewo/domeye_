@@ -193,20 +193,24 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 
 本阶段只设计 Tool，不设计派生算法。冻结：
 
-- `TOOL-07 query_as_prefix_members`；
+- `TOOL-07 query_fixed_cohort_members`；
 - `TOOL-08 query_prefix_states`；
 - `TOOL-09 query_as_states`；
 - `TOOL-10 query_new_prefix_states`；
-- `TOOL-11 query_route_states_at_time`；
-- `TOOL-12 query_path_evidence`；
+- `TOOL-11 query_materialized_route_states_at_time`；
+- `TOOL-12 query_window_path_associations`；
 - `TOOL-13 query_route_events` 的 deferred 合同边界。
 
 每个 Tool 必须定义 Typed Tool Contract：身份输入、查询维度、默认值、互斥参数、人口、
 时间点/时间窗、稳定排序、游标、总数、去重键、ResultSet、Evidence、checkpoint、完整性、
 null/unknown/missing、超时、取消、权限、最大扫描量、成本估算和错误枚举。
 
-`TOOL-12` 只负责完整稳定分页；至少 5 条预览属于 ResultSet Renderer，不进入 Tool。
-`TOOL-11` 必须证明 path-at-time，不得复用 `concurrent` 充当路径时点证据。
+`TOOL-12` 只负责窗口级 path-association evidence 的完整稳定分页；至少 5 条预览属于
+ResultSet Renderer，不进入 Tool，也不得将窗口关联写成 path-at-time。
+`TOOL-11` 只读取预先物化、内容寻址且带 projection receipt 的精确时点 RouteState；不得内嵌
+checkpoint 选择、RouteEvent 回放或状态投影，也不得复用 `concurrent` 充当路径时点证据。
+`TOOL-07` 返回固定 cohort member 的原生 expected directions，使 Q18 可把预期方向与
+`TOOL-11` 实际方向分源比较。
 
 每个 Tool 只允许一种 `output_population`；任何“查询并排序”“读取两种 state 并关联”或
 “路径查询并生成 downstream set”的设计均阻断。
@@ -251,6 +255,9 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 - `OP-30..32`：VP visibility、origin、path 三种一致性分类；
 - `OP-33`：new-prefix 与 RouteState 的唯一受控 typed join；
 - `OP-34`：RouteEvent 变化分类的 P2.1 deferred 合同。
+- `OP-35`：目标状态最后一次出现；
+- `OP-36`：首次阈值穿越与左删失；
+- `OP-37`：消费 OP-29 回执的证据一致性分类。
 
 每个 Operator 必须定义输入 schema/digest、纯函数参数、排序、tie、null、unknown、missing、
 空集合、时间容差、复杂度、内存上限、确定性摘要、Evidence 继承和禁止解释。
@@ -270,10 +277,12 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 - 首次、区间、最后、峰值、比例、选择和排名没有复合输出；
 - path position、direct adjacency、path order、四种集合投影和三种计数均独立；
 - `OP-25..28` 在空集合、缺页或不完整输入时分别失败关闭；
-- `OP-29` 仅输出时间/可比性关系，不输出因果；
+- `OP-29` 仅输出时间关系，不输出冲突或因果；
 - `OP-30..32` 不得被 `OP-29` 或一个动态 consistency mode 取代；
 - 只有 `OP-33` 允许执行已冻结的 typed join，禁止通用 entity join；
 - `OP-34` 保持 deferred；
+- `OP-35` 不得被截止状态 `OP-08` 替代；`OP-36` 左删失项不得进入 `OP-12` 精确排名；
+- `OP-37` 不得重新计算 OP-29 的时间关系，只分类登记的一致性状态；
 - 所有 Operator 同输入同版本同参数得到同摘要；
 - 本阶段不得回改 Tool 结果人口来迎合 Operator。
 - 每个 Operator 均通过 `operator_single_transform_semantic` 和 `atomic_split_test`。
@@ -401,9 +410,9 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 
 设计最终通过后，建议另立 TASK 按以下顺序实施，每项仍需独立开发与验收：
 
-1. 先做 TOOL-07/08/09/10 与 OP-05..14，闭合 ASN/前缀问题；
+1. 先做 TOOL-07/08/09/10 与 OP-05..14、OP-35/36，闭合 ASN/前缀问题；
 2. 再做 TOOL-12 与 OP-15..28，闭合路径查询、预览、计数和集合；
-3. 再做 TOOL-11 与 OP-29..33，闭合 path-at-time、VP一致性和new-prefix连接；
+3. 再做 TOOL-11 与 OP-29..33、OP-37，闭合 path-at-time、VP一致性、证据一致性和new-prefix连接；
 4. 最后组合 InvestigationPlan、Evidence Graph、局部重跑和受控导出；
 5. TOOL-13/OP-34 留在 P2.1，除非重新通过范围与成本 Gate。
 

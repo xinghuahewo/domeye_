@@ -84,9 +84,9 @@
     {
       "question_id": "Q06",
       "answerability": "new_tools_required",
-      "required_assertions": ["异常前缀完整成员", "首次状态", "连续区间", "峰值状态", "截止状态"],
+      "required_assertions": ["异常前缀完整成员", "首次异常状态", "连续区间", "峰值状态", "最后一次异常状态"],
       "prohibited_assertions": ["缺失当正常", "把一个复合状态算子当原子"],
-      "scenario_expectations": {"normal":"四个独立状态Operator结果闭合", "empty":"无异常成员返回空集合", "missing":"序列缺槽导致区间中断", "wrong_identity":"membership与state身份不一致拒绝", "boundary":"只称RRC25状态", "large_result":"前缀20条预览并导出"}
+      "scenario_expectations": {"normal":"OP-06/07/09/35四个独立状态Operator结果闭合", "empty":"无异常成员返回空集合", "missing":"序列缺槽导致区间中断且last occurrence不外推", "wrong_identity":"membership与state身份不一致拒绝", "boundary":"只称RRC25状态", "large_result":"前缀20条预览并导出"}
     },
     {
       "question_id": "Q07",
@@ -100,7 +100,7 @@
       "answerability": "new_tool_operator_required",
       "required_assertions": ["首次越阈定义", "ASN异常区间", "最长区间", "complete峰值比例", "三种独立排名"],
       "prohibited_assertions": ["最早观测即最早发生", "高比例等于大范围", "动态mode排名"],
-      "scenario_expectations": {"normal":"OP-06/07/10/11/12/13/14逐项回执", "empty":"无越阈ASN返回空排名", "missing":"状态缺槽断开区间", "wrong_identity":"ASN序列跨publication拒绝", "boundary":"排名不解释为关键性", "large_result":"三份排名分别预览"}
+      "scenario_expectations": {"normal":"OP-36检测越阈，OP-07/10/11/12/13/14逐项回执", "empty":"无越阈ASN返回空排名", "missing":"状态缺槽断开区间，左删失ASN不混入精确排名", "wrong_identity":"ASN序列跨publication拒绝", "boundary":"排名不解释为关键性", "large_result":"三份排名分别预览"}
     },
     {
       "question_id": "Q09",
@@ -135,7 +135,7 @@
       "answerability": "new_tools_required",
       "required_assertions": ["new-prefix成员", "首次观察槽", "RouteState origin/path", "截止状态"],
       "prohibited_assertions": ["全球首次宣告", "新分配", "TOOL-10内嵌RouteState join"],
-      "scenario_expectations": {"normal":"TOOL-10与TOOL-11经OP-33 typed join", "empty":"无新prefix返回空集合", "missing":"RouteState缺失保留new-prefix事实", "wrong_identity":"typed join身份冲突拒绝", "boundary":"只称cohort冻结后首次观察", "large_result":"20条预览并导出"}
+      "scenario_expectations": {"normal":"首次槽经PLAN-CAP-01绑定TOOL-11，OP-33 exact join并由OP-08选择截止状态", "empty":"无新prefix返回空集合", "missing":"RouteState预物化视图缺失时保留new-prefix事实", "wrong_identity":"typed join身份冲突拒绝", "boundary":"只称cohort冻结后首次观察", "large_result":"20条预览并导出"}
     },
     {
       "question_id": "Q17",
@@ -147,16 +147,16 @@
     {
       "question_id": "Q18",
       "answerability": "new_tool_operator_required",
-      "required_assertions": ["VP可见性一致性", "VP origin一致性", "VP path一致性"],
+      "required_assertions": ["固定cohort expected directions", "VP可见性一致性", "VP origin一致性", "VP path一致性"],
       "prohibited_assertions": ["用时间算子判断内容一致性", "VP差异等于传播", "单collector等于全球"],
-      "scenario_expectations": {"normal":"OP-30/31/32独立回执", "empty":"无可比VP返回not_comparable", "missing":"部分VP缺测分别报告", "wrong_identity":"不同时间槽或publication拒绝", "boundary":"不推断故障传播", "large_result":"按prefix和time限制"}
+      "scenario_expectations": {"normal":"TOOL-07提供预期方向，TOOL-11提供实际方向，OP-30/31/32独立回执", "empty":"无预期方向与无实际行分别处理", "missing":"部分预期VP缺测分别报告", "wrong_identity":"不同时间槽或publication拒绝", "boundary":"不推断故障传播", "large_result":"按prefix和time限制"}
     },
     {
       "question_id": "Q19",
       "answerability": "new_path_tool_required",
       "required_assertions": ["至少5条Renderer预览", "ASN位置", "直接邻接", "双ASN有序关系"],
       "prohibited_assertions": ["Tool负责预览", "包含等于相邻", "路径顺序等于商业关系"],
-      "scenario_expectations": {"normal":"TOOL-12完整读取后OP-15/16/17独立派生", "empty":"无路径返回空总体", "missing":"unordered path不强制线性化", "wrong_identity":"路径证据跨publication拒绝", "boundary":"不推断客户关系", "large_result":"Renderer默认5条"}
+      "scenario_expectations": {"normal":"TOOL-05给关系总体，TOOL-12读取窗口级关联行后OP-15/16/17独立派生", "empty":"无路径关联返回空总体", "missing":"unordered path不强制线性化", "wrong_identity":"路径证据跨publication拒绝", "boundary":"不推断客户关系且不称时点活动路径", "large_result":"Renderer默认5条"}
     },
     {
       "question_id": "Q20",
@@ -168,23 +168,23 @@
     {
       "question_id": "Q21",
       "answerability": "new_path_tool_operator_required",
-      "required_assertions": ["逐路径直接邻接", "按邻接ASN分组后的path/prefix/direction独立计数"],
+      "required_assertions": ["OP-15位置回执", "逐路径直接邻接", "连接路径图后置"],
       "prohibited_assertions": ["关系汇总行等于直接邻接", "邻接等于provider/customer"],
-      "scenario_expectations": {"normal":"OP-16与OP-20..24经Plan循环组合", "empty":"无邻接返回空集合", "missing":"AS_SET/confed标记不可比较", "wrong_identity":"路径集合身份冲突拒绝", "boundary":"v1表格不声称完整拓扑图", "large_result":"邻接预览受限并可导出"}
+      "scenario_expectations": {"normal":"Plan先运行OP-15再将同path digest位置回执交给OP-16", "empty":"无邻接返回空集合", "missing":"AS_SET/confed标记不可比较", "wrong_identity":"路径与位置回执摘要冲突拒绝", "boundary":"v1逐路径表格不声称完整拓扑图", "large_result":"邻接预览受限并可导出"}
     },
     {
       "question_id": "Q22",
       "answerability": "new_path_tool_required",
-      "required_assertions": ["关系过滤后的prefix集合", "每prefix路径和方向独立计数", "总体对账"],
+      "required_assertions": ["关系过滤后的prefix集合", "唯一prefix总数", "与关系汇总总量对账"],
       "prohibited_assertions": ["关系prefix等于ASN自身prefix", "样本投影即全集"],
-      "scenario_expectations": {"normal":"OP-18/22/24分别派生", "empty":"无关联prefix返回空集合", "missing":"路径分页不完整禁止总数", "wrong_identity":"关系与路径证据身份冲突拒绝", "boundary":"不称拥有或影响前缀", "large_result":"20条prefix预览并导出"}
+      "scenario_expectations": {"normal":"TOOL-05关系总量与TOOL-12关联行经OP-18/23派生后对账", "empty":"无关联prefix返回空集合", "missing":"路径关联分页不完整禁止总数", "wrong_identity":"关系与路径证据身份冲突拒绝", "boundary":"不称拥有或影响前缀", "large_result":"20条prefix预览并导出"}
     },
     {
       "question_id": "Q23",
       "answerability": "new_route_state_tool_required",
       "required_assertions": ["精确时点announced RouteState", "prefix/VP/peer/origin/path/checkpoint", "ASN位置"],
       "prohibited_assertions": ["concurrent等于path-at-time", "读取未来状态", "withdrawn/missing算活动"],
-      "scenario_expectations": {"normal":"TOOL-11 announced行加OP-15", "empty":"无活动路径合法为空", "missing":"checkpoint缺失使查询不可验证", "wrong_identity":"时点超窗或publication冲突拒绝", "boundary":"只称该collector时点观察", "large_result":"按时间点分页"}
+      "scenario_expectations": {"normal":"TOOL-03/OP-01峰值经PLAN-CAP-01绑定到TOOL-11 contains_asn过滤，再由OP-15定位", "empty":"无活动路径合法为空", "missing":"预物化时点视图或投影回执缺失使查询不可验证", "wrong_identity":"时点超窗或publication冲突拒绝", "boundary":"只称该collector时点观察", "large_result":"按时间点分页"}
     },
     {
       "question_id": "Q24",
@@ -226,14 +226,14 @@
       "answerability": "new_temporal_operator_required",
       "required_assertions": ["单位和人口可比性", "同槽/先后/错位/不可比", "IPv4与IPv6不对称可描述"],
       "prohibited_assertions": ["时间关系等于因果", "不同单位相加"],
-      "scenario_expectations": {"normal":"OP-29只消费显式comparability输入", "empty":"无可比时点返回not_comparable", "missing":"缺轨返回missing", "wrong_identity":"跨publication比较拒绝", "boundary":"不判断传播", "large_result":"关系节点有界"}
+      "scenario_expectations": {"normal":"OP-29只计算时间关系，OP-37基于其回执分类一致性", "empty":"无可比时点返回not_comparable", "missing":"缺轨返回missing", "wrong_identity":"跨publication比较拒绝", "boundary":"不判断传播", "large_result":"关系节点有界"}
     },
     {
       "question_id": "Q32",
       "answerability": "new_temporal_operator_required",
       "required_assertions": ["峰值错位与事实冲突分开", "相同定义人口的互斥断言才是conflict"],
       "prohibited_assertions": ["晚于等于被导致", "峰值不同自动冲突"],
-      "scenario_expectations": {"normal":"OP-29加GATE-04", "empty":"无可比关系返回not_comparable", "missing":"定义或人口缺失返回missing", "wrong_identity":"跨publication拒绝", "boundary":"不输出cause", "large_result":"not_applicable"}
+      "scenario_expectations": {"normal":"OP-29只给时间关系，OP-37区分错位与冲突，GATE-04守边界", "empty":"无可比关系返回not_comparable", "missing":"定义或人口缺失返回missing", "wrong_identity":"跨publication拒绝", "boundary":"不输出cause", "large_result":"not_applicable"}
     },
     {
       "question_id": "Q33",

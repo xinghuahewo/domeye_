@@ -21,15 +21,15 @@
     "sol_teacher_ds_student_role_contract"
   ],
   "design_only": true,
-  "phase_plan_sha256": "15d7e071840e0255557ec5e596049e2177e89b72ca752e19c2a6e0726195b60c",
+  "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
   "prior_receipts": {
-    "S1D-0": "b1c8685325021add57d4258d0279e6daa69b0b6636f125ace6608a35eeead26f"
+    "S1D-0": "01c82364689784d4cdd354022e9ee7fa4c4e38c77d6e247601a3ee78f975f334"
   },
   "production_deployed": false,
-  "receipt_digest": "5e2168358b16e55c559376c8f3658cb40f028c1a1eb3255d2929647e66e2fa3b",
+  "receipt_digest": "8c92be15b43a352dc8e5c27fafe1668467f0e1946b63ee4f771ba4367ea51a15",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-1",
   "status": "alignment_passed",
-  "task_spec_sha256": "c1477b956787b3ac9aca09a3ef2d2c9155d3ef087962fecab090e487e33c2995"
+  "task_spec_sha256": "18a8d44528be0ba78bbb97e845aaf78bf0cbd903e86b88f1ea00ffacd930c2b1"
 }

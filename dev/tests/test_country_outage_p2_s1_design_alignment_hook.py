@@ -215,6 +215,23 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self._mutate_json(relative, mutate)
         self._assert_error("model_execution_order_drift", stage="S1D-1")
 
+    def test_s1d1_rejects_prior_receipt_bound_to_stale_documents(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        s1d0 = HOOK.run_alignment(self.root, "S1D-0")
+        HOOK.write_receipt(
+            self.root,
+            HOOK.RECEIPT_ROOT / "S1D-0.json",
+            s1d0,
+        )
+        task_spec = self.root / HOOK.TASK_SPEC
+        task_spec.write_text(
+            task_spec.read_text(encoding="utf-8") + "\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.run_alignment(self.root, "S1D-1")
+        self.assertEqual("prior_receipt_stale", captured.exception.code)
+
     def test_receipt_is_written_atomically_with_self_digest(self) -> None:
         receipt = HOOK.run_alignment(self.root, "S1D-0")
         output = HOOK.RECEIPT_ROOT / "S1D-0.json"

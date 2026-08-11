@@ -22,7 +22,9 @@
       "复合路径结构被拆为位置、邻接、有序关系、集合投影和独立计数",
       "复合集合关系被拆为intersection、difference、coverage和Jaccard",
       "VP visibility、origin、path一致性分别建模",
-      "复合Validator和导出被拆分"
+      "复合Validator和导出被拆分",
+      "Tool与Operator独立复审发现的首越阈、最后异常与证据一致性缺口被补齐",
+      "历史RouteState读取、窗口级路径关联与expected direction事实人口被显式收紧"
     ]
   },
   "decisions": [
@@ -70,12 +72,12 @@
     }
   ],
   "atomic_units": [
-    {"unit_id":"TOOL-07","owner_kind":"read_tool","atomic_capability_id":"read.as_prefix_members","single_responsibility":"读取指定ASN固定cohort前缀成员","source_population":"as_fixed_cohort_prefix_members","output_semantic":"as_prefix_membership","disposition":"new_p2_v1"},
+    {"unit_id":"TOOL-07","owner_kind":"read_tool","atomic_capability_id":"read.fixed_cohort_members","single_responsibility":"读取固定cohort member记录","source_population":"fixed_cohort_member_rows","output_semantic":"fixed_cohort_member","disposition":"new_p2_v1"},
     {"unit_id":"TOOL-08","owner_kind":"read_tool","atomic_capability_id":"read.prefix_states","single_responsibility":"读取prefix state记录","source_population":"prefix_state_rows","output_semantic":"prefix_state","disposition":"new_p2_v1"},
     {"unit_id":"TOOL-09","owner_kind":"read_tool","atomic_capability_id":"read.as_states","single_responsibility":"读取ASN state记录","source_population":"asn_state_rows","output_semantic":"asn_state","disposition":"new_p2_v1"},
     {"unit_id":"TOOL-10","owner_kind":"read_tool","atomic_capability_id":"read.new_prefix_states","single_responsibility":"读取new-prefix state记录","source_population":"new_prefix_state_rows","output_semantic":"new_prefix_state","disposition":"new_p2_v1"},
-    {"unit_id":"TOOL-11","owner_kind":"read_tool","atomic_capability_id":"read.route_states_at_time","single_responsibility":"读取精确时点RouteState记录","source_population":"route_state_rows_at_time","output_semantic":"route_state_at_time","disposition":"new_p2_v1"},
-    {"unit_id":"TOOL-12","owner_kind":"read_tool","atomic_capability_id":"read.path_evidence","single_responsibility":"读取规范化path evidence记录","source_population":"canonical_path_evidence_rows","output_semantic":"path_evidence","disposition":"new_p2_v1"},
+    {"unit_id":"TOOL-11","owner_kind":"read_tool","atomic_capability_id":"read.materialized_route_states_at_time","single_responsibility":"读取精确时点预物化RouteState记录","source_population":"materialized_route_state_rows_at_exact_time","output_semantic":"route_state_at_time","disposition":"new_p2_v1_source_view_required"},
+    {"unit_id":"TOOL-12","owner_kind":"read_tool","atomic_capability_id":"read.window_path_associations","single_responsibility":"读取publication窗口级path-association evidence记录","source_population":"window_path_association_evidence_rows","output_semantic":"window_path_association_evidence","disposition":"new_p2_v1"},
     {"unit_id":"TOOL-13","owner_kind":"read_tool","atomic_capability_id":"read.route_events","single_responsibility":"读取有序RouteEvent记录","source_population":"route_event_rows","output_semantic":"route_event","disposition":"deferred_p2_1"},
 
     {"unit_id":"OP-05","owner_kind":"deterministic_operator","atomic_capability_id":"rank.as_severity","single_responsibility":"按冻结三键排序ASN","source_population":"complete_as_summary_set","output_semantic":"as_severity_ranking","disposition":"new_p2_v1"},
@@ -89,10 +91,10 @@
     {"unit_id":"OP-13","owner_kind":"deterministic_operator","atomic_capability_id":"rank.as_longest_duration","single_responsibility":"按最长持续时间排名ASN","source_population":"complete_as_longest_interval_set","output_semantic":"as_longest_duration_ranking","disposition":"new_p2_v1"},
     {"unit_id":"OP-14","owner_kind":"deterministic_operator","atomic_capability_id":"rank.as_peak_complete_ratio","single_responsibility":"按complete峰值比例排名ASN","source_population":"complete_as_peak_ratio_set","output_semantic":"as_peak_complete_ratio_ranking","disposition":"new_p2_v1"},
     {"unit_id":"OP-15","owner_kind":"deterministic_operator","atomic_capability_id":"path.locate_asn_positions","single_responsibility":"定位ASN路径位置集合","source_population":"one_canonical_as_path","output_semantic":"asn_path_positions","disposition":"new_p2_v1"},
-    {"unit_id":"OP-16","owner_kind":"deterministic_operator","atomic_capability_id":"path.direct_neighbors","single_responsibility":"投影ASN直接邻接","source_population":"one_canonical_as_path","output_semantic":"direct_path_neighbors","disposition":"new_p2_v1"},
-    {"unit_id":"OP-17","owner_kind":"deterministic_operator","atomic_capability_id":"path.ordered_asn_relation","single_responsibility":"判断双ASN路径先后","source_population":"one_canonical_as_path","output_semantic":"ordered_asn_path_relation","disposition":"new_p2_v1"},
+    {"unit_id":"OP-16","owner_kind":"deterministic_operator","atomic_capability_id":"path.direct_neighbors","single_responsibility":"从已验证位置回执投影ASN直接邻接","source_population":"one_structured_path_and_op15_position_receipt","output_semantic":"direct_path_neighbors","disposition":"new_p2_v1"},
+    {"unit_id":"OP-17","owner_kind":"deterministic_operator","atomic_capability_id":"path.ordered_asn_relation","single_responsibility":"从同路径双位置回执判断双ASN先后","source_population":"two_op15_position_receipts_with_same_path_digest","output_semantic":"ordered_asn_path_relation","disposition":"new_p2_v1"},
     {"unit_id":"OP-18","owner_kind":"deterministic_operator","atomic_capability_id":"project.path_prefix_set","single_responsibility":"投影唯一前缀集合","source_population":"complete_path_evidence_result_set","output_semantic":"path_prefix_set","disposition":"new_p2_v1"},
-    {"unit_id":"OP-19","owner_kind":"deterministic_operator","atomic_capability_id":"project.downstream_origin_set","single_responsibility":"投影观测下游origin集合","source_population":"complete_path_evidence_result_set","output_semantic":"observed_downstream_origin_set","disposition":"new_p2_v1"},
+    {"unit_id":"OP-19","owner_kind":"deterministic_operator","atomic_capability_id":"project.downstream_origin_set","single_responsibility":"从已验证anchor-before-known-origin人口投影origin集合","source_population":"complete_anchor_before_known_origin_path_association_set","output_semantic":"observed_downstream_origin_set","disposition":"new_p2_v1"},
     {"unit_id":"OP-20","owner_kind":"deterministic_operator","atomic_capability_id":"project.canonical_path_set","single_responsibility":"投影唯一规范路径集合","source_population":"complete_path_evidence_result_set","output_semantic":"canonical_path_set","disposition":"new_p2_v1"},
     {"unit_id":"OP-21","owner_kind":"deterministic_operator","atomic_capability_id":"project.peer_direction_set","single_responsibility":"投影唯一观察方向集合","source_population":"complete_path_evidence_result_set","output_semantic":"peer_direction_set","disposition":"new_p2_v1"},
     {"unit_id":"OP-22","owner_kind":"deterministic_operator","atomic_capability_id":"count.unique_paths","single_responsibility":"计算唯一路径数","source_population":"complete_canonical_path_set","output_semantic":"unique_path_count","disposition":"new_p2_v1"},
@@ -102,12 +104,15 @@
     {"unit_id":"OP-26","owner_kind":"deterministic_operator","atomic_capability_id":"set.directional_difference","single_responsibility":"计算有向集合差","source_population":"two_complete_same_identity_sets","output_semantic":"set_difference","disposition":"new_p2_v1"},
     {"unit_id":"OP-27","owner_kind":"deterministic_operator","atomic_capability_id":"set.directional_coverage","single_responsibility":"计算有向集合覆盖率","source_population":"two_complete_same_identity_sets","output_semantic":"set_coverage_ratio","disposition":"new_p2_v1"},
     {"unit_id":"OP-28","owner_kind":"deterministic_operator","atomic_capability_id":"set.jaccard","single_responsibility":"计算集合Jaccard","source_population":"two_complete_same_identity_sets","output_semantic":"set_jaccard","disposition":"new_p2_v1"},
-    {"unit_id":"OP-29","owner_kind":"deterministic_operator","atomic_capability_id":"time.evidence_relation","single_responsibility":"分类两个时间证据关系","source_population":"two_comparable_timed_facts","output_semantic":"temporal_evidence_relation","disposition":"new_p2_v1"},
+    {"unit_id":"OP-29","owner_kind":"deterministic_operator","atomic_capability_id":"time.evidence_relation","single_responsibility":"按冻结可比性Profile分类两个时间证据关系","source_population":"two_typed_timed_facts_and_comparability_profile","output_semantic":"temporal_evidence_relation","disposition":"new_p2_v1"},
     {"unit_id":"OP-30","owner_kind":"deterministic_operator","atomic_capability_id":"vp.visibility_consistency","single_responsibility":"分类VP可见性一致性","source_population":"same_slot_vp_visibility_rows","output_semantic":"vp_visibility_consistency","disposition":"new_p2_v1"},
     {"unit_id":"OP-31","owner_kind":"deterministic_operator","atomic_capability_id":"vp.origin_consistency","single_responsibility":"分类VP origin一致性","source_population":"same_slot_vp_origin_rows","output_semantic":"vp_origin_consistency","disposition":"new_p2_v1"},
     {"unit_id":"OP-32","owner_kind":"deterministic_operator","atomic_capability_id":"vp.path_consistency","single_responsibility":"分类VP path一致性","source_population":"same_slot_vp_path_rows","output_semantic":"vp_path_consistency","disposition":"new_p2_v1"},
     {"unit_id":"OP-33","owner_kind":"deterministic_operator","atomic_capability_id":"join.new_prefix_route_state","single_responsibility":"按prefix/time连接new-prefix与RouteState","source_population":"new_prefix_state_and_route_state","output_semantic":"new_prefix_route_state_binding","disposition":"new_p2_v1"},
     {"unit_id":"OP-34","owner_kind":"deterministic_operator","atomic_capability_id":"classify.route_change","single_responsibility":"分类单次路由变化","source_population":"adjacent_route_event_state_pair","output_semantic":"route_change_classification","disposition":"deferred_p2_1"},
+    {"unit_id":"OP-35","owner_kind":"deterministic_operator","atomic_capability_id":"select.last_state_occurrence","single_responsibility":"选择目标状态最后一次出现","source_population":"one_complete_typed_state_series","output_semantic":"last_state_occurrence","disposition":"new_p2_v1"},
+    {"unit_id":"OP-36","owner_kind":"deterministic_operator","atomic_capability_id":"detect.first_threshold_crossing","single_responsibility":"检测冻结阈值的首次穿越并标记左删失","source_population":"one_complete_typed_state_series_and_threshold_profile","output_semantic":"first_threshold_crossing","disposition":"new_p2_v1"},
+    {"unit_id":"OP-37","owner_kind":"deterministic_operator","atomic_capability_id":"classify.evidence_consistency","single_responsibility":"依据已计算时间关系与可比性Profile分类证据一致性","source_population":"two_typed_facts_temporal_receipt_and_consistency_profile","output_semantic":"evidence_consistency_class","disposition":"new_p2_v1"},
 
     {"unit_id":"PLAN-CAP-01","owner_kind":"host_plan_capability","atomic_capability_id":"plan.bind_output_to_argument","single_responsibility":"绑定一个已验证上游值为下游Tool参数","source_population":"validated_plan_output","output_semantic":"tool_argument_binding","disposition":"new_p2_v1"},
     {"unit_id":"GATE-01","owner_kind":"host_validator","atomic_capability_id":"validate.identity","single_responsibility":"验证调查身份一致性","source_population":"candidate_investigation_revision","output_semantic":"identity_gate_receipt","disposition":"new_p2_v1"},
