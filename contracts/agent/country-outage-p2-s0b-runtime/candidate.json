@@ -1,0 +1,62 @@
+{
+  "activation_scope": "runtime_candidate_shadow_only",
+  "artifact_digests": {
+    "registry-snapshot.json": "sha256:863697519b2b9149d822b41b0f0de1101d7a37da9efd7f427abb96cbc2bd3193",
+    "runtime-contract.json": "sha256:5f4b540461deff6cb0df7c46feb973005eb27dd46b76dff37e3c37b75683e5e3",
+    "runtime-plan-admission.schema.json": "sha256:4696a71f7f4f27819291844fd4a1eaf74d69cb7c1aecc63763e26e1f5bf4de34",
+    "shadow-oracle.json": "sha256:ea2bf711f5e28e87c3bd6e88fce34566f9726052bf513410fa4ba715f92c725b"
+  },
+  "base_candidate_id": "p2-s0a-440c91a56e984957",
+  "base_registry_snapshot_id": "registry-snapshot-sha256:d1111847888e4ec343de974e943cdea467207c63c5091814dcab79512d365fff",
+  "candidate_id": "p2-s0b-61f83f6f0e218c46",
+  "created_at": "2026-08-11T08:00:00Z",
+  "migration_summary": {
+    "capability_count": 18,
+    "execution_unit_count": 10,
+    "operator_count": 4,
+    "runtime_behavior_semantics_changed": false,
+    "tool_count": 6
+  },
+  "prod32_switched": false,
+  "production_deployed": false,
+  "registry_revision": 2,
+  "registry_snapshot_id": "registry-snapshot-sha256:68c594e6b39ba9e7959519faa091a55901b35898fcd3f2cd23358e9e37c3b729",
+  "runtime_integration": "implemented_not_deployed",
+  "schema_version": "country_outage_p2_s0b_candidate_v1",
+  "shadow_status": "pending_same_candidate_evaluation",
+  "source_identity": {
+    "base_candidate_id": "p2-s0a-440c91a56e984957",
+    "base_registry_snapshot_id": "registry-snapshot-sha256:d1111847888e4ec343de974e943cdea467207c63c5091814dcab79512d365fff",
+    "runtime_material": [
+      {
+        "path": "contracts/agent/country-outage-p2-s0b-runtime/runtime-contract.json",
+        "sha256": "sha256:5f4b540461deff6cb0df7c46feb973005eb27dd46b76dff37e3c37b75683e5e3"
+      },
+      {
+        "path": "contracts/agent/country-outage-p2-s0b-runtime/runtime-plan-admission.schema.json",
+        "sha256": "sha256:4696a71f7f4f27819291844fd4a1eaf74d69cb7c1aecc63763e26e1f5bf4de34"
+      },
+      {
+        "path": "contracts/agent/country-outage-p2-s0b-runtime/shadow-oracle.json",
+        "sha256": "sha256:ea2bf711f5e28e87c3bd6e88fce34566f9726052bf513410fa4ba715f92c725b"
+      },
+      {
+        "path": "agent-sidecar/src/chat/p2-registry-runtime.ts",
+        "sha256": "sha256:5dce91e5b3496fb3f784bb26223394172583cb751159aac6be0fd680691a0735"
+      },
+      {
+        "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
+        "sha256": "sha256:e67f688ace1c270d13b126188e4b0d720c54915df4d97280874ae9efadc25483"
+      },
+      {
+        "path": "agent-sidecar/src/chat/page-capability-executor.ts",
+        "sha256": "sha256:84c80e4db5429fde2bf83cc11c141f43467088b598de635469b7a0b204e6b931"
+      },
+      {
+        "path": "agent-sidecar/src/chat/index.ts",
+        "sha256": "sha256:57e93d7620dead722dfbb9bd78ee0764ff4fd0bc0327875e50cbe8e2ffd9ca4d"
+      }
+    ]
+  },
+  "source_identity_digest": "sha256:61f83f6f0e218c465ad809909601c2ec0abf5fcd58770e4ca19a5b8c805cc69f"
+}

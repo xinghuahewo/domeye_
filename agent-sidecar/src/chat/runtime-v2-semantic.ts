@@ -13,6 +13,11 @@ import type {
 import type { P1PageCapabilityReadProvider } from './general-read-model-provider.js'
 import { P1PageCapabilityExecutor } from './page-capability-executor.js'
 import {
+  P2GovernedRegistryRuntime,
+  type P2RegistryAdmissionReceipt,
+  type P2RegistryNodeBinding,
+} from './p2-registry-runtime.js'
+import {
   P1RuntimeV2SingleTurnError,
   authorizeP1RuntimeV2Country,
   readP1RuntimeV2PermissionCandidate,
@@ -74,6 +79,7 @@ export interface P1GroundingNode {
   input_sources: Record<string, string>
   depends_on: string[]
   expected_evidence_sources: string[]
+  registry_binding?: P2RegistryNodeBinding
 }
 
 export interface P1GroundingPlan {
@@ -152,8 +158,16 @@ export interface P1RuntimeV2SemanticAnswer {
       output: unknown | null
       evidence_refs: string[]
       error_code: string | null
+      registry_snapshot_id: string | null
+      registry_revision: number | null
+      execution_unit_version: string | null
+      unit_contract_digest: string | null
+      unit_implementation_digest: string | null
+      unit_semantic_digest: string | null
+      registry_admission_status: 'admitted' | 'missing'
     }>
     authorization: P1RuntimeV2SingleTurnAnswer['execution_trace']['authorization']
+    registry_admission: P2RegistryAdmissionReceipt
     planner_outcome: 'accepted' | 'safe_fallback'
     model_generated_fact_count: 0
     state_commit: 'none'
@@ -170,6 +184,9 @@ export interface P1RuntimeV2SemanticAnswer {
     contract_revision: 'p1-page-coverage-s2-20260810-r1'
     language_layer: string
     collector: 'rrc25'
+    registry_candidate_id: string
+    registry_snapshot_id: string
+    registry_revision: number
   }
   completed_at: string
 }
@@ -2106,6 +2123,7 @@ export class P1RuntimeV2SemanticTurnService {
     private readonly grounder = new P1RuntimeV2Grounder(),
     private readonly now: () => Date = () => new Date(),
     executor?: P1PageCapabilityExecutor,
+    private readonly registry = new P2GovernedRegistryRuntime(),
   ) {
     this.#executor = executor ?? new P1PageCapabilityExecutor(provider)
   }
@@ -2193,11 +2211,17 @@ export class P1RuntimeV2SemanticTurnService {
       )
       executionEventReference = switchReference
     }
-    const semanticPlan = this.grounder.ground(
+    const groundedPlan = this.grounder.ground(
       userGoalPlan,
       executionBinding,
       executionEventReference,
     )
+    const admitted = this.registry.admitPlan(
+      groundedPlan,
+      userGoalPlan,
+      executionBinding,
+    )
+    const semanticPlan = admitted.plan
     throwIfP1RuntimeV2Cancelled(signal)
     const results: P1SemanticGoalResult[] = []
     const evidence = new Map<string, P1RuntimeV2Evidence>()
@@ -2272,6 +2296,7 @@ export class P1RuntimeV2SemanticTurnService {
         binding_preflight: 'passed',
         nodes: executionNodes,
         authorization,
+        registry_admission: admitted.receipt,
         planner_outcome: plannerOutcome,
         model_generated_fact_count: 0,
         state_commit: 'none',
@@ -2288,6 +2313,9 @@ export class P1RuntimeV2SemanticTurnService {
         contract_revision: 'p1-page-coverage-s2-20260810-r1',
         language_layer: userGoalPlan.planner_identity,
         collector: 'rrc25',
+        registry_candidate_id: admitted.receipt.candidate_id,
+        registry_snapshot_id: admitted.receipt.registry_snapshot_id,
+        registry_revision: admitted.receipt.registry_revision,
       },
       completed_at: this.now().toISOString(),
     }

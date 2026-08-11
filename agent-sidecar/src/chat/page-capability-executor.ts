@@ -41,6 +41,13 @@ export interface P1PageNodeExecutionReceipt {
   output: unknown | null
   evidence_refs: string[]
   error_code: string | null
+  registry_snapshot_id: string | null
+  registry_revision: number | null
+  execution_unit_version: string | null
+  unit_contract_digest: string | null
+  unit_implementation_digest: string | null
+  unit_semantic_digest: string | null
+  registry_admission_status: 'admitted' | 'missing'
 }
 
 export interface P1PageGoalExecution {
@@ -1269,6 +1276,22 @@ export class P1PageCapabilityExecutor {
     try {
       for (const node of nodes) {
         signal?.throwIfAborted()
+        const registryBinding = node.registry_binding
+        if (
+          !registryBinding
+          || registryBinding.admission_status !== 'admitted'
+          || registryBinding.execution_unit_id !== node.execution_unit
+          || node.capability_ids.some((capabilityId) =>
+            !registryBinding.capability_bindings.some((binding) =>
+              binding.capability_id === capabilityId
+            )
+          )
+        ) {
+          throw new P1ReadModelError(
+            'registry_admission_missing',
+            `执行节点 ${node.node_id} 缺少匹配的 Registry 准入绑定`,
+          )
+        }
         let output: unknown
         let status: P1PageNodeExecutionReceipt['status'] = 'passed'
         if (node.execution_unit === 'TOOL-01') {
@@ -1379,6 +1402,13 @@ export class P1PageCapabilityExecutor {
           output,
           evidence_refs: [],
           error_code: null,
+          registry_snapshot_id: registryBinding.registry_snapshot_id,
+          registry_revision: registryBinding.registry_revision,
+          execution_unit_version: registryBinding.execution_unit_version,
+          unit_contract_digest: registryBinding.unit_contract_digest,
+          unit_implementation_digest: registryBinding.unit_implementation_digest,
+          unit_semantic_digest: registryBinding.unit_semantic_digest,
+          registry_admission_status: 'admitted',
         })
       }
       const rendered = renderGoal(goal, decision, binding, outputs)
@@ -1466,6 +1496,20 @@ export class P1PageCapabilityExecutor {
           output: null,
           evidence_refs: [],
           error_code: code,
+          registry_snapshot_id:
+            failedNode.registry_binding?.registry_snapshot_id ?? null,
+          registry_revision:
+            failedNode.registry_binding?.registry_revision ?? null,
+          execution_unit_version:
+            failedNode.registry_binding?.execution_unit_version ?? null,
+          unit_contract_digest:
+            failedNode.registry_binding?.unit_contract_digest ?? null,
+          unit_implementation_digest:
+            failedNode.registry_binding?.unit_implementation_digest ?? null,
+          unit_semantic_digest:
+            failedNode.registry_binding?.unit_semantic_digest ?? null,
+          registry_admission_status: failedNode.registry_binding
+            ? 'admitted' : 'missing',
         })
       }
       return {
