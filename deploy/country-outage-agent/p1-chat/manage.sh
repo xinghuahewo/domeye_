@@ -196,7 +196,6 @@ prepare_release() {
     }
     install -d -m 0700 "${candidate}/agent-sidecar" "${candidate}/certification" \
         "${candidate}/source-identity" "${candidate}/deployment"
-    cp -R "${extracted}/agent-sidecar/." "${candidate}/agent-sidecar/"
     cp -R "${extracted}/evaluation/country-outage/p1-prod-release/attempt-004/." \
         "${candidate}/certification/"
     cp "${SCRIPT_DIR}/verify-release.mjs" "${SCRIPT_DIR}/probe.mjs" \
@@ -210,17 +209,19 @@ prepare_release() {
         cp "${extracted}/${relative_path}" "${candidate}/source-identity/${relative_path}"
     done < <(jq -er '.source_identity.files[].path' "${certification}")
     (
-        cd -- "${candidate}/agent-sidecar"
+        # 全量 Sidecar 测试会读取仓库根目录下的 contracts、dev 与评测制品，
+        # 因此必须在完整源码归档中执行；通过并裁剪生产依赖后再复制运行制品。
+        cd -- "${extracted}/agent-sidecar"
         export PATH="${NODE_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         "${NPM}" ci --ignore-scripts
         "${NODE}" scripts/apply_pi_response_model_patch.mjs --apply
         "${NPM}" test
         "${NPM}" audit --omit=dev --audit-level=high
         "${NPM}" prune --omit=dev --ignore-scripts
-        cp "${extracted}/agent-sidecar/package-lock.json" package-lock.json
         "${NODE}" scripts/apply_pi_response_model_patch.mjs --apply
         "${NODE}" scripts/apply_pi_response_model_patch.mjs --verify
     )
+    cp -R "${extracted}/agent-sidecar/." "${candidate}/agent-sidecar/"
     while IFS= read -r bin_directory; do find "${bin_directory}" -depth -delete; done < <(
         find "${candidate}/agent-sidecar/node_modules" -type d -name .bin -print
     )
