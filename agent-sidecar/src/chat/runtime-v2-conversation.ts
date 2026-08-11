@@ -680,7 +680,6 @@ export class P1RuntimeV2ConversationService {
       timedOut = true
       controller.abort()
     }, this.#turnTimeoutMs)
-    timeout.unref()
     const abort = (): void => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) controller.abort()
