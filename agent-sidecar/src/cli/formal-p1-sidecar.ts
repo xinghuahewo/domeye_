@@ -9,6 +9,7 @@ import {
   P1ModelUserGoalPlanner,
   P1PiSemanticModel,
   P1RuntimeV2ConversationService,
+  P1TrendAwareGrounder,
   type P1PiSemanticModelAuditRecord,
 } from '../chat/index.js'
 import {
@@ -75,6 +76,13 @@ export interface FormalP1Sidecar {
     businessCostLimit: null
     reportCapability: 'disabled'
     externalEvidence: 'disabled'
+    eventWindowTrendOperator: {
+      executionUnit: 'OP-04'
+      capabilityId: 'CAP-TREND-001'
+      operatorId: 'event-window-trend'
+      operatorVersion: '1.2.0'
+      modelDependency: 'none'
+    }
   }
 }
 
@@ -186,6 +194,7 @@ export async function createFormalP1Sidecar(
       config.apiTimeoutMs,
     ),
     planner: new P1ModelUserGoalPlanner(semanticModel),
+    grounder: new P1TrendAwareGrounder(),
     ttlMs: 30 * 60 * 1000,
     turnTimeoutMs: config.turnTimeoutMs,
   })
@@ -208,6 +217,13 @@ export async function createFormalP1Sidecar(
       usage_and_estimated_cost_audit: 'required_per_provider_call',
       report_capability: 'disabled',
       external_evidence: 'disabled',
+      event_window_trend_operator: {
+        execution_unit: 'OP-04',
+        capability_id: 'CAP-TREND-001',
+        operator_id: 'event-window-trend',
+        operator_version: '1.2.0',
+        model_dependency: 'none',
+      },
     }),
     authenticate: createCountryOutageInternalAuthenticator(
       config.sharedToken,
@@ -243,6 +259,13 @@ export async function createFormalP1Sidecar(
       businessCostLimit: null,
       reportCapability: 'disabled',
       externalEvidence: 'disabled',
+      eventWindowTrendOperator: {
+        executionUnit: 'OP-04',
+        capabilityId: 'CAP-TREND-001',
+        operatorId: 'event-window-trend',
+        operatorVersion: '1.2.0',
+        modelDependency: 'none',
+      },
     },
   }
 }

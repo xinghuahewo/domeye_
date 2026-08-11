@@ -108,6 +108,13 @@ test('正式 P1 Sidecar 只接线聊天并冻结费用审计和报告关闭边�
     assert.equal(sidecar.runtime.maximumProviderRequestCountPerTurn, 1)
     assert.equal(sidecar.runtime.businessCostLimit, null)
     assert.equal(sidecar.runtime.reportCapability, 'disabled')
+    assert.deepEqual(sidecar.runtime.eventWindowTrendOperator, {
+      executionUnit: 'OP-04',
+      capabilityId: 'CAP-TREND-001',
+      operatorId: 'event-window-trend',
+      operatorVersion: '1.2.0',
+      modelDependency: 'none',
+    })
     assert.match(sidecar.modelIdentity, /p1-user-goal-plan-v1$/)
     assert.equal(server.requestTimeout, 125_000)
   } finally {

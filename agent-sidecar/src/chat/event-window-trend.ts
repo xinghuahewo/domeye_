@@ -1,3 +1,8 @@
+export const P1_EVENT_WINDOW_TREND_EXECUTION_UNIT = 'OP-04' as const
+export const P1_EVENT_WINDOW_TREND_CAPABILITY = 'CAP-TREND-001' as const
+export const P1_EVENT_WINDOW_TREND_PROFILE_REGISTRY =
+  'country-outage-p1-trend-profile-v1' as const
+
 export type TrendSeriesSemantics = 'stock' | 'cumulative' | 'current_supplement'
 
 export type TrendSemanticRole =

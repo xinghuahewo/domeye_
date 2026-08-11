@@ -12,6 +12,20 @@ import type {
   P1UserGoal,
 } from './runtime-v2-semantic.js'
 import type { P1RuntimeV2Evidence } from './runtime-v2-single-turn.js'
+import {
+  analyzeCompactTrendBundle,
+  analyzeEventWindowTrend,
+  getRegisteredTrendProfile,
+  P1_EVENT_WINDOW_TREND_CAPABILITY,
+  P1_EVENT_WINDOW_TREND_EXECUTION_UNIT,
+  P1_EVENT_WINDOW_TREND_PROFILE_REGISTRY,
+  REGISTERED_TREND_PROFILES,
+  type CompactTrendBundleOutput,
+  type EventWindowTrendCompactOutput,
+  type EventWindowTrendInput,
+  type RegisteredTrendMetric,
+  type TrendFactLineage,
+} from './event-window-trend.js'
 
 type JsonObject = Record<string, any>
 
@@ -142,6 +156,38 @@ interface ExtremaResult {
   source_evidence_refs: string[]
 }
 
+interface IntegratedTrendMetricResult {
+  metric: RegisteredTrendMetric
+  unit: string
+  compact_chat_output: EventWindowTrendCompactOutput
+  published_fact_lineage: TrendFactLineage[]
+  audit_result_sha256: string
+  audit_counts: {
+    phase_count: number
+    display_phase_count: number
+    turning_point_count: number
+    isolated_spike_count: number
+    fact_lineage_count: number
+  }
+}
+
+interface IntegratedTrendOperatorResult {
+  schema_version: 'country_outage_p1_event_window_trend_execution_v1'
+  operator: {
+    execution_unit: typeof P1_EVENT_WINDOW_TREND_EXECUTION_UNIT
+    capability_id: typeof P1_EVENT_WINDOW_TREND_CAPABILITY
+    operator_id: 'event-window-trend'
+    operator_version: '1.2.0'
+    deterministic: true
+    model_dependency: 'none'
+  }
+  source_identity: ReturnType<typeof operatorSourceIdentity>
+  profile_registry_version: typeof P1_EVENT_WINDOW_TREND_PROFILE_REGISTRY
+  metrics: IntegratedTrendMetricResult[]
+  compact_bundle: CompactTrendBundleOutput | null
+  source_evidence_refs: string[]
+}
+
 function operatorSourceIdentity(binding: P1ConversationBinding) {
   return {
     event_type: binding.event_type,
@@ -155,6 +201,176 @@ function operatorSourceIdentity(binding: P1ConversationBinding) {
     data_through: binding.data_through,
     is_final_in_data_range: binding.is_final_in_data_range,
     lifecycle_state: binding.lifecycle_state,
+  }
+}
+
+function eventWindowTrendSourceIdentity(binding: P1ConversationBinding) {
+  return {
+    source_schema_version: 'country_outage_general_series_v1',
+    event_type: 'country_outage' as const,
+    incident_id: binding.incident_id,
+    publication_id: binding.publication_id,
+    publication_state: 'published' as const,
+    revision: binding.revision,
+    collector_id: 'rrc25' as const,
+    cohort_id: binding.cohort_id,
+    window_start_utc: binding.window_start_utc,
+    window_end_utc: binding.window_end_utc,
+    data_through: binding.data_through,
+    is_final_in_data_range: binding.is_final_in_data_range,
+    lifecycle_state: binding.lifecycle_state,
+    observation_state: binding.observation_state,
+    quality_state: binding.quality_state,
+    missing_slot_count: binding.missing_slot_count,
+  }
+}
+
+function trendInput(
+  series: JsonObject,
+  metric: RegisteredTrendMetric,
+  binding: P1ConversationBinding,
+): EventWindowTrendInput {
+  const profile = getRegisteredTrendProfile(metric)
+  return {
+    source_identity: eventWindowTrendSourceIdentity(binding),
+    metric,
+    unit: profile.unit,
+    series_semantics: profile.series_semantics,
+    timestamps: asArray(series.timestamps).map(String),
+    values: asArray(asObject(series.tracks)[metric]) as Array<number | null>,
+    source_evidence_refs: {
+      identity: [
+        'resolution:/event_type',
+        'resolution:/incident_id',
+        'resolution:/publication_id',
+        'resolution:/revision',
+        'resolution:/collector_id',
+        'resolution:/window_start_utc',
+        'resolution:/window_end_utc',
+        'resolution:/data_through',
+      ],
+      timestamps: 'series:/timestamps',
+      values: `series:/tracks/${metric}`,
+      metric_definition: `series:/track_definitions/${metric}`,
+      trend_profile:
+        `derived:/operators/event_window_trend/profiles/${metric}`,
+    },
+    trend_profile: profile,
+  }
+}
+
+function executeEventWindowTrend(
+  series: JsonObject,
+  metrics: RegisteredTrendMetric[],
+  binding: P1ConversationBinding,
+): IntegratedTrendOperatorResult {
+  const inputs = metrics.map((metric) => trendInput(series, metric, binding))
+  const fullResults = inputs.map(analyzeEventWindowTrend)
+  const metricResults = fullResults.map((item): IntegratedTrendMetricResult => {
+    const publishedFactIds = new Set(item.compact_chat_output.fact_ids)
+    return {
+      metric: item.metric,
+      unit: item.unit,
+      compact_chat_output: item.compact_chat_output,
+      published_fact_lineage: item.fact_lineage.filter((lineage) =>
+        publishedFactIds.has(lineage.fact_id)
+      ),
+      audit_result_sha256: stableSha256(item),
+      audit_counts: {
+        phase_count: item.phase_sequence.length,
+        display_phase_count: item.display_phase_sequence.length,
+        turning_point_count: item.turning_points.length,
+        isolated_spike_count: item.isolated_spikes.length,
+        fact_lineage_count: item.fact_lineage.length,
+      },
+    }
+  })
+  const fixedMetrics = new Set(metrics)
+  const compactBundle = fixedMetrics.size === 2
+    && fixedMetrics.has('fixed_visible_ipv4_address_count')
+    && fixedMetrics.has('fixed_visible_ipv6_slash48_count')
+    ? analyzeCompactTrendBundle('fixed-ip-address-change-v1', inputs)
+    : null
+  return {
+    schema_version: 'country_outage_p1_event_window_trend_execution_v1',
+    operator: {
+      execution_unit: P1_EVENT_WINDOW_TREND_EXECUTION_UNIT,
+      capability_id: P1_EVENT_WINDOW_TREND_CAPABILITY,
+      operator_id: 'event-window-trend',
+      operator_version: '1.2.0',
+      deterministic: true,
+      model_dependency: 'none',
+    },
+    source_identity: operatorSourceIdentity(binding),
+    profile_registry_version: P1_EVENT_WINDOW_TREND_PROFILE_REGISTRY,
+    metrics: metricResults,
+    compact_bundle: compactBundle,
+    source_evidence_refs: [...new Set(metricResults.flatMap((item) =>
+      item.compact_chat_output.evidence_refs
+    ))],
+  }
+}
+
+function evidenceForTrendRef(
+  ref: string,
+  series: JsonObject,
+  binding: P1ConversationBinding,
+  unit: string,
+): P1RuntimeV2Evidence | null {
+  if (ref.startsWith('series:')) {
+    const path = ref.slice('series:'.length)
+    const timestampMatch = /^\/timestamps\/(\d+)$/.exec(path)
+    const valueMatch = /^\/tracks\/[^/]+\/(\d+)$/.exec(path)
+    const indexText = timestampMatch?.[1] ?? valueMatch?.[1]
+    const observedAtUtc = indexText === undefined
+      ? null
+      : String(asArray(series.timestamps)[Number(indexText)] ?? '') || null
+    const evidenceUnit = path.startsWith('/timestamps')
+      ? 'utc_timestamp'
+      : path.startsWith('/track_definitions')
+        ? 'metadata'
+        : unit
+    return evidence('series', path, series, binding, evidenceUnit, observedAtUtc)
+  }
+  if (ref.startsWith('derived:/operators/event_window_trend/profiles/')) {
+    const metric = ref.slice(
+      'derived:/operators/event_window_trend/profiles/'.length,
+    ) as RegisteredTrendMetric
+    return derivedEvidence(
+      `/operators/event_window_trend/profiles/${metric}`,
+      stableSha256(getRegisteredTrendProfile(metric)),
+      binding,
+      'sha256',
+    )
+  }
+  return null
+}
+
+function renderIntegratedTrend(
+  output: IntegratedTrendOperatorResult,
+  series: JsonObject,
+  binding: P1ConversationBinding,
+): { text: string, evidence: P1RuntimeV2Evidence[] } {
+  const text = output.compact_bundle?.body_zh
+    ?? output.metrics.map((item) => item.compact_chat_output.body_zh).join('\n')
+  const evidenceById = new Map<string, P1RuntimeV2Evidence>()
+  for (const item of output.metrics) {
+    for (const ref of item.compact_chat_output.evidence_refs) {
+      const value = evidenceForTrendRef(ref, series, binding, item.unit)
+      if (value) evidenceById.set(value.evidence_ref, value)
+    }
+    const derived = evidence(
+      'derived',
+      `/operators/event_window_trend/${item.metric}`,
+      { operators: { event_window_trend: { [item.metric]: item } } },
+      binding,
+      'event_window_trend_result',
+    )
+    evidenceById.set(derived.evidence_ref, derived)
+  }
+  return {
+    text: `${text}\n以上仅描述当前 publication 的 RRC25 事件窗口数值趋势，不用于判断恢复、原因或真实用户影响。`,
+    evidence: [...evidenceById.values()],
   }
 }
 
@@ -367,6 +583,23 @@ function renderAddress(
   const lines: string[] = []
   let unavailable = false
   const analysisMode = String(goal.entities.analysis_mode ?? 'change_summary')
+  if (analysisMode === 'event_window_trend') {
+    const trendOutput = [...outputs.entries()].find(([key]) =>
+      key.endsWith(`:${P1_EVENT_WINDOW_TREND_EXECUTION_UNIT}`)
+    )?.[1] as IntegratedTrendOperatorResult | undefined
+    if (trendOutput === undefined) {
+      throw new P1ReadModelError(
+        'trend_operator_result_missing',
+        '事件窗口趋势目标缺少 OP-04 确定性结果',
+      )
+    }
+    const rendered = renderIntegratedTrend(trendOutput, series, binding)
+    return {
+      text: rendered.text,
+      evidence: rendered.evidence,
+      answerability: 'supported',
+    }
+  }
   if (analysisMode === 'current_value') {
     for (const metric of metrics.filter((item) =>
       item === 'fixed_visible_ipv4_address_count'
@@ -1111,6 +1344,20 @@ export class P1PageCapabilityExecutor {
             .filter((item): item is string => typeof item === 'string')
           const overview = asObject(outputs.get(sourceIds[0]!))
           output = factTimeline(overview, binding)
+        } else if (node.execution_unit === P1_EVENT_WINDOW_TREND_EXECUTION_UNIT) {
+          const source = asObject(outputs.get(String(node.inputs.source_node_id)))
+          const metrics = asArray(node.inputs.metrics)
+            .filter((item): item is RegisteredTrendMetric =>
+              typeof item === 'string'
+              && Object.hasOwn(REGISTERED_TREND_PROFILES, item)
+            )
+          if (metrics.length !== asArray(node.inputs.metrics).length) {
+            throw new P1ReadModelError(
+              'trend_metric_not_registered',
+              'OP-04 包含未登记趋势指标',
+            )
+          }
+          output = executeEventWindowTrend(source, metrics, binding)
         } else {
           throw new P1ReadModelError(
             'execution_unit_not_registered',
@@ -1178,6 +1425,17 @@ export class P1PageCapabilityExecutor {
               ])
               .filter((item): item is string => typeof item === 'string'),
             'derived:/operators/fact_timeline',
+          ].filter((item, index, all) => all.indexOf(item) === index)
+        } else if (
+          receipt.execution_unit === P1_EVENT_WINDOW_TREND_EXECUTION_UNIT
+        ) {
+          const output = asObject(outputs.get(receipt.node_id))
+          receipt.evidence_refs = [
+            ...asArray(output.source_evidence_refs)
+              .filter((item): item is string => typeof item === 'string'),
+            ...asArray(output.metrics).map(asObject).map((item) =>
+              `derived:/operators/event_window_trend/${String(item.metric)}`
+            ),
           ].filter((item, index, all) => all.indexOf(item) === index)
         } else {
           receipt.evidence_refs = rendered.evidence
