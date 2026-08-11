@@ -232,6 +232,41 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             HOOK.run_alignment(self.root, "S1D-1")
         self.assertEqual("prior_receipt_stale", captured.exception.code)
 
+    def test_s1d2_passes_with_typed_atomic_tool_contracts(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        receipt = HOOK.run_alignment(
+            self.root,
+            "S1D-2",
+            require_prior_receipts=False,
+        )
+        self.assertEqual("alignment_passed", receipt["status"])
+        self.assertIn("route_state_materialized_view_boundary", receipt["checks"])
+        self.assertIn("window_path_association_semantics", receipt["checks"])
+
+    def test_s1d2_rejects_runtime_ready_claim(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            payload["tools"][0]["runtime_ready_claim"] = True
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("runtime_claim_forbidden", stage="S1D-2")
+
+    def test_s1d2_rejects_empty_ordered_path_contract(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            tool12 = next(item for item in payload["tools"] if item["unit_id"] == "TOOL-12")
+            del tool12["output_field_schemas"]["path_segments"]["minItems"]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("empty_ordered_path_allowed", stage="S1D-2")
+
     def test_receipt_is_written_atomically_with_self_digest(self) -> None:
         receipt = HOOK.run_alignment(self.root, "S1D-0")
         output = HOOK.RECEIPT_ROOT / "S1D-0.json"

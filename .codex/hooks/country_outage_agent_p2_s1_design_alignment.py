@@ -768,6 +768,119 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         population_key="output_population",
         kind="tool",
     )
+    tools_by_id = {item["unit_id"]: item for item in payload["tools"]}
+    for tool in payload["tools"]:
+        unit_id = tool["unit_id"]
+        if tool.get("source_population") != tool.get("output_population"):
+            _fail(
+                "tool_population_drift",
+                f"{unit_id} 的读取人口与输出人口必须相同",
+            )
+        for field in (
+            "source_schema_ref",
+            "source_readiness",
+            "input_contract",
+            "input_field_schemas",
+            "member_identity",
+            "output_member_fields",
+            "output_field_schemas",
+            "stable_sort",
+            "dedupe_key",
+            "pagination_contract_ref",
+            "evidence_contract",
+            "forbidden_embedded_actions",
+            "forbidden_conclusions",
+            "question_refs",
+        ):
+            if field not in tool or tool[field] in (None, "", []):
+                _fail("tool_contract_incomplete", f"{unit_id} 缺少 {field}")
+        if tool.get("pagination_contract_ref") != "#/common_result_set_contract":
+            _fail("tool_pagination_contract_drift", f"{unit_id} 分页合同引用漂移")
+        input_contract = tool["input_contract"]
+        if input_contract.get("optional") != ["page_token"]:
+            _fail("tool_page_token_contract_missing", f"{unit_id} 缺少可选 page_token")
+        if input_contract.get("page_size_min") != 1:
+            _fail("tool_pagination_contract_drift", f"{unit_id} page_size_min 必须为 1")
+        if tool.get("runtime_ready_claim") is not False:
+            _fail("runtime_claim_forbidden", f"{unit_id} 不得声称 runtime ready")
+        if set(input_contract.get("optional_filters", [])) - set(
+            tool["input_field_schemas"]
+        ):
+            _fail("tool_typed_input_incomplete", f"{unit_id} filter 缺少 typed schema")
+        if set(tool["output_member_fields"]) - set(tool["output_field_schemas"]):
+            _fail("tool_typed_output_incomplete", f"{unit_id} output 缺少 typed schema")
+        split_test = tool.get("split_test", {})
+        if split_test.get("business_read_count") != 1 or split_test.get(
+            "fact_population_count"
+        ) != 1:
+            _fail("atomic_split_test_failed", f"{unit_id} 不是单一事实人口读取")
+        for forbidden_false in (
+            "mode_changes_population",
+            "independently_publishable_subreads",
+            "internally_invokes_other_units",
+        ):
+            if split_test.get(forbidden_false) is not False:
+                _fail("atomic_split_test_failed", f"{unit_id} 的 {forbidden_false} 漂移")
+    tool07 = tools_by_id["TOOL-07"]
+    if tool07.get("source_population") != "fixed_cohort_member_rows" or (
+        "expected_peer_asn_direction_ids" not in tool07.get("output_member_fields", [])
+        or "expected_route_observation_keys" not in tool07.get("output_member_fields", [])
+    ):
+        _fail("expected_direction_population_missing", "TOOL-07 必须发布原生 expected directions")
+    tool11 = tools_by_id["TOOL-11"]
+    if (
+        tool11.get("source_population")
+        != "materialized_route_state_rows_at_exact_time"
+        or tool11.get("disposition") != "new_p2_v1_source_view_required"
+    ):
+        _fail("route_state_source_view_boundary_missing", "TOOL-11 必须只读预物化时点人口")
+    tool11_forbidden = set(tool11.get("forbidden_embedded_actions", []))
+    if not {"select_checkpoint", "replay_route_events", "project_route_state"}.issubset(
+        tool11_forbidden
+    ):
+        _fail("route_state_internal_replay_forbidden", "TOOL-11 未禁止内部回放或投影")
+    required_route_state_key = {
+        "publication_id",
+        "state_point_utc",
+        "collector_id",
+        "vp_id",
+        "peer_id",
+        "prefix",
+        "afi",
+    }
+    if set(tool11.get("member_identity", [])) != required_route_state_key:
+        _fail("route_state_member_identity_drift", "TOOL-11 必须保留 VP/peer 级事实键")
+    path_segments_schema = tool11.get("output_field_schemas", {}).get(
+        "path_segments", {}
+    )
+    if "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment" not in json.dumps(
+        path_segments_schema, sort_keys=True
+    ):
+        _fail("typed_path_segment_schema_missing", "TOOL-11 必须保留类型化 AS_PATH segment")
+    if not isinstance(tool11.get("output_row_constraints"), dict):
+        _fail("route_state_cross_field_constraints_missing", "TOOL-11 缺少状态联动约束")
+    tool12 = tools_by_id["TOOL-12"]
+    if (
+        tool12.get("source_population") != "window_path_association_evidence_rows"
+        or tool12.get("time_semantics") != "window_level_association_not_path_at_time"
+    ):
+        _fail("path_association_time_semantic_drift", "TOOL-12 不得冒充 path-at-time")
+    if "preview" not in tool12.get("forbidden_embedded_actions", []):
+        _fail("tool_preview_boundary_missing", "TOOL-12 必须禁止内嵌预览")
+    domain = tool12.get("association_population_domain")
+    if not isinstance(domain, dict) or domain.get("anchor_population") != (
+        "ever_affected_asns_registered_by_bound_publication"
+    ):
+        _fail("path_association_domain_missing", "TOOL-12 必须冻结完整性人口域")
+    tool12_fields = tool12.get("output_field_schemas", {})
+    if tool12_fields.get("route_observation_count", {}).get("minimum") != 1:
+        _fail("path_association_count_invalid", "TOOL-12 关联行必须至少有一次观测")
+    if tool12_fields.get("path_segments", {}).get("minItems") != 1:
+        _fail("empty_ordered_path_allowed", "TOOL-12 不得允许空路径进入路径Operator")
+    if "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment" not in json.dumps(
+        tool12_fields.get("path_segments", {}), sort_keys=True
+    ):
+        _fail("typed_path_segment_schema_missing", "TOOL-12 必须保留类型化 AS_PATH segment")
     deferred = [
         item
         for item in payload["tools"]
@@ -775,18 +888,71 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
     ]
     if len(deferred) != 1:
         _fail("deferred_boundary_missing", "TOOL-13 必须标记 disposition=deferred_p2_1")
+    tool13 = tools_by_id["TOOL-13"]
+    adapter = tool13.get("source_adapter_mapping")
+    if not isinstance(adapter, dict) or adapter.get("event_time_utc") != "event_time_utc":
+        _fail("route_event_adapter_drift", "TOOL-13 必须直接复用 event_time_utc")
+    if adapter.get("vp_id") != "vp_id" or adapter.get("path_segments") != "as_path.segments":
+        _fail("route_event_adapter_drift", "TOOL-13 不得重算 vp_id 或拍平 path segment")
+    population_contract = tool13.get("source_population_contract")
+    if not isinstance(population_contract, dict) or population_contract.get(
+        "record_kind"
+    ) != "route_event":
+        _fail("route_event_population_unclosed", "TOOL-13 必须排除历史占位和RIB快照")
     _validate_schema_file(_load_json(schema_path), schema_path)
+    schema = _load_json(schema_path)
+    schema_required = set(schema.get("required", []))
+    required_schema_fields = {
+        "source_population",
+        "output_population",
+        "input_contract",
+        "input_field_schemas",
+        "member_identity",
+        "stable_sort",
+        "dedupe_key",
+        "evidence_contract",
+        "output_field_schemas",
+        "forbidden_embedded_actions",
+        "split_test",
+        "runtime_ready_claim",
+    }
+    if not required_schema_fields.issubset(schema_required):
+        _fail(
+            "tool_contract_schema_incomplete",
+            f"Tool schema 缺少 required 字段：{sorted(required_schema_fields - schema_required)}",
+        )
+    if schema.get("additionalProperties") is not False:
+        _fail("tool_contract_schema_open", "Tool schema 顶层必须 additionalProperties=false")
+    input_schema = schema.get("properties", {}).get("input_contract", {})
+    if input_schema.get("additionalProperties") is not False:
+        _fail("tool_contract_schema_open", "Tool input schema 必须封闭")
+    completeness = set(
+        payload.get("common_result_set_contract", {}).get("set_completeness_enum", [])
+    )
+    if completeness != {"complete", "partial_page", "source_incomplete"}:
+        _fail("tool_result_completeness_drift", "audit_only/unavailable 不得生成 ResultSet")
+    review = _load_json(review_path)
     _validate_atomicity_review(
-        _load_json(review_path),
+        review,
         expected_ids=EXPECTED_TOOLS,
         path=review_path,
         kind="tool",
     )
+    if review.get("overall_disposition") != "passed" or review.get(
+        "remaining_blockers"
+    ) != []:
+        _fail("atomicity_review_failed", "Tool 独立审查仍有阻断项")
+    boundary = review.get("boundary")
+    if not isinstance(boundary, dict) or boundary.get("runtime_implemented") is not False:
+        _fail("runtime_claim_forbidden", "Tool 审查不得声称运行时已实现")
     return [
         "tool_catalog_closure",
         "tool_13_deferred",
         "tool_contract_schema",
         "tool_function_atomicity",
+        "tool_source_readiness_boundary",
+        "route_state_materialized_view_boundary",
+        "window_path_association_semantics",
     ]
 
 

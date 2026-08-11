@@ -1,0 +1,34 @@
+{
+  "schema_version": "country_outage_p2_s1_tool_atomicity_review_v1",
+  "artifact_id": "country-outage-p2-s1-tool-atomicity-review-20260812",
+  "stage": "S1D-2",
+  "status": "independent_review_passed",
+  "builder_id": "codex-root-s1d2-builder",
+  "reviewer_id": "/root/s1d2_tool_contract_review",
+  "review_model": "gpt-5.6-sol",
+  "review_scope": ["tool-catalog.json", "tool-contract.schema.json", "TOOL-07..TOOL-13"],
+  "review_rounds": [
+    {"round":1,"disposition":"revision_required","resolved_findings":["TOOL-11内嵌回放风险","Q18缺expected direction人口","TOOL-12路径人口名称过强","state source row schema未冻结"]},
+    {"round":2,"disposition":"revision_required","resolved_findings":["RouteState VP/peer事实键","方向身份","严格分页全序","RouteEvent adapter","开放meta-schema","page_token与ResultSet失败语义"]},
+    {"round":3,"disposition":"revision_required","resolved_findings":["类型化AS_PATH segment","跨字段状态联动","RouteEvent source人口","ordered空路径"]},
+    {"round":4,"disposition":"passed","remaining_blockers":[]}
+  ],
+  "reviews": [
+    {"unit_id":"TOOL-07","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"fixed_cohort_member_rows","source_readiness":"schema_projection_required_before_implementation","runtime_ready":false,"notes":["ASN过滤只匹配country_origin_asns","MOAS成员可出现在多个ASN查询","expected peer-ASN方向与VP/peer观察键分离"]},
+    {"unit_id":"TOOL-08","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"prefix_state_rows","source_readiness":"row_schema_required_before_implementation","runtime_ready":false,"notes":["只读prefix-state","首峰末与区间均由Operator完成"]},
+    {"unit_id":"TOOL-09","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"asn_state_rows","source_readiness":"row_schema_required_before_implementation","runtime_ready":false,"notes":["只读ASN-state","阈值、比例与排名不在Tool内"]},
+    {"unit_id":"TOOL-10","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"new_prefix_state_rows","source_readiness":"homogeneous_row_schema_required_before_implementation","runtime_ready":false,"notes":["成员键含state point","稳定排序为严格全序","不内嵌RouteState join"]},
+    {"unit_id":"TOOL-11","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"materialized_route_state_rows_at_exact_time","source_readiness":"materialized_view_and_projection_receipt_required_before_implementation","runtime_ready":false,"notes":["只读预物化精确时点视图","禁止checkpoint选择、事件回放和状态投影","VP/peer事实键闭合","类型化AS_PATH和状态联动闭合"]},
+    {"unit_id":"TOOL-12","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"window_path_association_evidence_rows","source_readiness":"association_row_and_path_quality_schema_required_before_implementation","runtime_ready":false,"notes":["完整性只在affected-anchor窗口关联人口内成立","不证明path-at-time","路径segment保留类型且ordered路径非空","预览属于Renderer"]},
+    {"unit_id":"TOOL-13","reviewer_id":"/root/s1d2_tool_contract_review","disposition":"atomic_as_designed","single_fact_population":"route_event_rows","source_readiness":"deferred_registry_and_manifest_binding_required","runtime_ready":false,"notes":["P2.1 deferred","只接纳record_kind=route_event和announce/withdraw","直接复用event_time_utc与vp_id","不分类变化"]}
+  ],
+  "overall_disposition": "passed",
+  "remaining_blockers": [],
+  "boundary": {
+    "functional_atomicity_passed": true,
+    "implementation_readiness_passed": false,
+    "runtime_implemented": false,
+    "production_deployed": false,
+    "tool_13_p2_v1_executable": false
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "checks": [
+    "task_spec_version",
+    "question_population_28_of_28",
+    "execution_unit_population",
+    "as_sort_contract",
+    "execution_unit_function_atomicity",
+    "runtime_commit_consistency_separated",
+    "sol_then_ds_evidence_grounded_flow",
+    "design_only_boundary",
+    "phase_plan_version",
+    "seven_stage_sequence",
+    "tool_operator_stage_separation",
+    "stage_atomic_candidate_rule",
+    "design_only_receipt_rule",
+    "question_capability_closure",
+    "question_oracle_seed_closure",
+    "execution_unit_atomic_decomposition",
+    "q24_design_covered_runtime_deferred",
+    "shared_answer_binding_contract",
+    "sol_teacher_ds_student_role_contract",
+    "tool_catalog_closure",
+    "tool_13_deferred",
+    "tool_contract_schema",
+    "tool_function_atomicity",
+    "tool_source_readiness_boundary",
+    "route_state_materialized_view_boundary",
+    "window_path_association_semantics"
+  ],
+  "design_only": true,
+  "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
+  "prior_receipts": {
+    "S1D-0": "01c82364689784d4cdd354022e9ee7fa4c4e38c77d6e247601a3ee78f975f334",
+    "S1D-1": "8c92be15b43a352dc8e5c27fafe1668467f0e1946b63ee4f771ba4367ea51a15"
+  },
+  "production_deployed": false,
+  "receipt_digest": "7f93b70ed63c6a90a42206e20bcccd68847eb6143a42da35065a8a7d6ce91d78",
+  "runtime_implemented": false,
+  "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
+  "stage": "S1D-2",
+  "status": "alignment_passed",
+  "task_spec_sha256": "18a8d44528be0ba78bbb97e845aaf78bf0cbd903e86b88f1ea00ffacd930c2b1"
+}
