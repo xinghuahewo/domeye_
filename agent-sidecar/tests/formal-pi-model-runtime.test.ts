@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import test, { after } from 'node:test'
 
 import type {
@@ -37,7 +37,7 @@ const CERTIFIED_PROFILE = {
   modelVersion: 'certified-model-20260728',
   expectedResponseModel: 'certified-model-20260728',
   thinkingLevel: 'off',
-  piVersion: '0.82.1',
+  piVersion: '0.84.1',
   certificationEvidenceId: 'evidence:a4-model-certification',
   certifiedAt: '2026-07-28T15:00:00Z',
   modelRevisionKind: 'mutable_alias',
@@ -173,12 +173,17 @@ test('正式模型预检固定关闭 models.json 与目录联网刷新', async (
 })
 
 test('生产环境只允许选择注册表内已经认证的组合', async () => {
+  const p1RegistryPath = resolve(
+    process.cwd(),
+    'resources/certified-models/country-outage-p1-semantic-models-v1.json',
+  )
   let factoryCalled = false
   await assert.rejects(
     createFormalPiModelBindingFromEnvironment({
       env: {
         COUNTRY_OUTAGE_PI_PROFILE: 'not-certified',
         COUNTRY_OUTAGE_PI_AUTH_PATH: EMPTY_AUTH_PATH,
+        COUNTRY_OUTAGE_PI_CERTIFIED_REGISTRY_PATH: p1RegistryPath,
       },
       runtimeFactory: async () => {
         factoryCalled = true
@@ -191,11 +196,11 @@ test('生产环境只允许选择注册表内已经认证的组合', async () =>
   )
   assert.equal(factoryCalled, false)
 
-  const defaultRegistry = await loadCertifiedPiModelRegistry()
+  const defaultRegistry = await loadCertifiedPiModelRegistry(p1RegistryPath)
   assert.equal(defaultRegistry.profiles.length, 1)
   assert.equal(
     defaultRegistry.profiles[0]?.id,
-    'deepseek-v4-flash-pi-0.82.1-v1',
+    'deepseek-v4-flash-pi-0.84.1-v1',
   )
   assert.equal(defaultRegistry.profiles[0]?.status, 'certified')
 })
@@ -373,7 +378,7 @@ test('认证有效期结束前一毫秒仍允许进入正式运行时预检', as
 })
 
 test('生产预检核验真实安装的 Pi package 版本', () => {
-  assert.doesNotThrow(() => assertFormalPiInstalledVersion('0.82.1'))
+  assert.doesNotThrow(() => assertFormalPiInstalledVersion('0.84.1'))
   assert.throws(
     () => assertFormalPiInstalledVersion('0.82.2'),
     (error: unknown) =>

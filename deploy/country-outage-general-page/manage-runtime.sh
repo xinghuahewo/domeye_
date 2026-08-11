@@ -9,6 +9,7 @@ readonly MODE="${DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE:-production}"
 readonly DATABASE_CONFIG='/home/bgpdata/Domeye-Core-data/config/database.env'
 readonly DATABASE_STATE='/home/bgpdata/Domeye-Core-dev-data/state.json'
 readonly AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-agent.env'
+readonly P1_CHAT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-p1-chat.env'
 readonly INFO_DIR='/home/bgpdata/Domeye-Core-dev-data/api/info'
 readonly P0_DATA_DIR='/home/bgpdata/Domeye-Core-artifacts/releases/20260720T160000Z-p0-legacy/data-quality/api-candidate'
 readonly RUNTIME_PATH='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin:/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
@@ -244,6 +245,7 @@ serve_runtime() {
     validate_runtime
     local db_name db_port db_user db_password secret_key
     local agent_url agent_token agent_identity agent_user agent_config_sha
+    local p1_chat_url p1_chat_token
     db_name="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)"
     # database.env 仍保留历史 29429；当前 feb-mar-2026 数据档的权威端口只来自
     # 已由 Backend 绑定摘要保护的 state.json，禁止把旧配置漂移带入候选运行时。
@@ -256,6 +258,17 @@ serve_runtime() {
     agent_identity="$(read_config_value "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_IDENTITY_MODE)"
     agent_user="$(read_config_value "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID)"
     agent_config_sha="$(sha256_file "${AGENT_CONFIG}")"
+    require_secure_config "${P1_CHAT_CONFIG}"
+    p1_chat_url="$(read_config_value "${P1_CHAT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)"
+    p1_chat_token="$(read_config_value "${P1_CHAT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)"
+    [[ "${p1_chat_url}" == 'http://127.0.0.1:28475' ]] || {
+        error 'P1 Chat Sidecar URL 必须固定为 127.0.0.1:28475'
+        return 1
+    }
+    [[ "${p1_chat_token}" == "${agent_token}" ]] || {
+        error 'P1 Chat 与现有 Agent 内部共享 Token 不一致'
+        return 1
+    }
     local selected_release log_root general_read_model
     selected_release="$(release_id)"
     log_root="/home/bgpdata/Domeye-Core-runtime/log/${selected_release}/${RUNTIME_MODE}"
@@ -318,6 +331,7 @@ serve_runtime() {
             COUNTRY_OUTAGE_AGENT_SHARED_TOKEN="${agent_token}" \
             COUNTRY_OUTAGE_AGENT_IDENTITY_MODE="${agent_identity}" \
             COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID="${agent_user}" \
+            COUNTRY_OUTAGE_P1_CHAT_SIDECAR_URL="${p1_chat_url}" \
             DOMEYE_COUNTRY_OUTAGE_AGENT_CONFIG_SHA256="${agent_config_sha}" \
             PYTHONUNBUFFERED=1 \
             PYTHONDONTWRITEBYTECODE=1 \

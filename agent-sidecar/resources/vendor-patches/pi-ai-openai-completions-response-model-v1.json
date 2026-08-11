@@ -5,18 +5,18 @@
   "applicationMode": "postinstall_exact_hash_replacement_v1",
   "target": {
     "codingAgentPackage": "@earendil-works/pi-coding-agent",
-    "codingAgentVersion": "0.82.1",
+    "codingAgentVersion": "0.84.1",
     "package": "@earendil-works/pi-ai",
-    "version": "0.82.1",
+    "version": "0.84.1",
     "relativePathFromCodingAgent": "node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",
-    "upstreamSourceSha256": "0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a",
-    "patchedSourceSha256": "5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b",
-    "upstreamByteLength": 56943,
-    "patchedByteLength": 56915
+    "upstreamSourceSha256": "727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363",
+    "patchedSourceSha256": "9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504",
+    "upstreamByteLength": 60161,
+    "patchedByteLength": 60133
   },
   "patchArtifact": {
-    "relativePath": "vendor-patches/pi-ai-0.82.1-openai-completions-response-model-v1.patch",
-    "sha256": "c62983d07f150ddbef0e412feb596406648f1e151430f633f406ca018e2412cd"
+    "relativePath": "vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch",
+    "sha256": "a7e89d8dae4ddb8a3aa2548153c2e0e68f57fd7b8102bdde10ecc8d297836c28"
   },
   "behavior": {
     "before": "if (typeof chunk.model === \"string\" && chunk.model.length > 0 && chunk.model !== model.id) {",

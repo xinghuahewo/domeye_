@@ -36,6 +36,7 @@ export interface CountryOutageAgentHttpHandlerOptions {
    * 不影响正式报告 application。
    */
   chatService?: P1RuntimeV2ConversationService
+  chatReadiness?: () => unknown
   authenticate: AuthenticateCountryOutageRequest
   basePath?: string
   sseHeartbeatMs?: number
@@ -463,11 +464,11 @@ export function createCountryOutageAgentHttpHandler(
 ): RequestListener {
   if (
     (options.application && options.manager) ||
-    (!options.application && !options.manager)
+    (!options.application && !options.manager && !options.chatService)
   ) {
-    throw new TypeError('必须且只能提供一个国家中断 HTTP application')
+    throw new TypeError('必须提供报告 application 或 P1 chatService')
   }
-  const application = options.application ?? options.manager!
+  const application = options.application ?? options.manager
   const basePath = (options.basePath ?? BASE_PATH).replace(/\/+$/, '')
   const heartbeatMs = Math.max(5_000, options.sseHeartbeatMs ?? 15_000)
 
@@ -475,6 +476,20 @@ export function createCountryOutageAgentHttpHandler(
     void (async () => {
       const url = new URL(request.url ?? '/', 'http://sidecar.invalid')
       const pathname = url.pathname
+
+      if (
+        options.chatService &&
+        options.chatReadiness &&
+        pathname === `${basePath}/chat/readiness`
+      ) {
+        if (request.method !== 'GET') {
+          methodNotAllowed(response, 'GET')
+          return
+        }
+        await authenticate(options, request)
+        writeJson(response, 200, options.chatReadiness())
+        return
+      }
 
       if (
         options.chatService
@@ -579,6 +594,19 @@ export function createCountryOutageAgentHttpHandler(
           decodeURIComponent(chatCancelMatch[2]!),
         )
         writeJson(response, 200, result)
+        return
+      }
+
+      // P1 独立生产入口没有报告 application。聊天路由之外全部返回 404，
+      // 从进程边界保证不会因部署 P1 而新增报告、下载或外部证据能力。
+      if (!application) {
+        writeJson(response, 404, {
+          error: {
+            code: 'route_not_found',
+            message: '接口不存在',
+            retryable: false,
+          },
+        })
         return
       }
 

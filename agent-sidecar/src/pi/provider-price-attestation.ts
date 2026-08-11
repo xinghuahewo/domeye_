@@ -23,7 +23,7 @@ import { compareUnicodeCodePoints } from '../shared/deterministic-json.js'
 export const COUNTRY_OUTAGE_PROVIDER_PRICE_ATTESTATION_SCHEMA =
   'country_outage_provider_price_attestation_v1' as const
 export const COUNTRY_OUTAGE_PROVIDER_PRICE_ATTESTATION_RELATIVE_PATH =
-  'var/country-outage-agent/a4-provider-price-attestation/deepseek-v4-flash-pi-0.82.1-v1-price-attestation-v1.json' as const
+  'var/country-outage-agent/a4-provider-price-attestation/deepseek-v4-flash-pi-0.84.1-v1-price-attestation-v1.json' as const
 export const COUNTRY_OUTAGE_PROVIDER_PRICE_ATTESTATION_VALIDITY_SECONDS =
   24 * 60 * 60
 export const COUNTRY_OUTAGE_PROVIDER_PRICE_ATTESTATION_MINIMUM_RUNWAY_SECONDS =
@@ -784,7 +784,7 @@ export function loadCurrentProviderPriceAttestation(options: {
     )
     const path = resolve(
       directory,
-      'deepseek-v4-flash-pi-0.82.1-v1-price-attestation-v1.json',
+      'deepseek-v4-flash-pi-0.84.1-v1-price-attestation-v1.json',
     )
     if (!pathEntryExists(path)) {
       throw new ProviderPriceAttestationError(
@@ -941,11 +941,11 @@ export function writeCurrentProviderPriceAttestation(
   )
   const path = resolve(
     directory,
-    'deepseek-v4-flash-pi-0.82.1-v1-price-attestation-v1.json',
+    'deepseek-v4-flash-pi-0.84.1-v1-price-attestation-v1.json',
   )
   const lockPath = resolve(
     directory,
-    '.deepseek-v4-flash-pi-0.82.1-v1-price-attestation-v1.lock',
+    '.deepseek-v4-flash-pi-0.84.1-v1-price-attestation-v1.lock',
   )
   const tempPath = resolve(
     directory,

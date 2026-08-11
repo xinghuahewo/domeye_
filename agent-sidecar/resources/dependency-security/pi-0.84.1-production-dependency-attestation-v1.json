@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "country_outage_dependency_security_attestation_v1",
+  "attestationId": "country-outage-pi-0.84.1-production-audit-20260811-v1",
+  "status": "verified",
+  "verifiedAt": "2026-08-11T01:23:27Z",
+  "package": {
+    "name": "@earendil-works/pi-coding-agent",
+    "version": "0.84.1",
+    "lockfileSha256": "eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6"
+  },
+  "productionAudit": {
+    "command": "npm audit --omit=dev --audit-level=high",
+    "exitCode": 0,
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "installedComponents": {
+    "braceExpansion": "brace-expansion@5.0.9",
+    "undici": "undici@8.9.0"
+  },
+  "runtimeConstraints": {
+    "resourceLoaderId": "country-outage-static-resource-loader-v1",
+    "packageManagerResolutionEnabled": false,
+    "modelResolverEnabled": false,
+    "externalGlobEnabled": false,
+    "capabilityExpansionAllowed": false,
+    "responseModelVendorPatch": {
+      "patchId": "pi-ai-openai-completions-response-model-v1",
+      "targetPackage": "@earendil-works/pi-ai",
+      "targetVersion": "0.84.1",
+      "targetRelativePathFromCodingAgent": "node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",
+      "upstreamSourceSha256": "727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363",
+      "patchedSourceSha256": "9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504",
+      "patchArtifactSha256": "a7e89d8dae4ddb8a3aa2548153c2e0e68f57fd7b8102bdde10ecc8d297836c28",
+      "patchManifestSha256": "ba5f5bceae09c868285926d0b63c562f88168211284c52036aa62d8346bab1ad",
+      "sameNameResponseModelPreserved": true,
+      "applicationMode": "postinstall_exact_hash_replacement_v1"
+    }
+  },
+  "revalidationTriggers": [
+    "package_lock_changed",
+    "pi_version_changed",
+    "production_dependency_graph_changed",
+    "formal_path_changed",
+    "capability_scope_changed",
+    "vendor_patch_drift",
+    "vendor_patch_no_longer_required"
+  ]
+}

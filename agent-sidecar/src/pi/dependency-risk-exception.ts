@@ -30,17 +30,17 @@ const SAFE_EXCEPTION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/
 const EXPECTED_RESPONSE_MODEL_VENDOR_PATCH = Object.freeze({
   patchId: 'pi-ai-openai-completions-response-model-v1',
   targetPackage: '@earendil-works/pi-ai',
-  targetVersion: '0.82.1',
+  targetVersion: '0.84.1',
   targetRelativePathFromCodingAgent:
     'node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js',
   upstreamSourceSha256:
-    '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a',
+    '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363',
   patchedSourceSha256:
-    '5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b',
+    '9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504',
   patchArtifactSha256:
-    'c62983d07f150ddbef0e412feb596406648f1e151430f633f406ca018e2412cd',
+    'a7e89d8dae4ddb8a3aa2548153c2e0e68f57fd7b8102bdde10ecc8d297836c28',
   patchManifestSha256:
-    '886b0faf7ccbd0dec19ba74aaa3d92e5b6a218177bf36f1f50a5ece553f8bfba',
+    'ba5f5bceae09c868285926d0b63c562f88168211284c52036aa62d8346bab1ad',
   sameNameResponseModelPreserved: true,
   applicationMode: 'postinstall_exact_hash_replacement_v1',
 } as const)
@@ -400,7 +400,7 @@ typeof EXPECTED_RESPONSE_MODEL_VENDOR_PATCH {
     )
     const patchPath = resolve(
       sidecarRoot,
-      'vendor-patches/pi-ai-0.82.1-openai-completions-response-model-v1.patch',
+      'vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch',
     )
     if (
       sha256File(manifestPath, MAX_EXCEPTION_FILE_BYTES) !==

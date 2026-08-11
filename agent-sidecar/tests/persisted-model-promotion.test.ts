@@ -201,7 +201,7 @@ async function persistedFixture(
       ? []
       : [
           {
-            id: 'deepseek-v4-flash-pi-0.82.1-v1',
+            id: 'deepseek-v4-flash-pi-0.84.1-v1',
             status: 'certified',
             provider: 'deepseek',
             model:
@@ -211,7 +211,7 @@ async function persistedFixture(
             modelVersion: 'deepseek-v4-flash',
             expectedResponseModel: 'deepseek-v4-flash',
             thinkingLevel: 'off',
-            piVersion: '0.82.1',
+            piVersion: '0.84.1',
             certificationEvidenceId:
               `evidence:model-certification:${'f'.repeat(64)}`,
             certifiedAt:
@@ -274,7 +274,7 @@ async function persistedFixture(
       model: 'deepseek-v4-flash',
       modelVersion: 'deepseek-v4-flash',
       adapter: 'pi-sdk',
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       runtimeIdentity: 'candidate',
     }
     const reportValidation = {
@@ -296,14 +296,14 @@ async function persistedFixture(
       recordedAt: input.completedAt,
       outcome: 'accepted',
       runtimeIdentity: 'candidate',
-      candidateId: 'deepseek-v4-flash-pi-0.82.1-v1',
+      candidateId: 'deepseek-v4-flash-pi-0.84.1-v1',
       candidateResourceSha256: loadedCandidate.resourceSha256,
-      profileId: 'deepseek-v4-flash-pi-0.82.1-v1',
+      profileId: 'deepseek-v4-flash-pi-0.84.1-v1',
       provider: 'deepseek',
       model: 'deepseek-v4-flash',
       modelVersion: 'deepseek-v4-flash',
       expectedResponseModel: 'deepseek-v4-flash',
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       input: {
         eventReferenceSha256: sha256(
           FIXTURE_EVENT_REFERENCE.replace(' ', '+'),
@@ -348,11 +348,13 @@ async function persistedFixture(
             'deepseek-json-object-no-tools-v2',
           payloadPreparedCount: 2,
         },
-        dependencyRiskException: {
-          exceptionId:
-            'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-          expiresAt: '2026-08-12T16:00:00Z',
-          status: 'active',
+        dependencySecurityAttestation: {
+          attestationId:
+            'country-outage-pi-0.84.1-production-audit-20260811-v1',
+          verifiedAt: '2026-08-11T01:23:27Z',
+          lockfileSha256:
+            'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+          status: 'verified',
         },
       },
       modelAttempt: {
@@ -635,7 +637,7 @@ async function persistedFixture(
       'country_outage_pi_model_certification_manifest_v1',
     status: 'passed',
     runtimeIdentity: 'candidate',
-    candidateId: 'deepseek-v4-flash-pi-0.82.1-v1',
+    candidateId: 'deepseek-v4-flash-pi-0.84.1-v1',
     candidateResourceSha256: loadedCandidate.resourceSha256,
     evidenceId:
       `evidence:model-certification:${'0'.repeat(64)}`,
@@ -652,7 +654,7 @@ async function persistedFixture(
       sha256Before: sha256(registryText),
     },
     policy: {
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       providerRetryAttempts: 0,
       maximumProviderRequestCount: 2,
       maximumOutputTokens: 16_384,

@@ -1,0 +1,383 @@
+{
+  "schema_version": "country_outage_p1_semantic_certification_case_v1",
+  "case_id": "S2-EXP-006",
+  "question": "给我中断前缀峰值和事实时间线，顺便说为什么。",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-v1",
+  "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+  "expected_receipt_path": "evaluation/country-outage/p1-page-coverage/s2/raw/agent-receipts/S2-EXP-006.json",
+  "expected_receipt_sha256": "ef5ab42ca9dc1e62dd41f515a0aafa31eee9905457691933c1e16b6ee262ce72",
+  "expected_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "给我中断前缀峰值和事实时间线，顺便说为什么。",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "中断前缀峰值",
+        "normalized_kind": "prefix_peak",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-2",
+        "requested_goal": "事实时间线",
+        "normalized_kind": "fact_timeline",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-3",
+        "requested_goal": "说为什么发生中断",
+        "normalized_kind": "cause_or_responsibility",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "confidence": 0.95
+  },
+  "actual_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "给我中断前缀峰值和事实时间线，顺便说为什么。",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "给我中断前缀峰值",
+        "normalized_kind": "prefix_peak",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-2",
+        "requested_goal": "事实时间线",
+        "normalized_kind": "fact_timeline",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-3",
+        "requested_goal": "为什么",
+        "normalized_kind": "cause_or_responsibility",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:pi-sdk:0.84.1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash:p1-user-goal-plan-v1",
+    "confidence": 0.95
+  },
+  "grounding_plan": {
+    "plan_revision": "grounding-plan-v2",
+    "identity": {
+      "binding_phase": "bound",
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "decisions": [
+      {
+        "goal_id": "goal-1",
+        "answerability": "supported",
+        "node_ids": [
+          "node-1",
+          "node-2"
+        ],
+        "reason_codes": [
+          "prefix_peak_available"
+        ]
+      },
+      {
+        "goal_id": "goal-2",
+        "answerability": "supported",
+        "node_ids": [
+          "node-3",
+          "node-4",
+          "node-5",
+          "node-6"
+        ],
+        "reason_codes": [
+          "fact_timeline_available_with_terminal_unknown"
+        ]
+      },
+      {
+        "goal_id": "goal-3",
+        "answerability": "unsupported",
+        "node_ids": [],
+        "reason_codes": [
+          "rrc25_cannot_establish_cause_or_responsibility"
+        ]
+      }
+    ],
+    "nodes": [
+      {
+        "node_id": "node-1",
+        "goal_id": "goal-1",
+        "execution_unit": "TOOL-01",
+        "capability_ids": [
+          "CAP-001"
+        ],
+        "inputs": {
+          "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "expected_revision": 1
+        },
+        "input_sources": {
+          "event_reference": "binding",
+          "expected_publication_id": "binding",
+          "expected_revision": "binding"
+        },
+        "depends_on": [],
+        "expected_evidence_sources": [
+          "resolution"
+        ]
+      },
+      {
+        "node_id": "node-2",
+        "goal_id": "goal-1",
+        "execution_unit": "TOOL-02",
+        "capability_ids": [
+          "CAP-004"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding"
+        },
+        "depends_on": [
+          "node-1"
+        ],
+        "expected_evidence_sources": [
+          "overview"
+        ]
+      },
+      {
+        "node_id": "node-3",
+        "goal_id": "goal-2",
+        "execution_unit": "TOOL-01",
+        "capability_ids": [
+          "CAP-001"
+        ],
+        "inputs": {
+          "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "expected_revision": 1
+        },
+        "input_sources": {
+          "event_reference": "binding",
+          "expected_publication_id": "binding",
+          "expected_revision": "binding"
+        },
+        "depends_on": [],
+        "expected_evidence_sources": [
+          "resolution"
+        ]
+      },
+      {
+        "node_id": "node-4",
+        "goal_id": "goal-2",
+        "execution_unit": "TOOL-02",
+        "capability_ids": [
+          "CAP-002",
+          "CAP-003"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding"
+        },
+        "depends_on": [
+          "node-3"
+        ],
+        "expected_evidence_sources": [
+          "overview"
+        ]
+      },
+      {
+        "node_id": "node-5",
+        "goal_id": "goal-2",
+        "execution_unit": "TOOL-02",
+        "capability_ids": [
+          "CAP-004",
+          "CAP-005"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding"
+        },
+        "depends_on": [
+          "node-3"
+        ],
+        "expected_evidence_sources": [
+          "overview"
+        ]
+      },
+      {
+        "node_id": "node-6",
+        "goal_id": "goal-2",
+        "execution_unit": "OP-03",
+        "capability_ids": [
+          "CAP-018"
+        ],
+        "inputs": {
+          "source_node_ids": [
+            "node-4",
+            "node-5"
+          ],
+          "lifecycle_state": "event_end_unknown"
+        },
+        "input_sources": {
+          "source_node_ids": "tool_result",
+          "lifecycle_state": "binding"
+        },
+        "depends_on": [
+          "node-4",
+          "node-5"
+        ],
+        "expected_evidence_sources": [
+          "derived"
+        ]
+      }
+    ],
+    "authorization_scope": [
+      "country_outage:read"
+    ],
+    "validation": {
+      "status": "passed",
+      "errors": []
+    }
+  },
+  "grounding_errors": [],
+  "goal_comparison": [
+    {
+      "goal_id": "goal-1",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"prefix_peak\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"prefix_peak\",\"references\":[]}",
+      "matched": true
+    },
+    {
+      "goal_id": "goal-2",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"fact_timeline\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"fact_timeline\",\"references\":[]}",
+      "matched": true
+    },
+    {
+      "goal_id": "goal-3",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"cause_or_responsibility\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"cause_or_responsibility\",\"references\":[]}",
+      "matched": true
+    }
+  ],
+  "grounding_passed": true,
+  "model_audit": {
+    "schemaVersion": "country_outage_p1_pi_semantic_run_audit_v1",
+    "recordedAt": "2026-08-11T01:50:48.583Z",
+    "runtimeIdentity": "candidate",
+    "registryVersion": null,
+    "certificationEvidenceId": null,
+    "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "candidateResourceSha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+    "profileId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "modelVersion": "deepseek-v4-flash",
+    "expectedResponseModel": "deepseek-v4-flash",
+    "piVersion": "0.84.1",
+    "input": {
+      "promptSha256": "49be438f23f3094b57f5388bef7fb5c75093faa028271e2b7fccc72d9615fb2e",
+      "promptBytes": 15423
+    },
+    "outcome": "completed",
+    "output": {
+      "outputSha256": "d60021310ab4d50831b17cde8d0f4aacae6d4c5eebfefd93263eebf5ac3f8a2c",
+      "outputBytes": 764
+    },
+    "runtimeSecurity": {
+      "resourceLoaderId": "country-outage-static-resource-loader-v1",
+      "systemPromptSha256": "8b3618b406e934222a1b14e5e6797e54f9343f8cba977a38ac1059be44f46a63",
+      "packageManagerResolutionEnabled": false,
+      "modelResolverEnabled": false,
+      "modelsJsonEnabled": false,
+      "modelCatalogNetworkRefreshEnabled": false,
+      "providerRetryAttempts": 0,
+      "forwardedProviderRequestCount": 1,
+      "maximumProviderRequestCount": 1,
+      "toolExecutionCount": 0,
+      "unauthorizedToolAttemptCount": 0,
+      "structuredOutputPayloadPreparedCount": 1
+    },
+    "usage": {
+      "assistantMessages": 1,
+      "toolCalls": 0,
+      "toolResults": 0,
+      "totalMessages": 2,
+      "tokens": {
+        "input": 298,
+        "output": 206,
+        "cacheRead": 3328,
+        "cacheWrite": 0,
+        "total": 3832
+      },
+      "estimatedCostUsd": 0.0001087184
+    },
+    "billing": {
+      "currency": "USD",
+      "estimatedCost": 0.0001087184,
+      "source": "pi_session_stats"
+    }
+  }
+}

@@ -100,7 +100,7 @@ test('Markdown 条件展示正式 Pi 可变别名限制、有效期与认证输�
   document.model = {
     ...document.model,
     adapter: 'pi-sdk',
-    piVersion: '0.82.1',
+    piVersion: '0.84.1',
     runtimeIdentity: 'formal',
     modelRevisionKind: 'mutable_alias',
     immutableRevisionAvailable: false,

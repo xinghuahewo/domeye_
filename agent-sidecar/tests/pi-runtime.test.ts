@@ -37,7 +37,7 @@ import {
   createCountryOutageTools,
   FormalPiRuntimeError,
   FormalPiRunError,
-  loadCountryOutageDependencyRiskException,
+  loadCountryOutageDependencySecurityAttestation,
   MUTABLE_MODEL_ALIAS_LIMITATION_ZH,
   type FormalPiRunAuditRecord,
   PI_REPORT_SECURITY_PROFILE,
@@ -788,7 +788,7 @@ test('PiReportNarrator 不向正式会话注册任何调查工具', async () => 
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -886,7 +886,7 @@ test('provider context 字节门在 900000 放行并在 900001 于上游前拒�
         model,
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink(record) {
           audits.push(record)
         },
@@ -1029,7 +1029,7 @@ test('最终 provider payload 在既有 hook 后执行 59904-byte 发送前硬�
         model: fakeModel(),
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink(record) {
           audits.push(record)
         },
@@ -1194,7 +1194,7 @@ test('provider 下一轮只保留工具骨架并移除冗长 thinking 与被拒�
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink() {},
     sessionFactory: async () => ({
       session: {
@@ -1310,7 +1310,7 @@ test('真实 Pi agent loop 若违约持续请求，第三轮于上游前被 prov
     model,
     modelRuntime: runtime,
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -1388,7 +1388,7 @@ function fakeCertification(): CertifiedPiModelSelection {
       modelVersion: 'fixed-revision',
       expectedResponseModel: 'fixed-revision',
       thinkingLevel: 'off',
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       certificationEvidenceId: 'evidence:test-model-certification',
       certifiedAt: '2026-07-28T15:00:00Z',
       modelRevisionKind: 'mutable_alias',
@@ -1404,7 +1404,7 @@ function fakeCertification(): CertifiedPiModelSelection {
 }
 
 function fakeDependencyRiskException() {
-  return loadCountryOutageDependencyRiskException({
+  return loadCountryOutageDependencySecurityAttestation({
     now: new Date('2026-08-01T00:00:00Z'),
   })
 }
@@ -1719,7 +1719,7 @@ test('PiReportNarrator 在 Skill 文件变化后按启动时摘要失败关闭�
       model: fakeModel(),
       modelRuntime: fakeModelRuntime(),
       certification: fakeCertification(),
-      dependencyRiskException: fakeDependencyRiskException(),
+      dependencySecurityAttestation: fakeDependencyRiskException(),
       auditSink(record) {
         audits.push(record)
       },
@@ -1785,7 +1785,7 @@ test('已启动 Pi 叙述器在模型认证恰好到期时复核并拒绝创建�
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification,
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink() {},
     now: () => new Date(checkedAt),
     sessionFactory: async () => {
@@ -1825,7 +1825,7 @@ test('已启动 Pi 叙述器在模型认证恰好到期时复核并拒绝创建�
   assert.equal(sessionFactoryCalls, 0)
 })
 
-test('已启动叙述器在风险例外到期后拒绝创建模型会话和发布报告', async () => {
+test('已验证依赖安全证明不按旧风险例外日期过期，后续失败来自模型会话', async () => {
   let sessionFactoryCalls = 0
   const audits: FormalPiRunAuditRecord[] = []
   const narrator = new PiReportNarrator({
@@ -1840,14 +1840,14 @@ test('已启动叙述器在风险例外到期后拒绝创建模型会话和发�
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
     now: () => new Date('2026-08-12T16:00:00Z'),
     sessionFactory: async () => {
       sessionFactoryCalls += 1
-      throw new Error('风险例外到期后不应创建模型会话')
+      throw new Error('模拟模型会话创建失败')
     },
   })
 
@@ -1858,29 +1858,31 @@ test('已启动叙述器在风险例外到期后拒绝创建模型会话和发�
     }),
     (error: unknown) =>
       error instanceof FormalPiRunError &&
-      error.code === 'dependency_risk_exception_inactive',
+      error.code === 'provider_call_failed',
   )
-  assert.equal(sessionFactoryCalls, 0)
+  assert.equal(sessionFactoryCalls, 1)
   assert.equal(audits.length, 1)
   assert.equal(
     audits[0]?.rejectionCode,
-    'dependency_risk_exception_inactive',
+    'provider_call_failed',
   )
   assert.deepEqual(
-    audits[0]?.runtimeSecurity.dependencyRiskException,
+    audits[0]?.runtimeSecurity.dependencySecurityAttestation,
     {
-      exceptionId:
-        'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-      expiresAt: '2026-08-12T16:00:00Z',
-      status: 'expired',
+      attestationId:
+        'country-outage-pi-0.84.1-production-audit-20260811-v1',
+      verifiedAt: '2026-08-11T01:23:27Z',
+      lockfileSha256:
+        'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+      status: 'verified',
     },
   )
   assert.deepEqual(audits[0]?.narration, {
     mode: 'deterministic-base-with-language-slots-v1',
     slotContractVersion: 'country_outage_language_slots_v1',
-    requestedSlotCount: 0,
+    requestedSlotCount: 2,
     acceptedSlotCount: 0,
-    baseV5: 'not_run',
+    baseV5: 'passed',
     mergeInvariant: 'not_run',
     finalV5: 'not_run',
     modelOutputApplied: false,
@@ -1929,7 +1931,7 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
     model,
     modelRuntime,
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -1984,7 +1986,7 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
     ['country-outage-report'],
   )
   assert.equal(narrator.identity.adapter, 'pi-sdk')
-  assert.equal(narrator.identity.piVersion, '0.82.1')
+  assert.equal(narrator.identity.piVersion, '0.84.1')
   assert.equal(audits.length, 1)
   assert.equal(
     audits[0]?.schemaVersion,
@@ -2039,11 +2041,13 @@ test('PiReportNarrator 固定模型并关闭内置工具、扩展、模板、上
       mechanism: null,
       payloadPreparedCount: 0,
     },
-    dependencyRiskException: {
-      exceptionId:
-        'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-      expiresAt: '2026-08-12T16:00:00Z',
-      status: 'active',
+    dependencySecurityAttestation: {
+      attestationId:
+        'country-outage-pi-0.84.1-production-audit-20260811-v1',
+      verifiedAt: '2026-08-11T01:23:27Z',
+      lockfileSha256:
+        'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+      status: 'verified',
     },
   })
   assert.match(
@@ -2091,7 +2095,7 @@ test('PiReportNarrator 对已解析的语义失败草稿在同会话关闭工具
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -2213,7 +2217,7 @@ test('PiReportNarrator 首轮非结构化输出在剩余请求内关闭工具后
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -2346,7 +2350,7 @@ test('PiReportNarrator 以固定安全码区分整份修订的三类结构失败
         model: fakeModel(),
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink(record) {
           audits.push(record)
         },
@@ -2426,7 +2430,7 @@ test('两次 provider 请求已耗尽时保留固定安全诊断且不再修订'
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -2504,7 +2508,7 @@ test('DeepSeek 每轮发送前均强制无工具 JSON 且不修改原对象', as
       modelVersion: 'deepseek-v4-flash',
       expectedResponseModel: 'deepseek-v4-flash',
       thinkingLevel: 'off',
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       certificationEvidenceId: 'evidence:test-deepseek',
       certifiedAt: '2026-07-29T00:00:00Z',
       modelRevisionKind: 'mutable_alias',
@@ -2621,7 +2625,7 @@ test('DeepSeek 每轮发送前均强制无工具 JSON 且不修改原对象', as
     model,
     modelRuntime: fakeModelRuntime(),
     certification,
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -2734,7 +2738,7 @@ test('DeepSeek 拒绝既有 payload hook 返回的非普通对象且不误增结
       modelVersion: 'deepseek-v4-flash',
       expectedResponseModel: 'deepseek-v4-flash',
       thinkingLevel: 'off',
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       certificationEvidenceId: 'evidence:test-deepseek',
       certifiedAt: '2026-07-29T00:00:00Z',
       modelRevisionKind: 'mutable_alias',
@@ -2812,7 +2816,7 @@ test('DeepSeek 拒绝既有 payload hook 返回的非普通对象且不误增结
     model,
     modelRuntime: fakeModelRuntime(),
     certification,
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -2890,7 +2894,7 @@ test('PiReportNarrator 修订仍语义失败时在 accepted 审计前失败关�
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -2969,7 +2973,7 @@ test('PiReportNarrator 首轮已用满两个 provider request 时不发起修订
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -3071,7 +3075,7 @@ test('PiReportNarrator 仅在每轮完整 usage 与转发数、SessionStats 三�
         model: fakeModel(),
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink(record) {
           audits.push(record)
         },
@@ -3177,7 +3181,7 @@ test('PiReportNarrator 将宿主 AbortSignal 转发到 Pi 会话并拒绝半成�
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -3228,7 +3232,7 @@ test('PiReportNarrator 多轮后 75 秒超时会中止会话且不发布部分�
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -3324,7 +3328,7 @@ test('PiReportNarrator 构造时拒绝模型对象与认证组合不一致', () 
         model,
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink() {},
       }),
     (error: unknown) =>
@@ -3352,7 +3356,7 @@ test('PiReportNarrator 构造时拒绝小于 64k 的模型上下文窗口', () =
         } as NonNullable<CreateAgentSessionOptions['model']>,
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink() {},
       }),
     (error: unknown) =>
@@ -3375,7 +3379,7 @@ test('供应方 AbortError 在宿主未取消时仍归类为模型调用失败',
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -3489,7 +3493,7 @@ test('PiReportNarrator 对供应方、模型、响应版本和停止原因逐项
         model: fakeModel(),
         modelRuntime: fakeModelRuntime(),
         certification: fakeCertification(),
-        dependencyRiskException: fakeDependencyRiskException(),
+        dependencySecurityAttestation: fakeDependencyRiskException(),
         auditSink(record) {
           audits.push(record)
         },
@@ -3566,7 +3570,7 @@ test('PiReportNarrator 不记录未授权工具名、参数、结果或报告正
     model: fakeModel(),
     modelRuntime: fakeModelRuntime(),
     certification: fakeCertification(),
-    dependencyRiskException: fakeDependencyRiskException(),
+    dependencySecurityAttestation: fakeDependencyRiskException(),
     auditSink(record) {
       audits.push(record)
     },
@@ -3612,7 +3616,7 @@ test('PiReportNarrator 对工具结果、统计异常或审计写入失败时不
       model: fakeModel(),
       modelRuntime: fakeModelRuntime(),
       certification: fakeCertification(),
-      dependencyRiskException: fakeDependencyRiskException(),
+      dependencySecurityAttestation: fakeDependencyRiskException(),
       auditSink() {},
       sessionFactory: async () => ({
         session: {
@@ -3639,7 +3643,7 @@ test('PiReportNarrator 对工具结果、统计异常或审计写入失败时不
       model: fakeModel(),
       modelRuntime: fakeModelRuntime(),
       certification: fakeCertification(),
-      dependencyRiskException: fakeDependencyRiskException(),
+      dependencySecurityAttestation: fakeDependencyRiskException(),
       auditSink() {},
       sessionFactory: async () => ({
         session: {
@@ -3675,7 +3679,7 @@ test('PiReportNarrator 对工具结果、统计异常或审计写入失败时不
       model: fakeModel(),
       modelRuntime: fakeModelRuntime(),
       certification: fakeCertification(),
-      dependencyRiskException: fakeDependencyRiskException(),
+      dependencySecurityAttestation: fakeDependencyRiskException(),
       auditSink(record) {
         audits.push(record)
       },
@@ -3720,7 +3724,7 @@ test('PiReportNarrator 对工具结果、统计异常或审计写入失败时不
       model: fakeModel(),
       modelRuntime: fakeModelRuntime(),
       certification: fakeCertification(),
-      dependencyRiskException: fakeDependencyRiskException(),
+      dependencySecurityAttestation: fakeDependencyRiskException(),
       auditSink() {
         throw new Error('日志存储不可用')
       },

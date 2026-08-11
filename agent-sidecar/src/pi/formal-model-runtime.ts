@@ -21,7 +21,7 @@ import {
 
 import { FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS } from '../formal-runtime-limits.js'
 
-export const FORMAL_PI_VERSION = '0.82.1' as const
+export const FORMAL_PI_VERSION = '0.84.1' as const
 export const FORMAL_PI_REGISTRY_SCHEMA =
   'country_outage_pi_certified_models_v1' as const
 export const MUTABLE_MODEL_ALIAS_LIMITATION_ZH =

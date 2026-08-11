@@ -52,10 +52,9 @@ import {
   type CertifiedPiModelSelection,
   type PiModelRunSelection,
 } from './formal-model-runtime.js'
-import {
-  FORMAL_COUNTRY_OUTAGE_RISK_EXCEPTION_CONSTRAINTS,
-  type ActiveCountryOutageDependencyRiskException,
-} from './dependency-risk-exception.js'
+import type {
+  VerifiedCountryOutageDependencySecurityAttestation,
+} from './dependency-security-attestation.js'
 import {
   baseFormalPiAuditRecord,
   createFormalPiNarrationAudit,
@@ -73,7 +72,7 @@ import {
 } from './static-resource-loader.js'
 
 const TRUSTED_SKILL_NAME = 'country-outage-report'
-const BUILTIN_AND_FILESYSTEM_TOOLS = [
+export const BUILTIN_AND_FILESYSTEM_TOOLS = [
   'read',
   'bash',
   'edit',
@@ -100,13 +99,13 @@ type ProviderGateViolationCode =
   | 'provider_request_limit_exceeded'
   | 'provider_context_limit_exceeded'
 
-interface ProviderRequestGate {
+export interface ProviderRequestGate {
   readonly forwardedRequestCount: number
   readonly structuredOutputPayloadPreparedCount: number
   readonly violationCode: ProviderGateViolationCode | undefined
 }
 
-interface PiSessionHandle {
+export interface PiSessionHandle {
   readonly agent: {
     streamFunction: PiStreamFunction
   }
@@ -358,9 +357,14 @@ function compactCountryOutageProviderContext(
   }
 }
 
-function installProviderRequestGate(
+export function installProviderRequestGate(
   session: PiSessionHandle,
+  maximumProviderRequests: number =
+    FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS.maximumProviderRequestsPerReport,
 ): ProviderRequestGate {
+  if (!Number.isSafeInteger(maximumProviderRequests) || maximumProviderRequests < 1) {
+    throw new Error('maximum_provider_requests_invalid')
+  }
   const original = session.agent.streamFunction
   let forwardedRequestCount = 0
   let structuredOutputPayloadPreparedCount = 0
@@ -368,8 +372,7 @@ function installProviderRequestGate(
   session.agent.streamFunction = (model, context, options) => {
     if (
       forwardedRequestCount >=
-      FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS
-        .maximumProviderRequestsPerReport
+      maximumProviderRequests
     ) {
       violationCode = 'provider_request_limit_exceeded'
       return providerGateErrorStream(model, violationCode)
@@ -457,7 +460,7 @@ export interface PiReportNarratorOptions {
   modelSelection?: PiModelRunSelection
   /** @deprecated 仅供既有正式测试兼容；产品入口应显式传 modelSelection。 */
   certification?: CertifiedPiModelSelection
-  dependencyRiskException: ActiveCountryOutageDependencyRiskException
+  dependencySecurityAttestation: VerifiedCountryOutageDependencySecurityAttestation
   auditSink: FormalPiAuditSink
   skillPath?: string
   runtimeCwd?: string
@@ -687,8 +690,8 @@ export class PiReportNarrator implements ReportNarrator {
   readonly #model: FixedModel
   readonly #modelRuntime: ModelRuntime
   readonly #modelSelection: PiModelRunSelection
-  readonly #dependencyRiskException:
-    ActiveCountryOutageDependencyRiskException
+  readonly #dependencySecurityAttestation:
+    VerifiedCountryOutageDependencySecurityAttestation
   readonly #auditSink: FormalPiAuditSink
   readonly #skillPath: string | undefined
   readonly #runtimeCwd: string | undefined
@@ -727,17 +730,10 @@ export class PiReportNarrator implements ReportNarrator {
     }
     this.#modelRuntime = options.modelRuntime
     this.#modelSelection = modelSelection
-    if (
-      options.dependencyRiskException.audit.status !== 'active' ||
-      !Number.isFinite(
-        Date.parse(options.dependencyRiskException.audit.expiresAt),
-      )
-    ) {
-      throw new FormalPiRunError(
-        'dependency_risk_exception_inactive',
-      )
+    if (options.dependencySecurityAttestation.audit.status !== 'verified') {
+      throw new FormalPiRunError('dependency_security_attestation_invalid')
     }
-    this.#dependencyRiskException = options.dependencyRiskException
+    this.#dependencySecurityAttestation = options.dependencySecurityAttestation
     this.#auditSink = options.auditSink
     const resourcePaths = normalizedResourcePaths(options)
     const resourceBundle = createStaticCountryOutageResourceBundle(
@@ -824,18 +820,7 @@ export class PiReportNarrator implements ReportNarrator {
       TRUSTED_SYSTEM_PROMPT,
     )
     const resourceLoader = resourceBundle.loader
-    const riskCheckedAt = this.#now()
-    const riskExceptionStatus = !Number.isFinite(riskCheckedAt.valueOf())
-      ? 'expired'
-      : riskCheckedAt.valueOf() <
-          Date.parse(
-            this.#dependencyRiskException.exception.approvedAt,
-          )
-        ? 'not_yet_active'
-        : riskCheckedAt.valueOf() <
-            Date.parse(this.#dependencyRiskException.audit.expiresAt)
-          ? 'active'
-          : 'expired'
+    const dependencyCheckedAt = this.#now()
     const runtimeSecurity: FormalPiRuntimeSecurityAudit = {
       resourceLoaderId: STATIC_RESOURCE_LOADER_ID,
       skillBundleSha256: resourceBundle.skillBundleSha256,
@@ -857,31 +842,18 @@ export class PiReportNarrator implements ReportNarrator {
             mechanism: null,
             payloadPreparedCount: 0,
           },
-      dependencyRiskException: {
-        exceptionId:
-          this.#dependencyRiskException.audit.exceptionId,
-        expiresAt: this.#dependencyRiskException.audit.expiresAt,
-        status: riskExceptionStatus,
+      dependencySecurityAttestation: {
+        attestationId:
+          this.#dependencySecurityAttestation.audit.attestationId,
+        verifiedAt:
+          this.#dependencySecurityAttestation.audit.verifiedAt,
+        lockfileSha256:
+          this.#dependencySecurityAttestation.audit.lockfileSha256,
+        status: 'verified',
       },
     }
-    if (riskExceptionStatus !== 'active') {
-      await this.#writeAudit({
-        ...baseFormalPiAuditRecord(
-          this.#modelSelection,
-          riskCheckedAt.toISOString(),
-          inputAudit,
-          narrationAudit,
-          [],
-          undefined,
-          runtimeSecurity,
-          0,
-        ),
-        outcome: 'rejected',
-        rejectionCode: 'dependency_risk_exception_inactive',
-      })
-      throw new FormalPiRunError(
-        'dependency_risk_exception_inactive',
-      )
+    if (!Number.isFinite(dependencyCheckedAt.valueOf())) {
+      throw new FormalPiRunError('dependency_security_attestation_invalid')
     }
     if (
       resourceBundle.skillBundleSha256 !== this.skillBundleSha256
@@ -1310,9 +1282,8 @@ export const PI_REPORT_SECURITY_PROFILE = Object.freeze({
   modelsJsonEnabled: false,
   modelCatalogNetworkRefreshEnabled: false,
   explicitModel: true,
-  dependencyRiskExceptionRequired: true,
-  externalGlobEnabled:
-    FORMAL_COUNTRY_OUTAGE_RISK_EXCEPTION_CONSTRAINTS.externalGlobEnabled,
+  dependencySecurityAttestationRequired: true,
+  externalGlobEnabled: false,
   extensionsEnabled: false,
   promptTemplatesEnabled: false,
   contextFilesEnabled: false,

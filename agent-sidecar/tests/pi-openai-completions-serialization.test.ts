@@ -17,7 +17,7 @@ import type {
 import { assembleCountryOutageFacts } from "../src/domain/observation-assembler.js";
 import { FORMAL_COUNTRY_OUTAGE_RUNTIME_LIMITS } from "../src/formal-runtime-limits.js";
 import {
-  loadCountryOutageDependencyRiskException,
+  loadCountryOutageDependencySecurityAttestation,
   MUTABLE_MODEL_ALIAS_LIMITATION_ZH,
   PiReportNarrator,
   type CertifiedPiModelSelection,
@@ -88,7 +88,7 @@ function loopbackCertification(): CertifiedPiModelSelection {
       modelVersion: "deepseek-v4-flash",
       expectedResponseModel: "deepseek-v4-flash",
       thinkingLevel: "off",
-      piVersion: "0.82.1",
+      piVersion: "0.84.1",
       certificationEvidenceId: "evidence:loopback-only",
       certifiedAt: "2026-07-30T00:00:00Z",
       modelRevisionKind: "mutable_alias",
@@ -436,8 +436,8 @@ test("完整 Pi 零工具语言槽渲染经真实 adapter 的最终 payload 小�
       model: loopbackModel(port),
       modelRuntime,
       certification: loopbackCertification(),
-      dependencyRiskException:
-        loadCountryOutageDependencyRiskException({
+      dependencySecurityAttestation:
+        loadCountryOutageDependencySecurityAttestation({
           now: new Date("2026-08-01T00:00:00Z"),
         }),
       auditSink(record) {

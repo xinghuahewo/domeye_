@@ -6,6 +6,13 @@ import {
 
 import { DomeyeCountryOutageClient } from '../domain/index.js'
 import {
+  HttpP1GeneralReadModelProvider,
+  P1ModelUserGoalPlanner,
+  P1PiSemanticModel,
+  P1RuntimeV2ConversationService,
+  type P1PiSemanticModelAuditRecord,
+} from '../chat/index.js'
+import {
   CountryOutageAgentOrchestrator,
   DisabledAnnexComposer,
   DisabledExternalEvidenceProvider,
@@ -16,13 +23,14 @@ import {
 } from '../core/index.js'
 import {
   createFormalPiModelBindingFromEnvironment,
-  loadCountryOutageDependencyRiskException,
+  loadCountryOutageDependencySecurityAttestation,
   PiReportNarrator,
-  type ActiveCountryOutageDependencyRiskException,
+  type VerifiedCountryOutageDependencySecurityAttestation,
   type FormalPiAuditSink,
   type FormalPiModelBinding,
   type FormalPiProductionEnvironment,
   type FormalPiRunAuditRecord,
+  type PiSessionFactory,
 } from '../pi/index.js'
 import { COUNTRY_OUTAGE_PROJECT_KNOWLEDGE_VERSION } from '../pi/country-outage-skill-bundle.js'
 import { CountryOutageArtifactBuilder } from '../report/artifact-builder.js'
@@ -81,8 +89,10 @@ export interface FormalCountryOutageSidecarDependencies {
   httpServerFactory?: FormalHttpServerFactory
   auditWriter?: FormalAuditLineWriter
   auditLogNow?: () => Date
-  riskExceptionPath?: string
-  riskExceptionNow?: () => Date
+  securityAttestationPath?: string
+  /** @deprecated 依赖证明不按运行时日期过期；仅保留测试调用兼容。 */
+  securityAttestationNow?: () => Date
+  p1SessionFactory?: PiSessionFactory
 }
 
 export interface FormalCountryOutageSidecar {
@@ -95,7 +105,7 @@ export interface FormalCountryOutageSidecar {
   manager: CountryOutageAgentOrchestrator
   narrator: PiReportNarrator
   binding: FormalPiModelBinding
-  dependencyRiskException: ActiveCountryOutageDependencyRiskException['audit']
+  dependencySecurityAttestation: VerifiedCountryOutageDependencySecurityAttestation['audit']
   externalEvidenceCapability:
     typeof FORMAL_EXTERNAL_EVIDENCE_CAPABILITY
   acceptanceRuntime: FormalCountryOutageAcceptanceRuntime
@@ -104,6 +114,15 @@ export interface FormalCountryOutageSidecar {
   auditLog: {
     directory: string
     retentionDays: typeof FORMAL_PI_AUDIT_RETENTION_DAYS
+  }
+  p1Chat: {
+    enabled: boolean
+    modelIdentity: string | null
+    apiBaseUrl: string | null
+    apiTimeoutMs: number | null
+    modelTimeoutMs: number | null
+    turnTimeoutMs: number | null
+    reportCapabilityExposed: false
   }
 }
 
@@ -140,12 +159,14 @@ function sanitizedRuntimeSecurity(
             mechanism: null,
             payloadPreparedCount: 0,
           },
-    dependencyRiskException: {
-      exceptionId:
-        record.runtimeSecurity.dependencyRiskException.exceptionId,
-      expiresAt:
-        record.runtimeSecurity.dependencyRiskException.expiresAt,
-      status: record.runtimeSecurity.dependencyRiskException.status,
+    dependencySecurityAttestation: {
+      attestationId:
+        record.runtimeSecurity.dependencySecurityAttestation.attestationId,
+      verifiedAt:
+        record.runtimeSecurity.dependencySecurityAttestation.verifiedAt,
+      lockfileSha256:
+        record.runtimeSecurity.dependencySecurityAttestation.lockfileSha256,
+      status: record.runtimeSecurity.dependencySecurityAttestation.status,
     },
   }
 }
@@ -276,6 +297,11 @@ function validateFormalSidecarConfiguration(
   pdfTimeoutMs: number
   baseReportCacheTtlMs: number
   auditDirectory: string
+  p1ChatEnabled: boolean
+  p1ApiBaseUrl: string
+  p1ApiTimeoutMs: number
+  p1ModelTimeoutMs: number
+  p1TurnTimeoutMs: number
   acceptanceRuntime: FormalCountryOutageAcceptanceRuntime
 } {
   const acceptanceRuntime =
@@ -306,11 +332,36 @@ function validateFormalSidecarConfiguration(
       '正式入口只允许 pi-sdk-certified，禁止 deterministic-acceptance 身份',
     )
   }
+  const p1ChatEnabled = env.COUNTRY_OUTAGE_P1_CHAT_ENABLED === 'true'
+  const p1ApiTimeoutMs = positiveIntegerEnvironmentValue(
+    env,
+    'COUNTRY_OUTAGE_P1_API_TIMEOUT_MS',
+    15_000,
+  )
+  const p1ModelTimeoutMs = positiveIntegerEnvironmentValue(
+    env,
+    'COUNTRY_OUTAGE_P1_MODEL_TIMEOUT_MS',
+    75_000,
+  )
+  const p1TurnTimeoutMs = positiveIntegerEnvironmentValue(
+    env,
+    'COUNTRY_OUTAGE_P1_TURN_TIMEOUT_MS',
+    110_000,
+  )
+  if (
+    p1ApiTimeoutMs > 30_000 ||
+    p1ModelTimeoutMs > 120_000 ||
+    p1TurnTimeoutMs > 180_000 ||
+    p1TurnTimeoutMs <= p1ModelTimeoutMs
+  ) {
+    throw new Error('P1 正式超时配置无效')
+  }
+  const apiBaseUrl = requiredEnvironmentValue(env, 'DOMEYE_API_BASE_URL')
   return {
     host,
     port,
     sharedToken,
-    apiBaseUrl: requiredEnvironmentValue(env, 'DOMEYE_API_BASE_URL'),
+    apiBaseUrl,
     apiTimeoutMs: frozenAcceptanceEnvironmentInteger(
       env,
       'DOMEYE_API_TIMEOUT_MS',
@@ -335,6 +386,12 @@ function validateFormalSidecarConfiguration(
       env,
       'COUNTRY_OUTAGE_PI_AUDIT_DIRECTORY',
     ),
+    p1ChatEnabled,
+    p1ApiBaseUrl:
+      env.COUNTRY_OUTAGE_P1_API_BASE_URL?.trim() || apiBaseUrl,
+    p1ApiTimeoutMs,
+    p1ModelTimeoutMs,
+    p1TurnTimeoutMs,
     acceptanceRuntime,
   }
 }
@@ -357,13 +414,15 @@ export async function createFormalCountryOutageSidecar(
     await dependencies.auditWriter?.(line)
   }
 
-  // 风险例外必须先于模型、认证和 HTTP Server 完成失败关闭预检。
-  const dependencyRiskException =
-    loadCountryOutageDependencyRiskException({
-      ...(dependencies.riskExceptionPath
-        ? { path: dependencies.riskExceptionPath }
+  // 依赖安全证明必须先于模型、认证和 HTTP Server 完成失败关闭预检。
+  const dependencySecurityAttestation =
+    loadCountryOutageDependencySecurityAttestation({
+      ...(dependencies.securityAttestationPath
+        ? { path: dependencies.securityAttestationPath }
         : {}),
-      now: (dependencies.riskExceptionNow ?? (() => new Date()))(),
+      ...(dependencies.securityAttestationNow
+        ? { now: dependencies.securityAttestationNow() }
+        : {}),
     })
 
   // 模型、认证和认证注册表必须在 HTTP Server 创建前完成预检。
@@ -391,12 +450,41 @@ export async function createFormalCountryOutageSidecar(
     model: binding.model,
     modelRuntime: binding.modelRuntime,
     modelSelection: binding.runSelection,
-    dependencyRiskException,
+    dependencySecurityAttestation,
     auditSink: createSafeFormalPiAuditSink(persistentAuditWriter),
   })
   if (narrator.identity.adapter !== 'pi-sdk') {
     throw new Error('正式入口禁止使用验收叙述器身份')
   }
+
+  const p1SemanticModel = config.p1ChatEnabled
+    ? new P1PiSemanticModel({
+        binding,
+        timeoutMs: config.p1ModelTimeoutMs,
+        auditSink: async (record: P1PiSemanticModelAuditRecord) => {
+          await persistentAuditWriter(
+            `${JSON.stringify({
+              event: 'country_outage_p1_pi_semantic_run_audit',
+              audit: record,
+            })}\n`,
+          )
+        },
+        ...(dependencies.p1SessionFactory
+          ? { sessionFactory: dependencies.p1SessionFactory }
+          : {}),
+      })
+    : undefined
+  const chatService = p1SemanticModel
+    ? new P1RuntimeV2ConversationService({
+        provider: new HttpP1GeneralReadModelProvider(
+          config.p1ApiBaseUrl,
+          config.p1ApiTimeoutMs,
+        ),
+        planner: new P1ModelUserGoalPlanner(p1SemanticModel),
+        ttlMs: 30 * 60 * 1000,
+        turnTimeoutMs: config.p1TurnTimeoutMs,
+      })
+    : undefined
 
   const reportServiceIdentity: CountryOutageReportServiceIdentity = {
     reportSpecificationVersion: 'country_outage_report_spec_v1',
@@ -445,6 +533,7 @@ export async function createFormalCountryOutageSidecar(
   })
   const requestListener = createCountryOutageAgentHttpHandler({
     application: orchestrator,
+    ...(chatService ? { chatService } : {}),
     authenticate: createCountryOutageInternalAuthenticator(
       config.sharedToken,
     ),
@@ -452,7 +541,9 @@ export async function createFormalCountryOutageSidecar(
   const server = (
     dependencies.httpServerFactory ?? createServer
   )(requestListener)
-  server.requestTimeout = 125_000
+  server.requestTimeout = chatService
+    ? Math.max(125_000, config.p1TurnTimeoutMs + 5_000)
+    : 125_000
   server.headersTimeout = 10_000
   server.keepAliveTimeout = 20_000
 
@@ -465,7 +556,7 @@ export async function createFormalCountryOutageSidecar(
     manager: orchestrator,
     narrator,
     binding,
-    dependencyRiskException: dependencyRiskException.audit,
+    dependencySecurityAttestation: dependencySecurityAttestation.audit,
     externalEvidenceCapability: FORMAL_EXTERNAL_EVIDENCE_CAPABILITY,
     acceptanceRuntime: config.acceptanceRuntime,
     baseReportCacheTtlMs: config.baseReportCacheTtlMs,
@@ -473,6 +564,15 @@ export async function createFormalCountryOutageSidecar(
     auditLog: {
       directory: auditLog.directory,
       retentionDays: auditLog.retentionDays,
+    },
+    p1Chat: {
+      enabled: Boolean(chatService),
+      modelIdentity: p1SemanticModel?.identity ?? null,
+      apiBaseUrl: chatService ? config.p1ApiBaseUrl : null,
+      apiTimeoutMs: chatService ? config.p1ApiTimeoutMs : null,
+      modelTimeoutMs: chatService ? config.p1ModelTimeoutMs : null,
+      turnTimeoutMs: chatService ? config.p1TurnTimeoutMs : null,
+      reportCapabilityExposed: false,
     },
   }
 }

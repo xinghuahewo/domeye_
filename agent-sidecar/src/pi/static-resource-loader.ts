@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { dirname } from 'node:path'
 
 import {
@@ -19,6 +20,12 @@ export const STATIC_RESOURCE_LOADER_ID =
 export interface StaticCountryOutageResourceBundle {
   loader: ResourceLoader
   skillBundleSha256: string
+  resourceLoaderId: typeof STATIC_RESOURCE_LOADER_ID
+}
+
+export interface StaticCountryOutageEmptyResourceBundle {
+  loader: ResourceLoader
+  systemPromptSha256: string
   resourceLoaderId: typeof STATIC_RESOURCE_LOADER_ID
 }
 
@@ -75,7 +82,15 @@ class StaticCountryOutageResourceLoader implements ResourceLoader {
     return this.#systemPrompt
   }
 
+  getSystemPromptSource(): undefined {
+    return undefined
+  }
+
   getAppendSystemPrompt(): string[] {
+    return []
+  }
+
+  getAppendSystemPromptSources(): [] {
     return []
   }
 
@@ -93,6 +108,82 @@ class StaticCountryOutageResourceLoader implements ResourceLoader {
 
   async reload(): Promise<void> {
     // 静态加载器没有发现、包解析或热重载路径。
+  }
+}
+
+class StaticCountryOutageEmptyResourceLoader implements ResourceLoader {
+  readonly #systemPrompt: string
+  readonly #extensionRuntime = createExtensionRuntime()
+
+  constructor(systemPrompt: string) {
+    this.#systemPrompt = systemPrompt
+  }
+
+  getExtensions() {
+    return { extensions: [], errors: [], runtime: this.#extensionRuntime }
+  }
+
+  getSkills() {
+    return { skills: [], diagnostics: [] }
+  }
+
+  getPrompts() {
+    return { prompts: [], diagnostics: [] }
+  }
+
+  getThemes() {
+    return { themes: [], diagnostics: [] }
+  }
+
+  getAgentsFiles() {
+    return { agentsFiles: [] }
+  }
+
+  getSystemPrompt(): string {
+    return this.#systemPrompt
+  }
+
+  getSystemPromptSource(): undefined {
+    return undefined
+  }
+
+  getAppendSystemPrompt(): string[] {
+    return []
+  }
+
+  getAppendSystemPromptSources(): [] {
+    return []
+  }
+
+  extendResources(
+    paths: Parameters<ResourceLoader['extendResources']>[0],
+  ): void {
+    if (
+      (paths.skillPaths?.length ?? 0) > 0 ||
+      (paths.promptPaths?.length ?? 0) > 0 ||
+      (paths.themePaths?.length ?? 0) > 0
+    ) {
+      throw new Error('正式国家中断 Agent 禁止运行时扩展资源')
+    }
+  }
+
+  async reload(): Promise<void> {
+    // 静态空加载器没有发现、包解析或热重载路径。
+  }
+}
+
+export function createStaticCountryOutageEmptyResourceBundle(
+  trustedSystemPrompt: string,
+): StaticCountryOutageEmptyResourceBundle {
+  if (!trustedSystemPrompt.trim()) {
+    throw new Error('正式国家中断 Agent 系统提示词不能为空')
+  }
+  return {
+    loader: new StaticCountryOutageEmptyResourceLoader(trustedSystemPrompt),
+    systemPromptSha256: createHash('sha256')
+      .update(trustedSystemPrompt, 'utf8')
+      .digest('hex'),
+    resourceLoaderId: STATIC_RESOURCE_LOADER_ID,
   }
 }
 

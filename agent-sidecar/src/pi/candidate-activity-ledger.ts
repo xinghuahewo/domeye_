@@ -27,11 +27,11 @@ import { compareUnicodeCodePoints } from '../shared/deterministic-json.js'
 export const COUNTRY_OUTAGE_CANDIDATE_ACTIVITY_LEDGER_SCHEMA =
   'country_outage_pi_model_candidate_activity_v1' as const
 export const COUNTRY_OUTAGE_CANDIDATE_ACTIVITY_LEDGER_RELATIVE_PATH =
-  'var/country-outage-agent/a4-model-certification-activity/deepseek-v4-flash-pi-0.82.1-v1-activity-v1.jsonl' as const
+  'var/country-outage-agent/a4-model-certification-activity/deepseek-v4-flash-pi-0.84.1-v1-activity-v1.jsonl' as const
 export const COUNTRY_OUTAGE_CANDIDATE_ACTIVITY_ANCHOR_SCHEMA =
   'country_outage_pi_model_candidate_activity_anchor_v1' as const
 export const COUNTRY_OUTAGE_CANDIDATE_ACTIVITY_ANCHOR_RELATIVE_PATH =
-  'var/country-outage-agent/a4-model-certification-activity/deepseek-v4-flash-pi-0.82.1-v1-activity-anchor-v1.json' as const
+  'var/country-outage-agent/a4-model-certification-activity/deepseek-v4-flash-pi-0.84.1-v1-activity-anchor-v1.json' as const
 export const COUNTRY_OUTAGE_LEGACY_PRE_LEDGER_COST_CNY =
   0.10838016 as const
 export const COUNTRY_OUTAGE_PRE_LEDGER_EVIDENCE_DESCRIPTION =
@@ -1859,6 +1859,21 @@ export interface CandidateActivityLedger {
   close(): void
 }
 
+function activityLedgerFileNames(candidateId: string): {
+  ledger: string
+  anchor: string
+  lock: string
+} {
+  if (!SAFE_ID.test(candidateId) || candidateId.includes('/')) {
+    throw new CandidateActivityLedgerError('activity_ledger_invalid')
+  }
+  return {
+    ledger: `${candidateId}-activity-v1.jsonl`,
+    anchor: `${candidateId}-activity-anchor-v1.json`,
+    lock: `.${candidateId}-activity-v1.lock`,
+  }
+}
+
 /**
  * 只读检查当前 ledger 与独立 tail anchor。该函数不会创建 lock、文件或目录，
  * 仅用于无凭据、无网络的运维 readiness 状态；正式认证仍使用带锁入口。
@@ -1872,14 +1887,9 @@ export function inspectCandidateActivityLedger(options: {
     options.repositoryRoot,
     false,
   )
-  const path = resolve(
-    directory,
-    'deepseek-v4-flash-pi-0.82.1-v1-activity-v1.jsonl',
-  )
-  const anchorPath = resolve(
-    directory,
-    'deepseek-v4-flash-pi-0.82.1-v1-activity-anchor-v1.json',
-  )
+  const names = activityLedgerFileNames(options.policy.candidateId)
+  const path = resolve(directory, names.ledger)
+  const anchorPath = resolve(directory, names.anchor)
   if (!pathEntryExists(path) || !pathEntryExists(anchorPath)) {
     throw new CandidateActivityLedgerError(
       'activity_ledger_invalid',
@@ -1991,18 +2001,10 @@ function openCandidateActivityLedgerInternal(options: {
     options.repositoryRoot,
     initializing,
   )
-  const path = resolve(
-    directory,
-    'deepseek-v4-flash-pi-0.82.1-v1-activity-v1.jsonl',
-  )
-  const anchorPath = resolve(
-    directory,
-    'deepseek-v4-flash-pi-0.82.1-v1-activity-anchor-v1.json',
-  )
-  const lockPath = resolve(
-    directory,
-    '.deepseek-v4-flash-pi-0.82.1-v1-activity-v1.lock',
-  )
+  const names = activityLedgerFileNames(options.policy.candidateId)
+  const path = resolve(directory, names.ledger)
+  const anchorPath = resolve(directory, names.anchor)
+  const lockPath = resolve(directory, names.lock)
   let lockDescriptor: number | undefined
   let ledgerDescriptor: number | undefined
   let lockOwned = false

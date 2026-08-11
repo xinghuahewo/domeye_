@@ -1,4 +1,5 @@
 export * from './codex-cli-semantic-model.js'
+export * from './pi-semantic-model.js'
 export * from './contracts.js'
 export * from './general-read-model-provider.js'
 export * from './page-capability-series.js'

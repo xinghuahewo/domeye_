@@ -20,21 +20,21 @@ import { fileURLToPath } from 'node:url'
 
 const PATCH_ID = 'pi-ai-openai-completions-response-model-v1'
 const CODING_AGENT_PACKAGE = '@earendil-works/pi-coding-agent'
-const EXPECTED_VERSION = '0.82.1'
+const EXPECTED_VERSION = '0.84.1'
 const TARGET_RELATIVE_PATH =
   'node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js'
 const PI_AI_PACKAGE_RELATIVE_PATH =
   'node_modules/@earendil-works/pi-ai/package.json'
 const UPSTREAM_SHA256 =
-  '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a'
+  '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363'
 const PATCHED_SHA256 =
-  '5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b'
+  '9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504'
 const PATCH_ARTIFACT_SHA256 =
-  'c62983d07f150ddbef0e412feb596406648f1e151430f633f406ca018e2412cd'
+  'a7e89d8dae4ddb8a3aa2548153c2e0e68f57fd7b8102bdde10ecc8d297836c28'
 const PATCH_MANIFEST_SHA256 =
-  '886b0faf7ccbd0dec19ba74aaa3d92e5b6a218177bf36f1f50a5ece553f8bfba'
-const UPSTREAM_BYTE_LENGTH = 56_943
-const PATCHED_BYTE_LENGTH = 56_915
+  'ba5f5bceae09c868285926d0b63c562f88168211284c52036aa62d8346bab1ad'
+const UPSTREAM_BYTE_LENGTH = 60_161
+const PATCHED_BYTE_LENGTH = 60_133
 const MAXIMUM_TARGET_BYTES = 128 * 1024
 const BEFORE =
   'if (typeof chunk.model === "string" && chunk.model.length > 0 && chunk.model !== model.id) {'
@@ -104,7 +104,7 @@ function assertManifest(sidecarRoot) {
   )
   const patchPath = resolve(
     sidecarRoot,
-    'vendor-patches/pi-ai-0.82.1-openai-completions-response-model-v1.patch',
+    'vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch',
   )
   if (
     !isWithin(sidecarRoot, manifestPath) ||

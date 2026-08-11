@@ -5,7 +5,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from web.api.v2 import country_outage_agent_proxy as base_proxy
+from web.api.v2 import country_outage_chat_proxy as chat_proxy
 from web.country_outage_agent_identity import (
     TRUSTED_AUTHORIZATION_SCOPE_ENVIRON_KEY,
     WSGI_REMOTE_USER_MODE,
@@ -42,6 +42,9 @@ class CountryOutageChatProxyTest(unittest.TestCase):
                 "COUNTRY_OUTAGE_AGENT_SHARED_TOKEN": (
                     "test-only-country-outage-agent-token"
                 ),
+                "COUNTRY_OUTAGE_P1_CHAT_SIDECAR_URL": (
+                    "http://127.0.0.1:28475"
+                ),
                 "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE": WSGI_REMOTE_USER_MODE,
             },
         )
@@ -66,7 +69,7 @@ class CountryOutageChatProxyTest(unittest.TestCase):
             calls.append((method, path, kwargs))
             return FakeUpstream({"ok": True})
 
-        with patch.object(base_proxy, "_request_sidecar", fake_request):
+        with patch.object(chat_proxy, "_request_chat_sidecar", fake_request):
             created = self.client.post(
                 "/api/v2/country-outage/chat/conversations",
                 json=binding_request(),
@@ -133,8 +136,8 @@ class CountryOutageChatProxyTest(unittest.TestCase):
     def test_turn_rejects_tool_or_state_fields_before_sidecar(self):
         calls = []
         with patch.object(
-            base_proxy,
-            "_request_sidecar",
+            chat_proxy,
+            "_request_chat_sidecar",
             lambda *args, **kwargs: calls.append((args, kwargs)),
         ):
             response = self.client.post(

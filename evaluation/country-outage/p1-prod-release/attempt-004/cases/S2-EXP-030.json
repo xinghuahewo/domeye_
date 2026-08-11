@@ -1,0 +1,486 @@
+{
+  "schema_version": "country_outage_p1_semantic_certification_case_v1",
+  "case_id": "S2-EXP-030",
+  "question": "IPv4 现在多少、IPv6 走势怎样、是不是政府关网，再给一条 AS48715 路径。",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-v1",
+  "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+  "expected_receipt_path": "evaluation/country-outage/p1-page-coverage/s2/raw/agent-receipts/S2-EXP-030.json",
+  "expected_receipt_sha256": "fa2ac1caeee75fa2bb382c0e4e1926b2824b7f103390d6faf00d12e458ca3327",
+  "expected_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "IPv4 现在多少、IPv6 走势怎样、是不是政府关网，再给一条 AS48715 路径。",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "IPv4 现在多少",
+        "normalized_kind": "address_family_change",
+        "entities": {
+          "address_family": "ipv4",
+          "population": "fixed_cohort",
+          "include_new_prefixes": false,
+          "analysis_mode": "current_value",
+          "time_scope": "current_publication_window"
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-2",
+        "requested_goal": "IPv6 走势怎样",
+        "normalized_kind": "address_family_change",
+        "entities": {
+          "address_family": "ipv6",
+          "population": "fixed_cohort",
+          "include_new_prefixes": false,
+          "analysis_mode": "event_window_trend",
+          "time_scope": "current_publication_window"
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-3",
+        "requested_goal": "是不是政府关网",
+        "normalized_kind": "government_action",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-4",
+        "requested_goal": "给一条 AS48715 路径",
+        "normalized_kind": "path_sample",
+        "entities": {
+          "affected_asn": 48715,
+          "page_size": 1
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "confidence": 0.95
+  },
+  "actual_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "IPv4 现在多少、IPv6 走势怎样、是不是政府关网，再给一条 AS48715 路径。",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "IPv4 现在多少",
+        "normalized_kind": "address_family_change",
+        "entities": {
+          "address_family": "ipv4",
+          "population": "fixed_cohort",
+          "include_new_prefixes": false,
+          "time_scope": "current_publication_window",
+          "analysis_mode": "current_value"
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-2",
+        "requested_goal": "IPv6 走势怎样",
+        "normalized_kind": "address_family_change",
+        "entities": {
+          "address_family": "ipv6",
+          "population": "fixed_cohort",
+          "include_new_prefixes": false,
+          "time_scope": "current_publication_window",
+          "analysis_mode": "event_window_trend"
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-3",
+        "requested_goal": "是不是政府关网",
+        "normalized_kind": "government_action",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-4",
+        "requested_goal": "给一条 AS48715 路径",
+        "normalized_kind": "path_sample",
+        "entities": {
+          "affected_asn": 48715,
+          "page_size": 1
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:pi-sdk:0.84.1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash:p1-user-goal-plan-v1",
+    "confidence": 0.95
+  },
+  "grounding_plan": {
+    "plan_revision": "grounding-plan-v2",
+    "identity": {
+      "binding_phase": "bound",
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "decisions": [
+      {
+        "goal_id": "goal-1",
+        "answerability": "supported",
+        "node_ids": [
+          "node-1",
+          "node-2"
+        ],
+        "reason_codes": [
+          "address_series_available"
+        ]
+      },
+      {
+        "goal_id": "goal-2",
+        "answerability": "supported",
+        "node_ids": [
+          "node-3",
+          "node-4",
+          "node-5"
+        ],
+        "reason_codes": [
+          "address_series_available"
+        ]
+      },
+      {
+        "goal_id": "goal-3",
+        "answerability": "unsupported",
+        "node_ids": [],
+        "reason_codes": [
+          "rrc25_cannot_establish_cause_or_responsibility"
+        ]
+      },
+      {
+        "goal_id": "goal-4",
+        "answerability": "supported",
+        "node_ids": [
+          "node-6",
+          "node-7"
+        ],
+        "reason_codes": [
+          "observed_path_sample_available"
+        ]
+      }
+    ],
+    "nodes": [
+      {
+        "node_id": "node-1",
+        "goal_id": "goal-1",
+        "execution_unit": "TOOL-01",
+        "capability_ids": [
+          "CAP-001"
+        ],
+        "inputs": {
+          "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "expected_revision": 1
+        },
+        "input_sources": {
+          "event_reference": "binding",
+          "expected_publication_id": "binding",
+          "expected_revision": "binding"
+        },
+        "depends_on": [],
+        "expected_evidence_sources": [
+          "resolution"
+        ]
+      },
+      {
+        "node_id": "node-2",
+        "goal_id": "goal-1",
+        "execution_unit": "TOOL-03",
+        "capability_ids": [
+          "CAP-006",
+          "CAP-009"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "metrics": [
+            "fixed_visible_ipv4_address_count"
+          ]
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding",
+          "metrics": "policy_default"
+        },
+        "depends_on": [
+          "node-1"
+        ],
+        "expected_evidence_sources": [
+          "series"
+        ]
+      },
+      {
+        "node_id": "node-3",
+        "goal_id": "goal-2",
+        "execution_unit": "TOOL-01",
+        "capability_ids": [
+          "CAP-001"
+        ],
+        "inputs": {
+          "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "expected_revision": 1
+        },
+        "input_sources": {
+          "event_reference": "binding",
+          "expected_publication_id": "binding",
+          "expected_revision": "binding"
+        },
+        "depends_on": [],
+        "expected_evidence_sources": [
+          "resolution"
+        ]
+      },
+      {
+        "node_id": "node-4",
+        "goal_id": "goal-2",
+        "execution_unit": "TOOL-03",
+        "capability_ids": [
+          "CAP-007",
+          "CAP-009"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "metrics": [
+            "fixed_visible_ipv6_slash48_count"
+          ]
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding",
+          "metrics": "policy_default"
+        },
+        "depends_on": [
+          "node-3"
+        ],
+        "expected_evidence_sources": [
+          "series"
+        ]
+      },
+      {
+        "node_id": "node-5",
+        "goal_id": "goal-2",
+        "execution_unit": "OP-01",
+        "capability_ids": [
+          "CAP-016"
+        ],
+        "inputs": {
+          "source_node_id": "node-4",
+          "metric": "fixed_visible_ipv6_slash48_count",
+          "tie_policy": "first_observed_occurrence"
+        },
+        "input_sources": {
+          "source_node_id": "tool_result",
+          "metric": "policy_default",
+          "tie_policy": "policy_default"
+        },
+        "depends_on": [
+          "node-4"
+        ],
+        "expected_evidence_sources": [
+          "derived"
+        ]
+      },
+      {
+        "node_id": "node-6",
+        "goal_id": "goal-4",
+        "execution_unit": "TOOL-01",
+        "capability_ids": [
+          "CAP-001"
+        ],
+        "inputs": {
+          "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "expected_revision": 1
+        },
+        "input_sources": {
+          "event_reference": "binding",
+          "expected_publication_id": "binding",
+          "expected_revision": "binding"
+        },
+        "depends_on": [],
+        "expected_evidence_sources": [
+          "resolution"
+        ]
+      },
+      {
+        "node_id": "node-7",
+        "goal_id": "goal-4",
+        "execution_unit": "TOOL-05",
+        "capability_ids": [
+          "CAP-012",
+          "CAP-013"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "affected_asn": 48715,
+          "scope": "all",
+          "query": "",
+          "page": 1,
+          "page_size": 1
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding",
+          "affected_asn": "user_goal",
+          "scope": "policy_default",
+          "query": "policy_default",
+          "page": "policy_default",
+          "page_size": "user_goal"
+        },
+        "depends_on": [
+          "node-6"
+        ],
+        "expected_evidence_sources": [
+          "paths"
+        ]
+      }
+    ],
+    "authorization_scope": [
+      "country_outage:read"
+    ],
+    "validation": {
+      "status": "passed",
+      "errors": []
+    }
+  },
+  "grounding_errors": [],
+  "goal_comparison": [
+    {
+      "goal_id": "goal-1",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"address_family\":\"ipv4\",\"analysis_mode\":\"current_value\",\"include_new_prefixes\":false,\"population\":\"fixed_cohort\",\"time_scope\":\"current_publication_window\"},\"normalized_kind\":\"address_family_change\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"address_family\":\"ipv4\",\"analysis_mode\":\"current_value\",\"include_new_prefixes\":false,\"population\":\"fixed_cohort\",\"time_scope\":\"current_publication_window\"},\"normalized_kind\":\"address_family_change\",\"references\":[]}",
+      "matched": true
+    },
+    {
+      "goal_id": "goal-2",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"address_family\":\"ipv6\",\"analysis_mode\":\"event_window_trend\",\"include_new_prefixes\":false,\"population\":\"fixed_cohort\",\"time_scope\":\"current_publication_window\"},\"normalized_kind\":\"address_family_change\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"address_family\":\"ipv6\",\"analysis_mode\":\"event_window_trend\",\"include_new_prefixes\":false,\"population\":\"fixed_cohort\",\"time_scope\":\"current_publication_window\"},\"normalized_kind\":\"address_family_change\",\"references\":[]}",
+      "matched": true
+    },
+    {
+      "goal_id": "goal-3",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"government_action\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"government_action\",\"references\":[]}",
+      "matched": true
+    },
+    {
+      "goal_id": "goal-4",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"affected_asn\":48715,\"page_size\":1},\"normalized_kind\":\"path_sample\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"affected_asn\":48715,\"page_size\":1},\"normalized_kind\":\"path_sample\",\"references\":[]}",
+      "matched": true
+    }
+  ],
+  "grounding_passed": true,
+  "model_audit": {
+    "schemaVersion": "country_outage_p1_pi_semantic_run_audit_v1",
+    "recordedAt": "2026-08-11T01:51:34.139Z",
+    "runtimeIdentity": "candidate",
+    "registryVersion": null,
+    "certificationEvidenceId": null,
+    "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "candidateResourceSha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+    "profileId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "modelVersion": "deepseek-v4-flash",
+    "expectedResponseModel": "deepseek-v4-flash",
+    "piVersion": "0.84.1",
+    "input": {
+      "promptSha256": "b3caca0a468e7ace3930bcfc979403920360f428afeafe2a84545bdf054bf742",
+      "promptBytes": 15451
+    },
+    "outcome": "completed",
+    "output": {
+      "outputSha256": "d1553146cb075e1092906f19f6b12659f6bbf253e4a78aa4a2d9597a8cefa23f",
+      "outputBytes": 1790
+    },
+    "runtimeSecurity": {
+      "resourceLoaderId": "country-outage-static-resource-loader-v1",
+      "systemPromptSha256": "8b3618b406e934222a1b14e5e6797e54f9343f8cba977a38ac1059be44f46a63",
+      "packageManagerResolutionEnabled": false,
+      "modelResolverEnabled": false,
+      "modelsJsonEnabled": false,
+      "modelCatalogNetworkRefreshEnabled": false,
+      "providerRetryAttempts": 0,
+      "forwardedProviderRequestCount": 1,
+      "maximumProviderRequestCount": 1,
+      "toolExecutionCount": 0,
+      "unauthorizedToolAttemptCount": 0,
+      "structuredOutputPayloadPreparedCount": 1
+    },
+    "usage": {
+      "assistantMessages": 1,
+      "toolCalls": 0,
+      "toolResults": 0,
+      "totalMessages": 2,
+      "tokens": {
+        "input": 311,
+        "output": 498,
+        "cacheRead": 3328,
+        "cacheWrite": 0,
+        "total": 4137
+      },
+      "estimatedCostUsd": 0.0001922984
+    },
+    "billing": {
+      "currency": "USD",
+      "estimatedCost": 0.0001922984,
+      "source": "pi_session_stats"
+    }
+  }
+}

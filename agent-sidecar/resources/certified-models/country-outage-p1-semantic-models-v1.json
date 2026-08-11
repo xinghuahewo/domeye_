@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "country_outage_pi_certified_models_v1",
+  "registryVersion": "deepseek-v4-flash-p1-certified-1a62455ab36c",
+  "status": "frozen",
+  "profiles": [
+    {
+      "id": "deepseek-v4-flash-pi-0.84.1-v1",
+      "status": "certified",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "modelVersion": "deepseek-v4-flash",
+      "expectedResponseModel": "deepseek-v4-flash",
+      "thinkingLevel": "off",
+      "piVersion": "0.84.1",
+      "certificationEvidenceId": "evidence:p1-semantic-certification:f42659f7fb804f54a4012faad0c01f695bdaee8734efb1c563713ae7cd44b187",
+      "certifiedAt": "2026-08-11T01:51:34.179Z",
+      "modelRevisionKind": "mutable_alias",
+      "immutableRevisionAvailable": false,
+      "limitation": "供应方未提供不可变权重 revision；deepseek-v4-flash 是可变别名，可能无痕变化。",
+      "certificationValidUntil": "2026-08-18T01:51:34.179Z",
+      "certifiedScenarioSetId": "country-outage-p1-page-coverage-s2-v1",
+      "certifiedInputScope": "country_outage_p1_rrc25_event_bound_chat_v1"
+    }
+  ]
+}

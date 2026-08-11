@@ -10,6 +10,7 @@ const ALLOWED_TOOLS = new Set<string>()
 
 export const FORMAL_PI_RUN_REJECTION_CODES = Object.freeze([
   'configured_model_mismatch',
+  'dependency_security_attestation_invalid',
   'dependency_risk_exception_inactive',
   'model_context_window_too_small',
   'model_output_limit_invalid',
@@ -59,8 +60,10 @@ export function isFormalPiRunRejectionCode(
 
 const SAFE_ERROR_MESSAGES: Record<FormalPiRunRejectionCode, string> = {
   configured_model_mismatch: '正式 Pi 模型对象与已认证组合不一致',
+  dependency_security_attestation_invalid:
+    '正式 Pi 生产依赖安全证明无效',
   dependency_risk_exception_inactive:
-    '正式 Pi 依赖风险例外未生效或已经到期',
+    '旧版正式 Pi 依赖风险例外未生效或已经到期',
   model_context_window_too_small:
     '正式 Pi 模型上下文窗口低于冻结下限',
   model_output_limit_invalid:
@@ -173,10 +176,11 @@ export interface FormalPiRuntimeSecurityAudit {
         mechanism: null
         payloadPreparedCount: 0
       }
-  dependencyRiskException: {
-    exceptionId: string
-    expiresAt: string
-    status: 'active' | 'not_yet_active' | 'expired'
+  dependencySecurityAttestation: {
+    attestationId: string
+    verifiedAt: string
+    lockfileSha256: string
+    status: 'verified'
   }
 }
 

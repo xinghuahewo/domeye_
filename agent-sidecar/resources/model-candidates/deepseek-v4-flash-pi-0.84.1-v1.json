@@ -1,19 +1,17 @@
 {
   "schemaVersion": "country_outage_pi_model_candidate_v1",
-  "candidateId": "deepseek-v4-flash-pi-0.82.1-v1",
+  "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
   "status": "candidate",
   "provider": "deepseek",
   "model": "deepseek-v4-flash",
   "modelVersion": "deepseek-v4-flash",
   "expectedResponseModel": "deepseek-v4-flash",
   "thinkingLevel": "off",
-  "piVersion": "0.82.1",
+  "piVersion": "0.84.1",
   "catalog": {
     "api": "openai-completions",
     "baseUrl": "https://api.deepseek.com",
-    "input": [
-      "text"
-    ],
+    "input": ["text"],
     "reasoning": true,
     "contextWindowTokens": 1000000,
     "catalogMaximumOutputTokens": 384000,
@@ -33,9 +31,9 @@
   "adapterRequirement": {
     "api": "openai-completions",
     "sameNameResponseModelRequired": true,
-    "pinnedUnpatchedSourceSha256": "0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a",
+    "pinnedUnpatchedSourceSha256": "727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363",
     "approvedSameNameSourceSha256": [
-      "5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b"
+      "9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504"
     ]
   },
   "certification": {

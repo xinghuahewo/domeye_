@@ -456,7 +456,7 @@ test('纯只读 readiness 同时区分价格缺失或过期与历史用量未结
         COUNTRY_OUTAGE_CANDIDATE_ACTIVITY_LEDGER_RELATIVE_PATH,
       ),
     ),
-    '.deepseek-v4-flash-pi-0.82.1-v1-activity-v1.lock',
+    '.deepseek-v4-flash-pi-0.84.1-v1-activity-v1.lock',
   )
   assert.equal(lstatExists(ledgerLock), false)
   assert.equal(

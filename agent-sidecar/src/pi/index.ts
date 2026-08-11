@@ -32,6 +32,7 @@ export type {
 export * from './country-outage-skill-bundle.js'
 export * from './country-outage-tools.js'
 export * from './dependency-risk-exception.js'
+export * from './dependency-security-attestation.js'
 export * from './formal-model-runtime.js'
 export * from './model-certification.js'
 export * from './formal-run-audit.js'

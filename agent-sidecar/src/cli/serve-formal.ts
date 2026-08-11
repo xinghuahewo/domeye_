@@ -26,6 +26,7 @@ async function main(): Promise<void> {
         sidecar.reportServiceIdentity.skillBundleSha256,
       externalEvidence: 'disabled',
       externalEvidenceProvider: 'disabled',
+      p1Chat: sidecar.p1Chat,
     })}\n`,
   )
 }

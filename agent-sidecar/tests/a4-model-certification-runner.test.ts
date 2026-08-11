@@ -43,7 +43,7 @@ import {
   COUNTRY_OUTAGE_CANDIDATE_ACTIVITY_LEDGER_RELATIVE_PATH,
   COUNTRY_OUTAGE_PROVIDER_PRICE_ATTESTATION_RELATIVE_PATH,
   initializeA4CandidateActivityLedger,
-  loadCountryOutageDependencyRiskException,
+  loadCountryOutageDependencySecurityAttestation,
   loadPiModelCandidate,
   FormalPiRunError,
   openCandidateActivityLedger,
@@ -308,7 +308,7 @@ function activityPolicy(
 ): CandidateActivityBudgetPolicy {
   const maximumSingleReportCostCny = 0.21676032
   return {
-    candidateId: 'deepseek-v4-flash-pi-0.82.1-v1',
+    candidateId: 'deepseek-v4-flash-pi-0.84.1-v1',
     candidateResourceSha256,
     provider: 'deepseek',
     model: 'deepseek-v4-flash',
@@ -704,7 +704,7 @@ test('价格证明缺失、过期、未来、上调或候选漂移均在 auth、
         existsSync(
           resolve(
             dirname(ledgerPath),
-            '.deepseek-v4-flash-pi-0.82.1-v1-activity-v1.lock',
+            '.deepseek-v4-flash-pi-0.84.1-v1-activity-v1.lock',
           ),
         ),
         false,
@@ -806,7 +806,7 @@ test('候选预检失败时 Domeye、Pi 会话、PDF 和证据目录均为零触
                   responseModelAdapterInspector: () => ({
                     sameNamePreserved: false,
                     sourceSha256:
-                      '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a',
+                      '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363',
                   }),
                 }),
             runtimeFactory: async () => {
@@ -1191,8 +1191,8 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
       repositoryRoot: paths.root,
       runtimeFactory: async () => fakeRuntime(),
       responseModelAdapterInspector: compatibleAdapterInspection,
-      dependencyRiskException:
-        loadCountryOutageDependencyRiskException({
+      dependencySecurityAttestation:
+        loadCountryOutageDependencySecurityAttestation({
           now: new Date('2026-07-29T10:00:00Z'),
         }),
       now: () => new Date('2026-07-29T10:00:00Z'),
@@ -1388,11 +1388,13 @@ test('固定 A4 样本经两个独立 Pi 会话生成两份完整报告并原子
     assert.deepEqual(
       piRunAudit.runtimeSecurity,
       {
-        dependencyRiskException: {
-          exceptionId:
-            'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-          expiresAt: '2026-08-12T16:00:00Z',
-          status: 'active',
+        dependencySecurityAttestation: {
+          attestationId:
+            'country-outage-pi-0.84.1-production-audit-20260811-v1',
+          verifiedAt: '2026-08-11T01:23:27Z',
+          lockfileSha256:
+            'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+          status: 'verified',
         },
         explicitModel: true,
         modelCatalogNetworkRefreshEnabled: false,
@@ -1567,8 +1569,8 @@ test('A4 五报告场景套件在每报告 64K×2 次预算门内生成可核验
       runtimeFactory: async () => fakeRuntime(),
       responseModelAdapterInspector:
         compatibleAdapterInspection,
-      dependencyRiskException:
-        loadCountryOutageDependencyRiskException({
+      dependencySecurityAttestation:
+        loadCountryOutageDependencySecurityAttestation({
           now: new Date('2026-07-29T10:00:00Z'),
         }),
       now: () => new Date('2026-07-29T10:00:00Z'),
@@ -1752,8 +1754,8 @@ test('两份报告均经一次受控整份修订后仍可通过完整 A4 runner 
       repositoryRoot: paths.root,
       runtimeFactory: async () => fakeRuntime(),
       responseModelAdapterInspector: compatibleAdapterInspection,
-      dependencyRiskException:
-        loadCountryOutageDependencyRiskException({
+      dependencySecurityAttestation:
+        loadCountryOutageDependencySecurityAttestation({
           now: new Date('2026-07-29T10:20:00Z'),
         }),
       now: () => new Date('2026-07-29T10:20:00Z'),
@@ -1880,8 +1882,8 @@ test('并发方已经持有同一 evidence lock 时失败方不得删除该锁',
         runtimeFactory: async () => fakeRuntime(),
         responseModelAdapterInspector:
           compatibleAdapterInspection,
-        dependencyRiskException:
-          loadCountryOutageDependencyRiskException({
+        dependencySecurityAttestation:
+          loadCountryOutageDependencySecurityAttestation({
             now: new Date('2026-07-29T10:30:00Z'),
           }),
         now: () => new Date('2026-07-29T10:30:00Z'),
@@ -1991,8 +1993,8 @@ test('修订后报告语义校验失败时在 Pi accepted 审计前以固定安�
         runtimeFactory: async () => fakeRuntime(),
         responseModelAdapterInspector:
           compatibleAdapterInspection,
-        dependencyRiskException:
-          loadCountryOutageDependencyRiskException({
+        dependencySecurityAttestation:
+          loadCountryOutageDependencySecurityAttestation({
             now: new Date('2026-07-29T11:30:00Z'),
           }),
         now: () => new Date('2026-07-29T11:30:00Z'),
@@ -2095,8 +2097,8 @@ test('第二次完整报告失败时第一轮内存结果不得产生任何证�
         runtimeFactory: async () => fakeRuntime(),
         responseModelAdapterInspector:
           compatibleAdapterInspection,
-        dependencyRiskException:
-          loadCountryOutageDependencyRiskException({
+        dependencySecurityAttestation:
+          loadCountryOutageDependencySecurityAttestation({
             now: new Date('2026-07-29T11:00:00Z'),
           }),
         now: () => new Date('2026-07-29T11:00:00Z'),
@@ -2153,8 +2155,8 @@ test('相同 snapshot 与 factSet 下 ASN 分页证据漂移时认证失败且�
         runtimeFactory: async () => fakeRuntime(),
         responseModelAdapterInspector:
           compatibleAdapterInspection,
-        dependencyRiskException:
-          loadCountryOutageDependencyRiskException({
+        dependencySecurityAttestation:
+          loadCountryOutageDependencySecurityAttestation({
             now: new Date('2026-07-29T12:00:00Z'),
           }),
         now: () => new Date('2026-07-29T12:00:00Z'),
@@ -2221,8 +2223,8 @@ test('真实候选多轮后最后一次 provider 失败按整份预留结算且�
         runtimeFactory: async () => fakeRuntime(),
         responseModelAdapterInspector:
           compatibleAdapterInspection,
-        dependencyRiskException:
-          loadCountryOutageDependencyRiskException({
+        dependencySecurityAttestation:
+          loadCountryOutageDependencySecurityAttestation({
             now: new Date('2026-07-29T13:00:00Z'),
           }),
         now: () => new Date('2026-07-29T13:00:00Z'),
@@ -2401,8 +2403,8 @@ test('多轮后的 timeout 与用户取消审计均按整份预留结算', async
             runtimeFactory: async () => fakeRuntime(),
             responseModelAdapterInspector:
               compatibleAdapterInspection,
-            dependencyRiskException:
-              loadCountryOutageDependencyRiskException({
+            dependencySecurityAttestation:
+              loadCountryOutageDependencySecurityAttestation({
                 now: new Date('2026-07-29T13:02:00Z'),
               }),
             now: () => new Date('2026-07-29T13:02:00Z'),
@@ -2474,8 +2476,8 @@ test('模型已接受但 PDF 后处理失败时记录 allowlist candidate code',
         runtimeFactory: async () => fakeRuntime(),
         responseModelAdapterInspector:
           compatibleAdapterInspection,
-        dependencyRiskException:
-          loadCountryOutageDependencyRiskException({
+        dependencySecurityAttestation:
+          loadCountryOutageDependencySecurityAttestation({
             now: new Date('2026-07-29T13:05:00Z'),
           }),
         now: () => new Date('2026-07-29T13:05:00Z'),

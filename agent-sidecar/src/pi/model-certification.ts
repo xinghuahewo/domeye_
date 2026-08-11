@@ -84,9 +84,9 @@ import {
   type CandidateActivityUsage,
 } from './candidate-activity-ledger.js'
 import {
-  loadCountryOutageDependencyRiskException,
-  type ActiveCountryOutageDependencyRiskException,
-} from './dependency-risk-exception.js'
+  loadCountryOutageDependencySecurityAttestation,
+  type VerifiedCountryOutageDependencySecurityAttestation,
+} from './dependency-security-attestation.js'
 import {
   FORMAL_PI_NARRATION_MODE,
   isFormalPiRunRejectionCode,
@@ -136,7 +136,7 @@ export const COUNTRY_OUTAGE_PI_MODEL_CANDIDATE_SCHEMA =
 export const COUNTRY_OUTAGE_PI_MODEL_CERTIFICATION_MANIFEST_SCHEMA =
   'country_outage_pi_model_certification_manifest_v1' as const
 export const DEEPSEEK_V4_FLASH_CANDIDATE_ID =
-  'deepseek-v4-flash-pi-0.82.1-v1' as const
+  'deepseek-v4-flash-pi-0.84.1-v1' as const
 export const A4_IRAN_MODEL_CERTIFICATION_FIXTURE_ID =
   'a4-iran-country-outage-rrc25-v1' as const
 
@@ -149,7 +149,7 @@ const A4_MODEL_ALIAS_CERTIFICATION_VALIDITY_MS =
   7 * 24 * 60 * 60 * 1_000
 const MILLION = 1_000_000
 const APPROVED_RESPONSE_MODEL_PATCH_SHA256 =
-  '5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b' as const
+  '9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504' as const
 
 export interface PiModelCandidate {
   schemaVersion: typeof COUNTRY_OUTAGE_PI_MODEL_CANDIDATE_SCHEMA
@@ -184,7 +184,7 @@ export interface PiModelCandidate {
   adapterRequirement: {
     api: 'openai-completions'
     sameNameResponseModelRequired: true
-    pinnedUnpatchedSourceSha256: '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a'
+    pinnedUnpatchedSourceSha256: '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363'
     approvedSameNameSourceSha256: readonly [
       typeof APPROVED_RESPONSE_MODEL_PATCH_SHA256,
     ]
@@ -307,7 +307,7 @@ const SAFE_ERROR_MESSAGES: Record<
     'DeepSeek 候选模型目录与冻结资源不一致',
   candidate_model_not_available: 'DeepSeek 候选模型当前不可用',
   candidate_response_model_adapter_unsupported:
-    'Pi 0.82.1 的 openai-completions 适配器不能保留同名 responseModel；未批准并应用修复前禁止计费认证',
+    'Pi 0.84.1 的 openai-completions 适配器不能保留同名 responseModel；未批准并应用修复前禁止计费认证',
   candidate_budget_preflight_failed: 'DeepSeek 候选认证预算预检失败',
   candidate_runner_failed: 'DeepSeek 候选完整报告运行失败',
   candidate_report_validation_failed:
@@ -523,7 +523,7 @@ export function parsePiModelCandidate(
     value.adapterRequirement.api !== 'openai-completions' ||
     value.adapterRequirement.sameNameResponseModelRequired !== true ||
     value.adapterRequirement.pinnedUnpatchedSourceSha256 !==
-      '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a' ||
+      '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363' ||
     !Array.isArray(
       value.adapterRequirement.approvedSameNameSourceSha256,
     ) ||
@@ -577,7 +577,7 @@ export function parsePiModelCandidate(
       api: 'openai-completions',
       sameNameResponseModelRequired: true,
       pinnedUnpatchedSourceSha256:
-        '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a',
+        '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363',
       approvedSameNameSourceSha256: Object.freeze([
         APPROVED_RESPONSE_MODEL_PATCH_SHA256,
       ] as const),
@@ -595,11 +595,11 @@ function defaultCandidatePath(): string {
   const candidates = [
     resolve(
       moduleDirectory,
-      '../../resources/model-candidates/deepseek-v4-flash-pi-0.82.1-v1.json',
+      '../../resources/model-candidates/deepseek-v4-flash-pi-0.84.1-v1.json',
     ),
     resolve(
       moduleDirectory,
-      '../../../resources/model-candidates/deepseek-v4-flash-pi-0.82.1-v1.json',
+      '../../../resources/model-candidates/deepseek-v4-flash-pi-0.84.1-v1.json',
     ),
   ]
   return (
@@ -1951,7 +1951,7 @@ export interface A4ModelCertificationDependencies {
   }) => PdfDocumentRenderer
   executeScenarioSuite?: boolean
   sessionFactory?: PiSessionFactory
-  dependencyRiskException?: ActiveCountryOutageDependencyRiskException
+  dependencySecurityAttestation?: VerifiedCountryOutageDependencySecurityAttestation
   now?: () => Date
   repositoryRoot?: string
   registryPath?: string
@@ -2463,12 +2463,14 @@ function createSafeCandidatePiRunAuditArtifact(
           audit.runtimeSecurity.structuredOutput
             .payloadPreparedCount,
       },
-      dependencyRiskException: {
-        exceptionId:
-          audit.runtimeSecurity.dependencyRiskException.exceptionId,
-        expiresAt:
-          audit.runtimeSecurity.dependencyRiskException.expiresAt,
-        status: audit.runtimeSecurity.dependencyRiskException.status,
+      dependencySecurityAttestation: {
+        attestationId:
+          audit.runtimeSecurity.dependencySecurityAttestation.attestationId,
+        verifiedAt:
+          audit.runtimeSecurity.dependencySecurityAttestation.verifiedAt,
+        lockfileSha256:
+          audit.runtimeSecurity.dependencySecurityAttestation.lockfileSha256,
+        status: audit.runtimeSecurity.dependencySecurityAttestation.status,
       },
     },
     modelAttempt: {
@@ -3516,9 +3518,9 @@ export async function runA4ModelCandidateCertification(
                 : { timeoutMs: options.domeyeApiTimeoutMs }),
             })
           const client = createA4PinnedClient(rawClient, runFixture)
-          const dependencyRiskException =
-            dependencies?.dependencyRiskException ??
-            loadCountryOutageDependencyRiskException({
+          const dependencySecurityAttestation =
+            dependencies?.dependencySecurityAttestation ??
+            loadCountryOutageDependencySecurityAttestation({
               now: now(),
             })
           const executeSingleReport = async (single: {
@@ -3533,7 +3535,7 @@ export async function runA4ModelCandidateCertification(
               model: binding.model,
               modelRuntime: binding.modelRuntime,
               modelSelection: binding.runSelection,
-              dependencyRiskException,
+              dependencySecurityAttestation,
               auditSink(record) {
                 audits.push(structuredClone(record))
               },

@@ -40,7 +40,7 @@ import {
   createCountryOutageInternalAuthenticator,
 } from '../src/cli/sidecar-security.js'
 import {
-  CountryOutageDependencyRiskExceptionError,
+  CountryOutageDependencySecurityAttestationError,
   formalPiModelRunSelection,
   FormalPiRuntimeError,
   MUTABLE_MODEL_ALIAS_LIMITATION_ZH,
@@ -57,7 +57,7 @@ const CERTIFIED_PROFILE: CertifiedPiModelProfile = {
   modelVersion: 'certified-model-20260728',
   expectedResponseModel: 'certified-model-20260728',
   thinkingLevel: 'off',
-  piVersion: '0.82.1',
+  piVersion: '0.84.1',
   certificationEvidenceId: 'evidence:a4-formal-sidecar-test',
   certifiedAt: '2026-07-28T15:00:00Z',
   modelRevisionKind: 'mutable_alias',
@@ -115,7 +115,7 @@ function fakeBinding(): FormalPiModelBinding {
       modelVersion: CERTIFIED_PROFILE.modelVersion,
       expectedResponseModel: CERTIFIED_PROFILE.expectedResponseModel,
       thinkingLevel: CERTIFIED_PROFILE.thinkingLevel,
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       certificationEvidenceId:
         CERTIFIED_PROFILE.certificationEvidenceId,
       modelRevisionKind: CERTIFIED_PROFILE.modelRevisionKind,
@@ -150,17 +150,21 @@ function validEnvironment(): FormalSidecarEnvironment {
     COUNTRY_OUTAGE_PI_PROFILE: CERTIFIED_PROFILE.id,
     COUNTRY_OUTAGE_PI_AUTH_PATH:
       '/run/domeye-secrets/formal-sidecar-test.json',
+    COUNTRY_OUTAGE_PI_CERTIFIED_REGISTRY_PATH: resolve(
+      process.cwd(),
+      'resources/certified-models/country-outage-p1-semantic-models-v1.json',
+    ),
     COUNTRY_OUTAGE_PI_AUDIT_DIRECTORY:
       FORMAL_TEST_AUDIT_DIRECTORY,
   }
 }
 
-function riskExceptionResource(): Record<string, unknown> {
+function securityAttestationResource(): Record<string, unknown> {
   return JSON.parse(
     readFileSync(
       resolve(
         process.cwd(),
-        'resources/risk-exceptions/country-outage-pi-ghsa-mh99-v99m-4gvg-v2.json',
+        'resources/dependency-security/pi-0.84.1-production-dependency-attestation-v1.json',
       ),
       'utf8',
     ),
@@ -197,7 +201,7 @@ test('默认空认证注册表在创建 HTTP Server 和监听端口前失败关�
 
   await assert.rejects(
     createFormalCountryOutageSidecar(env, {
-      riskExceptionNow: () => new Date('2026-08-01T00:00:00Z'),
+      securityAttestationNow: () => new Date('2026-08-01T00:00:00Z'),
       httpServerFactory() {
         serverFactoryCalled = true
         throw new Error('不应创建 HTTP Server')
@@ -225,7 +229,7 @@ test('正式 Sidecar 按模型预检、Pi 叙述器、服务和 HTTP 监听顺�
   const sidecar = await startFormalCountryOutageSidecar(
     validEnvironment(),
     {
-      riskExceptionNow: () => new Date('2026-08-01T00:00:00Z'),
+      securityAttestationNow: () => new Date('2026-08-01T00:00:00Z'),
       bindingFactory: async () => {
         order.push('model-preflight')
         return binding
@@ -283,11 +287,13 @@ test('正式 Sidecar 按模型预检、Pi 叙述器、服务和 HTTP 监听顺�
     directory: FORMAL_TEST_AUDIT_DIRECTORY,
     retentionDays: 30,
   })
-  assert.deepEqual(sidecar.dependencyRiskException, {
-    exceptionId:
-      'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-    expiresAt: '2026-08-12T16:00:00Z',
-    status: 'active',
+  assert.deepEqual(sidecar.dependencySecurityAttestation, {
+    attestationId:
+      'country-outage-pi-0.84.1-production-audit-20260811-v1',
+    verifiedAt: '2026-08-11T01:23:27Z',
+    lockfileSha256:
+      'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+    status: 'verified',
   })
   assert.equal(
     sidecar.reportServiceIdentity.validatorRulesVersion,
@@ -309,7 +315,7 @@ test('正式入口拒绝 deterministic-acceptance 且不会开始模型预检或
         COUNTRY_OUTAGE_AGENT_NARRATOR: 'deterministic-acceptance',
       },
       {
-        riskExceptionNow: () => new Date('2026-08-01T00:00:00Z'),
+        securityAttestationNow: () => new Date('2026-08-01T00:00:00Z'),
         bindingFactory: async () => {
           bindingFactoryCalled = true
           return fakeBinding()
@@ -343,7 +349,7 @@ test('正式入口在模型预检前拒绝 API、PDF 和 cache 环境量化值�
           [name]: value,
         },
         {
-          riskExceptionNow: () =>
+          securityAttestationNow: () =>
             new Date('2026-08-01T00:00:00Z'),
           bindingFactory: async () => {
             bindingFactoryCalled = true
@@ -373,7 +379,7 @@ test('正式入口缺失审计目录配置时在模型预检和 HTTP Server 创�
 
   await assert.rejects(
     createFormalCountryOutageSidecar(env, {
-      riskExceptionNow: () => new Date('2026-08-01T00:00:00Z'),
+      securityAttestationNow: () => new Date('2026-08-01T00:00:00Z'),
       bindingFactory: async () => {
         bindingFactoryCalled = true
         return fakeBinding()
@@ -404,7 +410,7 @@ test('正式入口审计目录权限过宽时在模型预检和 HTTP Server 创�
           COUNTRY_OUTAGE_PI_AUDIT_DIRECTORY: temporaryDirectory,
         },
         {
-          riskExceptionNow: () =>
+          securityAttestationNow: () =>
             new Date('2026-08-01T00:00:00Z'),
           bindingFactory: async () => {
             bindingFactoryCalled = true
@@ -425,44 +431,20 @@ test('正式入口审计目录权限过宽时在模型预检和 HTTP Server 创�
   }
 })
 
-test('风险例外到期时在模型预检和 HTTP Server 创建前失败关闭', async () => {
-  let bindingFactoryCalled = false
-  let serverFactoryCalled = false
-  await assert.rejects(
-    createFormalCountryOutageSidecar(validEnvironment(), {
-      riskExceptionNow: () =>
-        new Date('2026-08-12T16:00:00Z'),
-      bindingFactory: async () => {
-        bindingFactoryCalled = true
-        return fakeBinding()
-      },
-      httpServerFactory() {
-        serverFactoryCalled = true
-        throw new Error('风险例外到期后不得创建 HTTP Server')
-      },
-    }),
-    (error: unknown) =>
-      error instanceof CountryOutageDependencyRiskExceptionError &&
-      error.code === 'risk_exception_expired',
-  )
-  assert.equal(bindingFactoryCalled, false)
-  assert.equal(serverFactoryCalled, false)
-})
-
-test('风险例外正式路径约束漂移时在模型预检前失败关闭', async () => {
+test('依赖安全证明正式路径约束漂移时在模型预检前失败关闭', async () => {
   const temporaryDirectory = realpathSync(
-    mkdtempSync(join(tmpdir(), 'domeye-risk-exception-drift-')),
+    mkdtempSync(join(tmpdir(), 'domeye-security-attestation-drift-')),
   )
-  const riskExceptionPath = join(
+  const securityAttestationPath = join(
     temporaryDirectory,
-    'risk-exception.json',
+    'security-attestation.json',
   )
-  const resource = riskExceptionResource()
+  const resource = securityAttestationResource()
   ;(
-    resource.constraints as Record<string, unknown>
+    resource.runtimeConstraints as Record<string, unknown>
   ).externalGlobEnabled = true
   writeFileSync(
-    riskExceptionPath,
+    securityAttestationPath,
     `${JSON.stringify(resource, null, 2)}\n`,
   )
 
@@ -471,8 +453,8 @@ test('风险例外正式路径约束漂移时在模型预检前失败关闭', as
     let serverFactoryCalled = false
     await assert.rejects(
       createFormalCountryOutageSidecar(validEnvironment(), {
-        riskExceptionPath,
-        riskExceptionNow: () =>
+        securityAttestationPath,
+        securityAttestationNow: () =>
           new Date('2026-08-01T00:00:00Z'),
         bindingFactory: async () => {
           bindingFactoryCalled = true
@@ -485,8 +467,8 @@ test('风险例外正式路径约束漂移时在模型预检前失败关闭', as
       }),
       (error: unknown) =>
         error instanceof
-          CountryOutageDependencyRiskExceptionError &&
-        error.code === 'risk_exception_constraint_mismatch',
+          CountryOutageDependencySecurityAttestationError &&
+        error.code === 'dependency_security_attestation_mismatch',
     )
     assert.equal(bindingFactoryCalled, false)
     assert.equal(serverFactoryCalled, false)
@@ -515,7 +497,7 @@ test('正式审核 sink 仅输出白名单元数据并剥离正文、工具参�
     model: CERTIFIED_PROFILE.model,
     modelVersion: CERTIFIED_PROFILE.modelVersion,
     expectedResponseModel: CERTIFIED_PROFILE.expectedResponseModel,
-    piVersion: '0.82.1',
+    piVersion: '0.84.1',
     certificationEvidenceId:
       CERTIFIED_PROFILE.certificationEvidenceId,
     input: {
@@ -557,11 +539,13 @@ test('正式审核 sink 仅输出白名单元数据并剥离正文、工具参�
           'deepseek-json-object-no-tools-v2',
         payloadPreparedCount: 0,
       },
-      dependencyRiskException: {
-        exceptionId:
-          'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-        expiresAt: '2026-08-12T16:00:00Z',
-        status: 'active',
+      dependencySecurityAttestation: {
+        attestationId:
+          'country-outage-pi-0.84.1-production-audit-20260811-v1',
+        verifiedAt: '2026-08-11T01:23:27Z',
+        lockfileSha256:
+          'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+        status: 'verified',
       },
     },
     modelAttempt: {
@@ -589,7 +573,7 @@ test('正式审核 sink 仅输出白名单元数据并剥离正文、工具参�
   Object.assign(record.narration, {
     slotText: '不得写入的模型语言槽正文',
   })
-  Object.assign(record.runtimeSecurity.dependencyRiskException, {
+  Object.assign(record.runtimeSecurity.dependencySecurityAttestation, {
     advisory: '不得写入安全审计的 advisory 正文',
     component: 'brace-expansion@5.0.7',
     approvalText: '不得写入安全审计的批准正文',
@@ -663,14 +647,16 @@ test('正式审核 sink 仅输出白名单元数据并剥离正文、工具参�
   assert.deepEqual(
     (
       parsed.audit.runtimeSecurity as {
-        dependencyRiskException: unknown
+        dependencySecurityAttestation: unknown
       }
-    ).dependencyRiskException,
+    ).dependencySecurityAttestation,
     {
-      exceptionId:
-        'country-outage-pi-ghsa-mh99-v99m-4gvg-20260812-v2',
-      expiresAt: '2026-08-12T16:00:00Z',
-      status: 'active',
+      attestationId:
+        'country-outage-pi-0.84.1-production-audit-20260811-v1',
+      verifiedAt: '2026-08-11T01:23:27Z',
+      lockfileSha256:
+        'eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6',
+      status: 'verified',
     },
   )
 })

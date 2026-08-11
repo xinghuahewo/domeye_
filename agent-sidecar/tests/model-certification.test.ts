@@ -176,7 +176,7 @@ test('版本化 DeepSeek 候选资源固定身份、目录、价格和预算边�
   )
   assert.equal(loaded.candidate.status, 'candidate')
   assert.equal(loaded.candidate.thinkingLevel, 'off')
-  assert.equal(loaded.candidate.piVersion, '0.82.1')
+  assert.equal(loaded.candidate.piVersion, '0.84.1')
   assert.equal(loaded.candidate.execution.maximumOutputTokens, 16_384)
   assert.equal(
     loaded.candidate.execution.maximumProviderRequestCount,
@@ -196,7 +196,7 @@ test('版本化 DeepSeek 候选资源固定身份、目录、价格和预算边�
     loaded.candidate.adapterRequirement
       .approvedSameNameSourceSha256,
     [
-      '5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b',
+      '9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504',
     ],
   )
   assert.match(loaded.resourceSha256, /^[a-f0-9]{64}$/)
@@ -235,7 +235,7 @@ test('缺少安全 auth path 时不创建模型运行时且正式注册表不变
   assert.equal(readFileSync(registryPath, 'utf8'), before)
 })
 
-test('Pi 0.82.1 受控补丁适配器通过固定摘要预检', async () => {
+test('Pi 0.84.1 受控补丁适配器通过固定摘要预检', async () => {
   let runtimeFactoryCalled = false
   const binding = await createCandidatePiModelBinding({
     loadedCandidate: await loadedCandidate(),
@@ -248,7 +248,7 @@ test('Pi 0.82.1 受控补丁适配器通过固定摘要预检', async () => {
   assert.equal(runtimeFactoryCalled, true)
   assert.equal(
     binding.preflight.responseModelAdapter.sourceSha256,
-    '5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b',
+    '9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504',
   )
 })
 
@@ -261,7 +261,7 @@ test('未补丁适配器仍在创建模型运行时前失败关闭', async () =>
       responseModelAdapterInspector: () => ({
         sameNamePreserved: false,
         sourceSha256:
-          '0d50250fe2931e66e2078279a397814202e1ecddee58faf4b8bc04c278da177a',
+          '727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363',
       }),
       runtimeFactory: async () => {
         runtimeFactoryCalled = true

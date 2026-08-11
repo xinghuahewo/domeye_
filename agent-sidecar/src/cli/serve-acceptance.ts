@@ -186,7 +186,7 @@ async function main(): Promise<void> {
       collector: 'rrc25',
       narrator: narratorMode,
       persistence: 'ephemeral',
-      piVersion: '0.82.1',
+      piVersion: '0.84.1',
       externalEvidence: 'disabled',
       p1Chat: p1ChatEnabled ? 'enabled_candidate' : 'disabled',
     })}\n`,

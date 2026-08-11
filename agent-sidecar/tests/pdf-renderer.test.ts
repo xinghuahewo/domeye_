@@ -278,7 +278,7 @@ function mutableAliasReportDocument(): CountryOutageReportDocument {
   document.model = {
     ...document.model,
     adapter: 'pi-sdk',
-    piVersion: '0.82.1',
+    piVersion: '0.84.1',
     runtimeIdentity: 'formal',
     modelRevisionKind: 'mutable_alias',
     immutableRevisionAvailable: false,

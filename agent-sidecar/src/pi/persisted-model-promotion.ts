@@ -284,7 +284,7 @@ function assertPersistedPiRunAudit(
       'providerRetryAttempts',
       'forwardedProviderRequestCount',
       'structuredOutput',
-      'dependencyRiskException',
+      'dependencySecurityAttestation',
     ]) ||
     value.runtimeSecurity.resourceLoaderId !==
       'country-outage-static-resource-loader-v1' ||
@@ -310,14 +310,15 @@ function assertPersistedPiRunAudit(
       evidence.checks.structuredOutput.mechanism ||
     value.runtimeSecurity.structuredOutput.payloadPreparedCount !==
       evidence.checks.structuredOutput.payloadPreparedCount ||
-    !isRecord(value.runtimeSecurity.dependencyRiskException) ||
-    !exactKeys(value.runtimeSecurity.dependencyRiskException, [
-      'exceptionId',
-      'expiresAt',
+    !isRecord(value.runtimeSecurity.dependencySecurityAttestation) ||
+    !exactKeys(value.runtimeSecurity.dependencySecurityAttestation, [
+      'attestationId',
+      'verifiedAt',
+      'lockfileSha256',
       'status',
     ]) ||
-    value.runtimeSecurity.dependencyRiskException.status !==
-      'active' ||
+    value.runtimeSecurity.dependencySecurityAttestation.status !==
+      'verified' ||
     !isRecord(value.modelAttempt) ||
     !exactKeys(value.modelAttempt, [
       'timeoutMs',

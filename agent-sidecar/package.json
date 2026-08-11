@@ -12,6 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "pretypecheck": "npm run vendor:patch:verify",
     "certify:model:a4": "npm run build && node dist/src/cli/certify-a4-model-candidate.js",
+    "certify:model:p1-semantic": "npm run build && node dist/src/cli/certify-p1-semantic-model-candidate.js",
+    "promote:model:p1-semantic": "npm run build && node dist/src/cli/promote-p1-semantic-model-candidate.js",
     "promote:model:a4": "npm run build && node dist/src/cli/promote-a4-model-candidate.js",
     "attest:model:a4-price": "npm run build && node dist/src/cli/create-a4-provider-price-attestation.js",
     "status:model:a4-readiness": "npm run build && node dist/src/cli/a4-candidate-readiness-status.js",
@@ -22,13 +24,14 @@
     "generate:acceptance-report": "npm run build && node dist/src/cli/generate-acceptance-report.js",
     "start:acceptance": "npm run build && node dist/src/cli/serve-acceptance.js",
     "start:formal": "npm run build && node dist/src/cli/serve-formal.js",
+    "start:formal:p1": "npm run build && node dist/src/cli/serve-formal-p1.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "vendor:patch:apply": "node scripts/apply_pi_response_model_patch.mjs --apply",
     "vendor:patch:verify": "node scripts/apply_pi_response_model_patch.mjs --verify"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "0.82.1",
+    "@earendil-works/pi-coding-agent": "0.84.1",
     "typebox": "1.1.5"
   },
   "devDependencies": {

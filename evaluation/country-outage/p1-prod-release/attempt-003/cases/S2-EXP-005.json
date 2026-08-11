@@ -1,0 +1,166 @@
+{
+  "schema_version": "country_outage_p1_semantic_certification_case_v1",
+  "case_id": "S2-EXP-005",
+  "question": "它什么时候最严重，峰值多少？",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-v1",
+  "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+  "expected_receipt_path": "evaluation/country-outage/p1-page-coverage/s2/raw/agent-receipts/S2-EXP-005.json",
+  "expected_receipt_sha256": "6fdd9eef0f9f4c2d6bc1dd8604d85341044b6beb9322bb7b6b1f857daa4f4252",
+  "expected_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "它什么时候最严重，峰值多少？",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "它什么时候最严重，峰值多少？",
+        "normalized_kind": "ambiguous_peak_metric",
+        "entities": {},
+        "references": [],
+        "ambiguity": "blocking",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "confidence": 0.95
+  },
+  "actual_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "它什么时候最严重，峰值多少？",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "它什么时候最严重，峰值多少？",
+        "normalized_kind": "ambiguous_peak_metric",
+        "entities": {},
+        "references": [],
+        "ambiguity": "blocking",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:pi-sdk:0.84.1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash:p1-user-goal-plan-v1",
+    "confidence": 0.95
+  },
+  "grounding_plan": {
+    "plan_revision": "grounding-plan-v2",
+    "identity": {
+      "binding_phase": "bound",
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "decisions": [
+      {
+        "goal_id": "goal-1",
+        "answerability": "clarify",
+        "node_ids": [],
+        "reason_codes": [
+          "peak_metric_and_unit_required"
+        ]
+      }
+    ],
+    "nodes": [],
+    "authorization_scope": [
+      "country_outage:read"
+    ],
+    "validation": {
+      "status": "passed",
+      "errors": []
+    }
+  },
+  "grounding_errors": [],
+  "goal_comparison": [
+    {
+      "goal_id": "goal-1",
+      "expected_signature": "{\"ambiguity\":\"blocking\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"ambiguous_peak_metric\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"blocking\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"ambiguous_peak_metric\",\"references\":[]}",
+      "matched": true
+    }
+  ],
+  "grounding_passed": true,
+  "model_audit": {
+    "schemaVersion": "country_outage_p1_pi_semantic_run_audit_v1",
+    "recordedAt": "2026-08-11T01:49:09.301Z",
+    "runtimeIdentity": "candidate",
+    "registryVersion": null,
+    "certificationEvidenceId": null,
+    "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "candidateResourceSha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+    "profileId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "modelVersion": "deepseek-v4-flash",
+    "expectedResponseModel": "deepseek-v4-flash",
+    "piVersion": "0.84.1",
+    "input": {
+      "promptSha256": "25467ae34e20321d96fe7651c395171c4273502914826a150a2135d09707512e",
+      "promptBytes": 14592
+    },
+    "outcome": "completed",
+    "output": {
+      "outputSha256": "b0ebf00d35c23f9e596394db891c528c73a5fd8a6dfc5894bea8cfbd5f47f793",
+      "outputBytes": 438
+    },
+    "runtimeSecurity": {
+      "resourceLoaderId": "country-outage-static-resource-loader-v1",
+      "systemPromptSha256": "8b3618b406e934222a1b14e5e6797e54f9343f8cba977a38ac1059be44f46a63",
+      "packageManagerResolutionEnabled": false,
+      "modelResolverEnabled": false,
+      "modelsJsonEnabled": false,
+      "modelCatalogNetworkRefreshEnabled": false,
+      "providerRetryAttempts": 0,
+      "forwardedProviderRequestCount": 1,
+      "maximumProviderRequestCount": 1,
+      "toolExecutionCount": 0,
+      "unauthorizedToolAttemptCount": 0,
+      "structuredOutputPayloadPreparedCount": 1
+    },
+    "usage": {
+      "assistantMessages": 1,
+      "toolCalls": 0,
+      "toolResults": 0,
+      "totalMessages": 2,
+      "tokens": {
+        "input": 233,
+        "output": 119,
+        "cacheRead": 3200,
+        "cacheWrite": 0,
+        "total": 3552
+      },
+      "estimatedCostUsd": 0.0000749
+    },
+    "billing": {
+      "currency": "USD",
+      "estimatedCost": 0.0000749,
+      "source": "pi_session_stats"
+    }
+  }
+}

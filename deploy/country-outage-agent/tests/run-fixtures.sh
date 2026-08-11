@@ -130,3 +130,5 @@ if DOMEYE_COUNTRY_OUTAGE_AGENT_TEST_ROOT="${FIXTURE_ROOT}" \
 fi
 
 printf 'fixture tests passed\n'
+
+"${DEPLOY_DIR}/p1-chat/tests/run-fixtures.sh"
