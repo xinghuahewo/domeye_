@@ -237,32 +237,32 @@ publication 直接事实 / 登记 Operator 派生事实
 |---|---|---|---|---|
 | Q01 | 核验事件、publication、revision、collector、窗口和终态 | TOOL-01/02/06 | Investigation identity gate | 保留直答 |
 | Q02 | 说明聚合、ASN、样本、完整路径与 audit-only 完整性 | TOOL-02/05/06 | ResultSet completeness model | 保留边界回答 |
-| Q03 | 并列报告前缀、ASN、IPv4、IPv6 极值 | TOOL-03、OP-01/02 | OP-13 时间关系 | 保留并补齐 IPv6 |
+| Q03 | 并列报告前缀、ASN、IPv4、IPv6 极值 | TOOL-03、OP-01/02 | OP-29 时间关系 | 保留并补齐 IPv6 |
 | Q04 | 按不可见程度排序 ASN | TOOL-04 | OP-05 AS severity rank、DELIVERY-01 | 设计新排序与导出 |
-| Q05 | 展开 AS49666 前缀、状态和路径概况 | TOOL-04/05 | TOOL-07/08/12、OP-07/08、DELIVERY-01 | 原子单元组合下钻 |
-| Q06 | 列出指定 ASN 的异常前缀及首峰末时间 | 无实体 Tool | TOOL-07/08、OP-06/07、DELIVERY-01 | 原子单元组合 |
-| Q07 | 指定时间点列出 ASN 的 normal/partial/complete 前缀 | 无实体 Tool | TOOL-07/08、OP-06 | 原子单元组合 |
-| Q08 | ASN 首次变化、最长持续和峰值比例排名 | TOOL-04 部分字段 | TOOL-09、OP-05/07 | 原子单元组合 |
-| Q09 | 两个 ASN 的时间、前缀和 downstream 集合重叠 | TOOL-05 部分分页 | TOOL-07/09/12、OP-11/12/13 | 原子集合与时间组合 |
+| Q05 | 展开 AS49666 前缀、状态和路径概况 | TOOL-04/05 | TOOL-07/08/12、OP-06/07/09/15、RENDERER-01/02/03、DELIVERY-01 | 原子单元组合下钻 |
+| Q06 | 列出指定 ASN 的异常前缀及首峰末时间 | 无实体 Tool | TOOL-07/08、OP-06/07/08/09、RENDERER-01/02/03、DELIVERY-01 | 原子单元组合 |
+| Q07 | 指定时间点列出 ASN 的 normal/partial/complete 前缀 | 无实体 Tool | TOOL-07/08、PLAN-CAP-01 | Plan参数绑定后读取 |
+| Q08 | ASN 首次变化、最长持续和峰值比例排名 | TOOL-04 部分字段 | TOOL-09、OP-06/07/10/11/12/13/14 | 原子单元组合 |
+| Q09 | 两个 ASN 的时间、前缀和 downstream 集合重叠 | TOOL-05 部分分页 | TOOL-07/09/12、OP-07/19/25/26/27/28/29 | 原子集合与时间组合 |
 | Q10 | 解释 ASN 排名及非关键性边界 | TOOL-04 | OP-05 排序回执 | 修正默认语义 |
-| Q13 | 峰值时间点列出具体 partial/complete 前缀 | TOOL-03 只有峰值 | TOOL-08、OP-06、DELIVERY-01 | 设计峰值下钻 |
-| Q14 | 指定前缀的观察方向与状态变化 | 无实体 Tool | TOOL-08/11、OP-07 | 设计按需下钻 |
-| Q16 | 新出现前缀、首次观察、origin、路径和截止状态 | TOOL-03 只有总量 | TOOL-10/11、OP-06、DELIVERY-01 | 原子单元组合成员查询 |
+| Q13 | 峰值时间点列出具体 partial/complete 前缀 | TOOL-03 只有峰值 | TOOL-08、PLAN-CAP-01、RENDERER-01/02/03、DELIVERY-01 | 峰值时间作为Tool参数 |
+| Q14 | 指定前缀的观察方向与状态变化 | 无实体 Tool | TOOL-08/11、OP-06/07/08/30/31/32 | 设计按需下钻 |
+| Q16 | 新出现前缀、首次观察、origin、路径和截止状态 | TOOL-03 只有总量 | TOOL-10/11、OP-33、RENDERER-01/02/03、DELIVERY-01 | 原子单元组合成员查询 |
 | Q17 | 澄清“新出现”不等于全球新分配 | TOOL-03 定义 | Evidence Validator | 保留边界回答 |
-| Q18 | 指定前缀在不同 VP 的状态、origin 与路径差异 | 无 RouteState Tool | TOOL-11、OP-13 | 设计按需 VP 下钻 |
-| Q19 | AS49666→AS58224 关系与至少 5 条真实样本 | TOOL-05 最多 3 样本 | TOOL-12、OP-08/09、DELIVERY-01 | 原子路径读取与结构变换 |
-| Q20 | 完整列出包含指定 ASN 的路径并导出 | audit-only | TOOL-12、OP-08、DELIVERY-01 | 设计完整路径查询 |
-| Q21 | 指定 ASN 的直接邻接摘要与有界路径邻域 | TOOL-05 样本可部分派生 | TOOL-12、OP-09 | v1 表格，图后置 |
-| Q22 | 列出 AS49666→AS58224 的关联前缀 | TOOL-05 只有总数/样本 | TOOL-12、OP-10、DELIVERY-01 | 设计完整成员投影 |
-| Q23 | 峰值时点实际活动路径包含哪些 ASN | concurrent 不足 | TOOL-11、OP-08 | 设计 path-at-time |
-| Q24 | 指定 prefix/peer 的路径变化链 | 无 RouteEvent Tool | TOOL-13、OP-14 | P2.1 deferred 设计 |
-| Q26 | 指定 ASN 的 observed downstream origin set | TOOL-05 可分页 | TOOL-12、OP-11、DELIVERY-01 | 设计完整集合交付 |
-| Q27 | 多 ASN downstream 集合交集、覆盖率与 Jaccard | TOOL-05 数据可派生 | TOOL-12、OP-11/12、DELIVERY-01 | 原子投影与集合比较 |
+| Q18 | 指定前缀在不同 VP 的状态、origin 与路径差异 | 无 RouteState Tool | TOOL-11、OP-30/31/32 | 三种一致性独立分类 |
+| Q19 | AS49666→AS58224 关系与至少 5 条真实样本 | TOOL-05 最多 3 样本 | TOOL-12、OP-15/16/17、RENDERER-01 | 原子路径读取与结构变换 |
+| Q20 | 完整列出包含指定 ASN 的路径并导出 | audit-only | TOOL-12、OP-15/20/21/22/23/24、RENDERER-01/02/03、DELIVERY-01 | 完整路径与独立计数 |
+| Q21 | 指定 ASN 的直接邻接摘要与有界路径邻域 | TOOL-05 样本可部分派生 | TOOL-12、OP-16/21/22/23/24 | v1 表格，图后置 |
+| Q22 | 列出 AS49666→AS58224 的关联前缀 | TOOL-05 只有总数/样本 | TOOL-12、OP-18/22/24、RENDERER-01/02/03、DELIVERY-01 | 完整成员与独立统计 |
+| Q23 | 峰值时点实际活动路径包含哪些 ASN | concurrent 不足 | TOOL-11、OP-15 | 设计 path-at-time |
+| Q24 | 指定 prefix/peer 的路径变化链 | 无 RouteEvent Tool | TOOL-13、OP-34 | P2.1 deferred 设计 |
+| Q26 | 指定 ASN 的 observed downstream origin set | TOOL-05 可分页 | TOOL-05或TOOL-12、OP-19/22/23/24、RENDERER-01/02/03、DELIVERY-01 | 冻结名称来源与集合统计 |
+| Q27 | 多 ASN downstream 集合交集、覆盖率与 Jaccard | TOOL-05 数据可派生 | TOOL-12、OP-19/25/26/27/28、RENDERER-01/02/03、DELIVERY-01 | 四种集合变换独立 |
 | Q29 | 解释 customer cone 当前不可回答 | 无 relationship 数据 | Evidence Validator | 边界回答，不建外部 Tool |
 | Q30 | 判断客户关系证据不足 | 无 relationship 数据 | Evidence Validator | 边界回答，不猜测 |
-| Q31 | 判断前缀、ASN、IPv4、IPv6 同槽/错位/非对称 | TOOL-03、OP-01/02/04 | OP-13 | 设计一致性关系 |
-| Q32 | 区分峰值错位与证据冲突 | TOOL-03 | OP-13、comparability contract | 设计一致性分类 |
-| Q33 | 拒绝传播、全国、用户、原因、责任和恢复过度结论 | TOOL-02/06 | Evidence Validator | 固定边界回答 |
+| Q31 | 判断前缀、ASN、IPv4、IPv6 同槽/错位/非对称 | TOOL-03、OP-01/02/04 | OP-29 | 设计一致性关系 |
+| Q32 | 区分峰值错位与证据冲突 | TOOL-03 | OP-29、comparability contract、GATE-04 | 设计一致性分类 |
+| Q33 | 拒绝传播、全国、用户、原因、责任和恢复过度结论 | TOOL-02/06 | GATE-04/05、BOUNDARY-01 | 固定边界回答 |
 <!-- QUESTION_MAP_END -->
 
 验收要求：映射表必须恰好包含上述 28 个唯一问题 ID；任何问题未映射、重复映射、静默删除
@@ -297,29 +297,58 @@ publication 直接事实 / 登记 Operator 派生事实
 | TOOL-09 `query_as_states` | read_tool | 只读取 ASN state 时间序列 | P2 v1 设计 |
 | TOOL-10 `query_new_prefix_states` | read_tool | 只读取 cohort 冻结后首次观察的 new-prefix state 记录 | P2 v1 设计 |
 | TOOL-11 `query_route_states_at_time` | read_tool | 只读取精确时点的 RouteState、origin、path、checkpoint | P2 v1 设计 |
-| TOOL-12 `query_path_evidence` | read_tool | 只读取规范化 path evidence 行，完整分页且至少 5 条预览 | P2 v1 设计 |
+| TOOL-12 `query_path_evidence` | read_tool | 只读取规范化 path evidence 行并稳定分页；预览属于Renderer | P2 v1 设计 |
 | TOOL-13 `query_route_events` | read_tool | 只读取 prefix/peer 的有序 RouteEvent | P2.1 deferred |
 | OP-05 `as_severity_rank` | deterministic_operator | 不可见程度、完全不可见前缀、ASN 稳定排序 | P2 v1 设计 |
-| OP-06 `entity_time_join` | deterministic_operator | 极值/时间点连接 ASN、prefix、RouteState | P2 v1 设计 |
-| OP-07 `prefix_state_transition` | deterministic_operator | 首次 partial/complete、持续区间、最后状态 | P2 v1 设计 |
-| OP-08 `path_contains_asn` | deterministic_operator | 只判断 ASN 是否位于规范路径及其位置 | P2 v1 设计 |
-| OP-09 `path_direct_neighbors` | deterministic_operator | 只投影指定 ASN 在单条规范路径中的直接邻接 ASN | P2 v1 设计 |
-| OP-10 `project_path_prefix_set` | deterministic_operator | 只从完整 path evidence 投影前缀集合 | P2 v1 设计 |
-| OP-11 `project_downstream_origin_set` | deterministic_operator | 只从完整 path evidence 投影 observed downstream origin 集合 | P2 v1 设计 |
-| OP-12 `set_relation` | deterministic_operator | 只计算两个完整集合的 intersection/difference/coverage/Jaccard | P2 v1 设计 |
-| OP-13 `temporal_evidence_relation` | deterministic_operator | 只计算 earlier/same-window/later/diverges/missing/not-comparable | P2 v1 设计 |
-| OP-14 `route_change_classifier` | deterministic_operator | 只分类相邻 RouteState/Event 的变化类型 | P2.1 deferred |
-| VALIDATOR-01 `evidence_graph_validator` | host_validator | 身份、证据、边界、完整性和因果禁区硬门 | P2 v1 设计 |
-| DELIVERY-01 `export_result_set` | host_delivery | 用户确认后将冻结 ResultSet 原子导出为 Markdown/CSV/JSON | P2 v1 设计 |
+| OP-06 `first_state_occurrence` | deterministic_operator | 只选择目标状态第一次出现 | P2 v1 设计 |
+| OP-07 `state_intervals` | deterministic_operator | 只生成目标状态最大连续区间 | P2 v1 设计 |
+| OP-08 `last_state_at_cutoff` | deterministic_operator | 只选择截止时间的最后状态 | P2 v1 设计 |
+| OP-09 `peak_state_observation` | deterministic_operator | 只按冻结严重性序选择窗口峰值状态与时间 | P2 v1 设计 |
+| OP-10 `compute_as_peak_complete_ratio` | deterministic_operator | 只计算complete峰值/固定前缀数 | P2 v1 设计 |
+| OP-11 `select_longest_interval` | deterministic_operator | 只从区间集合选择最长区间 | P2 v1 设计 |
+| OP-12 `rank_first_threshold_crossing` | deterministic_operator | 只按首次越阈时间排名 | P2 v1 设计 |
+| OP-13 `rank_longest_duration` | deterministic_operator | 只按最长持续时间排名 | P2 v1 设计 |
+| OP-14 `rank_peak_complete_ratio` | deterministic_operator | 只按complete峰值比例排名 | P2 v1 设计 |
+| OP-15 `locate_asn_positions_in_path` | deterministic_operator | 只返回ASN在规范路径的位置集合；空集合表示不包含 | P2 v1 设计 |
+| OP-16 `path_direct_neighbors` | deterministic_operator | 只投影指定ASN在单条规范路径中的直接邻接 | P2 v1 设计 |
+| OP-17 `path_order_relation` | deterministic_operator | 只判断两个ASN在规范路径中的有序先后 | P2 v1 设计 |
+| OP-18 `project_path_prefix_set` | deterministic_operator | 只投影唯一前缀集合 | P2 v1 设计 |
+| OP-19 `project_downstream_origin_set` | deterministic_operator | 只投影observed downstream origin集合 | P2 v1 设计 |
+| OP-20 `project_canonical_path_set` | deterministic_operator | 只投影唯一规范路径集合 | P2 v1 设计 |
+| OP-21 `project_peer_direction_set` | deterministic_operator | 只投影唯一观察方向集合 | P2 v1 设计 |
+| OP-22 `count_unique_paths` | deterministic_operator | 只计算唯一路径数 | P2 v1 设计 |
+| OP-23 `count_unique_prefixes` | deterministic_operator | 只计算唯一前缀数 | P2 v1 设计 |
+| OP-24 `count_unique_peer_directions` | deterministic_operator | 只计算唯一观察方向数 | P2 v1 设计 |
+| OP-25 `set_intersection` | deterministic_operator | 只计算两个完整集合的交集 | P2 v1 设计 |
+| OP-26 `set_difference` | deterministic_operator | 只计算有方向的集合差 | P2 v1 设计 |
+| OP-27 `set_coverage_ratio` | deterministic_operator | 只计算指定方向的集合覆盖率 | P2 v1 设计 |
+| OP-28 `set_jaccard` | deterministic_operator | 只计算两个完整集合的Jaccard | P2 v1 设计 |
+| OP-29 `temporal_evidence_relation` | deterministic_operator | 只计算登记时间关系 | P2 v1 设计 |
+| OP-30 `classify_vp_visibility_consistency` | deterministic_operator | 只分类同槽VP可见性一致性 | P2 v1 设计 |
+| OP-31 `classify_vp_origin_consistency` | deterministic_operator | 只分类同槽VP origin一致性 | P2 v1 设计 |
+| OP-32 `classify_vp_path_consistency` | deterministic_operator | 只分类同槽VP path一致性 | P2 v1 设计 |
+| OP-33 `join_new_prefix_route_state` | deterministic_operator | 只按prefix/time连接new-prefix与RouteState | P2 v1 设计 |
+| OP-34 `route_change_classifier` | deterministic_operator | 只分类相邻RouteState/Event变化类型 | P2.1 deferred |
+| PLAN-CAP-01 `bind_output_to_tool_argument` | host_plan_capability | 只把已验证上游值绑定为下游Tool参数，不生成派生事实 | P2 v1 设计 |
+| GATE-01 `identity_gate` | host_validator | 只验证调查身份一致性 | P2 v1 设计 |
+| GATE-02 `evidence_ref_gate` | host_validator | 只验证Evidence引用存在性与摘要 | P2 v1 设计 |
+| GATE-03 `result_completeness_gate` | host_validator | 只验证结果完整性声明 | P2 v1 设计 |
+| GATE-04 `control_plane_boundary_gate` | host_validator | 只验证控制面证据边界 | P2 v1 设计 |
+| GATE-05 `prohibited_conclusion_gate` | host_validator | 只验证禁止结论 | P2 v1 设计 |
+| BOUNDARY-01 `render_boundary_response` | host_response | 只生成登记的边界回答结构 | P2 v1 设计 |
+| RENDERER-01 `render_result_markdown` | pure_renderer | 只将冻结ResultSet渲染为Markdown | P2 v1 设计 |
+| RENDERER-02 `render_result_csv` | pure_renderer | 只将冻结ResultSet渲染为CSV | P2 v1 设计 |
+| RENDERER-03 `render_result_json` | pure_renderer | 只将冻结ResultSet渲染为JSON | P2 v1 设计 |
+| DELIVERY-01 `commit_export_artifact` | host_delivery | 只提交一个已验证的渲染制品 | P2 v1 设计 |
 <!-- EXECUTION_UNIT_MAP_END -->
 
 `DELIVERY-01` 不是 read Tool，也不是纯 Operator。后续设计必须通过 S0A 生命周期影响分析决定
 是扩展 Execution Unit kind，还是作为 Host Delivery Adapter 独立治理；不得为了复用 Registry
 而把有文件输出副作用的导出伪装成纯 Operator。
 
-原 `query_entity_states` 因同时包含 ASN membership、prefix state、ASN state 和 new-prefix
-state 四种事实人口而废止；原 `observed_path_structure` 因同时承担 contains、position、
-adjacency 和集合投影而废止。上述拆分是功能原子性校正，不是功能扩张。
+原 `query_entity_states`、`entity_time_join`、`prefix_state_transition`、
+`observed_path_structure`、`set_relation`、复合 Evidence Validator 和复合导出单元均因包含
+多个可独立复用/失败/版本化的动作而废止。上述拆分是功能原子性校正，不是功能扩张。
 
 ## 九、候选 Operator 设计目标
 
@@ -352,7 +381,9 @@ publication 中该 ASN 的不可见观察方向峰值，第二字段仅在第一
 
 ### 9.3 时间与状态
 
-`OP-06/07/13` 必须冻结：
+`OP-06..14` 分别承担首次出现、连续区间、截止状态、峰值状态、complete比例、最长区间和三种
+固定排名；不得重新合并成“状态分析”算子。`OP-29` 只承担两个已形成时间证据的关系分类。
+它们必须冻结：
 
 - 五分钟槽位对齐和原始 UTC 时间；
 - first/tie 规则；
@@ -365,8 +396,9 @@ publication 中该 ASN 的不可见观察方向峰值，第二字段仅在第一
 
 ### 9.4 路径结构
 
-`OP-08` 只计算 canonical ordered AS_SEQUENCE 上的包含与位置；`OP-09` 只计算指定 ASN 的
-直接邻接。两者不得合并：
+`OP-15` 只定位 ASN 位置，位置集合为空表达不包含；`OP-16` 只投影直接邻接；`OP-17` 只判断
+两个 ASN 的路径先后；`OP-18..21` 分别投影 prefix、downstream origin、canonical path 和
+peer direction 集合；`OP-22..24` 分别计算三种唯一计数。它们不得合并：
 
 - AS_SET、confederation、missing 或 unordered 段不得强制线性化；
 - prepend 必须保留原始证据并按合同确定是否折叠展示；
@@ -376,11 +408,16 @@ publication 中该 ASN 的不可见观察方向峰值，第二字段仅在第一
 
 ### 9.5 集合关系
 
-`OP-10/11` 分别投影 prefix set 与 downstream origin set，不得用一个动态 `member_type`
-参数改变输出事实语义。`OP-12` 必须冻结成员 identity、去重键、空集合、缺页和 incomplete
-集合语义。只有两个输入
-ResultSet 都完整时，才能发布完整 intersection/difference/Jaccard；任一输入截断时，只能
-返回 lower-bound 或 insufficient，不得用样本计算总体相似度。
+`OP-25..28` 分别只计算 intersection、directional difference、directional coverage 与
+Jaccard。必须冻结成员 identity、去重键、空集合、缺页和 incomplete 集合语义。只有两个
+输入 ResultSet 都完整时才能发布总体关系；任一输入截断时不得用样本计算总体相似度。
+
+### 9.6 VP 一致性、受控连接与 deferred
+
+- `OP-30/31/32` 分别只分类同槽 VP visibility、origin 和 path 一致性；时间算子不能替代；
+- `OP-33` 只按 prefix/time 连接 new-prefix state 与 RouteState，不能推广为通用实体 join；
+- `OP-34` 只分类相邻 RouteEvent/RouteState 的变化类型，并保持 P2.1 deferred；
+- 极值时间传给下游 Tool 属于 `PLAN-CAP-01` 参数绑定，不是 Operator，也不产生派生事实。
 
 ## 十、InvestigationPlan 目标模型
 
@@ -704,7 +741,7 @@ GroundingPlan/Evidence digest；Sol 植入错误数字、无效 Evidence ref、c
 2. 中文分阶段计划；
 3. 28/28 question-capability-execution mapping 与 Oracle seed；
 4. TOOL-07..12 的功能原子设计合同，TOOL-13 的 deferred 合同；
-5. OP-05..13 的功能原子设计合同，OP-14 的 deferred 合同；
+5. OP-05..33 的功能原子设计合同，OP-34 的 deferred 合同；
 6. 执行单元功能原子性机器合同与逐单元 `atomic_split_test` 回执；
 7. InvestigationPlan、ResultSet、Evidence Graph 与运行时提交一致性机器合同草案；
 8. Delivery/Validator 的治理处置与生命周期影响分析；

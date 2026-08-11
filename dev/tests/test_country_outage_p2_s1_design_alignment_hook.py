@@ -38,6 +38,22 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self.assertIn(old, text)
         path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
+    def _copy_stage_artifacts(self, stage: str) -> None:
+        for relative in HOOK.ARTIFACTS_BY_STAGE[stage]:
+            source = REPO_ROOT / relative
+            target = self.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+
+    def _mutate_json(self, relative: Path, mutate) -> None:
+        path = self.root / relative
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        mutate(payload)
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
     def _assert_error(self, code: str, stage: str = "S1D-0") -> None:
         with self.assertRaises(HOOK.AlignmentError) as captured:
             HOOK.run_alignment(
@@ -143,6 +159,61 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
 
     def test_future_stage_without_artifacts_is_rejected(self) -> None:
         self._assert_error("artifact_missing", stage="S1D-1")
+
+    def test_s1d1_passes_with_closed_question_capability_and_atomic_unit_maps(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        receipt = HOOK.run_alignment(
+            self.root,
+            "S1D-1",
+            require_prior_receipts=False,
+        )
+        self.assertEqual("alignment_passed", receipt["status"])
+        self.assertIn("execution_unit_atomic_decomposition", receipt["checks"])
+        self.assertIn("shared_answer_binding_contract", receipt["checks"])
+
+    def test_s1d1_rejects_q24_runtime_boundary_drift(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-1"][0]
+
+        def mutate(payload) -> None:
+            q24 = next(item for item in payload["questions"] if item["question_id"] == "Q24")
+            q24["answerability"] = "new_tool_operator_required"
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("deferred_boundary_missing", stage="S1D-1")
+
+    def test_s1d1_rejects_atomic_decomposition_population_drift(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-1"][2]
+
+        def mutate(payload) -> None:
+            decision = next(
+                item for item in payload["decisions"] if item["candidate_id"] == "set_relation"
+            )
+            decision["replacement_unit_ids"].remove("OP-28")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("atomic_decomposition_mismatch", stage="S1D-1")
+
+    def test_s1d1_rejects_oracle_seed_scenario_gap(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-1"][1]
+
+        def mutate(payload) -> None:
+            del payload["questions"][0]["scenario_expectations"]["large_result"]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("oracle_seed_scenario_coverage_mismatch", stage="S1D-1")
+
+    def test_s1d1_rejects_model_execution_order_drift(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-1"][3]
+
+        def mutate(payload) -> None:
+            payload["execution_order"] = ["ds_student", "gpt-5.6-sol"]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("model_execution_order_drift", stage="S1D-1")
 
     def test_receipt_is_written_atomically_with_self_digest(self) -> None:
         receipt = HOOK.run_alignment(self.root, "S1D-0")

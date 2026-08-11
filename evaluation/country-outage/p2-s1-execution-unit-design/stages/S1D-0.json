@@ -1,0 +1,27 @@
+{
+  "checks": [
+    "task_spec_version",
+    "question_population_28_of_28",
+    "execution_unit_population",
+    "as_sort_contract",
+    "execution_unit_function_atomicity",
+    "runtime_commit_consistency_separated",
+    "sol_then_ds_evidence_grounded_flow",
+    "design_only_boundary",
+    "phase_plan_version",
+    "seven_stage_sequence",
+    "tool_operator_stage_separation",
+    "stage_atomic_candidate_rule",
+    "design_only_receipt_rule"
+  ],
+  "design_only": true,
+  "phase_plan_sha256": "15d7e071840e0255557ec5e596049e2177e89b72ca752e19c2a6e0726195b60c",
+  "prior_receipts": {},
+  "production_deployed": false,
+  "receipt_digest": "b1c8685325021add57d4258d0279e6daa69b0b6636f125ace6608a35eeead26f",
+  "runtime_implemented": false,
+  "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
+  "stage": "S1D-0",
+  "status": "alignment_passed",
+  "task_spec_sha256": "c1477b956787b3ac9aca09a3ef2d2c9155d3ef087962fecab090e487e33c2995"
+}

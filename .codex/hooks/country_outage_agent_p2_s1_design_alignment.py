@@ -67,30 +67,34 @@ EXPECTED_QUESTIONS = (
     "Q33",
 )
 
-EXPECTED_EXECUTION_UNITS = (
-    "TOOL-07",
-    "TOOL-08",
-    "TOOL-09",
-    "TOOL-10",
-    "TOOL-11",
-    "TOOL-12",
-    "TOOL-13",
-    "OP-05",
-    "OP-06",
-    "OP-07",
-    "OP-08",
-    "OP-09",
-    "OP-10",
-    "OP-11",
-    "OP-12",
-    "OP-13",
-    "OP-14",
-    "VALIDATOR-01",
+EXPECTED_TOOLS = tuple(f"TOOL-{index:02d}" for index in range(7, 14))
+EXPECTED_OPERATORS = tuple(f"OP-{index:02d}" for index in range(5, 35))
+EXPECTED_HOST_UNITS = (
+    "PLAN-CAP-01",
+    "GATE-01",
+    "GATE-02",
+    "GATE-03",
+    "GATE-04",
+    "GATE-05",
+    "BOUNDARY-01",
+    "RENDERER-01",
+    "RENDERER-02",
+    "RENDERER-03",
     "DELIVERY-01",
 )
-
-EXPECTED_TOOLS = tuple(f"TOOL-{index:02d}" for index in range(7, 14))
-EXPECTED_OPERATORS = tuple(f"OP-{index:02d}" for index in range(5, 15))
+EXPECTED_EXECUTION_UNITS = EXPECTED_TOOLS + EXPECTED_OPERATORS + EXPECTED_HOST_UNITS
+EXISTING_EXECUTION_UNITS = tuple(f"TOOL-{index:02d}" for index in range(1, 7)) + tuple(
+    f"OP-{index:02d}" for index in range(1, 5)
+)
+EXPECTED_CAPABILITIES = tuple(f"CAP-P2-{index:03d}" for index in range(1, 59))
+S1D1_SCENARIOS = (
+    "normal",
+    "empty",
+    "missing",
+    "wrong_identity",
+    "boundary",
+    "large_result",
+)
 
 FUNCTION_ATOMICITY_MARKERS = (
     "execution_unit_function_atomicity",
@@ -307,7 +311,7 @@ def _validate_task_spec(text: str) -> list[str]:
     )
     units = _table_ids(
         unit_block,
-        r"\|\s*`?((?:TOOL|OP)-\d{2}|VALIDATOR-\d{2}|DELIVERY-\d{2})\b",
+        r"\|\s*`?((?:TOOL|OP|GATE|RENDERER)-\d{2}|PLAN-CAP-\d{2}|BOUNDARY-\d{2}|DELIVERY-\d{2})\b",
     )
     _validate_exact_ids(units, EXPECTED_EXECUTION_UNITS, kind="execution_unit")
     return [
@@ -399,12 +403,71 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
     oracle_path = repo_root / ARTIFACTS_BY_STAGE["S1D-1"][1]
     decomposition_path = repo_root / ARTIFACTS_BY_STAGE["S1D-1"][2]
     model_role_path = repo_root / ARTIFACTS_BY_STAGE["S1D-1"][3]
-    map_ids = _object_list_ids(_load_json(map_path), "questions", "question_id", map_path)
-    oracle_ids = _object_list_ids(
-        _load_json(oracle_path), "questions", "question_id", oracle_path
-    )
+    capability_map = _load_json(map_path)
+    map_ids = _object_list_ids(capability_map, "questions", "question_id", map_path)
+    oracle = _load_json(oracle_path)
+    oracle_ids = _object_list_ids(oracle, "questions", "question_id", oracle_path)
     _validate_exact_ids(map_ids, EXPECTED_QUESTIONS, kind="capability_question")
     _validate_exact_ids(oracle_ids, EXPECTED_QUESTIONS, kind="oracle_seed_question")
+
+    capability_ids = _object_list_ids(
+        capability_map, "capabilities", "capability_id", map_path
+    )
+    _validate_exact_ids(
+        capability_ids, EXPECTED_CAPABILITIES, kind="capability"
+    )
+    capability_set = set(capability_ids)
+    allowed_units = set(EXISTING_EXECUTION_UNITS + EXPECTED_EXECUTION_UNITS)
+    referenced_capabilities: list[str] = []
+    for index, capability in enumerate(capability_map["capabilities"]):
+        unit_ids = capability.get("unit_ids")
+        if not isinstance(unit_ids, list) or not unit_ids or any(
+            not isinstance(unit_id, str) for unit_id in unit_ids
+        ):
+            _fail(
+                "artifact_schema_invalid",
+                f"{map_path} capabilities[{index}] 缺少 unit_ids",
+            )
+        unknown_units = sorted(set(unit_ids) - allowed_units)
+        if unknown_units:
+            _fail(
+                "capability_unit_unknown",
+                f"{capability.get('capability_id')} 引用未知执行单元：{unknown_units}",
+            )
+        for field in ("atomic_action", "source_population", "output_semantic"):
+            if not isinstance(capability.get(field), str) or not capability[field].strip():
+                _fail(
+                    "capability_contract_incomplete",
+                    f"{capability.get('capability_id')} 缺少 {field}",
+                )
+    for question in capability_map["questions"]:
+        refs = question.get("required_capability_ids")
+        optional = question.get("optional_capability_ids", [])
+        if not isinstance(refs, list) or not refs or not isinstance(optional, list):
+            _fail(
+                "question_capability_mapping_invalid",
+                f"{question.get('question_id')} 缺少 required_capability_ids",
+            )
+        combined = refs + optional
+        if any(not isinstance(item, str) for item in combined):
+            _fail(
+                "question_capability_mapping_invalid",
+                f"{question.get('question_id')} capability 引用必须为字符串",
+            )
+        missing = sorted(set(combined) - capability_set)
+        if missing:
+            _fail(
+                "question_capability_reference_missing",
+                f"{question.get('question_id')} 引用未声明 capability：{missing}",
+            )
+        referenced_capabilities.extend(combined)
+    unused = sorted(capability_set - set(referenced_capabilities))
+    if unused:
+        _fail("unused_capability", f"未被 28 题使用的 capability：{unused}")
+    q24 = next(item for item in capability_map["questions"] if item["question_id"] == "Q24")
+    if q24.get("answerability") != "deferred_p2_1":
+        _fail("deferred_boundary_missing", "Q24 必须标记 answerability=deferred_p2_1")
+
     decomposition = _load_json(decomposition_path)
     if not isinstance(decomposition, dict) or not isinstance(
         decomposition.get("decisions"), list
@@ -412,7 +475,12 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         _fail("artifact_schema_invalid", f"{decomposition_path} 必须包含 decisions")
     required_splits = {
         "query_entity_states": {"TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10"},
-        "observed_path_structure": {"OP-08", "OP-09", "OP-10", "OP-11"},
+        "entity_time_join": {"PLAN-CAP-01", "OP-33"},
+        "prefix_state_transition": {"OP-06", "OP-07", "OP-08", "OP-09"},
+        "observed_path_structure": {"OP-15", "OP-16", "OP-17", "OP-18", "OP-19"},
+        "set_relation": {"OP-25", "OP-26", "OP-27", "OP-28"},
+        "evidence_graph_validator": {"GATE-01", "GATE-02", "GATE-03", "GATE-04", "GATE-05"},
+        "export_result_set": {"RENDERER-01", "RENDERER-02", "RENDERER-03", "DELIVERY-01"},
     }
     decisions = {
         item.get("candidate_id"): item
@@ -431,6 +499,87 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
                 "atomic_decomposition_mismatch",
                 f"复合候选拆分人口错误：{candidate_id}",
             )
+    unit_ids = _object_list_ids(
+        decomposition, "atomic_units", "unit_id", decomposition_path
+    )
+    _validate_exact_ids(unit_ids, EXPECTED_EXECUTION_UNITS, kind="decomposed_unit")
+    atomic_capability_ids: list[str] = []
+    for item in decomposition["atomic_units"]:
+        for field in (
+            "atomic_capability_id",
+            "single_responsibility",
+            "source_population",
+            "output_semantic",
+            "disposition",
+        ):
+            if not isinstance(item.get(field), str) or not item[field].strip():
+                _fail(
+                    "execution_unit_atomicity_invalid",
+                    f"{item.get('unit_id')} 缺少 {field}",
+                )
+        atomic_capability_ids.append(item["atomic_capability_id"])
+    if len(atomic_capability_ids) != len(set(atomic_capability_ids)):
+        _fail("atomic_capability_duplicate", "atomic_capability_id 必须全局唯一")
+    common = decomposition.get("atomic_unit_common_contract")
+    if not isinstance(common, dict):
+        _fail("execution_unit_atomicity_invalid", "缺少 atomic_unit_common_contract")
+    if common.get("embedded_capabilities") != []:
+        _fail("composite_execution_unit_forbidden", "原子单元不得内嵌 capability")
+    if common.get("composition_location") != "investigation_plan_or_host_pipeline":
+        _fail("execution_unit_internal_composition_forbidden", "组合位置合同漂移")
+    if common.get("partial_success_forbidden") is not True:
+        _fail("atomic_failure_boundary_missing", "原子执行单元必须禁止内部部分成功")
+    split_test = common.get("split_test")
+    if not isinstance(split_test, dict) or split_test.get("disposition") != "atomic_as_designed":
+        _fail("atomic_split_test_failed", "S1D-1 原子人口未通过 atomic_split_test")
+    if any(
+        split_test.get(field) is not False
+        for field in (
+            "contains_multiple_business_verbs",
+            "subcapabilities_independently_reusable",
+            "mode_changes_population_or_semantic",
+            "partial_subresult_independently_meaningful",
+            "internally_invokes_another_execution_unit",
+        )
+    ):
+        _fail("atomic_split_test_failed", "atomic_split_test 仍检测到可拆分能力")
+    coverage = decomposition.get("coverage_assertions")
+    if not isinstance(coverage, dict):
+        _fail("artifact_schema_invalid", "缺少 coverage_assertions")
+    _validate_exact_ids(
+        coverage.get("design_covered_question_ids", []),
+        EXPECTED_QUESTIONS,
+        kind="design_covered_question",
+    )
+    if coverage.get("p2_v1_not_executable_question_ids") != ["Q24"]:
+        _fail("deferred_boundary_missing", "Q24 必须设计覆盖但 P2 v1 不可执行")
+    if coverage.get("runtime_ready_claim") is not False:
+        _fail("runtime_claim_forbidden", "S1D-1 不得声称 runtime ready")
+
+    if set(oracle.get("scenario_classes", [])) != set(S1D1_SCENARIOS):
+        _fail("oracle_seed_scenario_coverage_mismatch", "Oracle seed 场景人口漂移")
+    map_answerability = {
+        item["question_id"]: item.get("answerability")
+        for item in capability_map["questions"]
+    }
+    for item in oracle["questions"]:
+        question_id = item["question_id"]
+        if item.get("answerability") != map_answerability[question_id]:
+            _fail(
+                "oracle_seed_answerability_mismatch",
+                f"{question_id} 的 Oracle 与能力图 answerability 不一致",
+            )
+        scenarios = item.get("scenario_expectations")
+        if not isinstance(scenarios, dict) or set(scenarios) != set(S1D1_SCENARIOS):
+            _fail(
+                "oracle_seed_scenario_coverage_mismatch",
+                f"{question_id} 场景人口不闭合",
+            )
+        if not isinstance(item.get("required_assertions"), list) or not isinstance(
+            item.get("prohibited_assertions"), list
+        ):
+            _fail("artifact_schema_invalid", f"{question_id} 缺少断言 Oracle seed")
+
     model_roles = _load_json(model_role_path)
     if not isinstance(model_roles, dict):
         _fail("model_role_contract_invalid", "model-role-contract 必须是 JSON object")
@@ -452,10 +601,44 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         _fail("ds_model_identity_contract_missing", "DS 逻辑别名必须为 ds_student")
     if ds_identity.get("freeze_exact_model_by_stage") != "S1D-5":
         _fail("ds_model_identity_contract_missing", "DS 精确模型身份必须在 S1D-5 前冻结")
+    shared_binding = model_roles.get("shared_answer_binding")
+    if not isinstance(shared_binding, dict):
+        _fail("shared_answer_binding_missing", "缺少 shared_answer_binding")
+    for field in (
+        "same_grounding_plan_required",
+        "same_evidence_bundle_required",
+        "same_registry_snapshot_required",
+        "same_publication_required",
+    ):
+        if shared_binding.get(field) is not True:
+            _fail("shared_answer_binding_drift", f"{field} 必须为 true")
+    required_binding_fields = set(shared_binding.get("required_fields", []))
+    for field in (
+        "grounding_plan_digest",
+        "evidence_bundle_digest",
+        "registry_snapshot_digest",
+        "prompt_digest",
+        "policy_digest",
+    ):
+        if field not in required_binding_fields:
+            _fail("shared_answer_binding_missing", f"共享回答绑定缺少 {field}")
+    design_boundary = model_roles.get("design_boundary")
+    if not isinstance(design_boundary, dict) or any(
+        design_boundary.get(field) is not False
+        for field in (
+            "model_calls_implemented",
+            "ds_identity_frozen",
+            "runtime_integrated",
+            "production_deployed",
+        )
+    ):
+        _fail("model_role_boundary_drift", "S1D-1 模型角色不得声称已运行或已部署")
     return [
         "question_capability_closure",
         "question_oracle_seed_closure",
         "execution_unit_atomic_decomposition",
+        "q24_design_covered_runtime_deferred",
+        "shared_answer_binding_contract",
         "sol_teacher_ds_student_role_contract",
     ]
 
@@ -564,10 +747,10 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
     deferred = [
         item
         for item in payload["operators"]
-        if item.get("unit_id") == "OP-14" and item.get("disposition") == "deferred_p2_1"
+        if item.get("unit_id") == "OP-34" and item.get("disposition") == "deferred_p2_1"
     ]
     if len(deferred) != 1:
-        _fail("deferred_boundary_missing", "OP-14 必须标记 disposition=deferred_p2_1")
+        _fail("deferred_boundary_missing", "OP-34 必须标记 disposition=deferred_p2_1")
     op05 = next(item for item in payload["operators"] if item.get("unit_id") == "OP-05")
     expected_sort = [
         "peak_invisible_direction_count DESC",
@@ -586,7 +769,7 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
     return [
         "operator_catalog_closure",
         "op_05_sort",
-        "op_14_deferred",
+        "op_34_deferred",
         "operator_function_atomicity",
     ]
 

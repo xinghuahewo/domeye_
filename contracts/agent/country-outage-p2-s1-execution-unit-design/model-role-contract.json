@@ -1,0 +1,244 @@
+{
+  "schema_version": "country_outage_p2_s1_model_role_contract_v1",
+  "artifact_id": "country-outage-p2-s1-model-role-contract-20260812",
+  "stage": "S1D-1",
+  "status": "design_contract_only",
+  "execution_order": ["gpt-5.6-sol", "ds_student"],
+  "teacher_required": true,
+  "truth_source": "validated_evidence_bundle",
+  "teacher_reference_is_ground_truth": false,
+  "truth_precedence": [
+    "publication_direct_fact",
+    "registered_deterministic_operator_fact",
+    "host_evidence_and_boundary_validation",
+    "validated_teacher_reference",
+    "student_answer"
+  ],
+  "roles": {
+    "host_binding_and_grounding": {
+      "owner_kind": "host",
+      "allowed_actions": [
+        "bind_identity",
+        "validate_semantic_plan",
+        "ground_capabilities",
+        "admit_investigation_plan",
+        "execute_registered_units",
+        "freeze_evidence_bundle"
+      ],
+      "model_override_forbidden": true,
+      "fact_publication_authority": true
+    },
+    "sol_teacher_planner": {
+      "provider": "openai",
+      "model": "gpt-5.6-sol",
+      "exact_runtime_version_status": "must_resolve_and_freeze_per_candidate",
+      "allowed_output_schema": "TeacherSemanticPlan",
+      "allowed_actions": ["parse_goal", "propose_subgoals", "propose_capability_intents", "mark_ambiguity"],
+      "tool_selection_authority": false,
+      "tool_execution_allowed": false,
+      "fact_publication_authority": false,
+      "permission_authority": false,
+      "state_write_allowed": false
+    },
+    "sol_teacher_reference_generator": {
+      "provider": "openai",
+      "model": "gpt-5.6-sol",
+      "exact_runtime_version_status": "must_match_teacher_planner_candidate",
+      "allowed_output_schema": "TeacherReference",
+      "required_inputs": [
+        "validated_user_goal",
+        "admitted_grounding_plan",
+        "validated_evidence_bundle",
+        "registry_snapshot",
+        "boundary_policy"
+      ],
+      "may_add_unreferenced_event_facts": false,
+      "may_change_grounding_plan": false,
+      "may_change_evidence_bundle": false,
+      "fact_publication_authority": false
+    },
+    "teacher_reference_validator": {
+      "owner_kind": "host_validation_pipeline",
+      "gates": ["GATE-01", "GATE-02", "GATE-03", "GATE-04", "GATE-05"],
+      "all_gates_required": true,
+      "failed_reference_forwarded_to_student": false
+    },
+    "ds_student_answer_generator": {
+      "logical_alias": "ds_student",
+      "identity_status": "pending_freeze_before_s1d5",
+      "provider": "MUST_FREEZE_BY_S1D5",
+      "model": "MUST_FREEZE_BY_S1D5",
+      "version": "MUST_FREEZE_BY_S1D5",
+      "latest_alias_forbidden": true,
+      "allowed_output_schema": "StudentAnswer",
+      "required_inputs": [
+        "validated_user_goal",
+        "admitted_grounding_plan",
+        "validated_evidence_bundle",
+        "registry_snapshot",
+        "validated_teacher_reference",
+        "boundary_policy"
+      ],
+      "tool_selection_authority": false,
+      "tool_execution_allowed": false,
+      "may_change_grounding_plan": false,
+      "may_change_evidence_bundle": false,
+      "fact_publication_authority": false,
+      "state_write_allowed": false
+    },
+    "student_answer_validator": {
+      "owner_kind": "host_validation_pipeline",
+      "gates": ["GATE-01", "GATE-02", "GATE-03", "GATE-04", "GATE-05"],
+      "all_gates_required": true,
+      "failed_answer_publishable": false
+    },
+    "alignment_evaluator": {
+      "owner_kind": "host_deterministic_evaluator",
+      "teacher_is_truth_oracle": false,
+      "hard_gate_metrics": ["fact_precision", "evidence_ref_precision", "boundary_compliance"],
+      "scored_metrics": ["intent_coverage", "fact_recall", "structure_coverage", "uncertainty_coverage"],
+      "advisory_metrics": ["text_similarity"],
+      "text_similarity_is_sufficient": false
+    }
+  },
+  "ds_student_identity": {
+    "logical_alias": "ds_student",
+    "provider": null,
+    "model": null,
+    "version": null,
+    "status": "pending_freeze",
+    "freeze_exact_model_by_stage": "S1D-5",
+    "latest_alias_forbidden": true,
+    "unresolved_identity_publishable": false
+  },
+  "teacher_plan_binding": {
+    "occurs_before_evidence_freeze": true,
+    "question_digest_required": true,
+    "event_binding_digest_required": true,
+    "proposed_capability_ids_only": true,
+    "host_grounding_required": true,
+    "teacher_plan_is_executable_plan": false
+  },
+  "shared_answer_binding": {
+    "applies_to": ["TeacherReference", "StudentAnswer"],
+    "required_fields": [
+      "question_id",
+      "question_digest",
+      "incident_id",
+      "publication_id",
+      "publication_revision",
+      "publication_digest",
+      "collector_id",
+      "cohort_id",
+      "cohort_digest",
+      "window_start_utc",
+      "window_end_utc",
+      "grounding_plan_digest",
+      "evidence_bundle_digest",
+      "registry_snapshot_id",
+      "registry_snapshot_digest",
+      "prompt_version",
+      "prompt_digest",
+      "policy_version",
+      "policy_digest"
+    ],
+    "same_grounding_plan_required": true,
+    "same_evidence_bundle_required": true,
+    "same_registry_snapshot_required": true,
+    "same_publication_required": true,
+    "student_additional_inputs_allowed": [
+      "validated_teacher_reference",
+      "teacher_reference_validation_receipt"
+    ],
+    "student_additional_input_may_change_shared_binding": false
+  },
+  "teacher_reference_contract": {
+    "required_fields": [
+      "teacher_run_id",
+      "shared_answer_binding_digest",
+      "required_fact_ids",
+      "evidence_refs",
+      "boundary_assertions",
+      "unknowns",
+      "answer_outline",
+      "output_digest"
+    ],
+    "private_chain_of_thought_required": false,
+    "private_chain_of_thought_persistence_forbidden": true,
+    "validation_receipt_required_before_student": true,
+    "invalid_reference_disposition": "reject_teacher_reference"
+  },
+  "student_answer_contract": {
+    "required_fields": [
+      "student_run_id",
+      "shared_answer_binding_digest",
+      "teacher_reference_digest",
+      "teacher_validation_receipt_digest",
+      "claims",
+      "evidence_refs",
+      "limitations",
+      "unknowns",
+      "answer_text",
+      "output_digest"
+    ],
+    "validation_receipt_required_before_publish": true,
+    "unvalidated_answer_publishable": false
+  },
+  "feedback_and_revision_policy": {
+    "structured_difference_feedback_max": 1,
+    "student_revision_max": 1,
+    "feedback_allowed_fields": [
+      "missing_required_fact_ids",
+      "incorrect_evidence_refs",
+      "missing_boundary_assertions",
+      "missing_unknowns",
+      "structure_gaps"
+    ],
+    "feedback_may_add_new_event_facts": false,
+    "feedback_may_change_evidence_bundle": false,
+    "revision_requires_full_revalidation": true,
+    "online_weight_mutation_forbidden": true,
+    "online_prompt_mutation_forbidden": true,
+    "online_policy_mutation_forbidden": true
+  },
+  "degraded_policy": {
+    "default_mode": "teacher_required",
+    "silent_degrade_forbidden": true,
+    "teacher_unavailable_disposition": "await_retry_or_request_explicit_user_authorization",
+    "allowed_degraded_mode": "ds_unaligned_degraded",
+    "explicit_user_authorization_required": true,
+    "new_plan_revision_required": true,
+    "may_claim_sol_ds_alignment": false
+  },
+  "run_receipt_required_fields": [
+    "run_id",
+    "role",
+    "exact_model_identity",
+    "shared_answer_binding_digest",
+    "role_specific_input_digest",
+    "output_digest",
+    "validation_receipt_digest",
+    "latency_ms",
+    "input_tokens",
+    "output_tokens",
+    "cost_amount",
+    "cost_currency",
+    "retry_count",
+    "disposition"
+  ],
+  "forbidden_claims": [
+    "teacher_reference_is_ground_truth",
+    "sol_output_overrides_evidence",
+    "ds_latest_without_version",
+    "same_evidence_without_digest_equality",
+    "alignment_passed_by_text_similarity_only",
+    "silent_ds_fallback",
+    "private_chain_of_thought_as_audit_evidence"
+  ],
+  "design_boundary": {
+    "model_calls_implemented": false,
+    "ds_identity_frozen": false,
+    "runtime_integrated": false,
+    "production_deployed": false
+  }
+}

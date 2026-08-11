@@ -159,7 +159,8 @@ python3 .codex/hooks/country_outage_agent_p2_s1_design_alignment.py --repo-root 
 5. 对每个子能力执行 `atomic_split_test`，产出单一读取/单一变换的候选人口；
 6. 冻结 Sol Teacher、DS Student、Alignment Evaluator 和 Host Validator 的职责、输入、输出、
    模型身份、prompt/policy 版本和禁止权限；
-7. 判定 `VALIDATOR-01` 与 `DELIVERY-01` 的治理类型，不以名称规避副作用审查。
+7. 将复合 Validator 拆为 GATE-01..05，将导出拆为 RENDERER-01..03 与 DELIVERY-01，并冻结
+   `BOUNDARY-01` 的可发布边界回答职责。
 
 ### 5.3 计划输出
 
@@ -175,8 +176,9 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 
 - 28 个问题全部至少映射一个可执行能力或明确的边界拒答；
 - 每项 C 级数据潜力都有“待发布 Tool”，不能冒充 A/B 级事实；
-- 原 `query_entity_states` 和 `observed_path_structure` 被明确判定 `split_required`；
-- Q24、TOOL-13、OP-14 明确 deferred，不混入 P2 v1 完成声明；
+- `query_entity_states`、`entity_time_join`、`prefix_state_transition`、
+  `observed_path_structure`、`set_relation`、复合 Validator/Delivery 均明确 `split_required`；
+- Q24、TOOL-13、OP-34 明确 deferred，不混入 P2 v1 完成声明；
 - customer cone、原因、恢复等问题没有伪造执行路径；
 - 所有能力都有 owner kind、Evidence 入口和非目标。
 - Sol 与 DS 的结构化输入都不能越过 Host Grounding；DS 版本不得留作“latest”。
@@ -203,8 +205,8 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 时间点/时间窗、稳定排序、游标、总数、去重键、ResultSet、Evidence、checkpoint、完整性、
 null/unknown/missing、超时、取消、权限、最大扫描量、成本估算和错误枚举。
 
-`TOOL-12` 必须支持至少 5 条路径预览和受控完整导出数据源；`TOOL-11` 必须证明
-path-at-time，不得复用 `concurrent` 充当路径时点证据。
+`TOOL-12` 只负责完整稳定分页；至少 5 条预览属于 ResultSet Renderer，不进入 Tool。
+`TOOL-11` 必须证明 path-at-time，不得复用 `concurrent` 充当路径时点证据。
 
 每个 Tool 只允许一种 `output_population`；任何“查询并排序”“读取两种 state 并关联”或
 “路径查询并生成 downstream set”的设计均阻断。
@@ -239,15 +241,16 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 本阶段只设计确定性 Operator，不改变 Tool 查询合同。冻结：
 
 - `OP-05 as_severity_rank`；
-- `OP-06 entity_time_join`；
-- `OP-07 prefix_state_transition`；
-- `OP-08 path_contains_asn`；
-- `OP-09 path_direct_neighbors`；
-- `OP-10 project_path_prefix_set`；
-- `OP-11 project_downstream_origin_set`；
-- `OP-12 set_relation`；
-- `OP-13 temporal_evidence_relation`；
-- `OP-14 route_change_classifier` 的 deferred 合同边界。
+- `OP-06..09`：首次状态、状态区间、截止状态、峰值状态四个独立变换；
+- `OP-10..14`：complete比例、最长区间和三种固定排名；
+- `OP-15..17`：路径位置、直接邻接、双ASN有序关系；
+- `OP-18..21`：prefix、downstream origin、canonical path、peer direction 四种集合投影；
+- `OP-22..24`：unique path、prefix、peer direction 三种独立计数；
+- `OP-25..28`：intersection、difference、coverage、Jaccard 四种独立集合变换；
+- `OP-29`：时间证据关系；
+- `OP-30..32`：VP visibility、origin、path 三种一致性分类；
+- `OP-33`：new-prefix 与 RouteState 的唯一受控 typed join；
+- `OP-34`：RouteEvent 变化分类的 P2.1 deferred 合同。
 
 每个 Operator 必须定义输入 schema/digest、纯函数参数、排序、tie、null、unknown、missing、
 空集合、时间容差、复杂度、内存上限、确定性摘要、Evidence 继承和禁止解释。
@@ -264,10 +267,13 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 ### 7.4 退出门
 
 - `OP-05` 默认排序三键与 S1D-0 完全一致，并保留并列语义；
-- path contains/position 与 direct adjacency 分别由 `OP-08`、`OP-09` 输出；
-- prefix set 与 downstream origin set 分别由 `OP-10`、`OP-11` 投影；
-- `OP-12` 的交集、差集、coverage 和 Jaccard 在空集合/缺页时失败关闭；
-- `OP-13` 仅输出时间/可比性关系，不输出因果；
+- 首次、区间、最后、峰值、比例、选择和排名没有复合输出；
+- path position、direct adjacency、path order、四种集合投影和三种计数均独立；
+- `OP-25..28` 在空集合、缺页或不完整输入时分别失败关闭；
+- `OP-29` 仅输出时间/可比性关系，不输出因果；
+- `OP-30..32` 不得被 `OP-29` 或一个动态 consistency mode 取代；
+- 只有 `OP-33` 允许执行已冻结的 typed join，禁止通用 entity join；
+- `OP-34` 保持 deferred；
 - 所有 Operator 同输入同版本同参数得到同摘要；
 - 本阶段不得回改 Tool 结果人口来迎合 Operator。
 - 每个 Operator 均通过 `operator_single_transform_semantic` 和 `atomic_split_test`。
@@ -395,11 +401,11 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 
 设计最终通过后，建议另立 TASK 按以下顺序实施，每项仍需独立开发与验收：
 
-1. 先做 TOOL-07/08/09/10 与 OP-05/06/07，闭合 ASN/前缀问题；
-2. 再做 TOOL-12 与 OP-08/09/10/11/12，闭合路径查询、预览和集合；
-3. 再做 TOOL-11 与 OP-13，闭合 path-at-time 和一致性；
+1. 先做 TOOL-07/08/09/10 与 OP-05..14，闭合 ASN/前缀问题；
+2. 再做 TOOL-12 与 OP-15..28，闭合路径查询、预览、计数和集合；
+3. 再做 TOOL-11 与 OP-29..33，闭合 path-at-time、VP一致性和new-prefix连接；
 4. 最后组合 InvestigationPlan、Evidence Graph、局部重跑和受控导出；
-5. TOOL-13/OP-14 留在 P2.1，除非重新通过范围与成本 Gate。
+5. TOOL-13/OP-34 留在 P2.1，除非重新通过范围与成本 Gate。
 
 这一顺序只是实施依赖建议，不构成任何实现授权或完成声明。
 
