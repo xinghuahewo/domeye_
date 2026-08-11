@@ -1,0 +1,17 @@
+{
+  "schema_version": "country_outage_p2_s0a_governance_oracle_v1",
+  "oracle_version": "1.0.0",
+  "categories": ["normal", "missing", "null", "wrong_identity", "unavailable", "boundary", "migration", "tamper", "rollback", "plan_admission"],
+  "cases": [
+    {"case_id": "GOV-NORMAL-001", "category": "normal", "action": "read", "expected": {"status": "read_only"}, "boundary_assertion": "read_does_not_change_revision"},
+    {"case_id": "GOV-MISSING-001", "category": "missing", "action": "create", "mutation": "omit contract_digest", "expected": {"error": "entry_invalid"}, "boundary_assertion": "missing_digest_not_invented"},
+    {"case_id": "GOV-NULL-001", "category": "null", "action": "transition", "mutation": "set oracle_digest null", "expected": {"error": "certification_evidence_missing"}, "boundary_assertion": "null_evidence_not_pass"},
+    {"case_id": "GOV-WRONG-ID-001", "category": "wrong_identity", "action": "check_plan", "mutation": "replace registry_snapshot_id", "expected": {"error": "registry_snapshot_conflict"}, "boundary_assertion": "snapshot_identity_precedes_execution"},
+    {"case_id": "GOV-UNAVAILABLE-001", "category": "unavailable", "action": "check_plan", "mutation": "set unit state retired", "expected": {"error": "execution_unit_not_active"}, "boundary_assertion": "retired_not_executable"},
+    {"case_id": "GOV-BOUNDARY-001", "category": "boundary", "action": "create", "mutation": "set collector_id external", "expected": {"error": "boundary_violation"}, "boundary_assertion": "rrc25_only"},
+    {"case_id": "GOV-MIGRATION-001", "category": "migration", "action": "validate", "expected": {"capability_count": 18, "execution_unit_count": 10}, "boundary_assertion": "no_legacy_unit_lost"},
+    {"case_id": "GOV-TAMPER-001", "category": "tamper", "action": "validate", "mutation": "change contract without digest", "expected": {"error": "digest_mismatch"}, "boundary_assertion": "same_id_version_immutable"},
+    {"case_id": "GOV-ROLLBACK-001", "category": "rollback", "action": "rollback_edition", "expected": {"status": "applied", "snapshot_mode": "whole_edition"}, "boundary_assertion": "no_mixed_snapshot"},
+    {"case_id": "GOV-PLAN-001", "category": "plan_admission", "action": "check_plan", "mutation": "set capability state deprecated", "expected": {"error": "capability_not_active"}, "boundary_assertion": "non_active_rejected_before_execution"}
+  ]
+}

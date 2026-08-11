@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-08-11T08:01:00Z",
+  "candidate_id": "not-yet-created",
+  "checks": [
+    "task_spec_markers",
+    "plan_stage_map",
+    "non_deployment_boundary"
+  ],
+  "hook_limit": "结构、身份、摘要与已知边界检查；不单独证明产品或生产验收",
+  "plan_digest": "sha256:970f3e392e763957d96c95022a6a75e381d09b5c788ef4a0ee0d3b1b760e67bb",
+  "plan_version": "country-outage-agent-p2-s0a-lifecycle-plan-v1",
+  "production_deployed": false,
+  "receipt_digest": "sha256:d7e92e884a15762e55d52e9d28881581dbe360348e9624bde9e672188128923b",
+  "runtime_integration": "not_implemented",
+  "schema_version": "country_outage_p2_s0a_alignment_receipt_v1",
+  "stage": "S0A-0",
+  "status": "alignment_passed",
+  "task_spec_digest": "sha256:66f2e11669bc5a49d09ff46139cec1d69ef1e60039072e93ec64c4b17f8674a4",
+  "task_spec_version": "country-outage-agent-p2-s0a-lifecycle-governance-v1"
+}
