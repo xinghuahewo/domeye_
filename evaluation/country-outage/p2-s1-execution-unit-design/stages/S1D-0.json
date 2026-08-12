@@ -1,4 +1,6 @@
 {
+  "alignment_hook_sha256": "66f4935c96f29d50fec9a5e8b8e2b4459181036b338e08aa235a2ed8a772af91",
+  "alignment_hook_tests_sha256": "be7c01460251d27e7784b0ca30deedf48080edd1dd30ff6bd30a5b6f4e41e84d",
   "checks": [
     "task_spec_version",
     "question_population_28_of_28",
@@ -18,7 +20,7 @@
   "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
   "prior_receipts": {},
   "production_deployed": false,
-  "receipt_digest": "bfa0a5c188931c21ac579e139ebdc9b579030111945f37ac9e0e09692b877d30",
+  "receipt_digest": "7816ec31c226254e797fafa0d3b3c3faa927fb0dfd913fa685cd69dcb0fb7fc5",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-0",

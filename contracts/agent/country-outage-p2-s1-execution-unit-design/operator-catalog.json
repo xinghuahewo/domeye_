@@ -253,6 +253,30 @@
     "not_comparable": "身份、人口、单位、方向或比较Profile不允许比较",
     "left_censored": "窗口首槽已经满足条件，无法证明首次进入或首次越阈发生于窗口内"
   },
+  "evidence_edge_projection_contract": {
+    "contract_id": "P2-S1-OPERATOR-EDGE-READ-VIEW-1.0.0",
+    "same_result_read_view_only": true,
+    "second_business_transform_forbidden": true,
+    "host_business_semantic_recomputation_forbidden": true,
+    "common_required_fields": [
+      "relation_type",
+      "from_endpoint",
+      "to_endpoint",
+      "relation_projection",
+      "relation_projection_digest",
+      "publishable"
+    ],
+    "projection_digest_recipe": "sha256_rfc8785({projection: relation_projection})",
+    "unit_contracts": {
+      "OP-15": {"eligibility": "outcome == found", "cardinality": "exactly_one_if_eligible_else_zero", "projection_schema": "pathContainsEdgeProjectionBody", "endpoint_rule": "from.path_digest_and_null;to.target_asn_nonnull"},
+      "OP-16": {"eligibility": "outcome == computed", "cardinality": "one_per_left_or_right_neighbor", "projection_schema": "directAdjacencyEdgeProjectionBody", "endpoint_rule": "from.target_asn_nonnull;to.neighbor_asn_nonnull"},
+      "OP-25": {"eligibility": "member_count > 0", "cardinality": "exactly_one_if_eligible_else_zero", "projection_schema": "setIntersectionEdgeProjectionBody", "endpoint_rule": "from.left_digest;to.right_digest"},
+      "OP-27": {"eligibility": "outcome == computed && denominator_count > 0 && ratio_exact == 1/1", "cardinality": "exactly_one_if_eligible_else_zero", "projection_schema": "setContainsEdgeProjectionBody", "endpoint_rule": "from.right_digest;to.left_digest"},
+      "OP-29": {"eligibility": "relation in comparable_relation_enum", "cardinality": "exactly_one_if_eligible_else_zero", "projection_schema": "temporalEdgeProjectionBody", "endpoint_rule": "from.left_digest;to.right_digest"},
+      "OP-33": {"eligibility": "matched row exists", "cardinality": "one_per_matched_row", "projection_schema": "atTimeEdgeProjectionBody", "endpoint_rule": "from.new_prefix_state_digest;to.route_state_digest"},
+      "OP-37": {"eligibility": "class == conflict", "cardinality": "exactly_one_if_eligible_else_zero", "projection_schema": "conflictEdgeProjectionBody", "endpoint_rule": "from.left_digest;to.right_digest"}
+    }
+  },
   "profile_binding_contract": {
     "contract_id": "P2-S1-PROFILE-BINDING-1.0.0",
     "no_profile_invariant_id": "PROFILE-BINDING-NONE-1.0.0",
@@ -1282,19 +1306,21 @@
           "path_canonicalization_profile_id",
           "path_canonicalization_profile_digest",
           "input_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projection"
         ],
         "field_types": {
           "outcome": "enum:found|not_found|unordered|ambiguous|invalid|unknown|not_applicable",
           "ordered_positions": "array<nonnegative_integer>",
           "path_digest": "sha256|null",
           "path_canonicalization_profile_id": "const:AS-PATH-CANONICALIZATION-1.0.0",
-          "path_canonicalization_profile_digest": "const:eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+          "path_canonicalization_profile_digest": "const:eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966",
+          "edge_projection": "object|null"
         }
       },
       "algorithm_contract": {
         "operation": "locate_exact_asn_segments",
-        "rule": "只接受上游已登记common_path_status_v1；仅ordered sequence中的ASN segment参与位置定位；prepend保留多个位置；其他状态直接映射为同名不可定位outcome；只有ordered路径未找到target ASN时产生not_found",
+        "rule": "只接受上游已登记common_path_status_v1；仅ordered sequence中的ASN segment参与位置定位；prepend保留多个位置；其他状态直接映射为同名不可定位outcome；只有ordered路径未找到target ASN时产生not_found；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "位置自然升序"
       },
       "result_state_contract": {
@@ -1329,7 +1355,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op15InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op15OutputEnvelope"
@@ -1360,23 +1387,27 @@
       },
       "output_semantic": "direct_path_neighbors",
       "output_contract": {
-        "required_fields": [
-          "outcome",
-          "left_neighbors",
+    "required_fields": [
+      "outcome",
+      "target_asn",
+      "left_neighbors",
           "right_neighbors",
           "path_digest",
           "position_receipt_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projections"
         ],
-        "field_types": {
-          "outcome": "enum:computed|not_found|not_comparable",
-          "left_neighbors": "array<neighbor_at_position>",
-          "right_neighbors": "array<neighbor_at_position>"
+    "field_types": {
+      "outcome": "enum:computed|not_found|not_comparable",
+      "target_asn": "asn",
+      "left_neighbors": "array<neighbor_at_position>",
+          "right_neighbors": "array<neighbor_at_position>",
+          "edge_projections": "array<object>"
         }
       },
       "algorithm_contract": {
         "operation": "project_adjacent_segments_from_positions",
-        "rule": "要求OP-15.path_digest等于输入path_digest；只读取positions±1，不再次搜索target ASN",
+        "rule": "要求OP-15.path_digest等于输入path_digest；只读取positions±1，不再次搜索target ASN；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "按target position、neighbor position升序"
       },
       "result_state_contract": {
@@ -1408,7 +1439,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op16InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op16OutputEnvelope"
@@ -2057,16 +2089,18 @@
           "left_digest",
           "right_digest",
           "set_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projection"
         ],
         "field_types": {
           "members": "typed_set",
-          "member_count": "nonnegative_integer"
+          "member_count": "nonnegative_integer",
+          "edge_projection": "object|null"
         }
       },
       "algorithm_contract": {
         "operation": "set_intersection",
-        "rule": "仅member_type_id和canonicalization digest一致时计算L∩R",
+        "rule": "仅member_type_id和canonicalization digest一致时计算L∩R；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "按member type规范排序"
       },
       "result_state_contract": {
@@ -2097,7 +2131,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op25InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op25OutputEnvelope"
@@ -2221,17 +2256,19 @@
           "outcome",
           "left_digest",
           "right_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projection"
         ],
         "field_types": {
           "direction": "const:intersection_over_left",
           "ratio_exact": "rational|null",
-          "outcome": "enum:computed|not_computable_empty_denominator"
+          "outcome": "enum:computed|not_computable_empty_denominator",
+          "edge_projection": "object|null"
         }
       },
       "algorithm_contract": {
         "operation": "directional_coverage",
-        "rule": "ratio=|L∩R|/|L|；反向覆盖率必须另一次调用",
+        "rule": "ratio=|L∩R|/|L|；反向覆盖率必须另一次调用；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "not_used"
       },
       "result_state_contract": {
@@ -2262,7 +2299,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op27InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op27OutputEnvelope"
@@ -2387,12 +2425,14 @@
           "profile_digest",
           "left_digest",
           "right_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projection"
         ],
         "field_types": {
           "relation": "enum:same_slot|left_precedes_within|right_precedes_within|left_precedes_outside|right_precedes_outside|missing_left|missing_right|missing_both|not_comparable",
           "delta_seconds": "integer|null",
-          "comparable": "boolean"
+          "comparable": "boolean",
+          "edge_projection": "object|null"
         },
         "invariants": [
           "profile_digest == Envelope.parameter_profile_digest"
@@ -2400,7 +2440,7 @@
       },
       "algorithm_contract": {
         "operation": "classify_directed_time_delta",
-        "rule": "先按Profile验证人口、单位、方向和时间粒度可比性；可比时计算right_time-left_time并保留左右方向",
+        "rule": "先按Profile验证人口、单位、方向和时间粒度可比性；可比时计算right_time-left_time并保留左右方向；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "零差为same_slot"
       },
       "result_state_contract": {
@@ -2433,7 +2473,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op29InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op29OutputEnvelope"
@@ -2715,16 +2756,18 @@
           "join_cardinality",
           "left_digest",
           "right_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projections"
         ],
         "field_types": {
           "matched": "array<new_prefix_route_state_binding>",
-          "join_cardinality": "object"
+          "join_cardinality": "object",
+          "edge_projections": "array<object>"
         }
       },
       "algorithm_contract": {
         "operation": "exact_typed_equi_join",
-        "rule": "唯一连接键为(afi,prefix,state_point_utc)；禁止近邻时间、前向/未来填充；报告1:0、1:1、1:n和未匹配人口",
+        "rule": "唯一连接键为(afi,prefix,state_point_utc)；禁止近邻时间、前向/未来填充；报告1:0、1:1、1:n和未匹配人口；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "按afi、prefix、state_point、route_observation_key排序"
       },
       "result_state_contract": {
@@ -2754,7 +2797,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op33InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op33OutputEnvelope"
@@ -3042,11 +3086,13 @@
           "profile_digest",
           "left_digest",
           "right_digest",
-          "evidence_refs"
+          "evidence_refs",
+          "edge_projection"
         ],
         "field_types": {
           "class": "enum:consistent|partially_consistent|conflict|missing|not_comparable",
-          "basis_codes": "array<string>"
+          "basis_codes": "array<string>",
+          "edge_projection": "object|null"
         },
         "invariants": [
           "profile_digest == Envelope.parameter_profile_digest"
@@ -3054,7 +3100,7 @@
       },
       "algorithm_contract": {
         "operation": "map_validated_relation_to_consistency_class",
-        "rule": "必须验证OP-29回执绑定相同左右digest；仅按Profile映射，不重新计算时间关系；conflict只用于相同定义人口下互斥断言",
+        "rule": "必须验证OP-29回执绑定相同左右digest；仅按Profile映射，不重新计算时间关系；conflict只用于相同定义人口下互斥断言；同时原样输出由本算子结果确定的Evidence edge投影视图，供Host只做Schema、摘要、引用和字段相等校验，不构成第二项业务变换",
         "tie_rule": "not_used"
       },
       "result_state_contract": {
@@ -3086,7 +3132,8 @@
         "mode_changes_semantic": false,
         "independently_publishable_subtransforms": false,
         "internally_invokes_other_units": false,
-        "disposition": "atomic_as_designed"
+        "disposition": "atomic_as_designed",
+        "evidence_edge_projection_is_output_view_not_second_business_transform": true
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op37InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op37OutputEnvelope"

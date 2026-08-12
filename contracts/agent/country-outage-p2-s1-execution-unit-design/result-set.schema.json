@@ -1,0 +1,920 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1/result-set.schema.json",
+  "title": "RRC25 调查 ResultSet 合同",
+  "description": "成员级查询的冻结结果集合同。preview 是视图而不是完整性状态；完整导出只消费已冻结 complete ResultSet。",
+  "x-contract-metadata": {
+    "artifact_id": "country-outage-p2-s1d4-result-set-20260812",
+    "stage": "S1D-4",
+    "status": "design_contract_only"
+  },
+  "x-source-completeness-contract": {
+    "source_incomplete_requires_host_tool_receipt": true,
+    "receipt_validator_id": "country_outage_p2_source_completeness_validator",
+    "receipt_validator_version": "1.0.0",
+    "receipt_validator_contract_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "receipt_validator_implementation_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "receipt_binds": [
+      "tool_run_id",
+      "source_population_id",
+      "source_dataset_digest",
+      "source_completeness",
+      "limitations_digest",
+      "returned_count",
+      "total_count",
+      "resume_page_token"
+    ]
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "result_set_id",
+    "result_set_revision",
+    "parent_result_set_revision",
+    "state",
+    "source_identity",
+    "source_tool",
+    "normalized_query",
+    "query_digest",
+    "stable_sort",
+    "stable_sort_digest",
+    "source_population_id",
+    "source_population_schema_ref",
+    "source_population_schema_digest",
+    "source_dataset_digest",
+    "member_identity",
+    "dedupe_key",
+    "page_manifest",
+    "returned_count",
+    "total_count",
+    "set_completeness",
+    "resume_page_token",
+    "member_segments",
+    "query_receipt_digest",
+    "source_completeness_receipt_digest",
+    "evidence_refs",
+    "limitations",
+    "manifest_digest",
+    "content_digest",
+    "freeze_receipt_digest",
+    "preview_views",
+    "generation_origin",
+    "design_boundary"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "country_outage_p2_result_set_v1"
+    },
+    "result_set_id": {
+      "type": "string",
+      "pattern": "^result-set-sha256:[0-9a-f]{64}$"
+    },
+    "result_set_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parent_result_set_revision": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "const": "frozen"
+    },
+    "source_identity": {
+      "$ref": "#/$defs/sourceIdentity"
+    },
+    "source_tool": {
+      "$ref": "#/$defs/sourceTool"
+    },
+    "normalized_query": {
+      "type": "object"
+    },
+    "query_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "stable_sort": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sortKey"
+      }
+    },
+    "stable_sort_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "source_population_id": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "source_population_schema_ref": {
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "source_population_schema_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "source_dataset_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "member_identity": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "dedupe_key": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "page_manifest": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pageManifestEntry"
+      }
+    },
+    "returned_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_count": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "set_completeness": {
+      "enum": [
+        "complete",
+        "partial_page",
+        "source_incomplete"
+      ]
+    },
+    "resume_page_token": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "member_segments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/memberSegment"
+      }
+    },
+    "query_receipt_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "source_completeness_receipt_digest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/limitation"
+      }
+    },
+    "manifest_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "content_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "freeze_receipt_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "preview_views": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/previewView"
+      }
+    },
+    "generation_origin": {
+      "const": "tool_pagination_without_llm_member_generation"
+    },
+    "design_boundary": {
+      "$ref": "#/$defs/designBoundary"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result_set_revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "result_set_revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "parent_result_set_revision": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "parent_result_set_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set_completeness": {
+            "const": "complete"
+          }
+        },
+        "required": [
+          "set_completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "resume_page_token": {
+            "type": "null"
+          },
+          "manifest_digest": {
+            "$ref": "#/$defs/sha256"
+          },
+          "freeze_receipt_digest": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set_completeness": {
+            "const": "partial_page"
+          }
+        },
+        "required": [
+          "set_completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "resume_page_token": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "returned_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_manifest": {
+            "minItems": 1
+          },
+          "member_segments": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set_completeness": {
+            "const": "source_incomplete"
+          }
+        },
+        "required": [
+          "set_completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "limitations": {
+            "minItems": 1
+          },
+          "source_completeness_receipt_digest": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "source_completeness_receipt_digest": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set_completeness": {
+            "const": "complete"
+          },
+          "total_count": {
+            "const": 0
+          }
+        },
+        "required": [
+          "set_completeness",
+          "total_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "returned_count": {
+            "const": 0
+          },
+          "page_manifest": {
+            "maxItems": 0
+          },
+          "member_segments": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "set_completeness": {
+            "const": "complete"
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "set_completeness",
+          "total_count"
+        ]
+      },
+      "then": {
+        "properties": {
+          "returned_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_manifest": {
+            "minItems": 1
+          },
+          "member_segments": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "incident_id",
+        "publication_id",
+        "publication_revision",
+        "publication_digest",
+        "collector_id",
+        "cohort_id",
+        "cohort_digest",
+        "window_start_utc",
+        "window_end_utc",
+        "data_through_utc",
+        "finality",
+        "registry_snapshot_id",
+        "registry_snapshot_digest",
+        "binding_generation",
+        "identity_digest"
+      ],
+      "properties": {
+        "incident_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "publication_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "publication_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "publication_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "collector_id": {
+          "const": "rrc25"
+        },
+        "cohort_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "cohort_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "window_start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "window_end_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data_through_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finality": {
+          "enum": [
+            "event_end_unknown",
+            "event_end_known"
+          ]
+        },
+        "registry_snapshot_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "registry_snapshot_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "binding_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "identity_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "sourceTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool_id",
+        "tool_version",
+        "contract_digest",
+        "tool_run_id"
+      ],
+      "properties": {
+        "tool_id": {
+          "type": "string",
+          "pattern": "^TOOL-[0-9]{2}$"
+        },
+        "tool_version": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "contract_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "tool_run_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "sortKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "direction",
+        "nulls"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "direction": {
+          "enum": [
+            "ASC",
+            "DESC"
+          ]
+        },
+        "nulls": {
+          "enum": [
+            "FIRST",
+            "LAST",
+            "FORBIDDEN"
+          ]
+        }
+      }
+    },
+    "pageManifestEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page_index",
+        "token_in",
+        "token_out",
+        "identity_digest",
+        "query_digest",
+        "stable_sort_digest",
+        "source_population_id",
+        "source_population_schema_digest",
+        "source_dataset_digest",
+        "first_sort_key",
+        "last_sort_key",
+        "member_count",
+        "member_segment_ref",
+        "page_content_digest",
+        "page_receipt_digest",
+        "evidence_refs"
+      ],
+      "properties": {
+        "page_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "token_in": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "token_out": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "identity_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "query_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "stable_sort_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_population_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "source_population_schema_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_dataset_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "first_sort_key": {
+          "oneOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_sort_key": {
+          "oneOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "member_segment_ref": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "page_content_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "page_receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        }
+      }
+    },
+    "memberSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment_ref",
+        "page_index",
+        "member_count",
+        "segment_digest"
+      ],
+      "properties": {
+        "segment_ref": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "page_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segment_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "limitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "scope",
+        "description"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "scope": {
+          "enum": [
+            "collector",
+            "population",
+            "pagination",
+            "source",
+            "quality"
+          ]
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "previewView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "view_id",
+        "source_result_set_id",
+        "source_result_set_revision",
+        "limit",
+        "returned_count",
+        "stable_sort_digest",
+        "member_refs",
+        "view_digest",
+        "represents_complete_population"
+      ],
+      "properties": {
+        "view_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "source_result_set_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "source_result_set_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "returned_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stable_sort_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "member_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "view_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "represents_complete_population": {
+          "const": false
+        }
+      }
+    },
+    "designBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "design_only",
+        "runtime_implemented",
+        "production_deployed"
+      ],
+      "properties": {
+        "design_only": {
+          "const": true
+        },
+        "runtime_implemented": {
+          "const": false
+        },
+        "production_deployed": {
+          "const": false
+        }
+      }
+    }
+  },
+  "x-result-set-closure-contract": {
+    "complete_page_indices": "从0开始连续且无重复",
+    "first_token_in": null,
+    "token_chain_must_close": true,
+    "last_token_out_for_complete": null,
+    "page_identity_query_sort_source_digests_must_match": true,
+    "stable_sort_must_not_regress_across_pages": true,
+    "dedupe_key_unique_across_pages": true,
+    "sum_page_member_count_equals_returned_count": true,
+    "complete_requires_returned_equals_total": true,
+    "partial_with_known_total_requires_returned_strictly_less_than_total": true,
+    "source_identity_time_order": "window_start_utc <= window_end_utc <= data_through_utc",
+    "manifest_and_content_digests_recomputable": true
+  },
+  "x-digest-recomputation-contract": {
+    "canonical_json": "UTF-8 JSON, object keys sorted, separators comma and colon, ensure_ascii=false",
+    "query_digest": "sha256(canonical({normalized_query}))",
+    "stable_sort_digest": "sha256(canonical({stable_sort}))",
+    "segment_digest": "sha256(canonical({members}))",
+    "page_content_digest": "sha256(canonical({page_index,member_segment_ref,members}))",
+    "manifest_digest": "sha256(canonical({page_manifest,member_segments}))",
+    "content_digest": "sha256(canonical({members}))",
+    "result_set_id": "result-set-sha256: + sha256(canonical({source_identity,source_tool,normalized_query,stable_sort,source_population_id,source_population_schema_ref,source_population_schema_digest,source_dataset_digest}))",
+    "preview_view_digest": "sha256(canonical(preview excluding view_digest))"
+  },
+  "x-runtime-context-contract": {
+    "registry_view_contract_id": "country_outage_p2_registry_admission_view_v1",
+    "registry_view_source": "trusted_registry_store_lookup_only",
+    "trusted_store_contract_id": "country_outage_p2_trusted_registry_store_v1",
+    "trusted_store_host_attestation_required": true,
+    "registry_entries_never_accepted_from_request_payload": true,
+    "caller_supplied_registry_view_forbidden": true,
+    "registry_snapshot_id_and_digest_equal_source_identity": true,
+    "source_population_id_and_member_schema_must_equal_registered_tool_output_population": true,
+    "every_resolved_member_must_validate_against_registered_member_schema": true,
+    "query_page_and_freeze_receipts_resolve_and_recompute": true,
+    "resolved_members_are_tool_bytes_not_llm_regeneration": true
+  },
+  "x-preview-contract": {
+    "preview_is_view_not_completeness": true,
+    "preview_may_not_support_population_claims": true,
+    "default_limits": {
+      "asn_rank": 10,
+      "prefix_member": 20,
+      "path_sample": 5,
+      "downstream_origin": 10,
+      "set_relation_member": 10
+    }
+  },
+  "x-export-contract": {
+    "requires_frozen_complete_result_set": true,
+    "llm_member_regeneration_forbidden": true,
+    "failed_export_preserves_previous_final_artifact": true,
+    "authorization_receipt_binds_result_set_revision_and_format": true,
+    "manifest_binds_source_manifest_content_ordered_member_digests_and_count": true,
+    "temporary_artifact_binds_manifest_format_byte_length_and_actual_sha256": true,
+    "actual_bytes_must_equal_registered_format_canonical_serialization_of_ordered_members": true,
+    "canonical_serializers": {
+      "json": "utf8_json_sort_keys_compact_separators_ensure_ascii_false",
+      "csv": "utf8_sorted_columns_rfc4180_lf_with_canonical_json_non_string_scalars",
+      "markdown": "utf8_sorted_columns_gfm_table_lf_with_canonical_json_non_string_scalars"
+    },
+    "generation_origin": "deterministic_serializer_without_llm_member_generation",
+    "formats": [
+      "markdown",
+      "csv",
+      "json"
+    ]
+  },
+  "x-incomplete-operator-contract": {
+    "default_disposition": "fail_closed",
+    "population_jaccard_coverage_and_total_relation_forbidden": true,
+    "lower_bound_requires_registered_monotonicity_contract": true
+  },
+  "x-runtime-validator-contract": {
+    "validators": [
+      {
+        "validator_id": "result_set_page_chain_closure",
+        "checks": [
+          "page_indices_start_zero_contiguous_unique",
+          "first_token_in_is_null",
+          "previous_token_out_equals_next_token_in",
+          "complete_last_token_out_is_null",
+          "page_identity_query_sort_source_digests_equal_root",
+          "page_sort_keys_monotonic_under_stable_sort",
+          "dedupe_keys_unique_within_and_across_pages"
+        ],
+        "failure_disposition": "freeze_as_invalid_result_set"
+      },
+      {
+        "validator_id": "result_set_count_and_digest_closure",
+        "checks": [
+          "sum_page_member_count_equals_returned_count",
+          "sum_segment_member_count_equals_returned_count",
+          "complete_returned_count_equals_total_count",
+          "partial_known_total_strictly_greater_than_returned_count",
+          "source_identity_time_order_valid",
+          "source_population_id_and_member_schema_equal_registry_tool_output_population",
+          "every_resolved_member_validates_against_registered_member_schema",
+          "page_manifest_and_content_digests_recompute",
+          "result_set_id_recomputes_from_frozen_identity_query_sort_source_and_tool"
+        ],
+        "failure_disposition": "reject_result_set_freeze"
+      },
+      {
+        "validator_id": "source_incomplete_provenance_closure",
+        "checks": [
+          "source_incomplete_receipt_resolves",
+          "receipt_identity_matches_frozen_validator",
+          "receipt_binds_tool_population_dataset_limitations_counts_and_resume_token"
+        ],
+        "failure_disposition": "reject_result_set_freeze"
+      },
+      {
+        "validator_id": "preview_source_binding_and_count_closure",
+        "checks": [
+          "preview_source_result_set_id_and_revision_equal_root",
+          "preview_stable_sort_digest_equals_root",
+          "preview_member_refs_are_subset_of_root_members",
+          "preview_returned_count_equals_member_ref_count",
+          "preview_returned_count_not_greater_than_limit"
+        ],
+        "failure_disposition": "reject_preview"
+      },
+      {
+        "validator_id": "complete_export_eligibility",
+        "checks": [
+          "result_set_state_is_frozen",
+          "set_completeness_is_complete",
+          "all_page_count_digest_and_identity_closure_valid"
+        ],
+        "failure_disposition": "reject_export"
+      },
+      {
+        "validator_id": "complete_export_artifact_closure",
+        "checks": [
+          "authorization_receipt_resolves_and_binds_result_set_revision_and_format",
+          "manifest_member_digests_equal_frozen_result_set_order",
+          "manifest_member_count_equals_result_set_total",
+          "actual_export_bytes_sha256_equals_manifest_and_staged_artifact",
+          "llm_member_regeneration_absent"
+        ],
+        "failure_disposition": "reject_export_before_final_reference_replace"
+      }
+    ]
+  }
+}

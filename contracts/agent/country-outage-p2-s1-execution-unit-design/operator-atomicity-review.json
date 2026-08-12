@@ -1,6 +1,6 @@
 {
   "schema_version":"country_outage_p2_s1_operator_atomicity_review_v1",
-  "artifact_id":"country-outage-p2-s1-operator-atomicity-review-20260812-r4",
+  "artifact_id":"country-outage-p2-s1-operator-atomicity-review-20260812-r6",
   "stage":"S1D-3",
   "builder_id":"codex-root-s1d3-builder",
   "independent_reviewer_id":"/root/s1d3_operator_contract_review",
@@ -49,6 +49,29 @@
         "Hook反例测试字段名与当前Profile绑定合同一致"
       ],
       "remaining_blockers":[]
+    },
+    {
+      "review_round":5,
+      "disposition":"revision_required",
+      "resolved_findings":[
+        "OP-15、OP-16、OP-25、OP-27、OP-29、OP-33、OP-37的edge_projection可与核心结果产生矛盾断言",
+        "关系投影缺少类型化preimage、资格条件、基数和端点值绑定",
+        "Host需要重建路径、集合、时间或一致性语义才能验证投影"
+      ]
+    },
+    {
+      "review_round":6,
+      "disposition":"passed",
+      "resolved_findings":[
+        "七类关系投影均冻结为同一Operator结果的只读结构化视图",
+        "投影资格、基数、端点方向和核心字段复制关系由Schema与Hook共同闭合",
+        "OP-15与OP-16的ASN端点绑定canonical typed value digest",
+        "OP-27只允许非空全集覆盖且固定R contains L方向",
+        "OP-29按same_slot、left_precedes、right_precedes唯一映射关系方向",
+        "OP-33对matched行逐项一一投影且禁止重复或遗漏",
+        "Host只验证Schema、摘要、引用和字段相等，不重算业务变换"
+      ],
+      "remaining_blockers":[]
     }
   ],
   "reviews":[
@@ -62,8 +85,8 @@
     {"unit_id":"OP-12","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-13","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-14","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-15","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-16","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
+    {"unit_id":"OP-15","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6},
+    {"unit_id":"OP-16","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6},
     {"unit_id":"OP-17","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-18","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-19","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
@@ -72,20 +95,20 @@
     {"unit_id":"OP-22","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-23","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-24","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-25","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
+    {"unit_id":"OP-25","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6},
     {"unit_id":"OP-26","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-27","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
+    {"unit_id":"OP-27","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6},
     {"unit_id":"OP-28","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-29","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
+    {"unit_id":"OP-29","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6},
     {"unit_id":"OP-30","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-31","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-32","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-33","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
+    {"unit_id":"OP-33","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6},
     {"unit_id":"OP-34","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-35","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
     {"unit_id":"OP-36","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1},
-    {"unit_id":"OP-37","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":1}
+    {"unit_id":"OP-37","disposition":"atomic_as_designed","reviewer_id":"/root/s1d3_operator_contract_review","review_round":6}
   ],
   "boundary":{"functional_atomicity_reviewed":true,"runtime_implemented":false,"production_deployed":false},
-  "note":"第四轮独立审查确认OP-05至OP-37均保持单一确定性变换；本结论只证明设计合同与功能原子性闭合，不证明运行时实现、部署或生产可用。"
+  "note":"第六轮重开独立审查确认OP-05至OP-37均保持单一确定性变换；edge_projection只作为同一结果的只读结构化视图，不形成第二业务变换。本结论只证明设计合同与功能原子性闭合，不证明运行时实现、部署或生产可用。"
 }
