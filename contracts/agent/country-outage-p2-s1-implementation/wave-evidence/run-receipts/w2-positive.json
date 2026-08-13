@@ -1,0 +1,244 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "2896a68da135c4f2083fd906cfc43ea263cb36c4a180b41ba1084ac8a36f8a3e",
+      "size_bytes": 18740
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
+      "sha256": "734758564289323603b45b844bb124737c2dddd3af362a495a97dc7a4e8d2a08",
+      "size_bytes": 22777
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
+      "sha256": "ca7d80f2c5c79a93160e1d4223a38f8022b027f0da4e8b5114c1dc171170a11f",
+      "size_bytes": 56079
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_tools.py",
+      "sha256": "8630699c2e127fff09dfca3bc30c16bb7a4f6d794e72ce32051a37e3fa24aee4",
+      "size_bytes": 47838
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_operators.py",
+      "sha256": "a3d5d078733b66a3abfdfe32ec2630e6a3d850b655b4bbb4181580f0d60a80a4",
+      "size_bytes": 103269
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json",
+      "sha256": "ba9e0b3e84cb8ecd5c3ec465f9ac7a882a323ebd0b68271429554d7a6ad76d53",
+      "size_bytes": 25092
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json",
+      "sha256": "ce92afb0b4666caba0a76b4ceef40328ff06236cad73895e7932a384a4ecb112",
+      "size_bytes": 12055
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json",
+      "sha256": "b2d57637c3003938961a5dd4e73bfef8abd18f4f862f753b21310b86c257d626",
+      "size_bytes": 185269
+    }
+  ],
+  "category": "positive",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_contains_asn_uses_verified_native_index",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_contains_asn_zero_is_complete_empty",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_deterministic_replay_preserves_ids_digests_and_receipts",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_path_positions_prepend_neighbors_and_order",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_unordered_path_is_not_linearized",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_path_prefix_path_direction_projections",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_observed_downstream_projection_not_customer_cone",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_independent_count_operators_and_tamper",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics"
+  ],
+  "completed_at_utc": "2026-08-13T04:56:52Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n[stderr]\ntest_tool12_contains_asn_uses_verified_native_index (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_contains_asn_zero_is_complete_empty (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_deterministic_replay_preserves_ids_digests_and_receipts (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_path_positions_prepend_neighbors_and_order (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_unordered_path_is_not_linearized (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_path_prefix_path_direction_projections (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_observed_downstream_projection_not_customer_cone (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_independent_count_operators_and_tamper (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_set_operations_and_empty_semantics (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in <ELAPSED>\n\nOK\n",
+  "normalized_output_sha256": "673d92207b12e9e0777bbed1eeada88375c3d30ad619815b9b24a3ef0e058f6c",
+  "passed": true,
+  "receipt_digest": "48860cd6b7f8c47a8f1027b94caa5e36320b05e916619f74e241bff22cd6b309",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.0.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_contains_asn_uses_verified_native_index",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_contains_asn_zero_is_complete_empty",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_deterministic_replay_preserves_ids_digests_and_receipts",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_path_positions_prepend_neighbors_and_order",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_unordered_path_is_not_linearized",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_path_prefix_path_direction_projections",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_observed_downstream_projection_not_customer_cone",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_independent_count_operators_and_tamper",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics"
+  ],
+  "skipped_count": 0,
+  "stage": "W2",
+  "started_at_utc": "2026-08-13T04:56:51Z",
+  "suite_id": "w2-positive",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_contains_asn_uses_verified_native_index",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_contains_asn_zero_is_complete_empty",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_deterministic_replay_preserves_ids_digests_and_receipts",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-15",
+        "OP-16",
+        "OP-17"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_path_positions_prepend_neighbors_and_order",
+      "unit_ids": [
+        "OP-15",
+        "OP-16",
+        "OP-17"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-15"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_unordered_path_is_not_linearized",
+      "unit_ids": [
+        "OP-15"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-18",
+        "OP-20",
+        "OP-21"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_path_prefix_path_direction_projections",
+      "unit_ids": [
+        "OP-18",
+        "OP-20",
+        "OP-21"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-19"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_observed_downstream_projection_not_customer_cone",
+      "unit_ids": [
+        "OP-19"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-22",
+        "OP-23",
+        "OP-24"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_independent_count_operators_and_tamper",
+      "unit_ids": [
+        "OP-22",
+        "OP-23",
+        "OP-24"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-25",
+        "OP-26",
+        "OP-27",
+        "OP-28"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics",
+      "unit_ids": [
+        "OP-25",
+        "OP-26",
+        "OP-27",
+        "OP-28"
+      ]
+    }
+  ],
+  "tested_execution_unit_ids": [
+    "OP-15",
+    "OP-16",
+    "OP-17",
+    "OP-18",
+    "OP-19",
+    "OP-20",
+    "OP-21",
+    "OP-22",
+    "OP-23",
+    "OP-24",
+    "OP-25",
+    "OP-26",
+    "OP-27",
+    "OP-28",
+    "TOOL-12"
+  ],
+  "tested_unit_ids": [
+    "OP-15",
+    "OP-16",
+    "OP-17",
+    "OP-18",
+    "OP-19",
+    "OP-20",
+    "OP-21",
+    "OP-22",
+    "OP-23",
+    "OP-24",
+    "OP-25",
+    "OP-26",
+    "OP-27",
+    "OP-28",
+    "TOOL-12"
+  ],
+  "tests_run": 10,
+  "working_directory": "."
+}

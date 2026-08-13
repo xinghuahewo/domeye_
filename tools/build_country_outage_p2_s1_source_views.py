@@ -222,21 +222,34 @@ def _load_profiles(contract_root: Path) -> tuple[dict[str, Mapping[str, Any]], b
 
 def _validate_identity(raw: Any) -> dict[str, Any]:
     value = _require_mapping(raw, "identity")
-    keys = ("incident_id", "publication_id", "revision", "collector_id", "cohort_id", "window_start_utc", "data_through", "grid_seconds")
+    keys = (
+        "incident_id", "publication_id", "publication_revision", "publication_digest",
+        "collector_id", "cohort_id", "cohort_digest", "window_start_utc",
+        "window_end_utc", "data_through_utc", "finality", "grid_seconds",
+    )
     _require_exact_keys(value, keys, "identity")
     result = {
         "incident_id": _string(value["incident_id"], "identity.incident_id"),
         "publication_id": _string(value["publication_id"], "identity.publication_id"),
-        "revision": _integer(value["revision"], "identity.revision", minimum=1),
+        "publication_revision": _integer(value["publication_revision"], "identity.publication_revision", minimum=1),
+        "publication_digest": _sha(value["publication_digest"], "identity.publication_digest"),
         "collector_id": _string(value["collector_id"], "identity.collector_id"),
         "cohort_id": _string(value["cohort_id"], "identity.cohort_id"),
+        "cohort_digest": _sha(value["cohort_digest"], "identity.cohort_digest"),
         "window_start_utc": _string(value["window_start_utc"], "identity.window_start_utc"),
-        "data_through": _string(value["data_through"], "identity.data_through"),
+        "window_end_utc": _string(value["window_end_utc"], "identity.window_end_utc"),
+        "data_through_utc": _string(value["data_through_utc"], "identity.data_through_utc"),
+        "finality": _string(value["finality"], "identity.finality"),
         "grid_seconds": _integer(value["grid_seconds"], "identity.grid_seconds", minimum=1),
     }
     if result["collector_id"] != "rrc25":
         raise SourceMaterializationError("collector_id must be rrc25")
-    if _utc(result["window_start_utc"], "identity.window_start_utc") > _utc(result["data_through"], "identity.data_through"):
+    if result["finality"] not in ("event_end_unknown", "event_end_known"):
+        raise SourceMaterializationError("identity finality invalid")
+    start = _utc(result["window_start_utc"], "identity.window_start_utc")
+    end = _utc(result["window_end_utc"], "identity.window_end_utc")
+    through = _utc(result["data_through_utc"], "identity.data_through_utc")
+    if not start <= end <= through:
         raise SourceMaterializationError("identity window is inverted")
     return result
 
@@ -265,6 +278,45 @@ def _validate_source_refs(raw: Any, publication_id: str) -> list[dict[str, str]]
 
 def _audit_refs(raw: Any, location: str) -> list[str]:
     return _unique_sorted_strings(raw, location, nonempty=True)
+
+
+def _source_population_envelope(
+    raw_value: Any,
+    location: str,
+    authoritative_source: Mapping[str, Any],
+) -> tuple[list[Any], dict[str, Any]]:
+    """解析完整、版本化且可重放的单人口来源信封。"""
+
+    value = _require_mapping(raw_value, location)
+    keys = (
+        "source_ref", "manifest_digest", "content_digest", "freeze_digest", "complete",
+        "row_count", "rows_digest", "rows", "source_record_refs",
+    )
+    _require_exact_keys(value, keys, location)
+    if value["complete"] is not True:
+        raise SourceMaterializationError(f"{location} is not complete")
+    if (
+        value["source_ref"] != authoritative_source["dataset_id"]
+        or value["manifest_digest"] != authoritative_source["manifest_sha256"]
+        or value["content_digest"] != authoritative_source["content_sha256"]
+    ):
+        raise SourceMaterializationError(f"{location} is not bound to the authoritative source")
+    for key in ("manifest_digest", "content_digest", "freeze_digest", "rows_digest"):
+        _sha(value[key], f"{location}.{key}")
+    rows = _require_list(value["rows"], f"{location}.rows")
+    if value["row_count"] != len(rows) or value["rows_digest"] != digest_json(rows):
+        raise SourceMaterializationError(f"{location} completeness mismatch")
+    metadata = {
+        "source_population_source_ref": _string(value["source_ref"], f"{location}.source_ref"),
+        "source_population_manifest_digest": value["manifest_digest"],
+        "source_population_content_digest": value["content_digest"],
+        "source_population_freeze_digest": value["freeze_digest"],
+        "source_population_row_count": value["row_count"],
+        "source_population_rows_digest": value["rows_digest"],
+        "source_population_complete": True,
+        "source_population_record_refs": _audit_refs(value["source_record_refs"], f"{location}.source_record_refs"),
+    }
+    return rows, metadata
 
 
 def _fixed_rows(raw: Any, identity: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -333,7 +385,7 @@ def _asn_rows(raw: Any, identity: Mapping[str, Any]) -> list[dict[str, Any]]:
 def _validate_grid_time(raw: str, identity: Mapping[str, Any], location: str) -> dt.datetime:
     point = _utc(raw, location)
     start = _utc(identity["window_start_utc"], "window_start_utc")
-    end = _utc(identity["data_through"], "data_through")
+    end = _utc(identity["data_through_utc"], "data_through_utc")
     delta = int((point - start).total_seconds())
     if point < start or point > end or delta % identity["grid_seconds"]:
         raise SourceMaterializationError(f"{location} is outside exact publication grid")
@@ -356,7 +408,7 @@ def _new_prefix_rows(raw: Any, identity: Mapping[str, Any], profile_digest: str)
     keys = ("prefix", "afi", "first_observed_at_utc", "first_observed_view_complete", "expected_peer_asn_direction_ids", "state_points", "source_record_refs")
     point_keys = ("state_point_utc", "source_complete", "direction_states", "source_record_refs")
     result: list[dict[str, Any]] = []
-    end = _utc(identity["data_through"], "data_through")
+    end = _utc(identity["data_through_utc"], "data_through_utc")
     step = dt.timedelta(seconds=identity["grid_seconds"])
     for index, item in enumerate(_require_list(raw, "new_prefix_projection_inputs")):
         value = _require_mapping(item, f"new_prefix_projection_inputs[{index}]")
@@ -481,7 +533,32 @@ def _route_rows(raw: Any, identity: Mapping[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
-def _window_rows(raw_rows: Any, raw_anchor: Any, identity: Mapping[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _window_rows(
+    raw_population: Any,
+    raw_anchor: Any,
+    identity: Mapping[str, Any],
+    authoritative_source: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    population = _require_mapping(raw_population, "window_path_association_population")
+    population_keys = (
+        "source_ref", "manifest_digest", "content_digest", "freeze_digest", "complete",
+        "row_count", "rows_digest", "rows", "source_record_refs",
+    )
+    _require_exact_keys(population, population_keys, "window_path_association_population")
+    if population["complete"] is not True:
+        raise SourceMaterializationError("window path association population is not complete")
+    if (
+        population["source_ref"] != authoritative_source["dataset_id"]
+        or population["manifest_digest"] != authoritative_source["manifest_sha256"]
+        or population["content_digest"] != authoritative_source["content_sha256"]
+    ):
+        raise SourceMaterializationError("window path association population is not authoritative")
+    for key in ("manifest_digest", "content_digest", "freeze_digest", "rows_digest"):
+        _sha(population[key], f"window_path_association_population.{key}")
+    raw_rows = _require_list(population["rows"], "window_path_association_population.rows")
+    if population["row_count"] != len(raw_rows) or population["rows_digest"] != digest_json(raw_rows):
+        raise SourceMaterializationError("window path association population completeness mismatch")
+    population_refs = _audit_refs(population["source_record_refs"], "window_path_association_population.source_record_refs")
     anchor = _require_mapping(raw_anchor, "eligible_anchor_population")
     anchor_keys = ("source_ref", "result_set_id", "manifest_digest", "content_digest", "freeze_digest", "complete", "eligible_anchor_asns", "eligible_anchor_asns_digest", "source_record_refs")
     _require_exact_keys(anchor, anchor_keys, "eligible_anchor_population")
@@ -493,7 +570,7 @@ def _window_rows(raw_rows: Any, raw_anchor: Any, identity: Mapping[str, Any]) ->
         raise SourceMaterializationError("eligible anchor population digest mismatch")
     for key in ("manifest_digest", "content_digest", "freeze_digest"):
         _sha(anchor[key], f"eligible_anchor_population.{key}")
-    anchor_meta = {"anchor_population_source_ref": _string(anchor["source_ref"], "source_ref"), "anchor_result_set_id": _string(anchor["result_set_id"], "result_set_id"), "anchor_manifest_digest": anchor["manifest_digest"], "anchor_content_digest": anchor["content_digest"], "anchor_freeze_digest": anchor["freeze_digest"], "eligible_anchor_asns": eligible, "eligible_anchor_asns_digest": eligible_digest, "eligible_anchor_asn_count": len(eligible)}
+    anchor_meta = {"anchor_population_source_ref": _string(anchor["source_ref"], "source_ref"), "anchor_result_set_id": _string(anchor["result_set_id"], "result_set_id"), "anchor_manifest_digest": anchor["manifest_digest"], "anchor_content_digest": anchor["content_digest"], "anchor_freeze_digest": anchor["freeze_digest"], "eligible_anchor_asns": eligible, "eligible_anchor_asns_digest": eligible_digest, "eligible_anchor_asn_count": len(eligible), "association_population_source_ref": _string(population["source_ref"], "window_path_association_population.source_ref"), "association_manifest_digest": population["manifest_digest"], "association_content_digest": population["content_digest"], "association_freeze_digest": population["freeze_digest"], "association_source_row_count": population["row_count"], "association_source_rows_digest": population["rows_digest"], "association_population_complete": True}
     keys = ("anchor_asn", "known_origin_asn", "observed_origin_asn", "prefix", "afi", "path_id", "path_digest", "path_canonicalization_profile_id", "path_canonicalization_profile_digest", "path_segments", "peer_asn_direction_ids", "route_observation_count", "source_record_refs")
     result = []
     for index, item in enumerate(_require_list(raw_rows, "window_path_associations")):
@@ -518,7 +595,7 @@ def _window_rows(raw_rows: Any, raw_anchor: Any, identity: Mapping[str, Any]) ->
             raise SourceMaterializationError("known origin must be tail and strictly after anchor")
         path_id = _string(row["path_id"], "path_id")
         association_id = "path_association_v1_" + digest_json([identity["publication_id"], anchor_asn, origin, prefix, afi, path_id])[:32]
-        result.append({"publication_id": identity["publication_id"], "path_association_id": association_id, "anchor_asn": anchor_asn, "known_origin_asn": origin, "origin_status": "known", "observed_origin_asn": observed, "prefix": prefix, "afi": afi, "path_id": path_id, "path_digest": row["path_digest"], "path_canonicalization_profile_id": PATH_PROFILE_ID, "path_canonicalization_profile_digest": PATH_PROFILE_DIGEST, "path_segments": segments, "path_parse_status": "known", "common_path_status": "ordered", "ordered_sequence_eligible": True, "peer_asn_direction_ids": _unique_sorted_strings(row["peer_asn_direction_ids"], "peer_asn_direction_ids", nonempty=True), "route_observation_count": _integer(row["route_observation_count"], "route_observation_count", minimum=1), "source_record_refs": sorted(set(_audit_refs(anchor["source_record_refs"], "anchor.source_record_refs") + _audit_refs(row["source_record_refs"], "row.source_record_refs")))})
+        result.append({"publication_id": identity["publication_id"], "path_association_id": association_id, "anchor_asn": anchor_asn, "known_origin_asn": origin, "origin_status": "known", "observed_origin_asn": observed, "prefix": prefix, "afi": afi, "path_id": path_id, "path_digest": row["path_digest"], "path_canonicalization_profile_id": PATH_PROFILE_ID, "path_canonicalization_profile_digest": PATH_PROFILE_DIGEST, "path_segments": segments, "source_native_path_status": "known", "path_parse_status": "ordered", "common_path_status": "ordered", "ordered_sequence_eligible": True, "peer_asn_direction_ids": _unique_sorted_strings(row["peer_asn_direction_ids"], "peer_asn_direction_ids", nonempty=True), "route_observation_count": _integer(row["route_observation_count"], "route_observation_count", minimum=1), "source_record_refs": sorted(set(population_refs + _audit_refs(anchor["source_record_refs"], "anchor.source_record_refs") + _audit_refs(row["source_record_refs"], "row.source_record_refs")))})
     return result, anchor_meta
 
 
@@ -539,8 +616,13 @@ def _finish_rows(population_id: str, rows: list[dict[str, Any]]) -> list[dict[st
     return sorted(result, key=lambda item: item["member_key"])
 
 
-def _secondary_indexes(population_id: str, rows: Sequence[Mapping[str, Any]], anchor_meta: Mapping[str, Any] | None) -> dict[str, Any]:
-    indexes: dict[str, Any] = {}
+def _secondary_indexes(
+    population_id: str,
+    rows: Sequence[Mapping[str, Any]],
+    source_population_meta: Mapping[str, Any],
+    anchor_meta: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    indexes: dict[str, Any] = {"source_population_binding": dict(source_population_meta)}
     if population_id == "materialized_route_state_rows_at_exact_time":
         membership: dict[str, list[str]] = {}
         for row in rows:
@@ -550,7 +632,7 @@ def _secondary_indexes(population_id: str, rows: Sequence[Mapping[str, Any]], an
             for asn in members:
                 membership.setdefault(str(asn), []).append(row["member_key"])
         membership = {key: sorted(value) for key, value in sorted(membership.items(), key=lambda item: int(item[0]))}
-        indexes = {"path_asn_membership": {"index_id": "path_asn_membership_v1_" + digest_json(membership)[:32], "profile_id": PATH_MEMBERSHIP_PROFILE_ID, "profile_digest": PATH_MEMBERSHIP_PROFILE_DIGEST, "members_by_asn": membership, "indexed_member_keys_digest": digest_json(sorted({key for values in membership.values() for key in values}))}}
+        indexes.update({"path_asn_membership": {"index_id": "path_asn_membership_v1_" + digest_json(membership)[:32], "profile_id": PATH_MEMBERSHIP_PROFILE_ID, "profile_digest": PATH_MEMBERSHIP_PROFILE_DIGEST, "members_by_asn": membership, "indexed_member_keys_digest": digest_json(sorted({key for values in membership.values() for key in values}))}})
     elif population_id == "window_path_association_evidence_rows":
         membership: dict[str, list[str]] = {}
         anchor_before: dict[str, list[str]] = {}
@@ -562,7 +644,7 @@ def _secondary_indexes(population_id: str, rows: Sequence[Mapping[str, Any]], an
         for index in (membership, anchor_before):
             for key in index:
                 index[key].sort()
-        indexes = {"path_asn_membership": {"index_id": "window_path_asn_membership_v1_" + digest_json(membership)[:32], "profile_id": PATH_MEMBERSHIP_PROFILE_ID, "profile_digest": PATH_MEMBERSHIP_PROFILE_DIGEST, "members_by_asn": dict(sorted(membership.items(), key=lambda item: int(item[0])))}, "anchor_before_known_origin": {"index_id": "anchor_before_known_origin_v1_" + digest_json(anchor_before)[:32], "filter_profile_id": WINDOW_FILTER_PROFILE_ID, "filter_profile_digest": WINDOW_FILTER_PROFILE_DIGEST, "members_by_anchor_asn": dict(sorted(anchor_before.items(), key=lambda item: int(item[0]))), **dict(anchor_meta or {})}}
+        indexes.update({"path_asn_membership": {"index_id": "window_path_asn_membership_v1_" + digest_json(membership)[:32], "profile_id": PATH_MEMBERSHIP_PROFILE_ID, "profile_digest": PATH_MEMBERSHIP_PROFILE_DIGEST, "members_by_asn": dict(sorted(membership.items(), key=lambda item: int(item[0])))}, "anchor_before_known_origin": {"index_id": "anchor_before_known_origin_v1_" + digest_json(anchor_before)[:32], "filter_profile_id": WINDOW_FILTER_PROFILE_ID, "filter_profile_digest": WINDOW_FILTER_PROFILE_DIGEST, "members_by_anchor_asn": dict(sorted(anchor_before.items(), key=lambda item: int(item[0]))), **dict(anchor_meta or {})}})
     return indexes
 
 
@@ -583,7 +665,12 @@ def _write_jsonl(path: Path, rows: Sequence[Mapping[str, Any]]) -> tuple[str, in
 def build_source_store(input_path: Path, output_path: Path, *, contract_root: Path | None = None) -> dict[str, Any]:
     contract_root = contract_root or Path(__file__).resolve().parents[1] / "contracts/data/country-outage-p2-s1"
     payload = _require_mapping(load_json_strict(input_path), "input")
-    top_keys = ("schema_version", "identity", "source_refs", "fixed_cohort_members", "prefix_states", "asn_states", "new_prefix_projection_inputs", "exact_route_state_views", "eligible_anchor_population", "window_path_associations")
+    top_keys = (
+        "schema_version", "identity", "source_refs", "fixed_cohort_population",
+        "prefix_state_population", "asn_state_population", "new_prefix_projection_population",
+        "exact_route_state_population", "eligible_anchor_population",
+        "window_path_association_population",
+    )
     _require_exact_keys(payload, top_keys, "input")
     if payload["schema_version"] != "country_outage_p2_s1_authoritative_source_bundle_v1":
         raise SourceMaterializationError("input schema_version mismatch")
@@ -598,7 +685,27 @@ def build_source_store(input_path: Path, output_path: Path, *, contract_root: Pa
         raise SourceMaterializationError(
             f"authoritative source refs missing: {sorted(required_source_kinds - set(source_refs_by_kind))}"
         )
-    for view in _require_list(payload["exact_route_state_views"], "exact_route_state_views"):
+    fixed_input, fixed_meta = _source_population_envelope(
+        payload["fixed_cohort_population"], "fixed_cohort_population",
+        source_refs_by_kind["event_cohort"],
+    )
+    prefix_input, prefix_meta = _source_population_envelope(
+        payload["prefix_state_population"], "prefix_state_population",
+        source_refs_by_kind["event_metric"],
+    )
+    asn_input, asn_meta = _source_population_envelope(
+        payload["asn_state_population"], "asn_state_population",
+        source_refs_by_kind["event_metric"],
+    )
+    new_prefix_input, new_prefix_meta = _source_population_envelope(
+        payload["new_prefix_projection_population"], "new_prefix_projection_population",
+        source_refs_by_kind["event_metric"],
+    )
+    route_input, route_meta = _source_population_envelope(
+        payload["exact_route_state_population"], "exact_route_state_population",
+        source_refs_by_kind["exact_route_state_projection"],
+    )
+    for view in route_input:
         if _require_mapping(view, "exact_route_state_view").get("source_dataset_digest") != source_refs_by_kind["exact_route_state_projection"]["content_sha256"]:
             raise SourceMaterializationError("exact RouteState source dataset digest is not authoritative")
     anchor_input = _require_mapping(payload["eligible_anchor_population"], "eligible_anchor_population")
@@ -612,15 +719,46 @@ def build_source_store(input_path: Path, output_path: Path, *, contract_root: Pa
     profiles, profiles_raw = _load_profiles(contract_root)
     new_profile_digest = profiles[NEW_PREFIX_PROFILE_ID]["profile_digest"]
     rows_by_population: dict[str, list[dict[str, Any]]] = {
-        "fixed_cohort_member_rows": _fixed_rows(payload["fixed_cohort_members"], identity),
-        "prefix_state_rows": _prefix_rows(payload["prefix_states"], identity),
-        "asn_state_rows": _asn_rows(payload["asn_states"], identity),
-        "new_prefix_state_rows": _new_prefix_rows(payload["new_prefix_projection_inputs"], identity, new_profile_digest),
-        "materialized_route_state_rows_at_exact_time": _route_rows(payload["exact_route_state_views"], identity),
+        "fixed_cohort_member_rows": _fixed_rows(fixed_input, identity),
+        "prefix_state_rows": _prefix_rows(prefix_input, identity),
+        "asn_state_rows": _asn_rows(asn_input, identity),
+        "new_prefix_state_rows": _new_prefix_rows(new_prefix_input, identity, new_profile_digest),
+        "materialized_route_state_rows_at_exact_time": _route_rows(route_input, identity),
     }
-    window_rows, anchor_meta = _window_rows(payload["window_path_associations"], payload["eligible_anchor_population"], identity)
+    window_rows, anchor_meta = _window_rows(
+        payload["window_path_association_population"],
+        payload["eligible_anchor_population"],
+        identity,
+        source_refs_by_kind["window_path_association"],
+    )
     rows_by_population["window_path_association_evidence_rows"] = window_rows
+    population_meta_by_id = {
+        "fixed_cohort_member_rows": fixed_meta,
+        "prefix_state_rows": prefix_meta,
+        "asn_state_rows": asn_meta,
+        "new_prefix_state_rows": new_prefix_meta,
+        "materialized_route_state_rows_at_exact_time": route_meta,
+        "window_path_association_evidence_rows": {
+            "source_population_source_ref": anchor_meta["association_population_source_ref"],
+            "source_population_manifest_digest": anchor_meta["association_manifest_digest"],
+            "source_population_content_digest": anchor_meta["association_content_digest"],
+            "source_population_freeze_digest": anchor_meta["association_freeze_digest"],
+            "source_population_row_count": anchor_meta["association_source_row_count"],
+            "source_population_rows_digest": anchor_meta["association_source_rows_digest"],
+            "source_population_complete": anchor_meta["association_population_complete"],
+            "source_population_record_refs": [],
+        },
+    }
     rows_by_population = {population_id: _finish_rows(population_id, rows) for population_id, rows in rows_by_population.items()}
+    one_to_one = {
+        "fixed_cohort_member_rows", "prefix_state_rows", "asn_state_rows",
+        "window_path_association_evidence_rows",
+    }
+    for population_id, metadata in population_meta_by_id.items():
+        metadata["source_population_projection_cardinality"] = (
+            "one_to_one" if population_id in one_to_one else "one_to_many_materialized_projection"
+        )
+        metadata["materialized_row_count"] = len(rows_by_population[population_id])
     if output_path.exists():
         raise SourceMaterializationError(f"output already exists: {output_path}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -633,20 +771,27 @@ def build_source_store(input_path: Path, output_path: Path, *, contract_root: Pa
             row_ref = Path("populations") / f"{population_id}.jsonl"
             row_sha, row_size = _write_jsonl(temp / row_ref, rows)
             member_keys_digest = digest_json([row["member_key"] for row in rows])
-            secondary = _secondary_indexes(population_id, rows, anchor_meta if population_id == "window_path_association_evidence_rows" else None)
+            secondary = _secondary_indexes(
+                population_id,
+                rows,
+                population_meta_by_id[population_id],
+                anchor_meta if population_id == "window_path_association_evidence_rows" else None,
+            )
             index_payload: dict[str, Any] = {"schema_version": "country_outage_p2_s1_source_index_v1", "population_id": population_id, "publication_id": identity["publication_id"], "member_key_fields": list(MEMBER_KEY_FIELDS[population_id]), "members": [{"member_key": row["member_key"], "row_ordinal": ordinal, "row_digest": row["row_digest"]} for ordinal, row in enumerate(rows)], "member_keys_digest": member_keys_digest, "secondary_indexes": secondary}
             index_payload["content_sha256"] = digest_json(index_payload)
             index_ref = Path("indexes") / f"{population_id}.index.json"
             index_sha, index_size = _write_json(temp / index_ref, index_payload)
             schema_path = contract_root / SCHEMA_FILES[population_id]
             schema_sha = sha256_bytes(schema_path.read_bytes())
-            profile_bindings: dict[str, Any] = {}
+            profile_bindings: dict[str, Any] = {
+                "source_population_binding": population_meta_by_id[population_id],
+            }
             if population_id == "new_prefix_state_rows":
-                profile_bindings = {"new_prefix_projection_profile_id": NEW_PREFIX_PROFILE_ID, "new_prefix_projection_profile_digest": new_profile_digest}
+                profile_bindings.update({"new_prefix_projection_profile_id": NEW_PREFIX_PROFILE_ID, "new_prefix_projection_profile_digest": new_profile_digest})
             elif population_id == "materialized_route_state_rows_at_exact_time":
-                profile_bindings = {"exact_route_state_input_profile_id": EXACT_ROUTE_PROFILE_ID, "exact_route_state_input_profile_digest": profiles[EXACT_ROUTE_PROFILE_ID]["profile_digest"], "path_asn_membership_profile_id": PATH_MEMBERSHIP_PROFILE_ID, "path_asn_membership_profile_digest": PATH_MEMBERSHIP_PROFILE_DIGEST, "path_asn_membership_index_digest": index_payload["content_sha256"]}
+                profile_bindings.update({"exact_route_state_input_profile_id": EXACT_ROUTE_PROFILE_ID, "exact_route_state_input_profile_digest": profiles[EXACT_ROUTE_PROFILE_ID]["profile_digest"], "path_asn_membership_profile_id": PATH_MEMBERSHIP_PROFILE_ID, "path_asn_membership_profile_digest": PATH_MEMBERSHIP_PROFILE_DIGEST, "path_asn_membership_index_digest": index_payload["content_sha256"]})
             elif population_id == "window_path_association_evidence_rows":
-                profile_bindings = {"path_association_filter_profile_id": WINDOW_FILTER_PROFILE_ID, "path_association_filter_profile_digest": WINDOW_FILTER_PROFILE_DIGEST, "path_association_index_digest": index_payload["content_sha256"], **anchor_meta}
+                profile_bindings.update({"path_association_filter_profile_id": WINDOW_FILTER_PROFILE_ID, "path_association_filter_profile_digest": WINDOW_FILTER_PROFILE_DIGEST, "path_association_index_digest": index_payload["content_sha256"], **anchor_meta})
             receipt: dict[str, Any] = {"schema_version": "country_outage_p2_s1_materialization_receipt_v1", "status": "materialized_ready", "population_id": population_id, "publication_id": identity["publication_id"], "source_refs": source_refs, "schema_sha256": schema_sha, "row_file_sha256": row_sha, "index_digest": index_payload["content_sha256"], "row_count": len(rows), "member_keys_digest": member_keys_digest, "materializer_id": "country_outage_p2_s1_source_view_builder", "materializer_version": "1.0.0", "profile_bindings": profile_bindings}
             receipt_semantic_digest = digest_json(receipt)
             receipt["receipt_id"] = "p2s1_materialization_receipt_v1_" + receipt_semantic_digest

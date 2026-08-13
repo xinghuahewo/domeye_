@@ -1,0 +1,60 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "2896a68da135c4f2083fd906cfc43ea263cb36c4a180b41ba1084ac8a36f8a3e",
+      "size_bytes": 18740
+    },
+    {
+      "path": "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts",
+      "sha256": "7b2794ab507830558a86a46cac5a23c06b42962e64cffc9c773a8fb66262795c",
+      "size_bytes": 33616
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-registry-runtime.ts",
+      "sha256": "8d231b2a8fddc39907691372c0861244609cfb8f11d55e654b1cf63d5342fa4d",
+      "size_bytes": 59665
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-trusted-receipt-store.ts",
+      "sha256": "5c62146d4f295e935a3d292469482ccdeed89ad05e07c9862c3f2ed2033333bc",
+      "size_bytes": 14651
+    }
+  ],
+  "category": "registry_and_receipt_positive_boundary_attack",
+  "command": [
+    "bash",
+    "-lc",
+    "npm run build && node --test dist/tests/p2-s1-w0-source-governance.test.js"
+  ],
+  "completed_at_utc": "2026-08-13T04:58:24Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n> domeye-country-outage-agent-sidecar@0.1.0 prebuild\n> npm run vendor:patch:verify\n\n\n> domeye-country-outage-agent-sidecar@0.1.0 vendor:patch:verify\n> node scripts/apply_pi_response_model_patch.mjs --verify\n\n{\"event\":\"country_outage_pi_response_model_vendor_patch\",\"patchId\":\"pi-ai-openai-completions-response-model-v1\",\"outcome\":\"verified\",\"patchedSourceSha256\":\"9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504\"}\n\n> domeye-country-outage-agent-sidecar@0.1.0 build\n> tsc -p tsconfig.json\n\nTAP version 13\n# Subtest: 可信回执以 canonical JSON 原子落盘并按类型、候选、publication、subject 解析\nok 1 - 可信回执以 canonical JSON 原子落盘并按类型、候选、publication、subject 解析\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 可信回执拒绝 ghost、篡改和跨上下文重放\nok 2 - 可信回执拒绝 ghost、篡改和跨上下文重放\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 可信回执根目录拒绝组写、其他用户写和符号链接祖先\nok 3 - 可信回执根目录拒绝组写、其他用户写和符号链接祖先\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: W0 Registry proposal 只准入 proposed/inactive，回执明确执行授权为空\nok 4 - W0 Registry proposal 只准入 proposed/inactive，回执明确执行授权为空\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: W0 Registry proposal 拒绝 snapshot 篡改、active/实现冒充、依赖与权限攻击\nok 5 - W0 Registry proposal 拒绝 snapshot 篡改、active/实现冒充、依赖与权限攻击\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Registry resolver 拒绝候选、既有 snapshot 与跨 publication 重放\nok 6 - Registry resolver 拒绝候选、既有 snapshot 与跨 publication 重放\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: TOOL-07..12、OP-05..39 的 W0 执行次数为 0，P2.1 始终拒绝\nok 7 - TOOL-07..12、OP-05..39 的 W0 执行次数为 0，P2.1 始终拒绝\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: W1/W2 Registry 以完整波次、同候选实现与测试证据顺序原子准入 binding，执行授权为空\nok 8 - W1/W2 Registry 以完整波次、同候选实现与测试证据顺序原子准入 binding，执行授权为空\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: W1 binding 准入拒绝 digest、候选、revision、合同、实现、handler 与测试证据攻击，失败不改变 CAS\nok 9 - W1 binding 准入拒绝 digest、候选、revision、合同、实现、handler 与测试证据攻击，失败不改变 CAS\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Registry binding 准入拒绝半波、依赖、重复、跨波、过期 CAS 与重复准入；执行 spy 为 0\nok 10 - Registry binding 准入拒绝半波、依赖、重复、跨波、过期 CAS 与重复准入；执行 spy 为 0\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 回执摘要和 proposal 摘要使用同一 deterministic canonical JSON\nok 11 - 回执摘要和 proposal 摘要使用同一 deterministic canonical JSON\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms <ELAPSED>\n\n[stderr]\n",
+  "normalized_output_sha256": "74b8e41f4655e17079d226ba933edc48cae68a1c647b494069ba57d687b8f95a",
+  "passed": true,
+  "receipt_digest": "60e0c551ae2956d8099bce17500cd8509e2f36aa03f545ac99609bf28f5ad80a",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.0.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts"
+  ],
+  "skipped_count": 0,
+  "stage": "W0",
+  "started_at_utc": "2026-08-13T04:58:08Z",
+  "suite_id": "w0-typescript",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts",
+      "unit_ids": []
+    }
+  ],
+  "tested_execution_unit_ids": [],
+  "tested_unit_ids": [],
+  "tests_run": 11,
+  "working_directory": "agent-sidecar"
+}

@@ -14,32 +14,36 @@
     "w0_w6_dependencies_and_effects_verified",
     "p2_1_and_product_boundaries_verified",
     "sol_host_ds_boundary_verified",
-    "w0_implementation_effect_verified",
-    "w0_atomicity_and_evidence_verified",
-    "w0_content_addressed_artifact_manifest_verified",
-    "w0_six_atomic_source_population_contracts_verified",
-    "w0_registry_proposed_only_zero_execution_verified",
-    "w0_trusted_receipt_store_verified",
-    "w0_fixture_performance_baseline_verified"
+    "w2_offline_atomic_harness_scope_verified",
+    "w2_atomicity_and_evidence_verified",
+    "w2_content_addressed_artifacts_verified",
+    "w2_atomic_unit_receipts_verified",
+    "w2_structural_and_frozen_contracts_verified",
+    "w2_w0_source_lineage_verified",
+    "w2_registry_complete_wave_binding_admission_verified",
+    "w2_trusted_dispatcher_deferred_to_w5_verified",
+    "w2_positive_boundary_attack_tests_verified",
+    "w2_not_w6_or_production_verified"
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
   "hook_sha256": "b0fca844aeadd2a2b403b49bd88349774613f54048cd97e12bb7883e3cb02fd4",
   "hook_tests_sha256": "994ca74e76296bd2d3a3cc5db3573eaf28b254036f9128a56e4f6e29997245a0",
-  "implementation_candidate_id": "country-outage-p2-s1-w0-c18ac57d94ba41e868e450df",
+  "implementation_candidate_id": "country-outage-p2-s1-w2-07a3d651caef1dccc1f108c5",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
-    "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59"
+    "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
+    "cbab6787eeec1071c1c982063085f6fadb16e85e584c76289a43b31aecd4108c"
   ],
   "production_deployed": false,
-  "receipt_digest": "cbab6787eeec1071c1c982063085f6fadb16e85e584c76289a43b31aecd4108c",
+  "receipt_digest": "b4672f844e559d3bdf44d713fd02f674ec431f4caacb77c3afa85886c27298a1",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
-  "stage": "W0",
+  "stage": "W2",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
   "task_sha256": "23421cfbca8458ab2a273502cf71772e1db5c4a5ee6753d5bc4a271c2ddbab96",
-  "wave_evidence_sha256": "3e45704505410b38a153e1261c6466761923d5d19b1414b7e712101a8448d00a"
+  "wave_evidence_sha256": "ba76ad7f5a22d029d61b29af9f496e0d4898008e7d85bafb2337c8d450b30735"
 }

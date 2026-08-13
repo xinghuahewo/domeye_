@@ -35,7 +35,7 @@
     "recovery_judgment": false,
     "user_impact_judgment": false
   },
-  "content_digest": "0eeb31003372c89be4213b8f527a3f4fee9948a67f57592261ed9947235ef065",
+  "content_digest": "358118877e61852d7e4e343516807adb80b8725463bfba521e3cec26111fb1f5",
   "deferred_scope": {
     "dynamic_fan_out_question_subgoals": {
       "Q20": [
@@ -273,7 +273,7 @@
       "depends_on": [
         "W0"
       ],
-      "effect": "asn_prefix_and_state_time_drilldown_implemented",
+      "effect": "offline_as_prefix_state_time_atomic_harness_and_non_callable_binding_verified",
       "stage": "W1",
       "unit_ids": [
         "TOOL-07",
@@ -298,7 +298,7 @@
       "depends_on": [
         "W0"
       ],
-      "effect": "complete_window_path_projection_set_and_count_implemented",
+      "effect": "offline_window_path_set_count_atomic_harness_and_non_callable_binding_verified",
       "stage": "W2",
       "unit_ids": [
         "TOOL-12",

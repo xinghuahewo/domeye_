@@ -42,7 +42,7 @@ ROW_FIELDS = {
     "asn_state_rows": ("schema_version", "publication_id", "cohort_id", "state_point_utc", "asn", "classification", "fixed_prefix_count", "partial_prefix_count", "complete_prefix_count", "unknown_prefix_count", "invisible_direction_count", "member_key", "row_digest", "source_record_refs"),
     "new_prefix_state_rows": ("schema_version", "publication_id", "new_prefix_state_id", "prefix", "afi", "first_observed_at_utc", "state_point_utc", "classification", "expected_peer_asn_direction_ids", "visible_direction_count", "invisible_direction_count", "unknown_direction_count", "projection_profile_id", "projection_profile_digest", "member_key", "row_digest", "source_record_refs"),
     "materialized_route_state_rows_at_exact_time": ("schema_version", "publication_id", "state_point_utc", "prefix", "afi", "peer_asn_direction_id", "route_observation_key", "vp_id", "peer_id", "visibility", "origin_status", "origin_asns", "path_status", "common_path_status", "path_id", "path_digest", "path_canonicalization_profile_id", "path_canonicalization_profile_digest", "path_segments", "last_event_id", "last_update_utc", "checkpoint_id", "projection_receipt_digest", "quality_flags", "member_key", "row_digest", "source_record_refs"),
-    "window_path_association_evidence_rows": ("schema_version", "publication_id", "path_association_id", "anchor_asn", "known_origin_asn", "origin_status", "observed_origin_asn", "prefix", "afi", "path_id", "path_digest", "path_canonicalization_profile_id", "path_canonicalization_profile_digest", "path_segments", "path_parse_status", "common_path_status", "ordered_sequence_eligible", "peer_asn_direction_ids", "route_observation_count", "member_key", "row_digest", "source_record_refs"),
+    "window_path_association_evidence_rows": ("schema_version", "publication_id", "path_association_id", "anchor_asn", "known_origin_asn", "origin_status", "observed_origin_asn", "prefix", "afi", "path_id", "path_digest", "path_canonicalization_profile_id", "path_canonicalization_profile_digest", "path_segments", "source_native_path_status", "path_parse_status", "common_path_status", "ordered_sequence_eligible", "peer_asn_direction_ids", "route_observation_count", "member_key", "row_digest", "source_record_refs"),
 }
 FROZEN_SOURCE_PROFILE_DIGESTS = {
     "PROFILE-NEW-PREFIX-FIXED-FIRST-OBSERVED-DIRECTIONS-1.0.0": "e6518772ed2866d80e586b6506be0b8217074c610d4189313229fad088c0feeb",
@@ -190,7 +190,17 @@ class CountryOutageP2S1SourceStore:
         if store_id != "country_outage_p2_s1_source_store_v1_" + digest_json(store_semantic):
             raise SourceStoreIntegrityError("store_id digest mismatch")
         identity = manifest.get("identity")
-        if not isinstance(identity, dict) or identity.get("collector_id") != "rrc25" or not isinstance(identity.get("publication_id"), str):
+        required_identity = {
+            "incident_id", "publication_id", "publication_revision", "publication_digest",
+            "collector_id", "cohort_id", "cohort_digest", "window_start_utc",
+            "window_end_utc", "data_through_utc", "finality", "grid_seconds",
+        }
+        if (
+            not isinstance(identity, dict)
+            or set(identity) != required_identity
+            or identity.get("collector_id") != "rrc25"
+            or not isinstance(identity.get("publication_id"), str)
+        ):
             raise SourceStoreIntegrityError("manifest identity invalid")
         profile_ref = manifest.get("source_profiles_ref")
         if not isinstance(profile_ref, dict):
@@ -286,7 +296,7 @@ class CountryOutageP2S1SourceStore:
             raise SourceStoreIntegrityError(f"receipt path is not content addressed: {population_id}")
         if receipt.get("row_file_sha256") != row_ref.get("sha256") or receipt.get("index_digest") != index.get("content_sha256") or receipt.get("member_keys_digest") != member_keys_digest or receipt.get("row_count") != len(rows) or receipt.get("schema_sha256") != entry.get("schema_sha256"):
             raise SourceStoreIntegrityError(f"receipt completeness mismatch: {population_id}")
-        self._verify_special_index(population_id, rows, index.get("secondary_indexes"))
+        self._verify_special_index(population_id, rows, index.get("secondary_indexes"), receipt)
         self._verified_rows[population_id] = tuple(rows)
         self._verified_indexes[population_id] = index
 
@@ -316,9 +326,48 @@ class CountryOutageP2S1SourceStore:
         return rows
 
     @staticmethod
-    def _verify_special_index(population_id: str, rows: Sequence[Mapping[str, Any]], secondary: Any) -> None:
+    def _verify_special_index(
+        population_id: str,
+        rows: Sequence[Mapping[str, Any]],
+        secondary: Any,
+        receipt: Mapping[str, Any],
+    ) -> None:
         if not isinstance(secondary, dict):
             raise SourceStoreIntegrityError(f"secondary index invalid: {population_id}")
+        profile_bindings = receipt.get("profile_bindings")
+        source_binding = secondary.get("source_population_binding")
+        if (
+            not isinstance(profile_bindings, dict)
+            or not isinstance(source_binding, dict)
+            or profile_bindings.get("source_population_binding") != source_binding
+            or source_binding.get("source_population_complete") is not True
+            or source_binding.get("materialized_row_count") != len(rows)
+        ):
+            raise SourceStoreIntegrityError(f"source population completeness binding mismatch: {population_id}")
+        cardinality = source_binding.get("source_population_projection_cardinality")
+        if cardinality not in {"one_to_one", "one_to_many_materialized_projection"}:
+            raise SourceStoreIntegrityError(f"source population cardinality contract invalid: {population_id}")
+        if cardinality == "one_to_one" and source_binding.get("source_population_row_count") != len(rows):
+            raise SourceStoreIntegrityError(f"source population one-to-one row count mismatch: {population_id}")
+        for field in (
+            "source_population_manifest_digest", "source_population_content_digest",
+            "source_population_freeze_digest", "source_population_rows_digest",
+        ):
+            value = source_binding.get(field)
+            if not isinstance(value, str) or len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+                raise SourceStoreIntegrityError(f"source population digest invalid: {population_id}.{field}")
+        source_ref = next(
+            (
+                ref for ref in receipt.get("source_refs", [])
+                if isinstance(ref, dict)
+                and ref.get("dataset_id") == source_binding.get("source_population_source_ref")
+                and ref.get("manifest_sha256") == source_binding.get("source_population_manifest_digest")
+                and ref.get("content_sha256") == source_binding.get("source_population_content_digest")
+            ),
+            None,
+        )
+        if source_ref is None:
+            raise SourceStoreIntegrityError(f"source population authoritative ref mismatch: {population_id}")
         if population_id == "materialized_route_state_rows_at_exact_time":
             membership = secondary.get("path_asn_membership")
             if not isinstance(membership, dict) or membership.get("profile_digest") != "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2":
@@ -331,6 +380,42 @@ class CountryOutageP2S1SourceStore:
             if membership.get("members_by_asn") != {key: sorted(value) for key, value in sorted(expected.items(), key=lambda item: int(item[0]))}:
                 raise SourceStoreIntegrityError("RouteState path membership index content mismatch")
         if population_id == "window_path_association_evidence_rows":
+            for row in rows:
+                if (
+                    row.get("source_native_path_status") != "known"
+                    or row.get("path_parse_status") != "ordered"
+                    or row.get("common_path_status") != "ordered"
+                    or row.get("ordered_sequence_eligible") is not True
+                    or row.get("origin_status") != "known"
+                    or row.get("observed_origin_asn") != row.get("known_origin_asn")
+                ):
+                    raise SourceStoreIntegrityError("window path status projection mismatch")
+                segments = row.get("path_segments")
+                if not isinstance(segments, list) or not segments:
+                    raise SourceStoreIntegrityError("window path segments missing")
+                sequence: list[int] = []
+                for segment in segments:
+                    if not isinstance(segment, dict) or segment.get("segment_type") != "as_sequence":
+                        raise SourceStoreIntegrityError("window path is not ordered AS_SEQUENCE")
+                    asns = segment.get("asns")
+                    if not isinstance(asns, list) or not asns or any(
+                        isinstance(asn, bool) or not isinstance(asn, int) or not (0 <= asn <= 4294967295)
+                        for asn in asns
+                    ):
+                        raise SourceStoreIntegrityError("window path ASN sequence invalid")
+                    sequence.extend(asns)
+                if row.get("path_digest") != digest_json(segments):
+                    raise SourceStoreIntegrityError("window path digest mismatch")
+                collapsed = [
+                    asn for index, asn in enumerate(sequence)
+                    if index == 0 or sequence[index - 1] != asn
+                ]
+                if (
+                    not collapsed
+                    or collapsed[-1] != row.get("known_origin_asn")
+                    or row.get("anchor_asn") not in collapsed[:-1]
+                ):
+                    raise SourceStoreIntegrityError("window origin tail or anchor-before invariant mismatch")
             membership = secondary.get("path_asn_membership")
             if (
                 not isinstance(membership, dict)
@@ -359,6 +444,32 @@ class CountryOutageP2S1SourceStore:
             eligible = anchor.get("eligible_anchor_asns")
             if anchor.get("eligible_anchor_asn_count") != len(eligible or []) or anchor.get("eligible_anchor_asns_digest") != digest_json(eligible or []):
                 raise SourceStoreIntegrityError("eligible anchor population closure mismatch")
+            profile = profile_bindings
+            if not isinstance(profile, dict) or profile.get("association_population_complete") is not True:
+                raise SourceStoreIntegrityError("window association population completeness receipt missing")
+            if profile.get("association_source_row_count") != len(rows):
+                raise SourceStoreIntegrityError("window association population row count mismatch")
+            for field in (
+                "association_population_source_ref", "association_manifest_digest",
+                "association_content_digest", "association_freeze_digest",
+                "association_source_rows_digest",
+            ):
+                if anchor.get(field) != profile.get(field):
+                    raise SourceStoreIntegrityError("window association population binding mismatch")
+            source_ref = next(
+                (
+                    ref for ref in receipt.get("source_refs", [])
+                    if isinstance(ref, dict) and ref.get("source_kind") == "window_path_association"
+                ),
+                None,
+            )
+            if (
+                not isinstance(source_ref, dict)
+                or source_ref.get("dataset_id") != profile.get("association_population_source_ref")
+                or source_ref.get("manifest_sha256") != profile.get("association_manifest_digest")
+                or source_ref.get("content_sha256") != profile.get("association_content_digest")
+            ):
+                raise SourceStoreIntegrityError("window association authoritative source binding mismatch")
 
     @property
     def manifest(self) -> Mapping[str, Any]:

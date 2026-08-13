@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """P2-S1 实现工程阶段防跑偏 Hook。
 
-当前任务验收 S1I-P0 与 W0；W1-W6 入口保持 fail-closed，后续实施任务
-必须提供同候选、可重算且绑定真实制品的 wave evidence 才能通过。
+S1I-P0/W0 保留既有验收；W1/W2 只有在原子单元人口、真实实现制品、
+冻结合同、W0 Source 谱系、Registry 整波激活及三类测试均闭合时才放行。
+W3-W6 继续 fail-closed，直到各自实现任务补齐同等级证据。
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ WAVE_CONTRACT = {
     },
     "W1": {
         "depends_on": ["W0"],
-        "effect": "asn_prefix_and_state_time_drilldown_implemented",
+        "effect": "offline_as_prefix_state_time_atomic_harness_and_non_callable_binding_verified",
         "unit_ids": [
             "TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10",
             *[f"OP-{number:02d}" for number in range(5, 15)], "OP-35", "OP-36",
@@ -56,7 +57,7 @@ WAVE_CONTRACT = {
     },
     "W2": {
         "depends_on": ["W0"],
-        "effect": "complete_window_path_projection_set_and_count_implemented",
+        "effect": "offline_window_path_set_count_atomic_harness_and_non_callable_binding_verified",
         "unit_ids": ["TOOL-12", *[f"OP-{number:02d}" for number in range(15, 29)]],
     },
     "W3": {
@@ -145,6 +146,89 @@ W0_ALLOWED_ARTIFACT_PREFIXES = (
     "agent-sidecar/src/chat/p2-s1-trusted-receipt-store.ts",
     "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts",
 )
+# 该摘要只标识 W1/W2 Task 创建时已经通过的前序 W0 回执。W0 在本 Task
+# 内因 Source/Hook 收紧而重新签发后，W1/W2 必须绑定当前回执文件，不能把
+# 这个历史 transition 摘要当作当前运行依赖，否则会形成 Task→Hook→W0
+# receipt→Task 的摘要环。
+W0_TRANSITION_RECEIPT_DIGEST = "3e875e80422e3c33528a39d24d08add6ea68f6e16e02f2ce22f7084119189351"
+W1_W2_TASK_ID = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-20260813"
+W1_W2_TARGET_VERSION = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-v1"
+STRUCTURAL_BINDING_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json"
+)
+TOOL_CATALOG_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-catalog.json"
+)
+TOOL_CONTRACT_SCHEMA_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-contract.schema.json"
+)
+OPERATOR_CATALOG_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-catalog.json"
+)
+OPERATOR_CONTRACT_SCHEMA_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json"
+)
+W1_W2_TOOL_IMPLEMENTATION_PATH = Path("backend/services/country_outage_p2_s1_tools.py")
+W1_W2_OPERATOR_IMPLEMENTATION_PATH = Path("backend/services/country_outage_p2_s1_operators.py")
+W1_W2_TOOL_TEST_PATH = Path("backend/web/tests/test_country_outage_p2_s1_tools.py")
+W1_W2_OPERATOR_TEST_PATH = Path("backend/web/tests/test_country_outage_p2_s1_operators.py")
+W1_W2_TOOL_RUNTIME_SCHEMA_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json"
+)
+STAGE_TEST_RUNNER_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py"
+)
+STAGE_TEST_RUN_RECEIPT_ROOT = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts"
+)
+W1_W2_REGISTRY_RUNTIME_PATH = Path("agent-sidecar/src/chat/p2-s1-registry-runtime.ts")
+W1_W2_REGISTRY_TEST_PATH = Path("agent-sidecar/tests/p2-s1-w0-source-governance.test.ts")
+W1_W2_REGISTRY_EVIDENCE_GENERATOR_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/tools/generate_registry_evidence.ts"
+)
+W1_W2_REGISTRY_EVIDENCE_ROOT = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime"
+)
+W1_W2_REGISTRY_EVIDENCE_SHA256 = {
+    "W1": "e9e5eed9a166cb43f43bb2d03b8eb33f6a664245cf617a098532d5482035c42c",
+    "W2": "f001b13b8c39641db0536ef24a4f41d1c5b020bbe5317b2f7389b267b7fb9588",
+}
+W1_W2_SOURCE_STORE_PATH = Path("backend/services/country_outage_p2_s1_source_store.py")
+W1_W2_SOURCE_SCHEMA_PATHS = {
+    population: Path("contracts/data/country-outage-p2-s1") / schema_name
+    for population, schema_name in W0_SOURCE_SCHEMA_BY_POPULATION.items()
+}
+W1_W2_SHARED_ARTIFACT_ROLES = {
+    W1_W2_TOOL_IMPLEMENTATION_PATH.as_posix(): "tool_implementation",
+    W1_W2_OPERATOR_IMPLEMENTATION_PATH.as_posix(): "operator_implementation",
+    W1_W2_TOOL_TEST_PATH.as_posix(): "tool_test",
+    W1_W2_OPERATOR_TEST_PATH.as_posix(): "operator_test",
+    W1_W2_TOOL_RUNTIME_SCHEMA_PATH.as_posix(): "tool_runtime_contract",
+    W1_W2_REGISTRY_RUNTIME_PATH.as_posix(): "registry_runtime",
+    W1_W2_REGISTRY_TEST_PATH.as_posix(): "registry_test",
+    W1_W2_REGISTRY_EVIDENCE_GENERATOR_PATH.as_posix(): "registry_evidence_generator",
+    STRUCTURAL_BINDING_PATH.as_posix(): "structural_binding_contract",
+    TOOL_CATALOG_PATH.as_posix(): "frozen_tool_catalog",
+    TOOL_CONTRACT_SCHEMA_PATH.as_posix(): "frozen_tool_contract_schema",
+    OPERATOR_CATALOG_PATH.as_posix(): "frozen_operator_catalog",
+    OPERATOR_CONTRACT_SCHEMA_PATH.as_posix(): "frozen_operator_contract_schema",
+    W1_W2_SOURCE_STORE_PATH.as_posix(): "w0_source_store",
+    W0_SOURCE_FIXTURE_MANIFEST.as_posix(): "w0_source_manifest",
+    **{path.as_posix(): "w0_source_schema" for path in W1_W2_SOURCE_SCHEMA_PATHS.values()},
+}
+W1_W2_ALL_UNIT_IDS = set(WAVE_CONTRACT["W1"]["unit_ids"] + WAVE_CONTRACT["W2"]["unit_ids"])
+P2_1_UNIT_IDS = {"PLAN-CAP-02", "TOOL-13", "OP-34"}
+REGISTRY_SNAPSHOT_ID = re.compile(r"^p2-s1-registry-wave-sha256:[0-9a-f]{64}$")
+STAGE_TEST_RUN_RECEIPTS = {
+    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "c1b82c3ebde361eef5350c486d49c47a2258f0769fad4efa4cf8e6ce2eb5e846"),
+    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "b8b1f17d2aa80887d22d5e09245f3a9726581f8c5c93d5c49946fd33a580480e"),
+    "w1-positive": ("W1", "positive", "9b9287aa3709aa2c0228045d0547737bee6a4967ddece111a43456d79862785d"),
+    "w1-boundary": ("W1", "boundary", "cf7cf209066263b8717caacf4e2abe354ed0223107eb0c9eba54054a31196cf9"),
+    "w1-attack": ("W1", "attack", "293eb438f0f0cc026c3f245c39b09b46d31fd021f75dd020d4165e9a86f253f6"),
+    "w2-positive": ("W2", "positive", "254cabe16f905f62d1597bf894ce0495108cfbb7fe0a1fdd90c8c9456b4b1236"),
+    "w2-boundary": ("W2", "boundary", "a7a40eeed6c71e535b98c234dc28c4ad5e70791f2d6450920cb2a21abca6c729"),
+    "w2-attack": ("W2", "attack", "58cb9087b453702323f2c864a1d530b0c249b351e1bfa8988d629a9d88af6934"),
+}
 
 
 class AlignmentError(RuntimeError):
@@ -348,22 +432,52 @@ def validate_documents(root: Path) -> list[str]:
 
 def validate_task(root: Path) -> list[str]:
     task = load_json(root / TASK_PATH)
-    exact(task.get("taskId"), "country-outage-agent-p2-s1-w0-source-governance-20260813", "task_identity_mismatch", "W0 Task ID 不匹配")
-    exact(task.get("targetVersion"), "country-outage-agent-p2-s1-w0-source-governance-v1", "task_version_mismatch", "W0 目标版本不匹配")
+    task_id = task.get("taskId")
+    w0_task = task_id == "country-outage-agent-p2-s1-w0-source-governance-20260813"
+    if w0_task:
+        exact(task.get("targetVersion"), "country-outage-agent-p2-s1-w0-source-governance-v1", "task_version_mismatch", "W0 目标版本不匹配")
+    else:
+        exact(task_id, W1_W2_TASK_ID, "task_identity_mismatch", "W1/W2 Task ID 不匹配")
+        exact(task.get("targetVersion"), W1_W2_TARGET_VERSION, "task_version_mismatch", "W1/W2 目标版本不匹配")
     transition = task.get("taskTransition")
-    expect(isinstance(transition, dict), "task_transition_missing", "缺少 W0 任务迁移记录")
+    expect(isinstance(transition, dict), "task_transition_missing", "缺少任务迁移记录")
     exact(transition.get("frozenDesignCandidateId"), DESIGN_CANDIDATE_ID, "task_design_binding_mismatch", "Task 未绑定冻结设计候选")
     exact(transition.get("frozenDesignCandidateSha256"), DESIGN_CANDIDATE_SHA256, "task_design_sha_mismatch", "Task 设计摘要不匹配")
     exact(transition.get("s1ip0ReceiptDigest"), "2e2d72f18f030bb1f91e7037e6f88786f64d9b4b7865a36b82f605e7e701d838", "task_p0_binding_mismatch", "Task 未绑定 S1I-P0 回执")
     forbidden = task.get("forbiddenPaths")
     expect(isinstance(forbidden, list), "task_forbidden_paths_missing", "缺少 forbiddenPaths")
     for pattern in ("backend/core/**", "backend/data_pipeline/**", "backend/database/**", "backend/web/api/**", "frontend/**", "deploy/**", "tools/rrc25-iran-replay-go/**"):
-        expect(pattern in forbidden, "w0_scope_expanded", f"W0 任务未禁止修改 {pattern}")
+        expect(pattern in forbidden, "task_scope_expanded", f"任务未禁止修改 {pattern}")
     allowed = task.get("allowedPaths")
-    expect(isinstance(allowed, list), "task_allowed_paths_missing", "W0 缺少 allowedPaths")
-    for path in W0_REQUIRED_RUNTIME_PATHS:
-        expect(path in allowed, "w0_runtime_path_not_authorized", f"W0 未授权实现路径：{path}")
-    return ["w0_task_boundary_verified"]
+    expect(isinstance(allowed, list), "task_allowed_paths_missing", "缺少 allowedPaths")
+    if w0_task:
+        for path in W0_REQUIRED_RUNTIME_PATHS:
+            expect(path in allowed, "w0_runtime_path_not_authorized", f"W0 未授权实现路径：{path}")
+        return ["w0_task_boundary_verified"]
+    exact(transition.get("supersedesTaskId"), "country-outage-agent-p2-s1-w0-source-governance-20260813", "task_transition_invalid", "W1/W2 未显式继承 W0 Task")
+    exact(transition.get("w0ReceiptDigest"), W0_TRANSITION_RECEIPT_DIGEST, "task_w0_binding_mismatch", "W1/W2 Task 未绑定创建时冻结的 W0 回执")
+    for path in (
+        W1_W2_TOOL_IMPLEMENTATION_PATH,
+        W1_W2_OPERATOR_IMPLEMENTATION_PATH,
+        W1_W2_TOOL_TEST_PATH,
+        W1_W2_OPERATOR_TEST_PATH,
+        W1_W2_REGISTRY_RUNTIME_PATH,
+        STRUCTURAL_BINDING_PATH,
+    ):
+        path_text = path.as_posix()
+        authorized = path_text in allowed or any(
+            isinstance(pattern, str)
+            and pattern.endswith("/**")
+            and path_text.startswith(pattern[:-3] + "/")
+            for pattern in allowed
+        )
+        expect(authorized, "w1_w2_runtime_path_not_authorized", f"W1/W2 未授权实现路径：{path}")
+    non_goals = task.get("explicitNonGoals")
+    expect(isinstance(non_goals, list), "w1_w2_non_goals_missing", "W1/W2 缺少显式非目标")
+    non_goal_text = "\n".join(item for item in non_goals if isinstance(item, str))
+    for phrase in ("每个Tool只能过滤和分页一种W0已验证事实人口", "每个Operator只能执行一种登记的确定性业务变换", "PLAN-CAP-02", "本阶段不修改生产"):
+        expect(phrase in non_goal_text, "w1_w2_non_goals_missing", f"W1/W2 非目标未闭合：{phrase}")
+    return ["w1_w2_task_boundary_verified"]
 
 
 def validate_baseline(root: Path) -> tuple[dict[str, Any], list[str]]:
@@ -674,13 +788,790 @@ def validate_w0_evidence(root: Path, evidence: dict[str, Any]) -> list[str]:
     ]
 
 
+def _catalog_units(root: Path) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    tool_catalog = load_json(root / TOOL_CATALOG_PATH)
+    operator_catalog = load_json(root / OPERATOR_CATALOG_PATH)
+    tools = tool_catalog.get("tools")
+    operators = operator_catalog.get("operators")
+    expect(isinstance(tools, list), "w1_w2_tool_catalog_invalid", "冻结 Tool catalog 缺少 tools")
+    expect(isinstance(operators, list), "w1_w2_operator_catalog_invalid", "冻结 Operator catalog 缺少 operators")
+    tool_map = {item.get("unit_id"): item for item in tools if isinstance(item, dict)}
+    operator_map = {item.get("unit_id"): item for item in operators if isinstance(item, dict)}
+    expect(W1_W2_ALL_UNIT_IDS <= set(tool_map) | set(operator_map), "w1_w2_catalog_population_open", "冻结 catalog 未覆盖 W1/W2 单元")
+    return tool_map, operator_map
+
+
+def _w1_w2_schema_refs(
+    unit_id: str,
+    tool_map: dict[str, dict[str, Any]],
+    operator_map: dict[str, dict[str, Any]],
+) -> tuple[str, str]:
+    if unit_id in tool_map:
+        suffix = unit_id.removeprefix("TOOL-")
+        return (
+            f"w1-w2-tool-runtime.schema.json#/$defs/tool{suffix}Request",
+            f"w1-w2-tool-runtime.schema.json#/$defs/tool{suffix}ResultPage",
+        )
+    unit = operator_map[unit_id]
+    return str(unit.get("input_schema_ref")), str(unit.get("output_schema_ref"))
+
+
+def _validate_bound_artifact(
+    root: Path,
+    item: Any,
+    expected_path: str,
+    expected_role: str,
+    code: str,
+) -> None:
+    expect(isinstance(item, dict), code, f"{expected_path} 的引用必须是对象")
+    exact(set(item), {"path", "role", "size_bytes", "sha256"}, code, f"{expected_path} 制品引用字段必须精确")
+    exact(item.get("path"), expected_path, code, f"制品路径漂移：{expected_path}")
+    exact(item.get("role"), expected_role, code, f"制品角色漂移：{expected_path}")
+    _, path = repository_artifact_path(root, expected_path, code)
+    exact(item.get("size_bytes"), path.stat().st_size, code, f"制品大小漂移：{expected_path}")
+    exact(item.get("sha256"), file_sha256(path), code, f"制品摘要漂移：{expected_path}")
+
+
+def _validate_stage_test_run_receipt(root: Path, reference: Any, expected_suite_id: str) -> dict[str, Any]:
+    """解析真实 runner 制品；外层 evidence 不能通过重签布尔字段伪造测试成功。"""
+
+    expect(isinstance(reference, dict), "wave_test_receipt_invalid", f"{expected_suite_id} 引用必须是对象")
+    exact(
+        set(reference),
+        {"suite_id", "category", "path", "sha256", "receipt_digest"},
+        "wave_test_receipt_invalid",
+        f"{expected_suite_id} 引用字段不精确",
+    )
+    expected_stage, expected_category, pinned_sha = STAGE_TEST_RUN_RECEIPTS[expected_suite_id]
+    expected_path = (STAGE_TEST_RUN_RECEIPT_ROOT / f"{expected_suite_id}.json").as_posix()
+    exact(reference.get("suite_id"), expected_suite_id, "wave_test_receipt_invalid", "测试 suite ID 漂移")
+    exact(reference.get("category"), expected_category, "wave_test_receipt_invalid", "测试分类漂移")
+    exact(reference.get("path"), expected_path, "wave_test_receipt_invalid", "测试回执路径漂移")
+    _, receipt_path = repository_artifact_path(root, expected_path, "wave_test_receipt_invalid")
+    actual_sha = file_sha256(receipt_path)
+    exact(actual_sha, pinned_sha, "wave_test_receipt_untrusted_resign", f"{expected_suite_id} 运行制品不是 Hook 冻结字节")
+    exact(reference.get("sha256"), actual_sha, "wave_test_receipt_invalid", "测试回执文件摘要漂移")
+    receipt = load_json(receipt_path)
+    expected_fields = {
+        "schema_version", "runner_id", "runner_version", "suite_id", "stage", "category",
+        "started_at_utc", "completed_at_utc", "command", "working_directory",
+        "selected_test_ids", "test_case_coverage", "tested_unit_ids", "tested_execution_unit_ids", "artifact_bindings", "exit_code", "tests_run",
+        "failure_count", "error_count", "skipped_count", "passed", "normalized_output",
+        "normalized_output_sha256", "receipt_digest",
+    }
+    exact(set(receipt), expected_fields, "wave_test_receipt_invalid", f"{expected_suite_id} 回执字段不精确")
+    exact(receipt.get("schema_version"), "country_outage_p2_s1_stage_test_run_receipt_v1", "wave_test_receipt_invalid", "测试回执 Schema 漂移")
+    exact(receipt.get("runner_id"), "country_outage_p2_s1_stage_test_runner", "wave_test_receipt_invalid", "测试 runner ID 漂移")
+    exact(receipt.get("runner_version"), "1.0.0", "wave_test_receipt_invalid", "测试 runner version 漂移")
+    exact(receipt.get("suite_id"), expected_suite_id, "wave_test_receipt_invalid", "测试 suite 漂移")
+    exact(receipt.get("stage"), expected_stage, "wave_test_receipt_invalid", "测试 stage 漂移")
+    exact(receipt.get("category"), expected_category, "wave_test_receipt_invalid", "测试 category 漂移")
+    receipt_digest = require_hex64(receipt.get("receipt_digest"), "wave_test_digest_invalid", "测试 receipt digest 无效")
+    exact(receipt_digest, object_digest(receipt, {"receipt_digest"}), "wave_test_digest_invalid", "测试 receipt digest 不可重算")
+    exact(reference.get("receipt_digest"), receipt_digest, "wave_test_digest_invalid", "测试引用未绑定 receipt digest")
+    output = receipt.get("normalized_output")
+    expect(isinstance(output, str) and output, "wave_test_receipt_invalid", "测试输出为空")
+    exact(receipt.get("normalized_output_sha256"), sha256_bytes(output.encode("utf-8")), "wave_test_output_digest_mismatch", "测试输出摘要不可重算")
+    exact(receipt.get("exit_code"), 0, "wave_test_failed", "测试 exit code 非零")
+    exact(receipt.get("passed"), True, "wave_test_failed", "测试未通过")
+    for field in ("failure_count", "error_count", "skipped_count"):
+        exact(receipt.get(field), 0, "wave_test_failed", f"测试 {field} 非零")
+    selected = receipt.get("selected_test_ids")
+    expect(isinstance(selected, list) and selected and len(selected) == len(set(selected)), "wave_test_receipt_invalid", "测试选择人口无效")
+    coverage = receipt.get("test_case_coverage")
+    expect(isinstance(coverage, list) and len(coverage) == len(selected), "wave_test_coverage_invalid", "测试逐选择器 coverage 人口无效")
+    exact([item.get("test_id") for item in coverage if isinstance(item, dict)], selected, "wave_test_coverage_invalid", "测试 coverage 未逐项绑定选择器")
+    covered_units: set[str] = set()
+    executed_units: set[str] = set()
+    for item in coverage:
+        expect(isinstance(item, dict) and set(item) == {"test_id", "coverage_kind", "unit_ids", "executed_unit_ids"}, "wave_test_coverage_invalid", "测试 coverage 字段不精确")
+        coverage_kind = item.get("coverage_kind")
+        expect(coverage_kind in {"direct_execution", "direct_execution_and_schema_validation", "static_atomicity_analysis"}, "wave_test_coverage_invalid", "测试 coverage kind 无效")
+        unit_ids = item.get("unit_ids")
+        expect(isinstance(unit_ids, list) and len(unit_ids) == len(set(unit_ids)), "wave_test_coverage_invalid", "测试 coverage unit 人口无效")
+        execution_ids = item.get("executed_unit_ids")
+        expect(isinstance(execution_ids, list) and len(execution_ids) == len(set(execution_ids)), "wave_test_coverage_invalid", "测试 execution unit 人口无效")
+        expect(set(execution_ids) <= set(unit_ids), "wave_test_coverage_invalid", "实际执行人口不是 coverage 人口子集")
+        if coverage_kind == "static_atomicity_analysis":
+            exact(execution_ids, [], "wave_test_coverage_invalid", "静态检查不得冒充执行覆盖")
+        else:
+            exact(execution_ids, unit_ids, "wave_test_coverage_invalid", "直接执行测试必须精确登记实际单元")
+        covered_units.update(unit_ids)
+        executed_units.update(execution_ids)
+    exact(set(receipt.get("tested_unit_ids", [])), covered_units, "wave_test_coverage_invalid", "tested_unit_ids 不是逐测试 coverage 的精确并集")
+    exact(set(receipt.get("tested_execution_unit_ids", [])), executed_units, "wave_test_coverage_invalid", "tested_execution_unit_ids 不是实际执行人口的精确并集")
+    tests_run = receipt.get("tests_run")
+    expect(isinstance(tests_run, int) and not isinstance(tests_run, bool) and tests_run > 0, "wave_test_receipt_invalid", "测试数量无效")
+    if expected_stage in {"W1", "W2"}:
+        exact(tests_run, len(selected), "wave_test_receipt_invalid", "定向测试数量与选择器不一致")
+    artifacts = receipt.get("artifact_bindings")
+    expect(isinstance(artifacts, list) and artifacts, "wave_test_artifact_mismatch", "测试回执缺少制品绑定")
+    artifact_paths: set[str] = set()
+    for item in artifacts:
+        expect(isinstance(item, dict) and set(item) == {"path", "size_bytes", "sha256"}, "wave_test_artifact_mismatch", "测试制品绑定字段不精确")
+        path_text = item.get("path")
+        expect(isinstance(path_text, str) and path_text not in artifact_paths, "wave_test_artifact_mismatch", "测试制品路径重复或无效")
+        artifact_paths.add(path_text)
+        _, artifact_path = repository_artifact_path(root, path_text, "wave_test_artifact_mismatch")
+        exact(item.get("size_bytes"), artifact_path.stat().st_size, "wave_test_artifact_mismatch", f"测试制品大小漂移：{path_text}")
+        exact(item.get("sha256"), file_sha256(artifact_path), "wave_test_artifact_mismatch", f"测试制品摘要漂移：{path_text}")
+    expect(STAGE_TEST_RUNNER_PATH.as_posix() in artifact_paths, "wave_test_runner_binding_missing", "测试回执未绑定 runner 字节")
+    return receipt
+
+
+def _p2s1_governance_digest(value: Any) -> str:
+    def number(current: int) -> str:
+        if current == 0:
+            return "0"
+        sign = "-" if current < 0 else ""
+        digits = str(abs(current))
+        trimmed = digits.rstrip("0")
+        exponent = len(digits) - 1
+        coefficient = trimmed if len(trimmed) == 1 else f"{trimmed[0]}.{trimmed[1:]}"
+        return f"{sign}{coefficient}e{exponent}"
+
+    def encode(current: Any) -> str:
+        if current is None:
+            return "null"
+        if current is True:
+            return "true"
+        if current is False:
+            return "false"
+        if isinstance(current, int):
+            return number(current)
+        if isinstance(current, float):
+            if current.is_integer():
+                return number(int(current))
+            raise AlignmentError("w1_w2_registry_runtime_evidence_invalid：Registry bundle 不允许非整数浮点数")
+        if isinstance(current, str):
+            return json.dumps(current, ensure_ascii=False, separators=(",", ":"))
+        if isinstance(current, list):
+            return f"[{','.join(encode(item) for item in current)}]"
+        if isinstance(current, dict):
+            return "{" + ",".join(
+                f"{json.dumps(key, ensure_ascii=False)}:{encode(current[key])}"
+                for key in sorted(current)
+            ) + "}"
+        raise AlignmentError("w1_w2_registry_runtime_evidence_invalid：Registry bundle 包含非 JSON 类型")
+
+    return f"sha256:{sha256_bytes(encode(value).encode('utf-8'))}"
+
+
+def _validate_registry_runtime_evidence(root: Path, stage: str, reference: Any) -> None:
+    """验证 TypeScript Registry 运行时代码实际生成的不可调用 binding bundle。"""
+
+    expect(isinstance(reference, dict), "w1_w2_registry_runtime_evidence_missing", f"{stage} Registry evidence 引用无效")
+    exact(
+        set(reference),
+        {"path", "sha256", "content_digest", "generator_path", "generator_sha256"},
+        "w1_w2_registry_runtime_evidence_invalid",
+        f"{stage} Registry evidence 引用字段不精确",
+    )
+    expected_path = (W1_W2_REGISTRY_EVIDENCE_ROOT / f"{stage}.json").as_posix()
+    exact(reference.get("path"), expected_path, "w1_w2_registry_runtime_evidence_invalid", f"{stage} Registry evidence path 漂移")
+    exact(reference.get("generator_path"), W1_W2_REGISTRY_EVIDENCE_GENERATOR_PATH.as_posix(), "w1_w2_registry_runtime_evidence_invalid", f"{stage} Registry generator path 漂移")
+    generator_sha = file_sha256(root / W1_W2_REGISTRY_EVIDENCE_GENERATOR_PATH)
+    exact(reference.get("generator_sha256"), generator_sha, "w1_w2_registry_runtime_evidence_invalid", f"{stage} Registry generator SHA 漂移")
+    _, path = repository_artifact_path(root, expected_path, "w1_w2_registry_runtime_evidence_invalid")
+    actual_sha = file_sha256(path)
+    exact(actual_sha, W1_W2_REGISTRY_EVIDENCE_SHA256[stage], "w1_w2_registry_runtime_evidence_untrusted_resign", f"{stage} Registry bundle 不是冻结 TypeScript 输出")
+    exact(reference.get("sha256"), actual_sha, "w1_w2_registry_runtime_evidence_invalid", f"{stage} Registry bundle SHA 漂移")
+    bundle = load_json(path)
+    exact(
+        set(bundle),
+        {
+            "schema_version", "generator_id", "generator_source_sha256", "wave_id",
+            "proposal_snapshot", "proposal_admission_receipt", "handler_manifest",
+            "wave_snapshot", "wave_admission_receipt", "non_execution_probe",
+            "execution_scope", "sequence_ordinal", "content_digest",
+        },
+        "w1_w2_registry_runtime_evidence_invalid",
+        f"{stage} Registry bundle 字段不精确",
+    )
+    exact(bundle.get("schema_version"), "country_outage_p2_s1_registry_runtime_evidence_bundle_v1", "w1_w2_registry_runtime_evidence_invalid", "Registry bundle Schema 漂移")
+    exact(bundle.get("generator_id"), "generate-p2-s1-w1-w2-registry-evidence", "w1_w2_registry_runtime_evidence_invalid", "Registry generator ID 漂移")
+    exact(bundle.get("generator_source_sha256"), generator_sha, "w1_w2_registry_runtime_evidence_invalid", "Registry bundle 未绑定 generator 字节")
+    exact(bundle.get("wave_id"), stage, "w1_w2_registry_population_drift", "Registry bundle wave 漂移")
+    exact(bundle.get("sequence_ordinal"), 1 if stage == "W1" else 2, "w1_w2_registry_sequence_invalid", "Registry bundle 顺序漂移")
+    content_digest = _p2s1_governance_digest({key: value for key, value in bundle.items() if key != "content_digest"})
+    exact(bundle.get("content_digest"), content_digest, "w1_w2_registry_runtime_evidence_invalid", "Registry bundle content digest 不可重算")
+    exact(reference.get("content_digest"), content_digest, "w1_w2_registry_runtime_evidence_invalid", "Registry 引用未绑定 content digest")
+
+    proposal = bundle.get("proposal_snapshot")
+    expect(isinstance(proposal, dict), "w1_w2_registry_runtime_evidence_invalid", "Registry proposal 缺失")
+    proposal_payload = proposal.get("snapshot_payload")
+    expect(isinstance(proposal_payload, dict), "w1_w2_registry_runtime_evidence_invalid", "Registry proposal payload 缺失")
+    proposal_digest = _p2s1_governance_digest(proposal_payload)
+    exact(proposal.get("snapshot_digest"), proposal_digest, "w1_w2_registry_snapshot_digest_mismatch", "Registry proposal digest 不可重算")
+    exact(proposal.get("registry_snapshot_id"), f"p2-s1-registry-proposal-sha256:{proposal_digest.removeprefix('sha256:')}", "w1_w2_registry_snapshot_invalid", "Registry proposal ID 不可重算")
+    exact(proposal_payload.get("candidate_id"), DESIGN_CANDIDATE_ID, "w1_w2_registry_candidate_mismatch", "Registry proposal candidate 漂移")
+    exact(proposal_payload.get("registry_revision"), 3, "w1_w2_registry_snapshot_invalid", "Registry proposal revision 漂移")
+    exact(proposal_payload.get("activation_scope"), "w0_proposal_only", "w1_w2_registry_handler_activation_overclaim", "Registry proposal scope 漂移")
+    exact(proposal_payload.get("production_deployed"), False, "wave_deployment_overclaim", "Registry proposal 不得声明生产部署")
+    exact(proposal_payload.get("external_data_allowed"), False, "w1_w2_registry_runtime_evidence_invalid", "Registry proposal 不得允许外部数据")
+
+    manifest = bundle.get("handler_manifest")
+    expect(isinstance(manifest, dict) and isinstance(manifest.get("manifest_payload"), dict), "w1_w2_registry_manifest_invalid", "Registry handler manifest 缺失")
+    manifest_payload = manifest["manifest_payload"]
+    manifest_digest = _p2s1_governance_digest(manifest_payload)
+    exact(manifest.get("handler_manifest_digest"), manifest_digest, "w1_w2_registry_manifest_digest_mismatch", "Registry handler manifest digest 不可重算")
+    exact(manifest.get("handler_manifest_id"), f"p2-s1-handler-manifest-sha256:{manifest_digest.removeprefix('sha256:')}", "w1_w2_registry_manifest_invalid", "Registry handler manifest ID 不可重算")
+    exact(manifest_payload.get("wave_id"), stage, "w1_w2_registry_population_drift", "Registry handler manifest wave 漂移")
+    exact(manifest_payload.get("candidate_id"), DESIGN_CANDIDATE_ID, "w1_w2_registry_candidate_mismatch", "Registry handler manifest candidate 漂移")
+    expected_structural = f"sha256:{file_sha256(root / STRUCTURAL_BINDING_PATH)}"
+    exact(manifest_payload.get("structural_binding_contract_digest"), expected_structural, "w1_w2_registry_manifest_invalid", "Registry handler manifest 未绑定结构合同")
+    handlers = manifest_payload.get("handlers")
+    expect(isinstance(handlers, list), "w1_w2_registry_manifest_invalid", "Registry handlers 缺失")
+    wave_units = WAVE_CONTRACT[stage]["unit_ids"]
+    exact([item.get("unit_id") for item in handlers if isinstance(item, dict)], wave_units, "w1_w2_registry_population_drift", "Registry handler 人口漂移")
+    for handler in handlers:
+        expect(isinstance(handler, dict), "w1_w2_registry_manifest_invalid", "Registry handler 无效")
+        unit_id = handler.get("unit_id")
+        implementation_path = W1_W2_TOOL_IMPLEMENTATION_PATH if str(unit_id).startswith("TOOL-") else W1_W2_OPERATOR_IMPLEMENTATION_PATH
+        exact(handler.get("implementation_digest"), f"sha256:{file_sha256(root / implementation_path)}", "w1_w2_registry_artifact_mismatch", f"{unit_id} Registry implementation digest 漂移")
+        exact(handler.get("structural_binding_contract_digest"), expected_structural, "w1_w2_registry_manifest_invalid", f"{unit_id} Registry structural binding 漂移")
+        test_evidence = handler.get("test_evidence")
+        expect(isinstance(test_evidence, dict), "w1_w2_registry_manifest_invalid", f"{unit_id} Registry test evidence 缺失")
+        exact(
+            set(test_evidence),
+            {
+                "schema_version", "receipt_digest", "candidate_id", "design_candidate_digest",
+                "wave_id", "unit_id", "handler_id", "implementation_digest", "contract_digest",
+                "semantic_digest", "structural_binding_contract_digest", "runner_receipt_digest",
+                "runner_receipt_file_digest", "runner_receipt_path", "test_case_ids", "test_result",
+                "tested_execution_count",
+            },
+            "w1_w2_registry_manifest_invalid",
+            f"{unit_id} Registry test evidence 字段不精确",
+        )
+        test_digest = test_evidence.get("receipt_digest")
+        exact(test_digest, _p2s1_governance_digest({key: value for key, value in test_evidence.items() if key != "receipt_digest"}), "w1_w2_registry_receipt_digest_mismatch", f"{unit_id} Registry test receipt 不可重算")
+        allowed_suites = {f"{stage.lower()}-{category}" for category in ("positive", "boundary", "attack")}
+        runner_path_value = test_evidence.get("runner_receipt_path")
+        expect(isinstance(runner_path_value, str), "w1_w2_registry_probe_invalid", f"{unit_id} Registry runner receipt path 无效")
+        runner_name = Path(runner_path_value).stem
+        expect(runner_name in allowed_suites, "w1_w2_registry_probe_invalid", f"{unit_id} Registry runner receipt 不属于当前波次")
+        run_path = STAGE_TEST_RUN_RECEIPT_ROOT / f"{runner_name}.json"
+        exact(runner_path_value, run_path.as_posix(), "w1_w2_registry_probe_invalid", f"{unit_id} Registry runner receipt path 漂移")
+        run_receipt = load_json(root / run_path)
+        exact(file_sha256(root / run_path), STAGE_TEST_RUN_RECEIPTS[runner_name][2], "w1_w2_registry_probe_invalid", f"{unit_id} Registry runner receipt 不是冻结真实运行制品")
+        exact(run_receipt.get("receipt_digest"), object_digest(run_receipt, {"receipt_digest"}), "w1_w2_registry_probe_invalid", f"{unit_id} Registry runner receipt 不可重算")
+        exact(run_receipt.get("passed"), True, "w1_w2_registry_probe_invalid", f"{unit_id} Registry runner receipt 未通过")
+        exact(test_evidence.get("runner_receipt_file_digest"), f"sha256:{file_sha256(root / run_path)}", "w1_w2_registry_probe_invalid", f"{unit_id} Registry 未绑定实际 runner receipt bytes")
+        exact(test_evidence.get("runner_receipt_digest"), f"sha256:{run_receipt['receipt_digest']}", "w1_w2_registry_probe_invalid", f"{unit_id} Registry 未绑定实际 runner receipt digest")
+        case_ids = test_evidence.get("test_case_ids")
+        expect(isinstance(case_ids, list) and case_ids and len(case_ids) == len(set(case_ids)), "w1_w2_registry_probe_invalid", f"{unit_id} Registry test case 人口无效")
+        selected = run_receipt.get("selected_test_ids")
+        expect(isinstance(selected, list), "w1_w2_registry_probe_invalid", f"{unit_id} runner test IDs 缺失")
+        expect(set(case_ids) <= set(selected), "w1_w2_registry_probe_invalid", f"{unit_id} Registry test case 不属于实际 runner")
+        coverage_by_test = {
+            item.get("test_id"): item.get("executed_unit_ids")
+            for item in run_receipt.get("test_case_coverage", [])
+            if isinstance(item, dict)
+        }
+        for case_id in case_ids:
+            expect(unit_id in coverage_by_test.get(case_id, []), "w1_w2_registry_probe_invalid", f"{unit_id} Registry test case 未实际执行该原子单元")
+        exact(test_evidence.get("tested_execution_count"), len(case_ids), "w1_w2_registry_probe_invalid", f"{unit_id} Registry tested execution count 漂移")
+        exact(test_evidence.get("test_result"), "passed", "w1_w2_registry_probe_invalid", f"{unit_id} Registry test result 未通过")
+
+    snapshot = bundle.get("wave_snapshot")
+    expect(isinstance(snapshot, dict) and isinstance(snapshot.get("snapshot_payload"), dict), "wave_registry_snapshot_missing", "Registry wave snapshot 缺失")
+    snapshot_payload = snapshot["snapshot_payload"]
+    snapshot_digest = _p2s1_governance_digest(snapshot_payload)
+    exact(snapshot.get("snapshot_digest"), snapshot_digest, "w1_w2_registry_snapshot_digest_mismatch", "Registry wave snapshot digest 不可重算")
+    exact(snapshot.get("registry_snapshot_id"), f"p2-s1-registry-wave-sha256:{snapshot_digest.removeprefix('sha256:')}", "w1_w2_registry_snapshot_invalid", "Registry wave snapshot ID 不可重算")
+    exact(snapshot_payload.get("wave_id"), stage, "w1_w2_registry_population_drift", "Registry wave snapshot wave 漂移")
+    exact(snapshot_payload.get("registry_revision"), 4 if stage == "W1" else 5, "w1_w2_registry_snapshot_invalid", "Registry wave revision 漂移")
+    exact(snapshot_payload.get("handler_manifest"), manifest, "w1_w2_registry_snapshot_invalid", "Registry snapshot 未逐字绑定实际 handler manifest")
+    exact(snapshot_payload.get("admitted_wave_binding_unit_ids"), wave_units, "w1_w2_registry_population_drift", "Registry 本波 binding 人口漂移")
+    expected_all_units = wave_units if stage == "W1" else [*WAVE_CONTRACT["W1"]["unit_ids"], *WAVE_CONTRACT["W2"]["unit_ids"]]
+    exact(snapshot_payload.get("admitted_binding_unit_ids"), expected_all_units, "w1_w2_registry_population_drift", "Registry 继承 binding 人口漂移")
+    if stage == "W1":
+        exact(snapshot_payload.get("previous_snapshot_ref"), snapshot_payload.get("proposal_snapshot_ref"), "w1_w2_registry_sequence_invalid", "W1 未从同一 proposal 开始")
+    else:
+        w1_bundle = load_json(root / W1_W2_REGISTRY_EVIDENCE_ROOT / "W1.json")
+        w1_snapshot = w1_bundle["wave_snapshot"]
+        exact(snapshot_payload.get("previous_snapshot_ref"), {
+            "registry_snapshot_id": w1_snapshot["registry_snapshot_id"],
+            "snapshot_digest": w1_snapshot["snapshot_digest"],
+            "registry_revision": w1_snapshot["snapshot_payload"]["registry_revision"],
+        }, "w1_w2_registry_sequence_invalid", "W2 未承接冻结 W1 snapshot")
+
+    admission = bundle.get("wave_admission_receipt")
+    expect(isinstance(admission, dict), "w1_w2_registry_receipt_invalid", "Registry admission receipt 缺失")
+    exact(admission.get("receipt_digest"), _p2s1_governance_digest({key: value for key, value in admission.items() if key != "receipt_digest"}), "w1_w2_registry_receipt_digest_mismatch", "Registry admission receipt 不可重算")
+    exact(admission.get("status"), "admitted_complete_atomic_wave_bindings", "w1_w2_registry_handler_activation_overclaim", "Registry 只允许 binding admission")
+    exact(admission.get("registry_snapshot_id"), snapshot.get("registry_snapshot_id"), "w1_w2_registry_receipt_invalid", "Registry admission snapshot ID 漂移")
+    exact(admission.get("snapshot_digest"), snapshot_digest, "w1_w2_registry_receipt_invalid", "Registry admission snapshot digest 漂移")
+    exact(admission.get("handler_manifest_id"), manifest.get("handler_manifest_id"), "w1_w2_registry_receipt_invalid", "Registry admission manifest ID 漂移")
+    exact(admission.get("execution_allowed_unit_ids"), [], "w1_w2_registry_execution_authorization_overclaim", "Registry execution allowlist 必须为空")
+    exact(admission.get("partial_binding_admission"), False, "w1_w2_registry_receipt_invalid", "Registry 不允许部分 binding")
+    exact(admission.get("execution_started"), False, "w1_w2_registry_execution_authorization_overclaim", "Registry binding 不得启动执行")
+    exact(admission.get("production_deployed"), False, "wave_deployment_overclaim", "Registry admission 不得声明部署")
+
+    probe = bundle.get("non_execution_probe")
+    exact(probe, {
+        "tested_unit_id": wave_units[0],
+        "assert_execution_authorized_error": "registry_dispatch_not_bound",
+        "caller_callback_spy_count": 0,
+        "execution_allowed_unit_ids": [],
+        "execution_started": False,
+    }, "w1_w2_registry_probe_invalid", "Registry 实际 non-execution probe 漂移")
+    exact(bundle.get("execution_scope"), {
+        "offline_harness_verified": True,
+        "immutable_non_callable_binding_admitted": True,
+        "trusted_dispatcher_implemented": False,
+        "registry_execution_authorized": False,
+        "production_deployed": False,
+    }, "w1_w2_registry_handler_activation_overclaim", "Registry bundle 只能证明不可调用 binding")
+
+
+def validate_w1_w2_evidence(root: Path, stage: str, evidence: dict[str, Any]) -> list[str]:
+    """验证 W1/W2 原子运行时证据；布尔自报和旧 W0 回执均不能替代它。"""
+
+    semantic_digest = require_hex64(
+        evidence.get("implementation_semantic_digest"),
+        "w1_w2_candidate_digest_invalid",
+        f"{stage} implementation semantic digest 无效",
+    )
+    exact(
+        semantic_digest,
+        object_digest(evidence, {"implementation_candidate_id", "implementation_semantic_digest", "content_digest"}),
+        "w1_w2_candidate_digest_mismatch",
+        f"{stage} implementation semantic digest 不可重算",
+    )
+    exact(
+        evidence.get("implementation_candidate_id"),
+        f"country-outage-p2-s1-{stage.lower()}-{semantic_digest[:24]}",
+        "w1_w2_candidate_identity_mismatch",
+        f"{stage} candidate ID 不可由语义摘要重算",
+    )
+    content_digest = require_hex64(
+        evidence.get("content_digest"), "w1_w2_content_digest_invalid", f"{stage} content digest 无效"
+    )
+    exact(
+        content_digest,
+        object_digest(evidence, {"content_digest"}),
+        "w1_w2_content_digest_mismatch",
+        f"{stage} evidence content digest 不可重算",
+    )
+
+    artifacts = evidence.get("artifact_manifest")
+    expect(isinstance(artifacts, list), "w1_w2_artifact_manifest_missing", f"{stage} 缺少 artifact manifest")
+    exact(len(artifacts), len(W1_W2_SHARED_ARTIFACT_ROLES), "w1_w2_artifact_population_mismatch", f"{stage} artifact manifest 不得缺失或夹带额外制品")
+    artifact_by_path: dict[str, dict[str, Any]] = {}
+    for index, item in enumerate(artifacts):
+        expect(isinstance(item, dict), "w1_w2_artifact_invalid", f"artifact_manifest[{index}] 必须是对象")
+        path_text = item.get("path")
+        expect(isinstance(path_text, str), "w1_w2_artifact_path_invalid", f"artifact_manifest[{index}] path 无效")
+        expect(path_text not in artifact_by_path, "w1_w2_artifact_duplicate", f"重复制品：{path_text}")
+        artifact_by_path[path_text] = item
+    exact(set(artifact_by_path), set(W1_W2_SHARED_ARTIFACT_ROLES), "w1_w2_artifact_population_mismatch", f"{stage} artifact manifest 路径人口漂移")
+    for path_text, role in W1_W2_SHARED_ARTIFACT_ROLES.items():
+        _validate_bound_artifact(root, artifact_by_path[path_text], path_text, role, "w1_w2_artifact_binding_mismatch")
+
+    structural = evidence.get("structural_binding_contract")
+    _validate_bound_artifact(
+        root,
+        structural,
+        STRUCTURAL_BINDING_PATH.as_posix(),
+        "structural_binding_contract",
+        "w1_w2_structural_contract_missing",
+    )
+
+    frozen = evidence.get("frozen_contracts")
+    expect(isinstance(frozen, list), "w1_w2_frozen_contracts_missing", f"{stage} 缺少冻结合同绑定")
+    expected_frozen = {
+        TOOL_CATALOG_PATH.as_posix(): "frozen_tool_catalog",
+        TOOL_CONTRACT_SCHEMA_PATH.as_posix(): "frozen_tool_contract_schema",
+        OPERATOR_CATALOG_PATH.as_posix(): "frozen_operator_catalog",
+        OPERATOR_CONTRACT_SCHEMA_PATH.as_posix(): "frozen_operator_contract_schema",
+    }
+    exact(len(frozen), len(expected_frozen), "w1_w2_frozen_contract_population_mismatch", f"{stage} 冻结合同人口漂移")
+    frozen_by_path = {item.get("path"): item for item in frozen if isinstance(item, dict)}
+    exact(set(frozen_by_path), set(expected_frozen), "w1_w2_frozen_contract_population_mismatch", f"{stage} 冻结合同路径漂移")
+    for path_text, role in expected_frozen.items():
+        _validate_bound_artifact(root, frozen_by_path[path_text], path_text, role, "w1_w2_frozen_contract_binding_mismatch")
+
+    source = evidence.get("w0_source_binding")
+    expect(isinstance(source, dict), "w1_w2_source_binding_missing", f"{stage} 缺少 W0 source 绑定")
+    exact(
+        set(source),
+        {"w0_receipt_digest", "store_id", "manifest", "source_store", "population_schemas"},
+        "w1_w2_source_binding_invalid",
+        f"{stage} W0 source 绑定字段不精确",
+    )
+    current_w0 = load_json(root / WAVE_RECEIPT_ROOT / "W0.json")
+    current_w0_digest = require_hex64(
+        current_w0.get("receipt_digest"),
+        "w1_w2_current_w0_receipt_invalid",
+        f"{stage} 当前 W0 回执摘要无效",
+    )
+    exact(
+        current_w0_digest,
+        object_digest(current_w0, {"receipt_digest"}),
+        "w1_w2_current_w0_receipt_invalid",
+        f"{stage} 当前 W0 回执不可重算",
+    )
+    exact(source.get("w0_receipt_digest"), current_w0_digest, "w1_w2_old_w0_receipt_replay", f"{stage} 未绑定当前 W0 回执")
+    _validate_bound_artifact(root, source.get("manifest"), W0_SOURCE_FIXTURE_MANIFEST.as_posix(), "w0_source_manifest", "w1_w2_source_manifest_binding_mismatch")
+    _validate_bound_artifact(root, source.get("source_store"), W1_W2_SOURCE_STORE_PATH.as_posix(), "w0_source_store", "w1_w2_source_store_binding_mismatch")
+    manifest = load_json(root / W0_SOURCE_FIXTURE_MANIFEST)
+    exact(source.get("store_id"), manifest.get("store_id"), "w1_w2_source_store_identity_mismatch", f"{stage} Source Store ID 漂移")
+    tool_map, operator_map = _catalog_units(root)
+    wave_units = WAVE_CONTRACT[stage]["unit_ids"]
+    required_populations = [tool_map[unit_id]["source_population"] for unit_id in wave_units if unit_id in tool_map]
+    schemas = source.get("population_schemas")
+    expect(isinstance(schemas, list), "w1_w2_source_schema_binding_missing", f"{stage} 缺少 source schema 摘要")
+    exact(len(schemas), len(required_populations), "w1_w2_source_schema_population_mismatch", f"{stage} source schema 人口漂移")
+    schema_by_population = {item.get("population_id"): item for item in schemas if isinstance(item, dict)}
+    exact(set(schema_by_population), set(required_populations), "w1_w2_source_schema_population_mismatch", f"{stage} source population 漂移")
+    for population in required_populations:
+        item = schema_by_population[population]
+        expect(isinstance(item, dict), "w1_w2_source_schema_binding_invalid", f"{population} schema 引用无效")
+        exact(set(item), {"population_id", "path", "role", "size_bytes", "sha256"}, "w1_w2_source_schema_binding_invalid", f"{population} schema 字段不精确")
+        expected_path = W1_W2_SOURCE_SCHEMA_PATHS[population].as_posix()
+        exact(item.get("population_id"), population, "w1_w2_source_schema_binding_invalid", f"{population} identity 漂移")
+        projected = {key: value for key, value in item.items() if key != "population_id"}
+        _validate_bound_artifact(root, projected, expected_path, "w0_source_schema", "w1_w2_source_schema_binding_invalid")
+
+    atomic_receipts = evidence.get("atomic_unit_receipts")
+    expect(isinstance(atomic_receipts, list), "w1_w2_atomic_receipts_missing", f"{stage} 缺少 atomic unit receipts")
+    exact(len(atomic_receipts), len(wave_units), "w1_w2_atomic_receipt_population_mismatch", f"{stage} atomic receipt 数量漂移")
+    receipt_by_unit = {item.get("unit_id"): item for item in atomic_receipts if isinstance(item, dict)}
+    exact(set(receipt_by_unit), set(wave_units), "w1_w2_atomic_receipt_population_mismatch", f"{stage} atomic unit 人口漂移或混入其他 wave")
+    for unit_id in wave_units:
+        receipt = receipt_by_unit[unit_id]
+        validate_recomputable_receipt(receipt, "w1_w2_atomic_receipt_digest_mismatch", unit_id)
+        unit_kind = "tool" if unit_id in tool_map else "operator"
+        catalog_entry = tool_map.get(unit_id) or operator_map[unit_id]
+        implementation_path = W1_W2_TOOL_IMPLEMENTATION_PATH if unit_kind == "tool" else W1_W2_OPERATOR_IMPLEMENTATION_PATH
+        input_ref, output_ref = _w1_w2_schema_refs(unit_id, tool_map, operator_map)
+        expected_fields = {
+            "schema_version", "receipt_kind", "stage", "design_candidate_id", "unit_id", "unit_kind",
+            "catalog_entry_digest", "implementation_path", "implementation_sha256", "input_schema_ref",
+            "output_schema_ref", "registered_atomic_operation_count", "business_transform_count",
+            "fact_population_read_count", "internal_unit_calls", "model_call_count", "external_read_count",
+            "p2_1_unit_ids", "receipt_digest",
+        }
+        if unit_kind == "tool":
+            expected_fields.add("source_population_id")
+        exact(set(receipt), expected_fields, "w1_w2_atomic_receipt_fields_invalid", f"{unit_id} atomic receipt 字段不精确")
+        exact(receipt.get("schema_version"), "country_outage_p2_s1_atomic_unit_receipt_v1", "w1_w2_atomic_receipt_schema_mismatch", f"{unit_id} receipt schema 漂移")
+        exact(receipt.get("receipt_kind"), "atomic_unit_implementation", "w1_w2_atomic_receipt_kind_mismatch", f"{unit_id} receipt kind 漂移")
+        exact(receipt.get("stage"), stage, "w1_w2_atomic_receipt_stage_mismatch", f"{unit_id} 混入其他 wave")
+        exact(receipt.get("design_candidate_id"), DESIGN_CANDIDATE_ID, "w1_w2_atomic_receipt_design_mismatch", f"{unit_id} 未绑定冻结设计")
+        exact(receipt.get("unit_kind"), unit_kind, "w1_w2_atomic_receipt_kind_mismatch", f"{unit_id} unit kind 漂移")
+        exact(receipt.get("catalog_entry_digest"), sha256_bytes(canonical_json(catalog_entry)), "w1_w2_atomic_receipt_catalog_mismatch", f"{unit_id} 未绑定 catalog entry")
+        exact(receipt.get("implementation_path"), implementation_path.as_posix(), "w1_w2_atomic_receipt_implementation_mismatch", f"{unit_id} implementation path 漂移")
+        exact(receipt.get("implementation_sha256"), file_sha256(root / implementation_path), "w1_w2_atomic_receipt_implementation_mismatch", f"{unit_id} implementation SHA 漂移")
+        exact(receipt.get("input_schema_ref"), input_ref, "w1_w2_atomic_receipt_schema_ref_mismatch", f"{unit_id} input schema ref 漂移")
+        exact(receipt.get("output_schema_ref"), output_ref, "w1_w2_atomic_receipt_schema_ref_mismatch", f"{unit_id} output schema ref 漂移")
+        exact(receipt.get("registered_atomic_operation_count"), 1, "w1_w2_hidden_second_transform", f"{unit_id} 必须且只能有一个登记原子操作")
+        exact(receipt.get("business_transform_count"), 0 if unit_kind == "tool" else 1, "w1_w2_hidden_second_transform", f"{unit_id} business transform 计数违反原子性")
+        exact(receipt.get("fact_population_read_count"), 1 if unit_kind == "tool" else 0, "w1_w2_hidden_second_population_read", f"{unit_id} fact population read 计数违反原子性")
+        for field in ("internal_unit_calls", "model_call_count", "external_read_count"):
+            exact(receipt.get(field), 0, "w1_w2_hidden_execution", f"{unit_id} {field} 必须为 0")
+        exact(receipt.get("p2_1_unit_ids"), [], "p2_1_unit_smuggled", f"{unit_id} 混入 P2.1")
+        if unit_kind == "tool":
+            exact(receipt.get("source_population_id"), catalog_entry.get("source_population"), "w1_w2_atomic_receipt_source_mismatch", f"{unit_id} 读取人口漂移")
+
+    tests = evidence.get("test_receipts")
+    expect(isinstance(tests, list), "wave_test_receipts_missing", f"{stage} 缺少测试回执")
+    exact(len(tests), 3, "w1_w2_test_category_population_mismatch", f"{stage} 必须恰有正例、边界、攻击三类回执")
+    categories: set[str] = set()
+    tested_union: set[str] = set()
+    executed_union: set[str] = set()
+    for category in ("positive", "boundary", "attack"):
+        reference = next((item for item in tests if isinstance(item, dict) and item.get("category") == category), None)
+        expect(reference is not None and category not in categories, "w1_w2_test_category_population_mismatch", f"{stage} 缺少 {category} 测试回执")
+        receipt = _validate_stage_test_run_receipt(root, reference, f"{stage.lower()}-{category}")
+        categories.add(category)
+        unit_ids = receipt.get("tested_unit_ids")
+        expect(isinstance(unit_ids, list) and len(unit_ids) == len(set(unit_ids)), "w1_w2_test_unit_population_mismatch", f"{stage} {category} unit 人口无效")
+        expect(set(unit_ids) <= set(wave_units), "w1_w2_test_unit_population_mismatch", f"{stage} {category} 混入其他波次 unit")
+        tested_union.update(unit_ids)
+        execution_ids = receipt.get("tested_execution_unit_ids")
+        expect(isinstance(execution_ids, list) and len(execution_ids) == len(set(execution_ids)), "w1_w2_test_unit_population_mismatch", f"{stage} {category} execution 人口无效")
+        expect(set(execution_ids) <= set(wave_units), "w1_w2_test_unit_population_mismatch", f"{stage} {category} execution 混入其他波次 unit")
+        executed_union.update(execution_ids)
+    exact(categories, {"positive", "boundary", "attack"}, "w1_w2_test_category_population_mismatch", f"{stage} 测试分类未闭合")
+    exact(tested_union, set(wave_units), "w1_w2_test_unit_population_mismatch", f"{stage} 测试未覆盖完整 unit 人口")
+    exact(executed_union, set(wave_units), "w1_w2_test_unit_population_mismatch", f"{stage} 实际执行测试未覆盖完整 unit 人口")
+
+    _validate_registry_runtime_evidence(root, stage, evidence.get("registry_runtime_evidence"))
+    # 下列对象只是对已验证 TypeScript bundle 的兼容投影视图，供既有静态字段攻击
+    # 测试使用；信任根始终是上面的内容寻址实际输出，而不是 Python 调用方自报。
+    registry = evidence.get("registry_binding_projection")
+    expect(isinstance(registry, dict), "wave_registry_snapshot_missing", f"{stage} 缺少 Registry binding 投影视图")
+    exact(
+        set(registry),
+        {"source_runtime_bundle", "artifact", "binding_manifest", "snapshot", "admission_receipt", "execution_probe", "execution_scope"},
+        "w1_w2_registry_binding_invalid",
+        f"{stage} Registry binding admission 字段不精确",
+    )
+    source_bundle = registry.get("source_runtime_bundle")
+    expect(isinstance(source_bundle, dict), "w1_w2_registry_projection_unbound", f"{stage} Registry 投影缺少 TypeScript source bundle")
+    exact(set(source_bundle), {
+        "path", "sha256", "content_digest", "handler_manifest_id", "handler_manifest_digest",
+        "snapshot_id", "snapshot_digest", "admission_receipt_digest",
+    }, "w1_w2_registry_projection_unbound", f"{stage} Registry source bundle 字段不精确")
+    actual_bundle_path = W1_W2_REGISTRY_EVIDENCE_ROOT / f"{stage}.json"
+    actual_bundle = load_json(root / actual_bundle_path)
+    exact(source_bundle, {
+        "path": actual_bundle_path.as_posix(),
+        "sha256": file_sha256(root / actual_bundle_path),
+        "content_digest": actual_bundle["content_digest"],
+        "handler_manifest_id": actual_bundle["handler_manifest"]["handler_manifest_id"],
+        "handler_manifest_digest": actual_bundle["handler_manifest"]["handler_manifest_digest"],
+        "snapshot_id": actual_bundle["wave_snapshot"]["registry_snapshot_id"],
+        "snapshot_digest": actual_bundle["wave_snapshot"]["snapshot_digest"],
+        "admission_receipt_digest": actual_bundle["wave_admission_receipt"]["receipt_digest"],
+    }, "w1_w2_registry_projection_unbound", f"{stage} Registry 兼容投影未绑定实际 TypeScript bundle")
+    _validate_bound_artifact(root, registry.get("artifact"), W1_W2_REGISTRY_RUNTIME_PATH.as_posix(), "registry_runtime", "w1_w2_registry_artifact_mismatch")
+    binding = registry.get("binding_manifest")
+    expect(isinstance(binding, dict), "w1_w2_registry_manifest_invalid", f"{stage} binding manifest 无效")
+    exact(
+        set(binding),
+        {
+            "binding_manifest_id", "binding_manifest_digest", "wave_binding_unit_ids", "binding_kind",
+            "artifact_path", "artifact_sha256", "structural_binding_contract_sha256",
+            "callable_handler_refs", "caller_callback_refs", "trusted_dispatcher_id",
+        },
+        "w1_w2_registry_manifest_invalid",
+        f"{stage} binding manifest 字段不精确",
+    )
+    binding_digest = require_hex64(binding.get("binding_manifest_digest"), "w1_w2_registry_manifest_invalid", f"{stage} binding manifest digest 无效")
+    exact(binding_digest, object_digest(binding, {"binding_manifest_id", "binding_manifest_digest"}), "w1_w2_registry_manifest_digest_mismatch", f"{stage} binding manifest digest 不可重算")
+    exact(binding.get("binding_manifest_id"), f"p2-s1-dispatch-binding-manifest-sha256:{binding_digest}", "w1_w2_registry_manifest_invalid", f"{stage} binding manifest ID 不可重算")
+    exact(binding.get("wave_binding_unit_ids"), wave_units, "w1_w2_registry_population_drift", f"{stage} Registry binding unit 人口漂移")
+    exact(binding.get("binding_kind"), "immutable_non_callable_dispatch_binding", "w1_w2_registry_handler_activation_overclaim", f"{stage} binding 不得冒充 callable handler activation")
+    exact(binding.get("artifact_path"), W1_W2_REGISTRY_RUNTIME_PATH.as_posix(), "w1_w2_registry_artifact_mismatch", f"{stage} Registry binding path 漂移")
+    exact(binding.get("artifact_sha256"), file_sha256(root / W1_W2_REGISTRY_RUNTIME_PATH), "w1_w2_registry_artifact_mismatch", f"{stage} Registry binding SHA 漂移")
+    exact(binding.get("structural_binding_contract_sha256"), file_sha256(root / STRUCTURAL_BINDING_PATH), "w1_w2_registry_manifest_invalid", f"{stage} Registry binding 未绑定结构合同")
+    exact(binding.get("callable_handler_refs"), [], "w1_w2_registry_callback_seam_open", f"{stage} 不得准入 callable handler ref")
+    exact(binding.get("caller_callback_refs"), [], "w1_w2_registry_callback_seam_open", f"{stage} 不得暴露 caller callback seam")
+    exact(binding.get("trusted_dispatcher_id"), None, "w1_w2_registry_handler_activation_overclaim", f"{stage} W5 前不得声称 trusted dispatcher 已绑定")
+
+    admitted_binding_units = wave_units if stage == "W1" else [
+        *WAVE_CONTRACT["W1"]["unit_ids"], *WAVE_CONTRACT["W2"]["unit_ids"],
+    ]
+    snapshot = registry.get("snapshot")
+    expect(isinstance(snapshot, dict), "wave_registry_snapshot_missing", f"{stage} Registry snapshot 无效")
+    exact(set(snapshot), {
+        "schema_version", "snapshot_id", "snapshot_digest", "registry_revision", "wave_id",
+        "proposal_snapshot_id", "proposal_snapshot_digest", "proposal_registry_revision",
+        "previous_snapshot_id", "previous_snapshot_digest", "previous_registry_revision",
+        "binding_manifest_id", "binding_manifest_digest", "structural_binding_contract_sha256",
+        "admitted_wave_binding_unit_ids", "admitted_binding_unit_ids", "binding_admission_only",
+        "artifact_path", "artifact_sha256", "production_deployed",
+    }, "w1_w2_registry_snapshot_invalid", f"{stage} Registry snapshot 字段不精确")
+    exact(snapshot.get("schema_version"), "country_outage_p2_s1_registry_wave_snapshot_v1", "w1_w2_registry_snapshot_invalid", f"{stage} Registry snapshot schema 漂移")
+    snapshot_digest = require_hex64(snapshot.get("snapshot_digest"), "wave_registry_digest_invalid", f"{stage} Registry digest 无效")
+    exact(snapshot_digest, object_digest(snapshot, {"snapshot_id", "snapshot_digest"}), "w1_w2_registry_snapshot_digest_mismatch", f"{stage} Registry snapshot digest 不可重算")
+    expect(isinstance(snapshot.get("snapshot_id"), str) and REGISTRY_SNAPSHOT_ID.fullmatch(snapshot["snapshot_id"]) is not None, "w1_w2_registry_snapshot_invalid", f"{stage} Registry snapshot ID 无效")
+    exact(snapshot.get("snapshot_id"), f"p2-s1-registry-wave-sha256:{snapshot_digest}", "w1_w2_registry_snapshot_invalid", f"{stage} Registry snapshot ID 不可重算")
+    expect(isinstance(snapshot.get("registry_revision"), int) and snapshot["registry_revision"] >= 1, "w1_w2_registry_snapshot_invalid", f"{stage} Registry revision 无效")
+    exact(snapshot.get("wave_id"), stage, "w1_w2_registry_population_drift", f"{stage} Registry wave 漂移")
+    for prefix in ("proposal", "previous"):
+        expect(isinstance(snapshot.get(f"{prefix}_snapshot_id"), str) and snapshot[f"{prefix}_snapshot_id"], "w1_w2_registry_snapshot_invalid", f"{stage} {prefix} snapshot ID 无效")
+        require_hex64(snapshot.get(f"{prefix}_snapshot_digest"), "w1_w2_registry_snapshot_invalid", f"{stage} {prefix} snapshot digest 无效")
+        expect(isinstance(snapshot.get(f"{prefix}_registry_revision"), int) and snapshot[f"{prefix}_registry_revision"] >= 1, "w1_w2_registry_snapshot_invalid", f"{stage} {prefix} Registry revision 无效")
+    exact(snapshot.get("proposal_registry_revision"), 3, "w1_w2_registry_snapshot_invalid", f"{stage} proposal revision 必须承接冻结 W0 proposal")
+    exact(snapshot.get("registry_revision"), snapshot.get("previous_registry_revision") + 1, "w1_w2_registry_snapshot_invalid", f"{stage} Registry revision 必须严格 +1")
+    if stage == "W1":
+        for suffix in ("snapshot_id", "snapshot_digest", "registry_revision"):
+            exact(snapshot.get(f"previous_{suffix}"), snapshot.get(f"proposal_{suffix}"), "w1_w2_registry_snapshot_invalid", f"W1 previous {suffix} 必须是 W0 proposal")
+    else:
+        w1_evidence = load_json(root / WAVE_EVIDENCE_ROOT / "W1.json")
+        w1_registry = w1_evidence.get("registry_binding_projection")
+        expect(isinstance(w1_registry, dict) and isinstance(w1_registry.get("snapshot"), dict), "w1_w2_registry_snapshot_invalid", "W2 必须绑定当前 W1 binding snapshot")
+        w1_snapshot = w1_registry["snapshot"]
+        exact(snapshot.get("previous_snapshot_id"), w1_snapshot.get("snapshot_id"), "w1_w2_registry_snapshot_invalid", "W2 previous snapshot ID 未绑定当前 W1")
+        exact(snapshot.get("previous_snapshot_digest"), w1_snapshot.get("snapshot_digest"), "w1_w2_registry_snapshot_invalid", "W2 previous snapshot digest 未绑定当前 W1")
+        exact(snapshot.get("previous_registry_revision"), w1_snapshot.get("registry_revision"), "w1_w2_registry_snapshot_invalid", "W2 previous revision 未绑定当前 W1")
+    exact(snapshot.get("binding_manifest_id"), binding.get("binding_manifest_id"), "w1_w2_registry_snapshot_invalid", f"{stage} snapshot 未绑定 binding manifest ID")
+    exact(snapshot.get("binding_manifest_digest"), binding_digest, "w1_w2_registry_snapshot_invalid", f"{stage} snapshot 未绑定 binding manifest digest")
+    exact(snapshot.get("structural_binding_contract_sha256"), file_sha256(root / STRUCTURAL_BINDING_PATH), "w1_w2_registry_snapshot_invalid", f"{stage} snapshot 未绑定结构合同")
+    exact(snapshot.get("admitted_wave_binding_unit_ids"), wave_units, "w1_w2_registry_population_drift", f"{stage} Registry 本波 binding 人口漂移")
+    exact(snapshot.get("admitted_binding_unit_ids"), admitted_binding_units, "w1_w2_registry_population_drift", f"{stage} Registry 继承 binding 人口漂移")
+    exact(snapshot.get("binding_admission_only"), True, "w1_w2_registry_handler_activation_overclaim", f"{stage} snapshot 不得冒充 handler activation")
+    exact(snapshot.get("artifact_path"), W1_W2_REGISTRY_RUNTIME_PATH.as_posix(), "w1_w2_registry_artifact_mismatch", f"{stage} Registry snapshot artifact 漂移")
+    exact(snapshot.get("artifact_sha256"), file_sha256(root / W1_W2_REGISTRY_RUNTIME_PATH), "w1_w2_registry_artifact_mismatch", f"{stage} Registry snapshot SHA 漂移")
+    exact(snapshot.get("production_deployed"), False, "wave_deployment_overclaim", f"{stage} Registry 不得声称生产部署")
+
+    admission = registry.get("admission_receipt")
+    validate_recomputable_receipt(admission, "w1_w2_registry_receipt_digest_mismatch", f"{stage} Registry admission")
+    exact(set(admission), {
+        "schema_version", "status", "wave_id", "snapshot_id", "snapshot_digest", "registry_revision",
+        "previous_snapshot_id", "previous_snapshot_digest", "previous_registry_revision",
+        "binding_manifest_id", "binding_manifest_digest", "structural_binding_contract_sha256",
+        "registry_artifact_path", "registry_artifact_sha256", "admitted_wave_binding_unit_ids",
+        "admitted_binding_unit_ids", "execution_allowed_unit_ids", "partial_binding_admission",
+        "trusted_dispatcher_bound", "execution_started", "production_deployed", "receipt_digest",
+    }, "w1_w2_registry_receipt_invalid", f"{stage} Registry admission 字段不精确")
+    exact(admission.get("schema_version"), "country_outage_p2_s1_registry_wave_admission_v1", "w1_w2_registry_receipt_invalid", f"{stage} Registry admission schema 漂移")
+    exact(admission.get("status"), "admitted_complete_atomic_wave_bindings", "w1_w2_registry_handler_activation_overclaim", f"{stage} 只允许完整 binding admission，不允许 handler activation")
+    exact(admission.get("wave_id"), stage, "w1_w2_registry_population_drift", f"{stage} Registry admission wave 漂移")
+    exact(admission.get("snapshot_id"), snapshot.get("snapshot_id"), "w1_w2_registry_receipt_invalid", f"{stage} admission snapshot ID 漂移")
+    exact(admission.get("snapshot_digest"), snapshot_digest, "w1_w2_registry_receipt_invalid", f"{stage} admission snapshot digest 漂移")
+    exact(admission.get("registry_revision"), snapshot.get("registry_revision"), "w1_w2_registry_receipt_invalid", f"{stage} admission revision 漂移")
+    exact(admission.get("previous_snapshot_id"), snapshot.get("previous_snapshot_id"), "w1_w2_registry_receipt_invalid", f"{stage} admission previous snapshot ID 漂移")
+    exact(admission.get("previous_snapshot_digest"), snapshot.get("previous_snapshot_digest"), "w1_w2_registry_receipt_invalid", f"{stage} admission previous snapshot digest 漂移")
+    exact(admission.get("previous_registry_revision"), snapshot.get("previous_registry_revision"), "w1_w2_registry_receipt_invalid", f"{stage} admission previous revision 漂移")
+    exact(admission.get("binding_manifest_id"), binding.get("binding_manifest_id"), "w1_w2_registry_receipt_invalid", f"{stage} admission binding manifest ID 漂移")
+    exact(admission.get("binding_manifest_digest"), binding_digest, "w1_w2_registry_receipt_invalid", f"{stage} admission binding manifest digest 漂移")
+    exact(admission.get("structural_binding_contract_sha256"), file_sha256(root / STRUCTURAL_BINDING_PATH), "w1_w2_registry_receipt_invalid", f"{stage} admission 未绑定结构合同")
+    exact(admission.get("registry_artifact_path"), W1_W2_REGISTRY_RUNTIME_PATH.as_posix(), "w1_w2_registry_artifact_mismatch", f"{stage} admission registry path 漂移")
+    exact(admission.get("registry_artifact_sha256"), file_sha256(root / W1_W2_REGISTRY_RUNTIME_PATH), "w1_w2_registry_artifact_mismatch", f"{stage} admission registry SHA 漂移")
+    exact(admission.get("admitted_wave_binding_unit_ids"), wave_units, "w1_w2_registry_population_drift", f"{stage} admission 本波 binding 人口漂移")
+    exact(admission.get("admitted_binding_unit_ids"), admitted_binding_units, "w1_w2_registry_population_drift", f"{stage} admission 继承 binding 人口漂移")
+    exact(admission.get("execution_allowed_unit_ids"), [], "w1_w2_registry_execution_authorization_overclaim", f"{stage} W5 前 execution allowlist 必须为空")
+    exact(admission.get("partial_binding_admission"), False, "w1_w2_registry_receipt_invalid", f"{stage} 不允许部分 binding admission")
+    exact(admission.get("trusted_dispatcher_bound"), False, "w1_w2_registry_handler_activation_overclaim", f"{stage} W5 前 trusted dispatcher 必须未绑定")
+    exact(admission.get("execution_started"), False, "w1_w2_registry_execution_authorization_overclaim", f"{stage} binding admission 不得启动执行")
+    exact(admission.get("production_deployed"), False, "wave_deployment_overclaim", f"{stage} Registry admission 不得声称生产部署")
+
+    probe = registry.get("execution_probe")
+    validate_recomputable_receipt(probe, "w1_w2_registry_probe_digest_mismatch", f"{stage} Registry execution probe")
+    exact(set(probe), {
+        "schema_version", "wave_id", "tested_unit_ids", "test_artifact_path", "test_artifact_sha256",
+        "caller_callback_injection_supported", "caller_callback_spy_count", "execution_allowed_unit_ids",
+        "assert_execution_authorized_error", "trusted_dispatcher_bound", "receipt_digest",
+    }, "w1_w2_registry_probe_invalid", f"{stage} Registry execution probe 字段不精确")
+    exact(probe.get("schema_version"), "country_outage_p2_s1_registry_non_execution_probe_v1", "w1_w2_registry_probe_invalid", f"{stage} execution probe schema 漂移")
+    exact(probe.get("wave_id"), stage, "w1_w2_registry_probe_invalid", f"{stage} execution probe wave 漂移")
+    exact(probe.get("tested_unit_ids"), wave_units, "w1_w2_registry_population_drift", f"{stage} execution probe 人口漂移")
+    exact(probe.get("test_artifact_path"), W1_W2_REGISTRY_TEST_PATH.as_posix(), "w1_w2_registry_probe_invalid", f"{stage} execution probe test path 漂移")
+    exact(probe.get("test_artifact_sha256"), file_sha256(root / W1_W2_REGISTRY_TEST_PATH), "w1_w2_registry_probe_invalid", f"{stage} execution probe test SHA 漂移")
+    exact(probe.get("caller_callback_injection_supported"), False, "w1_w2_registry_callback_seam_open", f"{stage} caller callback seam 必须封死")
+    exact(probe.get("caller_callback_spy_count"), 0, "w1_w2_registry_callback_seam_open", f"{stage} caller callback spy 必须为 0")
+    exact(probe.get("execution_allowed_unit_ids"), [], "w1_w2_registry_execution_authorization_overclaim", f"{stage} probe execution allowlist 必须为空")
+    exact(probe.get("assert_execution_authorized_error"), "registry_dispatch_not_bound", "w1_w2_registry_handler_activation_overclaim", f"{stage} 未绑定 dispatcher 时必须 fail-closed")
+    exact(probe.get("trusted_dispatcher_bound"), False, "w1_w2_registry_handler_activation_overclaim", f"{stage} probe 不得声称 dispatcher 已绑定")
+
+    scope = registry.get("execution_scope")
+    exact(scope, {
+        "offline_harness_verified": True,
+        "trusted_dispatcher_implemented": False,
+        "registry_execution_authorized": False,
+        "production_deployed": False,
+    }, "w1_w2_registry_handler_activation_overclaim", f"{stage} 只能证明离线 harness，受信 dispatcher 留待 W5")
+
+    exact(
+        evidence.get("capability_scope"),
+        {
+            "offline_fixture_harness_verified": True,
+            "non_callable_registry_binding_verified": True,
+            "user_answer_available": False,
+            "api_available": False,
+            "export_available": False,
+            "complete_result_set_freeze_available": False,
+            "real_publication_replay_verified": False,
+            "runtime_activation": False,
+            "trusted_dispatcher_implemented": False,
+            "production_deployed": False,
+        },
+        "w1_w2_capability_overclaim",
+        f"{stage} 必须机器化声明离线 harness 与尚未实现的交付边界",
+    )
+
+    performance = evidence.get("performance_baseline")
+    expect(isinstance(performance, dict), "w1_w2_performance_status_missing", f"{stage} 缺少性能诚实状态")
+    exact(performance, {"measurement_status": "not_w6_acceptance", "performance_acceptance_passed": False}, "w1_w2_performance_overclaim", f"{stage} 不得冒充 W6 性能验收")
+    return [
+        f"{stage.lower()}_content_addressed_artifacts_verified",
+        f"{stage.lower()}_atomic_unit_receipts_verified",
+        f"{stage.lower()}_structural_and_frozen_contracts_verified",
+        f"{stage.lower()}_w0_source_lineage_verified",
+        f"{stage.lower()}_registry_complete_wave_binding_admission_verified",
+        f"{stage.lower()}_trusted_dispatcher_deferred_to_w5_verified",
+        f"{stage.lower()}_positive_boundary_attack_tests_verified",
+        f"{stage.lower()}_not_w6_or_production_verified",
+    ]
+
+
+def _validate_current_wave_stage_receipt(
+    root: Path,
+    stage: str,
+    receipt: dict[str, Any],
+    baseline: dict[str, Any],
+) -> None:
+    """证明 prior wave 回执仍绑定当前候选字节，而不只是历史上自洽。"""
+
+    exact(
+        receipt.get("design_candidate_id"),
+        DESIGN_CANDIDATE_ID,
+        "wave_prior_artifact_binding_mismatch",
+        f"{stage} prior receipt 未绑定冻结设计候选",
+    )
+    current_bindings = {
+        "task_sha256": file_sha256(root / TASK_PATH),
+        "target_document_sha256": file_sha256(root / TARGET_PATH),
+        "phase_plan_sha256": file_sha256(root / PLAN_PATH),
+        "baseline_sha256": file_sha256(root / BASELINE_PATH),
+        "hook_sha256": file_sha256(Path(__file__).resolve()),
+        "hook_tests_sha256": file_sha256(
+            root / "dev/tests/test_country_outage_p2_s1_implementation_alignment_hook.py"
+        ),
+        "wave_evidence_sha256": file_sha256(root / WAVE_EVIDENCE_ROOT / f"{stage}.json"),
+    }
+    for field, expected_value in current_bindings.items():
+        exact(
+            receipt.get(field),
+            expected_value,
+            "wave_prior_artifact_binding_mismatch",
+            f"{stage} prior receipt 的 {field} 已过期",
+        )
+    exact(
+        receipt.get("baseline_content_digest"),
+        baseline.get("content_digest"),
+        "wave_prior_artifact_binding_mismatch",
+        f"{stage} prior receipt 未绑定当前 baseline content digest",
+    )
+    evidence = load_json(root / WAVE_EVIDENCE_ROOT / f"{stage}.json")
+    exact(
+        receipt.get("implementation_candidate_id"),
+        evidence.get("implementation_candidate_id"),
+        "wave_prior_artifact_binding_mismatch",
+        f"{stage} prior receipt 未绑定当前 implementation candidate",
+    )
+    exact(
+        receipt.get("production_deployed"),
+        False,
+        "wave_prior_artifact_binding_mismatch",
+        f"{stage} prior receipt 不得声称已部署",
+    )
+    expected_prior_stages = ["S1I-P0", *WAVE_CONTRACT[stage]["depends_on"]]
+    expected_prior_digests: list[str] = []
+    for prior_stage in expected_prior_stages:
+        path = (
+            P0_RECEIPT_PATH
+            if prior_stage == "S1I-P0"
+            else WAVE_RECEIPT_ROOT / f"{prior_stage}.json"
+        )
+        expected_prior_digests.append(load_json(root / path)["receipt_digest"])
+    exact(
+        receipt.get("prior_stage_receipt_digests"),
+        expected_prior_digests,
+        "wave_prior_chain_binding_mismatch",
+        f"{stage} prior receipt 的依赖摘要链已过期",
+    )
+
+
 def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dict[str, Any], list[str], list[str]]:
+    expect(stage in {"W0", "W1", "W2"}, "wave_stage_not_implemented", f"{stage} 尚未进入本实现任务，必须 fail-closed")
     contract = WAVE_CONTRACT[stage]
     evidence_path = root / WAVE_EVIDENCE_ROOT / f"{stage}.json"
     evidence = load_json(evidence_path)
     exact(evidence.get("schema_version"), "country_outage_p2_s1_implementation_wave_evidence_v1", "wave_evidence_schema_mismatch", f"{stage} evidence Schema 不匹配")
     exact(evidence.get("stage"), stage, "wave_evidence_stage_mismatch", f"{stage} evidence stage 不匹配")
-    exact(evidence.get("status"), "implementation_wave_accepted", "wave_not_accepted", f"{stage} 尚未形成实现验收证据")
+    expected_status = (
+        "implementation_wave_accepted"
+        if stage == "W0"
+        else "offline_atomic_harness_accepted_for_w5_integration"
+    )
+    exact(evidence.get("status"), expected_status, "wave_not_accepted", f"{stage} 尚未形成当前层级验收证据")
     exact(evidence.get("design_candidate_id"), DESIGN_CANDIDATE_ID, "wave_design_binding_mismatch", f"{stage} 未绑定冻结设计候选")
     exact(evidence.get("baseline_content_digest"), baseline.get("content_digest"), "wave_baseline_binding_mismatch", f"{stage} 未绑定当前实现基线")
     implementation_candidate_id = evidence.get("implementation_candidate_id")
@@ -691,23 +1582,16 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
     exact(evidence.get("atomic_split_tests_passed"), True, "wave_atomicity_failed", f"{stage} atomic split tests 未通过")
     exact(evidence.get("p2_1_units_included"), [], "p2_1_unit_smuggled", f"{stage} 混入 P2.1 单元")
     exact(evidence.get("production_deployed"), False, "wave_deployment_overclaim", f"{stage} 不得声称已部署")
-    tests = evidence.get("test_receipts")
-    expect(isinstance(tests, list) and tests, "wave_test_receipts_missing", f"{stage} 缺少测试回执")
-    for index, item in enumerate(tests):
-        expect(isinstance(item, dict), "wave_test_receipt_invalid", f"{stage} test_receipts[{index}] 必须是对象")
-        exact(item.get("passed"), True, "wave_test_failed", f"{stage} test_receipts[{index}] 未通过")
-        validate_recomputable_receipt(item, "wave_test_digest_invalid", f"{stage} test_receipts[{index}]")
-        for field in ("case_id", "category", "runner", "output_digest"):
-            value = item.get(field)
-            expect(isinstance(value, str) and value, "wave_test_receipt_invalid", f"{stage} test_receipts[{index}] 缺少 {field}")
-        require_hex64(item.get("output_digest"), "wave_test_receipt_invalid", f"{stage} test_receipts[{index}] output digest 无效")
     if stage == "W0":
+        tests = evidence.get("test_receipts")
+        expect(isinstance(tests, list) and len(tests) == 2, "wave_test_receipts_missing", f"{stage} 必须恰有 Python 与 TypeScript 真实 runner 回执")
+        for suite_id in ("w0-python", "w0-typescript"):
+            reference = next((item for item in tests if isinstance(item, dict) and item.get("suite_id") == suite_id), None)
+            expect(reference is not None, "wave_test_receipts_missing", f"{stage} 缺少 {suite_id} 回执")
+            _validate_stage_test_run_receipt(root, reference, suite_id)
         wave_checks = validate_w0_evidence(root, evidence)
     else:
-        wave_checks = []
-        registry = evidence.get("registry_snapshot")
-        expect(isinstance(registry, dict), "wave_registry_snapshot_missing", f"{stage} 缺少 Registry snapshot")
-        require_hex64(registry.get("digest"), "wave_registry_digest_invalid", f"{stage} Registry digest 无效")
+        wave_checks = validate_w1_w2_evidence(root, stage, evidence)
     prior_receipt_digests: list[str] = []
     required_prior_stages = ["S1I-P0", *contract["depends_on"]]
     supplied_prior = evidence.get("prior_stage_receipt_digests")
@@ -719,10 +1603,17 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
         exact(prior.get("status"), "alignment_passed", "wave_prior_stage_failed", f"{stage} 的 {prior_stage} 回执未通过")
         digest = require_hex64(prior.get("receipt_digest"), "wave_prior_digest_invalid", f"{prior_stage} receipt digest 无效")
         exact(object_digest(prior, {"receipt_digest"}), digest, "wave_prior_digest_mismatch", f"{prior_stage} receipt digest 不可重算")
+        if prior_stage != "S1I-P0":
+            _validate_current_wave_stage_receipt(root, prior_stage, prior, baseline)
         exact(supplied_prior.get(prior_stage), digest, "wave_prior_binding_mismatch", f"{stage} 未绑定当前 {prior_stage} 回执")
         prior_receipt_digests.append(digest)
     exact(set(supplied_prior), set(required_prior_stages), "wave_prior_population_mismatch", f"{stage} prior receipt 人口不是精确依赖闭包")
-    return evidence, [f"{stage.lower()}_implementation_effect_verified", f"{stage.lower()}_atomicity_and_evidence_verified", *wave_checks], prior_receipt_digests
+    effect_check = (
+        f"{stage.lower()}_implementation_effect_verified"
+        if stage == "W0"
+        else f"{stage.lower()}_offline_atomic_harness_scope_verified"
+    )
+    return evidence, [effect_check, f"{stage.lower()}_atomicity_and_evidence_verified", *wave_checks], prior_receipt_digests
 
 
 def run_alignment(root: Path, stage: str) -> dict[str, Any]:

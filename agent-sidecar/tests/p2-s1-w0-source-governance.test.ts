@@ -17,20 +17,30 @@ import {
   P2S1_DEFERRED_UNIT_IDS,
   P2S1_FROZEN_DESIGN_CANDIDATE_DIGEST,
   P2S1_FROZEN_DESIGN_CANDIDATE_ID,
+  P2S1_W1_ACTIVATION_UNIT_IDS,
+  P2S1_W2_ACTIVATION_UNIT_IDS,
   P2S1_V1_OPERATOR_IDS,
   P2S1_V1_TOOL_IDS,
   P2S1_W0_PROPOSAL_UNIT_IDS,
   P2S1RegistryProposalResolver,
   P2S1RegistryRuntimeError,
+  P2S1RegistryWaveBindingAdmitter,
   createP2S1RegistryProposal,
+  createP2S1RegistryUnitTestEvidence,
+  createP2S1RegistryWaveHandlerManifest,
+  createP2S1RegistryWaveSnapshot,
   p2S1ExpectedAtomicCapabilityId,
   p2S1ExpectedDesignContractDigest,
+  p2S1ExpectedHandlerId,
   p2S1ExpectedUnitSemanticDigest,
   validateP2S1RegistryProposal,
   type P2S1RegistryProposalPayload,
   type P2S1RegistryProposalSnapshot,
   type P2S1RegistryProposalUnit,
   type P2S1RegistryUnitKind,
+  type P2S1RegistryWaveHandlerManifest,
+  type P2S1RegistryWaveId,
+  type P2S1RegistryWaveSnapshot,
 } from '../src/chat/p2-s1-registry-runtime.js'
 import {
   P2S1TrustedReceiptError,
@@ -150,6 +160,180 @@ function resolver(identity = publicationIdentity): P2S1RegistryProposalResolver 
     existing_registry_snapshot_id: existingSnapshotId,
     existing_registry_snapshot_digest: existingSnapshotDigest,
   })
+}
+
+function fileDigest(path: string): string {
+  return `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`
+}
+
+const structuralBindingDigest = fileDigest(join(
+  process.cwd(), '..', 'contracts', 'agent', 'country-outage-p2-s1-implementation',
+  'w1-w2-structural-binding.schema.json',
+))
+const toolImplementationDigest = fileDigest(join(
+  process.cwd(), '..', 'backend', 'services', 'country_outage_p2_s1_tools.py',
+))
+const operatorImplementationDigest = fileDigest(join(
+  process.cwd(), '..', 'backend', 'services', 'country_outage_p2_s1_operators.py',
+))
+type StageRunReceipt = {
+  receipt_digest: string
+  test_case_coverage: Array<{
+    test_id: string
+    coverage_kind: string
+    unit_ids: string[]
+    executed_unit_ids: string[]
+  }>
+}
+
+function runnerEvidence(waveId: P2S1RegistryWaveId, unitId: string) {
+  const match = ['positive', 'boundary', 'attack'].map((category) => {
+    const relative = `contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/${waveId.toLowerCase()}-${category}.json`
+    const raw = readFileSync(join(process.cwd(), '..', relative))
+    const receipt = JSON.parse(raw.toString('utf8')) as StageRunReceipt
+    return { relative, raw, receipt }
+  }).find((candidate) => candidate.receipt.test_case_coverage.some((item) => item.executed_unit_ids.includes(unitId)))
+  assert.ok(match)
+  const { relative, raw, receipt } = match
+  const testCaseIds = receipt.test_case_coverage
+    .filter((item) => item.executed_unit_ids.includes(unitId))
+    .map((item) => item.test_id)
+  assert.ok(testCaseIds.length > 0)
+  return {
+    runner_receipt_digest: `sha256:${receipt.receipt_digest}`,
+    runner_receipt_file_digest: `sha256:${createHash('sha256').update(raw).digest('hex')}`,
+    runner_receipt_path: relative,
+    test_case_ids: testCaseIds,
+    tested_execution_count: testCaseIds.length,
+  }
+}
+
+function implementationDigest(unitId: string): string {
+  return unitId.startsWith('TOOL-') ? toolImplementationDigest : operatorImplementationDigest
+}
+
+function waveIds(waveId: P2S1RegistryWaveId): readonly string[] {
+  return waveId === 'W1' ? P2S1_W1_ACTIVATION_UNIT_IDS : P2S1_W2_ACTIVATION_UNIT_IDS
+}
+
+function waveManifest(waveId: P2S1RegistryWaveId): P2S1RegistryWaveHandlerManifest {
+  const proposalById = new Map(proposalUnits().map((unit) => [unit.unit_id, unit]))
+  return createP2S1RegistryWaveHandlerManifest({
+    candidate_id: candidateId,
+    design_candidate_digest: designDigest,
+    wave_id: waveId,
+    structural_binding_contract_digest: structuralBindingDigest,
+    handlers: waveIds(waveId).map((unitId) => {
+      const runner = runnerEvidence(waveId, unitId)
+      const implementation = implementationDigest(unitId)
+      const handlerId = p2S1ExpectedHandlerId(unitId)
+      return {
+        unit_id: unitId,
+        handler_id: handlerId,
+        implementation_digest: implementation,
+        contract_digest: p2S1ExpectedDesignContractDigest(unitId),
+        semantic_digest: p2S1ExpectedUnitSemanticDigest(unitId),
+        structural_binding_contract_digest: structuralBindingDigest,
+        dependencies: structuredClone(proposalById.get(unitId)!.dependencies),
+        test_evidence: createP2S1RegistryUnitTestEvidence({
+          candidate_id: candidateId,
+          design_candidate_digest: designDigest,
+          wave_id: waveId,
+          unit_id: unitId,
+          handler_id: handlerId,
+          implementation_digest: implementation,
+          contract_digest: p2S1ExpectedDesignContractDigest(unitId),
+          semantic_digest: p2S1ExpectedUnitSemanticDigest(unitId),
+          structural_binding_contract_digest: structuralBindingDigest,
+          ...runner,
+          test_result: 'passed',
+        }),
+      }
+    }),
+  })
+}
+
+const w1Manifest = waveManifest('W1')
+const w2Manifest = waveManifest('W2')
+
+function activationContext() {
+  const allHandlers = [
+    ...w1Manifest.manifest_payload.handlers,
+    ...w2Manifest.manifest_payload.handlers,
+  ]
+  return {
+    candidate_id: candidateId,
+    design_candidate_digest: designDigest,
+    publication_identity: structuredClone(publicationIdentity),
+    existing_registry_snapshot_id: existingSnapshotId,
+    existing_registry_snapshot_digest: existingSnapshotDigest,
+    structural_binding_contract_digest: structuralBindingDigest,
+    implementation_digest_by_unit: Object.fromEntries(
+      allHandlers.map((handler) => [handler.unit_id, handler.implementation_digest]),
+    ),
+    test_evidence_receipt_digest_by_unit: Object.fromEntries(
+      allHandlers.map((handler) => [handler.unit_id, handler.test_evidence.receipt_digest]),
+    ),
+  }
+}
+
+function refOf(snapshot: P2S1RegistryProposalSnapshot | P2S1RegistryWaveSnapshot) {
+  return {
+    registry_snapshot_id: snapshot.registry_snapshot_id,
+    snapshot_digest: snapshot.snapshot_digest,
+    registry_revision: snapshot.snapshot_payload.registry_revision,
+  }
+}
+
+function waveSnapshot(
+  waveId: P2S1RegistryWaveId,
+  previous: P2S1RegistryProposalSnapshot | P2S1RegistryWaveSnapshot,
+  proposalSnapshot: P2S1RegistryProposalSnapshot,
+  manifest = waveId === 'W1' ? w1Manifest : w2Manifest,
+): P2S1RegistryWaveSnapshot {
+  return createP2S1RegistryWaveSnapshot(
+    waveId === 'W1' ? '2026-08-13T02:00:00Z' : '2026-08-13T03:00:00Z',
+    {
+      candidate_id: candidateId,
+      design_candidate_digest: designDigest,
+      registry_revision: previous.snapshot_payload.registry_revision + 1,
+      wave_id: waveId,
+      activation_scope: 'complete_atomic_wave_binding_admission',
+      permission_mode: 'read_only',
+      external_data_allowed: false,
+      production_deployed: false,
+      publication_identity: structuredClone(publicationIdentity),
+      proposal_snapshot_ref: refOf(proposalSnapshot),
+      previous_snapshot_ref: refOf(previous),
+      handler_manifest: manifest,
+      admitted_wave_binding_unit_ids: [...waveIds(waveId)],
+      admitted_binding_unit_ids: waveId === 'W1'
+        ? [...P2S1_W1_ACTIVATION_UNIT_IDS]
+        : [...P2S1_W1_ACTIVATION_UNIT_IDS, ...P2S1_W2_ACTIVATION_UNIT_IDS],
+    },
+  )
+}
+
+function resealManifest(value: P2S1RegistryWaveHandlerManifest): P2S1RegistryWaveHandlerManifest {
+  const mutable = structuredClone(value)
+  const digest = p2S1Digest(mutable.manifest_payload)
+  mutable.handler_manifest_digest = digest
+  mutable.handler_manifest_id = `p2-s1-handler-manifest-sha256:${digest.slice('sha256:'.length)}`
+  return mutable
+}
+
+function resealTestEvidence(value: Record<string, unknown>): void {
+  const copy = structuredClone(value)
+  delete copy.receipt_digest
+  value.receipt_digest = p2S1Digest(copy)
+}
+
+function resealWave(value: P2S1RegistryWaveSnapshot): P2S1RegistryWaveSnapshot {
+  const mutable = structuredClone(value)
+  const digest = p2S1Digest(mutable.snapshot_payload)
+  mutable.snapshot_digest = digest
+  mutable.registry_snapshot_id = `p2-s1-registry-wave-sha256:${digest.slice('sha256:'.length)}`
+  return mutable
 }
 
 function reseal(snapshot: P2S1RegistryProposalSnapshot): P2S1RegistryProposalSnapshot {
@@ -372,6 +556,188 @@ test('TOOL-07..12、OP-05..39 的 W0 执行次数为 0，P2.1 始终拒绝', () 
     })
   }
   assert.equal(executionCount, 0)
+})
+
+test('W1/W2 Registry 以完整波次、同候选实现与测试证据顺序原子准入 binding，执行授权为空', () => {
+  const proposalSnapshot = proposal()
+  const admitter = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
+  assert.deepEqual(admitter.currentSnapshotRef(), refOf(proposalSnapshot))
+
+  const w1 = waveSnapshot('W1', proposalSnapshot, proposalSnapshot)
+  const w1Admission = admitter.admitBindings(w1)
+  assert.equal(w1Admission.status, 'admitted_complete_atomic_wave_bindings')
+  assert.equal(w1Admission.wave_id, 'W1')
+  assert.equal(w1Admission.registry_revision, 4)
+  assert.deepEqual(w1Admission.admitted_wave_binding_unit_ids, [...P2S1_W1_ACTIVATION_UNIT_IDS])
+  assert.deepEqual(w1Admission.admitted_binding_unit_ids, [...P2S1_W1_ACTIVATION_UNIT_IDS])
+  assert.deepEqual(w1Admission.execution_allowed_unit_ids, [])
+  assert.equal(w1Admission.partial_binding_admission, false)
+  assert.equal(w1Admission.execution_started, false)
+  assert.equal(w1Admission.production_deployed, false)
+  const w1AdmissionInput = structuredClone(w1Admission) as unknown as Record<string, unknown>
+  delete w1AdmissionInput.receipt_digest
+  assert.equal(w1Admission.receipt_digest, p2S1Digest(w1AdmissionInput))
+
+  assert.equal(admitter.resolveAdmittedBinding('TOOL-07', w1).handler_id, p2S1ExpectedHandlerId('TOOL-07'))
+  expectRegistryError('registry_binding_not_admitted', () => admitter.resolveAdmittedBinding('TOOL-12', w1))
+  let executionCount = 0
+  expectRegistryError('registry_dispatch_not_bound', () => {
+    admitter.assertExecutionAuthorized('TOOL-07', w1)
+    executionCount += 1
+  })
+  assert.equal(executionCount, 0)
+
+  const w2 = waveSnapshot('W2', w1, proposalSnapshot)
+  const w2Admission = admitter.admitBindings(w2)
+  assert.equal(w2Admission.wave_id, 'W2')
+  assert.equal(w2Admission.registry_revision, 5)
+  assert.deepEqual(w2Admission.admitted_wave_binding_unit_ids, [...P2S1_W2_ACTIVATION_UNIT_IDS])
+  assert.deepEqual(w2Admission.admitted_binding_unit_ids, [
+    ...P2S1_W1_ACTIVATION_UNIT_IDS,
+    ...P2S1_W2_ACTIVATION_UNIT_IDS,
+  ])
+  assert.deepEqual(w2Admission.execution_allowed_unit_ids, [])
+  assert.equal(admitter.resolveAdmittedBinding('OP-05', w2).handler_id, p2S1ExpectedHandlerId('OP-05'))
+  assert.equal(admitter.resolveAdmittedBinding('OP-28', w2).handler_id, p2S1ExpectedHandlerId('OP-28'))
+  assert.equal(admitter.currentSnapshotRef().registry_revision, 5)
+})
+
+test('W1 binding 准入拒绝 digest、候选、revision、合同、实现、handler 与测试证据攻击，失败不改变 CAS', () => {
+  const proposalSnapshot = proposal()
+
+  const digestTampered = structuredClone(waveSnapshot('W1', proposalSnapshot, proposalSnapshot))
+  digestTampered.snapshot_digest = p2S1Digest({ forged: 'snapshot-digest' })
+  expectRegistryError('registry_wave_snapshot_digest_mismatch', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(digestTampered))
+
+  const candidateTampered = structuredClone(waveSnapshot('W1', proposalSnapshot, proposalSnapshot))
+  candidateTampered.snapshot_payload.candidate_id = `${candidateId}-other`
+  expectRegistryError('registry_candidate_binding_mismatch', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(resealWave(candidateTampered)))
+
+  const revisionTampered = structuredClone(waveSnapshot('W1', proposalSnapshot, proposalSnapshot))
+  revisionTampered.snapshot_payload.registry_revision = 5
+  expectRegistryError('registry_revision_chain_invalid', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(resealWave(revisionTampered)))
+
+  const contractManifest = structuredClone(w1Manifest)
+  const contractHandler = contractManifest.manifest_payload.handlers[0]!
+  contractHandler.contract_digest = p2S1Digest({ forged: 'contract' })
+  contractHandler.test_evidence.contract_digest = contractHandler.contract_digest
+  resealTestEvidence(contractHandler.test_evidence as unknown as Record<string, unknown>)
+  const contractSnapshot = waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(contractManifest))
+  expectRegistryError('registry_unit_contract_drift', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(contractSnapshot))
+
+  const implementationManifest = structuredClone(w1Manifest)
+  const implementationHandler = implementationManifest.manifest_payload.handlers[0]!
+  implementationHandler.implementation_digest = p2S1Digest({ forged: 'implementation' })
+  implementationHandler.test_evidence.implementation_digest = implementationHandler.implementation_digest
+  resealTestEvidence(implementationHandler.test_evidence as unknown as Record<string, unknown>)
+  const implementationSnapshot = waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(implementationManifest))
+  expectRegistryError('registry_implementation_digest_mismatch', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(implementationSnapshot))
+
+  const handlerManifest = structuredClone(w1Manifest)
+  const handler = handlerManifest.manifest_payload.handlers[0]!
+  handler.handler_id = 'python:forged.handler'
+  handler.test_evidence.handler_id = handler.handler_id
+  resealTestEvidence(handler.test_evidence as unknown as Record<string, unknown>)
+  const handlerSnapshot = waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(handlerManifest))
+  expectRegistryError('registry_handler_binding_mismatch', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(handlerSnapshot))
+
+  const testManifest = structuredClone(w1Manifest)
+  const tested = testManifest.manifest_payload.handlers[0]!.test_evidence
+  tested.runner_receipt_file_digest = p2S1Digest({ forged: 'test-artifact' })
+  resealTestEvidence(tested as unknown as Record<string, unknown>)
+  const testSnapshot = waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(testManifest))
+  const admitter = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
+  expectRegistryError('registry_test_evidence_binding_mismatch', () => admitter.admitBindings(testSnapshot))
+  assert.deepEqual(admitter.currentSnapshotRef(), refOf(proposalSnapshot))
+})
+
+test('Registry binding 准入拒绝半波、依赖、重复、跨波、过期 CAS 与重复准入；执行 spy 为 0', () => {
+  const proposalSnapshot = proposal()
+
+  const partialManifest = structuredClone(w1Manifest)
+  partialManifest.manifest_payload.handlers.pop()
+  expectRegistryError('registry_partial_wave_forbidden', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(
+      waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(partialManifest)),
+    ))
+
+  const dependencyManifest = structuredClone(w1Manifest)
+  dependencyManifest.manifest_payload.handlers[0]!.dependencies[0]!.contract_digest = p2S1Digest({ forged: 'dependency' })
+  expectRegistryError('registry_dependency_invalid', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(
+      waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(dependencyManifest)),
+    ))
+
+  const duplicateManifest = structuredClone(w1Manifest)
+  duplicateManifest.manifest_payload.handlers[1] = structuredClone(duplicateManifest.manifest_payload.handlers[0]!)
+  expectRegistryError('registry_partial_wave_forbidden', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(
+      waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(duplicateManifest)),
+    ))
+
+  const crossWaveManifest = structuredClone(w1Manifest)
+  const crossUnitId = 'TOOL-12'
+  const crossRunner = runnerEvidence('W2', crossUnitId)
+  const crossImplementation = implementationDigest(crossUnitId)
+  crossWaveManifest.manifest_payload.handlers[0] = {
+    unit_id: crossUnitId,
+    handler_id: p2S1ExpectedHandlerId(crossUnitId),
+    implementation_digest: crossImplementation,
+    contract_digest: p2S1ExpectedDesignContractDigest(crossUnitId),
+    semantic_digest: p2S1ExpectedUnitSemanticDigest(crossUnitId),
+    structural_binding_contract_digest: structuralBindingDigest,
+    dependencies: [],
+    test_evidence: createP2S1RegistryUnitTestEvidence({
+      candidate_id: candidateId,
+      design_candidate_digest: designDigest,
+      wave_id: 'W1',
+      unit_id: crossUnitId,
+      handler_id: p2S1ExpectedHandlerId(crossUnitId),
+      implementation_digest: crossImplementation,
+      contract_digest: p2S1ExpectedDesignContractDigest(crossUnitId),
+      semantic_digest: p2S1ExpectedUnitSemanticDigest(crossUnitId),
+      structural_binding_contract_digest: structuralBindingDigest,
+      ...crossRunner,
+      test_result: 'passed',
+    }),
+  }
+  expectRegistryError('registry_partial_wave_forbidden', () =>
+    new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot).admitBindings(
+      waveSnapshot('W1', proposalSnapshot, proposalSnapshot, resealManifest(crossWaveManifest)),
+    ))
+
+  const sequenceAdmitter = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
+  expectRegistryError('registry_wave_sequence_invalid', () =>
+    sequenceAdmitter.admitBindings(waveSnapshot('W2', proposalSnapshot, proposalSnapshot)))
+  const w1 = waveSnapshot('W1', proposalSnapshot, proposalSnapshot)
+  sequenceAdmitter.admitBindings(w1)
+  expectRegistryError('registry_wave_sequence_invalid', () => sequenceAdmitter.admitBindings(w1))
+
+  const staleW2 = waveSnapshot('W2', proposalSnapshot, proposalSnapshot)
+  expectRegistryError('registry_cas_mismatch', () => sequenceAdmitter.admitBindings(staleW2))
+
+  let unauthorizedExecutionCount = 0
+  const fresh = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
+  const validW1 = waveSnapshot('W1', proposalSnapshot, proposalSnapshot)
+  expectRegistryError('registry_dispatch_not_bound', () => {
+    fresh.assertExecutionAuthorized('TOOL-07', validW1)
+    unauthorizedExecutionCount += 1
+  })
+  expectRegistryError('registry_dispatch_not_bound', () => {
+    fresh.assertExecutionAuthorized('TOOL-13', {})
+    unauthorizedExecutionCount += 1
+  })
+  expectRegistryError('registry_dispatch_not_bound', () => {
+    fresh.assertExecutionAuthorized('TOOL-11', {})
+    unauthorizedExecutionCount += 1
+  })
+  assert.equal(unauthorizedExecutionCount, 0)
 })
 
 test('回执摘要和 proposal 摘要使用同一 deterministic canonical JSON', () => {

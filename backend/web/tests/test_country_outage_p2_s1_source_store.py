@@ -108,6 +108,12 @@ class CountryOutageP2S1SourceStoreTest(unittest.TestCase):
         temporary, target = self.copied_store()
         try:
             population = "window_path_association_evidence_rows"
+            manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+            population_manifest = next(
+                item
+                for item in manifest["population_manifests"]
+                if item["population_id"] == population
+            )
             index_path = target / f"indexes/{population}.index.json"
             index = json.loads(index_path.read_text(encoding="utf-8"))
             index["secondary_indexes"]["path_asn_membership"]["members_by_asn"].pop("49666")
@@ -116,7 +122,7 @@ class CountryOutageP2S1SourceStoreTest(unittest.TestCase):
             raw = (canonical_json(index) + "\n").encode()
             index_path.write_bytes(raw)
 
-            receipt_path = target / "receipts/fd1cbe18c0c27fc261946f7e2f87dab5e20a323ea41cc445b2f248b71f7ef6f0.json"
+            receipt_path = target / population_manifest["materialization_receipt_ref"]
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             receipt["index_digest"] = index["content_sha256"]
             receipt.pop("content_sha256")
@@ -138,6 +144,78 @@ class CountryOutageP2S1SourceStoreTest(unittest.TestCase):
                 entry["materialization_receipt_ref"] = f"receipts/{new_receipt_digest}.json"
             self.rewrite_manifest(target, mutate)
             with self.assertRaisesRegex(SourceStoreIntegrityError, "window path membership index content mismatch"):
+                CountryOutageP2S1SourceStore(target, contract_root=CONTRACT_ROOT).verify()
+        finally:
+            temporary.cleanup()
+
+    def test_fully_resigned_window_path_with_wrong_origin_tail_is_rejected(self):
+        """即使攻击者重签所有外层摘要，错误 AS_PATH 语义仍必须 fail closed。"""
+
+        temporary, target = self.copied_store()
+        try:
+            population = "window_path_association_evidence_rows"
+            manifest_path = target / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            population_manifest = next(
+                item
+                for item in manifest["population_manifests"]
+                if item["population_id"] == population
+            )
+
+            row_path = target / population_manifest["row_file"]["path"]
+            rows = [json.loads(line) for line in row_path.read_text(encoding="utf-8").splitlines()]
+            rows[0]["path_segments"] = [
+                {"segment_type": "as_sequence", "asns": [3257, 58224, 49666]}
+            ]
+            rows[0]["path_digest"] = digest_json(rows[0]["path_segments"])
+            row_semantic = dict(rows[0])
+            row_semantic.pop("row_digest")
+            rows[0]["row_digest"] = digest_json(row_semantic)
+            row_raw = b"".join((canonical_json(row) + "\n").encode("utf-8") for row in rows)
+            row_path.write_bytes(row_raw)
+
+            index_path = target / population_manifest["index_file"]["path"]
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            index["members"][0]["row_digest"] = rows[0]["row_digest"]
+            index.pop("content_sha256")
+            index["content_sha256"] = digest_json(index)
+            index_raw = (canonical_json(index) + "\n").encode("utf-8")
+            index_path.write_bytes(index_raw)
+
+            old_receipt_path = target / population_manifest["materialization_receipt_ref"]
+            receipt = json.loads(old_receipt_path.read_text(encoding="utf-8"))
+            receipt["row_file_sha256"] = hashlib.sha256(row_raw).hexdigest()
+            receipt["index_digest"] = index["content_sha256"]
+            receipt.pop("content_sha256")
+            receipt_semantic = dict(receipt)
+            receipt_semantic.pop("receipt_id")
+            receipt["receipt_id"] = "p2s1_materialization_receipt_v1_" + digest_json(receipt_semantic)
+            receipt["content_sha256"] = digest_json(receipt)
+            receipt_raw = (canonical_json(receipt) + "\n").encode("utf-8")
+            new_receipt_path = target / f"receipts/{receipt['content_sha256']}.json"
+            old_receipt_path.rename(new_receipt_path)
+            new_receipt_path.write_bytes(receipt_raw)
+
+            def mutate(current_manifest):
+                entry = next(
+                    item
+                    for item in current_manifest["population_manifests"]
+                    if item["population_id"] == population
+                )
+                entry["row_file"]["sha256"] = hashlib.sha256(row_raw).hexdigest()
+                entry["row_file"]["size_bytes"] = len(row_raw)
+                entry["index_file"]["sha256"] = hashlib.sha256(index_raw).hexdigest()
+                entry["index_file"]["size_bytes"] = len(index_raw)
+                entry["materialization_receipt_digest"] = receipt["content_sha256"]
+                entry["materialization_receipt_ref"] = (
+                    f"receipts/{receipt['content_sha256']}.json"
+                )
+
+            self.rewrite_manifest(target, mutate)
+            with self.assertRaisesRegex(
+                SourceStoreIntegrityError,
+                "window origin tail or anchor-before invariant mismatch",
+            ):
                 CountryOutageP2S1SourceStore(target, contract_root=CONTRACT_ROOT).verify()
         finally:
             temporary.cleanup()

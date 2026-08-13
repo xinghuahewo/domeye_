@@ -24,6 +24,13 @@ class CountryOutageP2S1W0SourceGovernanceTest(unittest.TestCase):
     def payload(self):
         return json.loads(FIXTURE_INPUT.read_text(encoding="utf-8"))
 
+    @staticmethod
+    def resign_population(payload, key):
+        from tools.build_country_outage_p2_s1_source_views import digest_json
+        population = payload[key]
+        population["row_count"] = len(population["rows"])
+        population["rows_digest"] = digest_json(population["rows"])
+
     def build(self, payload):
         temporary = tempfile.TemporaryDirectory()
         root = Path(temporary.name)
@@ -74,52 +81,96 @@ class CountryOutageP2S1W0SourceGovernanceTest(unittest.TestCase):
 
     def test_missing_dense_new_prefix_slot_is_rejected(self):
         payload = self.payload()
-        payload["new_prefix_projection_inputs"][0]["state_points"].pop()
+        payload["new_prefix_projection_population"]["rows"][0]["state_points"].pop()
+        self.resign_population(payload, "new_prefix_projection_population")
         self.assert_build_rejected(payload, "not dense")
 
     def test_incomplete_first_observed_view_is_rejected(self):
         payload = self.payload()
-        payload["new_prefix_projection_inputs"][0]["first_observed_view_complete"] = False
+        payload["new_prefix_projection_population"]["rows"][0]["first_observed_view_complete"] = False
+        self.resign_population(payload, "new_prefix_projection_population")
         self.assert_build_rejected(payload, "first-observed exact view")
 
     def test_first_denominator_cannot_include_non_visible_direction(self):
         payload = self.payload()
-        payload["new_prefix_projection_inputs"][0]["state_points"][0]["direction_states"]["rrc25:64501"] = "unknown"
+        payload["new_prefix_projection_population"]["rows"][0]["state_points"][0]["direction_states"]["rrc25:64501"] = "unknown"
+        self.resign_population(payload, "new_prefix_projection_population")
         self.assert_build_rejected(payload, "exactly first-observed visible")
 
     def test_exact_route_state_requires_no_future_and_completeness_proof(self):
         for key in ("no_future_read_verified", "source_complete"):
             payload = self.payload()
-            payload["exact_route_state_views"][0][key] = False
+            payload["exact_route_state_population"]["rows"][0][key] = False
+            self.resign_population(payload, "exact_route_state_population")
             self.assert_build_rejected(payload, "completeness/no-future")
 
     def test_exact_route_state_rejects_future_row(self):
         payload = self.payload()
-        payload["exact_route_state_views"][0]["rows"][0]["last_update_utc"] = "2026-02-27T00:05:00Z"
+        payload["exact_route_state_population"]["rows"][0]["rows"][0]["last_update_utc"] = "2026-02-27T00:05:00Z"
+        self.resign_population(payload, "exact_route_state_population")
         self.assert_build_rejected(payload, "future update")
 
     def test_window_path_requires_known_origin_tail_after_anchor(self):
         payload = self.payload()
         segments = [{"segment_type": "as_sequence", "asns": [3257, 49666, 58224, 48159]}]
-        payload["window_path_associations"][0]["path_segments"] = segments
+        payload["window_path_association_population"]["rows"][0]["path_segments"] = segments
         from tools.build_country_outage_p2_s1_source_views import digest_json
-        payload["window_path_associations"][0]["path_digest"] = digest_json(segments)
+        payload["window_path_association_population"]["rows"][0]["path_digest"] = digest_json(segments)
+        self.resign_population(payload, "window_path_association_population")
         self.assert_build_rejected(payload, "tail and strictly after")
+
+    def test_window_path_projects_registered_status_and_preserves_native_status(self):
+        temporary, output, _ = self.build(self.payload())
+        try:
+            rows = [
+                json.loads(line)
+                for line in (output / "populations/window_path_association_evidence_rows.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["source_native_path_status"], "known")
+            self.assertEqual(rows[0]["path_parse_status"], "ordered")
+            self.assertEqual(rows[0]["common_path_status"], "ordered")
+            self.assertTrue(rows[0]["ordered_sequence_eligible"])
+        finally:
+            temporary.cleanup()
 
     def test_window_path_rejects_forged_anchor_population_digest(self):
         payload = self.payload()
         payload["eligible_anchor_population"]["eligible_anchor_asns"] = [49666, 58224]
         self.assert_build_rejected(payload, "population digest mismatch")
 
+    def test_each_source_population_rejects_deleted_rows_behind_complete_claim(self):
+        for key in (
+            "fixed_cohort_population", "prefix_state_population", "asn_state_population",
+            "new_prefix_projection_population", "exact_route_state_population",
+            "window_path_association_population",
+        ):
+            payload = self.payload()
+            payload[key]["rows"] = []
+            self.assert_build_rejected(payload, "completeness mismatch")
+
     def test_path_digest_and_profile_are_not_query_time_guesses(self):
         payload = self.payload()
-        payload["exact_route_state_views"][0]["rows"][0]["path_digest"] = "0" * 64
+        payload["exact_route_state_population"]["rows"][0]["rows"][0]["path_digest"] = "0" * 64
+        self.resign_population(payload, "exact_route_state_population")
         self.assert_build_rejected(payload, "path digest mismatch")
 
     def test_cross_publication_source_ref_is_rejected(self):
         payload = self.payload()
         payload["source_refs"][0]["publication_id"] = "another-publication"
         self.assert_build_rejected(payload, "publication mismatch")
+
+    def test_manifest_identity_binds_publication_cohort_window_and_finality(self):
+        temporary, _, manifest = self.build(self.payload())
+        try:
+            self.assertEqual(manifest["identity"]["publication_digest"], "1" * 64)
+            self.assertEqual(manifest["identity"]["cohort_digest"], "2" * 64)
+            self.assertEqual(manifest["identity"]["window_end_utc"], "2026-02-27T00:05:00Z")
+            self.assertEqual(manifest["identity"]["finality"], "event_end_unknown")
+        finally:
+            temporary.cleanup()
 
     def test_duplicate_json_key_is_rejected_before_projection(self):
         with tempfile.TemporaryDirectory() as temporary:
