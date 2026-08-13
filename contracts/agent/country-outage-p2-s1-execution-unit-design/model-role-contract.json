@@ -7,6 +7,12 @@
   "teacher_required": true,
   "truth_source": "validated_evidence_bundle",
   "teacher_reference_is_ground_truth": false,
+  "model_monetary_policy": {
+    "monetary_limit_mode": "unlimited",
+    "monetary_cost_gate_enabled": false,
+    "all_successful_and_failed_attempts_usage_and_cost_receipts_required": true,
+    "unlimited_does_not_allow_automatic_unbounded_retries": true
+  },
   "truth_precedence": [
     "publication_direct_fact",
     "registered_deterministic_operator_fact",
@@ -65,10 +71,10 @@
     },
     "ds_student_answer_generator": {
       "logical_alias": "ds_student",
-      "identity_status": "pending_freeze_before_s1d5",
-      "provider": "MUST_FREEZE_BY_S1D5",
-      "model": "MUST_FREEZE_BY_S1D5",
-      "version": "MUST_FREEZE_BY_S1D5",
+      "identity_status": "frozen_for_p2_s1_design_evaluation",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "version": "deepseek-v4-flash-pi-0.84.1-v1",
       "latest_alias_forbidden": true,
       "allowed_output_schema": "StudentAnswer",
       "required_inputs": [
@@ -77,6 +83,8 @@
         "validated_evidence_bundle",
         "registry_snapshot",
         "validated_teacher_reference",
+        "teacher_reference_validation_receipt",
+        "teacher_oracle_coverage_receipt",
         "boundary_policy"
       ],
       "tool_selection_authority": false,
@@ -90,10 +98,18 @@
       "owner_kind": "host_validation_pipeline",
       "gates": ["GATE-01", "GATE-02", "GATE-03", "GATE-04", "GATE-05"],
       "all_gates_required": true,
+      "student_answer_artifact_store": "country_outage_p2_trusted_student_answer_artifact_store_v1",
+      "caller_self_attested_artifact_forbidden": true,
       "failed_answer_publishable": false
     },
     "alignment_evaluator": {
       "owner_kind": "host_deterministic_evaluator",
+      "evaluator_id": "country_outage_p2_alignment_evaluator",
+      "evaluator_version": "1.0.0",
+      "evaluator_contract_digest": "2a7b9dc73194dc78fc797b9be30676ccdfde38599466e47305e50ef963e53b3b",
+      "evaluator_implementation_digest": "d193bee50269c2e464ed3b98ef0deb293dcaee1b55ea12aebbbd2e11ed4947cc",
+      "trusted_receipt_store": "country_outage_p2_trusted_alignment_receipt_store_v1",
+      "caller_self_attested_metric_receipt_forbidden": true,
       "teacher_is_truth_oracle": false,
       "hard_gate_metrics": ["fact_precision", "evidence_ref_precision", "boundary_compliance"],
       "scored_metrics": ["intent_coverage", "fact_recall", "structure_coverage", "uncertainty_coverage"],
@@ -103,16 +119,40 @@
   },
   "ds_student_identity": {
     "logical_alias": "ds_student",
-    "provider": null,
-    "model": null,
-    "version": null,
-    "status": "pending_freeze",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "version": "deepseek-v4-flash-pi-0.84.1-v1",
+    "expected_response_model": "deepseek-v4-flash",
+    "pi_version": "0.84.1",
+    "thinking_level": "off",
+    "model_revision_kind": "mutable_alias",
+    "immutable_revision_available": false,
+    "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+    "profile_registry_sha256": "e8881aa2b79f495da3ea551bb3b2423af45c118f5e622ac1877852bf0087bf4f",
+    "flow_identity_required_fields": [
+      "provider",
+      "model",
+      "version",
+      "expected_response_model",
+      "pi_version",
+      "candidate_resource_sha256",
+      "profile_registry_sha256",
+      "identity_digest"
+    ],
+    "freeze_scope": "S1D-5评测候选资源与Profile身份；不宣称冻结供应方权重revision",
+    "p1_certification_evidence_id": "evidence:p1-semantic-certification:f42659f7fb804f54a4012faad0c01f695bdaee8734efb1c563713ae7cd44b187",
+    "p1_certification_scope": "country_outage_p1_rrc25_event_bound_chat_v1",
+    "p1_certification_does_not_certify_p2": true,
+    "status": "frozen_for_s1d5_design_evaluation",
     "freeze_exact_model_by_stage": "S1D-5",
     "latest_alias_forbidden": true,
-    "unresolved_identity_publishable": false
+    "unresolved_identity_publishable": false,
+    "limitation": "供应方未提供不可变权重revision；deepseek-v4-flash是可变别名，S1D-5每次运行必须记录响应模型、候选资源摘要和运行时间。"
   },
   "teacher_plan_binding": {
     "occurs_before_evidence_freeze": true,
+    "planning_unavailable_prevents_dual_answer_flow_creation": true,
+    "dual_flow_teacher_unavailable_phase": "sol_reference_only_after_host_grounding",
     "question_digest_required": true,
     "event_binding_digest_required": true,
     "proposed_capability_ids_only": true,
@@ -148,13 +188,14 @@
     "same_publication_required": true,
     "student_additional_inputs_allowed": [
       "validated_teacher_reference",
-      "teacher_reference_validation_receipt"
+      "teacher_reference_validation_receipt",
+      "teacher_oracle_coverage_receipt"
     ],
     "student_additional_input_may_change_shared_binding": false
   },
   "teacher_reference_contract": {
     "required_fields": [
-      "teacher_run_id",
+      "teacher_reference_id",
       "shared_answer_binding_digest",
       "required_fact_ids",
       "evidence_refs",
@@ -170,23 +211,50 @@
   },
   "student_answer_contract": {
     "required_fields": [
-      "student_run_id",
-      "shared_answer_binding_digest",
+      "revision_ordinal",
+      "run_receipt",
       "teacher_reference_digest",
       "teacher_validation_receipt_digest",
+      "teacher_oracle_coverage_receipt_digest",
+      "student_answer_digest",
+      "student_answer_artifact",
+      "validation_receipt",
+      "may_call_tools",
+      "may_add_event_facts"
+    ],
+    "artifact_required_fields": [
+      "artifact_ref",
+      "artifact_schema_ref",
+      "answer_payload",
+      "answer_digest",
+      "artifact_receipt_digest"
+    ],
+    "answer_payload_required_fields": [
       "claims",
       "evidence_refs",
       "limitations",
       "unknowns",
-      "answer_text",
-      "output_digest"
+      "answer_text"
     ],
+    "artifact_ref_recipe": "artifact:student-answer:{student_answer_digest}",
+    "artifact_payload_is_replayable": true,
+    "artifact_must_resolve_from_host_trusted_store": true,
     "validation_receipt_required_before_publish": true,
     "unvalidated_answer_publishable": false
   },
   "feedback_and_revision_policy": {
+    "feedback_owner": "host_deterministic_alignment_evaluator",
+    "additional_sol_feedback_call_allowed": false,
+    "sol_call_budget": {
+      "planning": 1,
+      "reference": 1,
+      "feedback": 0,
+      "maximum_total": 2
+    },
     "structured_difference_feedback_max": 1,
-    "student_revision_max": 1,
+    "successful_student_revision_max": 1,
+    "failed_attempt_consumes_successful_revision_slot": false,
+    "failed_retry_requires_explicit_host_admission": true,
     "feedback_allowed_fields": [
       "missing_required_fact_ids",
       "incorrect_evidence_refs",
@@ -204,26 +272,35 @@
   "degraded_policy": {
     "default_mode": "teacher_required",
     "silent_degrade_forbidden": true,
-    "teacher_unavailable_disposition": "await_retry_or_request_explicit_user_authorization",
+    "planning_unavailable_disposition": "do_not_create_dual_answer_flow",
+    "reference_unavailable_phase": "sol_reference_after_host_grounding",
+    "teacher_unavailable_disposition": "stopped_waiting_teacher_then_await_retry_or_request_explicit_user_authorization",
     "allowed_degraded_mode": "ds_unaligned_degraded",
     "explicit_user_authorization_required": true,
     "new_plan_revision_required": true,
     "may_claim_sol_ds_alignment": false
   },
+  "terminal_state_contract": {
+    "aligned_published": "published",
+    "ds_unaligned_degraded": "degraded_published",
+    "teacher_unavailable": "stopped_waiting_teacher",
+    "teacher_rejected": "teacher_rejected",
+    "student_rejected": "failed",
+    "alignment_rejected": "alignment_failed",
+    "teacher_gate_rejection_has_no_oracle_coverage_receipt": true,
+    "teacher_oracle_coverage_rejection_requires_passed_teacher_gates": true,
+    "non_publish_terminal_artifacts_are_exhaustively_null_closed": true
+  },
   "run_receipt_required_fields": [
     "run_id",
     "role",
+    "run_phase",
     "exact_model_identity",
     "shared_answer_binding_digest",
     "role_specific_input_digest",
     "output_digest",
     "validation_receipt_digest",
-    "latency_ms",
-    "input_tokens",
-    "output_tokens",
-    "cost_amount",
-    "cost_currency",
-    "retry_count",
+    "cost",
     "disposition"
   ],
   "forbidden_claims": [
@@ -237,7 +314,9 @@
   ],
   "design_boundary": {
     "model_calls_implemented": false,
-    "ds_identity_frozen": false,
+    "s1d5_design_evaluation_model_replay_executed": true,
+    "ds_identity_frozen": true,
+    "p2_runtime_model_path_implemented": false,
     "runtime_integrated": false,
     "production_deployed": false
   }

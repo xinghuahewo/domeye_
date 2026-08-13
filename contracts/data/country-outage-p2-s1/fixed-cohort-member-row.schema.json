@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/country-outage-p2-s1/fixed-cohort-member-row.schema.json",
+  "title": "固定 cohort 成员原子事实行",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "publication_id", "cohort_id", "cohort_member_id", "prefix", "afi", "country_origin_asns", "expected_peer_asn_direction_ids", "expected_route_observation_keys", "membership_basis", "member_key", "row_digest", "source_record_refs"],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s1_fixed_cohort_member_row_v1"},
+    "publication_id": {"type": "string", "minLength": 1},
+    "cohort_id": {"type": "string", "minLength": 1},
+    "cohort_member_id": {"type": "string", "minLength": 1},
+    "prefix": {"type": "string", "minLength": 3},
+    "afi": {"$ref": "common.schema.json#/$defs/afi"},
+    "country_origin_asns": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "common.schema.json#/$defs/asn"}},
+    "expected_peer_asn_direction_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "expected_route_observation_keys": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "membership_basis": {"type": "string", "enum": ["country_origin_known", "country_origin_moas", "country_origin_ambiguous"]},
+    "member_key": {"type": "string", "pattern": "^p2s1_member_v1_[0-9a-f]{64}$"},
+    "row_digest": {"$ref": "common.schema.json#/$defs/sha256"},
+    "source_record_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

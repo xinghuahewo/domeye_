@@ -207,9 +207,15 @@ null/unknown/missing、超时、取消、权限、最大扫描量、成本估算
 
 `TOOL-12` 只负责窗口级 path-association evidence 的完整稳定分页；至少 5 条预览属于
 ResultSet Renderer，不进入 Tool，也不得将窗口关联写成 path-at-time。
+`TOOL-12` 的 anchor 资格必须由同 publication 完整冻结的 ever-affected-AS
+ResultSet 及 manifest/content/freeze 摘要证明，不接受 query receipt 自报的布尔值。
+anchor-before 行必须保留 `origin_status=known`与 `observed_origin_asn`，且去除连续
+prepend 后该 origin 必须是有序 AS_PATH 末尾 ASN；中间 ASN 不得冒充 origin。
 `TOOL-11` 只读取预先物化、内容寻址且带 projection receipt 的精确时点 RouteState；不得内嵌
 checkpoint 选择、RouteEvent 回放或状态投影，也不得复用 `concurrent` 充当路径时点证据。
-`TOOL-07` 返回固定 cohort member 的原生 expected directions，使 Q18 可把预期方向与
+`contains_asn` 必须使用同一 RouteState 人口的预物化 path-ASN membership index，并由可信
+materialization/query filter receipt 绑定 target、index、matched members 与 total count；查询时
+临时解析路径或由模型过滤均禁止。`TOOL-07` 返回固定 cohort member 的原生 expected directions，使 Q14/Q18 可把预期方向与
 `TOOL-11` 实际方向分源比较。
 
 每个 Tool 只允许一种 `output_population`；任何“查询并排序”“读取两种 state 并关联”或
@@ -258,6 +264,8 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 - `OP-35`：目标状态最后一次出现；
 - `OP-36`：首次阈值穿越与左删失；
 - `OP-37`：消费 OP-29 回执的证据一致性分类。
+- `OP-38`：两个完整同身份同网格半开状态区间集合的时间交集；
+- `OP-39`：完整 fixed cohort member 人口到唯一 prefix_key 集合的投影。
 
 每个 Operator 必须定义输入 schema/digest、纯函数参数、排序、tie、null、unknown、missing、
 空集合、时间容差、复杂度、内存上限、确定性摘要、Evidence 继承和禁止解释。
@@ -283,6 +291,8 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 - `OP-34` 保持 deferred；
 - `OP-35` 不得被截止状态 `OP-08` 替代；`OP-36` 左删失项不得进入 `OP-12` 精确排名；
 - `OP-37` 不得重新计算 OP-29 的时间关系，只分类登记的一致性状态；
+- `OP-38` 不得被 `OP-29` 取代；端点相接不算区间重叠，缺页或不同window/grid失败关闭；
+- `OP-39` 不得复用只接受path evidence的 `OP-18`，也不得内嵌状态读取；
 - 所有 Operator 同输入同版本同参数得到同摘要；
 - 本阶段不得回改 Tool 结果人口来迎合 Operator。
 - 每个 Operator 均通过 `operator_single_transform_semantic` 和 `atomic_split_test`。
@@ -296,14 +306,17 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 ### 8.2 工作
 
 1. 冻结 InvestigationPlan DAG、依赖、并行 wave、状态机和预算；
-2. 冻结 ResultSet 的 content address、分页、预览、缓存、过期和重放；
-3. 冻结 Evidence Graph 节点、边、限制、未知、失败和版本；
-4. 冻结 Sol Teacher run→TeacherReference validation→DS Student run→Alignment Evaluation 的
+2. P2 v1 的 InvestigationPlan Schema 明确排除 `PLAN-CAP-02`、`fan_out_groups` 和
+   `fan_out_member`；Q20/Q23/Q26 只保留无动态展开也可闭合的子目标，不得在 Host、Tool、
+   Operator、Renderer 或模型中隐式实现 fan-out；
+3. 冻结 ResultSet 的 content address、分页、预览、缓存、过期和重放；
+4. 冻结 Evidence Graph 节点、边、限制、未知、失败和版本；
+5. 冻结 Sol Teacher run→TeacherReference validation→DS Student run→Alignment Evaluation 的
    状态机和同证据摘要；
-5. 冻结 Sol 不可用、TeacherReference 失败、DS 失败、对齐低分和用户授权降级的处置；
-6. 冻结节点结果、调查修订、Evidence Graph、DialogState 和导出的提交一致性协议；
-7. 冻结取消、部分失败继续、局部重跑、新 revision 和导出授权；
-8. 冻结 DialogState 只在 Evidence commit 与最终 DS Answer Validator 成功后推进的顺序。
+6. 冻结 Sol 不可用、TeacherReference 失败、DS 失败、对齐低分和用户授权降级的处置；
+7. 冻结节点结果、调查修订、Evidence Graph、DialogState 和导出的提交一致性协议；
+8. 冻结取消、部分失败继续、局部重跑、新 revision 和导出授权；
+9. 冻结 DialogState 只在 Evidence commit 与最终 DS Answer Validator 成功后推进的顺序。
 
 ### 8.3 计划输出
 
@@ -327,6 +340,8 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 - 运行时事务设计不得把已拆分的 Tool/Operator 重新包进复合执行单元。
 - TeacherRun、StudentRun、AlignmentRun 各有独立回执；DS 必须引用同一 Evidence digest。
 - `teacher_required=true` 时 Sol 失败不得静默切到 DS；用户授权降级必须形成新计划修订。
+- `PLAN-CAP-02` 固定为 `deferred_p2_1_not_in_p2_v1_plan_schema`；它不是 P2 v1 的待办节点，
+  也不得被标为可执行。
 
 ## 九、S1D-5：Oracle、性能、成本、安全与独立审查
 
@@ -339,8 +354,9 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 1. 将 28 题 Oracle seed 扩为可执行设计 Oracle；
 2. 建立身份错配、缺页、游标篡改、未来状态读取、路径语义、分页重复和摘要篡改反例；
 3. 对每个 Tool/Operator 执行复合动词、mode 漂移、人口漂移和内部编排反例；
-4. 对 28 题运行 Sol Teacher 与 DS Student 同证据回放，按意图、事实、Evidence、边界、结构
-   分项评分；
+4. 为 28 题冻结 Sol Teacher 与 DS Student 同证据回放合同、逐题评测槽位和分项指标；已经
+   发生的模型运行保留真实回执，缺少同 GroundingPlan/Evidence/Registry/publication 摘要或
+   Host 硬门指标时必须标记未验证，不得补写为已通过；
 5. 注入 Sol 错误数字、无效引用、因果和恢复断言，证明 TeacherReference Validator 会拒绝；
 6. 比较 DS 首答与最多一次差异反馈修订，建立版本候选、保留集和非回退晋级门；
 7. 为 AS/前缀/路径/downstream 海量结果冻结 preview、预算、确认和导出阈值；
@@ -365,11 +381,16 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
   tamper、cancel、rerun 和 partial failure 均有 Oracle；
 - Reviewer 与 Builder 身份分离，意见有处置回执；
 - 任何未闭合高风险语义均阻断，不降级成“已知限制后通过”；
-- 成本超预算时必须缩小计划或请求用户确认，不能静默截断；
+- 模型金额限额固定为 `unlimited`，不以金额拒绝调用；所有成功和失败尝试仍逐角色记录
+  Token、费用、时延、重试和结果；人口、Token、时延、内存或调用次数超过非金额安全边界时必须
+  停止或转异步任务，不能静默截断证据；
 - 内部路径质量 Gate 不被包装成新的用户事实问题。
 - 任一执行单元未通过 `atomic_split_test` 时不得以“功能完整”为由放行。
 - DS 的事实精度、Evidence 引用和 boundary compliance 是硬门；文本相似度不得单独放行；
 - Sol 样本未通过 Evidence Validator 时不得进入 DS prompt、评测真值或离线改进集。
+- S1D-5 可以通过设计语义审查并允许实现交接，但在受信同证据摘要、Student artifact、Host
+  hard metrics 和完整性能回执缺失时，必须保持 `model_alignment_passed=false`、
+  `performance_acceptance=false`、`runtime_model_promotion=false`。
 
 ## 十、S1D-6：同候选最终设计验收与实现交接
 
@@ -382,7 +403,8 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 1. 构造单一 final design candidate；
 2. 对全部文档、schema、catalog、Oracle、预算和 Review 计算摘要；
 3. 验证 28 题→Capability→Tool/Operator→Plan→Evidence→Oracle 的引用闭包；
-4. 验证 Sol/DS 模型身份、prompt/policy、Evidence digest、对齐矩阵和费用回执闭包；
+4. 验证 Sol/DS 模型身份、prompt/policy、对齐矩阵、已记录费用回执和未闭合晋级阻断均被
+   同一候选冻结；不得把缺失的 Evidence/shared-binding/Host metrics 补写为已通过；
 5. 生成实现交接清单、依赖顺序、风险、明确 deferred 项；
 6. 明确下一任务只能进入实现排期或实现 S0，不得跳到部署。
 
@@ -399,7 +421,8 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 - 所有验收证据来自同一 candidate；
 - manifest 无悬空引用，摘要和父候选闭合；
 - 28 题覆盖 28/28，P2 v1 与 P2.1 deferred 可机器区分；
-- 28 题均有 Sol Teacher→DS Student 同证据回放结果，DS 晋级无硬门回退；
+- 28 题均有 Sol Teacher→Host→DS 的设计回放合同、逐题评测槽位和 Oracle；实际运行记录按
+  真实证据保存，缺少受信同证据摘要或 Host hard metrics 时，模型/性能/运行晋级继续阻断；
 - `design_only=true`、`runtime_implemented=false`、`production_deployed=false`；
 - 结论仅为“设计合同可交接实施”，不能写成“P2 已完成”。
 
@@ -412,9 +435,10 @@ contracts/agent/country-outage-p2-s1-execution-unit-design/
 
 1. 先做 TOOL-07/08/09/10 与 OP-05..14、OP-35/36，闭合 ASN/前缀问题；
 2. 再做 TOOL-12 与 OP-15..28，闭合路径查询、预览、计数和集合；
-3. 再做 TOOL-11 与 OP-29..33、OP-37，闭合 path-at-time、VP一致性、证据一致性和new-prefix连接；
-4. 最后组合 InvestigationPlan、Evidence Graph、局部重跑和受控导出；
-5. TOOL-13/OP-34 留在 P2.1，除非重新通过范围与成本 Gate。
+3. 再做 OP-38/39，闭合区间交集与fixed cohort前缀投影的人口类型；
+4. 再做 TOOL-11 与 OP-29..33、OP-37，闭合 path-at-time、VP一致性、证据一致性和new-prefix连接；
+5. Evidence Graph、局部重跑和受控导出在无动态 fan-out 的 P2 v1 合同上组合；
+6. `PLAN-CAP-02`、TOOL-13/OP-34 留在 P2.1，须另立 TASK 重新冻结范围、Schema、成本和攻击门。
 
 这一顺序只是实施依赖建议，不构成任何实现授权或完成声明。
 

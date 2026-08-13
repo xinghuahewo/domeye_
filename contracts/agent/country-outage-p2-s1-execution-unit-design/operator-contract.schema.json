@@ -117,7 +117,7 @@
         },
         "operator_id": {
           "type": "string",
-          "pattern": "^OP-(0[5-9]|[12][0-9]|3[0-7])$"
+          "pattern": "^OP-(0[5-9]|[12][0-9]|3[0-9])$"
         },
         "operator_version": {
           "const": "1.0.0-design"
@@ -223,7 +223,7 @@
         },
         "operator_id": {
           "type": "string",
-          "pattern": "^OP-(0[5-9]|[12][0-9]|3[0-7])$"
+          "pattern": "^OP-(0[5-9]|[12][0-9]|3[0-9])$"
         },
         "operator_version": {
           "const": "1.0.0-design"
@@ -623,6 +623,75 @@
           },
           "minItems": 1
         }
+      },
+      "additionalProperties": false
+    },
+    "stateIntervalOverlap": {
+      "type": "object",
+      "required": [
+        "start_utc",
+        "end_utc",
+        "duration_seconds",
+        "left_interval_digest",
+        "right_interval_digest"
+      ],
+      "properties": {
+        "start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "left_interval_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "right_interval_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fixedCohortMember": {
+      "type": "object",
+      "required": [
+        "cohort_member_id",
+        "prefix",
+        "afi",
+        "country_origin_asns",
+        "expected_peer_asn_direction_ids",
+        "expected_route_observation_keys",
+        "membership_basis",
+        "evidence_ref"
+      ],
+      "properties": {
+        "cohort_member_id": {"type": "string", "minLength": 1},
+        "prefix": {"type": "string", "format": "cidr"},
+        "afi": {"type": "integer", "enum": [4, 6]},
+        "country_origin_asns": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/asn"},
+          "uniqueItems": true
+        },
+        "expected_peer_asn_direction_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "expected_route_observation_keys": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "membership_basis": {
+          "enum": ["country_origin_known", "country_origin_moas", "country_origin_ambiguous"]
+        },
+        "evidence_ref": {"$ref": "#/$defs/evidenceRef"}
       },
       "additionalProperties": false
     },
@@ -1219,19 +1288,35 @@
     "verifiedAnchorBeforeKnownOriginAssociation": {
       "type": "object",
       "required": [
+        "source_member_key",
+        "source_member_digest",
         "anchor_asn",
         "known_origin_asn",
+        "origin_status",
+        "observed_origin_asn",
         "path_digest",
         "path_canonicalization_profile_id",
         "path_canonicalization_profile_digest",
-        "population_filter_receipt_digest",
         "evidence_ref"
       ],
       "properties": {
+        "source_member_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_member_digest": {
+          "$ref": "#/$defs/digest"
+        },
         "anchor_asn": {
           "$ref": "#/$defs/asn"
         },
         "known_origin_asn": {
+          "$ref": "#/$defs/asn"
+        },
+        "origin_status": {
+          "const": "known"
+        },
+        "observed_origin_asn": {
           "$ref": "#/$defs/asn"
         },
         "path_digest": {
@@ -1243,12 +1328,62 @@
         "path_canonicalization_profile_digest": {
           "const": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
         },
-        "population_filter_receipt_digest": {
-          "$ref": "#/$defs/digest"
-        },
         "evidence_ref": {
           "$ref": "#/$defs/evidenceRef"
         }
+      },
+      "additionalProperties": false
+    },
+    "op19SourceResultSetRef": {
+      "type": "object",
+      "required": [
+        "result_set_id",
+        "result_set_revision",
+        "manifest_digest",
+        "content_digest",
+        "freeze_receipt_digest",
+        "query_receipt_digest",
+        "source_population_id",
+        "source_dataset_digest",
+        "member_identity"
+      ],
+      "properties": {
+        "result_set_id": {"type": "string", "minLength": 1},
+        "result_set_revision": {"type": "integer", "minimum": 1},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "content_digest": {"$ref": "#/$defs/digest"},
+        "freeze_receipt_digest": {"$ref": "#/$defs/digest"},
+        "query_receipt_digest": {"$ref": "#/$defs/digest"},
+        "source_population_id": {"const": "window_path_association_evidence_rows"},
+        "source_dataset_digest": {"$ref": "#/$defs/digest"},
+        "member_identity": {"const": "path_association_id"}
+      },
+      "additionalProperties": false
+    },
+    "op19OriginContribution": {
+      "type": "object",
+      "required": [
+        "origin_asn",
+        "source_member_keys",
+        "source_member_digests",
+        "evidence_refs",
+        "contribution_digest"
+      ],
+      "properties": {
+        "origin_asn": {"$ref": "#/$defs/asn"},
+        "source_member_keys": {
+          "type": "array", "minItems": 1,
+          "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "source_member_digests": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/digest"}, "uniqueItems": true
+        },
+        "evidence_refs": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/evidenceRef"}
+        },
+        "contribution_digest": {"$ref": "#/$defs/digest"}
       },
       "additionalProperties": false
     },
@@ -1355,6 +1490,27 @@
             "type": "integer",
             "minimum": 0
           },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "severityRankedMember": {
+      "type": "object",
+      "required": [
+        "asn",
+        "severity_rank_global",
+        "result_position",
+        "severity_key"
+      ],
+      "properties": {
+        "asn": {"$ref": "#/$defs/asn"},
+        "severity_rank_global": {"type": "integer", "minimum": 1},
+        "result_position": {"type": "integer", "minimum": 1},
+        "severity_key": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0},
           "minItems": 2,
           "maxItems": 2
         }
@@ -1935,7 +2091,8 @@
       "required": [
         "identity",
         "members",
-        "set_completeness"
+        "set_completeness",
+        "population_evidence_ref"
       ],
       "properties": {
         "identity": {
@@ -1949,6 +2106,9 @@
         },
         "set_completeness": {
           "const": "complete"
+        },
+        "population_evidence_ref": {
+          "$ref": "#/$defs/evidenceRef"
         }
       },
       "additionalProperties": false
@@ -1957,6 +2117,7 @@
       "type": "object",
       "required": [
         "ordered_asns",
+        "ranked_members",
         "rank_groups",
         "sort_profile_id",
         "input_digest",
@@ -1968,6 +2129,10 @@
           "items": {
             "$ref": "#/$defs/asn"
           }
+        },
+        "ranked_members": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/severityRankedMember"}
         },
         "rank_groups": {
           "type": "array",
@@ -2209,6 +2374,10 @@
       "required": [
         "intervals",
         "interval_count",
+        "target_state",
+        "grid_step_seconds",
+        "window",
+        "series_digest",
         "input_digest",
         "evidence_refs"
       ],
@@ -2222,6 +2391,19 @@
         "interval_count": {
           "type": "integer",
           "minimum": 0
+        },
+        "target_state": {
+          "$ref": "#/$defs/typedState"
+        },
+        "grid_step_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "window": {
+          "$ref": "#/$defs/halfOpenInterval"
+        },
+        "series_digest": {
+          "$ref": "#/$defs/digest"
         },
         "input_digest": {
           "$ref": "#/$defs/digest"
@@ -3948,9 +4130,13 @@
       "required": [
         "identity",
         "anchor_asn",
+        "source_result_set_ref",
         "association_members",
         "set_completeness",
-        "population_filter_receipt_digest"
+        "source_result_set_query_receipt_digest",
+        "population_filter_receipt_digest",
+        "host_projection_receipt_digest",
+        "population_evidence_ref"
       ],
       "properties": {
         "identity": {
@@ -3958,6 +4144,9 @@
         },
         "anchor_asn": {
           "$ref": "#/$defs/asn"
+        },
+        "source_result_set_ref": {
+          "$ref": "#/$defs/op19SourceResultSetRef"
         },
         "association_members": {
           "type": "array",
@@ -3968,8 +4157,17 @@
         "set_completeness": {
           "const": "complete"
         },
+        "source_result_set_query_receipt_digest": {
+          "$ref": "#/$defs/digest"
+        },
         "population_filter_receipt_digest": {
           "$ref": "#/$defs/digest"
+        },
+        "host_projection_receipt_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "population_evidence_ref": {
+          "$ref": "#/$defs/evidenceRef"
         }
       },
       "additionalProperties": false
@@ -3979,6 +4177,7 @@
       "required": [
         "anchor_asn",
         "members",
+        "member_contributions",
         "member_count",
         "set_digest",
         "input_digest",
@@ -3995,6 +4194,10 @@
           },
           "uniqueItems": true
         },
+        "member_contributions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/op19OriginContribution"}
+        },
         "member_count": {
           "type": "integer",
           "minimum": 0
@@ -4007,6 +4210,7 @@
         },
         "evidence_refs": {
           "type": "array",
+          "minItems": 1,
           "items": {
             "$ref": "#/$defs/evidenceRef"
           }
@@ -6604,6 +6808,201 @@
         }
       ]
     },
+    "op38InputPayload": {
+      "type": "object",
+      "required": [
+        "identity",
+        "left_intervals",
+        "right_intervals",
+        "left_target_state",
+        "right_target_state",
+        "window",
+        "grid_step_seconds",
+        "left_interval_set_digest",
+        "right_interval_set_digest"
+      ],
+      "properties": {
+        "identity": {"$ref": "#/$defs/publicationIdentity"},
+        "left_intervals": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/halfOpenStateInterval"}
+        },
+        "right_intervals": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/halfOpenStateInterval"}
+        },
+        "left_target_state": {"$ref": "#/$defs/typedState"},
+        "right_target_state": {"$ref": "#/$defs/typedState"},
+        "window": {"$ref": "#/$defs/halfOpenInterval"},
+        "grid_step_seconds": {"type": "integer", "minimum": 1},
+        "left_interval_set_digest": {"$ref": "#/$defs/digest"},
+        "right_interval_set_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "op38ResultPayload": {
+      "type": "object",
+      "required": [
+        "outcome",
+        "overlap_intervals",
+        "overlap_count",
+        "left_target_state",
+        "right_target_state",
+        "window",
+        "grid_step_seconds",
+        "left_digest",
+        "right_digest",
+        "set_digest",
+        "evidence_refs"
+      ],
+      "properties": {
+        "outcome": {"enum": ["overlap", "disjoint", "empty_left", "empty_right", "empty_both"]},
+        "overlap_intervals": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/stateIntervalOverlap"}
+        },
+        "overlap_count": {"type": "integer", "minimum": 0},
+        "left_target_state": {"$ref": "#/$defs/typedState"},
+        "right_target_state": {"$ref": "#/$defs/typedState"},
+        "window": {"$ref": "#/$defs/halfOpenInterval"},
+        "grid_step_seconds": {"type": "integer", "minimum": 1},
+        "left_digest": {"$ref": "#/$defs/digest"},
+        "right_digest": {"$ref": "#/$defs/digest"},
+        "set_digest": {"$ref": "#/$defs/digest"},
+        "evidence_refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/evidenceRef"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"outcome": {"const": "overlap"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "overlap_intervals": {"minItems": 1},
+              "overlap_count": {"minimum": 1}
+            }
+          },
+          "else": {
+            "properties": {
+              "overlap_intervals": {"maxItems": 0},
+              "overlap_count": {"const": 0}
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "op38InputEnvelope": {
+      "allOf": [
+        {"$ref": "#/$defs/operatorInputEnvelope"},
+        {
+          "type": "object",
+          "properties": {
+            "operator_id": {"const": "OP-38"},
+            "operator_version": {"const": "1.0.0-design"},
+            "parameter_profile_id": {"const": null},
+            "parameter_profile_digest": {"const": null},
+            "input_completeness": {"const": "complete"},
+            "inputs": {"$ref": "#/$defs/op38InputPayload"}
+          }
+        }
+      ]
+    },
+    "op38OutputEnvelope": {
+      "allOf": [
+        {"$ref": "#/$defs/operatorOutputEnvelope"},
+        {
+          "type": "object",
+          "properties": {
+            "operator_id": {"const": "OP-38"},
+            "operator_version": {"const": "1.0.0-design"},
+            "parameter_profile_id": {"const": null},
+            "parameter_profile_digest": {"const": null},
+            "input_completeness": {"const": "complete"},
+            "completeness": {"const": "complete"},
+            "result": {"$ref": "#/$defs/op38ResultPayload"}
+          }
+        }
+      ]
+    },
+    "op39InputPayload": {
+      "type": "object",
+      "required": [
+        "identity",
+        "fixed_cohort_members",
+        "set_completeness",
+        "input_digest"
+      ],
+      "properties": {
+        "identity": {"$ref": "#/$defs/publicationIdentity"},
+        "fixed_cohort_members": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/fixedCohortMember"}
+        },
+        "set_completeness": {"const": "complete"},
+        "input_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "op39ResultPayload": {
+      "type": "object",
+      "required": [
+        "members",
+        "member_count",
+        "set_digest",
+        "input_digest",
+        "evidence_refs"
+      ],
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/prefixKey"},
+          "uniqueItems": true
+        },
+        "member_count": {"type": "integer", "minimum": 0},
+        "set_digest": {"$ref": "#/$defs/digest"},
+        "input_digest": {"$ref": "#/$defs/digest"},
+        "evidence_refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/evidenceRef"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "op39InputEnvelope": {
+      "allOf": [
+        {"$ref": "#/$defs/operatorInputEnvelope"},
+        {
+          "type": "object",
+          "properties": {
+            "operator_id": {"const": "OP-39"},
+            "operator_version": {"const": "1.0.0-design"},
+            "parameter_profile_id": {"const": null},
+            "parameter_profile_digest": {"const": null},
+            "input_completeness": {"const": "complete"},
+            "inputs": {"$ref": "#/$defs/op39InputPayload"}
+          }
+        }
+      ]
+    },
+    "op39OutputEnvelope": {
+      "allOf": [
+        {"$ref": "#/$defs/operatorOutputEnvelope"},
+        {
+          "type": "object",
+          "properties": {
+            "operator_id": {"const": "OP-39"},
+            "operator_version": {"const": "1.0.0-design"},
+            "parameter_profile_id": {"const": null},
+            "parameter_profile_digest": {"const": null},
+            "input_completeness": {"const": "complete"},
+            "completeness": {"const": "complete"},
+            "result": {"$ref": "#/$defs/op39ResultPayload"}
+          }
+        }
+      ]
+    },
     "edgeProjectionEndpoint": {
       "type": "object",
       "additionalProperties": false,
@@ -6796,7 +7195,7 @@
   "properties": {
     "unit_id": {
       "type": "string",
-      "pattern": "^OP-(0[5-9]|[12][0-9]|3[0-7])$"
+      "pattern": "^OP-(0[5-9]|[12][0-9]|3[0-9])$"
     },
     "name": {
       "type": "string",
@@ -6827,7 +7226,7 @@
     },
     "input_schema_ref": {
       "type": "string",
-      "pattern": "^operator-contract\\.schema\\.json#/\\$defs/op(0[5-9]|[12][0-9]|3[0-7])InputEnvelope$"
+      "pattern": "^operator-contract\\.schema\\.json#/\\$defs/op(0[5-9]|[12][0-9]|3[0-9])InputEnvelope$"
     },
     "input_contract": {
       "type": "object",
@@ -6888,7 +7287,7 @@
     },
     "output_schema_ref": {
       "type": "string",
-      "pattern": "^operator-contract\\.schema\\.json#/\\$defs/op(0[5-9]|[12][0-9]|3[0-7])OutputEnvelope$"
+      "pattern": "^operator-contract\\.schema\\.json#/\\$defs/op(0[5-9]|[12][0-9]|3[0-9])OutputEnvelope$"
     },
     "output_contract": {
       "type": "object",
@@ -7060,6 +7459,9 @@
         },
         "disposition": {
           "const": "atomic_as_designed"
+        },
+        "evidence_edge_projection_is_output_view_not_second_business_transform": {
+          "const": true
         }
       },
       "additionalProperties": false
@@ -7256,6 +7658,24 @@
           "output_semantic": {
             "const": "evidence_consistency_class"
           }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"unit_id": {"const": "OP-38"}}, "required": ["unit_id"]},
+      "then": {
+        "properties": {
+          "input_semantic": {"const": "two_complete_state_interval_sets"},
+          "output_semantic": {"const": "state_interval_overlap_set"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"unit_id": {"const": "OP-39"}}, "required": ["unit_id"]},
+      "then": {
+        "properties": {
+          "input_semantic": {"const": "complete_fixed_cohort_member_result_set"},
+          "output_semantic": {"const": "fixed_cohort_prefix_set"}
         }
       }
     }

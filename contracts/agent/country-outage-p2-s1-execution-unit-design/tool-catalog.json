@@ -336,7 +336,32 @@
     },
     {
       "source_population_id": "materialized_route_state_rows_at_exact_time",
-      "implementation_precondition": "materialize_exact_time_route_state_view_with_projection_receipt",
+      "implementation_precondition": "materialize_exact_time_route_state_view_with_projection_receipt_and_path_asn_membership_index",
+      "required_source_metadata": [
+        "path_asn_membership_index_id",
+        "path_asn_membership_profile_digest",
+        "path_asn_membership_index_digest",
+        "path_asn_membership_materialization_receipt_digest"
+      ],
+      "path_asn_membership_profile": {
+        "profile_id": "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0",
+        "profile_digest": "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2",
+        "source_field": "path_segments",
+        "membership_rule": "对typed path_segments中全部segment的ASN token取成员集合；prepend重复只在索引成员集合内去重，不修改主路径",
+        "eligible_row_predicate": "visibility=visible AND common_path_status IN (ordered,unordered)",
+        "ambiguous_invalid_unknown_not_applicable_excluded": true,
+        "query_time_path_parsing_forbidden": true,
+        "materialization_receipt_must_bind": [
+          "publication_id",
+          "state_point_utc",
+          "source_dataset_digest",
+          "checkpoint_id",
+          "projection_receipt_digest",
+          "profile_digest",
+          "index_digest",
+          "indexed_member_keys_digest"
+        ]
+      },
       "required_source_fields": [
         "state_point_utc",
         "prefix",
@@ -364,11 +389,50 @@
     },
     {
       "source_population_id": "window_path_association_evidence_rows",
-      "implementation_precondition": "freeze_window_association_row_and_path_quality_schema",
+      "implementation_precondition": "freeze_window_association_row_and_path_quality_schema_with_pre_materialized_filter_indexes",
+      "required_source_metadata": [
+        "path_asn_membership_index_id",
+        "anchor_before_known_origin_index_id",
+        "path_association_filter_profile_digest",
+        "path_association_index_digest",
+        "path_association_materialization_receipt_digest",
+        "anchor_population_source_ref",
+        "eligible_anchor_asns_digest",
+        "eligible_anchor_asn_count"
+      ],
+      "filter_profile": {
+        "profile_id": "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0",
+      "profile_digest": "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7",
+        "contains_asn_rule": "对source view已物化typed path_segments中全部ASN token建立成员索引；prepend重复只在索引成员集合内去重，不修改主路径",
+        "anchor_before_known_origin_rule": "仅索引ordered_sequence_eligible=true、origin_status=known、observed_origin_asn=known_origin_asn、且去除连续prepend后known origin是AS_PATH最后ASN并严格位于anchor之后的source row",
+        "anchor_population_rule": "anchor必须属于同publication已冻结完整ever-affected-AS ResultSet；物化回执原样绑定该ResultSet身份、manifest/content/freeze摘要及完整排序ASN成员摘要",
+        "query_time_path_parsing_forbidden": true,
+      "profile_digest_recipe": "sha256(canonical(filter_profile excluding profile_digest))",
+      "materialization_receipt_must_bind": [
+        "materializer_id",
+        "materializer_version",
+        "materializer_contract_digest",
+        "materializer_implementation_digest",
+        "publication_id",
+        "source_dataset_digest",
+        "profile_id",
+        "profile_digest",
+          "path_asn_membership_index_id",
+          "anchor_before_known_origin_index_id",
+          "index_digest",
+          "indexed_member_keys_digest",
+          "anchor_population_source_ref",
+          "eligible_anchor_asns",
+          "eligible_anchor_asns_digest",
+          "eligible_anchor_asn_count"
+        ]
+      },
       "required_source_fields": [
         "path_association_id",
         "anchor_asn",
         "known_origin_asn",
+        "origin_status",
+        "observed_origin_asn",
         "prefix",
         "afi",
         "path_id",
@@ -549,6 +613,7 @@
         "Q06",
         "Q07",
         "Q09",
+        "Q14",
         "Q18"
       ],
       "runtime_ready_claim": false,
@@ -1530,6 +1595,34 @@
         "route_observation_key": "collector_id+vp_id+peer_id+prefix+afi，连接TOOL-07 expected_route_observation_keys",
         "route_state_member_key": "publication_id+state_point_utc+collector_id+vp_id+peer_id+prefix+afi"
       },
+      "contains_asn_filter_contract": {
+        "source": "pre_materialized_path_asn_membership_index_on_same_route_state_population",
+        "profile_id": "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0",
+        "profile_digest": "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2",
+        "eligible_row_predicate": "visibility=visible AND common_path_status IN (ordered,unordered)",
+        "query_time_path_parsing_forbidden": true,
+        "llm_filtering_forbidden": true,
+        "trusted_query_receipt_required_when_filter_present": true,
+        "query_receipt_must_bind": [
+          "receipt_kind",
+          "tool_run_id",
+          "identity_digest",
+          "state_point_utc",
+          "query_digest",
+          "source_population_id",
+          "source_dataset_digest",
+          "contains_asn",
+          "path_asn_membership_profile_digest",
+          "path_asn_membership_index_digest",
+          "path_asn_membership_materialization_receipt_digest",
+          "eligible_row_predicate",
+          "matched_member_keys_digest",
+          "total_count",
+          "disposition"
+        ],
+        "returned_member_validation": "每个返回行必须满足eligible predicate且typed path_segments确实包含target ASN；这只验证包含关系，不重算索引总体完整性",
+        "completeness_proof": "完整性仅由Host可信index/materialization/query receipt链证明"
+      },
       "state_time_semantics": "after_all_legal_events_through_exact_state_point",
       "active_path_rule": "只有visibility=visible且common_path_status属于ordered或unordered的path可称该时点活动观测路径",
       "invisible_path_rule": "当前origin/path为not_applicable；历史最后路径若提供必须单独命名并带时间",
@@ -1551,11 +1644,12 @@
         "afi"
       ],
       "pagination_contract_ref": "#/common_result_set_contract",
-      "evidence_contract": "每行引用materialized row、checkpoint、projection receipt和source manifest",
+      "evidence_contract": "每行引用materialized row、checkpoint、projection receipt和source manifest；contains_asn查询额外绑定可信membership index、materialization与query filter receipt",
       "forbidden_embedded_actions": [
         "select_checkpoint",
         "replay_route_events",
         "project_route_state",
+        "derive_path_membership_at_query_time",
         "join_expected_directions",
         "classify_vp_consistency",
         "locate_asn",
@@ -1614,7 +1708,7 @@
           "peer_asn_direction_id",
           "ordered_sequence_eligible"
         ],
-        "filter_contract": "anchor_before_known_origin只选择source view已物化的有序关系，不在Tool内派生",
+        "filter_contract": "contains_asn与anchor_before_known_origin只读取source view预物化索引；query-time路径解析或LLM过滤禁止",
         "page_size_min": 1,
         "page_size_max": 1000
       },
@@ -1667,6 +1761,8 @@
         "path_association_id",
         "anchor_asn",
         "known_origin_asn",
+        "origin_status",
+        "observed_origin_asn",
         "prefix",
         "afi",
         "path_id",
@@ -1689,6 +1785,12 @@
           "$ref": "#/common_field_schemas/asn"
         },
         "known_origin_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "origin_status": {
+          "const": "known"
+        },
+        "observed_origin_asn": {
           "$ref": "#/common_field_schemas/asn"
         },
         "prefix": {
@@ -1761,7 +1863,15 @@
         "required": [
           "path_parse_status",
           "common_path_status",
-          "ordered_sequence_eligible"
+          "ordered_sequence_eligible",
+          "origin_status",
+          "observed_origin_asn",
+          "known_origin_asn"
+        ],
+        "origin_invariants": [
+          "origin_status == known",
+          "observed_origin_asn == known_origin_asn",
+          "ordered_sequence_eligible=true时去除连续prepend后AS_PATH末尾ASN == known_origin_asn"
         ],
         "allOf": [
           {
@@ -1842,6 +1952,41 @@
         "contains_asn_completeness": "只保证在该窗口级association人口内完整，不保证RRC25原始全部路径人口",
         "complete_claim_label": "complete_within_window_path_association_population",
         "q20_required_wording": "完整列出绑定publication窗口级path-association人口中包含该ASN的记录"
+      },
+      "native_filter_contract": {
+        "source": "pre_materialized_indexes_on_same_window_path_association_population",
+        "profile_id": "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0",
+      "profile_digest": "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7",
+        "filters": ["contains_asn", "anchor_asn_plus_anchor_before_known_origin"],
+        "query_time_path_parsing_forbidden": true,
+        "llm_filtering_forbidden": true,
+        "trusted_query_receipt_required_when_filter_present": true,
+        "query_receipt_must_bind": [
+          "tool_id",
+          "publication_id",
+          "source_population_id",
+          "source_dataset_digest",
+          "query_digest",
+          "filter_profile_id",
+          "filter_profile_digest",
+          "path_asn_membership_index_id",
+          "anchor_before_known_origin_index_id",
+          "path_association_index_digest",
+        "path_association_materialization_receipt_digest",
+        "anchor_population_source_ref",
+        "eligible_anchor_asns_digest",
+        "eligible_anchor_asn_count",
+        "target_contains_asn",
+          "target_anchor_asn",
+          "anchor_before_known_origin",
+          "anchor_population_eligible",
+          "matched_member_keys_digest",
+          "matched_total_count",
+          "disposition",
+          "receipt_digest"
+        ],
+      "returned_member_validation": "contains_asn时typed path_segments必须包含target；anchor-before时row.anchor_asn等于target、ordered_sequence_eligible=true、origin_status=known、observed_origin_asn=known_origin_asn、path_segments全为as_sequence，去除连续prepend后known origin必须是末尾ASN且anchor严格早于该origin",
+        "completeness_proof": "complete ResultSet的稳定成员键摘要与可信索引匹配人口摘要逐项相等"
       },
       "direction_identity_contract": {
         "peer_asn_direction_id": "collector_id+peer_asn",

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1-implementation/w0-registry-proposal.schema.json",
+  "title": "P2-S1 W0 Registry 不可执行提案",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "registry_snapshot_id", "snapshot_digest", "created_at_utc", "snapshot_payload"],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s1_registry_proposal_v1"},
+    "registry_snapshot_id": {"type": "string", "pattern": "^p2-s1-registry-proposal-sha256:[0-9a-f]{64}$"},
+    "snapshot_digest": {"$ref": "#/$defs/digest"},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "snapshot_payload": {"$ref": "#/$defs/payload"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "publicationIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "incident_id", "publication_id", "revision", "cohort_id", "collector_id", "window_start_utc", "window_end_utc", "data_through_utc"],
+      "properties": {
+        "event_type": {"const": "country_outage"},
+        "incident_id": {"type": "string", "minLength": 1},
+        "publication_id": {"type": "string", "minLength": 1},
+        "revision": {"type": "integer", "minimum": 1},
+        "cohort_id": {"type": "string", "minLength": 1},
+        "collector_id": {"const": "rrc25"},
+        "window_start_utc": {"type": "string", "format": "date-time"},
+        "window_end_utc": {"type": "string", "format": "date-time"},
+        "data_through_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "unit_version", "source", "contract_digest"],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "unit_version": {"type": "string", "minLength": 1},
+        "source": {"enum": ["same_proposal", "existing_registry"]},
+        "contract_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "unit_kind", "version", "activation_state", "atomic_capability_id", "contract_digest", "semantic_digest", "implementation_status", "implementation_digest", "permission", "identity_constraints", "dependencies"],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "unit_kind": {"enum": ["tool", "operator", "plan_capability", "control"]},
+        "version": {"const": "1.0.0-design"},
+        "activation_state": {"enum": ["proposed", "inactive", "deferred"]},
+        "atomic_capability_id": {"type": "string", "minLength": 1},
+        "contract_digest": {"$ref": "#/$defs/digest"},
+        "semantic_digest": {"$ref": "#/$defs/digest"},
+        "implementation_status": {"const": "not_implemented"},
+        "implementation_digest": {"type": "null"},
+        "permission": {"enum": ["country_outage:read", "country_outage:derive", "country_outage:plan", "country_outage:control"]},
+        "identity_constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event_type", "collector_id", "publication_cardinality"],
+          "properties": {"event_type": {"const": "country_outage"}, "collector_id": {"const": "rrc25"}, "publication_cardinality": {"const": 1}}
+        },
+        "dependencies": {"type": "array", "items": {"$ref": "#/$defs/dependency"}, "uniqueItems": true}
+      }
+    },
+    "existingUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "version", "state", "contract_digest", "implementation_digest", "semantic_digest", "permission"],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1}, "version": {"type": "string", "minLength": 1}, "state": {"const": "active"},
+        "contract_digest": {"$ref": "#/$defs/digest"}, "implementation_digest": {"$ref": "#/$defs/digest"}, "semantic_digest": {"$ref": "#/$defs/digest"}, "permission": {"type": "string", "minLength": 1}
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_id", "design_candidate_digest", "registry_revision", "activation_scope", "runtime_integration", "production_deployed", "permission_mode", "external_data_allowed", "publication_identity", "existing_registry_binding", "units"],
+      "properties": {
+        "candidate_id": {"const": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4"},
+        "design_candidate_digest": {"const": "sha256:d0256d9f1246191df2d48432655ea384acb2e5a6844b15a78f80e4c9f5e55e74"},
+        "registry_revision": {"const": 3},
+        "activation_scope": {"const": "w0_proposal_only"},
+        "runtime_integration": {"const": "governance_implemented_units_not_implemented"},
+        "production_deployed": {"const": false},
+        "permission_mode": {"const": "read_only"},
+        "external_data_allowed": {"const": false},
+        "publication_identity": {"$ref": "#/$defs/publicationIdentity"},
+        "existing_registry_binding": {
+          "type": "object", "additionalProperties": false,
+          "required": ["registry_snapshot_id", "snapshot_digest", "candidate_id", "registry_revision", "unit_bindings"],
+          "properties": {
+            "registry_snapshot_id": {"const": "registry-snapshot-sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2"},
+            "snapshot_digest": {"const": "sha256:46e2c08b311b7b16e003a8eb56ec4f4fd2865ef4644a8bdbe7709c590c8514c2"},
+            "candidate_id": {"const": "p2-s0b-763eb09a654b8b29"},
+            "registry_revision": {"const": 2},
+            "unit_bindings": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/existingUnit"}}
+          }
+        },
+        "units": {"type": "array", "minItems": 54, "maxItems": 54, "items": {"$ref": "#/$defs/unit"}}
+      }
+    }
+  },
+  "x-runtime-validator": "agent-sidecar/src/chat/p2-s1-registry-runtime.ts",
+  "x-boundary": "W0只登记proposed/inactive/deferred，执行授权必须为空；Schema不能替代运行时逐单元冻结映射校验"
+}

@@ -1,6 +1,6 @@
 {
-  "alignment_hook_sha256": "66f4935c96f29d50fec9a5e8b8e2b4459181036b338e08aa235a2ed8a772af91",
-  "alignment_hook_tests_sha256": "be7c01460251d27e7784b0ca30deedf48080edd1dd30ff6bd30a5b6f4e41e84d",
+  "alignment_hook_sha256": "27d650767094cff9be6e3206f4bd7e4add44c0adc814b6f57a7674e24aaa6cd1",
+  "alignment_hook_tests_sha256": "900031ddc85a64cb41cb8acb803c7559461e8dad0c5e1e4c46b2f27c582d28a0",
   "checks": [
     "task_spec_version",
     "question_population_28_of_28",
@@ -45,26 +45,27 @@
     "single_feedback_single_student_revision",
     "runtime_five_commit_consistency_boundaries"
   ],
+  "design_candidate_id": "country-outage-p2-s1-s1d-4-789edd466883e90454704be6",
   "design_only": true,
-  "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
+  "phase_plan_sha256": "f86955257b93e7ddc18553242f4b2f2fe7a78401f6237e855341e1147a63574d",
   "prior_receipts": {
-    "S1D-0": "7816ec31c226254e797fafa0d3b3c3faa927fb0dfd913fa685cd69dcb0fb7fc5",
-    "S1D-1": "fd0b7aaa2ac708444ba2140bcbca91e833bd83984df4a76a73e51ed6a6f5581e",
-    "S1D-2": "41d742e623fe8c2eb078fdf4dee308f000c3efae21e3d6e44b90f8496ad690e3",
-    "S1D-3": "364fa7761f538f7ff28118bdd140691107f34bb3d605ea54652f277fac869b8b"
+    "S1D-0": "5c08d202863459dd697030f2e0386a0e28ce45018f2ecf3f1e609a64c80915e6",
+    "S1D-1": "8a2c327b5e6947480e7c61fdf2aa1ef76aeedea5577b261b4e68dbb5155d2385",
+    "S1D-2": "0beef3e0db3b18f1518050783be02f6d9ac6efd8f38fae040d979c876f6456f7",
+    "S1D-3": "5a643532ba5672d4b5a582fd7b0aa099f6af423f17be80f7ab7ce7921d426a9f"
   },
   "production_deployed": false,
-  "receipt_digest": "cfd096ad6cdf6c0e6ac7c1bf6d34cb3835dd037bf95dd2ace5716a05f76f30e4",
+  "receipt_digest": "807c4c8db8ce7543c4d38b04f395521fa75ee71fb14708223e6be3c326961b12",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-4",
   "stage_artifact_sha256": {
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/dual-model-answer-flow.schema.json": "23df0301fa52e36492aeb20177ce1366e92f6b50280bc881c69d82c691fb91a0",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/dual-model-answer-flow.schema.json": "8284a95d142d5c28d02fa8e1426f0021f98ebfd2740a16c4591a9b56d3f07d83",
     "contracts/agent/country-outage-p2-s1-execution-unit-design/evidence-graph.schema.json": "fa2b627f0f45661bfc5c140d38f80e2cacb5fe6ce8ae5626b87315b063404f17",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/investigation-plan.schema.json": "48684f3f4b13580dbbb253f33203b553bf179b430563c62f26d7f9a6ca86b740",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/result-set.schema.json": "1ed47de05d6b114610819a482fb745ce31fdccedfac4e4fb84cb09549a7e1995",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/investigation-plan.schema.json": "949b8dcb10a4c95ea6060789d174ca6c37277720724a67cf228f15be58ed5b07",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/result-set.schema.json": "c6eaf755433eaea9694b3a0e5e084c4a4387033be74ffd0c8d580e7c7faa4986",
     "contracts/agent/country-outage-p2-s1-execution-unit-design/runtime-commit-consistency-contract.json": "485e9c2499d9695d14c177669bae6a8c102384652c0a8f06b7fbe5164853070f"
   },
   "status": "alignment_passed",
-  "task_spec_sha256": "18a8d44528be0ba78bbb97e845aaf78bf0cbd903e86b88f1ea00ffacd930c2b1"
+  "task_spec_sha256": "dbe1232d51064037716f321c5614042418dbcc9a66cfc908dc51fc1a7f8b6e61"
 }

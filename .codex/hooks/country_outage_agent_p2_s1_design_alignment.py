@@ -18,7 +18,7 @@ import re
 import sys
 import tempfile
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
 
 
@@ -78,9 +78,10 @@ EXPECTED_QUESTIONS = (
 )
 
 EXPECTED_TOOLS = tuple(f"TOOL-{index:02d}" for index in range(7, 14))
-EXPECTED_OPERATORS = tuple(f"OP-{index:02d}" for index in range(5, 38))
+EXPECTED_OPERATORS = tuple(f"OP-{index:02d}" for index in range(5, 40))
 EXPECTED_HOST_UNITS = (
     "PLAN-CAP-01",
+    "PLAN-CAP-02",
     "GATE-01",
     "GATE-02",
     "GATE-03",
@@ -96,7 +97,7 @@ EXPECTED_EXECUTION_UNITS = EXPECTED_TOOLS + EXPECTED_OPERATORS + EXPECTED_HOST_U
 EXISTING_EXECUTION_UNITS = tuple(f"TOOL-{index:02d}" for index in range(1, 7)) + tuple(
     f"OP-{index:02d}" for index in range(1, 5)
 )
-EXPECTED_CAPABILITIES = tuple(f"CAP-P2-{index:03d}" for index in range(1, 62))
+EXPECTED_CAPABILITIES = tuple(f"CAP-P2-{index:03d}" for index in range(1, 65))
 S1D1_SCENARIOS = (
     "normal",
     "empty",
@@ -142,11 +143,44 @@ COMMITTED_GRAPH_VALIDATOR_ID = "country_outage_p2_committed_evidence_graph_valid
 COMMITTED_GRAPH_VALIDATOR_VERSION = "1.0.0"
 COMMITTED_GRAPH_VALIDATOR_CONTRACT_DIGEST = "sha256:" + "1" * 64
 COMMITTED_GRAPH_VALIDATOR_IMPLEMENTATION_DIGEST = "sha256:" + "2" * 64
+ORACLE_STORE_ATTESTATION_CONTRACT_DIGEST = (
+    "sha256:e9319c71900cfb5022d98c772ae2830ac1dd98a75c2826af92a34e1580f30e38"
+)
+STUDENT_ANSWER_ARTIFACT_STORE_ATTESTATION_CONTRACT_DIGEST = (
+    "sha256:40ed52847561a6937a7796d86c402a86bf97f99cbc3b841110c44c101be45eb2"
+)
+ALIGNMENT_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST = (
+    "sha256:06aa4faee43588b08b3d21a418a81c75f748b976e35e4ee82934a84f058aa48a"
+)
 SOURCE_COMPLETENESS_VALIDATOR_ID = "country_outage_p2_source_completeness_validator"
 SOURCE_COMPLETENESS_VALIDATOR_VERSION = "1.0.0"
 SOURCE_COMPLETENESS_VALIDATOR_CONTRACT_DIGEST = "sha256:" + "3" * 64
 SOURCE_COMPLETENESS_VALIDATOR_IMPLEMENTATION_DIGEST = "sha256:" + "4" * 64
 NODE_RESULT_STORE_ATTESTATION_CONTRACT_DIGEST = "sha256:" + "5" * 64
+TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_ID = "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0"
+TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST = (
+    "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2"
+)
+TOOL11_PATH_ASN_ELIGIBLE_ROW_PREDICATE = (
+    "visibility=visible AND common_path_status IN (ordered,unordered)"
+)
+TOOL12_NATIVE_FILTER_PROFILE_ID = "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0"
+AS_PATH_CANONICALIZATION_PROFILE_DIGEST = (
+    "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+)
+TOOL12_NATIVE_FILTER_PROFILE_DIGEST = (
+    "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7"
+)
+TOOL12_FILTER_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST = "sha256:" + "7" * 64
+TOOL12_FILTER_MATERIALIZER_ID = "country_outage_p2_tool12_filter_materializer"
+TOOL12_FILTER_MATERIALIZER_VERSION = "1.0.0"
+TOOL12_FILTER_MATERIALIZER_CONTRACT_DIGEST = "sha256:" + "8" * 64
+TOOL12_FILTER_MATERIALIZER_IMPLEMENTATION_DIGEST = "sha256:" + "a" * 64
+OP19_PROJECTION_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST = "sha256:" + "b" * 64
+OP19_SOURCE_PROJECTOR_ID = "country_outage_p2_op19_source_projector"
+OP19_SOURCE_PROJECTOR_VERSION = "1.0.0"
+OP19_SOURCE_PROJECTOR_CONTRACT_DIGEST = "sha256:" + "c" * 64
+OP19_SOURCE_PROJECTOR_IMPLEMENTATION_DIGEST = "sha256:" + "d" * 64
 NODE_RESULT_VALIDATOR_ID = "country_outage_p2_committed_node_result_validator"
 NODE_RESULT_VALIDATOR_VERSION = "1.0.0"
 NODE_RESULT_VALIDATOR_CONTRACT_DIGEST = "sha256:" + "6" * 64
@@ -155,7 +189,7 @@ NODE_RESULT_VALIDATOR_IMPLEMENTATION_DIGEST = "sha256:" + "9" * 64
 # S1D-3 已封存的 Operator Schema 和 S1D-4 事务合同必须按内容寻址解析。
 # 值在相应设计制品变化时由 Hook 单测显式升级，调用侧不得通过重签 Mapping 改写。
 OPERATOR_CONTRACT_SCHEMA_CANONICAL_DIGEST = (
-    "5d0550b31082862d42a5185932db44356d04ec9a66a3f32055eb305a1a81ddb2"
+    "94ea0f3c5692d486290f86eddb1633e10d56bae9ca973b809ca6a64180b51fb1"
 )
 RUNTIME_CONSISTENCY_CONTRACT_CANONICAL_DIGEST = (
     "1da7186e69a1cbb1746d6933a8e793e44edf6d8df1064a8d32b5cde752b18573"
@@ -251,6 +285,39 @@ def _load_json(path: Path) -> Any:
 
     try:
         return json.loads(text, object_pairs_hook=reject_duplicate_keys)
+    except json.JSONDecodeError as exc:
+        _fail("artifact_json_invalid", f"JSON 无法解析：{path}: {exc}")
+    raise AssertionError("unreachable")
+
+
+def _load_json_strict(path: Path) -> Any:
+    """在普通JSON约束之上拒绝NaN/Infinity等非标准数字常量。"""
+
+    text = _read_text(path)
+
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                _fail(
+                    "artifact_json_duplicate_key",
+                    f"JSON 包含重复键，无法形成唯一规范化语义：{path}: {key}",
+                )
+            result[key] = value
+        return result
+
+    def reject_nonstandard_constant(value: str) -> None:
+        _fail(
+            "artifact_json_nonstandard_number",
+            f"JSON 包含非标准数字常量：{path}: {value}",
+        )
+
+    try:
+        return json.loads(
+            text,
+            object_pairs_hook=reject_duplicate_keys,
+            parse_constant=reject_nonstandard_constant,
+        )
     except json.JSONDecodeError as exc:
         _fail("artifact_json_invalid", f"JSON 无法解析：{path}: {exc}")
     raise AssertionError("unreachable")
@@ -1315,7 +1382,7 @@ def validate_investigation_plan_instance(
         ):
             if unit.get(unit_field) != registry.get(registry_field):
                 _fail("execution_unit_registry_binding_mismatch", f"{unit_id}.{unit_field} 与 Registry 不一致")
-        if unit_id in {"TOOL-13", "OP-34"} or registry.get("p2_v1_admission") != "allowed":
+        if unit_id in {"TOOL-13", "OP-34", "PLAN-CAP-02"} or registry.get("p2_v1_admission") != "allowed":
             _fail("deferred_execution_unit_admission_forbidden", f"{unit_id} 不得进入P2 v1计划")
         output_schema_refs = registry.get("output_schema_refs")
         if (
@@ -1680,6 +1747,7 @@ def validate_result_set_instance(
     resolved_members: Sequence[Mapping[str, Any]],
     trusted_registry_store: Mapping[str, Mapping[str, Any]],
     receipt_store: Mapping[str, Mapping[str, Any]],
+    trusted_filter_receipt_store: Mapping[str, Any] | None = None,
     previous_result_set: Mapping[str, Any] | None = None,
 ) -> None:
     """验证分页、计数、稳定排序、去重及 preview 与源 ResultSet 的绑定。"""
@@ -1798,6 +1866,364 @@ def validate_result_set_instance(
         or query_receipt.get("disposition") != "passed"
     ):
         _fail("result_set_receipt_binding_mismatch", "query回执未绑定查询、身份或Tool run")
+
+    normalized_query = payload.get("normalized_query")
+    tool11_contains_asn = (
+        normalized_query.get("contains_asn")
+        if tool_id == "TOOL-11" and isinstance(normalized_query, Mapping)
+        else None
+    )
+    if tool11_contains_asn is not None:
+        required_filter_receipt_fields = {
+            "receipt_kind",
+            "tool_run_id",
+            "identity_digest",
+            "state_point_utc",
+            "query_digest",
+            "source_population_id",
+            "source_dataset_digest",
+            "contains_asn",
+            "path_asn_membership_profile_digest",
+            "path_asn_membership_index_digest",
+            "path_asn_membership_materialization_receipt_digest",
+            "eligible_row_predicate",
+            "matched_member_keys_digest",
+            "total_count",
+            "disposition",
+        }
+        if (
+            payload.get("source_population_id")
+            != "materialized_route_state_rows_at_exact_time"
+            or not required_filter_receipt_fields.issubset(query_receipt)
+            or query_receipt.get("state_point_utc")
+            != normalized_query.get("state_point_utc")
+            or query_receipt.get("contains_asn") != tool11_contains_asn
+            or query_receipt.get("path_asn_membership_profile_digest")
+            != TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(query_receipt.get("path_asn_membership_index_digest")),
+            )
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(
+                    query_receipt.get(
+                        "path_asn_membership_materialization_receipt_digest"
+                    )
+                ),
+            )
+            or query_receipt.get("eligible_row_predicate")
+            != TOOL11_PATH_ASN_ELIGIBLE_ROW_PREDICATE
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(query_receipt.get("matched_member_keys_digest")),
+            )
+            or query_receipt.get("total_count") != payload.get("total_count")
+            or not isinstance(query_receipt.get("total_count"), int)
+        ):
+            _fail(
+                "tool11_contains_asn_receipt_invalid",
+                "TOOL-11 contains_asn查询未绑定预物化索引、Profile、目标ASN与总体",
+            )
+        for member in resolved_members:
+            path_segments = member.get("path_segments")
+            observed_asns = {
+                asn
+                for segment in path_segments
+                if isinstance(segment, Mapping)
+                for asn in segment.get("asns", [])
+            } if isinstance(path_segments, list) else set()
+            if (
+                member.get("visibility") != "visible"
+                or member.get("common_path_status") not in {"ordered", "unordered"}
+                or tool11_contains_asn not in observed_asns
+            ):
+                _fail(
+                    "tool11_contains_asn_member_mismatch",
+                    "TOOL-11 contains_asn返回行不满足活动路径人口或不包含目标ASN",
+                )
+
+    tool12_filter_active = tool_id == "TOOL-12" and isinstance(
+        normalized_query, Mapping
+    ) and (
+        normalized_query.get("contains_asn") is not None
+        or normalized_query.get("anchor_before_known_origin") is True
+    )
+    if tool12_filter_active:
+        contains_asn = normalized_query.get("contains_asn")
+        anchor_asn = normalized_query.get("anchor_asn")
+        anchor_before = normalized_query.get("anchor_before_known_origin") is True
+        required_tool12_filter_fields = {
+            "receipt_kind",
+            "tool_id",
+            "tool_run_id",
+            "identity_digest",
+            "publication_id",
+            "query_digest",
+            "source_population_id",
+            "source_population_schema_digest",
+            "source_dataset_digest",
+            "filter_profile_id",
+            "filter_profile_digest",
+            "path_asn_membership_index_id",
+            "anchor_before_known_origin_index_id",
+            "path_association_index_digest",
+            "path_association_materialization_receipt_digest",
+            "anchor_population_source_ref",
+            "eligible_anchor_asns_digest",
+            "eligible_anchor_asn_count",
+            "target_contains_asn",
+            "target_anchor_asn",
+            "anchor_before_known_origin",
+            "anchor_population_eligible",
+            "matched_member_keys_digest",
+            "matched_total_count",
+            "disposition",
+        }
+        if (
+            payload.get("source_population_id")
+            != "window_path_association_evidence_rows"
+            or not required_tool12_filter_fields.issubset(query_receipt)
+            or query_receipt.get("tool_id") != "TOOL-12"
+            or query_receipt.get("publication_id") != identity.get("publication_id")
+            or query_receipt.get("filter_profile_id")
+            != TOOL12_NATIVE_FILTER_PROFILE_ID
+            or query_receipt.get("filter_profile_digest")
+            != TOOL12_NATIVE_FILTER_PROFILE_DIGEST
+            or query_receipt.get("target_contains_asn") != contains_asn
+            or query_receipt.get("target_anchor_asn") != anchor_asn
+            or query_receipt.get("anchor_before_known_origin") is not anchor_before
+            or not isinstance(query_receipt.get("anchor_population_source_ref"), Mapping)
+            or not re.fullmatch(
+                r"[0-9a-f]{64}", str(query_receipt.get("eligible_anchor_asns_digest"))
+            )
+            or not isinstance(query_receipt.get("eligible_anchor_asn_count"), int)
+            or query_receipt.get("eligible_anchor_asn_count") < 0
+            or not isinstance(query_receipt.get("path_asn_membership_index_id"), str)
+            or not query_receipt.get("path_asn_membership_index_id")
+            or not isinstance(query_receipt.get("anchor_before_known_origin_index_id"), str)
+            or not query_receipt.get("anchor_before_known_origin_index_id")
+            or any(
+                not re.fullmatch(r"[0-9a-f]{64}", str(query_receipt.get(field)))
+                for field in (
+                    "path_association_index_digest",
+                    "path_association_materialization_receipt_digest",
+                    "matched_member_keys_digest",
+                )
+            )
+            or query_receipt.get("matched_total_count") != payload.get("total_count")
+        ):
+            _fail(
+                "tool12_native_filter_receipt_invalid",
+                "TOOL-12原生过滤回执未绑定Profile、索引、目标、人口或完整成员摘要",
+            )
+        filter_receipts = (
+            trusted_filter_receipt_store.get("receipts")
+            if isinstance(trusted_filter_receipt_store, Mapping)
+            else None
+        )
+        materialization_digest = query_receipt.get(
+            "path_association_materialization_receipt_digest"
+        )
+        materialization_receipt = (
+            filter_receipts.get(materialization_digest)
+            if isinstance(filter_receipts, Mapping)
+            else None
+        )
+        if (
+            not isinstance(trusted_filter_receipt_store, Mapping)
+            or set(trusted_filter_receipt_store)
+            != {
+                "store_contract_id",
+                "trust_origin",
+                "caller_mutable",
+                "attestation_provider_id",
+                "attestation_contract_digest",
+                "receipts",
+            }
+            or trusted_filter_receipt_store.get("store_contract_id")
+            != "country_outage_p2_tool12_filter_receipt_store_v1"
+            or trusted_filter_receipt_store.get("trust_origin")
+            != "host_authenticated_runtime_store"
+            or trusted_filter_receipt_store.get("caller_mutable") is not False
+            or trusted_filter_receipt_store.get("attestation_provider_id")
+            != "country_outage_p2_tool12_filter_receipt_store_host"
+            or trusted_filter_receipt_store.get("attestation_contract_digest")
+            != TOOL12_FILTER_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST
+            or not isinstance(materialization_receipt, Mapping)
+            or materialization_receipt.get("receipt_digest")
+            != materialization_digest
+            or _digest_without_fields(materialization_receipt, "receipt_digest")
+            != materialization_digest
+            or materialization_receipt.get("receipt_kind")
+            != "tool12_filter_materialization"
+            or materialization_receipt.get("materializer_id")
+            != TOOL12_FILTER_MATERIALIZER_ID
+            or materialization_receipt.get("materializer_version")
+            != TOOL12_FILTER_MATERIALIZER_VERSION
+            or materialization_receipt.get("materializer_contract_digest")
+            != TOOL12_FILTER_MATERIALIZER_CONTRACT_DIGEST
+            or materialization_receipt.get("materializer_implementation_digest")
+            != TOOL12_FILTER_MATERIALIZER_IMPLEMENTATION_DIGEST
+            or materialization_receipt.get("publication_id")
+            != identity.get("publication_id")
+            or materialization_receipt.get("source_dataset_digest")
+            != payload.get("source_dataset_digest")
+            or materialization_receipt.get("filter_profile_id")
+            != TOOL12_NATIVE_FILTER_PROFILE_ID
+            or materialization_receipt.get("filter_profile_digest")
+            != TOOL12_NATIVE_FILTER_PROFILE_DIGEST
+            or materialization_receipt.get("path_asn_membership_index_id")
+            != query_receipt.get("path_asn_membership_index_id")
+            or materialization_receipt.get("anchor_before_known_origin_index_id")
+            != query_receipt.get("anchor_before_known_origin_index_id")
+            or materialization_receipt.get("path_association_index_digest")
+            != query_receipt.get("path_association_index_digest")
+            or materialization_receipt.get("anchor_population_source_ref")
+            != query_receipt.get("anchor_population_source_ref")
+            or materialization_receipt.get("eligible_anchor_asns_digest")
+            != query_receipt.get("eligible_anchor_asns_digest")
+            or materialization_receipt.get("eligible_anchor_asn_count")
+            != query_receipt.get("eligible_anchor_asn_count")
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(materialization_receipt.get("indexed_member_keys_digest")),
+            )
+            or materialization_receipt.get("disposition") != "passed"
+        ):
+            _fail(
+                "tool12_filter_materialization_receipt_unresolved",
+                "TOOL-12必须从Host受信store解析并验证过滤索引物化回执",
+            )
+        anchor_population_ref = materialization_receipt.get(
+            "anchor_population_source_ref"
+        )
+        eligible_anchor_asns = materialization_receipt.get("eligible_anchor_asns")
+        required_anchor_population_ref_fields = {
+            "tool_id",
+            "result_set_id",
+            "result_set_revision",
+            "manifest_digest",
+            "content_digest",
+            "freeze_receipt_digest",
+            "publication_id",
+            "source_population_id",
+        }
+        if (
+            not isinstance(anchor_population_ref, Mapping)
+            or set(anchor_population_ref) != required_anchor_population_ref_fields
+            or anchor_population_ref.get("tool_id") != "TOOL-04"
+            or anchor_population_ref.get("publication_id")
+            != identity.get("publication_id")
+            or anchor_population_ref.get("source_population_id")
+            != "ever_affected_asn_summary_rows"
+            or not isinstance(anchor_population_ref.get("result_set_id"), str)
+            or not anchor_population_ref.get("result_set_id")
+            or not isinstance(anchor_population_ref.get("result_set_revision"), int)
+            or anchor_population_ref.get("result_set_revision") < 1
+            or any(
+                not re.fullmatch(
+                    r"[0-9a-f]{64}", str(anchor_population_ref.get(field))
+                )
+                for field in (
+                    "manifest_digest",
+                    "content_digest",
+                    "freeze_receipt_digest",
+                )
+            )
+            or not isinstance(eligible_anchor_asns, list)
+            or any(not isinstance(asn, int) or asn < 0 for asn in eligible_anchor_asns)
+            or eligible_anchor_asns != sorted(set(eligible_anchor_asns))
+            or materialization_receipt.get("eligible_anchor_asn_count")
+            != len(eligible_anchor_asns)
+            or materialization_receipt.get("eligible_anchor_asns_digest")
+            != _digest_without_fields({"members": eligible_anchor_asns})
+            or (
+                anchor_before
+                and query_receipt.get("anchor_population_eligible")
+                is not (anchor_asn in eligible_anchor_asns)
+            )
+            or (anchor_before and anchor_asn not in eligible_anchor_asns)
+        ):
+            _fail(
+                "tool12_anchor_population_binding_invalid",
+                "TOOL-12 anchor必须由同publication的完整ever-affected-AS人口及冻结回执证明",
+            )
+        member_identity = payload.get("member_identity")
+        if payload.get("set_completeness") == "complete" and isinstance(
+            member_identity, str
+        ):
+            expected_member_keys_digest = _digest_without_fields(
+                {"member_keys": [member.get(member_identity) for member in resolved_members]}
+            )
+            if query_receipt.get("matched_member_keys_digest") != expected_member_keys_digest:
+                _fail(
+                    "tool12_native_filter_receipt_invalid",
+                    "TOOL-12 complete成员键摘要与可信过滤回执不一致",
+                )
+        for member in resolved_members:
+            path_segments = member.get("path_segments")
+            observed_asns = {
+                asn
+                for segment in path_segments
+                if isinstance(segment, Mapping)
+                for asn in segment.get("asns", [])
+            } if isinstance(path_segments, list) else set()
+            if contains_asn is not None and contains_asn not in observed_asns:
+                _fail(
+                    "tool12_native_filter_member_mismatch",
+                    "TOOL-12 contains_asn返回路径不包含目标ASN",
+                )
+            if anchor_before and (
+                member.get("anchor_asn") != anchor_asn
+                or member.get("ordered_sequence_eligible") is not True
+                or not isinstance(member.get("known_origin_asn"), int)
+                or member.get("origin_status") != "known"
+                or member.get("observed_origin_asn")
+                != member.get("known_origin_asn")
+            ):
+                _fail(
+                    "tool12_native_filter_member_mismatch",
+                    "TOOL-12 anchor-before返回行未匹配anchor、known origin或有序资格",
+                )
+            if anchor_before:
+                if not isinstance(path_segments, list) or not path_segments or any(
+                    not isinstance(segment, Mapping)
+                    or segment.get("segment_type") != "as_sequence"
+                    or not isinstance(segment.get("asns"), list)
+                    for segment in path_segments
+                ):
+                    _fail(
+                        "tool12_native_filter_member_mismatch",
+                        "TOOL-12 anchor-before只接受完全有序as_sequence路径",
+                    )
+                flattened = [
+                    asn
+                    for segment in path_segments
+                    for asn in segment.get("asns", [])
+                ]
+                collapsed: list[Any] = []
+                for asn in flattened:
+                    if not collapsed or collapsed[-1] != asn:
+                        collapsed.append(asn)
+                origin_asn = member.get("known_origin_asn")
+                anchor_positions = [
+                    index for index, asn in enumerate(collapsed) if asn == anchor_asn
+                ]
+                origin_positions = [
+                    index for index, asn in enumerate(collapsed) if asn == origin_asn
+                ]
+                if (
+                    anchor_asn == origin_asn
+                    or not anchor_positions
+                    or not origin_positions
+                    or max(anchor_positions) >= min(origin_positions)
+                    or collapsed[-1] != origin_asn
+                ):
+                    _fail(
+                        "tool12_native_filter_member_mismatch",
+                        "TOOL-12 anchor-before返回行的类型化路径不证明anchor严格早于known origin",
+                    )
 
     pages = payload.get("page_manifest")
     if not isinstance(pages, list):
@@ -2053,6 +2479,16 @@ def validate_result_set_instance(
         _fail("result_set_member_identity_invalid", "成员缺少冻结的member_identity字段")
     if len(member_refs) != len(set(member_refs)):
         _fail("result_set_member_identity_invalid", "member_identity必须在ResultSet内唯一")
+    if (
+        tool11_contains_asn is not None
+        and completeness == "complete"
+        and query_receipt.get("matched_member_keys_digest")
+        != _digest_without_fields({"member_keys": member_refs})
+    ):
+        _fail(
+            "tool11_contains_asn_receipt_invalid",
+            "TOOL-11 complete查询的匹配成员键摘要不能由冻结成员顺序重算",
+        )
     for preview in payload.get("preview_views", []):
         if preview.get("source_result_set_id") != payload.get("result_set_id") or preview.get(
             "source_result_set_revision"
@@ -2068,6 +2504,382 @@ def validate_result_set_instance(
             _fail("preview_member_subset_invalid", "preview必须是冻结稳定排序结果的确定性前缀")
         if preview.get("view_digest") != _digest_without_fields(preview, "view_digest"):
             _fail("preview_digest_mismatch", "preview view_digest 无法重算")
+
+
+def validate_op05_ranking_instance(
+    input_envelope: Mapping[str, Any],
+    output_envelope: Mapping[str, Any],
+    *,
+    operator_schema: Mapping[str, Any],
+) -> None:
+    """验证 OP-05 三键全序、competition并列名次和逐行结果位置。"""
+
+    _validate_draft202012_subschema_instance(
+        input_envelope,
+        operator_schema,
+        definition_name="op05InputEnvelope",
+        subject="OP-05 InputEnvelope",
+    )
+    _validate_draft202012_subschema_instance(
+        output_envelope,
+        operator_schema,
+        definition_name="op05OutputEnvelope",
+        subject="OP-05 OutputEnvelope",
+    )
+    inputs = input_envelope.get("inputs")
+    result = output_envelope.get("result")
+    if not isinstance(inputs, Mapping) or not isinstance(result, Mapping):
+        _fail("op05_ranking_schema_invalid", "OP-05输入或输出payload不是闭合对象")
+    identity = input_envelope.get("identity")
+    profile_digest = "012bf52458d4115c97c52716635345d9a64b79bf964aac8f7cbe4c433af103b2"
+    if (
+        input_envelope.get("operator_id") != "OP-05"
+        or output_envelope.get("operator_id") != "OP-05"
+        or input_envelope.get("parameter_profile_id")
+        != "PROFILE-AS-SEVERITY-RANK-1.0.0"
+        or output_envelope.get("parameter_profile_id")
+        != "PROFILE-AS-SEVERITY-RANK-1.0.0"
+        or input_envelope.get("parameter_profile_digest") != profile_digest
+        or output_envelope.get("parameter_profile_digest") != profile_digest
+        or inputs.get("identity") != identity
+        or output_envelope.get("identity") != identity
+        or input_envelope.get("input_completeness") != "complete"
+        or output_envelope.get("input_completeness") != "complete"
+        or output_envelope.get("completeness") != "complete"
+    ):
+        _fail("op05_ranking_identity_mismatch", "OP-05身份、Profile或完整性未闭合")
+
+    members = inputs.get("members")
+    if not isinstance(members, list) or inputs.get("set_completeness") != "complete":
+        _fail("op05_ranking_input_invalid", "OP-05只接受完整AS summary集合")
+    if len({member.get("asn") for member in members if isinstance(member, Mapping)}) != len(members):
+        _fail("op05_ranking_input_invalid", "OP-05输入ASN必须唯一")
+    ordered = sorted(
+        members,
+        key=lambda member: (
+            -member["peak_invisible_direction_count"],
+            -member["peak_complete_prefix_count"],
+            member["asn"],
+        ),
+    )
+    ranked_members: list[dict[str, Any]] = []
+    rank_groups: list[dict[str, Any]] = []
+    current_key: tuple[int, int] | None = None
+    current_rank = 0
+    for position, member in enumerate(ordered, start=1):
+        severity_key = (
+            member["peak_invisible_direction_count"],
+            member["peak_complete_prefix_count"],
+        )
+        if severity_key != current_key:
+            current_key = severity_key
+            current_rank = position
+            rank_groups.append(
+                {
+                    "rank": current_rank,
+                    "member_asns": [],
+                    "severity_key": list(severity_key),
+                }
+            )
+        rank_groups[-1]["member_asns"].append(member["asn"])
+        ranked_members.append(
+            {
+                "asn": member["asn"],
+                "severity_rank_global": current_rank,
+                "result_position": position,
+                "severity_key": list(severity_key),
+            }
+        )
+
+    population_evidence = inputs.get("population_evidence_ref")
+    expected_evidence: list[Mapping[str, Any]] = [population_evidence]
+    seen = {_digest_without_fields(population_evidence)}
+    for member in ordered:
+        evidence_ref = member.get("evidence_ref")
+        evidence_digest = _digest_without_fields(evidence_ref)
+        if evidence_digest not in seen:
+            expected_evidence.append(evidence_ref)
+            seen.add(evidence_digest)
+    expected_result = {
+        "ordered_asns": [member["asn"] for member in ordered],
+        "ranked_members": ranked_members,
+        "rank_groups": rank_groups,
+        "sort_profile_id": "PROFILE-AS-SEVERITY-RANK-1.0.0",
+        "input_digest": _digest_without_fields(inputs),
+        "evidence_refs": expected_evidence,
+    }
+    expected_state = "empty" if not members else "computed"
+    if (
+        result != expected_result
+        or output_envelope.get("result_state") != expected_state
+        or output_envelope.get("evidence_refs") != expected_evidence
+        or output_envelope.get("input_digests") != input_envelope.get("input_digests")
+        or output_envelope.get("fact_lineage") != input_envelope.get("input_digests")
+        or output_envelope.get("output_digest")
+        != _digest_without_fields(output_envelope, "output_digest")
+    ):
+        _fail("op05_ranking_output_mismatch", "OP-05排序、并列名次、位置或Evidence无法确定性重算")
+
+
+def validate_op19_projection_instance(
+    input_envelope: Mapping[str, Any],
+    output_envelope: Mapping[str, Any],
+    *,
+    operator_schema: Mapping[str, Any],
+    source_result_set: Mapping[str, Any],
+    source_members: Sequence[Mapping[str, Any]],
+    result_set_schema: Mapping[str, Any],
+    trusted_registry_store: Mapping[str, Mapping[str, Any]],
+    result_receipt_store: Mapping[str, Mapping[str, Any]],
+    trusted_filter_receipt_store: Mapping[str, Any],
+    trusted_projection_receipt_store: Mapping[str, Any],
+) -> None:
+    """验证 OP-19 对完整 TOOL-12 ResultSet 的原子集合投影及逐成员谱系。"""
+
+    pre_inputs = input_envelope.get("inputs")
+    pre_query = source_result_set.get("normalized_query")
+    if (
+        not isinstance(pre_inputs, Mapping)
+        or not isinstance(pre_query, Mapping)
+        or pre_query.get("anchor_asn") != pre_inputs.get("anchor_asn")
+        or pre_query.get("anchor_before_known_origin") is not True
+    ):
+        _fail(
+            "op19_source_result_set_binding_mismatch",
+            "OP-19源查询必须是同一anchor ASN的完整anchor-before人口",
+        )
+    validate_result_set_instance(
+        source_result_set,
+        schema=result_set_schema,
+        resolved_members=source_members,
+        trusted_registry_store=trusted_registry_store,
+        receipt_store=result_receipt_store,
+        trusted_filter_receipt_store=trusted_filter_receipt_store,
+    )
+    _validate_draft202012_subschema_instance(
+        input_envelope,
+        operator_schema,
+        definition_name="op19InputEnvelope",
+        subject="OP-19 InputEnvelope",
+    )
+    _validate_draft202012_subschema_instance(
+        output_envelope,
+        operator_schema,
+        definition_name="op19OutputEnvelope",
+        subject="OP-19 OutputEnvelope",
+    )
+    inputs = input_envelope.get("inputs")
+    result = output_envelope.get("result")
+    if not isinstance(inputs, Mapping) or not isinstance(result, Mapping):
+        _fail("op19_projection_schema_invalid", "OP-19 输入或输出payload不是闭合对象")
+
+    source_identity = source_result_set.get("source_identity")
+    identity_fields = (
+        "incident_id",
+        "publication_id",
+        "publication_revision",
+        "publication_digest",
+        "collector_id",
+        "cohort_id",
+        "cohort_digest",
+        "window_start_utc",
+        "window_end_utc",
+        "data_through_utc",
+        "registry_snapshot_id",
+        "registry_snapshot_digest",
+        "binding_generation",
+    )
+    expected_identity = {
+        field: source_identity.get(field)
+        for field in identity_fields
+    } if isinstance(source_identity, Mapping) else None
+    if (
+        input_envelope.get("operator_id") != "OP-19"
+        or output_envelope.get("operator_id") != "OP-19"
+        or input_envelope.get("identity") != expected_identity
+        or output_envelope.get("identity") != expected_identity
+        or inputs.get("identity") != expected_identity
+        or input_envelope.get("input_completeness") != "complete"
+        or output_envelope.get("input_completeness") != "complete"
+        or output_envelope.get("completeness") != "complete"
+    ):
+        _fail("op19_projection_identity_mismatch", "OP-19 未绑定完整源ResultSet身份")
+
+    expected_source_ref = {
+        "result_set_id": source_result_set.get("result_set_id"),
+        "result_set_revision": source_result_set.get("result_set_revision"),
+        "manifest_digest": source_result_set.get("manifest_digest"),
+        "content_digest": source_result_set.get("content_digest"),
+        "freeze_receipt_digest": source_result_set.get("freeze_receipt_digest"),
+        "query_receipt_digest": source_result_set.get("query_receipt_digest"),
+        "source_population_id": source_result_set.get("source_population_id"),
+        "source_dataset_digest": source_result_set.get("source_dataset_digest"),
+        "member_identity": source_result_set.get("member_identity"),
+    }
+    query_receipt_digest = source_result_set.get("query_receipt_digest")
+    normalized_query = source_result_set.get("normalized_query")
+    anchor_asn = inputs.get("anchor_asn")
+    if (
+        source_result_set.get("source_tool", {}).get("tool_id") != "TOOL-12"
+        or source_result_set.get("set_completeness") != "complete"
+        or not isinstance(normalized_query, Mapping)
+        or normalized_query.get("anchor_asn") != anchor_asn
+        or normalized_query.get("anchor_before_known_origin") is not True
+        or inputs.get("set_completeness") != "complete"
+        or inputs.get("source_result_set_ref") != expected_source_ref
+        or inputs.get("source_result_set_query_receipt_digest")
+        != query_receipt_digest
+        or inputs.get("population_filter_receipt_digest")
+        != query_receipt_digest
+    ):
+        _fail("op19_source_result_set_binding_mismatch", "OP-19 未精确绑定完整TOOL-12源ResultSet及query receipt")
+
+    expected_associations: list[dict[str, Any]] = []
+    source_manifest: list[dict[str, Any]] = []
+    for member in source_members:
+        member_key = member.get("path_association_id")
+        member_digest = _digest_without_fields(member)
+        source_manifest.append({"source_member_key": member_key, "source_member_digest": member_digest})
+        if member.get("anchor_asn") != anchor_asn:
+            _fail("op19_source_member_mismatch", "OP-19 源成员anchor不属于冻结输入人口")
+        expected_associations.append(
+            {
+                "source_member_key": member_key,
+                "source_member_digest": member_digest,
+                "anchor_asn": member.get("anchor_asn"),
+                "known_origin_asn": member.get("known_origin_asn"),
+                "origin_status": member.get("origin_status"),
+                "observed_origin_asn": member.get("observed_origin_asn"),
+                "path_digest": member.get("path_digest"),
+                "path_canonicalization_profile_id": member.get(
+                    "path_canonicalization_profile_id"
+                ),
+                "path_canonicalization_profile_digest": member.get(
+                    "path_canonicalization_profile_digest"
+                ),
+                "evidence_ref": member.get("evidence_ref"),
+            }
+        )
+    if inputs.get("association_members") != expected_associations:
+        _fail("op19_source_member_projection_mismatch", "OP-19 association_members不是源ResultSet全成员的一一结构投影")
+
+    projection_digest = inputs.get("host_projection_receipt_digest")
+    projection_receipts = (
+        trusted_projection_receipt_store.get("receipts")
+        if isinstance(trusted_projection_receipt_store, Mapping)
+        else None
+    )
+    projection_receipt = (
+        projection_receipts.get(projection_digest)
+        if isinstance(projection_receipts, Mapping)
+        else None
+    )
+    if (
+        not isinstance(trusted_projection_receipt_store, Mapping)
+        or set(trusted_projection_receipt_store)
+        != {
+            "store_contract_id",
+            "trust_origin",
+            "caller_mutable",
+            "attestation_provider_id",
+            "attestation_contract_digest",
+            "receipts",
+        }
+        or trusted_projection_receipt_store.get("store_contract_id")
+        != "country_outage_p2_op19_projection_receipt_store_v1"
+        or trusted_projection_receipt_store.get("trust_origin")
+        != "host_authenticated_runtime_store"
+        or trusted_projection_receipt_store.get("caller_mutable") is not False
+        or trusted_projection_receipt_store.get("attestation_provider_id")
+        != "country_outage_p2_op19_projection_receipt_store_host"
+        or trusted_projection_receipt_store.get("attestation_contract_digest")
+        != OP19_PROJECTION_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST
+        or not isinstance(projection_receipt, Mapping)
+        or projection_receipt.get("receipt_digest") != projection_digest
+        or _digest_without_fields(projection_receipt, "receipt_digest")
+        != projection_digest
+        or projection_receipt.get("receipt_kind") != "op19_source_projection"
+        or projection_receipt.get("projector_id") != OP19_SOURCE_PROJECTOR_ID
+        or projection_receipt.get("projector_version")
+        != OP19_SOURCE_PROJECTOR_VERSION
+        or projection_receipt.get("projector_contract_digest")
+        != OP19_SOURCE_PROJECTOR_CONTRACT_DIGEST
+        or projection_receipt.get("projector_implementation_digest")
+        != OP19_SOURCE_PROJECTOR_IMPLEMENTATION_DIGEST
+        or projection_receipt.get("source_result_set_id")
+        != source_result_set.get("result_set_id")
+        or projection_receipt.get("source_result_set_revision")
+        != source_result_set.get("result_set_revision")
+        or projection_receipt.get("source_content_digest")
+        != source_result_set.get("content_digest")
+        or projection_receipt.get("source_query_receipt_digest")
+        != query_receipt_digest
+        or projection_receipt.get("source_member_manifest_digest")
+        != _digest_without_fields({"members": source_manifest})
+        or projection_receipt.get("projected_members_digest")
+        != _digest_without_fields({"association_members": expected_associations})
+        or projection_receipt.get("projected_member_count") != len(source_members)
+        or projection_receipt.get("disposition") != "passed"
+    ):
+        _fail("op19_projection_receipt_unresolved", "OP-19 Host结构投影回执未从受信store解析或未覆盖全源人口")
+
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    for association in expected_associations:
+        grouped.setdefault(association["known_origin_asn"], []).append(association)
+    origins = sorted(grouped)
+    population_evidence_ref = inputs.get("population_evidence_ref")
+    if (
+        not isinstance(population_evidence_ref, Mapping)
+        or population_evidence_ref.get("source_digest") != query_receipt_digest
+    ):
+        _fail(
+            "op19_population_evidence_binding_mismatch",
+            "OP-19人口证据未绑定冻结源ResultSet的query receipt",
+        )
+    expected_evidence: list[Mapping[str, Any]] = [population_evidence_ref]
+    seen_evidence: set[str] = {_digest_without_fields(population_evidence_ref)}
+    contributions: list[dict[str, Any]] = []
+    for origin_asn in origins:
+        group = grouped[origin_asn]
+        group_evidence: list[Mapping[str, Any]] = []
+        for association in group:
+            evidence_ref = association["evidence_ref"]
+            evidence_digest = _digest_without_fields(evidence_ref)
+            if evidence_digest not in { _digest_without_fields(item) for item in group_evidence }:
+                group_evidence.append(evidence_ref)
+            if evidence_digest not in seen_evidence:
+                expected_evidence.append(evidence_ref)
+                seen_evidence.add(evidence_digest)
+        contribution = {
+            "origin_asn": origin_asn,
+            "source_member_keys": [item["source_member_key"] for item in group],
+            "source_member_digests": [item["source_member_digest"] for item in group],
+            "evidence_refs": group_evidence,
+        }
+        contribution["contribution_digest"] = _digest_without_fields(contribution)
+        contributions.append(contribution)
+    expected_result = {
+        "anchor_asn": anchor_asn,
+        "members": origins,
+        "member_contributions": contributions,
+        "member_count": len(origins),
+        "set_digest": _digest_without_fields({"members": origins}),
+        "input_digest": _digest_without_fields(inputs),
+        "evidence_refs": expected_evidence,
+    }
+    expected_input_digests = [source_result_set.get("content_digest"), projection_digest]
+    expected_result_state = "empty" if not origins else "computed"
+    if (
+        result != expected_result
+        or input_envelope.get("input_digests") != expected_input_digests
+        or output_envelope.get("input_digests") != expected_input_digests
+        or output_envelope.get("result_state") != expected_result_state
+        or output_envelope.get("evidence_refs") != expected_evidence
+        or output_envelope.get("fact_lineage") != expected_input_digests
+        or output_envelope.get("output_digest")
+        != _digest_without_fields(output_envelope, "output_digest")
+    ):
+        _fail("op19_output_closure_mismatch", "OP-19 origin集合、贡献谱系、计数或摘要不可由完整输入重算")
 
 
 def validate_complete_export_eligibility(
@@ -3166,6 +3978,9 @@ def validate_dual_model_flow_instance(
     trusted_committed_graph_store: Mapping[str, Any] | None = None,
     trusted_validated_plan_store: Mapping[str, Any] | None = None,
     investigation_plan_schema: Mapping[str, Any] | None = None,
+    trusted_oracle_store: Mapping[str, Any] | None = None,
+    trusted_student_answer_artifact_store: Mapping[str, Any] | None = None,
+    trusted_alignment_receipt_store: Mapping[str, Any] | None = None,
     publish_receipt: Mapping[str, Any] | None = None,
 ) -> None:
     """验证 Sol→Validator→DS 的角色、同绑定、Gate、修订与降级闭包。"""
@@ -3253,14 +4068,39 @@ def validate_dual_model_flow_instance(
         identity = payload.get(identity_name, {})
         if identity.get("identity_digest") != _digest_without_fields(identity, "identity_digest"):
             _fail("model_identity_digest_mismatch", f"{identity_name}.identity_digest 无法重算")
+    student_identity = payload.get("student_model_identity", {})
+    if (
+        student_identity.get("provider") != "deepseek"
+        or student_identity.get("model") != "deepseek-v4-flash"
+        or student_identity.get("version") != "deepseek-v4-flash-pi-0.84.1-v1"
+        or student_identity.get("expected_response_model") != "deepseek-v4-flash"
+        or student_identity.get("pi_version") != "0.84.1"
+        or student_identity.get("candidate_resource_sha256")
+        != "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5"
+        or student_identity.get("profile_registry_sha256")
+        != "e8881aa2b79f495da3ea551bb3b2423af45c118f5e622ac1877852bf0087bf4f"
+    ):
+        _fail("ds_model_identity_mismatch", "DualModel未绑定S1D-5冻结的DS候选资源与评测Profile身份")
+    teacher_plan_run = payload.get("teacher_plan_run_receipt")
+    teacher_plan_grounding = payload.get("teacher_plan_grounding_receipt")
     teacher_run = payload.get("teacher_run_receipt")
     teacher_reference = payload.get("teacher_reference")
     teacher_validation = payload.get("teacher_validation_receipt")
+    teacher_coverage = payload.get("teacher_oracle_coverage_receipt")
     students = payload.get("student_runs", [])
     student_validation = payload.get("student_validation_receipt")
     alignment = payload.get("alignment_run_receipt")
     published = payload.get("published_answer")
-    objects = [teacher_run, teacher_reference, teacher_validation, student_validation, alignment, published]
+    objects = [
+        teacher_plan_run,
+        teacher_run,
+        teacher_reference,
+        teacher_validation,
+        teacher_coverage,
+        student_validation,
+        alignment,
+        published,
+    ]
     objects.extend(
         run.get("run_receipt") for run in students if isinstance(run, dict)
     )
@@ -3280,6 +4120,82 @@ def validate_dual_model_flow_instance(
         _fail("student_feedback_missing", "第二次Student运行缺少唯一结构化反馈")
     if len(students) < 2 and payload.get("structured_feedback") is not None:
         _fail("student_feedback_unexpected", "没有第二次Student运行时不得携带结构化反馈")
+
+    def resolve_trusted_student_artifact(artifact: Mapping[str, Any]) -> None:
+        artifact_ref = artifact.get("artifact_ref")
+        stored = (
+            trusted_student_answer_artifact_store.get("artifacts", {}).get(artifact_ref)
+            if isinstance(trusted_student_answer_artifact_store, Mapping)
+            and isinstance(
+                trusted_student_answer_artifact_store.get("artifacts"), Mapping
+            )
+            else None
+        )
+        if (
+            not isinstance(trusted_student_answer_artifact_store, Mapping)
+            or set(trusted_student_answer_artifact_store)
+            != {
+                "store_contract_id",
+                "trust_origin",
+                "caller_mutable",
+                "attestation_provider_id",
+                "attestation_contract_digest",
+                "artifacts",
+            }
+            or trusted_student_answer_artifact_store.get("store_contract_id")
+            != "country_outage_p2_trusted_student_answer_artifact_store_v1"
+            or trusted_student_answer_artifact_store.get("trust_origin")
+            != "host_authenticated_runtime_store"
+            or trusted_student_answer_artifact_store.get("caller_mutable") is not False
+            or trusted_student_answer_artifact_store.get("attestation_provider_id")
+            != "country_outage_p2_student_answer_artifact_store_host"
+            or trusted_student_answer_artifact_store.get(
+                "attestation_contract_digest"
+            )
+            != STUDENT_ANSWER_ARTIFACT_STORE_ATTESTATION_CONTRACT_DIGEST
+            or not isinstance(stored, Mapping)
+            or stored != artifact
+        ):
+            _fail(
+                "student_answer_artifact_unresolved",
+                "Student回答制品必须解析Host受信、内容寻址且可回放的Artifact",
+            )
+
+    def validate_alignment_receipt_trust() -> None:
+        receipt_digest = alignment.get("receipt_digest") if isinstance(alignment, Mapping) else None
+        stored = (
+            trusted_alignment_receipt_store.get("receipts", {}).get(receipt_digest)
+            if isinstance(trusted_alignment_receipt_store, Mapping)
+            and isinstance(trusted_alignment_receipt_store.get("receipts"), Mapping)
+            else None
+        )
+        if (
+            not isinstance(trusted_alignment_receipt_store, Mapping)
+            or set(trusted_alignment_receipt_store)
+            != {
+                "store_contract_id",
+                "trust_origin",
+                "caller_mutable",
+                "attestation_provider_id",
+                "attestation_contract_digest",
+                "receipts",
+            }
+            or trusted_alignment_receipt_store.get("store_contract_id")
+            != "country_outage_p2_trusted_alignment_receipt_store_v1"
+            or trusted_alignment_receipt_store.get("trust_origin")
+            != "host_authenticated_runtime_store"
+            or trusted_alignment_receipt_store.get("caller_mutable") is not False
+            or trusted_alignment_receipt_store.get("attestation_provider_id")
+            != "country_outage_p2_alignment_receipt_store_host"
+            or trusted_alignment_receipt_store.get("attestation_contract_digest")
+            != ALIGNMENT_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST
+            or not isinstance(stored, Mapping)
+            or stored != alignment
+        ):
+            _fail(
+                "alignment_receipt_untrusted",
+                "Alignment结果必须解析Host确定性Evaluator写入的受信回执",
+            )
 
     def validate_gates(receipt: Any, *, require_pass: bool | None) -> None:
         if not isinstance(receipt, dict):
@@ -3311,12 +4227,73 @@ def validate_dual_model_flow_instance(
         if require_pass is False and calculated:
             _fail("validation_gate_rejection_mismatch", "拒绝回执必须至少有一个失败Gate")
 
-    def validate_teacher_chain(*, require_pass: bool) -> None:
-        if not isinstance(teacher_run, dict) or not isinstance(teacher_reference, dict):
-            _fail("teacher_run_invalid", "Teacher运行或TeacherReference缺失")
+    def validate_teacher_planning_chain() -> None:
+        if (
+            not isinstance(teacher_plan_run, dict)
+            or not isinstance(teacher_plan_grounding, dict)
+        ):
+            _fail("teacher_plan_run_invalid", "Sol planning或Host Grounding回执缺失")
+        if (
+            teacher_plan_run.get("role") != "teacher"
+            or teacher_plan_run.get("run_phase") != "sol_planning"
+            or teacher_plan_run.get("disposition") != "completed"
+            or teacher_plan_run.get("exact_model_identity")
+            != payload.get("teacher_model_identity")
+            or teacher_plan_run.get("output_digest")
+            != binding.get("teacher_semantic_plan_digest")
+            or teacher_plan_run.get("validation_receipt_digest")
+            != binding.get("teacher_plan_grounding_receipt_digest")
+        ):
+            _fail("teacher_plan_run_invalid", "Sol planning运行没有绑定TeacherSemanticPlan与Host Grounding回执")
+        expected_plan_input = _digest_without_fields(
+            {
+                "role": "teacher",
+                "run_phase": "sol_planning",
+                "question_digest": binding.get("question_digest"),
+                "goal_digest": binding.get("goal_digest"),
+                "incident_id": binding.get("incident_id"),
+                "publication_id": binding.get("publication_id"),
+                "publication_revision": binding.get("publication_revision"),
+                "collector_id": binding.get("collector_id"),
+                "prompt_digest": binding.get("prompt_digest"),
+                "policy_digest": binding.get("policy_digest"),
+            }
+        )
+        if teacher_plan_run.get("role_specific_input_digest") != expected_plan_input:
+            _fail("teacher_plan_input_digest_mismatch", "Sol planning输入摘要无法重算")
+        if (
+            teacher_plan_grounding.get("teacher_semantic_plan_digest")
+            != binding.get("teacher_semantic_plan_digest")
+            or teacher_plan_grounding.get("grounding_plan_digest")
+            != binding.get("grounding_plan_digest")
+            or teacher_plan_grounding.get("registry_snapshot_digest")
+            != binding.get("registry_snapshot_digest")
+            or teacher_plan_grounding.get("disposition") != "passed"
+            or teacher_plan_grounding.get("receipt_digest")
+            != binding.get("teacher_plan_grounding_receipt_digest")
+            or teacher_plan_grounding.get("receipt_digest")
+            != _digest_without_fields(teacher_plan_grounding, "receipt_digest")
+        ):
+            _fail("teacher_plan_grounding_invalid", "Host Grounding回执未绑定Teacher提议与GroundingPlan")
+
+    def validate_teacher_chain(
+        *,
+        require_pass: bool,
+        coverage_required: bool = True,
+        coverage_must_pass: bool = True,
+    ) -> None:
+        validate_teacher_planning_chain()
+        if (
+            not isinstance(teacher_run, dict)
+            or not isinstance(teacher_reference, dict)
+            or (coverage_required and not isinstance(teacher_coverage, dict))
+        ):
+            _fail("teacher_run_invalid", "Teacher Reference或Oracle覆盖回执缺失")
         if teacher_run.get("role") != "teacher" or teacher_run.get(
             "exact_model_identity"
-        ) != payload.get("teacher_model_identity"):
+        ) != payload.get("teacher_model_identity") or teacher_run.get(
+            "run_phase"
+        ) != "sol_reference":
             _fail("teacher_run_invalid", "Teacher角色或精确模型身份不一致")
         if teacher_reference.get("output_digest") != _digest_without_fields(
             teacher_reference, "output_digest"
@@ -3332,10 +4309,112 @@ def validate_dual_model_flow_instance(
         ):
             _fail("teacher_validation_receipt_binding_mismatch", "Teacher run未绑定验证回执")
         expected_input = _digest_without_fields(
-            {"role": "teacher", "shared_answer_binding_digest": root_digest}
+            {
+                "role": "teacher",
+                "run_phase": "sol_reference",
+                "shared_answer_binding_digest": root_digest,
+            }
         )
         if teacher_run.get("role_specific_input_digest") != expected_input:
             _fail("teacher_input_digest_mismatch", "Teacher role_specific_input_digest 无法重算")
+        if not coverage_required:
+            if teacher_coverage is not None:
+                _fail("teacher_oracle_coverage_invalid", "Teacher Gate拒绝后不得伪造Oracle覆盖回执")
+            coverage_passed = False
+        else:
+            coverage_passed = (
+                teacher_coverage.get("required_fact_ids_complete") is True
+                and teacher_coverage.get("required_boundary_assertions_complete") is True
+                and teacher_coverage.get("required_unknowns_complete") is True
+                and teacher_coverage.get("prohibited_assertion_count") == 0
+                and teacher_coverage.get("disposition") == "passed"
+            )
+        if coverage_required:
+            oracle_digest = teacher_coverage.get("oracle_digest")
+        else:
+            oracle_digest = None
+        oracle_record = (
+            trusted_oracle_store.get("oracles", {}).get(oracle_digest)
+            if isinstance(trusted_oracle_store, Mapping)
+            and isinstance(trusted_oracle_store.get("oracles"), Mapping)
+            else None
+        )
+        if coverage_required and (
+            not isinstance(trusted_oracle_store, Mapping)
+            or set(trusted_oracle_store)
+            != {
+                "store_contract_id",
+                "trust_origin",
+                "caller_mutable",
+                "attestation_provider_id",
+                "attestation_contract_digest",
+                "oracles",
+            }
+            or trusted_oracle_store.get("store_contract_id")
+            != "country_outage_p2_trusted_oracle_store_v1"
+            or trusted_oracle_store.get("trust_origin")
+            != "host_authenticated_runtime_store"
+            or trusted_oracle_store.get("caller_mutable") is not False
+            or trusted_oracle_store.get("attestation_provider_id")
+            != "country_outage_p2_oracle_store_host"
+            or trusted_oracle_store.get("attestation_contract_digest")
+            != ORACLE_STORE_ATTESTATION_CONTRACT_DIGEST
+            or not isinstance(oracle_record, Mapping)
+            or oracle_record.get("oracle_digest") != oracle_digest
+            or oracle_record.get("question_id") != binding.get("question_id")
+            or not isinstance(
+                oracle_record.get("allowed_boundary_assertion_ids"), list
+            )
+            or not set(
+                oracle_record.get("required_boundary_assertion_ids", [])
+            ).issubset(set(oracle_record.get("allowed_boundary_assertion_ids", [])))
+            or oracle_digest != _digest_without_fields(oracle_record, "oracle_digest")
+        ):
+            _fail("teacher_oracle_unresolved", "Oracle覆盖必须解析Host受信的同题内容寻址Oracle")
+        calculated_fact_complete = coverage_required and set(
+            oracle_record.get("required_fact_ids", [])
+        ).issubset(set(teacher_reference.get("required_fact_ids", [])))
+        calculated_boundary_complete = coverage_required and set(
+            oracle_record.get("required_boundary_assertion_ids", [])
+        ).issubset(set(teacher_reference.get("boundary_assertions", [])))
+        calculated_unknown_complete = coverage_required and set(
+            oracle_record.get("required_unknown_ids", [])
+        ).issubset(set(teacher_reference.get("unknowns", [])))
+        calculated_prohibited_count = len(
+            set(oracle_record.get("prohibited_assertion_ids", []))
+            & (
+                set(teacher_reference.get("required_fact_ids", []))
+                | set(teacher_reference.get("boundary_assertions", []))
+                | set(teacher_reference.get("unknowns", []))
+                | set(teacher_reference.get("answer_outline", []))
+            )
+        ) if coverage_required else 0
+        calculated_coverage_passed = (
+            calculated_fact_complete
+            and calculated_boundary_complete
+            and calculated_unknown_complete
+            and calculated_prohibited_count == 0
+        )
+        if coverage_required and (
+            teacher_coverage.get("shared_answer_binding_digest") != root_digest
+            or teacher_coverage.get("question_id") != binding.get("question_id")
+            or teacher_coverage.get("teacher_reference_digest")
+            != teacher_reference.get("output_digest")
+            or teacher_coverage.get("receipt_digest")
+            != _digest_without_fields(teacher_coverage, "receipt_digest")
+            or teacher_coverage.get("required_fact_ids_complete")
+            is not calculated_fact_complete
+            or teacher_coverage.get("required_boundary_assertions_complete")
+            is not calculated_boundary_complete
+            or teacher_coverage.get("required_unknowns_complete")
+            is not calculated_unknown_complete
+            or teacher_coverage.get("prohibited_assertion_count")
+            != calculated_prohibited_count
+            or coverage_passed is not calculated_coverage_passed
+        ):
+            _fail("teacher_oracle_coverage_invalid", "TeacherReference未通过同题Oracle覆盖验证")
+        if coverage_required and coverage_must_pass is not coverage_passed:
+            _fail("teacher_oracle_coverage_invalid", "Oracle覆盖终态与Teacher流程分支不一致")
         if isinstance(evidence_graph, Mapping):
             graph_fact_ids = {
                 node.get("payload", {}).get("fact_id")
@@ -3357,6 +4436,182 @@ def validate_dual_model_flow_instance(
             ):
                 _fail("teacher_reference_evidence_unclosed", "TeacherReference引用了EvidenceGraph外事实或Evidence")
 
+    def validate_typed_answer_payload(answer_payload: Mapping[str, Any]) -> None:
+        if not isinstance(evidence_graph, Mapping):
+            _fail("student_claim_evidence_unclosed", "类型化Claim缺少已提交EvidenceGraph")
+        oracle_records = (
+            trusted_oracle_store.get("oracles")
+            if isinstance(trusted_oracle_store, Mapping)
+            else None
+        )
+        matching_oracles = [
+            record
+            for record in oracle_records.values()
+            if isinstance(record, Mapping)
+            and record.get("question_id") == binding.get("question_id")
+            and record.get("oracle_digest")
+            == _digest_without_fields(record, "oracle_digest")
+        ] if isinstance(oracle_records, Mapping) else []
+        if (
+            not isinstance(trusted_oracle_store, Mapping)
+            or trusted_oracle_store.get("store_contract_id")
+            != "country_outage_p2_trusted_oracle_store_v1"
+            or trusted_oracle_store.get("trust_origin")
+            != "host_authenticated_runtime_store"
+            or trusted_oracle_store.get("caller_mutable") is not False
+            or trusted_oracle_store.get("attestation_provider_id")
+            != "country_outage_p2_oracle_store_host"
+            or trusted_oracle_store.get("attestation_contract_digest")
+            != ORACLE_STORE_ATTESTATION_CONTRACT_DIGEST
+            or len(matching_oracles) != 1
+        ):
+            _fail(
+                "student_claim_boundary_binding_mismatch",
+                "Student类型化Claim必须解析唯一同题Host受信Oracle边界策略",
+            )
+        answer_oracle_record = matching_oracles[0]
+        nodes = [
+            node
+            for node in evidence_graph.get("nodes", [])
+            if isinstance(node, Mapping) and node.get("committed") is True
+        ]
+        nodes_by_id = {node.get("node_id"): node for node in nodes}
+        facts_by_id = {
+            node.get("payload", {}).get("fact_id"): node
+            for node in nodes
+            if node.get("node_type") in {"observed_fact", "derived_fact"}
+        }
+        claims = answer_payload.get("claims")
+        if (
+            not isinstance(claims, list)
+            or len({claim.get("claim_id") for claim in claims if isinstance(claim, Mapping)})
+            != len(claims)
+        ):
+            _fail("student_claim_schema_invalid", "Student类型化Claim ID必须唯一")
+        expected_global_evidence: list[str] = []
+        limitation_texts: list[str] = []
+        unknown_texts: list[str] = []
+        asserted_boundary_ids: set[str] = set()
+        allowed_boundary_ids = set(
+            answer_oracle_record.get("allowed_boundary_assertion_ids", [])
+        )
+        required_boundary_ids = set(
+            answer_oracle_record.get("required_boundary_assertion_ids", [])
+        )
+        prohibited_assertion_ids = set(
+            answer_oracle_record.get("prohibited_assertion_ids", [])
+        )
+        for claim in claims:
+            if not isinstance(claim, Mapping):
+                _fail("student_claim_schema_invalid", "Student Claim不是闭合对象")
+            kind = claim.get("claim_kind")
+            if kind in {"observed_fact", "derived_fact"}:
+                fact_ids = claim.get("fact_ids", [])
+                source_nodes = [facts_by_id.get(fact_id) for fact_id in fact_ids]
+                if (
+                    not fact_ids
+                    or any(node is None for node in source_nodes)
+                    or any(node.get("node_type") != kind for node in source_nodes)
+                    or claim.get("source_node_ids")
+                    != [node.get("node_id") for node in source_nodes]
+                ):
+                    _fail(
+                        "student_claim_fact_binding_mismatch",
+                        "observed/derived Claim未逐fact绑定同类型已提交图节点",
+                    )
+                expected_value_digests = [
+                    (
+                        node.get("payload", {}).get("fact_value_digest")
+                        if kind == "observed_fact"
+                        else node.get("payload", {}).get("operator_output_digest")
+                    )
+                    for node in source_nodes
+                ]
+                expected_claim_evidence: list[str] = []
+                for node in source_nodes:
+                    for evidence_ref in node.get("evidence_refs", []):
+                        if evidence_ref not in expected_claim_evidence:
+                            expected_claim_evidence.append(evidence_ref)
+                        if evidence_ref not in expected_global_evidence:
+                            expected_global_evidence.append(evidence_ref)
+                if (
+                    claim.get("source_value_digests") != expected_value_digests
+                    or claim.get("evidence_refs") != expected_claim_evidence
+                    or claim.get("claim_relation")
+                    != (
+                        "states_observed_fact"
+                        if kind == "observed_fact"
+                        else "states_derived_fact"
+                    )
+                    or claim.get("verification_requirements") != []
+                ):
+                    _fail(
+                        "student_claim_fact_binding_mismatch",
+                        "事实Claim的值摘要、Evidence或关系未与图节点逐项一致",
+                    )
+            elif kind in {"knowledge_explanation", "testable_hypothesis"}:
+                if (
+                    any(
+                        claim.get(field)
+                        for field in (
+                            "fact_ids",
+                            "source_node_ids",
+                            "source_value_digests",
+                            "evidence_refs",
+                        )
+                    )
+                    or not claim.get("verification_requirements")
+                ):
+                    _fail(
+                        "student_claim_knowledge_boundary_mismatch",
+                        "知识解释或假设不得冒充事件事实Evidence且必须列验证需求",
+                    )
+            elif kind in {"limitation", "unknown"}:
+                source_node_ids = claim.get("source_node_ids", [])
+                source_nodes = [nodes_by_id.get(node_id) for node_id in source_node_ids]
+                if (
+                    any(node is None or node.get("node_type") != kind for node in source_nodes)
+                    or claim.get("fact_ids")
+                    or claim.get("evidence_refs")
+                    or claim.get("source_value_digests")
+                    != [node.get("payload_digest") for node in source_nodes]
+                    or not claim.get("verification_requirements")
+                ):
+                    _fail(
+                        "student_claim_boundary_binding_mismatch",
+                        "limitation/unknown Claim必须保持非事实类型并绑定可选同类型节点",
+                    )
+                (limitation_texts if kind == "limitation" else unknown_texts).append(
+                    claim.get("text")
+                )
+            else:
+                _fail("student_claim_schema_invalid", "Student Claim类型未登记")
+            claim_boundary_ids = set(claim.get("boundary_assertion_ids", []))
+            if (
+                not claim_boundary_ids
+                or not claim_boundary_ids.issubset(allowed_boundary_ids)
+                or claim_boundary_ids & prohibited_assertion_ids
+            ):
+                _fail(
+                    "student_claim_boundary_binding_mismatch",
+                    "每条Claim的边界断言必须来自同题Host受信Oracle且不得命中禁止断言",
+                )
+            asserted_boundary_ids.update(claim_boundary_ids)
+        if not required_boundary_ids.issubset(asserted_boundary_ids):
+            _fail(
+                "student_claim_boundary_binding_mismatch",
+                "Student类型化Claim未覆盖同题Oracle要求的全部边界断言",
+            )
+        if (
+            answer_payload.get("evidence_refs") != expected_global_evidence
+            or answer_payload.get("limitations") != limitation_texts
+            or answer_payload.get("unknowns") != unknown_texts
+        ):
+            _fail(
+                "student_claim_global_projection_mismatch",
+                "回答级Evidence、limitations与unknowns必须从类型化Claim精确投影",
+            )
+
     def validate_student_chain(
         *, aligned: bool, last_require_pass: bool
     ) -> Mapping[str, Any]:
@@ -3365,14 +4620,34 @@ def validate_dual_model_flow_instance(
         for index, run in enumerate(students):
             receipt = run.get("run_receipt", {})
             validation = run.get("validation_receipt")
+            expected_phase = "ds_first_answer" if index == 0 else "ds_revision"
             if receipt.get("role") != "student" or receipt.get(
                 "disposition"
             ) != "completed" or receipt.get("exact_model_identity") != payload.get(
                 "student_model_identity"
-            ):
+            ) or receipt.get("run_phase") != expected_phase or run.get(
+                "revision_ordinal"
+            ) != index:
                 _fail("student_run_invalid", "Student角色、身份或状态错误")
             if receipt.get("output_digest") != run.get("student_answer_digest"):
                 _fail("student_output_binding_mismatch", "Student run output未绑定StudentAnswer")
+            answer_artifact = run.get("student_answer_artifact")
+            if (
+                not isinstance(answer_artifact, Mapping)
+                or answer_artifact.get("answer_digest")
+                != run.get("student_answer_digest")
+                or not isinstance(answer_artifact.get("artifact_ref"), str)
+                or answer_artifact.get("artifact_ref")
+                != f"artifact:student-answer:{run.get('student_answer_digest')}"
+                or not isinstance(answer_artifact.get("artifact_receipt_digest"), str)
+                or answer_artifact.get("answer_digest")
+                != _digest_without_fields(answer_artifact.get("answer_payload", {}))
+                or answer_artifact.get("artifact_receipt_digest")
+                != _digest_without_fields(answer_artifact, "artifact_receipt_digest")
+            ):
+                _fail("student_answer_artifact_unresolved", "Student回答摘要没有绑定可重放Artifact引用")
+            resolve_trusted_student_artifact(answer_artifact)
+            validate_typed_answer_payload(answer_artifact.get("answer_payload", {}))
             validate_gates(
                 validation,
                 require_pass=(last_require_pass if index == len(students) - 1 else False),
@@ -3384,11 +4659,15 @@ def validate_dual_model_flow_instance(
             expected_input = _digest_without_fields(
                 {
                     "role": "student",
+                    "run_phase": expected_phase,
                     "revision_ordinal": run.get("revision_ordinal"),
                     "shared_answer_binding_digest": root_digest,
                     "teacher_reference_digest": run.get("teacher_reference_digest"),
                     "teacher_validation_receipt_digest": run.get(
                         "teacher_validation_receipt_digest"
+                    ),
+                    "teacher_oracle_coverage_receipt_digest": run.get(
+                        "teacher_oracle_coverage_receipt_digest"
                     ),
                     "structured_feedback_digest": (
                         payload.get("structured_feedback", {}).get("feedback_digest")
@@ -3403,8 +4682,10 @@ def validate_dual_model_flow_instance(
                 run.get("teacher_reference_digest") != teacher_reference.get("output_digest")
                 or run.get("teacher_validation_receipt_digest")
                 != teacher_validation.get("receipt_digest")
+                or run.get("teacher_oracle_coverage_receipt_digest")
+                != teacher_coverage.get("receipt_digest")
             ):
-                _fail("student_teacher_input_binding_mismatch", "Student未绑定已验证TeacherReference")
+                _fail("student_teacher_input_binding_mismatch", "Student未绑定已验证TeacherReference与Oracle覆盖回执")
         selected = students[-1]
         if student_validation != selected.get("validation_receipt"):
             _fail("student_validation_root_mismatch", "根Student验证回执必须等于最后一次Student验证")
@@ -3413,6 +4694,8 @@ def validate_dual_model_flow_instance(
             first = students[0]
             if (
                 not isinstance(feedback, Mapping)
+                or feedback.get("producer_kind")
+                != "host_deterministic_alignment_evaluator"
                 or feedback.get("source_student_answer_digest") != first.get("student_answer_digest")
                 or feedback.get("source_validation_receipt_digest")
                 != first.get("validation_receipt", {}).get("receipt_digest")
@@ -3422,7 +4705,11 @@ def validate_dual_model_flow_instance(
                 _fail("student_feedback_binding_mismatch", "结构化反馈未绑定首答及其失败验证")
         return selected
 
-    def validate_publish(selected_answer_digest: str, *, aligned_claim: bool) -> None:
+    def validate_publish(selected: Mapping[str, Any], *, aligned_claim: bool) -> None:
+        selected_answer_digest = selected.get("student_answer_digest")
+        selected_payload = selected.get("student_answer_artifact", {}).get(
+            "answer_payload", {}
+        )
         if not isinstance(published, Mapping) or published.get(
             "aligned_claim"
         ) is not aligned_claim:
@@ -3447,6 +4734,18 @@ def validate_dual_model_flow_instance(
         if not set(published.get("evidence_refs", [])).issubset(allowed_refs):
             _fail("published_answer_evidence_unclosed", "发布回答引用了图外Evidence")
         if (
+            published.get("claims") != selected_payload.get("claims")
+            or published.get("claims_digest")
+            != _digest_without_fields({"claims": selected_payload.get("claims")})
+            or published.get("evidence_refs") != selected_payload.get("evidence_refs")
+            or published.get("limitations") != selected_payload.get("limitations")
+            or published.get("unknowns") != selected_payload.get("unknowns")
+        ):
+            _fail(
+                "published_claim_projection_mismatch",
+                "发布Claim及其Evidence/边界字段必须精确来自最终Student类型化制品",
+            )
+        if (
             not isinstance(publish_receipt, Mapping)
             or publish_receipt.get("receipt_digest") != payload.get("publish_receipt_digest")
             or _digest_without_fields(publish_receipt, "receipt_digest")
@@ -3457,6 +4756,56 @@ def validate_dual_model_flow_instance(
             or publish_receipt.get("disposition") != "committed"
         ):
             _fail("publish_receipt_binding_mismatch", "发布回执未绑定最终回答、Student输出与共享上下文")
+
+    def validate_alignment_result(
+        selected_answer_digest: str, *, require_pass: bool
+    ) -> None:
+        metrics = (
+            alignment.get("hard_gate_metrics", {})
+            if isinstance(alignment, Mapping)
+            else {}
+        )
+        expected_pass = all(
+            metrics.get(metric) == 1
+            for metric in (
+                "fact_precision",
+                "evidence_ref_precision",
+                "boundary_compliance",
+            )
+        )
+        expected_metric_inputs_digest = _digest_without_fields(
+            {
+                "question_id": binding.get("question_id"),
+                "oracle_digest": teacher_coverage.get("oracle_digest"),
+                "evidence_graph_digest": binding.get("evidence_graph_digest"),
+                "teacher_reference_digest": teacher_reference.get("output_digest"),
+                "teacher_oracle_coverage_receipt_digest": teacher_coverage.get(
+                    "receipt_digest"
+                ),
+                "student_answer_digest": selected_answer_digest,
+            }
+        )
+        if (
+            not isinstance(alignment, Mapping)
+            or alignment.get("hard_gates_passed") is not expected_pass
+            or alignment.get("hard_gates_passed") is not require_pass
+            or alignment.get("disposition")
+            != ("passed" if require_pass else "rejected")
+            or alignment.get("teacher_reference_digest")
+            != teacher_reference.get("output_digest")
+            or alignment.get("student_answer_digest") != selected_answer_digest
+            or alignment.get("oracle_digest") != teacher_coverage.get("oracle_digest")
+            or alignment.get("evidence_graph_digest")
+            != binding.get("evidence_graph_digest")
+            or alignment.get("teacher_oracle_coverage_receipt_digest")
+            != teacher_coverage.get("receipt_digest")
+            or alignment.get("metric_inputs_digest")
+            != expected_metric_inputs_digest
+            or alignment.get("receipt_digest")
+            != _digest_without_fields(alignment, "receipt_digest")
+        ):
+            _fail("alignment_digest_binding_mismatch", "Alignment未绑定可信输入、冻结指标与最终Student输出")
+        validate_alignment_receipt_trust()
 
     disposition = payload.get("final_disposition")
     exact_state = {
@@ -3469,6 +4818,9 @@ def validate_dual_model_flow_instance(
     }
     if disposition in exact_state and payload.get("flow_state") != exact_state[disposition]:
         _fail("dual_model_disposition_state_invalid", "DualModel终态disposition与flow_state不一致")
+    unavailable_phase = payload.get("teacher_unavailable_phase")
+    if disposition != "teacher_unavailable" and unavailable_phase != "none":
+        _fail("dual_model_disposition_state_invalid", "非Teacher不可用终态不得携带不可用阶段")
     if disposition == "none" and payload.get("flow_state") not in {
         "awaiting_teacher",
         "teacher_running",
@@ -3482,27 +4834,26 @@ def validate_dual_model_flow_instance(
             _fail("teacher_run_invalid", "aligned发布的Teacher未完成")
         validate_teacher_chain(require_pass=True)
         selected = validate_student_chain(aligned=True, last_require_pass=True)
-        metrics = alignment.get("hard_gate_metrics", {}) if isinstance(alignment, dict) else {}
-        if not isinstance(alignment, dict) or alignment.get("hard_gates_passed") is not True or alignment.get(
-            "disposition"
-        ) != "passed" or any(metrics.get(metric) != 1 for metric in (
-            "fact_precision",
-            "evidence_ref_precision",
-            "boundary_compliance",
-        )):
-            _fail("alignment_hard_gate_failed", "Alignment硬门未达到冻结阈值")
-        if (
-            alignment.get("teacher_reference_digest") != teacher_reference.get("output_digest")
-            or alignment.get("student_answer_digest") != selected.get("student_answer_digest")
-            or alignment.get("receipt_digest")
-            != _digest_without_fields(alignment, "receipt_digest")
-        ):
-            _fail("alignment_digest_binding_mismatch", "Alignment未绑定已验证Teacher与最终Student输出")
-        validate_publish(selected.get("student_answer_digest"), aligned_claim=True)
+        validate_alignment_result(
+            selected.get("student_answer_digest"), require_pass=True
+        )
+        validate_publish(selected, aligned_claim=True)
     elif disposition == "teacher_rejected":
         if students:
             _fail("teacher_rejected_forwarded_to_student", "Teacher拒绝后不得启动Student")
-        validate_teacher_chain(require_pass=False)
+        if isinstance(teacher_validation, Mapping) and teacher_validation.get(
+            "all_gates_passed"
+        ) is True:
+            validate_teacher_chain(
+                require_pass=True,
+                coverage_required=True,
+                coverage_must_pass=False,
+            )
+        else:
+            validate_teacher_chain(
+                require_pass=False,
+                coverage_required=False,
+            )
         if any(
             payload.get(field) is not None
             for field in (
@@ -3520,9 +4871,12 @@ def validate_dual_model_flow_instance(
         if any(
             payload.get(field) is not None
             for field in (
+                "teacher_plan_run_receipt",
+                "teacher_plan_grounding_receipt",
                 "teacher_run_receipt",
                 "teacher_reference",
                 "teacher_validation_receipt",
+                "teacher_oracle_coverage_receipt",
             )
         ):
             _fail("degraded_teacher_artifact_forbidden", "降级发布不得保留Teacher运行或引用制品")
@@ -3543,6 +4897,7 @@ def validate_dual_model_flow_instance(
         if any(
             run.get("teacher_reference_digest") is not None
             or run.get("teacher_validation_receipt_digest") is not None
+            or run.get("teacher_oracle_coverage_receipt_digest") is not None
             for run in students
         ):
             _fail("degraded_teacher_input_invalid", "降级Student不得携带无效Teacher输入")
@@ -3577,7 +4932,7 @@ def validate_dual_model_flow_instance(
             or binding.get("evidence_graph_digest") != evidence_graph.get("graph_digest")
         ):
             _fail("degraded_plan_admission_invalid", "降级新计划、授权与已验证提交图未闭合到同一修订")
-        validate_publish(selected.get("student_answer_digest"), aligned_claim=False)
+        validate_publish(selected, aligned_claim=False)
     elif disposition == "student_rejected":
         validate_teacher_chain(require_pass=True)
         validate_student_chain(aligned=True, last_require_pass=False)
@@ -3590,29 +4945,20 @@ def validate_dual_model_flow_instance(
         validate_teacher_chain(require_pass=True)
         selected = validate_student_chain(aligned=True, last_require_pass=True)
         if (
-            not isinstance(alignment, Mapping)
-            or alignment.get("hard_gates_passed") is not False
-            or alignment.get("disposition") != "rejected"
-            or alignment.get("teacher_reference_digest") != teacher_reference.get("output_digest")
-            or alignment.get("student_answer_digest") != selected.get("student_answer_digest")
-            or alignment.get("receipt_digest")
-            != _digest_without_fields(alignment, "receipt_digest")
-            or published is not None
+            published is not None
             or payload.get("publish_receipt_digest") is not None
         ):
             _fail("dual_model_disposition_state_invalid", "Alignment拒绝分支状态未闭合")
+        validate_alignment_result(
+            selected.get("student_answer_digest"), require_pass=False
+        )
     elif disposition == "teacher_unavailable":
-        if (
-            not isinstance(teacher_run, Mapping)
-            or teacher_run.get("role") != "teacher"
-            or teacher_run.get("disposition") != "unavailable"
-            or teacher_run.get("exact_model_identity") != payload.get("teacher_model_identity")
-            or students
-            or any(
+        common_invalid = students or any(
             payload.get(field) is not None
             for field in (
                 "teacher_reference",
                 "teacher_validation_receipt",
+                "teacher_oracle_coverage_receipt",
                 "structured_feedback",
                 "student_validation_receipt",
                 "alignment_run_receipt",
@@ -3620,11 +4966,35 @@ def validate_dual_model_flow_instance(
                 "published_answer",
                 "publish_receipt_digest",
             )
-            )
-        ):
+        )
+        if common_invalid or unavailable_phase != "sol_reference":
             _fail("dual_model_disposition_state_invalid", "Teacher不可用默认必须停止且不得发布")
+        else:
+            validate_teacher_planning_chain()
+            expected_reference_input = _digest_without_fields(
+                {
+                    "role": "teacher",
+                    "run_phase": "sol_reference",
+                    "shared_answer_binding_digest": root_digest,
+                }
+            )
+            if (
+                not isinstance(teacher_run, Mapping)
+                or teacher_run.get("role") != "teacher"
+                or teacher_run.get("run_phase") != "sol_reference"
+                or teacher_run.get("disposition") != "unavailable"
+                or teacher_run.get("validation_receipt_digest") is not None
+                or teacher_run.get("output_digest") is not None
+                or teacher_run.get("role_specific_input_digest")
+                != expected_reference_input
+                or teacher_run.get("exact_model_identity")
+                != payload.get("teacher_model_identity")
+            ):
+                _fail("dual_model_disposition_state_invalid", "Sol reference不可用终态制品不闭合")
     elif disposition == "none":
         flow_state = payload.get("flow_state")
+        if payload.get("effective_teacher_required") is True:
+            validate_teacher_planning_chain()
         if (
             published is not None
             or payload.get("publish_receipt_digest") is not None
@@ -4283,6 +5653,25 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
                 f"{question.get('question_id')} 引用未声明 capability：{missing}",
             )
         referenced_capabilities.extend(combined)
+    deferred_capabilities = capability_map.get("deferred_p2_1_capabilities")
+    if not isinstance(deferred_capabilities, list):
+        _fail("deferred_capability_contract_missing", "缺少P2.1 deferred capability目录")
+    deferred_ids = [
+        item.get("capability_id")
+        for item in deferred_capabilities
+        if isinstance(item, Mapping)
+    ]
+    if deferred_ids != ["CAP-P2-064"]:
+        _fail("deferred_capability_contract_missing", "CAP-P2-064必须仅进入P2.1 deferred目录")
+    deferred_entry = deferred_capabilities[0]
+    if (
+        deferred_entry.get("unit_id") != "PLAN-CAP-02"
+        or deferred_entry.get("affected_question_ids") != ["Q20", "Q23", "Q26"]
+        or deferred_entry.get("p2_v1_grounding_allowed") is not False
+        or deferred_entry.get("hidden_fan_out_replacement_forbidden") is not True
+    ):
+        _fail("deferred_capability_contract_missing", "PLAN-CAP-02 P2.1边界未冻结")
+    referenced_capabilities.extend(deferred_ids)
     unused = sorted(capability_set - set(referenced_capabilities))
     if unused:
         _fail("unused_capability", f"未被 28 题使用的 capability：{unused}")
@@ -4297,6 +5686,9 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         "CAP-P2-030": "two_op15_position_receipts_with_same_path_digest",
         "CAP-P2-032": "complete_anchor_before_known_origin_path_association_set",
         "CAP-P2-042": "two_typed_timed_facts_and_comparability_profile",
+        "CAP-P2-062": "two_complete_state_interval_sets",
+        "CAP-P2-063": "complete_fixed_cohort_member_result_set",
+        "CAP-P2-064": "one_complete_typed_member_set_and_one_frozen_template_group",
     }
     for capability_id, expected_population in required_source_populations.items():
         if capabilities_by_id[capability_id].get("source_population") != expected_population:
@@ -4313,11 +5705,15 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
     required_question_capabilities = {
         "Q06": {"CAP-P2-059"},
         "Q08": {"CAP-P2-060"},
+        "Q09": {"CAP-P2-062", "CAP-P2-063"},
+        "Q14": {"CAP-P2-011"},
         "Q16": {"CAP-P2-021", "CAP-P2-048"},
         "Q18": {"CAP-P2-011"},
+        "Q20": {"CAP-P2-031"},
         "Q21": {"CAP-P2-028", "CAP-P2-029"},
         "Q22": {"CAP-P2-036"},
         "Q23": {"CAP-P2-003", "CAP-P2-007", "CAP-P2-048"},
+        "Q26": {"CAP-P2-031", "CAP-P2-033", "CAP-P2-034"},
         "Q31": {"CAP-P2-061"},
         "Q32": {"CAP-P2-061"},
     }
@@ -4329,6 +5725,21 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
                 "question_capability_review_gap",
                 f"{question_id} 缺少独立审查要求的 capability：{missing_refs}",
             )
+    if "CAP-P2-042" in set(questions_by_id["Q09"]["required_capability_ids"]):
+        _fail("question_capability_review_gap", "Q09区间集合交集不得复用点时间比较OP-29")
+    for question_id in ("Q20", "Q23", "Q26"):
+        if "CAP-P2-064" in set(questions_by_id[question_id].get("required_capability_ids", [])) | set(
+            questions_by_id[question_id].get("optional_capability_ids", [])
+        ):
+            _fail("p2_v1_fan_out_dependency_forbidden", f"{question_id}不得引用P2.1 deferred CAP-P2-064")
+    expected_new_capability_units = {
+        "CAP-P2-062": ["OP-38"],
+        "CAP-P2-063": ["OP-39"],
+        "CAP-P2-064": ["PLAN-CAP-02"],
+    }
+    for capability_id, expected_units in expected_new_capability_units.items():
+        if capabilities_by_id[capability_id].get("unit_ids") != expected_units:
+            _fail("capability_unit_unknown", f"{capability_id}必须只绑定{expected_units}")
 
     decomposition = _load_json(decomposition_path)
     if not isinstance(decomposition, dict) or not isinstance(
@@ -4380,6 +5791,17 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
                     f"{item.get('unit_id')} 缺少 {field}",
                 )
         atomic_capability_ids.append(item["atomic_capability_id"])
+    plan_cap_02 = next(item for item in decomposition["atomic_units"] if item["unit_id"] == "PLAN-CAP-02")
+    if plan_cap_02.get("disposition") != "deferred_p2_1_not_in_p2_v1_plan_schema":
+        _fail("p2_v1_fan_out_dependency_forbidden", "PLAN-CAP-02必须deferred且不进入P2 v1 Plan Schema")
+    deferred_contract = decomposition.get("host_plan_capability_contracts", {}).get("PLAN-CAP-02", {})
+    if (
+        deferred_contract.get("disposition") != "deferred_p2_1"
+        or deferred_contract.get("p2_v1_execution_allowed") is not False
+        or deferred_contract.get("p2_v1_schema_included") is not False
+        or deferred_contract.get("runtime_ready_claim") is not False
+    ):
+        _fail("p2_v1_fan_out_dependency_forbidden", "PLAN-CAP-02 deferred合同允许P2 v1执行或Schema准入")
     if len(atomic_capability_ids) != len(set(atomic_capability_ids)):
         _fail("atomic_capability_duplicate", "atomic_capability_id 必须全局唯一")
     units_by_id = {item["unit_id"]: item for item in decomposition["atomic_units"]}
@@ -4479,6 +5901,57 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         _fail("ds_model_identity_contract_missing", "DS 逻辑别名必须为 ds_student")
     if ds_identity.get("freeze_exact_model_by_stage") != "S1D-5":
         _fail("ds_model_identity_contract_missing", "DS 精确模型身份必须在 S1D-5 前冻结")
+    expected_ds_flow_fields = [
+        "provider",
+        "model",
+        "version",
+        "expected_response_model",
+        "pi_version",
+        "candidate_resource_sha256",
+        "profile_registry_sha256",
+        "identity_digest",
+    ]
+    if (
+        ds_identity.get("provider") != "deepseek"
+        or ds_identity.get("model") != "deepseek-v4-flash"
+        or ds_identity.get("version") != "deepseek-v4-flash-pi-0.84.1-v1"
+        or ds_identity.get("expected_response_model") != "deepseek-v4-flash"
+        or ds_identity.get("pi_version") != "0.84.1"
+        or ds_identity.get("candidate_resource_sha256")
+        != "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5"
+        or ds_identity.get("profile_registry_sha256")
+        != "e8881aa2b79f495da3ea551bb3b2423af45c118f5e622ac1877852bf0087bf4f"
+        or ds_identity.get("flow_identity_required_fields")
+        != expected_ds_flow_fields
+    ):
+        _fail("ds_model_identity_contract_missing", "DS候选资源、响应模型与Profile身份未精确冻结")
+    teacher_plan_binding = model_roles.get("teacher_plan_binding")
+    if (
+        not isinstance(teacher_plan_binding, Mapping)
+        or teacher_plan_binding.get("planning_unavailable_prevents_dual_answer_flow_creation")
+        is not True
+        or teacher_plan_binding.get("dual_flow_teacher_unavailable_phase")
+        != "sol_reference_only_after_host_grounding"
+        or teacher_plan_binding.get("host_grounding_required") is not True
+        or teacher_plan_binding.get("teacher_plan_is_executable_plan") is not False
+    ):
+        _fail("model_role_contract_invalid", "Sol Semantic Plan与Host Grounding职责未分离")
+    validators = model_roles.get("roles")
+    alignment_evaluator = (
+        validators.get("alignment_evaluator")
+        if isinstance(validators, Mapping)
+        else None
+    )
+    if (
+        not isinstance(alignment_evaluator, Mapping)
+        or alignment_evaluator.get("owner_kind") != "host_deterministic_evaluator"
+        or alignment_evaluator.get("trusted_receipt_store")
+        != "country_outage_p2_trusted_alignment_receipt_store_v1"
+        or alignment_evaluator.get("caller_self_attested_metric_receipt_forbidden")
+        is not True
+        or alignment_evaluator.get("teacher_is_truth_oracle") is not False
+    ):
+        _fail("model_role_contract_invalid", "Alignment必须由Host确定性Evaluator生成受信回执")
     shared_binding = model_roles.get("shared_answer_binding")
     if not isinstance(shared_binding, dict):
         _fail("shared_answer_binding_missing", "缺少 shared_answer_binding")
@@ -4505,12 +5978,16 @@ def _validate_s1d1(repo_root: Path) -> list[str]:
         design_boundary.get(field) is not False
         for field in (
             "model_calls_implemented",
-            "ds_identity_frozen",
+            "p2_runtime_model_path_implemented",
             "runtime_integrated",
             "production_deployed",
         )
     ):
-        _fail("model_role_boundary_drift", "S1D-1 模型角色不得声称已运行或已部署")
+        _fail("model_role_boundary_drift", "模型角色不得声称P2运行时已实现、集成或部署")
+    if design_boundary.get("ds_identity_frozen") is not True:
+        _fail("ds_model_identity_contract_missing", "S1D-5候选必须冻结DS评测身份")
+    if design_boundary.get("s1d5_design_evaluation_model_replay_executed") is not True:
+        _fail("model_replay_evidence_missing", "S1D-5候选必须明确记录离线模型重放已经执行")
     return [
         "question_capability_closure",
         "question_oracle_seed_closure",
@@ -4682,6 +6159,77 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         "只有visibility=visible且common_path_status属于ordered或unordered的path可称该时点活动观测路径"
     ):
         _fail("active_path_rule_drift", "TOOL-11 活动路径规则必须使用合法统一状态枚举")
+    source_view_requirements = payload.get("source_view_requirements", [])
+    route_state_view = next(
+        (
+            item
+            for item in source_view_requirements
+            if isinstance(item, Mapping)
+            and item.get("source_population_id")
+            == "materialized_route_state_rows_at_exact_time"
+        ),
+        None,
+    )
+    membership_profile = (
+        route_state_view.get("path_asn_membership_profile", {})
+        if isinstance(route_state_view, Mapping)
+        else {}
+    )
+    contains_contract = tool11.get("contains_asn_filter_contract")
+    required_index_metadata = {
+        "path_asn_membership_index_id",
+        "path_asn_membership_profile_digest",
+        "path_asn_membership_index_digest",
+        "path_asn_membership_materialization_receipt_digest",
+    }
+    required_query_receipt_fields = {
+        "receipt_kind",
+        "tool_run_id",
+        "identity_digest",
+        "state_point_utc",
+        "query_digest",
+        "source_population_id",
+        "source_dataset_digest",
+        "contains_asn",
+        "path_asn_membership_profile_digest",
+        "path_asn_membership_index_digest",
+        "path_asn_membership_materialization_receipt_digest",
+        "eligible_row_predicate",
+        "matched_member_keys_digest",
+        "total_count",
+        "disposition",
+    }
+    if (
+        not isinstance(route_state_view, Mapping)
+        or set(route_state_view.get("required_source_metadata", []))
+        != required_index_metadata
+        or membership_profile.get("profile_id")
+        != TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_ID
+        or membership_profile.get("profile_digest")
+        != TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST
+        or _digest_without_fields(membership_profile, "profile_digest")
+        != TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST
+        or membership_profile.get("source_field") != "path_segments"
+        or membership_profile.get("query_time_path_parsing_forbidden") is not True
+        or membership_profile.get("ambiguous_invalid_unknown_not_applicable_excluded")
+        is not True
+        or not isinstance(contains_contract, Mapping)
+        or contains_contract.get("source")
+        != "pre_materialized_path_asn_membership_index_on_same_route_state_population"
+        or contains_contract.get("profile_id")
+        != TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_ID
+        or contains_contract.get("profile_digest")
+        != TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST
+        or contains_contract.get("eligible_row_predicate")
+        != TOOL11_PATH_ASN_ELIGIBLE_ROW_PREDICATE
+        or contains_contract.get("query_time_path_parsing_forbidden") is not True
+        or contains_contract.get("llm_filtering_forbidden") is not True
+        or contains_contract.get("trusted_query_receipt_required_when_filter_present")
+        is not True
+        or set(contains_contract.get("query_receipt_must_bind", []))
+        != required_query_receipt_fields
+    ):
+        _fail("route_state_contains_asn_index_contract_open", "TOOL-11 contains_asn未绑定预物化索引与可信查询回执")
     tool12 = tools_by_id["TOOL-12"]
     if (
         tool12.get("source_population") != "window_path_association_evidence_rows"
@@ -4695,7 +6243,59 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
         "ever_affected_asns_registered_by_bound_publication"
     ):
         _fail("path_association_domain_missing", "TOOL-12 必须冻结完整性人口域")
+    native_filter = tool12.get("native_filter_contract")
+    required_tool12_receipt_fields = {
+        "tool_id",
+        "publication_id",
+        "source_population_id",
+        "source_dataset_digest",
+        "query_digest",
+        "filter_profile_id",
+        "filter_profile_digest",
+        "path_asn_membership_index_id",
+        "anchor_before_known_origin_index_id",
+        "path_association_index_digest",
+        "path_association_materialization_receipt_digest",
+        "anchor_population_source_ref",
+        "eligible_anchor_asns_digest",
+        "eligible_anchor_asn_count",
+        "target_contains_asn",
+        "target_anchor_asn",
+        "anchor_before_known_origin",
+        "anchor_population_eligible",
+        "matched_member_keys_digest",
+        "matched_total_count",
+        "disposition",
+        "receipt_digest",
+    }
+    if (
+        not isinstance(native_filter, Mapping)
+        or native_filter.get("profile_id") != TOOL12_NATIVE_FILTER_PROFILE_ID
+        or native_filter.get("profile_digest") != TOOL12_NATIVE_FILTER_PROFILE_DIGEST
+        or native_filter.get("filters")
+        != ["contains_asn", "anchor_asn_plus_anchor_before_known_origin"]
+        or native_filter.get("query_time_path_parsing_forbidden") is not True
+        or native_filter.get("llm_filtering_forbidden") is not True
+        or native_filter.get("trusted_query_receipt_required_when_filter_present") is not True
+        or set(native_filter.get("query_receipt_must_bind", []))
+        != required_tool12_receipt_fields
+    ):
+        _fail("tool12_native_filter_contract_open", "TOOL-12原生过滤未绑定预物化索引与可信查询回执")
     tool12_fields = tool12.get("output_field_schemas", {})
+    if (
+        tool12_fields.get("origin_status", {}).get("const") != "known"
+        or "observed_origin_asn" not in tool12_fields
+        or not {"origin_status", "observed_origin_asn"}.issubset(
+            tool12.get("output_member_fields", [])
+        )
+        or set(tool12.get("output_row_constraints", {}).get("origin_invariants", []))
+        != {
+            "origin_status == known",
+            "observed_origin_asn == known_origin_asn",
+            "ordered_sequence_eligible=true时去除连续prepend后AS_PATH末尾ASN == known_origin_asn",
+        }
+    ):
+        _fail("tool12_origin_tail_contract_open", "TOOL-12 known origin未冻结为实际AS_PATH末尾ASN")
     if tool12_fields.get("route_observation_count", {}).get("minimum") != 1:
         _fail("path_association_count_invalid", "TOOL-12 关联行必须至少有一次观测")
     if tool12_fields.get("peer_asn_direction_ids", {}).get("minItems") != 1:
@@ -4825,6 +6425,30 @@ def _validate_s1d2(repo_root: Path) -> list[str]:
                 "path_digest_source_missing",
                 f"{population_id} 必须原生存储统一状态与路径摘要，禁止Operator隐式适配",
             )
+    tool12_source = source_requirements.get("window_path_association_evidence_rows", {})
+    tool12_profile = tool12_source.get("filter_profile")
+    if (
+        set(tool12_source.get("required_source_metadata", []))
+        != {
+            "path_asn_membership_index_id",
+            "anchor_before_known_origin_index_id",
+            "path_association_filter_profile_digest",
+            "path_association_index_digest",
+            "path_association_materialization_receipt_digest",
+            "anchor_population_source_ref",
+            "eligible_anchor_asns_digest",
+            "eligible_anchor_asn_count",
+        }
+        or not isinstance(tool12_profile, Mapping)
+        or tool12_profile.get("profile_id") != TOOL12_NATIVE_FILTER_PROFILE_ID
+        or tool12_profile.get("profile_digest") != TOOL12_NATIVE_FILTER_PROFILE_DIGEST
+        or _digest_without_fields(tool12_profile, "profile_digest")
+        != TOOL12_NATIVE_FILTER_PROFILE_DIGEST
+        or tool12_profile.get("profile_digest_recipe")
+        != "sha256(canonical(filter_profile excluding profile_digest))"
+        or tool12_profile.get("query_time_path_parsing_forbidden") is not True
+    ):
+        _fail("tool12_native_filter_contract_open", "TOOL-12 source view未冻结原生过滤索引Profile")
     deferred = [
         item
         for item in payload["tools"]
@@ -5337,6 +6961,22 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
     ]
     if op05.get("default_sort") != expected_sort:
         _fail("as_sort_contract_drift", f"OP-05 默认排序漂移：{op05.get('default_sort')}")
+    if (
+        "ranked_members"
+        not in op05.get("output_contract", {}).get("required_fields", [])
+        or op05.get("output_contract", {})
+        .get("field_types", {})
+        .get("ranked_members")
+        != "array<severity_ranked_member>"
+        or "competition rank（1,1,3）"
+        not in op05.get("algorithm_contract", {}).get("tie_rule", "")
+        or "result_position为全序1..n"
+        not in op05.get("algorithm_contract", {}).get("tie_rule", "")
+    ):
+        _fail(
+            "as_rank_output_contract_open",
+            "OP-05必须逐ASN发布competition severity rank与稳定result position",
+        )
     op06 = operators_by_id["OP-06"]
     if "left_censored" not in op06["output_contract"]["field_types"].get(
         "outcome", ""
@@ -5347,6 +6987,32 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
         "outcome", ""
     ):
         _fail("last_occurrence_censoring_missing", "OP-35 缺少右删失语义")
+    op07 = operators_by_id["OP-07"]
+    if not {
+        "target_state",
+        "window",
+        "grid_step_seconds",
+        "series_digest",
+    }.issubset(set(op07.get("output_contract", {}).get("required_fields", []))):
+        _fail("state_interval_context_missing", "OP-07必须原样携带目标状态、窗口、网格与输入序列摘要")
+    op38 = operators_by_id["OP-38"]
+    if (
+        op38.get("input_semantic") != "two_complete_state_interval_sets"
+        or op38.get("output_semantic") != "state_interval_overlap_set"
+        or op38.get("complexity_contract") != {"time": "O(n+m)", "space": "O(k)"}
+        or op38.get("input_contract", {}).get("complete_input_required") is not True
+        or "端点相接不算重叠" not in op38.get("algorithm_contract", {}).get("rule", "")
+    ):
+        _fail("interval_set_intersection_contract_open", "OP-38半开完整区间集交集合同未闭合")
+    op39 = operators_by_id["OP-39"]
+    if (
+        op39.get("input_semantic") != "complete_fixed_cohort_member_result_set"
+        or op39.get("output_semantic") != "fixed_cohort_prefix_set"
+        or op39.get("complexity_contract") != {"time": "O(n log n)", "space": "O(k)"}
+        or op39.get("input_contract", {}).get("complete_input_required") is not True
+        or "(afi,canonical_prefix)" not in op39.get("algorithm_contract", {}).get("rule", "")
+    ):
+        _fail("fixed_cohort_prefix_projection_contract_open", "OP-39固定cohort前缀集合投影合同未闭合")
     op36 = operators_by_id["OP-36"]
     op36_outcomes = op36["output_contract"]["field_types"].get("outcome", "")
     if not all(
@@ -5381,9 +7047,19 @@ def _validate_s1d3(repo_root: Path) -> list[str]:
     ) or "再次解析" not in op17["algorithm_contract"]["rule"]:
         _fail("path_operator_composite", "OP-17 必须只比较同路径双位置回执")
     op19 = operators_by_id["OP-19"]
-    if "population_filter_receipt_digest" not in op19["input_contract"][
-        "required_fields"
-    ] or "不在Operator内判断contains/order" not in op19["algorithm_contract"]["rule"]:
+    op19_required = set(op19["input_contract"]["required_fields"])
+    op19_invariants = set(op19["input_contract"].get("invariants", []))
+    if not {
+        "population_filter_receipt_digest",
+        "source_result_set_query_receipt_digest",
+        "source_result_set_ref",
+        "host_projection_receipt_digest",
+        "population_evidence_ref",
+    }.issubset(op19_required) or not {
+        "population_filter_receipt_digest == source_result_set_query_receipt_digest",
+        "source_result_set_ref.query_receipt_digest == population_filter_receipt_digest",
+        "association_members are a one-to-one Host-attested structural projection of every frozen source ResultSet member",
+    }.issubset(op19_invariants) or "不在Operator内判断contains/order" not in op19["algorithm_contract"]["rule"]:
         _fail("downstream_projection_composite", "OP-19 不得内嵌路径定位或顺序判断")
     op15 = operators_by_id["OP-15"]
     if "common_path_status" not in op15["input_contract"]["required_fields"] or (
@@ -6060,10 +7736,16 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
         )
     ):
         _fail("composite_plan_node_forbidden", "组合边界或局部失败传播未闭合")
-    if composition.get("p2_v1_deferred_units") != ["TOOL-13", "OP-34"] or composition.get(
+    if composition.get("p2_v1_deferred_units") != ["TOOL-13", "OP-34", "PLAN-CAP-02"] or composition.get(
         "p2_v1_deferred_units_admission_forbidden"
     ) is not True:
         _fail("deferred_unit_policy_open", "P2 v1 deferred 单元准入边界未冻结")
+    plan_schema_text = json.dumps(plan, ensure_ascii=False, sort_keys=True)
+    if any(
+        forbidden in plan_schema_text
+        for forbidden in ("fan_out_groups", "fan_out_member", "fanOutGroup", "fanOutTemplateNode")
+    ):
+        _fail("p2_v1_fan_out_schema_forbidden", "P2 v1 Plan Schema不得包含PLAN-CAP-02 fan-out结构")
     incomplete_policy = plan.get("x-incomplete-input-contract")
     incomplete_enum = set(
         plan_node_properties.get("incomplete_input_policy", {}).get("enum", [])
@@ -6336,6 +8018,65 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
         "lower_bound_requires_registered_monotonicity_contract"
     ) is not True:
         _fail("incomplete_input_policy_open", "不完整 ResultSet 的 Operator 消费边界未闭合")
+    tool11_query_contract = result_set.get("x-tool11-contains-asn-query-contract")
+    if not isinstance(tool11_query_contract, Mapping) or any(
+        tool11_query_contract.get(field) is not True
+        for field in (
+            "trusted_query_receipt_required",
+            "pre_materialized_membership_index_required",
+            "query_time_path_parsing_forbidden",
+            "llm_filtering_forbidden",
+            "returned_member_must_be_visible_and_have_common_path_status_ordered_or_unordered",
+            "returned_typed_path_segments_must_contain_target_asn",
+            "query_receipt_must_bind_profile_index_materialization_query_source_target_matched_keys_and_total",
+        )
+    ) or tool11_query_contract.get("source_population_unchanged") != (
+        "materialized_route_state_rows_at_exact_time"
+    ) or tool11_query_contract.get("profile_id") != (
+        TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_ID
+    ) or tool11_query_contract.get("profile_digest") != (
+        TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST
+    ) or tool11_query_contract.get("eligible_row_predicate") != (
+        TOOL11_PATH_ASN_ELIGIBLE_ROW_PREDICATE
+    ) or tool11_query_contract.get("complete_matched_member_keys_digest_recipe") != (
+        "sha256(canonical({member_keys: resolved_members[].member_identity in frozen result order}))"
+    ) or tool11_query_contract.get("missing_or_mismatched_receipt_disposition") != (
+        "reject_result_set_freeze"
+    ):
+        _fail("route_state_contains_asn_index_contract_open", "ResultSet未冻结TOOL-11条件查询回执闭包")
+    tool12_query_contract = result_set.get("x-tool12-native-filter-query-contract")
+    if (
+        not isinstance(tool12_query_contract, Mapping)
+        or tool12_query_contract.get("source_population_unchanged")
+        != "window_path_association_evidence_rows"
+        or tool12_query_contract.get("profile_id")
+        != TOOL12_NATIVE_FILTER_PROFILE_ID
+        or tool12_query_contract.get("profile_digest")
+        != TOOL12_NATIVE_FILTER_PROFILE_DIGEST
+        or any(
+            tool12_query_contract.get(field) is not True
+            for field in (
+                "trusted_query_receipt_required",
+                "pre_materialized_filter_indexes_required",
+                "query_time_path_parsing_forbidden",
+                "llm_filtering_forbidden",
+                "contains_asn_returned_path_segments_must_contain_target_asn",
+                "anchor_before_returned_row_must_match_anchor_and_verified_strict_path_order",
+                "anchor_before_requires_anchor_asn_and_eligible_anchor_population",
+                "anchor_population_eligibility_must_resolve_complete_same_publication_ever_affected_as_result_set",
+                "known_origin_must_equal_observed_origin_and_collapsed_ordered_path_tail",
+                "trusted_materialization_receipt_must_resolve_and_bind_profile_source_indexes_and_indexed_population",
+                "query_receipt_must_bind_profile_indexes_materialization_query_source_targets_matched_keys_and_total",
+                "op19_population_filter_receipt_digest_must_equal_result_set_query_receipt_digest",
+            )
+        )
+        or tool12_query_contract.get("missing_or_mismatched_receipt_disposition")
+        != "reject_result_set_freeze"
+    ):
+        _fail(
+            "tool12_native_filter_contract_open",
+            "ResultSet未冻结TOOL-12 Profile、anchor人口与known-origin末尾条件回执闭包",
+        )
     result_text = json.dumps(result_set.get("allOf", []), ensure_ascii=False, sort_keys=True)
     if not all(
         marker in result_text
@@ -6622,15 +8363,20 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
             "teacherModelIdentity",
             "studentModelIdentity",
             "modelRunReceipt",
+            "teacherPlanRunReceipt",
+            "teacherPlanGroundingReceipt",
             "teacherRunReceipt",
             "completedTeacherRunReceipt",
             "studentModelRunReceipt",
             "teacherReference",
+            "teacherOracleCoverageReceipt",
             "validationReceipt",
             "passedValidationReceipt",
             "rejectedValidationReceipt",
             "passedGateResult",
             "studentRun",
+            "studentAnswerArtifactReference",
+            "studentAnswerPayload",
             "completedStudentRun",
             "degradedStudentRun",
             "structuredFeedback",
@@ -6668,6 +8414,8 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
             "finality",
             "binding_generation",
             "grounding_plan_digest",
+            "teacher_semantic_plan_digest",
+            "teacher_plan_grounding_receipt_digest",
             "plan_id",
             "plan_revision",
             "investigation_plan_digest",
@@ -6688,8 +8436,14 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
         shared["properties"]["finality"].get("enum", [])
     ) != frozen_finality:
         _fail("cross_stage_identity_contract_drift", "双模型共享绑定未继承完整S1D-2身份")
-    if model_properties.get("teacher_run_receipt", {}).get("oneOf", [None])[0] != {
+    if model_properties.get("teacher_plan_run_receipt", {}).get("oneOf", [None])[0] != {
+        "$ref": "#/$defs/teacherPlanRunReceipt"
+    } or model_properties.get("teacher_plan_grounding_receipt", {}).get("oneOf", [None])[0] != {
+        "$ref": "#/$defs/teacherPlanGroundingReceipt"
+    } or model_properties.get("teacher_run_receipt", {}).get("oneOf", [None])[0] != {
         "$ref": "#/$defs/teacherRunReceipt"
+    } or model_properties.get("teacher_oracle_coverage_receipt", {}).get("oneOf", [None])[0] != {
+        "$ref": "#/$defs/teacherOracleCoverageReceipt"
     } or model_properties.get("student_runs", {}).get("items") != {
         "$ref": "#/$defs/studentRun"
     }:
@@ -6709,6 +8463,7 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
     ) or binding.get("student_only_additional_inputs") != [
         "validated_teacher_reference",
         "teacher_reference_validation_receipt",
+        "teacher_oracle_coverage_receipt",
     ] or binding.get("student_additional_inputs_may_change_shared_binding") is not False:
         _fail("shared_binding_contract_open", "Sol/DS同绑定与同证据合同未闭合")
     dual_digest_contract = model_flow.get("x-digest-recomputation-contract")
@@ -6719,8 +8474,13 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
         "validation_receipt_digest",
         "alignment_receipt_digest",
         "published_answer_digest",
-        "teacher_role_specific_input_digest",
+        "teacher_oracle_coverage_receipt_digest",
+        "teacher_plan_grounding_receipt_digest",
+        "teacher_plan_role_specific_input_digest",
+        "teacher_reference_role_specific_input_digest",
         "student_role_specific_input_digest",
+        "student_answer_digest",
+        "student_answer_artifact_receipt_digest",
         "publish_receipt_digest",
     }.issubset(dual_digest_contract) or not isinstance(
         dual_runtime_context, dict
@@ -6736,6 +8496,8 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
             "final_disposition_and_flow_state_are_bidirectionally_closed",
             "degraded_plan_resolves_from_host_trusted_validated_plan_store",
             "caller_supplied_plan_or_graph_attestation_forbidden",
+            "teacher_oracle_resolves_from_host_trusted_content_addressed_store",
+            "caller_supplied_or_mutated_oracle_record_forbidden",
             "trusted_plan_record_must_pass_full_investigation_plan_instance_validator_with_bound_context",
             "trusted_graph_record_must_pass_full_evidence_graph_instance_validator_with_bound_context",
         )
@@ -6788,6 +8550,56 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
             "receipt_validator_contract_digest": COMMITTED_GRAPH_VALIDATOR_CONTRACT_DIGEST,
             "receipt_validator_implementation_digest": COMMITTED_GRAPH_VALIDATOR_IMPLEMENTATION_DIGEST,
         },
+        "oracle_store": {
+            "store_contract_id": "country_outage_p2_trusted_oracle_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": "country_outage_p2_oracle_store_host",
+            "attestation_contract_digest": ORACLE_STORE_ATTESTATION_CONTRACT_DIGEST,
+            "record_fields": [
+                "question_id",
+                "required_fact_ids",
+                "required_boundary_assertion_ids",
+                "allowed_boundary_assertion_ids",
+                "required_unknown_ids",
+                "prohibited_assertion_ids",
+                "oracle_digest",
+            ],
+            "record_digest_recipe": "sha256(canonical(record excluding oracle_digest))",
+            "store_resolution_key": "oracle_digest",
+            "question_binding_required": True,
+            "request_payload_may_not_supply_or_mutate_records": True,
+            "host_attestation_required": True,
+        },
+        "student_answer_artifact_store": {
+            "store_contract_id": "country_outage_p2_trusted_student_answer_artifact_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": "country_outage_p2_student_answer_artifact_store_host",
+            "attestation_contract_digest": STUDENT_ANSWER_ARTIFACT_STORE_ATTESTATION_CONTRACT_DIGEST,
+            "record_fields": [
+                "artifact_ref",
+                "artifact_schema_ref",
+                "answer_payload",
+                "answer_digest",
+                "artifact_receipt_digest",
+            ],
+            "record_digest_recipe": "answer_digest=sha256(canonical(answer_payload)); artifact_receipt_digest=sha256(canonical(record excluding artifact_receipt_digest))",
+            "store_resolution_key": "artifact_ref",
+            "request_payload_record_must_equal_host_record": True,
+            "host_attestation_required": True,
+        },
+        "alignment_receipt_store": {
+            "store_contract_id": "country_outage_p2_trusted_alignment_receipt_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": "country_outage_p2_alignment_receipt_store_host",
+            "attestation_contract_digest": ALIGNMENT_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST,
+            "record_schema_ref": "#/$defs/alignmentRunReceipt",
+            "store_resolution_key": "receipt_digest",
+            "request_payload_record_must_equal_host_record": True,
+            "host_attestation_required": True,
+        },
     }
     if trusted_stores != expected_store_bindings:
         _fail("dual_model_trusted_store_contract_open", "双模型受信计划与提交图存储合同未冻结")
@@ -6816,6 +8628,7 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
             ("evidence_truth_precedes_teacher", True),
             ("teacher_reference_not_ground_truth", True),
             ("invalid_teacher_reference_forwarded_to_student", False),
+            ("teacher_reference_requires_passed_oracle_coverage_receipt_before_student", True),
             ("missing_evidence_invalid_reference_causality_customer_relation_and_recovery_claims_fail_closed", True),
             ("private_chain_of_thought_required_or_persisted", False),
         )
@@ -6907,6 +8720,74 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
             != expected_state
         ):
             _fail("dual_model_terminal_state_matrix_open", "DualModel终态与disposition没有双向闭合")
+    terminal_branches = {
+        item.get("if", {})
+        .get("properties", {})
+        .get("final_disposition", {})
+        .get("const"): item.get("then", {}).get("properties", {})
+        for item in model_flow.get("allOf", [])
+        if isinstance(item, Mapping)
+        and isinstance(item.get("if"), Mapping)
+        and isinstance(item.get("then"), Mapping)
+    }
+    unavailable_properties = terminal_branches.get("teacher_unavailable", {})
+    if (
+        "teacher_unavailable_phase" not in model_flow.get("required", [])
+        or model_properties.get("teacher_unavailable_phase", {}).get("enum")
+        != ["none", "sol_reference"]
+        or unavailable_properties.get("teacher_unavailable_phase", {}).get("const")
+        != "sol_reference"
+        or unavailable_properties.get("teacher_plan_run_receipt", {}).get("$ref")
+        != "#/$defs/completedTeacherPlanRunReceipt"
+        or unavailable_properties.get("teacher_plan_grounding_receipt", {}).get("$ref")
+        != "#/$defs/teacherPlanGroundingReceipt"
+        or unavailable_properties.get("teacher_run_receipt", {}).get("$ref")
+        != "#/$defs/unavailableTeacherRunReceipt"
+        or any(
+            unavailable_properties.get(field, {}).get("type") != "null"
+            for field in (
+                "teacher_reference",
+                "teacher_validation_receipt",
+                "teacher_oracle_coverage_receipt",
+                "structured_feedback",
+                "student_validation_receipt",
+                "alignment_run_receipt",
+                "degraded_authorization",
+                "published_answer",
+                "publish_receipt_digest",
+            )
+        )
+        or unavailable_properties.get("student_runs", {}).get("maxItems") != 0
+    ):
+        _fail("dual_model_terminal_state_matrix_open", "Teacher不可用阶段或终态字段未穷尽闭合")
+    for disposition, required_refs in {
+        "student_rejected": {
+            "teacher_plan_run_receipt": "#/$defs/completedTeacherPlanRunReceipt",
+            "teacher_plan_grounding_receipt": "#/$defs/teacherPlanGroundingReceipt",
+            "teacher_run_receipt": "#/$defs/completedTeacherRunReceipt",
+            "teacher_validation_receipt": "#/$defs/passedValidationReceipt",
+            "teacher_oracle_coverage_receipt": "#/$defs/passedTeacherOracleCoverageReceipt",
+            "student_validation_receipt": "#/$defs/rejectedValidationReceipt",
+        },
+        "alignment_rejected": {
+            "teacher_plan_run_receipt": "#/$defs/completedTeacherPlanRunReceipt",
+            "teacher_plan_grounding_receipt": "#/$defs/teacherPlanGroundingReceipt",
+            "teacher_run_receipt": "#/$defs/completedTeacherRunReceipt",
+            "teacher_validation_receipt": "#/$defs/passedValidationReceipt",
+            "teacher_oracle_coverage_receipt": "#/$defs/passedTeacherOracleCoverageReceipt",
+            "student_validation_receipt": "#/$defs/passedValidationReceipt",
+            "alignment_run_receipt": "#/$defs/rejectedAlignmentRunReceipt",
+        },
+    }.items():
+        properties = terminal_branches.get(disposition, {})
+        if any(
+            properties.get(field, {}).get("$ref") != schema_ref
+            for field, schema_ref in required_refs.items()
+        ) or any(
+            properties.get(field, {}).get("type") != "null"
+            for field in ("published_answer", "publish_receipt_digest")
+        ):
+            _fail("dual_model_terminal_state_matrix_open", f"{disposition}终态字段未穷尽闭合")
     student_runs = model_properties.get("student_runs", {})
     feedback = model_defs["structuredFeedback"]
     feedback_contract = model_flow.get("x-feedback-contract")
@@ -6914,7 +8795,18 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
         "const"
     ) != 1 or not isinstance(feedback_contract, dict) or feedback_contract.get(
         "structured_feedback_max"
-    ) != 1 or feedback_contract.get("student_revision_max") != 1 or feedback_contract.get(
+    ) != 1 or feedback.get("properties", {}).get("producer_kind", {}).get(
+        "const"
+    ) != "host_deterministic_alignment_evaluator" or feedback_contract.get(
+        "feedback_owner"
+    ) != "host_deterministic_alignment_evaluator" or feedback_contract.get(
+        "additional_sol_feedback_call_allowed"
+    ) is not False or feedback_contract.get("sol_call_budget") != {
+        "planning": 1,
+        "reference": 1,
+        "feedback": 0,
+        "maximum_total": 2,
+    } or feedback_contract.get("student_revision_max") != 1 or feedback_contract.get(
         "revision_requires_all_five_gates"
     ) is not True or feedback_contract.get("online_weight_prompt_or_policy_mutation_forbidden") is not True:
         _fail("student_revision_limit_open", "结构化反馈与DS修订上限未冻结")
@@ -6923,6 +8815,34 @@ def _validate_s1d4(repo_root: Path) -> list[str]:
         "properties", {}
     ).get("may_add_event_facts", {}).get("const") is not False:
         _fail("shared_binding_contract_open", "DS不得调用Tool或增加事件事实")
+    student_required = set(student_run.get("required", []))
+    answer_artifact = model_defs["studentAnswerArtifactReference"]
+    if (
+        "teacher_oracle_coverage_receipt_digest" not in student_required
+        or "student_answer_artifact" not in student_required
+        or answer_artifact.get("additionalProperties") is not False
+        or not {
+            "artifact_ref",
+            "artifact_schema_ref",
+            "answer_payload",
+            "answer_digest",
+            "artifact_receipt_digest",
+        }.issubset(set(answer_artifact.get("required", [])))
+    ):
+        _fail("dual_model_role_binding_open", "DS输入覆盖回执或可重放回答Artifact未闭合")
+    student_identity_text = json.dumps(model_defs["studentModelIdentity"], sort_keys=True)
+    if any(
+        marker not in student_identity_text
+        for marker in (
+            '"const": "deepseek"',
+            '"const": "deepseek-v4-flash"',
+            '"const": "deepseek-v4-flash-pi-0.84.1-v1"',
+            '"const": "0.84.1"',
+            '"const": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5"',
+            '"const": "e8881aa2b79f495da3ea551bb3b2423af45c118f5e622ac1877852bf0087bf4f"',
+        )
+    ):
+        _fail("ds_model_identity_mismatch", "DualModel Schema未冻结S1D-5 DS响应模型、候选资源与评测Profile")
     alignment = model_flow.get("x-alignment-contract")
     if not isinstance(alignment, dict) or set(alignment.get("hard_gate_metrics", [])) != {
         "fact_precision",
@@ -7543,6 +9463,13 @@ def _validate_s1d5(repo_root: Path) -> list[str]:
         repo_root / relative for relative in ARTIFACTS_BY_STAGE["S1D-5"]
     )
     oracle = _load_json(oracle_path)
+    for payload, path in (
+        (oracle, oracle_path),
+    ):
+        if payload.get("content_digest") != _digest_without_fields(
+            payload, "content_digest"
+        ):
+            _fail("s1d5_content_digest_mismatch", f"S1D-5制品内容摘要无法重算：{path}")
     ids = _object_list_ids(oracle, "questions", "question_id", oracle_path)
     _validate_exact_ids(ids, EXPECTED_QUESTIONS, kind="oracle_question")
     expected_scenarios = {
@@ -7568,9 +9495,17 @@ def _validate_s1d5(repo_root: Path) -> list[str]:
     budget = _load_json(budget_path)
     if not isinstance(budget, dict) or not budget.get("budgets"):
         _fail("budget_contract_missing", "成本性能合同缺少 budgets")
+    if budget.get("content_digest") != _digest_without_fields(
+        budget, "content_digest"
+    ):
+        _fail("s1d5_content_digest_mismatch", f"S1D-5制品内容摘要无法重算：{budget_path}")
     alignment = _load_json(alignment_path)
     if not isinstance(alignment, dict):
         _fail("model_alignment_contract_invalid", "模型对齐评测必须是 JSON object")
+    if alignment.get("content_digest") != _digest_without_fields(
+        alignment, "content_digest"
+    ):
+        _fail("s1d5_content_digest_mismatch", f"S1D-5制品内容摘要无法重算：{alignment_path}")
     if alignment.get("teacher_model_id") != "gpt-5.6-sol":
         _fail("teacher_model_identity_drift", "Teacher 模型必须为 gpt-5.6-sol")
     ds_identity = alignment.get("ds_student_identity")
@@ -7600,61 +9535,679 @@ def _validate_s1d5(repo_root: Path) -> list[str]:
         _fail("text_similarity_overclaimed", "文本相似度不得单独作为 DS 晋级条件")
     if alignment.get("teacher_reference_requires_evidence_validation") is not True:
         _fail("teacher_truth_conflation", "TeacherReference 必须先通过 Evidence Validator")
+    if alignment.get("promotion_gate", {}).get("candidate_promotable") is not False:
+        _fail("model_alignment_promotion_overclaim", "实际模型对齐证据未闭合时不得晋级")
+    if budget.get("measurement_closure", {}).get(
+        "performance_acceptance_blocked"
+    ) is not True:
+        _fail("performance_acceptance_overclaim", "未实测Tool/Operator/Sol/端到端时性能验收必须阻断")
     review = _load_json(review_path)
     if not isinstance(review, dict):
         _fail("review_contract_invalid", "产品语义审查必须是 JSON object")
+    if review.get("content_digest") != _digest_without_fields(
+        review, "content_digest"
+    ):
+        _fail("s1d5_content_digest_mismatch", f"S1D-5制品内容摘要无法重算：{review_path}")
+    review_inputs = review.get("review_inputs")
+    binding = review.get("review_input_binding")
+    if (
+        not isinstance(review_inputs, list)
+        or not isinstance(binding, Mapping)
+        or binding.get("content_digests_bound") is not True
+        or binding.get("binding_status") != "frozen_for_independent_review"
+        or binding.get("review_may_start_without_frozen_digests") is not False
+        or not isinstance(binding.get("bound_at"), str)
+        or not isinstance(binding.get("input_sha256"), Mapping)
+        or set(binding.get("input_sha256", {})) != set(review_inputs)
+    ):
+        _fail("review_input_binding_open", "独立审查未绑定完整冻结输入摘要")
+    actual_review_input_sha256 = {
+        name: _sha256(review_path.parent / name) for name in review_inputs
+    }
+    if (
+        dict(binding.get("input_sha256", {})) != actual_review_input_sha256
+        or binding.get("input_binding_digest")
+        != _digest_without_fields(actual_review_input_sha256)
+    ):
+        _fail("review_input_binding_stale", "独立审查输入摘要与当前候选不一致")
     if not review.get("builder_id") or not review.get("reviewer_id"):
         _fail("reviewer_identity_missing", "必须提供 builder_id 与 reviewer_id")
+    if "pending" in str(review.get("reviewer_id")).lower():
+        _fail("reviewer_identity_missing", "不得用pending reviewer身份通过审查")
     if review["builder_id"] == review["reviewer_id"]:
         _fail("reviewer_independence_failed", "Builder 与 Reviewer 不得为同一身份")
+    for field in ("independent_product_semantic_review", "independent_bgp_review"):
+        independent_review = review.get(field)
+        if (
+            not isinstance(independent_review, Mapping)
+            or "pending" in str(independent_review.get("reviewer_id")).lower()
+            or independent_review.get("execution_status") != "completed"
+            or not isinstance(independent_review.get("started_at"), str)
+            or not isinstance(independent_review.get("completed_at"), str)
+            or not isinstance(independent_review.get("findings"), list)
+            or not isinstance(independent_review.get("finding_dispositions"), list)
+            or independent_review.get("hard_gate_passed") is not True
+            or independent_review.get("disposition") != "passed"
+        ):
+            _fail("independent_review_incomplete", f"{field}未以完整身份、时间和发现处置通过")
+    allowed_finding_statuses = {
+        "closed_by_design_contract_and_tests",
+        "runtime_promotion_blocker_not_design_acceptance_blocker",
+    }
+    if any(
+        item.get("status") not in allowed_finding_statuses
+        for item in review.get("known_blocking_findings", [])
+        if isinstance(item, Mapping)
+    ):
+        _fail("review_finding_disposition_open", "审查发现未分层闭合为设计闭合或运行晋级阻断")
+    disposition = review.get("stage_review_disposition")
+    if (
+        review.get("status")
+        != "design_semantic_review_passed_runtime_promotion_blocked"
+        or not isinstance(disposition, Mapping)
+        or disposition.get("review_passed") is not True
+        or disposition.get("high_risk_semantics_closed") is not True
+        or disposition.get("implementation_handoff_allowed") is not True
+        or disposition.get("s1d5_acceptance_allowed") is not True
+        or disposition.get("model_alignment_passed") is not False
+        or disposition.get("performance_acceptance") is not False
+        or disposition.get("runtime_model_promotion") is not False
+        or disposition.get("disposition")
+        != "design_semantic_review_passed_runtime_promotion_blocked"
+    ):
+        _fail("review_disposition_overclaim", "S1D-5必须仅通过设计语义审查并保持运行、模型和性能晋级阻断")
     return [
         "oracle_scenario_closure",
         "budget_contract",
         "sol_ds_alignment_contract",
-        "independent_review",
+        "frozen_review_input_digest_closure",
+        "independent_product_semantic_review",
+        "independent_bgp_review",
+        "design_acceptance_runtime_promotion_separation",
     ]
 
 
 def _validate_s1d6(repo_root: Path) -> list[str]:
-    candidate_path, manifest_path = (
-        repo_root / relative for relative in ARTIFACTS_BY_STAGE["S1D-6"]
-    )
-    candidate = _load_json(candidate_path)
-    required_flags = {
+    candidate_relative, manifest_relative = ARTIFACTS_BY_STAGE["S1D-6"]
+    candidate_path = repo_root / candidate_relative
+    manifest_path = repo_root / manifest_relative
+    candidate = _load_json_strict(candidate_path)
+    manifest = _load_json_strict(manifest_path)
+    if not isinstance(candidate, dict):
+        _fail("candidate_invalid", "candidate 必须是 JSON object")
+    if not isinstance(manifest, dict):
+        _fail("manifest_invalid", "acceptance-manifest 必须是 JSON object")
+
+    expected_candidate_keys = {
+        "schema_version",
+        "artifact_id",
+        "stage",
+        "status",
+        "candidate_kind",
+        "design_candidate_id",
+        "candidate_semantic_digest",
+        "content_digest",
+        "source_artifact_count",
+        "source_artifact_set_digest",
+        "acceptance_manifest_path",
+        "task_binding",
+        "parent_candidate",
+        "prior_stage_receipts",
+        "coverage_and_scope",
+        "execution_unit_scope",
+        "bgp_semantic_contract",
+        "model_flow_disposition",
+        "review_disposition",
+        "acceptance_layers",
+        "runtime_promotion_blockers",
+        "implementation_handoff",
+        "design_only",
+        "runtime_implemented",
+        "production_deployed",
+    }
+    if set(candidate) != expected_candidate_keys:
+        _fail(
+            "candidate_schema_invalid",
+            f"candidate字段人口不闭合；actual={sorted(candidate)}, expected={sorted(expected_candidate_keys)}",
+        )
+    expected_candidate_constants = {
+        "schema_version": "country_outage_p2_s1_final_design_candidate_v1",
+        "artifact_id": "country-outage-p2-s1-final-design-candidate",
+        "stage": "S1D-6",
+        "status": "design_contract_accepted_for_implementation_handoff",
+        "candidate_kind": "single_content_addressed_design_handoff_candidate",
+        "acceptance_manifest_path": manifest_relative.as_posix(),
         "design_only": True,
         "runtime_implemented": False,
         "production_deployed": False,
     }
-    if not isinstance(candidate, dict):
-        _fail("candidate_invalid", "candidate 必须是 JSON object")
-    for key, expected in required_flags.items():
-        if candidate.get(key) is not expected:
-            _fail("candidate_boundary_drift", f"candidate.{key} 必须为 {expected}")
-    if not candidate.get("design_candidate_id"):
-        _fail("candidate_identity_missing", "candidate 缺少 design_candidate_id")
+    for key, expected in expected_candidate_constants.items():
+        if candidate.get(key) != expected:
+            _fail("candidate_boundary_drift", f"candidate.{key} 必须为 {expected!r}")
 
-    manifest = _load_json(manifest_path)
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("artifacts"), list):
-        _fail("manifest_invalid", "acceptance-manifest 缺少 artifacts")
-    declared: dict[str, str] = {}
-    for item in manifest["artifacts"]:
-        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
-            _fail("manifest_invalid", "manifest artifact 缺少 path")
-        if not isinstance(item.get("sha256"), str):
-            _fail("manifest_invalid", f"manifest artifact 缺少 sha256：{item}")
-        declared[item["path"]] = item["sha256"]
+    semantic_digest = _digest_without_fields(
+        candidate,
+        "design_candidate_id",
+        "candidate_semantic_digest",
+        "content_digest",
+    )
+    expected_candidate_id = f"country-outage-p2-s1-s1d-6-{semantic_digest[:24]}"
+    if candidate.get("candidate_semantic_digest") != semantic_digest:
+        _fail("candidate_semantic_digest_mismatch", "candidate语义摘要无法重算")
+    if candidate.get("design_candidate_id") != expected_candidate_id:
+        _fail("candidate_identity_mismatch", "candidate身份无法由语义摘要重算")
+    if candidate.get("content_digest") != _digest_without_fields(candidate, "content_digest"):
+        _fail("candidate_content_digest_mismatch", "candidate内容摘要无法重算")
 
-    required_artifacts: list[Path] = [TASK_SPEC, PHASE_PLAN]
+    source_relatives = _s1d6_source_artifacts()
+    source_entries = [_s1d6_artifact_entry(repo_root, path) for path in source_relatives]
+    source_digest = _s1d6_artifact_set_digest(source_entries)
+    if candidate.get("source_artifact_count") != len(source_entries):
+        _fail("candidate_source_population_mismatch", "candidate源制品数量错误")
+    if candidate.get("source_artifact_set_digest") != source_digest:
+        _fail("candidate_source_digest_mismatch", "candidate未绑定当前冻结源制品集合")
+
+    task = _load_json_strict(repo_root / Path(".codex/TASK.json"))
+    task_binding = candidate.get("task_binding")
+    expected_task_binding = {
+        "task_id": task.get("taskId"),
+        "target_version": task.get("targetVersion"),
+        "base_commit": task.get("baseCommit"),
+        "task_contract_sha256": _sha256(repo_root / Path(".codex/TASK.json")),
+        "task_spec_sha256": _sha256(repo_root / TASK_SPEC),
+        "phase_plan_sha256": _sha256(repo_root / PHASE_PLAN),
+        "alignment_hook_sha256": _sha256(repo_root / ALIGNMENT_HOOK),
+        "alignment_hook_tests_sha256": _sha256(repo_root / ALIGNMENT_HOOK_TESTS),
+    }
+    if task_binding != expected_task_binding:
+        _fail("candidate_task_binding_mismatch", "candidate任务、文档或Hook绑定错误")
+    if task.get("taskId") != "country-outage-agent-p2-s1d6-final-design-acceptance-20260813":
+        _fail("candidate_task_binding_mismatch", "S1D-6必须绑定获授权的最终设计验收任务")
+
+    prior_receipts = _validate_prior_receipts(repo_root, "S1D-6")
+    expected_receipt_chain: list[dict[str, Any]] = []
+    for stage in STAGES[:6]:
+        relative = RECEIPT_ROOT / f"{stage}.json"
+        payload = _load_json_strict(repo_root / relative)
+        expected_receipt_chain.append(
+            {
+                "stage": stage,
+                "path": relative.as_posix(),
+                "design_candidate_id": payload.get("design_candidate_id"),
+                "receipt_digest": payload.get("receipt_digest"),
+                "sha256": _sha256(repo_root / relative),
+            }
+        )
+    if candidate.get("prior_stage_receipts") != expected_receipt_chain:
+        _fail("candidate_receipt_chain_mismatch", "candidate未精确绑定S1D-0至S1D-5回执链")
+    s1d5 = _load_json_strict(repo_root / RECEIPT_ROOT / "S1D-5.json")
+    if candidate.get("parent_candidate") != {
+        "stage": "S1D-5",
+        "design_candidate_id": s1d5.get("design_candidate_id"),
+        "receipt_digest": s1d5.get("receipt_digest"),
+    }:
+        _fail("candidate_parent_mismatch", "candidate父候选必须是当前S1D-5回执")
+    if prior_receipts != {
+        item["stage"]: item["receipt_digest"] for item in expected_receipt_chain
+    }:
+        _fail("candidate_receipt_chain_mismatch", "候选回执链与当前阶段回执不一致")
+
+    capability_map = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-1"][0])
+    questions = capability_map.get("questions")
+    if not isinstance(questions, list):
+        _fail("candidate_question_population_mismatch", "问题映射缺少questions")
+    question_ids = [item.get("question_id") for item in questions if isinstance(item, dict)]
+    answerability = {
+        item["question_id"]: item.get("answerability")
+        for item in questions
+        if isinstance(item, dict) and isinstance(item.get("question_id"), str)
+    }
+    expected_coverage = {
+        "question_count": 28,
+        "question_ids": list(EXPECTED_QUESTIONS),
+        "question_population_digest": _digest_without_fields(
+            {"question_ids": list(EXPECTED_QUESTIONS), "answerability": answerability}
+        ),
+        "design_covered_count": 28,
+        "runtime_answerability_certified": False,
+        "p2_v1_not_executable_question_ids": ["Q24"],
+        "external_evidence_required_question_ids": ["Q29", "Q30"],
+        "supported_subset_with_deferred_fanout": {
+            "Q20": ["逐路径ASN位置", "批量邻接"],
+            "Q23": ["逐活动路径ASN位置", "跨并列峰值自动展开"],
+            "Q26": ["逐origin再次查询", "逐origin分别统计"],
+        },
+    }
+    if question_ids != list(EXPECTED_QUESTIONS) or candidate.get("coverage_and_scope") != expected_coverage:
+        _fail("candidate_question_population_mismatch", "candidate问题人口、可答边界或延期子目标漂移")
+
+    tool_catalog = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-2"][0])
+    operator_catalog = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-3"][0])
+    decomposition = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-1"][2])
+    tools = tool_catalog.get("tools")
+    operators = operator_catalog.get("operators")
+    if not isinstance(tools, list) or not isinstance(operators, list):
+        _fail("candidate_execution_unit_population_mismatch", "Tool/Operator目录人口无效")
+    tool_ids = [item.get("unit_id") for item in tools if isinstance(item, dict)]
+    operator_ids = [item.get("unit_id") for item in operators if isinstance(item, dict)]
+    p2_v1_operator_ids = [item for item in EXPECTED_OPERATORS if item != "OP-34"]
+    expected_execution_scope = {
+        "existing_registry_dependencies": list(EXISTING_EXECUTION_UNITS),
+        "p2_v1_tool_ids": [f"TOOL-{index:02d}" for index in range(7, 13)],
+        "p2_1_deferred_tool_ids": ["TOOL-13"],
+        "p2_v1_operator_ids": p2_v1_operator_ids,
+        "p2_1_deferred_operator_ids": ["OP-34"],
+        "p2_v1_plan_capability_ids": ["PLAN-CAP-01"],
+        "p2_1_deferred_plan_capability_ids": ["PLAN-CAP-02"],
+        "control_unit_ids": list(EXPECTED_HOST_UNITS[2:]),
+        "new_execution_units_runtime_ready": False,
+        "composition_location": "InvestigationPlan",
+        "atomicity_rule": "one_tool_one_fact_population_and_one_operator_one_deterministic_transform",
+        "hidden_fan_out_replacement_forbidden": True,
+    }
+    if tool_ids != list(EXPECTED_TOOLS) or operator_ids != list(EXPECTED_OPERATORS):
+        _fail("candidate_execution_unit_population_mismatch", "Tool或Operator精确人口漂移")
+    if candidate.get("execution_unit_scope") != expected_execution_scope:
+        _fail("candidate_execution_unit_population_mismatch", "candidate执行单元或原子边界漂移")
+    deferred_plan = decomposition.get("host_plan_capability_contracts", {}).get("PLAN-CAP-02")
+    tool13 = next((item for item in tools if item.get("unit_id") == "TOOL-13"), None)
+    op34 = next((item for item in operators if item.get("unit_id") == "OP-34"), None)
+    if (
+        not isinstance(deferred_plan, dict)
+        or deferred_plan.get("disposition") != "deferred_p2_1"
+        or deferred_plan.get("p2_v1_execution_allowed") is not False
+        or deferred_plan.get("runtime_ready_claim") is not False
+        or not isinstance(tool13, dict)
+        or tool13.get("disposition") != "deferred_p2_1"
+        or tool13.get("runtime_ready_claim") is not False
+        or not isinstance(op34, dict)
+        or op34.get("disposition") != "deferred_p2_1"
+        or op34.get("runtime_ready_claim") is not False
+        or any(item.get("runtime_ready_claim") is not False for item in tools + operators)
+    ):
+        _fail("candidate_deferred_scope_drift", "P2.1延期单元或新单元runtime-ready边界漂移")
+
+    expected_bgp_contract = {
+        "collector_scope": "rrc25_only",
+        "event_identity_cardinality": "single_incident_publication_revision_cohort_window",
+        "as_sort": [
+            "peak_invisible_direction_count DESC",
+            "peak_complete_prefix_count DESC",
+            "asn ASC",
+        ],
+        "as_rank_semantics": "first_two_keys_define_competition_rank_asn_only_defines_result_position",
+        "complete_invisible_semantics": "fixed_population_expected_directions_control_plane_classification_not_withdraw_global_unreachability_or_user_outage",
+        "as_path_semantics": "typed_segments_preserved_as_set_and_confederation_not_forced_linear_prepend_collapse_only_by_registered_profile",
+        "tool12_semantics": "window_level_association_not_path_at_time_eligible_anchor_from_same_publication_complete_ever_affected_as_set_noneligible_unsupported_known_origin_equals_observed_origin_and_collapsed_ordered_tail_anchor_strictly_before_origin",
+        "op19_semantics": "observed_downstream_origin_set_not_customer_cone_customer_zone_or_business_relationship",
+        "relationship_boundary": "time_set_path_and_metric_relationships_do_not_prove_cause_responsibility_recovery_national_or_user_impact",
+    }
+    if candidate.get("bgp_semantic_contract") != expected_bgp_contract:
+        _fail("candidate_bgp_semantic_drift", "candidate未冻结BGP关键语义或越过证据边界")
+
+    model_role = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-1"][3])
+    alignment = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-5"][2])
+    budget = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-5"][1])
+    review = _load_json_strict(repo_root / ARTIFACTS_BY_STAGE["S1D-5"][3])
+    expected_model_flow = {
+        "execution_order": ["gpt-5.6-sol", "host_grounding_and_validation", "ds_student"],
+        "teacher_reference_is_ground_truth": False,
+        "evidence_truth_precedes_teacher": True,
+        "teacher_required": True,
+        "successful_student_revision_max": 1,
+        "student_provider": "deepseek",
+        "student_model": "deepseek-v4-flash",
+        "student_version": "deepseek-v4-flash-pi-0.84.1-v1",
+        "monetary_limit_mode": "unlimited",
+        "all_attempt_usage_cost_latency_receipts_required": True,
+        "text_similarity_may_override_hard_gates": False,
+    }
+    if candidate.get("model_flow_disposition") != expected_model_flow:
+        _fail("candidate_model_flow_drift", "candidate Sol→Host→DS、模型身份或晋级规则漂移")
+    if (
+        model_role.get("execution_order") != ["gpt-5.6-sol", "ds_student"]
+        or model_role.get("teacher_reference_is_ground_truth") is not False
+        or model_role.get("feedback_and_revision_policy", {}).get("successful_student_revision_max") != 1
+        or alignment.get("promotion_gate", {}).get("candidate_promotable") is not False
+        or budget.get("measurement_closure", {}).get("performance_acceptance_blocked") is not True
+    ):
+        _fail("candidate_model_flow_drift", "上游模型或性能合同不支持candidate声明")
+
+    product_review = review.get("independent_product_semantic_review", {})
+    bgp_review = review.get("independent_bgp_review", {})
+    expected_review_disposition = {
+        "s1d5_review_input_binding_digest": review.get("review_input_binding", {}).get("input_binding_digest"),
+        "product_semantic_reviewer_id": product_review.get("reviewer_id"),
+        "product_semantic_design_review_passed": product_review.get("hard_gate_passed"),
+        "bgp_reviewer_id": bgp_review.get("reviewer_id"),
+        "bgp_design_review_passed": bgp_review.get("hard_gate_passed"),
+    }
+    if candidate.get("review_disposition") != expected_review_disposition:
+        _fail("candidate_review_binding_mismatch", "candidate未绑定S1D-5两份独立设计审查")
+    if (
+        product_review.get("execution_status") != "completed"
+        or product_review.get("disposition") != "passed"
+        or bgp_review.get("execution_status") != "completed"
+        or bgp_review.get("disposition") != "passed"
+    ):
+        _fail("candidate_review_binding_mismatch", "独立设计审查未完成或未通过")
+
+    expected_layers = {
+        "design_contract_accepted": True,
+        "product_semantic_design_review_passed": True,
+        "bgp_design_review_passed": True,
+        "implementation_handoff_allowed": True,
+        "model_alignment_passed": False,
+        "performance_acceptance": False,
+        "runtime_model_promotion": False,
+        "registry_admission_performed": False,
+        "runtime_implemented": False,
+        "production_deployed": False,
+    }
+    if candidate.get("acceptance_layers") != expected_layers:
+        _fail("candidate_acceptance_layer_overclaim", "candidate验收分层发生越级声明")
+    expected_blockers = [
+        {
+            "blocker_id": "HOST_HARD_GATE_METRICS_NOT_MEASURED",
+            "blocks": ["model_alignment", "runtime_model_promotion"],
+        },
+        {
+            "blocker_id": "TRUSTED_STUDENT_ARTIFACT_NOT_SUPPLIED",
+            "blocks": ["model_alignment", "runtime_model_promotion"],
+        },
+        {
+            "blocker_id": "SHARED_REPLAY_BINDING_DIGESTS_NOT_SUPPLIED",
+            "blocks": ["model_alignment", "runtime_model_promotion"],
+        },
+        {
+            "blocker_id": "SOL_ROLE_USAGE_COST_LATENCY_NOT_MEASURED",
+            "blocks": ["performance_acceptance", "runtime_model_promotion"],
+        },
+        {
+            "blocker_id": "TOOL_OPERATOR_E2E_PERFORMANCE_NOT_MEASURED",
+            "blocks": ["performance_acceptance", "runtime_model_promotion"],
+        },
+    ]
+    if candidate.get("runtime_promotion_blockers") != expected_blockers:
+        _fail("candidate_runtime_blocker_mismatch", "candidate运行晋级阻断不完整或被弱化")
+    if (
+        alignment.get("shared_replay_binding", {}).get("verification_status")
+        != "not_verifiable_without_digests"
+        or alignment.get("successful_ds_revision_after_scope_rebaseline", {}).get(
+            "host_trusted_student_artifact_status"
+        ) != "not_supplied_blocks_alignment_acceptance"
+        or budget.get("measurement_closure", {}).get("tool_measurement_status") != "not_measured"
+        or budget.get("measurement_closure", {}).get("operator_measurement_status") != "not_measured"
+        or budget.get("measurement_closure", {}).get("sol_planning_measurement_status") != "not_measured"
+        or budget.get("measurement_closure", {}).get("sol_reference_measurement_status") != "not_measured"
+    ):
+        _fail("candidate_runtime_blocker_mismatch", "上游证据不支持当前运行阻断声明")
+
+    expected_handoff = {
+        "next_authorized_actions": ["implementation_planning", "implementation_s0"],
+        "direct_deployment_authorized": False,
+        "registry_activation_authorized": False,
+        "runtime_promotion_authorized": False,
+        "production_change_authorized": False,
+        "waves": _s1d6_expected_handoff_waves(),
+        "p2_1_requires_separate_task": ["PLAN-CAP-02", "TOOL-13", "OP-34"],
+    }
+    if candidate.get("implementation_handoff") != expected_handoff:
+        _fail("candidate_handoff_drift", "实现交接顺序、延期边界或授权范围漂移")
+
+    expected_manifest_keys = {
+        "schema_version",
+        "artifact_id",
+        "stage",
+        "status",
+        "acceptance_scope",
+        "design_candidate_id",
+        "candidate_ref",
+        "source_artifact_set_digest",
+        "prior_receipt_chain_digest",
+        "artifact_count",
+        "artifacts",
+        "artifact_set_digest",
+        "closure_assertions",
+        "acceptance_layers",
+        "final_independent_reviews",
+        "design_only",
+        "runtime_implemented",
+        "production_deployed",
+        "content_digest",
+    }
+    if set(manifest) != expected_manifest_keys:
+        _fail("manifest_schema_invalid", "acceptance-manifest字段人口不闭合")
+    expected_manifest_constants = {
+        "schema_version": "country_outage_p2_s1_acceptance_manifest_v1",
+        "artifact_id": "country-outage-p2-s1-final-design-acceptance-manifest",
+        "stage": "S1D-6",
+        "status": "accepted_design_contract_for_implementation_handoff",
+        "acceptance_scope": "design_contract_only_runtime_model_performance_and_deployment_blocked",
+        "design_candidate_id": expected_candidate_id,
+        "source_artifact_set_digest": source_digest,
+        "design_only": True,
+        "runtime_implemented": False,
+        "production_deployed": False,
+    }
+    for key, expected in expected_manifest_constants.items():
+        if manifest.get(key) != expected:
+            _fail("manifest_boundary_drift", f"manifest.{key} 必须为 {expected!r}")
+    expected_manifest_entries = source_entries + [
+        _s1d6_artifact_entry(repo_root, candidate_relative)
+    ]
+    expected_manifest_entries = sorted(expected_manifest_entries, key=lambda item: item["path"])
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        _fail("manifest_invalid", "manifest.artifacts必须是数组")
+    seen: set[str] = set()
+    for item in artifacts:
+        if not isinstance(item, dict) or set(item) != {"path", "role", "stage", "sha256", "size_bytes"}:
+            _fail("manifest_invalid", "manifest artifact字段必须精确闭合")
+        path_text = item.get("path")
+        if not isinstance(path_text, str) or not _safe_repo_relative_posix_path(path_text):
+            _fail("manifest_path_invalid", f"manifest包含不安全路径：{path_text!r}")
+        if path_text in seen:
+            _fail("manifest_duplicate_path", f"manifest包含重复路径：{path_text}")
+        seen.add(path_text)
+        if not isinstance(item.get("sha256"), str) or re.fullmatch(r"[0-9a-f]{64}", item["sha256"]) is None:
+            _fail("manifest_sha256_invalid", f"manifest摘要格式错误：{path_text}")
+        target = repo_root / Path(path_text)
+        _regular_file(target)
+    if artifacts != expected_manifest_entries:
+        _fail("manifest_artifact_population_mismatch", "manifest必须按path稳定排序并精确覆盖31项制品")
+    if manifest.get("artifact_count") != len(expected_manifest_entries):
+        _fail("manifest_artifact_population_mismatch", "manifest artifact_count错误")
+    artifact_set_digest = _s1d6_artifact_set_digest(expected_manifest_entries)
+    if manifest.get("artifact_set_digest") != artifact_set_digest:
+        _fail("manifest_artifact_set_digest_mismatch", "manifest制品集合摘要无法重算")
+    expected_candidate_ref = {
+        "path": candidate_relative.as_posix(),
+        "sha256": _sha256(candidate_path),
+        "candidate_semantic_digest": semantic_digest,
+        "content_digest": candidate.get("content_digest"),
+    }
+    if manifest.get("candidate_ref") != expected_candidate_ref:
+        _fail("manifest_candidate_binding_mismatch", "manifest未精确绑定candidate")
+    chain_digest = _digest_without_fields({"stage_receipts": expected_receipt_chain})
+    if manifest.get("prior_receipt_chain_digest") != chain_digest:
+        _fail("manifest_receipt_chain_mismatch", "manifest未绑定当前S1D-0至S1D-5回执链")
+    expected_closure = {
+        "exact_artifact_population": True,
+        "duplicate_paths": [],
+        "dangling_references": [],
+        "all_stage_receipts_current": True,
+        "question_capability_execution_oracle_closed_for_design": True,
+        "p2_v1_and_p2_1_machine_separated": True,
+        "design_acceptance_separated_from_runtime_promotion": True,
+        "single_candidate_identity_for_s1d6_and_final": True,
+    }
+    if manifest.get("closure_assertions") != expected_closure:
+        _fail("manifest_closure_assertion_mismatch", "manifest闭包断言漂移")
+    if manifest.get("acceptance_layers") != expected_layers:
+        _fail("manifest_acceptance_layer_overclaim", "manifest验收分层越级")
+    if manifest.get("content_digest") != _digest_without_fields(manifest, "content_digest"):
+        _fail("manifest_content_digest_mismatch", "manifest内容摘要无法重算")
+    reviews = manifest.get("final_independent_reviews")
+    expected_reviewers = {
+        "codex-agent:/root/s1d5_product_semantic_final": "product_semantic_final_candidate_review",
+        "codex-agent:/root/bgp_evaluator": "bgp_final_candidate_review",
+    }
+    if not isinstance(reviews, list) or len(reviews) != 2:
+        _fail("manifest_final_review_invalid", "manifest必须包含两份独立最终候选审查")
+    actual_reviewers: dict[str, str] = {}
+    for item in reviews:
+        if not isinstance(item, dict) or set(item) != {
+            "review_kind",
+            "reviewer_id",
+            "reviewer_identity_status",
+            "execution_status",
+            "hard_gate_passed",
+            "disposition",
+            "candidate_content_digest",
+            "source_artifact_set_digest",
+            "artifact_set_digest",
+            "started_at",
+            "completed_at",
+        }:
+            _fail("manifest_final_review_invalid", "最终候选审查字段不闭合")
+        reviewer_id = item.get("reviewer_id")
+        if not isinstance(reviewer_id, str) or reviewer_id in actual_reviewers:
+            _fail("manifest_final_review_invalid", "最终候选审查者重复或无效")
+        actual_reviewers[reviewer_id] = str(item.get("review_kind"))
+        if (
+            item.get("reviewer_identity_status") != "independent_from_builder_verified"
+            or item.get("execution_status") != "completed"
+            or item.get("hard_gate_passed") is not True
+            or item.get("disposition") != "passed_design_candidate_for_implementation_handoff"
+            or item.get("candidate_content_digest") != candidate.get("content_digest")
+            or item.get("source_artifact_set_digest") != source_digest
+            or item.get("artifact_set_digest") != artifact_set_digest
+            or not isinstance(item.get("started_at"), str)
+            or not isinstance(item.get("completed_at"), str)
+        ):
+            _fail("manifest_final_review_invalid", "最终候选审查状态、身份或摘要绑定错误")
+    if actual_reviewers != expected_reviewers:
+        _fail("manifest_final_review_invalid", "最终候选必须由独立产品语义与BGP审查者分别复核")
+    return [
+        "single_final_design_candidate_identity",
+        "exact_31_artifact_manifest_closure",
+        "s1d0_to_s1d5_receipt_chain_closure",
+        "question_population_and_deferred_scope_closure",
+        "execution_unit_atomicity_and_runtime_boundary_closure",
+        "bgp_semantic_handoff_boundary",
+        "sol_host_ds_design_acceptance_runtime_promotion_separation",
+        "independent_final_candidate_reviews",
+    ]
+
+
+def _s1d6_source_artifacts() -> list[Path]:
+    paths = [Path(".codex/TASK.json"), TASK_SPEC, PHASE_PLAN, ALIGNMENT_HOOK, ALIGNMENT_HOOK_TESTS]
     for stage in STAGES[1:6]:
-        required_artifacts.extend(ARTIFACTS_BY_STAGE[stage])
-    for relative in required_artifacts:
-        path = repo_root / relative
-        expected = declared.get(relative.as_posix())
-        if expected is None:
-            _fail("manifest_closure_missing", f"manifest 未声明制品：{relative}")
-        if expected != _sha256(path):
-            _fail("manifest_digest_mismatch", f"manifest 摘要不匹配：{relative}")
-    return ["final_candidate_boundary", "acceptance_manifest_digest_closure"]
+        paths.extend(ARTIFACTS_BY_STAGE[stage])
+    paths.extend(RECEIPT_ROOT / f"{stage}.json" for stage in STAGES[:6])
+    return sorted(paths, key=lambda path: path.as_posix())
+
+
+def _s1d6_artifact_role_stage(relative: Path) -> tuple[str, str]:
+    if relative == Path(".codex/TASK.json"):
+        return "task_contract", "all"
+    if relative in (TASK_SPEC, PHASE_PLAN):
+        return "governance_document", "all"
+    if relative == ALIGNMENT_HOOK:
+        return "alignment_hook", "all"
+    if relative == ALIGNMENT_HOOK_TESTS:
+        return "alignment_hook_tests", "all"
+    if relative == ARTIFACTS_BY_STAGE["S1D-6"][0]:
+        return "final_design_candidate", "S1D-6"
+    for stage in STAGES[1:6]:
+        if relative in ARTIFACTS_BY_STAGE[stage]:
+            return "design_contract", stage
+    for stage in STAGES[:6]:
+        if relative == RECEIPT_ROOT / f"{stage}.json":
+            return "stage_receipt", stage
+    _fail("manifest_artifact_population_mismatch", f"未知S1D-6制品角色：{relative}")
+    raise AssertionError("unreachable")
+
+
+def _s1d6_artifact_entry(repo_root: Path, relative: Path) -> dict[str, Any]:
+    path = repo_root / relative
+    _regular_file(path)
+    role, stage = _s1d6_artifact_role_stage(relative)
+    return {
+        "path": relative.as_posix(),
+        "role": role,
+        "stage": stage,
+        "sha256": _sha256(path),
+        "size_bytes": path.stat().st_size,
+    }
+
+
+def _s1d6_artifact_set_digest(entries: Sequence[Mapping[str, Any]]) -> str:
+    return _digest_without_fields({"artifacts": list(entries)})
+
+
+def _safe_repo_relative_posix_path(value: str) -> bool:
+    if not value or value.startswith("/") or "\\" in value:
+        return False
+    path = PurePosixPath(value)
+    return path.as_posix() == value and all(part not in ("", ".", "..") for part in path.parts)
+
+
+def _s1d6_expected_handoff_waves() -> list[dict[str, Any]]:
+    return [
+        {
+            "wave_id": "W0-source-and-governance",
+            "depends_on": [],
+            "unit_ids": [],
+            "exit": "source_schema_view_registry_admission_and_trusted_receipt_store_contracts_implemented",
+        },
+        {
+            "wave_id": "W1-as-prefix",
+            "depends_on": ["W0-source-and-governance"],
+            "unit_ids": [
+                *[f"TOOL-{index:02d}" for index in range(7, 11)],
+                *[f"OP-{index:02d}" for index in range(5, 15)],
+                "OP-35",
+                "OP-36",
+            ],
+            "exit": "asn_prefix_and_state_time_contracts_implemented_and_tested",
+        },
+        {
+            "wave_id": "W2-window-path",
+            "depends_on": ["W0-source-and-governance"],
+            "unit_ids": ["TOOL-12", *[f"OP-{index:02d}" for index in range(15, 29)]],
+            "exit": "window_path_projection_count_and_set_contracts_implemented_and_tested",
+        },
+        {
+            "wave_id": "W3-interval-and-cohort-set",
+            "depends_on": ["W1-as-prefix", "W2-window-path"],
+            "unit_ids": ["OP-38", "OP-39"],
+            "exit": "interval_intersection_and_fixed_cohort_prefix_set_contracts_implemented_and_tested",
+        },
+        {
+            "wave_id": "W4-path-at-time",
+            "depends_on": ["W0-source-and-governance", "W2-window-path"],
+            "unit_ids": [
+                "TOOL-11",
+                *[f"OP-{index:02d}" for index in range(29, 34)],
+                "OP-37",
+            ],
+            "exit": "materialized_route_state_checkpoint_projection_and_path_membership_contracts_implemented_and_tested",
+        },
+        {
+            "wave_id": "W5-controlled-composition",
+            "depends_on": ["W1-as-prefix", "W2-window-path", "W3-interval-and-cohort-set", "W4-path-at-time"],
+            "unit_ids": ["PLAN-CAP-01", *list(EXPECTED_HOST_UNITS[2:])],
+            "exit": "no_dynamic_fanout_plan_result_graph_commit_delivery_and_sol_host_ds_contracts_implemented",
+        },
+        {
+            "wave_id": "W6-offline-certification",
+            "depends_on": ["W5-controlled-composition"],
+            "unit_ids": [],
+            "exit": "28_question_same_binding_host_hard_gates_performance_cancel_rerun_and_boundary_evidence_passed",
+        },
+    ]
 
 
 STAGE_VALIDATORS = {
@@ -7690,6 +10243,28 @@ def _stage_artifact_digests(repo_root: Path, stage: str) -> dict[str, str]:
     }
 
 
+def _design_candidate_id(receipt: Mapping[str, Any]) -> str:
+    """由阶段、父回执与本阶段内容摘要生成不可变设计候选身份。"""
+
+    if receipt.get("stage") in ("S1D-6", "final"):
+        final_design_candidate_id = receipt.get("final_design_candidate_id")
+        if isinstance(final_design_candidate_id, str) and final_design_candidate_id:
+            return final_design_candidate_id
+
+    preimage = {
+        "stage": receipt.get("stage"),
+        "task_spec_sha256": receipt.get("task_spec_sha256"),
+        "phase_plan_sha256": receipt.get("phase_plan_sha256"),
+        "alignment_hook_sha256": receipt.get("alignment_hook_sha256"),
+        "alignment_hook_tests_sha256": receipt.get("alignment_hook_tests_sha256"),
+        "stage_artifact_sha256": receipt.get("stage_artifact_sha256"),
+        "prior_receipts": receipt.get("prior_receipts"),
+    }
+    digest = _digest_without_fields(preimage)
+    stage_slug = str(receipt.get("stage", "unknown")).lower()
+    return f"country-outage-p2-s1-{stage_slug}-{digest[:24]}"
+
+
 def _validate_prior_receipts(repo_root: Path, stage: str) -> dict[str, str]:
     required = _required_stages(stage)
     prior = required[:-1] if stage != "final" else required
@@ -7707,6 +10282,10 @@ def _validate_prior_receipts(repo_root: Path, stage: str) -> dict[str, str]:
             _fail("prior_receipt_invalid", f"阶段回执状态或阶段错误：{path}")
         if payload.get("receipt_digest") != _canonical_digest(payload):
             _fail("prior_receipt_digest_mismatch", f"阶段回执摘要不匹配：{path}")
+        if payload.get("design_candidate_id") != _design_candidate_id(payload):
+            _fail("prior_candidate_identity_mismatch", f"阶段候选身份无法由内容重算：{path}")
+        if payload.get("prior_receipts") != result:
+            _fail("prior_receipt_chain_mismatch", f"阶段回执父链不连续：{path}")
         if payload.get("task_spec_sha256") != current_task_spec_sha256:
             _fail("prior_receipt_stale", f"阶段回执未绑定当前 Task Spec：{path}")
         if payload.get("phase_plan_sha256") != current_phase_plan_sha256:
@@ -7772,6 +10351,15 @@ def run_alignment(
         "runtime_implemented": False,
         "production_deployed": False,
     }
+    if stage in ("S1D-6", "final"):
+        candidate = _load_json_strict(
+            repo_root / ARTIFACTS_BY_STAGE["S1D-6"][0]
+        )
+        final_design_candidate_id = candidate.get("design_candidate_id")
+        if not isinstance(final_design_candidate_id, str) or not final_design_candidate_id:
+            _fail("candidate_identity_missing", "最终候选缺少可绑定的design_candidate_id")
+        receipt["final_design_candidate_id"] = final_design_candidate_id
+    receipt["design_candidate_id"] = _design_candidate_id(receipt)
     receipt["receipt_digest"] = _canonical_digest(receipt)
     return receipt
 

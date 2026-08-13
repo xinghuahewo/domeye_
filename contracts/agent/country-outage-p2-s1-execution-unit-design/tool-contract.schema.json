@@ -74,6 +74,65 @@
     "withdraw_rule": {"type": "string"},
     "asn_filter_semantics": {"type": "string"},
     "direction_identity_contract": {"type": "object"},
+    "contains_asn_filter_contract": {
+      "type": "object",
+      "required": [
+        "source",
+        "profile_id",
+        "eligible_row_predicate",
+        "query_time_path_parsing_forbidden",
+        "llm_filtering_forbidden",
+        "trusted_query_receipt_required_when_filter_present",
+        "query_receipt_must_bind",
+        "returned_member_validation",
+        "completeness_proof"
+      ],
+      "properties": {
+        "source": {"const": "pre_materialized_path_asn_membership_index_on_same_route_state_population"},
+        "profile_id": {"const": "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0"},
+        "eligible_row_predicate": {"const": "visibility=visible AND common_path_status IN (ordered,unordered)"},
+        "query_time_path_parsing_forbidden": {"const": true},
+        "llm_filtering_forbidden": {"const": true},
+        "trusted_query_receipt_required_when_filter_present": {"const": true},
+        "query_receipt_must_bind": {
+          "type": "array",
+          "minItems": 15,
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        },
+        "returned_member_validation": {"type": "string", "minLength": 1},
+        "completeness_proof": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "native_filter_contract": {
+      "type": "object",
+      "required": [
+        "source",
+        "profile_id",
+        "profile_digest",
+        "filters",
+        "query_time_path_parsing_forbidden",
+        "llm_filtering_forbidden",
+        "trusted_query_receipt_required_when_filter_present",
+        "query_receipt_must_bind",
+        "returned_member_validation",
+        "completeness_proof"
+      ],
+      "properties": {
+        "source": {"const": "pre_materialized_indexes_on_same_window_path_association_population"},
+        "profile_id": {"const": "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0"},
+        "profile_digest": {"const": "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7"},
+        "filters": {"type": "array", "const": ["contains_asn", "anchor_asn_plus_anchor_before_known_origin"]},
+        "query_time_path_parsing_forbidden": {"const": true},
+        "llm_filtering_forbidden": {"const": true},
+        "trusted_query_receipt_required_when_filter_present": {"const": true},
+        "query_receipt_must_bind": {"type": "array", "minItems": 21, "uniqueItems": true, "items": {"type": "string"}},
+        "returned_member_validation": {"type": "string", "minLength": 1},
+        "completeness_proof": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
     "association_population_domain": {"type": "object"},
     "source_adapter_mapping": {"type": "object"},
     "source_population_contract": {"type": "object"},
@@ -129,7 +188,7 @@
     {
       "if": {"properties": {"unit_id": {"const": "TOOL-11"}}, "required": ["unit_id"]},
       "then": {
-        "required": ["direction_identity_contract", "state_time_semantics", "active_path_rule", "invisible_path_rule", "output_row_constraints"],
+        "required": ["direction_identity_contract", "contains_asn_filter_contract", "state_time_semantics", "active_path_rule", "invisible_path_rule", "output_row_constraints"],
         "properties": {
           "source_population": {"const": "materialized_route_state_rows_at_exact_time"},
           "output_population": {"const": "materialized_route_state_rows_at_exact_time"},
@@ -141,7 +200,7 @@
     },
     {
       "if": {"properties": {"unit_id": {"const": "TOOL-12"}}, "required": ["unit_id"]},
-      "then": {"required":["association_population_domain","direction_identity_contract","output_row_constraints"],"properties": {"name":{"const":"query_window_path_associations"},"source_population":{"const":"window_path_association_evidence_rows"},"output_population":{"const":"window_path_association_evidence_rows"},"disposition":{"const":"new_p2_v1_source_schema_required"},"source_readiness":{"const":"association_row_and_path_quality_schema_required_before_implementation"},"time_semantics":{"const":"window_level_association_not_path_at_time"},"forbidden_conclusions":{"contains":{"const":"path_active_at_time"}}}}
+      "then": {"required":["association_population_domain","direction_identity_contract","native_filter_contract","output_row_constraints"],"properties": {"name":{"const":"query_window_path_associations"},"source_population":{"const":"window_path_association_evidence_rows"},"output_population":{"const":"window_path_association_evidence_rows"},"disposition":{"const":"new_p2_v1_source_schema_required"},"source_readiness":{"const":"association_row_and_path_quality_schema_required_before_implementation"},"time_semantics":{"const":"window_level_association_not_path_at_time"},"forbidden_conclusions":{"contains":{"const":"path_active_at_time"}}}}
     },
     {
       "if": {"properties": {"unit_id": {"const": "TOOL-13"}}, "required": ["unit_id"]},

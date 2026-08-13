@@ -113,8 +113,11 @@
     {"unit_id":"OP-35","owner_kind":"deterministic_operator","atomic_capability_id":"select.last_state_occurrence","single_responsibility":"选择目标状态最后一次出现","source_population":"one_complete_typed_state_series","output_semantic":"last_state_occurrence","disposition":"new_p2_v1"},
     {"unit_id":"OP-36","owner_kind":"deterministic_operator","atomic_capability_id":"detect.first_threshold_crossing","single_responsibility":"检测冻结阈值的首次穿越并标记左删失","source_population":"one_complete_typed_state_series_and_threshold_profile","output_semantic":"first_threshold_crossing","disposition":"new_p2_v1"},
     {"unit_id":"OP-37","owner_kind":"deterministic_operator","atomic_capability_id":"classify.evidence_consistency","single_responsibility":"依据已计算时间关系与可比性Profile分类证据一致性","source_population":"two_typed_facts_temporal_receipt_and_consistency_profile","output_semantic":"evidence_consistency_class","disposition":"new_p2_v1"},
+    {"unit_id":"OP-38","owner_kind":"deterministic_operator","atomic_capability_id":"time.intersect_state_interval_sets","single_responsibility":"计算两个完整半开状态区间集合的时间交集","source_population":"two_complete_state_interval_sets","output_semantic":"state_interval_overlap_set","disposition":"new_p2_v1"},
+    {"unit_id":"OP-39","owner_kind":"deterministic_operator","atomic_capability_id":"project.fixed_cohort_prefix_set","single_responsibility":"从完整固定cohort member人口投影唯一前缀集合","source_population":"complete_fixed_cohort_member_result_set","output_semantic":"fixed_cohort_prefix_set","disposition":"new_p2_v1"},
 
     {"unit_id":"PLAN-CAP-01","owner_kind":"host_plan_capability","atomic_capability_id":"plan.bind_output_to_argument","single_responsibility":"绑定一个已验证上游值为下游Tool参数","source_population":"validated_plan_output","output_semantic":"tool_argument_binding","disposition":"new_p2_v1"},
+    {"unit_id":"PLAN-CAP-02","owner_kind":"host_plan_capability","atomic_capability_id":"plan.expand_member_scoped_subplan","single_responsibility":"未来把上一已提交Plan修订的完整ResultSet按冻结模板展开为下一Plan修订草案","source_population":"one_complete_typed_member_set_and_one_frozen_template_group","output_semantic":"expanded_plan_revision_candidate","disposition":"deferred_p2_1_not_in_p2_v1_plan_schema"},
     {"unit_id":"GATE-01","owner_kind":"host_validator","atomic_capability_id":"validate.identity","single_responsibility":"验证调查身份一致性","source_population":"candidate_investigation_revision","output_semantic":"identity_gate_receipt","disposition":"new_p2_v1"},
     {"unit_id":"GATE-02","owner_kind":"host_validator","atomic_capability_id":"validate.evidence_refs","single_responsibility":"验证Evidence引用和摘要","source_population":"candidate_evidence_refs","output_semantic":"evidence_ref_gate_receipt","disposition":"new_p2_v1"},
     {"unit_id":"GATE-03","owner_kind":"host_validator","atomic_capability_id":"validate.result_completeness","single_responsibility":"验证结果完整性声明","source_population":"candidate_result_set","output_semantic":"result_completeness_gate_receipt","disposition":"new_p2_v1"},
@@ -126,6 +129,19 @@
     {"unit_id":"RENDERER-03","owner_kind":"pure_renderer","atomic_capability_id":"render.json","single_responsibility":"渲染JSON","source_population":"one_frozen_result_set","output_semantic":"json_artifact","disposition":"new_p2_v1"},
     {"unit_id":"DELIVERY-01","owner_kind":"host_delivery","atomic_capability_id":"deliver.commit_export","single_responsibility":"提交一个已验证渲染制品","source_population":"one_validated_rendered_artifact","output_semantic":"committed_export_artifact","disposition":"new_p2_v1_governance_pending"}
   ],
+  "host_plan_capability_contracts": {
+    "PLAN-CAP-02": {
+      "name": "expand_member_scoped_subplan",
+      "disposition": "deferred_p2_1",
+      "p2_v1_execution_allowed": false,
+      "p2_v1_schema_included": false,
+      "future_contract_direction": "previous_committed_plan_result_set_plus_frozen_template_to_next_draft_plan_revision",
+      "future_candidate_requires_independent_full_admission": true,
+      "question_refs": ["Q20", "Q23", "Q26"],
+      "runtime_ready_claim": false,
+      "schema_status": "deferred_not_in_p2_v1_schema"
+    }
+  },
   "atomic_unit_common_contract": {
     "embedded_capabilities": [],
     "composition_location": "investigation_plan_or_host_pipeline",
