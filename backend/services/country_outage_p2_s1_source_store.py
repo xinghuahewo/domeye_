@@ -118,6 +118,7 @@ class CountryOutageP2S1SourceStore:
         )
         self._manifest: Mapping[str, Any] | None = None
         self._verified_rows: dict[str, tuple[Mapping[str, Any], ...]] = {}
+        self._verified_indexes: dict[str, Mapping[str, Any]] = {}
 
     @staticmethod
     def _trusted_directory(path: Path, location: str) -> Path:
@@ -287,6 +288,7 @@ class CountryOutageP2S1SourceStore:
             raise SourceStoreIntegrityError(f"receipt completeness mismatch: {population_id}")
         self._verify_special_index(population_id, rows, index.get("secondary_indexes"))
         self._verified_rows[population_id] = tuple(rows)
+        self._verified_indexes[population_id] = index
 
     @staticmethod
     def _parse_rows(raw: bytes, population_id: str, schema_version: str, publication_id: str) -> list[Mapping[str, Any]]:
@@ -329,6 +331,23 @@ class CountryOutageP2S1SourceStore:
             if membership.get("members_by_asn") != {key: sorted(value) for key, value in sorted(expected.items(), key=lambda item: int(item[0]))}:
                 raise SourceStoreIntegrityError("RouteState path membership index content mismatch")
         if population_id == "window_path_association_evidence_rows":
+            membership = secondary.get("path_asn_membership")
+            if (
+                not isinstance(membership, dict)
+                or membership.get("profile_id") != "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0"
+                or membership.get("profile_digest") != "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2"
+            ):
+                raise SourceStoreIntegrityError("window path membership index missing")
+            expected_membership: dict[str, list[str]] = {}
+            for row in rows:
+                if row["ordered_sequence_eligible"] and row["common_path_status"] == "ordered":
+                    for asn in sorted({asn for segment in row["path_segments"] for asn in segment["asns"]}):
+                        expected_membership.setdefault(str(asn), []).append(row["member_key"])
+            if membership.get("members_by_asn") != {
+                key: sorted(value)
+                for key, value in sorted(expected_membership.items(), key=lambda item: int(item[0]))
+            }:
+                raise SourceStoreIntegrityError("window path membership index content mismatch")
             anchor = secondary.get("anchor_before_known_origin")
             if not isinstance(anchor, dict) or anchor.get("filter_profile_digest") != "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7":
                 raise SourceStoreIntegrityError("window anchor-before index missing")
@@ -355,3 +374,12 @@ class CountryOutageP2S1SourceStore:
         if self._manifest is None:
             self.verify()
         return self._verified_rows[population_id]
+
+    def load_index(self, population_id: str) -> Mapping[str, Any]:
+        """返回已通过同一完整性闭包的单人口索引；不执行过滤或业务计算。"""
+
+        if population_id not in EXPECTED_POPULATIONS:
+            raise KeyError(population_id)
+        if self._manifest is None:
+            self.verify()
+        return self._verified_indexes[population_id]
