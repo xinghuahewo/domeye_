@@ -27,23 +27,23 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
-  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
-  "implementation_candidate_id": "country-outage-p2-s1-w2-d4a9fcdced90ec258889ac8b",
+  "hook_sha256": "4f4149c669bf988255d28660f2201a2832e1433eb4b3ac5809a6e750990768c7",
+  "hook_tests_sha256": "4fcbb59096fcf72917fb57602a15720a8f8ac4fab7de05848bb8763aae849808",
+  "implementation_candidate_id": "country-outage-p2-s1-w2-7a532242662809879e15e989",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "618cd5fc80a38db32c88e96cfe273620b8e1ecffa3aecaa01afdc71d6084e98b"
+    "eb6fb53994a344c2bb3a6085f17269df851356b42ccbcf53301ec408ab0cd013"
   ],
   "production_deployed": false,
-  "receipt_digest": "f2481e9b45e2a2a5964b48afae025aaea12e9a3aacbe6e55a0beb2f20a84d3de",
+  "receipt_digest": "7feb0c930fc836525577dde3f49df52311cb237489dab30d7ca1491384feaf45",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W2",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
-  "wave_evidence_sha256": "2e11ed466735afe11a678347684b2412e52b348525fd6b368aadf75b92337469"
+  "task_sha256": "92efdab2e294f0479bc22333171ba9fd9c4255010dab02cf72414d36e5c97012",
+  "wave_evidence_sha256": "3ba466b944bea98cf45e096279a7d70ff22447fe7130df8b11ee00e9fbb735c9"
 }

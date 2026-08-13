@@ -92,17 +92,19 @@
           "enum": [
             "OP-06", "OP-07", "OP-08", "OP-09", "OP-11", "OP-12", "OP-13", "OP-14",
             "OP-18", "OP-20", "OP-21",
-            "OP-22", "OP-23", "OP-24", "OP-25", "OP-26", "OP-27", "OP-28", "OP-35", "OP-36"
+            "OP-22", "OP-23", "OP-24", "OP-25", "OP-26", "OP-27", "OP-28", "OP-33", "OP-35", "OP-36"
           ]
         },
         "operator_input_name": {
           "type": "string",
           "enum": [
             "ordered_state_points", "ordered_numeric_points", "intervals", "crossing_receipts",
-            "longest_interval_receipts", "ratio_receipts", "path_evidence_members", "members", "left_set", "right_set"
+            "longest_interval_receipts", "ratio_receipts", "path_evidence_members", "members", "left_set", "right_set",
+            "new_prefix_state_rows", "route_state_rows"
           ]
         },
         "operator_input_digest": {"$ref": "#/$defs/digest"},
+        "identity_digest": {"$ref": "#/$defs/digest"},
         "source_population_ref": {"$ref": "#/$defs/sourcePopulationRef"},
         "set_completeness": {"const": "complete"},
         "member_count": {"type": "integer", "minimum": 0},
@@ -113,11 +115,21 @@
         "receipt_digest": {"$ref": "#/$defs/digest"}
       },
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"operator_id": {"const": "OP-33"}},
+            "required": ["operator_id"]
+          },
+          "then": {"required": ["identity_digest"]}
+        }
+      ],
       "x-runtime-invariants": [
         "receipt_digest 等于排除自身后的规范 JSON SHA-256",
         "operator_input_digest 等于对应完整输入人口的规范摘要",
         "member_count 与输入人口成员数精确相等，空人口必须为 0",
         "population_evidence_ref.source_digest 等于 source_population_ref.completeness_receipt_digest",
+        "OP-33 的左右人口回执必须分别绑定同一 Operator identity_digest，空人口不得豁免",
         "Host 必须从受信内容寻址 Store 解析 source_population_ref，不接受调用方自报",
         "该回执只提供 Evidence 谱系，不得过滤、排序、聚合或构造成员"
       ]

@@ -27,24 +27,24 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
-  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
-  "implementation_candidate_id": "country-outage-p2-s1-w3-0bed7419f3f70dc486a4a9a2",
+  "hook_sha256": "4f4149c669bf988255d28660f2201a2832e1433eb4b3ac5809a6e750990768c7",
+  "hook_tests_sha256": "4fcbb59096fcf72917fb57602a15720a8f8ac4fab7de05848bb8763aae849808",
+  "implementation_candidate_id": "country-outage-p2-s1-w3-5b3c6bade0798f1ed2655a7d",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "6e9bee8679391106ab512ef0e29732ee9cea28a707d10867e6719ee7a638b799",
-    "f2481e9b45e2a2a5964b48afae025aaea12e9a3aacbe6e55a0beb2f20a84d3de"
+    "8fbf092fecffe241dad9e03fff076e4805143509c1a665ea755816171350b7c2",
+    "7feb0c930fc836525577dde3f49df52311cb237489dab30d7ca1491384feaf45"
   ],
   "production_deployed": false,
-  "receipt_digest": "f5c4dd1ea7208e023a9432b4ab4c273ca0f8cf4a5e15fbfeb181210ef542c6a2",
+  "receipt_digest": "aa17bd95687265deb97a85327e3aaf2c4fcd8cada7a4aeee6a044b97739e8239",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W3",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
-  "wave_evidence_sha256": "05644e5789ddecc0ce00ac350d320bee82c0a8676ac92163daec58c71976a9f2"
+  "task_sha256": "92efdab2e294f0479bc22333171ba9fd9c4255010dab02cf72414d36e5c97012",
+  "wave_evidence_sha256": "9afdd260863204edc9e2acf59b932d916ca45c61b307d49478ff2cceb41dff04"
 }

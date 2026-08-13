@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "2a88b6d668f38d607136d7d856d7b2942dcd758593abfc5e15659578712796eb",
-      "size_bytes": 23872
+      "sha256": "8d11a3a83783dd32e15e0000c54d45b3a16e0d5cf2b0d723fca9318225cb6e92",
+      "size_bytes": 24185
     },
     {
       "path": "dev/tests/test_country_outage_p2_s1_w0_source_governance.py",
@@ -35,14 +35,14 @@
     "dev.tests.test_country_outage_p2_s1_w0_source_governance",
     "backend.web.tests.test_country_outage_p2_s1_source_store"
   ],
-  "completed_at_utc": "2026-08-13T05:18:30Z",
+  "completed_at_utc": "2026-08-13T06:21:00Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_build_is_byte_deterministic (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_cross_publication_source_ref_is_rejected (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_duplicate_json_key_is_rejected_before_projection (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_each_source_population_rejects_deleted_rows_behind_complete_claim (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_exact_route_state_rejects_future_row (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_exact_route_state_requires_no_future_and_completeness_proof (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_existing_output_is_never_overwritten (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_first_denominator_cannot_include_non_visible_direction (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_frozen_fixture_contains_six_ready_atomic_populations (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_incomplete_first_observed_view_is_rejected (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_manifest_identity_binds_publication_cohort_window_and_finality (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_missing_dense_new_prefix_slot_is_rejected (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_new_prefix_profile_freezes_first_visible_denominator_and_dense_track (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_path_digest_and_profile_are_not_query_time_guesses (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_window_path_projects_registered_status_and_preserves_native_status (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_window_path_rejects_forged_anchor_population_digest (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_window_path_requires_known_origin_tail_after_anchor (dev.tests.test_country_outage_p2_s1_w0_source_governance.CountryOutageP2S1W0SourceGovernanceTest) ... ok\ntest_blocked_source_semantics_fail_closed_with_machine_code (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_fixture_verifies_and_loads_only_complete_atomic_population (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_fully_resigned_window_path_with_wrong_origin_tail_is_rejected (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest)\n即使攻击者重签所有外层摘要，错误 AS_PATH 语义仍必须 fail closed。 ... ok\ntest_ghost_row_cannot_be_resigned_only_at_manifest_layer (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_index_tamper_is_rejected_even_when_file_ref_is_resigned (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_manifest_duplicate_key_and_noncanonical_encoding_are_rejected (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_path_traversal_is_rejected (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_row_file_tampering_is_rejected (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_schema_digest_drift_is_rejected (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_store_root_and_nested_file_symlinks_are_rejected (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\ntest_window_path_membership_index_is_recomputed_before_exposure (backend.web.tests.test_country_outage_p2_s1_source_store.CountryOutageP2S1SourceStoreTest) ... ok\n\n----------------------------------------------------------------------\nRan 28 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "7a6eac1e6006df731b8b1fad2c785aaafddfdc6780ef5207f92848fce7492f5a",
   "passed": true,
-  "receipt_digest": "633339fd07d366f3c16718704b9f3f3ad252975eb1d3dd3c2336078231b62651",
+  "receipt_digest": "7511551b7643733ad1700ca388ffcb48321caf48556fd1f96042f3422f452e0c",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -52,7 +52,7 @@
   ],
   "skipped_count": 0,
   "stage": "W0",
-  "started_at_utc": "2026-08-13T05:18:29Z",
+  "started_at_utc": "2026-08-13T06:20:59Z",
   "suite_id": "w0-python",
   "test_case_coverage": [
     {
