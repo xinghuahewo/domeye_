@@ -62,6 +62,13 @@ export const P2S1_W2_ACTIVATION_UNIT_IDS = [
   'OP-22', 'OP-23', 'OP-24', 'OP-25', 'OP-26', 'OP-27', 'OP-28',
 ] as const
 
+export const P2S1_W3_ACTIVATION_UNIT_IDS = ['OP-38', 'OP-39'] as const
+
+export const P2S1_W4_ACTIVATION_UNIT_IDS = [
+  'TOOL-11',
+  'OP-29', 'OP-30', 'OP-31', 'OP-32', 'OP-33', 'OP-37',
+] as const
+
 export const P2S1_W0_PROPOSAL_UNIT_IDS = [
   ...P2S1_V1_TOOL_IDS,
   ...P2S1_V1_OPERATOR_IDS,
@@ -136,6 +143,8 @@ const EXPECTED_ATOMIC_CAPABILITY_BY_UNIT = new Map<string, string>([
 const P2S1_WAVE_UNIT_IDS = new Set<string>([
   ...P2S1_W1_ACTIVATION_UNIT_IDS,
   ...P2S1_W2_ACTIVATION_UNIT_IDS,
+  ...P2S1_W3_ACTIVATION_UNIT_IDS,
+  ...P2S1_W4_ACTIVATION_UNIT_IDS,
 ])
 
 const P2S1_EXPECTED_HANDLER_BY_UNIT = new Map<string, string>([
@@ -144,6 +153,7 @@ const P2S1_EXPECTED_HANDLER_BY_UNIT = new Map<string, string>([
   ['TOOL-09', 'python:backend.services.country_outage_p2_s1_tools.CountryOutageP2S1Tools.query_as_states'],
   ['TOOL-10', 'python:backend.services.country_outage_p2_s1_tools.CountryOutageP2S1Tools.query_new_prefix_states'],
   ['TOOL-12', 'python:backend.services.country_outage_p2_s1_tools.CountryOutageP2S1Tools.query_window_path_associations'],
+  ['TOOL-11', 'python:backend.services.country_outage_p2_s1_tools.CountryOutageP2S1Tools.query_materialized_route_states_at_time'],
   ['OP-05', 'python:backend.services.country_outage_p2_s1_operators.op05_as_severity_rank'],
   ['OP-06', 'python:backend.services.country_outage_p2_s1_operators.op06_select_first_state_occurrence'],
   ['OP-07', 'python:backend.services.country_outage_p2_s1_operators.op07_derive_state_intervals'],
@@ -168,8 +178,16 @@ const P2S1_EXPECTED_HANDLER_BY_UNIT = new Map<string, string>([
   ['OP-26', 'python:backend.services.country_outage_p2_s1_operators.op26_set_directional_difference'],
   ['OP-27', 'python:backend.services.country_outage_p2_s1_operators.op27_set_directional_coverage'],
   ['OP-28', 'python:backend.services.country_outage_p2_s1_operators.op28_set_jaccard'],
+  ['OP-29', 'python:backend.services.country_outage_p2_s1_operators.op29_classify_temporal_evidence_relation'],
+  ['OP-30', 'python:backend.services.country_outage_p2_s1_operators.op30_classify_vp_visibility_consistency'],
+  ['OP-31', 'python:backend.services.country_outage_p2_s1_operators.op31_classify_vp_origin_consistency'],
+  ['OP-32', 'python:backend.services.country_outage_p2_s1_operators.op32_classify_vp_path_consistency'],
+  ['OP-33', 'python:backend.services.country_outage_p2_s1_operators.op33_join_new_prefix_route_state'],
   ['OP-35', 'python:backend.services.country_outage_p2_s1_operators.op35_select_last_state_occurrence'],
   ['OP-36', 'python:backend.services.country_outage_p2_s1_operators.op36_detect_first_threshold_crossing'],
+  ['OP-37', 'python:backend.services.country_outage_p2_s1_operators.op37_classify_evidence_consistency'],
+  ['OP-38', 'python:backend.services.country_outage_p2_s1_operators.op38_intersect_state_interval_sets'],
+  ['OP-39', 'python:backend.services.country_outage_p2_s1_operators.op39_project_fixed_cohort_prefix_set'],
 ])
 
 export type P2S1RegistryUnitKind = 'tool' | 'operator' | 'plan_capability' | 'control'
@@ -267,7 +285,7 @@ export interface P2S1RegistryExpectedContext {
   existing_registry_snapshot_digest: string
 }
 
-export type P2S1RegistryWaveId = 'W1' | 'W2'
+export type P2S1RegistryWaveId = 'W1' | 'W2' | 'W3' | 'W4'
 
 export interface P2S1RegistryUnitTestEvidence {
   schema_version: typeof WAVE_TEST_RECEIPT_SCHEMA
@@ -791,19 +809,27 @@ export class P2S1RegistryProposalResolver {
 }
 
 function waveUnitIds(waveId: P2S1RegistryWaveId): readonly string[] {
-  return waveId === 'W1' ? P2S1_W1_ACTIVATION_UNIT_IDS : P2S1_W2_ACTIVATION_UNIT_IDS
+  if (waveId === 'W1') return P2S1_W1_ACTIVATION_UNIT_IDS
+  if (waveId === 'W2') return P2S1_W2_ACTIVATION_UNIT_IDS
+  if (waveId === 'W3') return P2S1_W3_ACTIVATION_UNIT_IDS
+  return P2S1_W4_ACTIVATION_UNIT_IDS
 }
 
 function fullAdmittedBindingUnitIds(waveId: P2S1RegistryWaveId): string[] {
-  return waveId === 'W1'
-    ? [...P2S1_W1_ACTIVATION_UNIT_IDS]
-    : [...P2S1_W1_ACTIVATION_UNIT_IDS, ...P2S1_W2_ACTIVATION_UNIT_IDS]
+  const waves: readonly (readonly string[])[] = [
+    P2S1_W1_ACTIVATION_UNIT_IDS,
+    P2S1_W2_ACTIVATION_UNIT_IDS,
+    P2S1_W3_ACTIVATION_UNIT_IDS,
+    P2S1_W4_ACTIVATION_UNIT_IDS,
+  ]
+  const lastIndex = Number(waveId.slice(1)) - 1
+  return waves.slice(0, lastIndex + 1).flatMap((ids) => [...ids])
 }
 
 export function p2S1ExpectedHandlerId(unitId: string): string {
   const handlerId = P2S1_EXPECTED_HANDLER_BY_UNIT.get(unitId)
   if (!handlerId) {
-    throw new P2S1RegistryRuntimeError('registry_wave_unit_forbidden', `${unitId} 不属于 W1/W2 原子激活人口`)
+    throw new P2S1RegistryRuntimeError('registry_wave_unit_forbidden', `${unitId} 不属于 W1/W2/W3/W4 原子 binding 准入人口`)
   }
   return handlerId
 }
@@ -830,7 +856,7 @@ function validateUnitTestEvidence(value: unknown): P2S1RegistryUnitTestEvidence 
     'runner_receipt_file_digest', 'runner_receipt_path', 'test_case_ids', 'test_result',
     'tested_execution_count',
   ], 'unit_test_evidence')
-  if (receipt.schema_version !== WAVE_TEST_RECEIPT_SCHEMA || !['W1', 'W2'].includes(String(receipt.wave_id))) {
+  if (receipt.schema_version !== WAVE_TEST_RECEIPT_SCHEMA || !['W1', 'W2', 'W3', 'W4'].includes(String(receipt.wave_id))) {
     throw new P2S1RegistryRuntimeError('registry_test_evidence_invalid', '单元测试证据 schema/wave 无效')
   }
   requireDigest(receipt.receipt_digest, 'unit_test_evidence.receipt_digest')
@@ -900,8 +926,8 @@ export function validateP2S1RegistryWaveHandlerManifest(
     'candidate_id', 'design_candidate_digest', 'wave_id',
     'structural_binding_contract_digest', 'handlers',
   ], 'handler_manifest.manifest_payload')
-  if (!['W1', 'W2'].includes(String(payload.wave_id))) {
-    throw new P2S1RegistryRuntimeError('registry_wave_unit_forbidden', '仅 W1/W2 可以生成激活 manifest')
+  if (!['W1', 'W2', 'W3', 'W4'].includes(String(payload.wave_id))) {
+    throw new P2S1RegistryRuntimeError('registry_wave_unit_forbidden', '仅 W1/W2/W3/W4 可以生成 binding 准入 manifest')
   }
   requireNonempty(payload.candidate_id, 'handler_manifest.candidate_id')
   requireDigest(payload.design_candidate_digest, 'handler_manifest.design_candidate_digest')
@@ -1070,7 +1096,13 @@ function validateP2S1RegistryWaveSnapshot(
     'publication_identity', 'proposal_snapshot_ref', 'previous_snapshot_ref',
     'handler_manifest', 'admitted_wave_binding_unit_ids', 'admitted_binding_unit_ids',
   ], 'wave_snapshot.snapshot_payload')
-  const expectedWave: P2S1RegistryWaveId = previousWave === null ? 'W1' : 'W2'
+  const expectedWave: P2S1RegistryWaveId = previousWave === null
+    ? 'W1'
+    : previousWave.snapshot_payload.wave_id === 'W1'
+      ? 'W2'
+      : previousWave.snapshot_payload.wave_id === 'W2'
+        ? 'W3'
+        : 'W4'
   if (payload.wave_id !== expectedWave) {
     throw new P2S1RegistryRuntimeError('registry_wave_sequence_invalid', `当前 CAS 只能激活 ${expectedWave}`)
   }
@@ -1155,7 +1187,7 @@ export class P2S1RegistryWaveBindingAdmitter {
     const testEvidenceIds = Object.keys(context.test_evidence_receipt_digest_by_unit).sort()
     const expectedIds = [...P2S1_WAVE_UNIT_IDS].sort()
     if (!same(implementationIds, expectedIds) || !same(testEvidenceIds, expectedIds)) {
-      throw new P2S1RegistryRuntimeError('registry_trusted_manifest_population_invalid', '受信实现与测试摘要必须精确覆盖 W1/W2 人口')
+      throw new P2S1RegistryRuntimeError('registry_trusted_manifest_population_invalid', '受信实现与测试摘要必须精确覆盖 W1/W2/W3/W4 人口')
     }
     for (const unitId of expectedIds) {
       requireDigest(context.implementation_digest_by_unit[unitId], `${unitId}.trusted_implementation_digest`)
@@ -1170,8 +1202,8 @@ export class P2S1RegistryWaveBindingAdmitter {
   }
 
   admitBindings(value: unknown): P2S1RegistryWaveAdmissionReceipt {
-    if (this.currentWave?.snapshot_payload.wave_id === 'W2') {
-      throw new P2S1RegistryRuntimeError('registry_wave_sequence_invalid', 'W1/W2 binding 已完整准入，W3+ 不在本阶段范围')
+    if (this.currentWave?.snapshot_payload.wave_id === 'W4') {
+      throw new P2S1RegistryRuntimeError('registry_wave_sequence_invalid', 'W1/W2/W3/W4 binding 已完整准入，W5+ 不在本阶段范围')
     }
     const snapshot = validateP2S1RegistryWaveSnapshot(
       value,
@@ -1223,7 +1255,7 @@ export class P2S1RegistryWaveBindingAdmitter {
       throw new P2S1RegistryRuntimeError('p2_1_deferred_forbidden', `${unitId} 属于 P2.1，不可准入 P2 v1 binding`)
     }
     if (!P2S1_WAVE_UNIT_IDS.has(unitId)) {
-      throw new P2S1RegistryRuntimeError('registry_binding_not_admitted', `${unitId} 不属于 W1/W2 binding 准入人口`)
+      throw new P2S1RegistryRuntimeError('registry_binding_not_admitted', `${unitId} 不属于 W1/W2/W3/W4 binding 准入人口`)
     }
     if (!this.currentWave || !same(snapshotValue, this.currentWave)) {
       throw new P2S1RegistryRuntimeError('registry_binding_snapshot_mismatch', 'binding 解析必须绑定当前已准入 Registry wave snapshot')
@@ -1231,7 +1263,7 @@ export class P2S1RegistryWaveBindingAdmitter {
     if (!this.currentWave.snapshot_payload.admitted_binding_unit_ids.includes(unitId)) {
       throw new P2S1RegistryRuntimeError('registry_binding_not_admitted', `${unitId} 尚未随完整波次准入 binding`)
     }
-    // W2 snapshot 通过内容链继承 W1 binding；对应不可变 binding 只来自此前成功 CAS 的缓存。
+    // 后续 wave snapshot 通过内容链继承此前 binding；不可变 binding 只来自成功 CAS 的缓存。
     const binding = this.admittedBindingByUnit.get(unitId)
     if (!binding) {
       throw new P2S1RegistryRuntimeError('registry_handler_binding_mismatch', `${unitId} 缺少已准入 handler binding`)

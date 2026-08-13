@@ -62,12 +62,12 @@ WAVE_CONTRACT = {
     },
     "W3": {
         "depends_on": ["W1", "W2"],
-        "effect": "state_interval_overlap_and_fixed_cohort_prefix_set_implemented",
+        "effect": "offline_state_interval_overlap_and_fixed_cohort_prefix_set_atomic_harness_and_non_callable_binding_verified",
         "unit_ids": ["OP-38", "OP-39"],
     },
     "W4": {
         "depends_on": ["W0", "W2"],
-        "effect": "exact_time_route_state_path_and_vp_consistency_implemented",
+        "effect": "offline_exact_time_route_state_path_vp_consistency_atomic_harness_and_non_callable_binding_verified",
         "unit_ids": ["TOOL-11", "OP-29", "OP-30", "OP-31", "OP-32", "OP-33", "OP-37"],
     },
     "W5": {
@@ -153,6 +153,9 @@ W0_ALLOWED_ARTIFACT_PREFIXES = (
 W0_TRANSITION_RECEIPT_DIGEST = "3e875e80422e3c33528a39d24d08add6ea68f6e16e02f2ce22f7084119189351"
 W1_W2_TASK_ID = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-20260813"
 W1_W2_TARGET_VERSION = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-v1"
+W3_W4_TASK_ID = "country-outage-agent-p2-s1-w3-w4-atomic-runtime-20260813"
+W3_W4_TARGET_VERSION = "country-outage-agent-p2-s1-w3-w4-atomic-runtime-v1"
+REGISTRY_WAVE_SEQUENCE = ["W1", "W2", "W3", "W4"]
 STRUCTURAL_BINDING_PATH = Path(
     "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json"
 )
@@ -190,8 +193,10 @@ W1_W2_REGISTRY_EVIDENCE_ROOT = Path(
     "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime"
 )
 W1_W2_REGISTRY_EVIDENCE_SHA256 = {
-    "W1": "e9e5eed9a166cb43f43bb2d03b8eb33f6a664245cf617a098532d5482035c42c",
-    "W2": "f001b13b8c39641db0536ef24a4f41d1c5b020bbe5317b2f7389b267b7fb9588",
+    "W1": "ee992ac8144b2d4e097f921827fbea97743524ff96426c1035263380f1bb29fa",
+    "W2": "080c9383401f50b7dfc4a1866b5922670fcd8a7ead16a908d45fce7e53a4e437",
+    "W3": "2cee0ac652a5488a8bc7be08ebc253e9c8255b06d483ba985ee2420e20bf8e31",
+    "W4": "bc8570bbe7b0f91b3921c8b19d28606b8a03df8730b43223cecee300528a8ef7",
 }
 W1_W2_SOURCE_STORE_PATH = Path("backend/services/country_outage_p2_s1_source_store.py")
 W1_W2_SOURCE_SCHEMA_PATHS = {
@@ -217,18 +222,54 @@ W1_W2_SHARED_ARTIFACT_ROLES = {
     **{path.as_posix(): "w0_source_schema" for path in W1_W2_SOURCE_SCHEMA_PATHS.values()},
 }
 W1_W2_ALL_UNIT_IDS = set(WAVE_CONTRACT["W1"]["unit_ids"] + WAVE_CONTRACT["W2"]["unit_ids"])
+W1_W4_ALL_UNIT_IDS = set(
+    unit_id
+    for stage in REGISTRY_WAVE_SEQUENCE
+    for unit_id in WAVE_CONTRACT[stage]["unit_ids"]
+)
 P2_1_UNIT_IDS = {"PLAN-CAP-02", "TOOL-13", "OP-34"}
 REGISTRY_SNAPSHOT_ID = re.compile(r"^p2-s1-registry-wave-sha256:[0-9a-f]{64}$")
 STAGE_TEST_RUN_RECEIPTS = {
-    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "c1b82c3ebde361eef5350c486d49c47a2258f0769fad4efa4cf8e6ce2eb5e846"),
-    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "b8b1f17d2aa80887d22d5e09245f3a9726581f8c5c93d5c49946fd33a580480e"),
-    "w1-positive": ("W1", "positive", "9b9287aa3709aa2c0228045d0547737bee6a4967ddece111a43456d79862785d"),
-    "w1-boundary": ("W1", "boundary", "cf7cf209066263b8717caacf4e2abe354ed0223107eb0c9eba54054a31196cf9"),
-    "w1-attack": ("W1", "attack", "293eb438f0f0cc026c3f245c39b09b46d31fd021f75dd020d4165e9a86f253f6"),
-    "w2-positive": ("W2", "positive", "254cabe16f905f62d1597bf894ce0495108cfbb7fe0a1fdd90c8c9456b4b1236"),
-    "w2-boundary": ("W2", "boundary", "a7a40eeed6c71e535b98c234dc28c4ad5e70791f2d6450920cb2a21abca6c729"),
-    "w2-attack": ("W2", "attack", "58cb9087b453702323f2c864a1d530b0c249b351e1bfa8988d629a9d88af6934"),
+    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "599b729287ef1fb4b3fd9adc71d53549b8d97d6511a8966a5ccf91d96989d1cc"),
+    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "4fa6f1963a87070a1908f4af5c2891805f287d7ba6101c40d61449b75eb05654"),
+    "w1-positive": ("W1", "positive", "1fa8cf89a1c15242bbb70db84e36a1691d428dcbe4f1217d4b01669a7c3f51a6"),
+    "w1-boundary": ("W1", "boundary", "b6eae94bd497a78bf5eefa7f1edf9dfe65f68fc9bad329d4926ff10f84da216d"),
+    "w1-attack": ("W1", "attack", "ac416b1aa5f8e39e76d22417f834405ae229f66cda064d6260bd3c0dc39fd4bd"),
+    "w2-positive": ("W2", "positive", "00443b97cb14b96aeb92c7c2c1d4080cde784f7494f8da15325912e9efb8ece3"),
+    "w2-boundary": ("W2", "boundary", "05ad37e8ed1e2d15703ededdc6225d5dd0262354c2bc142cabdcabae9f5a4b89"),
+    "w2-attack": ("W2", "attack", "a60030a1edd4ddb9148ba88c05f612e90f526bfa7893e6c6f8554caa8fa5ba05"),
+    "w3-positive": ("W3", "positive", "6438d5087cf165139b6cda967100c6a90f1264fcaf23bc57cbacd35bc3d1244e"),
+    "w3-boundary": ("W3", "boundary", "fc822b55f862d95549801ca10190754056d63fca0f3b87673f2d718c114f5baa"),
+    "w3-attack": ("W3", "attack", "29b0bd78642520921b4211a6eb6f3ea624a711dd30db768cacac7aee35a3bf66"),
+    "w4-positive": ("W4", "positive", "a477a81d5213b91f4d526e8d048231f11790388b1a4e10a61bf4654b2f6b4c18"),
+    "w4-boundary": ("W4", "boundary", "bf291a42eff3e4980a120ade53626db58c1d5bf059407b68a2f5afebb6cf8371"),
+    "w4-attack": ("W4", "attack", "dfd1913297acec40b09ad6e43ec618851aa7717ed89d5b3cc5a74784e0a0aaf4"),
 }
+
+
+def atomic_wave_artifact_roles(stage: str) -> dict[str, str]:
+    """返回当前原子波次精确制品人口；W4 继续复用同一 Tool 运行时合同。"""
+
+    expect(stage in REGISTRY_WAVE_SEQUENCE, "wave_stage_not_implemented", f"{stage} 不是已登记原子波次")
+    return dict(W1_W2_SHARED_ARTIFACT_ROLES)
+
+
+def cumulative_registry_units(stage: str) -> list[str]:
+    wave_index = REGISTRY_WAVE_SEQUENCE.index(stage)
+    return [
+        unit_id
+        for prior_wave in REGISTRY_WAVE_SEQUENCE[: wave_index + 1]
+        for unit_id in WAVE_CONTRACT[prior_wave]["unit_ids"]
+    ]
+
+
+def stage_prior_dependencies(stage: str) -> list[str]:
+    """功能依赖之外，W4 签发还必须承接已经签发的 W3 Registry 前序。"""
+
+    dependencies = list(WAVE_CONTRACT[stage]["depends_on"])
+    if stage == "W4" and "W3" not in dependencies:
+        dependencies.append("W3")
+    return dependencies
 
 
 class AlignmentError(RuntimeError):
@@ -434,16 +475,25 @@ def validate_task(root: Path) -> list[str]:
     task = load_json(root / TASK_PATH)
     task_id = task.get("taskId")
     w0_task = task_id == "country-outage-agent-p2-s1-w0-source-governance-20260813"
+    w1_w2_task = task_id == W1_W2_TASK_ID
+    w3_w4_task = task_id == W3_W4_TASK_ID
+    expect(w0_task or w1_w2_task or w3_w4_task, "task_identity_mismatch", "Task ID 不属于冻结的 W0、W1/W2 或 W3/W4 实现任务")
     if w0_task:
         exact(task.get("targetVersion"), "country-outage-agent-p2-s1-w0-source-governance-v1", "task_version_mismatch", "W0 目标版本不匹配")
-    else:
-        exact(task_id, W1_W2_TASK_ID, "task_identity_mismatch", "W1/W2 Task ID 不匹配")
+    elif w1_w2_task:
         exact(task.get("targetVersion"), W1_W2_TARGET_VERSION, "task_version_mismatch", "W1/W2 目标版本不匹配")
+    else:
+        exact(task.get("targetVersion"), W3_W4_TARGET_VERSION, "task_version_mismatch", "W3/W4 目标版本不匹配")
     transition = task.get("taskTransition")
     expect(isinstance(transition, dict), "task_transition_missing", "缺少任务迁移记录")
     exact(transition.get("frozenDesignCandidateId"), DESIGN_CANDIDATE_ID, "task_design_binding_mismatch", "Task 未绑定冻结设计候选")
     exact(transition.get("frozenDesignCandidateSha256"), DESIGN_CANDIDATE_SHA256, "task_design_sha_mismatch", "Task 设计摘要不匹配")
-    exact(transition.get("s1ip0ReceiptDigest"), "2e2d72f18f030bb1f91e7037e6f88786f64d9b4b7865a36b82f605e7e701d838", "task_p0_binding_mismatch", "Task 未绑定 S1I-P0 回执")
+    expected_p0_receipt = (
+        "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59"
+        if w3_w4_task
+        else "2e2d72f18f030bb1f91e7037e6f88786f64d9b4b7865a36b82f605e7e701d838"
+    )
+    exact(transition.get("s1ip0ReceiptDigest"), expected_p0_receipt, "task_p0_binding_mismatch", "Task 未绑定创建任务时冻结的 S1I-P0 回执")
     forbidden = task.get("forbiddenPaths")
     expect(isinstance(forbidden, list), "task_forbidden_paths_missing", "缺少 forbiddenPaths")
     for pattern in ("backend/core/**", "backend/data_pipeline/**", "backend/database/**", "backend/web/api/**", "frontend/**", "deploy/**", "tools/rrc25-iran-replay-go/**"):
@@ -454,8 +504,15 @@ def validate_task(root: Path) -> list[str]:
         for path in W0_REQUIRED_RUNTIME_PATHS:
             expect(path in allowed, "w0_runtime_path_not_authorized", f"W0 未授权实现路径：{path}")
         return ["w0_task_boundary_verified"]
-    exact(transition.get("supersedesTaskId"), "country-outage-agent-p2-s1-w0-source-governance-20260813", "task_transition_invalid", "W1/W2 未显式继承 W0 Task")
-    exact(transition.get("w0ReceiptDigest"), W0_TRANSITION_RECEIPT_DIGEST, "task_w0_binding_mismatch", "W1/W2 Task 未绑定创建时冻结的 W0 回执")
+    if w1_w2_task:
+        exact(transition.get("supersedesTaskId"), "country-outage-agent-p2-s1-w0-source-governance-20260813", "task_transition_invalid", "W1/W2 未显式继承 W0 Task")
+        exact(transition.get("w0ReceiptDigest"), W0_TRANSITION_RECEIPT_DIGEST, "task_w0_binding_mismatch", "W1/W2 Task 未绑定创建时冻结的 W0 回执")
+    else:
+        exact(transition.get("supersedesTaskId"), W1_W2_TASK_ID, "task_transition_invalid", "W3/W4 未显式继承已通过独立复审的 W1/W2 Task")
+        exact(transition.get("implementationBaselineSha256"), "9dc80bec20db0c68ee044c4da9e4148a2a2ab7bd1c70c8863ae737cc6231422f", "task_baseline_transition_mismatch", "W3/W4 Task 创建时的实现基线摘要漂移")
+        exact(transition.get("w0ReceiptDigest"), "cbab6787eeec1071c1c982063085f6fadb16e85e584c76289a43b31aecd4108c", "task_w0_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W0 回执")
+        exact(transition.get("w1ReceiptDigest"), "2ac94ea56923bd8dff140af56aa6e8a876860931f6bd8fd479a4908eeaa34c73", "task_w1_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W1 回执")
+        exact(transition.get("w2ReceiptDigest"), "b4672f844e559d3bdf44d713fd02f674ec431f4caacb77c3afa85886c27298a1", "task_w2_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W2 回执")
     for path in (
         W1_W2_TOOL_IMPLEMENTATION_PATH,
         W1_W2_OPERATOR_IMPLEMENTATION_PATH,
@@ -471,13 +528,18 @@ def validate_task(root: Path) -> list[str]:
             and path_text.startswith(pattern[:-3] + "/")
             for pattern in allowed
         )
-        expect(authorized, "w1_w2_runtime_path_not_authorized", f"W1/W2 未授权实现路径：{path}")
+        expect(authorized, "wave_runtime_path_not_authorized", f"当前原子波次未授权实现路径：{path}")
     non_goals = task.get("explicitNonGoals")
-    expect(isinstance(non_goals, list), "w1_w2_non_goals_missing", "W1/W2 缺少显式非目标")
+    expect(isinstance(non_goals, list), "wave_non_goals_missing", "原子实现波次缺少显式非目标")
     non_goal_text = "\n".join(item for item in non_goals if isinstance(item, str))
-    for phrase in ("每个Tool只能过滤和分页一种W0已验证事实人口", "每个Operator只能执行一种登记的确定性业务变换", "PLAN-CAP-02", "本阶段不修改生产"):
-        expect(phrase in non_goal_text, "w1_w2_non_goals_missing", f"W1/W2 非目标未闭合：{phrase}")
-    return ["w1_w2_task_boundary_verified"]
+    expected_non_goal_phrases = (
+        ("每个Tool只能过滤和分页一种W0已验证事实人口", "每个Operator只能执行一种登记的确定性业务变换", "PLAN-CAP-02", "本阶段不修改生产")
+        if w1_w2_task
+        else ("TOOL-11只能读取W0预物化", "只能执行一种登记的确定性业务变换", "execution_allowed_unit_ids必须为空", "PLAN-CAP-02", "本阶段不修改生产")
+    )
+    for phrase in expected_non_goal_phrases:
+        expect(phrase in non_goal_text, "wave_non_goals_missing", f"原子实现波次非目标未闭合：{phrase}")
+    return ["w1_w2_task_boundary_verified" if w1_w2_task else "w3_w4_task_boundary_verified"]
 
 
 def validate_baseline(root: Path) -> tuple[dict[str, Any], list[str]]:
@@ -797,7 +859,7 @@ def _catalog_units(root: Path) -> tuple[dict[str, dict[str, Any]], dict[str, dic
     expect(isinstance(operators, list), "w1_w2_operator_catalog_invalid", "冻结 Operator catalog 缺少 operators")
     tool_map = {item.get("unit_id"): item for item in tools if isinstance(item, dict)}
     operator_map = {item.get("unit_id"): item for item in operators if isinstance(item, dict)}
-    expect(W1_W2_ALL_UNIT_IDS <= set(tool_map) | set(operator_map), "w1_w2_catalog_population_open", "冻结 catalog 未覆盖 W1/W2 单元")
+    expect(W1_W4_ALL_UNIT_IDS <= set(tool_map) | set(operator_map), "w1_w2_catalog_population_open", "冻结 catalog 未覆盖 W1-W4 原子单元")
     return tool_map, operator_map
 
 
@@ -989,10 +1051,11 @@ def _validate_registry_runtime_evidence(root: Path, stage: str, reference: Any) 
         f"{stage} Registry bundle 字段不精确",
     )
     exact(bundle.get("schema_version"), "country_outage_p2_s1_registry_runtime_evidence_bundle_v1", "w1_w2_registry_runtime_evidence_invalid", "Registry bundle Schema 漂移")
-    exact(bundle.get("generator_id"), "generate-p2-s1-w1-w2-registry-evidence", "w1_w2_registry_runtime_evidence_invalid", "Registry generator ID 漂移")
+    exact(bundle.get("generator_id"), "generate-p2-s1-w1-w4-registry-evidence", "w1_w2_registry_runtime_evidence_invalid", "Registry generator ID 漂移")
     exact(bundle.get("generator_source_sha256"), generator_sha, "w1_w2_registry_runtime_evidence_invalid", "Registry bundle 未绑定 generator 字节")
     exact(bundle.get("wave_id"), stage, "w1_w2_registry_population_drift", "Registry bundle wave 漂移")
-    exact(bundle.get("sequence_ordinal"), 1 if stage == "W1" else 2, "w1_w2_registry_sequence_invalid", "Registry bundle 顺序漂移")
+    wave_index = REGISTRY_WAVE_SEQUENCE.index(stage)
+    exact(bundle.get("sequence_ordinal"), wave_index + 1, "w1_w2_registry_sequence_invalid", "Registry bundle 顺序漂移")
     content_digest = _p2s1_governance_digest({key: value for key, value in bundle.items() if key != "content_digest"})
     exact(bundle.get("content_digest"), content_digest, "w1_w2_registry_runtime_evidence_invalid", "Registry bundle content digest 不可重算")
     exact(reference.get("content_digest"), content_digest, "w1_w2_registry_runtime_evidence_invalid", "Registry 引用未绑定 content digest")
@@ -1081,21 +1144,22 @@ def _validate_registry_runtime_evidence(root: Path, stage: str, reference: Any) 
     exact(snapshot.get("snapshot_digest"), snapshot_digest, "w1_w2_registry_snapshot_digest_mismatch", "Registry wave snapshot digest 不可重算")
     exact(snapshot.get("registry_snapshot_id"), f"p2-s1-registry-wave-sha256:{snapshot_digest.removeprefix('sha256:')}", "w1_w2_registry_snapshot_invalid", "Registry wave snapshot ID 不可重算")
     exact(snapshot_payload.get("wave_id"), stage, "w1_w2_registry_population_drift", "Registry wave snapshot wave 漂移")
-    exact(snapshot_payload.get("registry_revision"), 4 if stage == "W1" else 5, "w1_w2_registry_snapshot_invalid", "Registry wave revision 漂移")
+    exact(snapshot_payload.get("registry_revision"), 4 + wave_index, "w1_w2_registry_snapshot_invalid", "Registry wave revision 漂移")
     exact(snapshot_payload.get("handler_manifest"), manifest, "w1_w2_registry_snapshot_invalid", "Registry snapshot 未逐字绑定实际 handler manifest")
     exact(snapshot_payload.get("admitted_wave_binding_unit_ids"), wave_units, "w1_w2_registry_population_drift", "Registry 本波 binding 人口漂移")
-    expected_all_units = wave_units if stage == "W1" else [*WAVE_CONTRACT["W1"]["unit_ids"], *WAVE_CONTRACT["W2"]["unit_ids"]]
+    expected_all_units = cumulative_registry_units(stage)
     exact(snapshot_payload.get("admitted_binding_unit_ids"), expected_all_units, "w1_w2_registry_population_drift", "Registry 继承 binding 人口漂移")
     if stage == "W1":
         exact(snapshot_payload.get("previous_snapshot_ref"), snapshot_payload.get("proposal_snapshot_ref"), "w1_w2_registry_sequence_invalid", "W1 未从同一 proposal 开始")
     else:
-        w1_bundle = load_json(root / W1_W2_REGISTRY_EVIDENCE_ROOT / "W1.json")
-        w1_snapshot = w1_bundle["wave_snapshot"]
+        previous_stage = REGISTRY_WAVE_SEQUENCE[wave_index - 1]
+        previous_bundle = load_json(root / W1_W2_REGISTRY_EVIDENCE_ROOT / f"{previous_stage}.json")
+        previous_snapshot = previous_bundle["wave_snapshot"]
         exact(snapshot_payload.get("previous_snapshot_ref"), {
-            "registry_snapshot_id": w1_snapshot["registry_snapshot_id"],
-            "snapshot_digest": w1_snapshot["snapshot_digest"],
-            "registry_revision": w1_snapshot["snapshot_payload"]["registry_revision"],
-        }, "w1_w2_registry_sequence_invalid", "W2 未承接冻结 W1 snapshot")
+            "registry_snapshot_id": previous_snapshot["registry_snapshot_id"],
+            "snapshot_digest": previous_snapshot["snapshot_digest"],
+            "registry_revision": previous_snapshot["snapshot_payload"]["registry_revision"],
+        }, "w1_w2_registry_sequence_invalid", f"{stage} 未承接冻结 {previous_stage} snapshot")
 
     admission = bundle.get("wave_admission_receipt")
     expect(isinstance(admission, dict), "w1_w2_registry_receipt_invalid", "Registry admission receipt 缺失")
@@ -1156,9 +1220,10 @@ def validate_w1_w2_evidence(root: Path, stage: str, evidence: dict[str, Any]) ->
         f"{stage} evidence content digest 不可重算",
     )
 
+    expected_artifact_roles = atomic_wave_artifact_roles(stage)
     artifacts = evidence.get("artifact_manifest")
     expect(isinstance(artifacts, list), "w1_w2_artifact_manifest_missing", f"{stage} 缺少 artifact manifest")
-    exact(len(artifacts), len(W1_W2_SHARED_ARTIFACT_ROLES), "w1_w2_artifact_population_mismatch", f"{stage} artifact manifest 不得缺失或夹带额外制品")
+    exact(len(artifacts), len(expected_artifact_roles), "w1_w2_artifact_population_mismatch", f"{stage} artifact manifest 不得缺失或夹带额外制品")
     artifact_by_path: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(artifacts):
         expect(isinstance(item, dict), "w1_w2_artifact_invalid", f"artifact_manifest[{index}] 必须是对象")
@@ -1166,8 +1231,8 @@ def validate_w1_w2_evidence(root: Path, stage: str, evidence: dict[str, Any]) ->
         expect(isinstance(path_text, str), "w1_w2_artifact_path_invalid", f"artifact_manifest[{index}] path 无效")
         expect(path_text not in artifact_by_path, "w1_w2_artifact_duplicate", f"重复制品：{path_text}")
         artifact_by_path[path_text] = item
-    exact(set(artifact_by_path), set(W1_W2_SHARED_ARTIFACT_ROLES), "w1_w2_artifact_population_mismatch", f"{stage} artifact manifest 路径人口漂移")
-    for path_text, role in W1_W2_SHARED_ARTIFACT_ROLES.items():
+    exact(set(artifact_by_path), set(expected_artifact_roles), "w1_w2_artifact_population_mismatch", f"{stage} artifact manifest 路径人口漂移")
+    for path_text, role in expected_artifact_roles.items():
         _validate_bound_artifact(root, artifact_by_path[path_text], path_text, role, "w1_w2_artifact_binding_mismatch")
 
     structural = evidence.get("structural_binding_contract")
@@ -1353,9 +1418,8 @@ def validate_w1_w2_evidence(root: Path, stage: str, evidence: dict[str, Any]) ->
     exact(binding.get("caller_callback_refs"), [], "w1_w2_registry_callback_seam_open", f"{stage} 不得暴露 caller callback seam")
     exact(binding.get("trusted_dispatcher_id"), None, "w1_w2_registry_handler_activation_overclaim", f"{stage} W5 前不得声称 trusted dispatcher 已绑定")
 
-    admitted_binding_units = wave_units if stage == "W1" else [
-        *WAVE_CONTRACT["W1"]["unit_ids"], *WAVE_CONTRACT["W2"]["unit_ids"],
-    ]
+    wave_index = REGISTRY_WAVE_SEQUENCE.index(stage)
+    admitted_binding_units = cumulative_registry_units(stage)
     snapshot = registry.get("snapshot")
     expect(isinstance(snapshot, dict), "wave_registry_snapshot_missing", f"{stage} Registry snapshot 无效")
     exact(set(snapshot), {
@@ -1383,13 +1447,14 @@ def validate_w1_w2_evidence(root: Path, stage: str, evidence: dict[str, Any]) ->
         for suffix in ("snapshot_id", "snapshot_digest", "registry_revision"):
             exact(snapshot.get(f"previous_{suffix}"), snapshot.get(f"proposal_{suffix}"), "w1_w2_registry_snapshot_invalid", f"W1 previous {suffix} 必须是 W0 proposal")
     else:
-        w1_evidence = load_json(root / WAVE_EVIDENCE_ROOT / "W1.json")
-        w1_registry = w1_evidence.get("registry_binding_projection")
-        expect(isinstance(w1_registry, dict) and isinstance(w1_registry.get("snapshot"), dict), "w1_w2_registry_snapshot_invalid", "W2 必须绑定当前 W1 binding snapshot")
-        w1_snapshot = w1_registry["snapshot"]
-        exact(snapshot.get("previous_snapshot_id"), w1_snapshot.get("snapshot_id"), "w1_w2_registry_snapshot_invalid", "W2 previous snapshot ID 未绑定当前 W1")
-        exact(snapshot.get("previous_snapshot_digest"), w1_snapshot.get("snapshot_digest"), "w1_w2_registry_snapshot_invalid", "W2 previous snapshot digest 未绑定当前 W1")
-        exact(snapshot.get("previous_registry_revision"), w1_snapshot.get("registry_revision"), "w1_w2_registry_snapshot_invalid", "W2 previous revision 未绑定当前 W1")
+        previous_stage = REGISTRY_WAVE_SEQUENCE[wave_index - 1]
+        previous_evidence = load_json(root / WAVE_EVIDENCE_ROOT / f"{previous_stage}.json")
+        previous_registry = previous_evidence.get("registry_binding_projection")
+        expect(isinstance(previous_registry, dict) and isinstance(previous_registry.get("snapshot"), dict), "w1_w2_registry_snapshot_invalid", f"{stage} 必须绑定当前 {previous_stage} binding snapshot")
+        previous_snapshot = previous_registry["snapshot"]
+        exact(snapshot.get("previous_snapshot_id"), previous_snapshot.get("snapshot_id"), "w1_w2_registry_snapshot_invalid", f"{stage} previous snapshot ID 未绑定当前 {previous_stage}")
+        exact(snapshot.get("previous_snapshot_digest"), previous_snapshot.get("snapshot_digest"), "w1_w2_registry_snapshot_invalid", f"{stage} previous snapshot digest 未绑定当前 {previous_stage}")
+        exact(snapshot.get("previous_registry_revision"), previous_snapshot.get("registry_revision"), "w1_w2_registry_snapshot_invalid", f"{stage} previous revision 未绑定当前 {previous_stage}")
     exact(snapshot.get("binding_manifest_id"), binding.get("binding_manifest_id"), "w1_w2_registry_snapshot_invalid", f"{stage} snapshot 未绑定 binding manifest ID")
     exact(snapshot.get("binding_manifest_digest"), binding_digest, "w1_w2_registry_snapshot_invalid", f"{stage} snapshot 未绑定 binding manifest digest")
     exact(snapshot.get("structural_binding_contract_sha256"), file_sha256(root / STRUCTURAL_BINDING_PATH), "w1_w2_registry_snapshot_invalid", f"{stage} snapshot 未绑定结构合同")
@@ -1542,7 +1607,7 @@ def _validate_current_wave_stage_receipt(
         "wave_prior_artifact_binding_mismatch",
         f"{stage} prior receipt 不得声称已部署",
     )
-    expected_prior_stages = ["S1I-P0", *WAVE_CONTRACT[stage]["depends_on"]]
+    expected_prior_stages = ["S1I-P0", *stage_prior_dependencies(stage)]
     expected_prior_digests: list[str] = []
     for prior_stage in expected_prior_stages:
         path = (
@@ -1560,7 +1625,7 @@ def _validate_current_wave_stage_receipt(
 
 
 def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dict[str, Any], list[str], list[str]]:
-    expect(stage in {"W0", "W1", "W2"}, "wave_stage_not_implemented", f"{stage} 尚未进入本实现任务，必须 fail-closed")
+    expect(stage in {"W0", "W1", "W2", "W3", "W4"}, "wave_stage_not_implemented", f"{stage} 尚未进入本实现任务，必须 fail-closed")
     contract = WAVE_CONTRACT[stage]
     evidence_path = root / WAVE_EVIDENCE_ROOT / f"{stage}.json"
     evidence = load_json(evidence_path)
@@ -1593,7 +1658,7 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
     else:
         wave_checks = validate_w1_w2_evidence(root, stage, evidence)
     prior_receipt_digests: list[str] = []
-    required_prior_stages = ["S1I-P0", *contract["depends_on"]]
+    required_prior_stages = ["S1I-P0", *stage_prior_dependencies(stage)]
     supplied_prior = evidence.get("prior_stage_receipt_digests")
     expect(isinstance(supplied_prior, dict), "wave_prior_receipts_missing", f"{stage} 缺少 prior stage receipts")
     for prior_stage in required_prior_stages:

@@ -34,8 +34,16 @@ _PROFILE_BY_OPERATOR: dict[str, str | None] = {
     "OP-13": "PROFILE-STATE-INTERVAL-1.0.0",
     "OP-14": None,
     **{f"OP-{number:02d}": None for number in range(15, 29)},
+    "OP-29": "PROFILE-TEMPORAL-COMPARABILITY-1.0.0",
+    "OP-30": "PROFILE-VP-CONSISTENCY-1.0.0",
+    "OP-31": "PROFILE-VP-CONSISTENCY-1.0.0",
+    "OP-32": "PROFILE-VP-CONSISTENCY-1.0.0",
+    "OP-33": None,
     "OP-35": "PROFILE-STATE-TARGET-1.0.0",
     "OP-36": "PROFILE-FIRST-CROSSING-1.0.0",
+    "OP-37": "PROFILE-EVIDENCE-CONSISTENCY-1.0.0",
+    "OP-38": None,
+    "OP-39": None,
 }
 
 _STATES = {"normal", "partial", "complete", "affected", "route_interrupted", "unknown"}
@@ -65,8 +73,16 @@ _RESULT_FIELDS: dict[str, frozenset[str]] = {
     "OP-26": frozenset(("direction", "members", "member_count", "left_digest", "right_digest", "set_digest", "evidence_refs")),
     "OP-27": frozenset(("direction", "intersection_count", "denominator_count", "ratio_exact", "outcome", "left_digest", "right_digest", "evidence_refs", "edge_projection")),
     "OP-28": frozenset(("intersection_count", "union_count", "ratio_exact", "outcome", "left_digest", "right_digest", "evidence_refs")),
+    "OP-29": frozenset(("relation", "delta_seconds", "comparable", "profile_digest", "left_digest", "right_digest", "evidence_refs", "edge_projection")),
+    "OP-30": frozenset(("class", "visible_set", "invisible_set", "unknown_set", "missing_set", "input_digest", "evidence_refs")),
+    "OP-31": frozenset(("class", "origin_groups", "unknown_set", "missing_set", "moas_present", "input_digest", "evidence_refs")),
+    "OP-32": frozenset(("class", "path_groups", "unknown_set", "missing_set", "input_digest", "evidence_refs")),
+    "OP-33": frozenset(("matched", "unmatched_left", "unmatched_right", "join_cardinality", "left_digest", "right_digest", "evidence_refs", "edge_projections")),
     "OP-35": frozenset(("outcome", "state_point_utc", "right_censored", "source_member_key", "input_digest", "evidence_refs")),
     "OP-36": frozenset(("outcome", "crossing_time_utc", "previous_time_utc", "previous_value", "crossing_value", "profile_digest", "input_digest", "evidence_refs")),
+    "OP-37": frozenset(("class", "basis_codes", "temporal_receipt_digest", "profile_digest", "left_digest", "right_digest", "evidence_refs", "edge_projection")),
+    "OP-38": frozenset(("outcome", "overlap_intervals", "overlap_count", "left_target_state", "right_target_state", "window", "grid_step_seconds", "left_digest", "right_digest", "set_digest", "evidence_refs")),
+    "OP-39": frozenset(("members", "member_count", "set_digest", "input_digest", "evidence_refs")),
 }
 
 
@@ -90,6 +106,7 @@ class OfflineStructuralFixtureContext:
         self,
         *,
         design_candidate_id: str,
+        op29_outputs: Mapping[str, Mapping[str, Any]] | None = None,
         op10_outputs: Mapping[str, Mapping[str, Any]] | None = None,
         op11_outputs: Mapping[str, Mapping[str, Any]] | None = None,
         op15_outputs: Mapping[str, Mapping[str, Any]] | None = None,
@@ -100,6 +117,7 @@ class OfflineStructuralFixtureContext:
     ) -> None:
         _require(design_candidate_id == DESIGN_CANDIDATE_ID, "design_candidate_mismatch")
         self.design_candidate_id = design_candidate_id
+        self._op29_outputs = dict(op29_outputs or {})
         self._op10_outputs = dict(op10_outputs or {})
         self._op11_outputs = dict(op11_outputs or {})
         self._op15_outputs = dict(op15_outputs or {})
@@ -107,6 +125,9 @@ class OfflineStructuralFixtureContext:
         self._tool12_result_sets = dict(tool12_result_sets or {})
         self._projection_receipts = dict(projection_receipts or {})
         self._population_binding_receipts = dict(population_binding_receipts or {})
+
+    def resolve_op29_output(self, content_digest: str) -> Mapping[str, Any] | None:
+        return self._op29_outputs.get(content_digest)
 
     def resolve_op10_output(self, content_digest: str) -> Mapping[str, Any] | None:
         return self._op10_outputs.get(content_digest)
@@ -161,6 +182,13 @@ def _require_keys(value: Mapping[str, Any], required: Iterable[str], label: str)
     _require(not missing, "missing_required_field", f"{label}: {','.join(missing)}")
 
 
+def _require_exact_keys(value: Mapping[str, Any], required: Iterable[str], label: str) -> None:
+    expected = set(required)
+    _require_keys(value, expected, label)
+    unexpected = sorted(set(value) - expected)
+    _require(not unexpected, "unexpected_field", f"{label}: {','.join(unexpected)}")
+
+
 def _as_datetime(value: Any, label: str) -> datetime:
     _require(isinstance(value, str), "invalid_datetime", label)
     try:
@@ -181,6 +209,30 @@ def _validate_asn(value: Any, label: str = "asn") -> int:
     _require(isinstance(value, int) and not isinstance(value, bool), "invalid_asn", label)
     _require(0 <= value <= 4_294_967_295, "invalid_asn", label)
     return value
+
+
+def _validate_canonical_prefix(value: Any, afi: Any, label: str = "prefix") -> str:
+    _require(afi in {4, 6}, "invalid_afi", label)
+    _require(isinstance(value, str), "invalid_prefix", label)
+    try:
+        network = ip_network(value, strict=True)
+    except ValueError as error:
+        raise OperatorContractError("invalid_prefix", label) from error
+    _require(network.version == afi and str(network) == value, "noncanonical_or_afi_mismatched_prefix", label)
+    return value
+
+
+def _validate_grid_time(value: Any, identity: Mapping[str, Any], *, label: str, grid_step_seconds: int = 300) -> datetime:
+    moment = _as_datetime(value, label)
+    start = _as_datetime(identity["window_start_utc"], "window_start_utc")
+    end = min(
+        _as_datetime(identity["window_end_utc"], "window_end_utc"),
+        _as_datetime(identity["data_through_utc"], "data_through_utc"),
+    )
+    _require(start <= moment < end, "state_point_outside_observation_window", label)
+    offset = (moment - start).total_seconds()
+    _require(offset.is_integer() and int(offset) % grid_step_seconds == 0, "state_point_off_grid", label)
+    return moment
 
 
 def _validate_evidence_ref(value: Any) -> dict[str, Any]:
@@ -1495,6 +1547,603 @@ def op36_detect_first_threshold_crossing(envelope: Mapping[str, Any], *, inherit
     return _result_envelope(env, result, evidence, result_state=state, completeness="not_computable" if outcome == "indeterminate_gap" else "complete")
 
 
+def _validate_timed_fact(value: Any, identity: Mapping[str, Any], label: str) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "invalid_typed_timed_fact", label)
+    fields = ("fact_type_id", "temporal_kind", "time_utc", "population_id", "unit_id", "fact_digest", "evidence_refs")
+    _require_exact_keys(value, fields, label)
+    for field in ("fact_type_id", "population_id", "unit_id"):
+        _require(isinstance(value[field], str) and value[field], "invalid_typed_timed_fact", f"{label}.{field}")
+    _require(value["temporal_kind"] == "exact_point", "unsupported_temporal_kind", label)
+    if value["time_utc"] is not None:
+        _validate_grid_time(value["time_utc"], identity, label=f"{label}.time_utc")
+    _require(_is_digest(value["fact_digest"]), "invalid_fact_digest", label)
+    _require(isinstance(value["evidence_refs"], list), "invalid_fact_evidence", label)
+    _merge_evidence(value["evidence_refs"])
+    return dict(value)
+
+
+def op29_classify_temporal_evidence_relation(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-29")
+    _require_exact_keys(inputs, ("identity", "left_fact", "right_fact", "comparability_profile", "left_digest", "right_digest"), "op29.inputs")
+    left = _validate_timed_fact(inputs["left_fact"], env["identity"], "left_fact")
+    right = _validate_timed_fact(inputs["right_fact"], env["identity"], "right_fact")
+    _require(inputs["left_digest"] == left["fact_digest"], "left_digest_mismatch")
+    _require(inputs["right_digest"] == right["fact_digest"], "right_digest_mismatch")
+    profile = inputs["comparability_profile"]
+    _require(isinstance(profile, Mapping), "invalid_temporal_comparability_profile")
+    fields = ("profile_id", "profile_digest", "fact_type_pair", "population_compatible", "unit_compatible", "time_basis", "granularity_seconds", "tolerance_seconds")
+    _require_exact_keys(profile, fields, "comparability_profile")
+    _require(profile["profile_id"] == "PROFILE-TEMPORAL-COMPARABILITY-1.0.0", "parameter_profile_mismatch")
+    _require(profile["profile_digest"] == env["parameter_profile_digest"], "profile_digest_mismatch")
+    _require(profile["fact_type_pair"] == [left["fact_type_id"], right["fact_type_id"]], "fact_type_pair_mismatch")
+    _require(isinstance(profile["population_compatible"], bool) and isinstance(profile["unit_compatible"], bool), "invalid_comparability_flag")
+    _require(profile["time_basis"] == "publication_state_point_grid", "unsupported_time_basis")
+    _require(profile["granularity_seconds"] == 300 and profile["tolerance_seconds"] == 300, "temporal_profile_parameter_mismatch")
+    evidence = _merge_evidence(left["evidence_refs"], right["evidence_refs"], inherited_evidence_refs)
+    _require_evidence(evidence, "fact_evidence_ref_required")
+
+    left_time, right_time = left["time_utc"], right["time_utc"]
+    if left_time is None and right_time is None:
+        relation, delta, comparable = "missing_both", None, False
+    elif left_time is None:
+        relation, delta, comparable = "missing_left", None, False
+    elif right_time is None:
+        relation, delta, comparable = "missing_right", None, False
+    elif not (profile["population_compatible"] and profile["unit_compatible"]):
+        relation, delta, comparable = "not_comparable", None, False
+    else:
+        delta = int((_as_datetime(right_time, "right_fact.time_utc") - _as_datetime(left_time, "left_fact.time_utc")).total_seconds())
+        comparable = True
+        if delta == 0:
+            relation = "same_slot"
+        elif delta > 0:
+            relation = "left_precedes_within" if delta <= profile["tolerance_seconds"] else "left_precedes_outside"
+        else:
+            relation = "right_precedes_within" if -delta <= profile["tolerance_seconds"] else "right_precedes_outside"
+    edge_projection = None
+    if comparable:
+        relation_type = "same_window" if relation == "same_slot" else "precedes" if relation.startswith("left_") else "follows"
+        projection = {
+            "relation": relation, "delta_seconds": delta, "comparable": True,
+            "profile_digest": profile["profile_digest"], "left_digest": inputs["left_digest"], "right_digest": inputs["right_digest"],
+        }
+        edge_projection = _edge(relation_type, _edge_endpoint(inputs["left_digest"], None), _edge_endpoint(inputs["right_digest"], None), projection)
+    result = {
+        "relation": relation, "delta_seconds": delta, "comparable": comparable,
+        "profile_digest": profile["profile_digest"], "left_digest": inputs["left_digest"], "right_digest": inputs["right_digest"],
+        "evidence_refs": evidence, "edge_projection": edge_projection,
+    }
+    state = "missing" if relation.startswith("missing_") else "not_comparable" if relation == "not_comparable" else "computed"
+    return _result_envelope(env, result, evidence, result_state=state, completeness="not_computable" if relation == "not_comparable" else "complete")
+
+
+def _validate_vp_common(inputs: Mapping[str, Any], env: Mapping[str, Any], actual_name: str) -> tuple[list[str], list[Any]]:
+    _validate_canonical_prefix(inputs.get("prefix"), inputs.get("afi"))
+    _validate_grid_time(inputs.get("state_point_utc"), env["identity"], label="state_point_utc")
+    _require(_is_digest(inputs.get("direction_profile_digest")) if actual_name != "actual_path_rows" else _is_digest(inputs.get("canonicalization_profile_digest")), "invalid_direction_profile_digest")
+    expected = inputs.get("expected_direction_set")
+    actual = inputs.get(actual_name)
+    _require(isinstance(expected, list) and all(isinstance(item, str) and item for item in expected), "invalid_expected_direction_set")
+    _require(len(set(expected)) == len(expected), "duplicate_expected_direction")
+    _require(isinstance(actual, list), f"invalid_{actual_name}")
+    return sorted(expected), actual
+
+
+def _vp_population_evidence(actual_evidence: Iterable[Any], inherited_evidence_refs: Iterable[Any]) -> list[dict[str, Any]]:
+    inherited = _merge_evidence(inherited_evidence_refs)
+    _require_evidence(inherited, "expected_direction_population_evidence_required")
+    return _merge_evidence(actual_evidence, inherited)
+
+
+def _vp_result_state(classification: str) -> str:
+    if classification == "empty_expected":
+        return "empty"
+    if classification == "missing_present":
+        return "missing"
+    if classification == "unknown_present":
+        return "unknown"
+    return "computed"
+
+
+def op30_classify_vp_visibility_consistency(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-30")
+    _require_exact_keys(inputs, ("identity", "prefix", "afi", "state_point_utc", "expected_direction_set", "actual_visibility_rows", "direction_profile_digest"), "op30.inputs")
+    expected, rows = _validate_vp_common(inputs, env, "actual_visibility_rows")
+    expected_set = set(expected)
+    observed: dict[str, str] = {}
+    row_evidence: list[dict[str, Any]] = []
+    for row in rows:
+        _require(isinstance(row, Mapping), "invalid_direction_visibility")
+        _require_exact_keys(row, ("direction_id", "visibility", "evidence_ref"), "direction_visibility")
+        direction = row["direction_id"]
+        _require(isinstance(direction, str) and direction, "invalid_direction_id")
+        _require(direction in expected_set, "unexpected_actual_direction", direction)
+        _require(direction not in observed, "duplicate_actual_direction", direction)
+        _require(row["visibility"] in {"visible", "invisible", "unknown", "missing"}, "invalid_visibility")
+        observed[direction] = row["visibility"]
+        row_evidence.append(_validate_evidence_ref(row["evidence_ref"]))
+    partitions = {state: sorted(direction for direction in expected if observed.get(direction, "missing") == state) for state in ("visible", "invisible", "unknown", "missing")}
+    if not expected:
+        classification = "empty_expected"
+    elif partitions["missing"]:
+        classification = "missing_present"
+    elif partitions["unknown"]:
+        classification = "unknown_present"
+    elif partitions["visible"] and partitions["invisible"]:
+        classification = "mixed"
+    elif partitions["visible"]:
+        classification = "all_visible"
+    else:
+        classification = "all_invisible"
+    evidence = _vp_population_evidence(row_evidence, inherited_evidence_refs)
+    result = {
+        "class": classification, "visible_set": partitions["visible"], "invisible_set": partitions["invisible"],
+        "unknown_set": partitions["unknown"], "missing_set": partitions["missing"],
+        "input_digest": _digest(inputs), "evidence_refs": evidence,
+    }
+    return _result_envelope(env, result, evidence, result_state=_vp_result_state(classification))
+
+
+def op31_classify_vp_origin_consistency(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-31")
+    _require_exact_keys(inputs, ("identity", "prefix", "afi", "state_point_utc", "expected_direction_set", "actual_origin_rows", "direction_profile_digest"), "op31.inputs")
+    expected, rows = _validate_vp_common(inputs, env, "actual_origin_rows")
+    expected_set = set(expected)
+    observed: dict[str, tuple[str, tuple[int, ...]]] = {}
+    row_evidence: list[dict[str, Any]] = []
+    for row in rows:
+        _require(isinstance(row, Mapping), "invalid_direction_origin_set")
+        _require_exact_keys(row, ("direction_id", "origin_state", "origin_asns", "evidence_ref"), "direction_origin_set")
+        direction = row["direction_id"]
+        _require(isinstance(direction, str) and direction and direction in expected_set, "unexpected_actual_direction", str(direction))
+        _require(direction not in observed, "duplicate_actual_direction", direction)
+        state, origins = row["origin_state"], row["origin_asns"]
+        _require(state in {"known", "unknown", "not_applicable"}, "invalid_origin_state")
+        _require(isinstance(origins, list), "invalid_origin_set")
+        validated_origins = [_validate_asn(item, "origin_asn") for item in origins]
+        _require(len(set(validated_origins)) == len(validated_origins), "duplicate_origin_asn")
+        _require(bool(validated_origins) if state == "known" else not validated_origins, "origin_state_value_mismatch")
+        observed[direction] = (state, tuple(sorted(validated_origins)))
+        row_evidence.append(_validate_evidence_ref(row["evidence_ref"]))
+    missing = sorted(direction for direction in expected if direction not in observed or observed[direction][0] == "not_applicable")
+    unknown = sorted(direction for direction in expected if direction in observed and observed[direction][0] == "unknown")
+    grouped: dict[tuple[int, ...], list[str]] = {}
+    for direction in expected:
+        if direction in observed and observed[direction][0] == "known":
+            grouped.setdefault(observed[direction][1], []).append(direction)
+    origin_groups = [
+        {"origin_asns": list(origins), "direction_ids": sorted(directions)}
+        for origins, directions in sorted(grouped.items(), key=lambda item: _digest(list(item[0])))
+    ]
+    if not expected:
+        classification = "empty_expected"
+    elif missing:
+        classification = "missing_present"
+    elif unknown:
+        classification = "unknown_present"
+    elif len(origin_groups) > 1:
+        classification = "divergent"
+    else:
+        classification = "consistent"
+    evidence = _vp_population_evidence(row_evidence, inherited_evidence_refs)
+    result = {
+        "class": classification, "origin_groups": origin_groups, "unknown_set": unknown, "missing_set": missing,
+        "moas_present": any(len(origins) > 1 for origins in grouped), "input_digest": _digest(inputs), "evidence_refs": evidence,
+    }
+    return _result_envelope(env, result, evidence, result_state=_vp_result_state(classification))
+
+
+def op32_classify_vp_path_consistency(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-32")
+    _require_exact_keys(inputs, ("identity", "prefix", "afi", "state_point_utc", "expected_direction_set", "actual_path_rows", "canonicalization_profile_digest"), "op32.inputs")
+    expected, rows = _validate_vp_common(inputs, env, "actual_path_rows")
+    _require(inputs["canonicalization_profile_digest"] == PATH_PROFILE_DIGEST, "path_canonicalization_profile_mismatch")
+    expected_set = set(expected)
+    observed: dict[str, tuple[str, str | None]] = {}
+    row_evidence: list[dict[str, Any]] = []
+    for row in rows:
+        _require(isinstance(row, Mapping), "invalid_direction_path_digest")
+        _require_exact_keys(row, ("direction_id", "path_state", "path_digest", "evidence_ref"), "direction_path_digest")
+        direction = row["direction_id"]
+        _require(isinstance(direction, str) and direction and direction in expected_set, "unexpected_actual_direction", str(direction))
+        _require(direction not in observed, "duplicate_actual_direction", direction)
+        state, path_digest = row["path_state"], row["path_digest"]
+        _require(state in {"known_ordered", "known_unordered", "unknown", "not_applicable"}, "invalid_path_state")
+        if state.startswith("known_"):
+            _require(_is_digest(path_digest), "known_path_digest_required")
+        else:
+            _require(path_digest is None, "nonknown_path_digest_must_be_null")
+        observed[direction] = (state, path_digest)
+        row_evidence.append(_validate_evidence_ref(row["evidence_ref"]))
+    missing = sorted(direction for direction in expected if direction not in observed or observed[direction][0] == "not_applicable")
+    unknown = sorted(direction for direction in expected if direction in observed and observed[direction][0] == "unknown")
+    grouped: dict[str, list[str]] = {}
+    for direction in expected:
+        if direction in observed and observed[direction][0].startswith("known_"):
+            grouped.setdefault(str(observed[direction][1]), []).append(direction)
+    path_groups = [{"path_digest": path_digest, "direction_ids": sorted(grouped[path_digest])} for path_digest in sorted(grouped)]
+    if not expected:
+        classification = "empty_expected"
+    elif missing:
+        classification = "missing_present"
+    elif unknown:
+        classification = "unknown_present"
+    elif len(path_groups) > 1:
+        classification = "divergent"
+    else:
+        classification = "consistent"
+    evidence = _vp_population_evidence(row_evidence, inherited_evidence_refs)
+    result = {
+        "class": classification, "path_groups": path_groups, "unknown_set": unknown, "missing_set": missing,
+        "input_digest": _digest(inputs), "evidence_refs": evidence,
+    }
+    return _result_envelope(env, result, evidence, result_state=_vp_result_state(classification))
+
+
+def _new_prefix_join_key(row: Mapping[str, Any]) -> tuple[int, str, str]:
+    return row["afi"], row["prefix"], row["state_point_utc"]
+
+
+def _join_key_text(key: tuple[int, str, str]) -> str:
+    return json.dumps(list(key), ensure_ascii=False, separators=(",", ":"))
+
+
+def _validate_new_prefix_state(row: Any, identity: Mapping[str, Any]) -> dict[str, Any]:
+    _require(isinstance(row, Mapping), "invalid_new_prefix_state")
+    fields = ("prefix", "afi", "first_observed_at_utc", "state_point_utc", "classification", "evidence_ref")
+    _require_exact_keys(row, fields, "new_prefix_state")
+    _validate_canonical_prefix(row["prefix"], row["afi"])
+    first = _as_datetime(row["first_observed_at_utc"], "first_observed_at_utc")
+    state_point = _validate_grid_time(row["state_point_utc"], identity, label="new_prefix_state.state_point_utc")
+    _require(first <= state_point, "first_observed_after_state_point")
+    _require(row["classification"] in _STATES, "invalid_typed_state")
+    _validate_evidence_ref(row["evidence_ref"])
+    return dict(row)
+
+
+def _validate_route_state_at_time(row: Any, identity: Mapping[str, Any]) -> dict[str, Any]:
+    _require(isinstance(row, Mapping), "invalid_route_state_at_time")
+    fields = (
+        "prefix", "afi", "state_point_utc", "route_observation_key", "visibility", "origin_asns",
+        "common_path_status", "path_digest", "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest", "evidence_ref",
+    )
+    _require_exact_keys(row, fields, "route_state_at_time")
+    _validate_canonical_prefix(row["prefix"], row["afi"])
+    _validate_grid_time(row["state_point_utc"], identity, label="route_state.state_point_utc")
+    _require(isinstance(row["route_observation_key"], str) and row["route_observation_key"], "invalid_route_observation_key")
+    _require(row["visibility"] in {"visible", "invisible", "unknown"}, "invalid_visibility")
+    _require(isinstance(row["origin_asns"], list), "invalid_origin_set")
+    origins = [_validate_asn(asn, "origin_asn") for asn in row["origin_asns"]]
+    _require(len(set(origins)) == len(origins), "duplicate_origin_asn")
+    status = row["common_path_status"]
+    _require(status in {"ordered", "unordered", "ambiguous", "invalid", "unknown", "not_applicable"}, "invalid_common_path_status")
+    if status in {"ordered", "unordered", "ambiguous", "invalid"}:
+        _require(_is_digest(row["path_digest"]), "known_path_digest_required")
+    else:
+        _require(row["path_digest"] is None, "nonknown_path_digest_must_be_null")
+    _require(row["path_canonicalization_profile_id"] == PATH_PROFILE_ID, "path_canonicalization_profile_mismatch")
+    _require(row["path_canonicalization_profile_digest"] == PATH_PROFILE_DIGEST, "path_canonicalization_profile_mismatch")
+    _validate_evidence_ref(row["evidence_ref"])
+    return dict(row)
+
+
+def op33_join_new_prefix_route_state(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-33")
+    _require_exact_keys(inputs, ("identity", "new_prefix_state_rows", "route_state_rows", "left_digest", "right_digest"), "op33.inputs")
+    _require(isinstance(inputs["new_prefix_state_rows"], list), "new_prefix_state_rows_required")
+    _require(isinstance(inputs["route_state_rows"], list), "route_state_rows_required")
+    left_rows = [_validate_new_prefix_state(row, env["identity"]) for row in inputs["new_prefix_state_rows"]]
+    right_rows = [_validate_route_state_at_time(row, env["identity"]) for row in inputs["route_state_rows"]]
+    _require(inputs["left_digest"] == _digest(inputs["new_prefix_state_rows"]), "left_digest_mismatch")
+    _require(inputs["right_digest"] == _digest(inputs["route_state_rows"]), "right_digest_mismatch")
+    left_by_key: dict[tuple[int, str, str], dict[str, Any]] = {}
+    for row in left_rows:
+        key = _new_prefix_join_key(row)
+        _require(key not in left_by_key, "duplicate_new_prefix_join_key")
+        left_by_key[key] = row
+    right_by_identity: set[tuple[int, str, str, str]] = set()
+    right_by_key: dict[tuple[int, str, str], list[dict[str, Any]]] = {}
+    for row in right_rows:
+        key = _new_prefix_join_key(row)
+        identity_key = (*key, row["route_observation_key"])
+        _require(identity_key not in right_by_identity, "duplicate_route_state_join_member")
+        right_by_identity.add(identity_key)
+        right_by_key.setdefault(key, []).append(row)
+    for rows in right_by_key.values():
+        rows.sort(key=lambda row: row["route_observation_key"])
+
+    matched: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    matched_right_ids: set[tuple[int, str, str, str]] = set()
+    matched_left_keys: set[tuple[int, str, str]] = set()
+    one_to_one = one_to_many = 0
+    for key in sorted(left_by_key, key=lambda item: (item[0], int(ip_network(item[1]).network_address), ip_network(item[1]).prefixlen, item[2])):
+        left = left_by_key[key]
+        right_matches = right_by_key.get(key, [])
+        if not right_matches:
+            continue
+        matched_left_keys.add(key)
+        if len(right_matches) == 1:
+            one_to_one += 1
+        else:
+            one_to_many += 1
+        left_member_digest = _digest(left)
+        join_key = _join_key_text(key)
+        for right in right_matches:
+            right_member_digest = _digest(right)
+            matched_right_ids.add((*key, right["route_observation_key"]))
+            binding = {"join_key": join_key, "new_prefix_state_digest": left_member_digest, "route_state_digest": right_member_digest}
+            matched.append(binding)
+            projection = {
+                **binding, "left_population_digest": inputs["left_digest"], "right_population_digest": inputs["right_digest"],
+            }
+            edges.append(_edge("at_time", _edge_endpoint(left_member_digest, None), _edge_endpoint(right_member_digest, None), projection))
+    unmatched_left = [left_by_key[key] for key in left_by_key if key not in matched_left_keys]
+    unmatched_left.sort(key=lambda row: (row["afi"], int(ip_network(row["prefix"]).network_address), ip_network(row["prefix"]).prefixlen, row["state_point_utc"]))
+    unmatched_right = [row for row in right_rows if (*_new_prefix_join_key(row), row["route_observation_key"]) not in matched_right_ids]
+    unmatched_right.sort(key=lambda row: (row["afi"], int(ip_network(row["prefix"]).network_address), ip_network(row["prefix"]).prefixlen, row["state_point_utc"], row["route_observation_key"]))
+    evidence = _merge_evidence((row["evidence_ref"] for row in left_rows), (row["evidence_ref"] for row in right_rows), inherited_evidence_refs)
+    _require_evidence(evidence)
+    result = {
+        "matched": matched, "unmatched_left": unmatched_left, "unmatched_right": unmatched_right,
+        "join_cardinality": {
+            "matched_binding_count": len(matched), "matched_left_count": len(matched_left_keys),
+            "one_to_one_left_count": one_to_one, "one_to_many_left_count": one_to_many,
+            "unmatched_left_count": len(unmatched_left), "unmatched_right_count": len(unmatched_right),
+        },
+        "left_digest": inputs["left_digest"], "right_digest": inputs["right_digest"],
+        "evidence_refs": evidence, "edge_projections": edges,
+    }
+    return _result_envelope(env, result, evidence, result_state="computed" if matched else "empty")
+
+
+def _validate_fact(value: Any, label: str) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "invalid_typed_fact", label)
+    fields = ("fact_type_id", "population_id", "unit_id", "predicate_id", "truth_state", "fact_digest", "evidence_refs")
+    _require_exact_keys(value, fields, label)
+    for field in ("fact_type_id", "population_id", "unit_id", "predicate_id"):
+        _require(isinstance(value[field], str) and value[field], "invalid_typed_fact", f"{label}.{field}")
+    _require(value["truth_state"] in {"true", "false", "unknown", "missing"}, "invalid_truth_state", label)
+    _require(_is_digest(value["fact_digest"]), "invalid_fact_digest", label)
+    _require(isinstance(value["evidence_refs"], list), "invalid_fact_evidence", label)
+    _merge_evidence(value["evidence_refs"])
+    return dict(value)
+
+
+def _validated_op29_projection(receipt: Any, identity: Mapping[str, Any], offline_structural_context: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    _require(isinstance(receipt, Mapping), "invalid_op29_receipt")
+    fields = ("identity", "operator_id", "left_digest", "right_digest", "relation", "comparable", "profile_digest", "output_digest", "evidence_refs")
+    _require_exact_keys(receipt, fields, "op29_receipt")
+    _require(receipt["identity"] == identity, "cross_identity_op29_receipt")
+    _require(receipt["operator_id"] == "OP-29", "op29_receipt_operator_mismatch")
+    for field in ("left_digest", "right_digest", "profile_digest", "output_digest"):
+        _require(_is_digest(receipt[field]), "invalid_op29_receipt_digest", field)
+    relations = {"same_slot", "left_precedes_within", "right_precedes_within", "left_precedes_outside", "right_precedes_outside", "missing_left", "missing_right", "missing_both", "not_comparable"}
+    _require(receipt["relation"] in relations and isinstance(receipt["comparable"], bool), "invalid_op29_receipt_relation")
+    expected_comparable = receipt["relation"] not in {"missing_left", "missing_right", "missing_both", "not_comparable"}
+    _require(receipt["comparable"] == expected_comparable, "op29_receipt_comparability_mismatch")
+    receipt_evidence = _merge_evidence(receipt["evidence_refs"])
+    context = _validate_offline_structural_context(offline_structural_context)
+    full = context.resolve_op29_output(receipt["output_digest"])
+    _require(isinstance(full, Mapping), "untrusted_op29_output")
+    _require(_output_digest_is_valid(full) and full.get("output_digest") == receipt["output_digest"], "op29_output_digest_mismatch")
+    _require(full.get("identity") == identity and full.get("operator_id") == "OP-29", "op29_output_identity_mismatch")
+    full_result = full.get("result")
+    _require(isinstance(full_result, Mapping), "invalid_op29_output")
+    projection = {field: full_result.get(field) for field in ("left_digest", "right_digest", "relation", "comparable", "profile_digest")}
+    expected = {field: receipt[field] for field in projection}
+    _require(projection == expected, "op29_receipt_projection_mismatch")
+    _require(receipt_evidence == _merge_evidence(full.get("evidence_refs", ())), "op29_receipt_evidence_mismatch")
+    return dict(receipt), dict(full)
+
+
+def op37_classify_evidence_consistency(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = (), offline_structural_context: Any = None) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-37")
+    _require_exact_keys(inputs, ("identity", "left_fact", "right_fact", "op29_temporal_receipt", "consistency_profile", "left_digest", "right_digest"), "op37.inputs")
+    left = _validate_fact(inputs["left_fact"], "left_fact")
+    right = _validate_fact(inputs["right_fact"], "right_fact")
+    _require(inputs["left_digest"] == left["fact_digest"], "left_digest_mismatch")
+    _require(inputs["right_digest"] == right["fact_digest"], "right_digest_mismatch")
+    receipt, _ = _validated_op29_projection(inputs["op29_temporal_receipt"], env["identity"], offline_structural_context)
+    _require(receipt["left_digest"] == inputs["left_digest"] and receipt["right_digest"] == inputs["right_digest"], "op29_receipt_fact_binding_mismatch")
+    profile = inputs["consistency_profile"]
+    _require(isinstance(profile, Mapping), "invalid_evidence_consistency_profile")
+    fields = ("profile_id", "profile_digest", "assertion_relation", "mutually_exclusive_predicate_ids")
+    _require_exact_keys(profile, fields, "consistency_profile")
+    _require(profile["profile_id"] == "PROFILE-EVIDENCE-CONSISTENCY-1.0.0", "parameter_profile_mismatch")
+    _require(profile["profile_digest"] == env["parameter_profile_digest"], "profile_digest_mismatch")
+    assertion_relation = profile["assertion_relation"]
+    _require(assertion_relation in {"compatible", "mutually_exclusive", "unknown"}, "invalid_assertion_relation")
+    predicates = profile["mutually_exclusive_predicate_ids"]
+    _require(isinstance(predicates, list) and all(isinstance(item, str) and item for item in predicates), "invalid_mutually_exclusive_predicates")
+    _require(len(set(predicates)) == len(predicates), "duplicate_mutually_exclusive_predicate")
+    temporal_relation = receipt["relation"]
+    basis_codes = [f"temporal:{temporal_relation}", f"assertion:{assertion_relation}"]
+    if temporal_relation.startswith("missing_") or "missing" in {left["truth_state"], right["truth_state"]}:
+        classification = "missing"
+    elif temporal_relation == "not_comparable" or "unknown" in {left["truth_state"], right["truth_state"]} or assertion_relation == "unknown":
+        classification = "not_comparable"
+    elif assertion_relation == "compatible":
+        classification = "consistent" if temporal_relation == "same_slot" else "partially_consistent"
+    else:
+        verified_exclusive = (
+            left["fact_type_id"] == right["fact_type_id"] and left["population_id"] == right["population_id"]
+            and left["unit_id"] == right["unit_id"] and left["predicate_id"] != right["predicate_id"]
+            and left["predicate_id"] in predicates and right["predicate_id"] in predicates
+            and left["truth_state"] == right["truth_state"] == "true"
+        )
+        if not verified_exclusive:
+            classification = "not_comparable"
+            basis_codes.append("exclusive_assertions:not_verified")
+        elif temporal_relation == "same_slot":
+            classification = "conflict"
+            basis_codes.append("exclusive_assertions:verified_true_same_domain")
+        elif temporal_relation in {"left_precedes_within", "right_precedes_within"}:
+            classification = "partially_consistent"
+            basis_codes.append("exclusive_assertions:verified_true_different_slot_within")
+        else:
+            classification = "not_comparable"
+            basis_codes.append("exclusive_assertions:verified_true_outside")
+    basis_codes = sorted(basis_codes)
+    evidence = _merge_evidence(left["evidence_refs"], right["evidence_refs"], receipt["evidence_refs"], inherited_evidence_refs)
+    _require_evidence(evidence, "fact_evidence_ref_required")
+    edge_projection = None
+    if classification == "conflict":
+        projection = {
+            "class": "conflict", "basis_codes": basis_codes, "temporal_receipt_digest": receipt["output_digest"],
+            "profile_digest": profile["profile_digest"], "left_digest": inputs["left_digest"], "right_digest": inputs["right_digest"],
+        }
+        edge_projection = _edge("conflicts_with", _edge_endpoint(inputs["left_digest"], None), _edge_endpoint(inputs["right_digest"], None), projection)
+    result = {
+        "class": classification, "basis_codes": basis_codes, "temporal_receipt_digest": receipt["output_digest"],
+        "profile_digest": profile["profile_digest"], "left_digest": inputs["left_digest"], "right_digest": inputs["right_digest"],
+        "evidence_refs": evidence, "edge_projection": edge_projection,
+    }
+    state = "missing" if classification == "missing" else "not_comparable" if classification == "not_comparable" else "computed"
+    return _result_envelope(env, result, evidence, result_state=state, completeness="not_computable" if classification == "not_comparable" else "complete")
+
+
+def _validate_interval_set(
+    value: Any,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    grid_step_seconds: int,
+    label: str,
+) -> list[dict[str, Any]]:
+    _require(isinstance(value, list), "invalid_interval_set", label)
+    validated: list[dict[str, Any]] = []
+    previous_start: datetime | None = None
+    previous_end: datetime | None = None
+    for interval in value:
+        _require(isinstance(interval, Mapping), "invalid_state_interval", label)
+        fields = ("start_utc", "end_utc", "duration_seconds", "left_censored", "right_censored", "member_digests")
+        _require_exact_keys(interval, fields, label)
+        start = _as_datetime(interval["start_utc"], f"{label}.start_utc")
+        end = _as_datetime(interval["end_utc"], f"{label}.end_utc")
+        _require(window_start <= start < end <= window_end, "interval_outside_window", label)
+        _require(previous_start is None or previous_start < start, "interval_set_not_strictly_ordered", label)
+        _require(previous_end is None or previous_end <= start, "overlapping_input_intervals", label)
+        for endpoint, endpoint_label in ((start, "start"), (end, "end")):
+            offset = (endpoint - window_start).total_seconds()
+            _require(offset.is_integer() and int(offset) % grid_step_seconds == 0, "interval_endpoint_off_grid", f"{label}.{endpoint_label}")
+        duration = int((end - start).total_seconds())
+        _require(interval["duration_seconds"] == duration, "interval_duration_mismatch", label)
+        _require(isinstance(interval["left_censored"], bool) and isinstance(interval["right_censored"], bool), "invalid_interval_censor_flag", label)
+        digests = interval["member_digests"]
+        _require(isinstance(digests, list) and digests and all(_is_digest(item) for item in digests), "invalid_interval_member_digests", label)
+        _require(len(set(digests)) == len(digests), "duplicate_interval_member_digest", label)
+        validated.append(dict(interval))
+        previous_start, previous_end = start, end
+    return validated
+
+
+def op38_intersect_state_interval_sets(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-38")
+    fields = (
+        "identity", "left_intervals", "right_intervals", "left_target_state", "right_target_state",
+        "window", "grid_step_seconds", "left_interval_set_digest", "right_interval_set_digest",
+    )
+    _require_exact_keys(inputs, fields, "op38.inputs")
+    _require(inputs["left_target_state"] in _STATES - {"unknown"} and inputs["right_target_state"] in _STATES - {"unknown"}, "unknown_interval_state_forbidden")
+    window = inputs["window"]
+    _require(isinstance(window, Mapping), "invalid_window")
+    _require_exact_keys(window, ("start_utc", "end_utc"), "window")
+    window_start = _as_datetime(window["start_utc"], "window.start_utc")
+    window_end = _as_datetime(window["end_utc"], "window.end_utc")
+    _require(window_start < window_end, "invalid_window")
+    step = inputs["grid_step_seconds"]
+    _require(isinstance(step, int) and not isinstance(step, bool) and step > 0, "invalid_grid_step")
+    left = _validate_interval_set(inputs["left_intervals"], window_start=window_start, window_end=window_end, grid_step_seconds=step, label="left_intervals")
+    right = _validate_interval_set(inputs["right_intervals"], window_start=window_start, window_end=window_end, grid_step_seconds=step, label="right_intervals")
+    _require(inputs["left_interval_set_digest"] == _digest(inputs["left_intervals"]), "left_interval_set_digest_mismatch")
+    _require(inputs["right_interval_set_digest"] == _digest(inputs["right_intervals"]), "right_interval_set_digest_mismatch")
+    evidence = _merge_evidence(inherited_evidence_refs)
+    _require_evidence(evidence, "interval_population_evidence_required")
+
+    overlaps: list[dict[str, Any]] = []
+    left_index = right_index = 0
+    while left_index < len(left) and right_index < len(right):
+        left_row, right_row = left[left_index], right[right_index]
+        left_start, left_end = _as_datetime(left_row["start_utc"], "left.start_utc"), _as_datetime(left_row["end_utc"], "left.end_utc")
+        right_start, right_end = _as_datetime(right_row["start_utc"], "right.start_utc"), _as_datetime(right_row["end_utc"], "right.end_utc")
+        start, end = max(left_start, right_start), min(left_end, right_end)
+        if start < end:
+            overlaps.append({
+                "start_utc": start.isoformat().replace("+00:00", "Z"),
+                "end_utc": end.isoformat().replace("+00:00", "Z"),
+                "duration_seconds": int((end - start).total_seconds()),
+                "left_interval_digest": _digest(left_row), "right_interval_digest": _digest(right_row),
+            })
+        if left_end <= right_end:
+            left_index += 1
+        if right_end <= left_end:
+            right_index += 1
+    if not left and not right:
+        outcome = "empty_both"
+    elif not left:
+        outcome = "empty_left"
+    elif not right:
+        outcome = "empty_right"
+    elif overlaps:
+        outcome = "overlap"
+    else:
+        outcome = "disjoint"
+    result = {
+        "outcome": outcome, "overlap_intervals": overlaps, "overlap_count": len(overlaps),
+        "left_target_state": inputs["left_target_state"], "right_target_state": inputs["right_target_state"],
+        "window": dict(window), "grid_step_seconds": step,
+        "left_digest": inputs["left_interval_set_digest"], "right_digest": inputs["right_interval_set_digest"],
+        "set_digest": _digest(overlaps), "evidence_refs": evidence,
+    }
+    return _result_envelope(env, result, evidence, result_state="computed" if overlaps else "empty")
+
+
+def op39_project_fixed_cohort_prefix_set(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+    env, inputs = _validate_envelope(envelope, "OP-39")
+    _require_exact_keys(inputs, ("identity", "fixed_cohort_members", "set_completeness", "input_digest"), "op39.inputs")
+    _require(inputs["set_completeness"] == "complete", "incomplete_input_population")
+    rows = inputs["fixed_cohort_members"]
+    _require(isinstance(rows, list), "invalid_fixed_cohort_members")
+    _require(inputs["input_digest"] == _digest(rows), "input_digest_mismatch")
+    seen_member_ids: set[str] = set()
+    projected: dict[tuple[int, int, int], dict[str, Any]] = {}
+    row_evidence: list[dict[str, Any]] = []
+    for row in rows:
+        _require(isinstance(row, Mapping), "invalid_fixed_cohort_member")
+        fields = (
+            "cohort_member_id", "prefix", "afi", "country_origin_asns", "expected_peer_asn_direction_ids",
+            "expected_route_observation_keys", "membership_basis", "evidence_ref",
+        )
+        _require_exact_keys(row, fields, "fixed_cohort_member")
+        member_id = row["cohort_member_id"]
+        _require(isinstance(member_id, str) and member_id, "invalid_cohort_member_id")
+        _require(member_id not in seen_member_ids, "duplicate_cohort_member_id")
+        seen_member_ids.add(member_id)
+        prefix = _validate_canonical_prefix(row["prefix"], row["afi"])
+        _require(isinstance(row["country_origin_asns"], list), "invalid_country_origin_asns")
+        origins = [_validate_asn(asn, "country_origin_asn") for asn in row["country_origin_asns"]]
+        _require(len(set(origins)) == len(origins), "duplicate_country_origin_asn")
+        for field in ("expected_peer_asn_direction_ids", "expected_route_observation_keys"):
+            values = row[field]
+            _require(isinstance(values, list) and all(isinstance(item, str) and item for item in values), "invalid_fixed_cohort_direction_population", field)
+            _require(len(set(values)) == len(values), "duplicate_fixed_cohort_direction", field)
+        _require(row["membership_basis"] in {"country_origin_known", "country_origin_moas", "country_origin_ambiguous"}, "invalid_membership_basis")
+        ref = _validate_evidence_ref(row["evidence_ref"])
+        row_evidence.append(ref)
+        network = ip_network(prefix)
+        projected[(row["afi"], int(network.network_address), network.prefixlen)] = {"afi": row["afi"], "prefix": prefix}
+    members = [projected[key] for key in sorted(projected)]
+    evidence = _merge_evidence(row_evidence, inherited_evidence_refs)
+    _require_evidence(evidence, "fixed_cohort_population_evidence_required")
+    result = {
+        "members": members, "member_count": len(members), "set_digest": _digest(members),
+        "input_digest": inputs["input_digest"], "evidence_refs": evidence,
+    }
+    return _result_envelope(env, result, evidence, result_state="empty" if not members else "computed")
+
+
 OPERATOR_FUNCTIONS: dict[str, Callable[..., dict[str, Any]]] = {
     "OP-05": op05_as_severity_rank,
     "OP-06": op06_select_first_state_occurrence,
@@ -1520,8 +2169,16 @@ OPERATOR_FUNCTIONS: dict[str, Callable[..., dict[str, Any]]] = {
     "OP-26": op26_set_directional_difference,
     "OP-27": op27_set_directional_coverage,
     "OP-28": op28_set_jaccard,
+    "OP-29": op29_classify_temporal_evidence_relation,
+    "OP-30": op30_classify_vp_visibility_consistency,
+    "OP-31": op31_classify_vp_origin_consistency,
+    "OP-32": op32_classify_vp_path_consistency,
+    "OP-33": op33_join_new_prefix_route_state,
     "OP-35": op35_select_last_state_occurrence,
     "OP-36": op36_detect_first_threshold_crossing,
+    "OP-37": op37_classify_evidence_consistency,
+    "OP-38": op38_intersect_state_interval_sets,
+    "OP-39": op39_project_fixed_cohort_prefix_set,
 }
 
 
@@ -1553,7 +2210,7 @@ def execute_operator(
         kwargs["asn_bound_op36_receipts"] = asn_bound_op36_receipts
     if operator_id == "OP-14":
         kwargs["asn_bound_op10_receipts"] = asn_bound_op10_receipts
-    if operator_id in {"OP-06", "OP-07", "OP-08", "OP-09", "OP-11", "OP-12", "OP-13", "OP-14", "OP-16", "OP-17", "OP-18", "OP-19", "OP-20", "OP-21", "OP-22", "OP-23", "OP-24", "OP-25", "OP-26", "OP-27", "OP-28", "OP-35", "OP-36"}:
+    if operator_id in {"OP-06", "OP-07", "OP-08", "OP-09", "OP-11", "OP-12", "OP-13", "OP-14", "OP-16", "OP-17", "OP-18", "OP-19", "OP-20", "OP-21", "OP-22", "OP-23", "OP-24", "OP-25", "OP-26", "OP-27", "OP-28", "OP-35", "OP-36", "OP-37"}:
         kwargs["offline_structural_context"] = offline_structural_context
     return function(envelope, **kwargs)
 

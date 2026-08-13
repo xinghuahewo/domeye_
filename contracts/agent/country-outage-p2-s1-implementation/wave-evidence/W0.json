@@ -3,8 +3,8 @@
     {
       "path": "agent-sidecar/src/chat/p2-s1-registry-runtime.ts",
       "role": "registry_runtime",
-      "sha256": "8d231b2a8fddc39907691372c0861244609cfb8f11d55e654b1cf63d5342fa4d",
-      "size_bytes": 59665
+      "sha256": "a7cc58719c54356fb322b1ff386aeb8e4494d3e68909058058783a71bc7d9c8b",
+      "size_bytes": 61447
     },
     {
       "path": "agent-sidecar/src/chat/p2-s1-trusted-receipt-store.ts",
@@ -15,8 +15,8 @@
     {
       "path": "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts",
       "role": "test",
-      "sha256": "7b2794ab507830558a86a46cac5a23c06b42962e64cffc9c773a8fb66262795c",
-      "size_bytes": 33616
+      "sha256": "4b9b8e5e01e139ae9f23ec128dfc707459b06b9f9b2c0dc37672e6e8309114dd",
+      "size_bytes": 38377
     },
     {
       "path": "backend/services/country_outage_p2_s1_source_store.py",
@@ -242,13 +242,13 @@
     }
   ],
   "atomic_split_tests_passed": true,
-  "baseline_content_digest": "358118877e61852d7e4e343516807adb80b8725463bfba521e3cec26111fb1f5",
-  "content_digest": "e938578330559aefd33301fc07ce21699187158b596e789a7bcd6d399625bad6",
+  "baseline_content_digest": "c39af4604f0df1dc58e47725a7ceab5197e1e06373f38ef12a66a68eae350d0a",
+  "content_digest": "0149ab38267b6f2a7089ab910e6affebd19501aac07a57f23f7e9152a32e42a6",
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "effect": "source_schema_view_registry_admission_and_trusted_receipt_store_implemented",
   "effect_verified": true,
-  "implementation_candidate_id": "country-outage-p2-s1-w0-c18ac57d94ba41e868e450df",
-  "implementation_semantic_digest": "c18ac57d94ba41e868e450df1d088d9a91e71d10bad6d458638b7178d785ac4f",
+  "implementation_candidate_id": "country-outage-p2-s1-w0-bc5950acac073a647cdbc43e",
+  "implementation_semantic_digest": "bc5950acac073a647cdbc43e2320e8445aeedd299676fa4ac84107c65f16fdc8",
   "implemented_unit_ids": [],
   "p2_1_units_included": [],
   "performance_baseline": {
@@ -438,13 +438,13 @@
     {
       "active_new_unit_ids": [],
       "attack_test_artifact_path": "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts",
-      "attack_test_artifact_sha256": "7b2794ab507830558a86a46cac5a23c06b42962e64cffc9c773a8fb66262795c",
-      "attack_test_receipt_digest": "7b2794ab507830558a86a46cac5a23c06b42962e64cffc9c773a8fb66262795c",
+      "attack_test_artifact_sha256": "4b9b8e5e01e139ae9f23ec128dfc707459b06b9f9b2c0dc37672e6e8309114dd",
+      "attack_test_receipt_digest": "4b9b8e5e01e139ae9f23ec128dfc707459b06b9f9b2c0dc37672e6e8309114dd",
       "collector_id": "rrc25",
       "contract_path": "contracts/agent/country-outage-p2-s1-implementation/w0-registry-proposal.schema.json",
       "contract_sha256": "a788d16d62aa3ea037bafae6a2c6706231578db7a6a4fea89ee4ebf87f9c2d1c",
       "implementation_path": "agent-sidecar/src/chat/p2-s1-registry-runtime.ts",
-      "implementation_sha256": "8d231b2a8fddc39907691372c0861244609cfb8f11d55e654b1cf63d5342fa4d",
+      "implementation_sha256": "a7cc58719c54356fb322b1ff386aeb8e4494d3e68909058058783a71bc7d9c8b",
       "inactive_execution_call_count": 0,
       "new_unit_lifecycle_state": "proposed",
       "p2_1_admission": "denied",
@@ -454,14 +454,14 @@
         "OP-34"
       ],
       "publication_cardinality": 1,
-      "receipt_digest": "309371078b0814e61037f3d8e9efb9b302afc8aadc6606da665b4af90ba4fbf0",
+      "receipt_digest": "fa87591808d154b01e47cf551128a260213c76e0be5a48a01880bce5e2e82d53",
       "receipt_kind": "registry_governance_contract"
     },
     {
       "atomic_write_and_recovery": true,
       "attack_test_artifact_path": "agent-sidecar/tests/p2-s1-w0-source-governance.test.ts",
-      "attack_test_artifact_sha256": "7b2794ab507830558a86a46cac5a23c06b42962e64cffc9c773a8fb66262795c",
-      "attack_test_receipt_digest": "7b2794ab507830558a86a46cac5a23c06b42962e64cffc9c773a8fb66262795c",
+      "attack_test_artifact_sha256": "4b9b8e5e01e139ae9f23ec128dfc707459b06b9f9b2c0dc37672e6e8309114dd",
+      "attack_test_receipt_digest": "4b9b8e5e01e139ae9f23ec128dfc707459b06b9f9b2c0dc37672e6e8309114dd",
       "caller_forged_receipt_rejected": true,
       "content_addressed": true,
       "contract_path": "contracts/agent/country-outage-p2-s1-implementation/w0-trusted-receipt.schema.json",
@@ -469,7 +469,7 @@
       "cross_binding_replay_rejected": true,
       "implementation_path": "agent-sidecar/src/chat/p2-s1-trusted-receipt-store.ts",
       "implementation_sha256": "5c62146d4f295e935a3d292469482ccdeed89ad05e07c9862c3f2ed2033333bc",
-      "receipt_digest": "b95cb358cad097cc0f016c385cfbbef89b2f1bf950a977ae98264b1d082b2b30",
+      "receipt_digest": "373e8127d7265b64e1014fa39ff8ec619c33216909ef266e2d06de257de65630",
       "receipt_kind": "trusted_receipt_store_contract"
     }
   ],
@@ -479,15 +479,15 @@
     {
       "category": "source_and_store_positive_boundary_attack",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w0-python.json",
-      "receipt_digest": "37d0f3976495c58158eb603be4020e5c1efda4d9583f53316e23764d77481889",
-      "sha256": "c1b82c3ebde361eef5350c486d49c47a2258f0769fad4efa4cf8e6ce2eb5e846",
+      "receipt_digest": "633339fd07d366f3c16718704b9f3f3ad252975eb1d3dd3c2336078231b62651",
+      "sha256": "599b729287ef1fb4b3fd9adc71d53549b8d97d6511a8966a5ccf91d96989d1cc",
       "suite_id": "w0-python"
     },
     {
       "category": "registry_and_receipt_positive_boundary_attack",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w0-typescript.json",
-      "receipt_digest": "60e0c551ae2956d8099bce17500cd8509e2f36aa03f545ac99609bf28f5ad80a",
-      "sha256": "b8b1f17d2aa80887d22d5e09245f3a9726581f8c5c93d5c49946fd33a580480e",
+      "receipt_digest": "45487108c28d398ff712a6cabb96afe6c1d01e4f2a21e27523bbc7af4aa6daf3",
+      "sha256": "4fa6f1963a87070a1908f4af5c2891805f287d7ba6101c40d61449b75eb05654",
       "suite_id": "w0-typescript"
     }
   ]

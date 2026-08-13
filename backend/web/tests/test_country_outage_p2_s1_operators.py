@@ -41,6 +41,9 @@ PROFILES = {
     "OP-07": "PROFILE-STATE-INTERVAL-1.0.0", "OP-09": "PROFILE-PEAK-SEVERITY-1.0.0",
     "OP-12": "PROFILE-FIRST-CROSSING-1.0.0", "OP-13": "PROFILE-STATE-INTERVAL-1.0.0",
     "OP-35": "PROFILE-STATE-TARGET-1.0.0", "OP-36": "PROFILE-FIRST-CROSSING-1.0.0",
+    "OP-29": "PROFILE-TEMPORAL-COMPARABILITY-1.0.0", "OP-30": "PROFILE-VP-CONSISTENCY-1.0.0",
+    "OP-31": "PROFILE-VP-CONSISTENCY-1.0.0", "OP-32": "PROFILE-VP-CONSISTENCY-1.0.0",
+    "OP-37": "PROFILE-EVIDENCE-CONSISTENCY-1.0.0",
 }
 
 
@@ -79,10 +82,11 @@ def population_binding(operator_id, input_name, operator_input, member_keys):
     return receipt
 
 
-def offline_context(*bindings, op10_outputs=(), op11_outputs=(), op15_outputs=(), op36_outputs=(), tool12_result_sets=(), projection_receipts=()):
+def offline_context(*bindings, op10_outputs=(), op11_outputs=(), op15_outputs=(), op29_outputs=(), op36_outputs=(), tool12_result_sets=(), projection_receipts=()):
     return operators.OfflineStructuralFixtureContext(
         design_candidate_id=operators.DESIGN_CANDIDATE_ID,
         population_binding_receipts={item["receipt_digest"]: item for item in bindings},
+        op29_outputs={item["output_digest"]: item for item in op29_outputs},
         op10_outputs={item["output_digest"]: item for item in op10_outputs},
         op11_outputs={item["output_digest"]: item for item in op11_outputs},
         op15_outputs={item["output_digest"]: item for item in op15_outputs},
@@ -149,6 +153,57 @@ def path_row(path_digest=D, prefix="109.74.224.0/20", directions=None):
 def typed_set(members, member_type_id="asn"):
     ordered = sorted(members, key=lambda item: json.dumps(item, sort_keys=True))
     return {"member_type_id": member_type_id, "members": ordered, "declared_member_count": len(ordered), "set_completeness": "complete", "set_digest": digest(ordered)}
+
+
+def temporal_profile(*, population_compatible=True, unit_compatible=True, pair=("peak", "peak")):
+    return {
+        "profile_id": "PROFILE-TEMPORAL-COMPARABILITY-1.0.0", "profile_digest": D,
+        "fact_type_pair": list(pair), "population_compatible": population_compatible,
+        "unit_compatible": unit_compatible, "time_basis": "publication_state_point_grid",
+        "granularity_seconds": 300, "tolerance_seconds": 300,
+    }
+
+
+def timed_fact(name, time_utc, *, fact_type="peak", population="country", unit="count"):
+    return {
+        "fact_type_id": fact_type, "temporal_kind": "exact_point", "time_utc": time_utc,
+        "population_id": population, "unit_id": unit, "fact_digest": digest({"fact": name}),
+        "evidence_refs": [evidence(f"timed:{name}")],
+    }
+
+
+def typed_fact(name, predicate, *, truth="true", fact_type="peak", population="country", unit="count"):
+    return {
+        "fact_type_id": fact_type, "population_id": population, "unit_id": unit,
+        "predicate_id": predicate, "truth_state": truth, "fact_digest": digest({"fact": name}),
+        "evidence_refs": [evidence(f"fact:{name}")],
+    }
+
+
+def op29_receipt(output):
+    return {
+        "identity": output["identity"], "operator_id": "OP-29",
+        **{key: output["result"][key] for key in ("left_digest", "right_digest", "relation", "comparable", "profile_digest")},
+        "output_digest": output["output_digest"], "evidence_refs": output["evidence_refs"],
+    }
+
+
+def state_interval(start, end, member=D):
+    start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+    end_dt = datetime.fromisoformat(end.replace("Z", "+00:00"))
+    return {
+        "start_utc": start, "end_utc": end, "duration_seconds": int((end_dt - start_dt).total_seconds()),
+        "left_censored": False, "right_censored": False, "member_digests": [member],
+    }
+
+
+def fixed_member(member_id, prefix, *, asns=(64500,), basis="country_origin_known"):
+    return {
+        "cohort_member_id": member_id, "prefix": prefix, "afi": 6 if ":" in prefix else 4,
+        "country_origin_asns": list(asns), "expected_peer_asn_direction_ids": ["peer:1"],
+        "expected_route_observation_keys": ["rrc25:peer:1"], "membership_basis": basis,
+        "evidence_ref": evidence(f"cohort:{member_id}"),
+    }
 
 
 class OperatorW1Tests(unittest.TestCase):
@@ -456,9 +511,176 @@ class OperatorW2Tests(unittest.TestCase):
             operators.op25_set_intersection(env, population_evidence_bindings={"left_set": left_binding, "right_set": ghost}, offline_structural_context=offline_context(left_binding, ghost))
 
 
+class OperatorW3W4Tests(unittest.TestCase):
+    def test_op29_directed_relations_missing_not_comparable_and_attacks(self):
+        left = timed_fact("left", "2026-02-27T00:00:00Z")
+        right = timed_fact("right", "2026-02-27T00:05:00Z")
+        env = envelope("OP-29", {"left_fact": left, "right_fact": right, "comparability_profile": temporal_profile(), "left_digest": left["fact_digest"], "right_digest": right["fact_digest"]})
+        out = operators.op29_classify_temporal_evidence_relation(env)
+        self.assertEqual((out["result"]["relation"], out["result"]["delta_seconds"]), ("left_precedes_within", 300))
+        self.assertEqual(out["result"]["edge_projection"]["relation_type"], "precedes")
+
+        missing = deepcopy(env); missing["inputs"]["left_fact"]["time_utc"] = None
+        self.assertEqual(operators.op29_classify_temporal_evidence_relation(missing)["result"]["relation"], "missing_left")
+        incompatible = deepcopy(env); incompatible["inputs"]["comparability_profile"]["unit_compatible"] = False
+        self.assertEqual(operators.op29_classify_temporal_evidence_relation(incompatible)["result"]["relation"], "not_comparable")
+        forged = deepcopy(env); forged["inputs"]["left_digest"] = F
+        with self.assertRaisesRegex(operators.OperatorContractError, "left_digest_mismatch"):
+            operators.op29_classify_temporal_evidence_relation(forged)
+        off_grid = deepcopy(env); off_grid["inputs"]["right_fact"]["time_utc"] = "2026-02-27T00:04:00Z"
+        with self.assertRaisesRegex(operators.OperatorContractError, "state_point_off_grid"):
+            operators.op29_classify_temporal_evidence_relation(off_grid)
+
+    def test_vp_consistency_precedence_empty_and_attacks(self):
+        common = {"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:00:00Z", "expected_direction_set": ["d1", "d2"], "direction_profile_digest": D}
+        visibility_rows = [{"direction_id": "d1", "visibility": "unknown", "evidence_ref": evidence("d1")}]
+        env = envelope("OP-30", {**common, "actual_visibility_rows": visibility_rows})
+        out = operators.op30_classify_vp_visibility_consistency(env, inherited_evidence_refs=[evidence("expected")])
+        self.assertEqual(out["result"]["class"], "missing_present")
+        self.assertEqual(out["result"]["missing_set"], ["d2"])
+        forged = deepcopy(env); forged["inputs"]["actual_visibility_rows"].append({"direction_id": "ghost", "visibility": "visible", "evidence_ref": evidence("ghost")})
+        with self.assertRaisesRegex(operators.OperatorContractError, "unexpected_actual_direction"):
+            operators.op30_classify_vp_visibility_consistency(forged, inherited_evidence_refs=[evidence("expected")])
+
+        origins = [
+            {"direction_id": "d1", "origin_state": "known", "origin_asns": [64500], "evidence_ref": evidence("o1")},
+            {"direction_id": "d2", "origin_state": "known", "origin_asns": [64501, 64502], "evidence_ref": evidence("o2")},
+        ]
+        env31 = envelope("OP-31", {**common, "actual_origin_rows": origins})
+        out31 = operators.op31_classify_vp_origin_consistency(env31, inherited_evidence_refs=[evidence("expected")])
+        self.assertEqual(out31["result"]["class"], "divergent")
+        self.assertTrue(out31["result"]["moas_present"])
+
+        env32 = envelope("OP-32", {
+            "prefix": common["prefix"], "afi": 4, "state_point_utc": common["state_point_utc"],
+            "expected_direction_set": ["d1", "d2"], "canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST,
+            "actual_path_rows": [
+                {"direction_id": "d1", "path_state": "known_ordered", "path_digest": D, "evidence_ref": evidence("p1")},
+                {"direction_id": "d2", "path_state": "unknown", "path_digest": None, "evidence_ref": evidence("p2")},
+            ],
+        })
+        out32 = operators.op32_classify_vp_path_consistency(env32, inherited_evidence_refs=[evidence("expected")])
+        self.assertEqual(out32["result"]["class"], "unknown_present")
+        empty31 = envelope("OP-31", {**common, "expected_direction_set": [], "actual_origin_rows": []})
+        self.assertEqual(operators.op31_classify_vp_origin_consistency(empty31, inherited_evidence_refs=[evidence("empty-pop")])["result"]["class"], "empty_expected")
+        with self.assertRaisesRegex(operators.OperatorContractError, "expected_direction_population_evidence_required"):
+            operators.op31_classify_vp_origin_consistency(empty31)
+
+    def test_op33_exact_join_preserves_unmatched_and_rejects_future_fill(self):
+        left = [
+            {"prefix": "10.0.0.0/8", "afi": 4, "first_observed_at_utc": "2026-02-27T00:00:00Z", "state_point_utc": "2026-02-27T00:05:00Z", "classification": "partial", "evidence_ref": evidence("np1")},
+            {"prefix": "2001:db8::/32", "afi": 6, "first_observed_at_utc": "2026-02-27T00:00:00Z", "state_point_utc": "2026-02-27T00:05:00Z", "classification": "normal", "evidence_ref": evidence("np2")},
+        ]
+        route = {"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:05:00Z", "route_observation_key": "d1", "visibility": "visible", "origin_asns": [64500], "common_path_status": "ordered", "path_digest": D, "path_canonicalization_profile_id": operators.PATH_PROFILE_ID, "path_canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST, "evidence_ref": evidence("rs1")}
+        right = [route, {**route, "state_point_utc": "2026-02-27T00:10:00Z", "route_observation_key": "future", "evidence_ref": evidence("future")}]
+        env = envelope("OP-33", {"new_prefix_state_rows": left, "route_state_rows": right, "left_digest": digest(left), "right_digest": digest(right)})
+        out = operators.op33_join_new_prefix_route_state(env)
+        self.assertEqual(len(out["result"]["matched"]), 1)
+        self.assertEqual(len(out["result"]["unmatched_left"]), 1)
+        self.assertEqual(len(out["result"]["unmatched_right"]), 1)
+        self.assertEqual(len(out["result"]["edge_projections"]), 1)
+        forged = deepcopy(env); forged["inputs"]["right_digest"] = F
+        with self.assertRaisesRegex(operators.OperatorContractError, "right_digest_mismatch"):
+            operators.op33_join_new_prefix_route_state(forged)
+        duplicate = deepcopy(env); duplicate["inputs"]["route_state_rows"].append(deepcopy(route)); duplicate["inputs"]["right_digest"] = digest(duplicate["inputs"]["route_state_rows"])
+        with self.assertRaisesRegex(operators.OperatorContractError, "duplicate_route_state_join_member"):
+            operators.op33_join_new_prefix_route_state(duplicate)
+
+        empty_left = envelope("OP-33", {
+            "new_prefix_state_rows": [], "route_state_rows": [route],
+            "left_digest": digest([]), "right_digest": digest([route]),
+        })
+        empty_left_out = operators.op33_join_new_prefix_route_state(empty_left)
+        self.assertEqual(empty_left_out["result"]["matched"], [])
+        self.assertEqual(empty_left_out["result"]["unmatched_left"], [])
+        self.assertEqual(empty_left_out["result"]["unmatched_right"], [route])
+
+        empty_right = envelope("OP-33", {
+            "new_prefix_state_rows": [left[0]], "route_state_rows": [],
+            "left_digest": digest([left[0]]), "right_digest": digest([]),
+        })
+        empty_right_out = operators.op33_join_new_prefix_route_state(empty_right)
+        self.assertEqual(empty_right_out["result"]["matched"], [])
+        self.assertEqual(empty_right_out["result"]["unmatched_left"], [left[0]])
+        self.assertEqual(empty_right_out["result"]["unmatched_right"], [])
+
+        empty_both = envelope("OP-33", {
+            "new_prefix_state_rows": [], "route_state_rows": [],
+            "left_digest": digest([]), "right_digest": digest([]),
+        })
+        with self.assertRaisesRegex(operators.OperatorContractError, "population_evidence_ref_required"):
+            operators.op33_join_new_prefix_route_state(empty_both)
+        empty_both_out = operators.op33_join_new_prefix_route_state(
+            empty_both, inherited_evidence_refs=[evidence("empty-populations")]
+        )
+        self.assertEqual(empty_both_out["result_state"], "empty")
+        self.assertEqual(empty_both_out["result"]["join_cardinality"]["matched_binding_count"], 0)
+
+    def _op29_and_receipt(self, left_digest, right_digest, relation="same_slot"):
+        times = {
+            "same_slot": ("2026-02-27T00:00:00Z", "2026-02-27T00:00:00Z"),
+            "left_precedes_within": ("2026-02-27T00:00:00Z", "2026-02-27T00:05:00Z"),
+            "left_precedes_outside": ("2026-02-27T00:00:00Z", "2026-02-27T00:10:00Z"),
+        }
+        left = timed_fact("temporal-left", times[relation][0]); left["fact_digest"] = left_digest
+        right = timed_fact("temporal-right", times[relation][1]); right["fact_digest"] = right_digest
+        env = envelope("OP-29", {"left_fact": left, "right_fact": right, "comparability_profile": temporal_profile(), "left_digest": left_digest, "right_digest": right_digest})
+        output = operators.op29_classify_temporal_evidence_relation(env)
+        return output, op29_receipt(output)
+
+    def test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks(self):
+        left = typed_fact("left", "prefix_up")
+        right = typed_fact("right", "prefix_down")
+        op29, receipt = self._op29_and_receipt(left["fact_digest"], right["fact_digest"])
+        profile = {"profile_id": "PROFILE-EVIDENCE-CONSISTENCY-1.0.0", "profile_digest": D, "assertion_relation": "mutually_exclusive", "mutually_exclusive_predicate_ids": ["prefix_down", "prefix_up"]}
+        env = envelope("OP-37", {"left_fact": left, "right_fact": right, "op29_temporal_receipt": receipt, "consistency_profile": profile, "left_digest": left["fact_digest"], "right_digest": right["fact_digest"]})
+        out = operators.op37_classify_evidence_consistency(env, offline_structural_context=offline_context(op29_outputs=[op29]))
+        self.assertEqual(out["result"]["class"], "conflict")
+        self.assertEqual(out["result"]["edge_projection"]["relation_type"], "conflicts_with")
+        forged = deepcopy(receipt); forged["relation"] = "left_precedes_outside"
+        attacked = deepcopy(env); attacked["inputs"]["op29_temporal_receipt"] = forged
+        with self.assertRaisesRegex(operators.OperatorContractError, "op29_receipt_projection_mismatch"):
+            operators.op37_classify_evidence_consistency(attacked, offline_structural_context=offline_context(op29_outputs=[op29]))
+        with self.assertRaisesRegex(operators.OperatorContractError, "offline_structural_context_required"):
+            operators.op37_classify_evidence_consistency(env)
+
+    def test_op38_half_open_overlap_empty_and_interval_attacks(self):
+        window = {"start_utc": "2026-02-27T00:00:00Z", "end_utc": "2026-02-27T01:00:00Z"}
+        left = [state_interval("2026-02-27T00:00:00Z", "2026-02-27T00:10:00Z")]
+        right = [state_interval("2026-02-27T00:05:00Z", "2026-02-27T00:15:00Z", E)]
+        env = envelope("OP-38", {"left_intervals": left, "right_intervals": right, "left_target_state": "complete", "right_target_state": "affected", "window": window, "grid_step_seconds": 300, "left_interval_set_digest": digest(left), "right_interval_set_digest": digest(right)})
+        out = operators.op38_intersect_state_interval_sets(env, inherited_evidence_refs=[evidence("interval-pop")])
+        self.assertEqual(out["result"]["overlap_intervals"][0]["duration_seconds"], 300)
+        touching = deepcopy(env); touching_right = [state_interval("2026-02-27T00:10:00Z", "2026-02-27T00:15:00Z", E)]; touching["inputs"]["right_intervals"] = touching_right; touching["inputs"]["right_interval_set_digest"] = digest(touching_right)
+        self.assertEqual(operators.op38_intersect_state_interval_sets(touching, inherited_evidence_refs=[evidence("interval-pop")])["result"]["outcome"], "disjoint")
+        both_empty = deepcopy(env); both_empty["inputs"]["left_intervals"] = []; both_empty["inputs"]["right_intervals"] = []; both_empty["inputs"]["left_interval_set_digest"] = digest([]); both_empty["inputs"]["right_interval_set_digest"] = digest([])
+        self.assertEqual(operators.op38_intersect_state_interval_sets(both_empty, inherited_evidence_refs=[evidence("empty-pop")])["result"]["outcome"], "empty_both")
+        with self.assertRaisesRegex(operators.OperatorContractError, "interval_population_evidence_required"):
+            operators.op38_intersect_state_interval_sets(both_empty)
+        overlapping = deepcopy(env); overlapping["inputs"]["left_intervals"].append(state_interval("2026-02-27T00:05:00Z", "2026-02-27T00:15:00Z", F)); overlapping["inputs"]["left_interval_set_digest"] = digest(overlapping["inputs"]["left_intervals"])
+        with self.assertRaisesRegex(operators.OperatorContractError, "overlapping_input_intervals"):
+            operators.op38_intersect_state_interval_sets(overlapping, inherited_evidence_refs=[evidence("interval-pop")])
+
+    def test_op39_prefix_projection_dedup_empty_and_attacks(self):
+        rows = [fixed_member("m1", "10.0.0.0/8"), fixed_member("m2", "10.0.0.0/8", asns=(64501, 64502), basis="country_origin_moas"), fixed_member("m3", "2001:db8::/32")]
+        env = envelope("OP-39", {"fixed_cohort_members": rows, "set_completeness": "complete", "input_digest": digest(rows)})
+        out = operators.op39_project_fixed_cohort_prefix_set(env)
+        self.assertEqual(out["result"]["members"], [{"afi": 4, "prefix": "10.0.0.0/8"}, {"afi": 6, "prefix": "2001:db8::/32"}])
+        empty = envelope("OP-39", {"fixed_cohort_members": [], "set_completeness": "complete", "input_digest": digest([])})
+        self.assertEqual(operators.op39_project_fixed_cohort_prefix_set(empty, inherited_evidence_refs=[evidence("empty-pop")])["result"]["member_count"], 0)
+        with self.assertRaisesRegex(operators.OperatorContractError, "fixed_cohort_population_evidence_required"):
+            operators.op39_project_fixed_cohort_prefix_set(empty)
+        forged = deepcopy(env); forged["inputs"]["fixed_cohort_members"][0]["prefix"] = "10.1.0.0/8"; forged["inputs"]["input_digest"] = digest(forged["inputs"]["fixed_cohort_members"])
+        with self.assertRaisesRegex(operators.OperatorContractError, "invalid_prefix"):
+            operators.op39_project_fixed_cohort_prefix_set(forged)
+        duplicate = deepcopy(env); duplicate["inputs"]["fixed_cohort_members"][1]["cohort_member_id"] = "m1"; duplicate["inputs"]["input_digest"] = digest(duplicate["inputs"]["fixed_cohort_members"])
+        with self.assertRaisesRegex(operators.OperatorContractError, "duplicate_cohort_member_id"):
+            operators.op39_project_fixed_cohort_prefix_set(duplicate)
+
+
 class OperatorAtomicityAndBoundaryTests(unittest.TestCase):
     def test_all_expected_operators_are_individually_registered(self):
-        expected = {f"OP-{n:02d}" for n in range(5, 29)} | {"OP-35", "OP-36"}
+        expected = {f"OP-{n:02d}" for n in range(5, 34)} | {f"OP-{n:02d}" for n in range(35, 40)}
         self.assertEqual(set(operators.OPERATOR_FUNCTIONS), expected)
         self.assertEqual(len(set(operators.OPERATOR_FUNCTIONS.values())), len(expected))
 
@@ -603,6 +825,29 @@ if errors:
             canonical = sorted(ms, key=lambda item: json.dumps(item, sort_keys=True)); env = envelope(op, {"members": canonical, "member_count": len(canonical), "set_digest": digest(canonical), "set_completeness": "complete"}); b = population_binding(op, "members", canonical, [digest(m) for m in canonical]); add(env, function(env, **binding_kwargs(b)))
         for op, function in (("OP-25", operators.op25_set_intersection), ("OP-26", operators.op26_set_directional_difference), ("OP-27", operators.op27_set_directional_coverage), ("OP-28", operators.op28_set_jaccard)):
             left, right = typed_set([1, 2]), typed_set([2]); env = envelope(op, {"left_set": left, "right_set": right, "member_type_id": "asn", "left_digest": left["set_digest"], "right_digest": right["set_digest"]}); lbs = population_binding(op, "left_set", left, [digest(m) for m in left["members"]]); rbs = population_binding(op, "right_set", right, [digest(m) for m in right["members"]]); add(env, function(env, population_evidence_bindings={"left_set": lbs, "right_set": rbs}, offline_structural_context=offline_context(lbs, rbs)))
+
+        # W3/W4：点时间关系、VP一致性、exact join、证据一致性、区间交集与cohort前缀投影。
+        left_timed = timed_fact("schema-left", "2026-02-27T00:00:00Z")
+        right_timed = timed_fact("schema-right", "2026-02-27T00:05:00Z")
+        env29 = envelope("OP-29", {"left_fact": left_timed, "right_fact": right_timed, "comparability_profile": temporal_profile(), "left_digest": left_timed["fact_digest"], "right_digest": right_timed["fact_digest"]})
+        output29 = operators.op29_classify_temporal_evidence_relation(env29); add(env29, output29)
+        vp_common = {"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:00:00Z", "expected_direction_set": ["d1"], "direction_profile_digest": D}
+        env = envelope("OP-30", {**vp_common, "actual_visibility_rows": [{"direction_id": "d1", "visibility": "visible", "evidence_ref": evidence("v1")}]}); add(env, operators.op30_classify_vp_visibility_consistency(env, inherited_evidence_refs=[evidence("vp-pop")]))
+        env = envelope("OP-31", {**vp_common, "actual_origin_rows": [{"direction_id": "d1", "origin_state": "known", "origin_asns": [64500], "evidence_ref": evidence("o1")}]}); add(env, operators.op31_classify_vp_origin_consistency(env, inherited_evidence_refs=[evidence("vp-pop")]))
+        env = envelope("OP-32", {"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:00:00Z", "expected_direction_set": ["d1"], "canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST, "actual_path_rows": [{"direction_id": "d1", "path_state": "known_ordered", "path_digest": D, "evidence_ref": evidence("path1")}]}); add(env, operators.op32_classify_vp_path_consistency(env, inherited_evidence_refs=[evidence("vp-pop")]))
+        new_prefix = [{"prefix": "10.0.0.0/8", "afi": 4, "first_observed_at_utc": "2026-02-27T00:00:00Z", "state_point_utc": "2026-02-27T00:05:00Z", "classification": "partial", "evidence_ref": evidence("np")}]
+        route_state = [{"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:05:00Z", "route_observation_key": "d1", "visibility": "visible", "origin_asns": [64500], "common_path_status": "ordered", "path_digest": D, "path_canonicalization_profile_id": operators.PATH_PROFILE_ID, "path_canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST, "evidence_ref": evidence("route")}]
+        env = envelope("OP-33", {"new_prefix_state_rows": new_prefix, "route_state_rows": route_state, "left_digest": digest(new_prefix), "right_digest": digest(route_state)}); add(env, operators.op33_join_new_prefix_route_state(env))
+        left_fact = typed_fact("schema-fact-left", "visible"); right_fact = typed_fact("schema-fact-right", "invisible")
+        left_for_29 = timed_fact("schema-fact-time-left", "2026-02-27T00:00:00Z"); left_for_29["fact_digest"] = left_fact["fact_digest"]
+        right_for_29 = timed_fact("schema-fact-time-right", "2026-02-27T00:00:00Z"); right_for_29["fact_digest"] = right_fact["fact_digest"]
+        env29_conflict = envelope("OP-29", {"left_fact": left_for_29, "right_fact": right_for_29, "comparability_profile": temporal_profile(), "left_digest": left_fact["fact_digest"], "right_digest": right_fact["fact_digest"]})
+        output29_conflict = operators.op29_classify_temporal_evidence_relation(env29_conflict)
+        profile37 = {"profile_id": "PROFILE-EVIDENCE-CONSISTENCY-1.0.0", "profile_digest": D, "assertion_relation": "mutually_exclusive", "mutually_exclusive_predicate_ids": ["invisible", "visible"]}
+        env = envelope("OP-37", {"left_fact": left_fact, "right_fact": right_fact, "op29_temporal_receipt": op29_receipt(output29_conflict), "consistency_profile": profile37, "left_digest": left_fact["fact_digest"], "right_digest": right_fact["fact_digest"]}); add(env, operators.op37_classify_evidence_consistency(env, offline_structural_context=offline_context(op29_outputs=[output29_conflict])))
+        window38 = {"start_utc": "2026-02-27T00:00:00Z", "end_utc": "2026-02-27T01:00:00Z"}; left38 = [state_interval("2026-02-27T00:00:00Z", "2026-02-27T00:10:00Z")]; right38 = [state_interval("2026-02-27T00:05:00Z", "2026-02-27T00:15:00Z", E)]
+        env = envelope("OP-38", {"left_intervals": left38, "right_intervals": right38, "left_target_state": "complete", "right_target_state": "affected", "window": window38, "grid_step_seconds": 300, "left_interval_set_digest": digest(left38), "right_interval_set_digest": digest(right38)}); add(env, operators.op38_intersect_state_interval_sets(env, inherited_evidence_refs=[evidence("interval-pop")]))
+        fixed = [fixed_member("schema-fixed", "10.0.0.0/8")]; env = envelope("OP-39", {"fixed_cohort_members": fixed, "set_completeness": "complete", "input_digest": digest(fixed)}); add(env, operators.op39_project_fixed_cohort_prefix_set(env))
         self.assertEqual(set(examples), set(operators.OPERATOR_FUNCTIONS))
         return examples
 

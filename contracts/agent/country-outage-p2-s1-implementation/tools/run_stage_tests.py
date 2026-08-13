@@ -29,6 +29,13 @@ W1_UNITS = [
     *[f"OP-{number:02d}" for number in range(5, 15)], "OP-35", "OP-36",
 ]
 W2_UNITS = ["TOOL-12", *[f"OP-{number:02d}" for number in range(15, 29)]]
+W3_UNITS = ["OP-38", "OP-39"]
+W4_UNITS = ["TOOL-11", *[f"OP-{number:02d}" for number in range(29, 34)], "OP-37"]
+
+
+def wave_units_for_suite(suite_id: str) -> list[str]:
+    wave = suite_id.split("-", 1)[0]
+    return {"w1": W1_UNITS, "w2": W2_UNITS, "w3": W3_UNITS, "w4": W4_UNITS}[wave]
 
 
 def _test_id(module: str, class_name: str, method: str) -> str:
@@ -135,6 +142,60 @@ SUITES: dict[str, dict[str, Any]] = {
             _test_id(OPERATORS, "OperatorAtomicityAndBoundaryTests", "test_operator_functions_do_not_call_other_operator_functions"),
         ],
     },
+    "w3-positive": {
+        "stage": "W3", "category": "positive", "tested_unit_ids": W3_UNITS,
+        "tests": [
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op38_half_open_overlap_empty_and_interval_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op39_prefix_projection_dedup_empty_and_attacks"),
+        ],
+    },
+    "w3-boundary": {
+        "stage": "W3", "category": "boundary", "tested_unit_ids": W3_UNITS,
+        "tests": [
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op38_half_open_overlap_empty_and_interval_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op39_prefix_projection_dedup_empty_and_attacks"),
+        ],
+    },
+    "w3-attack": {
+        "stage": "W3", "category": "attack", "tested_unit_ids": W3_UNITS,
+        "tests": [
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op38_half_open_overlap_empty_and_interval_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op39_prefix_projection_dedup_empty_and_attacks"),
+        ],
+    },
+    "w4-positive": {
+        "stage": "W4", "category": "positive", "tested_unit_ids": W4_UNITS,
+        "tests": [
+            _test_id(TOOLS, "CountryOutageP2S1ToolsTest", "test_tool11_reads_one_exact_state_population_without_replay_or_second_population"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op29_directed_relations_missing_not_comparable_and_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_vp_consistency_precedence_empty_and_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op33_exact_join_preserves_unmatched_and_rejects_future_fill"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"),
+        ],
+    },
+    "w4-boundary": {
+        "stage": "W4", "category": "boundary", "tested_unit_ids": W4_UNITS,
+        "tests": [
+            _test_id(TOOLS, "CountryOutageP2S1ToolsTest", "test_tool11_contains_asn_uses_same_population_native_index_and_closes_empty"),
+            _test_id(TOOLS, "CountryOutageP2S1ToolsTest", "test_tool11_requires_exact_grid_point_and_never_fills_nearest_or_future_state"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op29_directed_relations_missing_not_comparable_and_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_vp_consistency_precedence_empty_and_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op33_exact_join_preserves_unmatched_and_rejects_future_fill"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"),
+        ],
+    },
+    "w4-attack": {
+        "stage": "W4", "category": "attack", "tested_unit_ids": W4_UNITS,
+        "tests": [
+            _test_id(TOOLS, "CountryOutageP2S1ToolsTest", "test_tool11_query_receipt_hmac_binds_target_time_index_and_members"),
+            _test_id(TOOLS, "CountryOutageP2S1ToolsTest", "test_tool11_rejects_query_time_join_replay_and_nearest_state_controls"),
+            _test_id(TOOLS, "CountryOutageP2S1ToolsTest", "test_tool11_index_content_profile_and_row_tamper_fail_before_receipt"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op29_directed_relations_missing_not_comparable_and_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_vp_consistency_precedence_empty_and_attacks"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op33_exact_join_preserves_unmatched_and_rejects_future_fill"),
+            _test_id(OPERATORS, "OperatorW3W4Tests", "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"),
+        ],
+    },
 }
 
 
@@ -145,9 +206,13 @@ def test_case_units(suite_id: str, test_id: str) -> list[str]:
     if suite_id.startswith("w0-"):
         return []
     if name == "test_actual_input_output_examples_validate_frozen_draft202012_schema":
-        return [unit for unit in (W1_UNITS if suite_id.startswith("w1-") else W2_UNITS) if unit.startswith("OP-")]
+        return [unit for unit in wave_units_for_suite(suite_id) if unit.startswith("OP-")]
     if name == "test_actual_request_result_and_failure_envelopes_validate_draft202012_schema":
-        return ["TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10"] if suite_id.startswith("w1-") else ["TOOL-12"]
+        if suite_id.startswith("w1-"):
+            return ["TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10"]
+        if suite_id.startswith("w2-"):
+            return ["TOOL-12"]
+        return ["TOOL-11"]
     explicit: dict[str, list[str]] = {
         "test_tool07_reads_only_fixed_cohort_population_and_filters_materialized_fields": ["TOOL-07"],
         "test_tool08_exact_state_and_half_open_range_are_atomic_row_predicates": ["TOOL-08"],
@@ -161,8 +226,8 @@ def test_case_units(suite_id: str, test_id: str) -> list[str]:
         "test_op13_asn_binding_normal_ties_and_attacks": ["OP-11", "OP-13"],
         "test_op10_op36_trusted_projection_binding_attacks": ["OP-10", "OP-12", "OP-14", "OP-36"],
         "test_cross_publication_and_incomplete_inputs_fail_closed": ["OP-05"],
-        "test_operator_functions_do_not_call_other_operator_functions": [unit for unit in (W1_UNITS if suite_id.startswith("w1-") else W2_UNITS) if unit.startswith("OP-")],
-        "test_module_has_no_file_network_tool_or_model_dependency": [unit for unit in (W1_UNITS if suite_id.startswith("w1-") else W2_UNITS) if unit.startswith("OP-")],
+        "test_operator_functions_do_not_call_other_operator_functions": [unit for unit in wave_units_for_suite(suite_id) if unit.startswith("OP-")],
+        "test_module_has_no_file_network_tool_or_model_dependency": [unit for unit in wave_units_for_suite(suite_id) if unit.startswith("OP-")],
         "test_tool12_contains_asn_uses_verified_native_index": ["TOOL-12"],
         "test_tool12_contains_asn_zero_is_complete_empty": ["TOOL-12"],
         "test_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields": ["TOOL-12"],
@@ -183,6 +248,18 @@ def test_case_units(suite_id: str, test_id: str) -> list[str]:
         "test_unsupported_fields_false_anchor_and_deferred_tool_fail_closed": ["TOOL-12"],
         "test_op15_compact_receipt_requires_resolved_full_output": ["OP-15", "OP-17"],
         "test_set_population_attacks_fail_closed": ["OP-25"],
+        "test_tool11_reads_one_exact_state_population_without_replay_or_second_population": ["TOOL-11"],
+        "test_tool11_contains_asn_uses_same_population_native_index_and_closes_empty": ["TOOL-11"],
+        "test_tool11_requires_exact_grid_point_and_never_fills_nearest_or_future_state": ["TOOL-11"],
+        "test_tool11_query_receipt_hmac_binds_target_time_index_and_members": ["TOOL-11"],
+        "test_tool11_rejects_query_time_join_replay_and_nearest_state_controls": ["TOOL-11"],
+        "test_tool11_index_content_profile_and_row_tamper_fail_before_receipt": ["TOOL-11"],
+        "test_op29_directed_relations_missing_not_comparable_and_attacks": ["OP-29"],
+        "test_vp_consistency_precedence_empty_and_attacks": ["OP-30", "OP-31", "OP-32"],
+        "test_op33_exact_join_preserves_unmatched_and_rejects_future_fill": ["OP-33"],
+        "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks": ["OP-29", "OP-37"],
+        "test_op38_half_open_overlap_empty_and_interval_attacks": ["OP-38"],
+        "test_op39_prefix_projection_dedup_empty_and_attacks": ["OP-39"],
     }
     units = explicit.get(name)
     if units is None:

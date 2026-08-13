@@ -1,9 +1,10 @@
-"""RRC25 P2-S1 W1/W2 原子只读 Tool 运行时。
+"""RRC25 P2-S1 原子只读 Tool 运行时。
 
 每次调用只消费 ``CountryOutageP2S1SourceStore`` 已验证的一种事实人口。这里的
 排序只用于冻结分页顺序，不是业务排名；字段谓词只作用于已物化行。TOOL-12 的
 ``contains_asn`` 与 anchor 过滤只接受 W0 预物化索引成员，禁止查询时解析路径来
-决定结果人口。
+决定结果人口。TOOL-11 也只接受同一精确时点 RouteState 人口的 W0 原生 membership
+索引；它不会在查询期选择 checkpoint、回放事件、补最近状态或解析路径。
 """
 
 from __future__ import annotations
@@ -141,6 +142,15 @@ def _path_sort(row: Mapping[str, Any]) -> tuple[Any, ...]:
     )
 
 
+def _route_state_sort(row: Mapping[str, Any]) -> tuple[Any, ...]:
+    return (
+        *_prefix_sort(row),
+        row["vp_id"],
+        row["peer_id"],
+        row["route_observation_key"],
+    )
+
+
 _SPECS = {
     "TOOL-07": _ToolSpec(
         "TOOL-07",
@@ -229,6 +239,57 @@ _SPECS = {
         ),
         _new_prefix_sort,
     ),
+    "TOOL-11": _ToolSpec(
+        "TOOL-11",
+        "query_materialized_route_states_at_time",
+        "materialized_route_state_rows_at_exact_time",
+        2000,
+        (
+            "state_point_utc",
+            "prefix",
+            "afi",
+            "peer_asn_direction_id",
+            "route_observation_key",
+            "vp_id",
+            "peer_id",
+            "visibility",
+            "origin_asn",
+            "contains_asn",
+        ),
+        (
+            "state_point_utc",
+            "prefix",
+            "afi",
+            "peer_asn_direction_id",
+            "route_observation_key",
+            "vp_id",
+            "peer_id",
+            "visibility",
+            "origin_status",
+            "origin_asns",
+            "path_status",
+            "common_path_status",
+            "path_id",
+            "path_digest",
+            "path_canonicalization_profile_id",
+            "path_canonicalization_profile_digest",
+            "path_segments",
+            "last_event_id",
+            "last_update_utc",
+            "checkpoint_id",
+            "projection_receipt_digest",
+            "quality_flags",
+        ),
+        (
+            "afi ASC",
+            "network_address ASC",
+            "prefix_length ASC",
+            "vp_id ASC",
+            "peer_id ASC",
+            "route_observation_key ASC",
+        ),
+        _route_state_sort,
+    ),
     "TOOL-12": _ToolSpec(
         "TOOL-12",
         "query_window_path_associations",
@@ -278,7 +339,7 @@ _SPECS = {
 
 
 class CountryOutageP2S1Tools:
-    """TOOL-07/08/09/10/12 的原子只读执行器。"""
+    """TOOL-07/08/09/10/11/12 的原子只读执行器。"""
 
     tool_version = "1.0.0"
 
@@ -312,6 +373,9 @@ class CountryOutageP2S1Tools:
     def query_new_prefix_states(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
         return self.execute("TOOL-10", request)
 
+    def query_materialized_route_states_at_time(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
+        return self.execute("TOOL-11", request)
+
     def query_window_path_associations(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
         return self.execute("TOOL-12", request)
 
@@ -329,6 +393,8 @@ class CountryOutageP2S1Tools:
             raise ToolQueryError("unsupported_filter", f"unsupported request fields: {unknown}")
         if "identity" not in request or "page_size" not in request:
             raise ToolQueryError("invalid_input", "identity and page_size are required")
+        if spec.tool_id == "TOOL-11" and "state_point_utc" not in request:
+            raise ToolQueryError("invalid_input", "TOOL-11 requires one exact state_point_utc")
         identity = self._validate_identity(request["identity"])
         page_size = request["page_size"]
         if isinstance(page_size, bool) or not isinstance(page_size, int) or not (1 <= page_size <= spec.max_page_size):
@@ -348,7 +414,9 @@ class CountryOutageP2S1Tools:
             self._assert_source_identity(identity, manifest["identity"])
             rows = self._store.load_population(spec.population_id)
             index = self._store.load_index(spec.population_id)
-            if spec.tool_id == "TOOL-12":
+            if spec.tool_id == "TOOL-11":
+                self._assert_tool11_source_rows(rows, identity)
+            elif spec.tool_id == "TOOL-12":
                 self._assert_tool12_source_rows(rows)
         except ToolQueryError:
             raise
@@ -412,6 +480,11 @@ class CountryOutageP2S1Tools:
         if len(row_by_key) != len(rows) or any(key not in row_by_key for key in candidate_keys):
             raise ToolQueryError("evidence_unclosed", "verified index/member closure changed during query")
         matched = [row_by_key[key] for key in candidate_keys if self._matches(spec, row_by_key[key], normalized_filters)]
+        if spec.tool_id == "TOOL-11" and normalized_filters.get("contains_asn") is not None:
+            self._assert_tool11_returned_members(
+                matched,
+                normalized_filters["contains_asn"],
+            )
         matched.sort(key=spec.sort_key)
         matched_member_keys = [row["member_key"] for row in matched]
         matched_member_keys_digest = digest_json({"member_keys": matched_member_keys})
@@ -452,23 +525,6 @@ class CountryOutageP2S1Tools:
                 }
             )
 
-        query_receipt = self._query_receipt(
-            spec=spec,
-            identity=identity,
-            identity_digest=identity_digest,
-            normalized_query=normalized_query,
-            query_digest=query_digest,
-            stable_sort_digest=stable_sort_digest,
-            source_context=source_context,
-            matched_member_keys_digest=matched_member_keys_digest,
-            matched_total_count=len(matched),
-            page_member_keys=[row["member_key"] for row in page_rows],
-            page_offset=offset,
-            next_offset=next_offset if next_page_token is not None else None,
-            disposition="complete_empty" if not matched else "matched_population",
-            native_context=native_context,
-        )
-        public_members = [self._public_member(spec, row) for row in page_rows]
         result_identity = {
             "source_identity": identity,
             "source_tool": {"tool_id": spec.tool_id, "tool_version": self.tool_version},
@@ -485,9 +541,32 @@ class CountryOutageP2S1Tools:
             "page_token_in": page_token,
             "page_offset": offset,
             "page_size": page_size,
-            "query_receipt_digest": query_receipt["receipt_digest"],
+            "query_digest": query_digest,
+            "identity_digest": identity_digest,
+            "source_dataset_digest": source_dataset_digest,
+            "matched_member_keys_digest": matched_member_keys_digest,
+            "page_member_keys": [row["member_key"] for row in page_rows],
+            "next_offset": next_offset if next_page_token is not None else None,
         }
         tool_run_id = "tool-run-sha256:" + digest_json(run_semantic)
+        query_receipt = self._query_receipt(
+            spec=spec,
+            tool_run_id=tool_run_id,
+            identity=identity,
+            identity_digest=identity_digest,
+            normalized_query=normalized_query,
+            query_digest=query_digest,
+            stable_sort_digest=stable_sort_digest,
+            source_context=source_context,
+            matched_member_keys_digest=matched_member_keys_digest,
+            matched_total_count=len(matched),
+            page_member_keys=[row["member_key"] for row in page_rows],
+            page_offset=offset,
+            next_offset=next_offset if next_page_token is not None else None,
+            disposition="complete_empty" if not matched else "matched_population",
+            native_context=native_context,
+        )
+        public_members = [self._public_member(spec, row) for row in page_rows]
         result: dict[str, Any] = {
             "result_set_id": result_set_id,
             "tool_run_id": tool_run_id,
@@ -585,7 +664,7 @@ class CountryOutageP2S1Tools:
             if name not in request:
                 continue
             value = request[name]
-            if name in ("asn", "anchor_asn", "known_origin_asn", "contains_asn"):
+            if name in ("asn", "anchor_asn", "known_origin_asn", "origin_asn", "contains_asn"):
                 if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 4294967295:
                     raise ToolQueryError("invalid_input", f"{name} must be an unsigned 32-bit ASN")
             elif name == "prefix":
@@ -611,9 +690,18 @@ class CountryOutageP2S1Tools:
                     raise ToolQueryError("invalid_input", f"{name} must be boolean")
                 if name == "anchor_before_known_origin" and value is False:
                     raise ToolQueryError("unsupported_filter", "anchor_before_known_origin=false has no row population")
-            elif name in ("path_id", "peer_asn_direction_id"):
+            elif name in (
+                "path_id",
+                "peer_asn_direction_id",
+                "route_observation_key",
+                "vp_id",
+                "peer_id",
+            ):
                 if not isinstance(value, str) or not value:
                     raise ToolQueryError("invalid_input", f"{name} must be a non-empty string")
+            elif name == "visibility":
+                if not isinstance(value, str) or value not in ("visible", "invisible", "unknown", "missing"):
+                    raise ToolQueryError("invalid_input", "visibility is outside the frozen RouteState enum")
             result[name] = copy.deepcopy(value)
         if "state_point_utc" in result and "time_range_half_open" in result:
             raise ToolQueryError("invalid_input", "state_point_utc and time_range_half_open are mutually exclusive")
@@ -657,11 +745,38 @@ class CountryOutageP2S1Tools:
         source_context: Mapping[str, Any],
     ) -> tuple[list[str], dict[str, Any]]:
         all_keys = [entry["member_key"] for entry in index["members"]]
-        if spec.tool_id != "TOOL-12":
+        if spec.tool_id not in ("TOOL-11", "TOOL-12"):
             return all_keys, {"filter_mode": "verified_single_population_predicate_scan"}
         secondary = index.get("secondary_indexes")
         if not isinstance(secondary, Mapping):
-            raise ToolQueryError("evidence_unclosed", "TOOL-12 native indexes are missing")
+            raise ToolQueryError("evidence_unclosed", f"{spec.tool_id} native indexes are missing")
+        if spec.tool_id == "TOOL-11":
+            path_index = secondary.get("path_asn_membership")
+            if not isinstance(path_index, Mapping):
+                raise ToolQueryError("evidence_unclosed", "TOOL-11 path membership index is missing")
+            if (
+                path_index.get("profile_id") != _PATH_MEMBERSHIP_PROFILE_ID
+                or path_index.get("profile_digest") != _PATH_MEMBERSHIP_PROFILE_DIGEST
+                or path_index.get("indexed_member_keys_digest") != index.get("member_keys_digest")
+            ):
+                raise ToolQueryError("evidence_unclosed", "TOOL-11 path membership profile drift")
+            target_contains = filters.get("contains_asn")
+            if target_contains is None:
+                candidate = all_keys
+            else:
+                members_by_asn = path_index.get("members_by_asn")
+                if not isinstance(members_by_asn, Mapping):
+                    raise ToolQueryError("evidence_unclosed", "TOOL-11 path membership content is missing")
+                selected = members_by_asn.get(str(target_contains), [])
+                if not isinstance(selected, list) or any(not isinstance(key, str) for key in selected):
+                    raise ToolQueryError("evidence_unclosed", "TOOL-11 path membership content is invalid")
+                candidate_set = set(selected)
+                candidate = [key for key in all_keys if key in candidate_set]
+            return candidate, self._tool11_native_context(
+                path_index,
+                filters,
+                source_context,
+            )
         anchor_index = secondary.get("anchor_before_known_origin")
         path_index = secondary.get("path_asn_membership")
         if not isinstance(anchor_index, Mapping) or not isinstance(path_index, Mapping):
@@ -710,6 +825,39 @@ class CountryOutageP2S1Tools:
         return [key for key in all_keys if key in candidate], self._native_context(
             anchor_index, path_index, filters, eligible
         )
+
+    @staticmethod
+    def _tool11_native_context(
+        path_index: Mapping[str, Any],
+        filters: Mapping[str, Any],
+        source_context: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        target = filters.get("contains_asn")
+        return {
+            "receipt_kind": "exact_route_state_query",
+            "filter_mode": (
+                "pre_materialized_native_index"
+                if target is not None
+                else "verified_single_population_predicate_scan"
+            ),
+            "native_filter_applied": target is not None,
+            "exact_state_point_utc": filters["state_point_utc"],
+            "target_contains_asn": target,
+            "path_asn_membership_profile_id": path_index.get("profile_id"),
+            "path_asn_membership_profile_digest": path_index.get("profile_digest"),
+            "path_asn_membership_index_id": path_index.get("index_id"),
+            "path_asn_membership_index_digest": source_context["source_index_digest"],
+            "path_asn_membership_materialization_receipt_digest": source_context[
+                "source_materialization_receipt_digest"
+            ],
+            "eligible_row_predicate": (
+                "visibility=visible AND common_path_status IN (ordered,unordered)"
+            ),
+            "state_time_semantics": "after_all_legal_events_through_exact_state_point",
+            "query_time_path_parsing": False,
+            "query_time_route_event_replay": False,
+            "nearest_state_fill": False,
+        }
 
     @staticmethod
     def _native_context(
@@ -794,6 +942,90 @@ class CountryOutageP2S1Tools:
                 raise ToolQueryError("evidence_unclosed", "TOOL-12 path origin-tail or anchor-before invariant drifted")
 
     @staticmethod
+    def _assert_tool11_source_rows(
+        rows: Sequence[Mapping[str, Any]], identity: Mapping[str, Any]
+    ) -> None:
+        """复验时点和路径身份元数据；不解析路径、不选择结果成员。"""
+
+        data_through = _utc(identity["data_through_utc"], "identity.data_through_utc")
+        for row in rows:
+            try:
+                state_point = _utc(row.get("state_point_utc"), "route_state.state_point_utc")
+                last_update = _utc(row.get("last_update_utc"), "route_state.last_update_utc")
+            except ToolQueryError as exc:
+                raise ToolQueryError("evidence_unclosed", "TOOL-11 RouteState time identity drifted") from exc
+            if state_point > data_through or last_update > state_point:
+                raise ToolQueryError("evidence_unclosed", "TOOL-11 future RouteState evidence detected")
+            path_status = row.get("path_status")
+            common_status = row.get("common_path_status")
+            if path_status == "known":
+                if (
+                    row.get("visibility") != "visible"
+                    or common_status not in ("ordered", "unordered")
+                    or row.get("path_canonicalization_profile_id")
+                    != "AS-PATH-CANONICALIZATION-1.0.0"
+                    or row.get("path_canonicalization_profile_digest")
+                    != "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+                    or not isinstance(row.get("path_id"), str)
+                    or not isinstance(row.get("path_digest"), str)
+                ):
+                    raise ToolQueryError("evidence_unclosed", "TOOL-11 known path identity drifted")
+            elif path_status in ("unknown", "ambiguous", "not_applicable"):
+                if row.get("path_id") is not None or row.get("path_digest") is not None:
+                    raise ToolQueryError("evidence_unclosed", "TOOL-11 non-known path carried an active path identity")
+            else:
+                raise ToolQueryError("evidence_unclosed", "TOOL-11 path status is outside the frozen contract")
+
+    @staticmethod
+    def _assert_tool11_returned_members(
+        rows: Sequence[Mapping[str, Any]], target_asn: int
+    ) -> None:
+        """复验原生索引返回成员；只验证包含关系，不据此选择人口。"""
+
+        for row in rows:
+            if (
+                row.get("visibility") != "visible"
+                or row.get("common_path_status") not in ("ordered", "unordered")
+                or row.get("path_status") != "known"
+            ):
+                raise ToolQueryError(
+                    "evidence_unclosed",
+                    "TOOL-11 contains_asn index returned an ineligible RouteState row",
+                )
+            segments = row.get("path_segments")
+            if not isinstance(segments, list) or not segments:
+                raise ToolQueryError(
+                    "evidence_unclosed",
+                    "TOOL-11 contains_asn row has no typed path segments",
+                )
+            typed_asns: list[int] = []
+            for segment in segments:
+                if not isinstance(segment, Mapping) or segment.get("segment_type") not in (
+                    "as_sequence",
+                    "as_set",
+                    "confederation_sequence",
+                    "confederation_set",
+                ):
+                    raise ToolQueryError(
+                        "evidence_unclosed",
+                        "TOOL-11 contains_asn row has an invalid typed path segment",
+                    )
+                asns = segment.get("asns")
+                if not isinstance(asns, list) or not asns or any(
+                    isinstance(asn, bool) or not isinstance(asn, int) for asn in asns
+                ):
+                    raise ToolQueryError(
+                        "evidence_unclosed",
+                        "TOOL-11 contains_asn row has invalid typed ASN members",
+                    )
+                typed_asns.extend(asns)
+            if target_asn not in typed_asns:
+                raise ToolQueryError(
+                    "evidence_unclosed",
+                    "TOOL-11 contains_asn index returned a row without the target ASN",
+                )
+
+    @staticmethod
     def _assert_runtime_snapshot(
         rows: Sequence[Mapping[str, Any]],
         index: Mapping[str, Any],
@@ -833,6 +1065,8 @@ class CountryOutageP2S1Tools:
                 return False
             elif name == "known_origin_asn" and row["known_origin_asn"] != value:
                 return False
+            elif name == "origin_asn" and value not in row["origin_asns"]:
+                return False
             elif name == "prefix" and row["prefix"] != value:
                 return False
             elif name == "afi" and row["afi"] != ("ipv4" if value == 4 else "ipv6"):
@@ -849,9 +1083,15 @@ class CountryOutageP2S1Tools:
                 return False
             elif name == "path_id" and row["path_id"] != value:
                 return False
-            elif name == "peer_asn_direction_id" and value not in row["peer_asn_direction_ids"]:
-                return False
+            elif name == "peer_asn_direction_id":
+                if spec.tool_id == "TOOL-11":
+                    if row["peer_asn_direction_id"] != value:
+                        return False
+                elif value not in row["peer_asn_direction_ids"]:
+                    return False
             elif name == "ordered_sequence_eligible" and row["ordered_sequence_eligible"] is not value:
+                return False
+            elif name in ("route_observation_key", "vp_id", "peer_id", "visibility") and row[name] != value:
                 return False
         return True
 
@@ -860,6 +1100,35 @@ class CountryOutageP2S1Tools:
         member = {field: copy.deepcopy(row[field]) for field in spec.output_fields}
         if "afi" in member:
             member["afi"] = 4 if row["afi"] == "ipv4" else 6
+        if spec.tool_id == "TOOL-11":
+            # W0 retains source-native existence states (known/unknown/ambiguous),
+            # while TOOL-11 publishes the frozen typed output projection.  This
+            # is a field normalization over the same row, not a second read or
+            # a path/business inference.
+            if row["origin_status"] == "known":
+                member["origin_status"] = (
+                    "known_single" if len(row["origin_asns"]) == 1 else "known_moas"
+                )
+            elif row["origin_status"] not in ("unknown", "not_applicable"):
+                raise ToolQueryError(
+                    "evidence_unclosed",
+                    "TOOL-11 source origin status has no frozen public projection",
+                )
+            if row["path_status"] == "known":
+                if row["common_path_status"] == "ordered":
+                    member["path_status"] = "known_ordered"
+                elif row["common_path_status"] == "unordered":
+                    member["path_status"] = "known_unordered"
+                else:
+                    raise ToolQueryError(
+                        "evidence_unclosed",
+                        "TOOL-11 known source path lacks a publishable ordered status",
+                    )
+            elif row["path_status"] not in ("unknown", "not_applicable"):
+                raise ToolQueryError(
+                    "evidence_unclosed",
+                    "TOOL-11 source path status has no frozen public projection",
+                )
         member["evidence_ref"] = {
             "evidence_id": f"source-member:{row['member_key']}",
             "source_digest": row["row_digest"],
@@ -871,6 +1140,7 @@ class CountryOutageP2S1Tools:
         self,
         *,
         spec: _ToolSpec,
+        tool_run_id: str | None = None,
         identity: Mapping[str, Any],
         identity_digest: str,
         normalized_query: Mapping[str, Any],
@@ -897,7 +1167,11 @@ class CountryOutageP2S1Tools:
             "complete_claim_label": (
                 "complete_within_window_path_association_population"
                 if spec.tool_id == "TOOL-12"
-                else "complete_within_verified_atomic_source_population"
+                else (
+                    "complete_within_exact_route_state_population"
+                    if spec.tool_id == "TOOL-11"
+                    else "complete_within_verified_atomic_source_population"
+                )
             ),
             "normalized_query": copy.deepcopy(dict(normalized_query)),
             "query_digest": query_digest,
@@ -915,6 +1189,12 @@ class CountryOutageP2S1Tools:
             "disposition": disposition,
             **copy.deepcopy(dict(native_context)),
         }
+        if tool_run_id is not None:
+            receipt["tool_run_id"] = tool_run_id
+        if spec.tool_id == "TOOL-11":
+            receipt["state_point_utc"] = normalized_query["filters"]["state_point_utc"]
+            receipt["contains_asn"] = normalized_query["filters"].get("contains_asn")
+            receipt["total_count"] = matched_total_count
         receipt["receipt_digest"] = digest_json(receipt)
         receipt["receipt_auth_tag"] = hmac.new(
             self._query_receipt_key, receipt["receipt_digest"].encode("ascii"), hashlib.sha256
@@ -1020,6 +1300,14 @@ class CountryOutageP2S1Tools:
                     "complete_only_within_window_path_association_population",
                     "window_level_association_not_path_at_time",
                     "observed_downstream_is_not_customer_cone_or_business_relationship",
+                ]
+            )
+        elif spec.tool_id == "TOOL-11":
+            common.extend(
+                [
+                    "exact_rrc25_state_point_only_without_nearest_state_fill",
+                    "active_path_requires_visible_and_ordered_or_unordered_common_path_status",
+                    "path_at_time_is_collector_observation_not_global_reachability_or_traffic",
                 ]
             )
         return common

@@ -19,6 +19,8 @@ import {
   P2S1_FROZEN_DESIGN_CANDIDATE_ID,
   P2S1_W1_ACTIVATION_UNIT_IDS,
   P2S1_W2_ACTIVATION_UNIT_IDS,
+  P2S1_W3_ACTIVATION_UNIT_IDS,
+  P2S1_W4_ACTIVATION_UNIT_IDS,
   P2S1_V1_OPERATOR_IDS,
   P2S1_V1_TOOL_IDS,
   P2S1_W0_PROPOSAL_UNIT_IDS,
@@ -213,7 +215,10 @@ function implementationDigest(unitId: string): string {
 }
 
 function waveIds(waveId: P2S1RegistryWaveId): readonly string[] {
-  return waveId === 'W1' ? P2S1_W1_ACTIVATION_UNIT_IDS : P2S1_W2_ACTIVATION_UNIT_IDS
+  if (waveId === 'W1') return P2S1_W1_ACTIVATION_UNIT_IDS
+  if (waveId === 'W2') return P2S1_W2_ACTIVATION_UNIT_IDS
+  if (waveId === 'W3') return P2S1_W3_ACTIVATION_UNIT_IDS
+  return P2S1_W4_ACTIVATION_UNIT_IDS
 }
 
 function waveManifest(waveId: P2S1RegistryWaveId): P2S1RegistryWaveHandlerManifest {
@@ -255,11 +260,15 @@ function waveManifest(waveId: P2S1RegistryWaveId): P2S1RegistryWaveHandlerManife
 
 const w1Manifest = waveManifest('W1')
 const w2Manifest = waveManifest('W2')
+const w3Manifest = waveManifest('W3')
+const w4Manifest = waveManifest('W4')
 
 function activationContext() {
   const allHandlers = [
     ...w1Manifest.manifest_payload.handlers,
     ...w2Manifest.manifest_payload.handlers,
+    ...w3Manifest.manifest_payload.handlers,
+    ...w4Manifest.manifest_payload.handlers,
   ]
   return {
     candidate_id: candidateId,
@@ -289,10 +298,14 @@ function waveSnapshot(
   waveId: P2S1RegistryWaveId,
   previous: P2S1RegistryProposalSnapshot | P2S1RegistryWaveSnapshot,
   proposalSnapshot: P2S1RegistryProposalSnapshot,
-  manifest = waveId === 'W1' ? w1Manifest : w2Manifest,
+  manifest = waveId === 'W1'
+    ? w1Manifest
+    : waveId === 'W2'
+      ? w2Manifest
+      : waveId === 'W3' ? w3Manifest : w4Manifest,
 ): P2S1RegistryWaveSnapshot {
   return createP2S1RegistryWaveSnapshot(
-    waveId === 'W1' ? '2026-08-13T02:00:00Z' : '2026-08-13T03:00:00Z',
+    `2026-08-13T0${Number(waveId.slice(1)) + 1}:00:00Z`,
     {
       candidate_id: candidateId,
       design_candidate_digest: designDigest,
@@ -307,9 +320,12 @@ function waveSnapshot(
       previous_snapshot_ref: refOf(previous),
       handler_manifest: manifest,
       admitted_wave_binding_unit_ids: [...waveIds(waveId)],
-      admitted_binding_unit_ids: waveId === 'W1'
-        ? [...P2S1_W1_ACTIVATION_UNIT_IDS]
-        : [...P2S1_W1_ACTIVATION_UNIT_IDS, ...P2S1_W2_ACTIVATION_UNIT_IDS],
+      admitted_binding_unit_ids: [
+        ...P2S1_W1_ACTIVATION_UNIT_IDS,
+        ...(waveId === 'W1' ? [] : P2S1_W2_ACTIVATION_UNIT_IDS),
+        ...(waveId === 'W3' || waveId === 'W4' ? P2S1_W3_ACTIVATION_UNIT_IDS : []),
+        ...(waveId === 'W4' ? P2S1_W4_ACTIVATION_UNIT_IDS : []),
+      ],
     },
   )
 }
@@ -558,7 +574,7 @@ test('TOOL-07..12、OP-05..39 的 W0 执行次数为 0，P2.1 始终拒绝', () 
   assert.equal(executionCount, 0)
 })
 
-test('W1/W2 Registry 以完整波次、同候选实现与测试证据顺序原子准入 binding，执行授权为空', () => {
+test('W1→W2→W3→W4 Registry 以完整波次、同候选实现与测试证据顺序原子准入 binding，执行授权始终为空', () => {
   const proposalSnapshot = proposal()
   const admitter = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
   assert.deepEqual(admitter.currentSnapshotRef(), refOf(proposalSnapshot))
@@ -600,6 +616,37 @@ test('W1/W2 Registry 以完整波次、同候选实现与测试证据顺序原�
   assert.equal(admitter.resolveAdmittedBinding('OP-05', w2).handler_id, p2S1ExpectedHandlerId('OP-05'))
   assert.equal(admitter.resolveAdmittedBinding('OP-28', w2).handler_id, p2S1ExpectedHandlerId('OP-28'))
   assert.equal(admitter.currentSnapshotRef().registry_revision, 5)
+
+  const w3 = waveSnapshot('W3', w2, proposalSnapshot)
+  const w3Admission = admitter.admitBindings(w3)
+  assert.equal(w3Admission.wave_id, 'W3')
+  assert.equal(w3Admission.registry_revision, 6)
+  assert.deepEqual(w3Admission.admitted_wave_binding_unit_ids, [...P2S1_W3_ACTIVATION_UNIT_IDS])
+  assert.deepEqual(w3Admission.execution_allowed_unit_ids, [])
+  assert.equal(admitter.resolveAdmittedBinding('OP-38', w3).handler_id, p2S1ExpectedHandlerId('OP-38'))
+  assert.equal(admitter.resolveAdmittedBinding('OP-39', w3).handler_id, p2S1ExpectedHandlerId('OP-39'))
+
+  const w4 = waveSnapshot('W4', w3, proposalSnapshot)
+  const w4Admission = admitter.admitBindings(w4)
+  assert.equal(w4Admission.wave_id, 'W4')
+  assert.equal(w4Admission.registry_revision, 7)
+  assert.deepEqual(w4Admission.admitted_wave_binding_unit_ids, [...P2S1_W4_ACTIVATION_UNIT_IDS])
+  assert.deepEqual(w4Admission.admitted_binding_unit_ids, [
+    ...P2S1_W1_ACTIVATION_UNIT_IDS,
+    ...P2S1_W2_ACTIVATION_UNIT_IDS,
+    ...P2S1_W3_ACTIVATION_UNIT_IDS,
+    ...P2S1_W4_ACTIVATION_UNIT_IDS,
+  ])
+  assert.deepEqual(w4Admission.execution_allowed_unit_ids, [])
+  assert.equal(admitter.resolveAdmittedBinding('TOOL-11', w4).handler_id, p2S1ExpectedHandlerId('TOOL-11'))
+  assert.equal(admitter.resolveAdmittedBinding('OP-37', w4).handler_id, p2S1ExpectedHandlerId('OP-37'))
+  assert.equal(admitter.currentSnapshotRef().registry_revision, 7)
+
+  expectRegistryError('registry_dispatch_not_bound', () => {
+    admitter.assertExecutionAuthorized('TOOL-11', w4)
+    executionCount += 1
+  })
+  assert.equal(executionCount, 0)
 })
 
 test('W1 binding 准入拒绝 digest、候选、revision、合同、实现、handler 与测试证据攻击，失败不改变 CAS', () => {
@@ -738,6 +785,58 @@ test('Registry binding 准入拒绝半波、依赖、重复、跨波、过期 CA
     unauthorizedExecutionCount += 1
   })
   assert.equal(unauthorizedExecutionCount, 0)
+})
+
+test('W3/W4 binding CAS 拒绝半波、跨波、stale、W4 前跳、W3 后重复与 P2.1，执行 spy 为 0', () => {
+  const proposalSnapshot = proposal()
+
+  const preJump = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
+  expectRegistryError('registry_wave_sequence_invalid', () =>
+    preJump.admitBindings(waveSnapshot('W4', proposalSnapshot, proposalSnapshot)))
+
+  const admitter = new P2S1RegistryWaveBindingAdmitter(activationContext(), proposalSnapshot)
+  const w1 = waveSnapshot('W1', proposalSnapshot, proposalSnapshot)
+  admitter.admitBindings(w1)
+  const w2 = waveSnapshot('W2', w1, proposalSnapshot)
+  admitter.admitBindings(w2)
+
+  const partialW3Manifest = structuredClone(w3Manifest)
+  partialW3Manifest.manifest_payload.handlers.pop()
+  expectRegistryError('registry_partial_wave_forbidden', () => admitter.admitBindings(
+    waveSnapshot('W3', w2, proposalSnapshot, resealManifest(partialW3Manifest)),
+  ))
+  assert.equal(admitter.currentSnapshotRef().registry_revision, 5)
+
+  const crossW3Manifest = structuredClone(w3Manifest)
+  crossW3Manifest.manifest_payload.handlers[0] = structuredClone(w4Manifest.manifest_payload.handlers[0]!)
+  crossW3Manifest.manifest_payload.handlers[0]!.test_evidence.wave_id = 'W3'
+  resealTestEvidence(crossW3Manifest.manifest_payload.handlers[0]!.test_evidence as unknown as Record<string, unknown>)
+  expectRegistryError('registry_partial_wave_forbidden', () => admitter.admitBindings(
+    waveSnapshot('W3', w2, proposalSnapshot, resealManifest(crossW3Manifest)),
+  ))
+
+  const staleW3 = waveSnapshot('W3', w1, proposalSnapshot)
+  expectRegistryError('registry_cas_mismatch', () => admitter.admitBindings(staleW3))
+
+  const w3 = waveSnapshot('W3', w2, proposalSnapshot)
+  admitter.admitBindings(w3)
+  expectRegistryError('registry_wave_sequence_invalid', () => admitter.admitBindings(w3))
+
+  const staleW4 = waveSnapshot('W4', w2, proposalSnapshot)
+  expectRegistryError('registry_cas_mismatch', () => admitter.admitBindings(staleW4))
+  const w4 = waveSnapshot('W4', w3, proposalSnapshot)
+  admitter.admitBindings(w4)
+  expectRegistryError('registry_wave_sequence_invalid', () => admitter.admitBindings(w4))
+
+  expectRegistryError('p2_1_deferred_forbidden', () => admitter.resolveAdmittedBinding('OP-34', w4))
+  let executionCount = 0
+  for (const unitId of [...P2S1_W3_ACTIVATION_UNIT_IDS, ...P2S1_W4_ACTIVATION_UNIT_IDS, 'OP-34']) {
+    expectRegistryError('registry_dispatch_not_bound', () => {
+      admitter.assertExecutionAuthorized(unitId, w4)
+      executionCount += 1
+    })
+  }
+  assert.equal(executionCount, 0)
 })
 
 test('回执摘要和 proposal 摘要使用同一 deterministic canonical JSON', () => {

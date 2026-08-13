@@ -9,6 +9,8 @@ import {
   P2S1_W0_PROPOSAL_UNIT_IDS,
   P2S1_W1_ACTIVATION_UNIT_IDS,
   P2S1_W2_ACTIVATION_UNIT_IDS,
+  P2S1_W3_ACTIVATION_UNIT_IDS,
+  P2S1_W4_ACTIVATION_UNIT_IDS,
   P2S1RegistryProposalResolver,
   P2S1RegistryRuntimeError,
   P2S1RegistryWaveBindingAdmitter,
@@ -168,8 +170,13 @@ function fileDigest(path: string): string {
 }
 
 function waveIds(waveId: P2S1RegistryWaveId): readonly string[] {
-  return waveId === 'W1' ? P2S1_W1_ACTIVATION_UNIT_IDS : P2S1_W2_ACTIVATION_UNIT_IDS
+  if (waveId === 'W1') return P2S1_W1_ACTIVATION_UNIT_IDS
+  if (waveId === 'W2') return P2S1_W2_ACTIVATION_UNIT_IDS
+  if (waveId === 'W3') return P2S1_W3_ACTIVATION_UNIT_IDS
+  return P2S1_W4_ACTIVATION_UNIT_IDS
 }
+
+const waveSequence = ['W1', 'W2', 'W3', 'W4'] as const
 
 function snapshotRef(snapshot: P2S1RegistryProposalSnapshot | P2S1RegistryWaveSnapshot) {
   return {
@@ -187,6 +194,8 @@ function main(): void {
   const runnerByWave = {
     W1: ['positive', 'boundary', 'attack'].map((category) => readRunReceipt(repoRoot, 'W1', category)),
     W2: ['positive', 'boundary', 'attack'].map((category) => readRunReceipt(repoRoot, 'W2', category)),
+    W3: ['positive', 'boundary', 'attack'].map((category) => readRunReceipt(repoRoot, 'W3', category)),
+    W4: ['positive', 'boundary', 'attack'].map((category) => readRunReceipt(repoRoot, 'W4', category)),
   } as const
   const proposal = createP2S1RegistryProposal('2026-08-13T01:00:00Z', proposalPayload())
   const resolver = new P2S1RegistryProposalResolver({
@@ -199,7 +208,7 @@ function main(): void {
   const proposalAdmission = resolver.admit(proposal)
   const proposalById = new Map(proposalUnits().map((unit) => [unit.unit_id, unit]))
 
-  const manifests = Object.fromEntries((['W1', 'W2'] as const).map((waveId) => {
+  const manifests = Object.fromEntries(waveSequence.map((waveId) => {
     const manifest = createP2S1RegistryWaveHandlerManifest({
       candidate_id: candidateId,
       design_candidate_digest: designDigest,
@@ -247,7 +256,7 @@ function main(): void {
     return [waveId, manifest]
   })) as Record<P2S1RegistryWaveId, P2S1RegistryWaveHandlerManifest>
 
-  const allHandlers = [...manifests.W1.manifest_payload.handlers, ...manifests.W2.manifest_payload.handlers]
+  const allHandlers = waveSequence.flatMap((waveId) => manifests[waveId].manifest_payload.handlers)
   const admitter = new P2S1RegistryWaveBindingAdmitter({
     candidate_id: candidateId,
     design_candidate_digest: designDigest,
@@ -260,9 +269,9 @@ function main(): void {
   }, proposal)
 
   let previous: P2S1RegistryProposalSnapshot | P2S1RegistryWaveSnapshot = proposal
-  for (const [index, waveId] of (['W1', 'W2'] as const).entries()) {
+  for (const [index, waveId] of waveSequence.entries()) {
     const snapshot = createP2S1RegistryWaveSnapshot(
-      waveId === 'W1' ? '2026-08-13T02:00:00Z' : '2026-08-13T03:00:00Z',
+      `2026-08-13T0${index + 2}:00:00Z`,
       {
         candidate_id: candidateId,
         design_candidate_digest: designDigest,
@@ -277,9 +286,9 @@ function main(): void {
         previous_snapshot_ref: snapshotRef(previous),
         handler_manifest: manifests[waveId],
         admitted_wave_binding_unit_ids: [...waveIds(waveId)],
-        admitted_binding_unit_ids: waveId === 'W1'
-          ? [...P2S1_W1_ACTIVATION_UNIT_IDS]
-          : [...P2S1_W1_ACTIVATION_UNIT_IDS, ...P2S1_W2_ACTIVATION_UNIT_IDS],
+        admitted_binding_unit_ids: waveSequence
+          .slice(0, index + 1)
+          .flatMap((currentWaveId) => [...waveIds(currentWaveId)]),
       },
     )
     const admission = admitter.admitBindings(snapshot)
@@ -292,7 +301,7 @@ function main(): void {
     }
     const bundleWithoutDigest = {
       schema_version: 'country_outage_p2_s1_registry_runtime_evidence_bundle_v1',
-      generator_id: 'generate-p2-s1-w1-w2-registry-evidence',
+      generator_id: 'generate-p2-s1-w1-w4-registry-evidence',
       generator_source_sha256: createHash('sha256').update(readFileSync(
         join(repoRoot, 'contracts/agent/country-outage-p2-s1-implementation/tools/generate_registry_evidence.ts'),
       )).digest('hex'),

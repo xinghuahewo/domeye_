@@ -1,8 +1,8 @@
 {
-  "baseline_content_digest": "358118877e61852d7e4e343516807adb80b8725463bfba521e3cec26111fb1f5",
-  "baseline_sha256": "9dc80bec20db0c68ee044c4da9e4148a2a2ab7bd1c70c8863ae737cc6231422f",
+  "baseline_content_digest": "c39af4604f0df1dc58e47725a7ceab5197e1e06373f38ef12a66a68eae350d0a",
+  "baseline_sha256": "6214638dd21c8659ee464a82cf038849edf1c8fa5d706944c50890a171f3bd47",
   "checks": [
-    "w1_w2_task_boundary_verified",
+    "w3_w4_task_boundary_verified",
     "frozen_design_candidate_verified",
     "design_manifest_and_independent_reviews_verified",
     "s1d6_and_final_receipts_verified",
@@ -27,23 +27,23 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "b0fca844aeadd2a2b403b49bd88349774613f54048cd97e12bb7883e3cb02fd4",
-  "hook_tests_sha256": "994ca74e76296bd2d3a3cc5db3573eaf28b254036f9128a56e4f6e29997245a0",
-  "implementation_candidate_id": "country-outage-p2-s1-w2-07a3d651caef1dccc1f108c5",
+  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
+  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
+  "implementation_candidate_id": "country-outage-p2-s1-w2-d4a9fcdced90ec258889ac8b",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "cbab6787eeec1071c1c982063085f6fadb16e85e584c76289a43b31aecd4108c"
+    "618cd5fc80a38db32c88e96cfe273620b8e1ecffa3aecaa01afdc71d6084e98b"
   ],
   "production_deployed": false,
-  "receipt_digest": "b4672f844e559d3bdf44d713fd02f674ec431f4caacb77c3afa85886c27298a1",
+  "receipt_digest": "f2481e9b45e2a2a5964b48afae025aaea12e9a3aacbe6e55a0beb2f20a84d3de",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W2",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "23421cfbca8458ab2a273502cf71772e1db5c4a5ee6753d5bc4a271c2ddbab96",
-  "wave_evidence_sha256": "ba76ad7f5a22d029d61b29af9f496e0d4898008e7d85bafb2337c8d450b30735"
+  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
+  "wave_evidence_sha256": "2e11ed466735afe11a678347684b2412e52b348525fd6b368aadf75b92337469"
 }

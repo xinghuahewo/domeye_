@@ -2,33 +2,33 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "2896a68da135c4f2083fd906cfc43ea263cb36c4a180b41ba1084ac8a36f8a3e",
-      "size_bytes": 18740
+      "sha256": "2a88b6d668f38d607136d7d856d7b2942dcd758593abfc5e15659578712796eb",
+      "size_bytes": 23872
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
-      "sha256": "734758564289323603b45b844bb124737c2dddd3af362a495a97dc7a4e8d2a08",
-      "size_bytes": 22777
+      "sha256": "96caead22556a91c2c0bb1c360d84488a70ef9d5e106836e58461b4180df3a05",
+      "size_bytes": 33771
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
-      "sha256": "ca7d80f2c5c79a93160e1d4223a38f8022b027f0da4e8b5114c1dc171170a11f",
-      "size_bytes": 56079
+      "sha256": "4dd544c8e654328189f9641d646bf357da868518d439b44b11062c1e4c77b2b0",
+      "size_bytes": 78269
     },
     {
       "path": "backend/services/country_outage_p2_s1_tools.py",
-      "sha256": "8630699c2e127fff09dfca3bc30c16bb7a4f6d794e72ce32051a37e3fa24aee4",
-      "size_bytes": 47838
+      "sha256": "52669b19d118bb939b901313daa0a98500075f839a2d059cbb9bced3c941a36f",
+      "size_bytes": 61327
     },
     {
       "path": "backend/services/country_outage_p2_s1_operators.py",
-      "sha256": "a3d5d078733b66a3abfdfe32ec2630e6a3d850b655b4bbb4181580f0d60a80a4",
-      "size_bytes": 103269
+      "sha256": "7a937829a075256978d31a98e3b69f622c16552565d0a5c20e7c47bb171625b0",
+      "size_bytes": 146244
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json",
-      "sha256": "ba9e0b3e84cb8ecd5c3ec465f9ac7a882a323ebd0b68271429554d7a6ad76d53",
-      "size_bytes": 25092
+      "sha256": "bd2742a16468f71b551422bcd1d9b10a878b1f6c3a5387b799aca3d2d6f6c9a5",
+      "size_bytes": 33246
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json",
@@ -56,14 +56,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests.test_peak_ratio_and_exact_ratio_rank",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests.test_threshold_crossing_left_censored_gap_and_rank"
   ],
-  "completed_at_utc": "2026-08-13T04:56:35Z",
+  "completed_at_utc": "2026-08-13T05:39:49Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_tool07_reads_only_fixed_cohort_population_and_filters_materialized_fields (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool08_exact_state_and_half_open_range_are_atomic_row_predicates (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool09_and_tool10_keep_distinct_fact_populations (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_actual_request_result_and_failure_envelopes_validate_draft202012_schema (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_op05_three_keys_competition_rank_and_position (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_state_first_last_cutoff_intervals_and_censoring (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_peak_ratio_and_exact_ratio_rank (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_threshold_crossing_left_censored_gap_and_rank (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\n\n----------------------------------------------------------------------\nRan 8 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "81b52750dd22a80557a80f69ab59e91de44efa8662a29490c05a0c8d13612ea4",
   "passed": true,
-  "receipt_digest": "126a8e7edaae95f5abf0aea4250d1ccb210f06fa3826e458da04f488a80f6d73",
+  "receipt_digest": "dd347405f9dcac5f6929a8fb34f675fac9d6d3e42fa3d7ae68804b183303d78d",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -79,7 +79,7 @@
   ],
   "skipped_count": 0,
   "stage": "W1",
-  "started_at_utc": "2026-08-13T04:56:30Z",
+  "started_at_utc": "2026-08-13T05:39:47Z",
   "suite_id": "w1-positive",
   "test_case_coverage": [
     {

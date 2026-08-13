@@ -47,7 +47,7 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
             ],
             *[
                 HOOK.W1_W2_REGISTRY_EVIDENCE_ROOT / f"{stage}.json"
-                for stage in ("W1", "W2")
+                for stage in HOOK.REGISTRY_WAVE_SEQUENCE
             ],
         ]:
             source = ROOT / relative
@@ -288,9 +288,13 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
         }
 
     def create_w1_w2_fixture(self, stage: str) -> dict:
-        self.assertIn(stage, {"W1", "W2"})
-        if stage == "W2":
-            self.create_w1_w2_fixture("W1")
+        self.assertIn(stage, set(HOOK.REGISTRY_WAVE_SEQUENCE))
+        wave_index = HOOK.REGISTRY_WAVE_SEQUENCE.index(stage)
+        if wave_index > 0:
+            previous_stage = HOOK.REGISTRY_WAVE_SEQUENCE[wave_index - 1]
+            self.create_w1_w2_fixture(previous_stage)
+            previous_receipt = HOOK.run_alignment(self.root, previous_stage)
+            self.write(HOOK.WAVE_RECEIPT_ROOT / f"{previous_stage}.json", previous_receipt)
         for receipt_path in (HOOK.P0_RECEIPT_PATH, HOOK.WAVE_RECEIPT_ROOT / "W0.json"):
             target = self.root / receipt_path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -298,7 +302,7 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
         w0_evidence_target = self.root / HOOK.WAVE_EVIDENCE_ROOT / "W0.json"
         w0_evidence_target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / HOOK.WAVE_EVIDENCE_ROOT / "W0.json", w0_evidence_target)
-        for relative, role in HOOK.W1_W2_SHARED_ARTIFACT_ROLES.items():
+        for relative, role in HOOK.atomic_wave_artifact_roles(stage).items():
             source = ROOT / relative
             target = self.root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -308,7 +312,7 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
                 target.write_text(f"# fixture {role}\n", encoding="utf-8")
         artifacts = [
             self.artifact_ref(relative, role)
-            for relative, role in HOOK.W1_W2_SHARED_ARTIFACT_ROLES.items()
+            for relative, role in HOOK.atomic_wave_artifact_roles(stage).items()
         ]
         structural = self.artifact_ref(
             HOOK.STRUCTURAL_BINDING_PATH, "structural_binding_contract"
@@ -400,24 +404,20 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
         binding["binding_manifest_id"] = (
             f"p2-s1-dispatch-binding-manifest-sha256:{binding['binding_manifest_digest']}"
         )
-        admitted_binding_units = (
-            list(wave_units)
-            if stage == "W1"
-            else [
-                *HOOK.WAVE_CONTRACT["W1"]["unit_ids"],
-                *HOOK.WAVE_CONTRACT["W2"]["unit_ids"],
-            ]
-        )
+        admitted_binding_units = HOOK.cumulative_registry_units(stage)
         previous_snapshot = (
             None
             if stage == "W1"
-            else self.load(HOOK.WAVE_EVIDENCE_ROOT / "W1.json")["registry_binding_projection"]["snapshot"]
+            else self.load(
+                HOOK.WAVE_EVIDENCE_ROOT
+                / f"{HOOK.REGISTRY_WAVE_SEQUENCE[wave_index - 1]}.json"
+            )["registry_binding_projection"]["snapshot"]
         )
         snapshot = {
             "schema_version": "country_outage_p2_s1_registry_wave_snapshot_v1",
             "snapshot_id": None,
             "snapshot_digest": None,
-            "registry_revision": 4 if stage == "W1" else 5,
+            "registry_revision": 4 + wave_index,
             "wave_id": stage,
             "proposal_snapshot_id": f"p2-s1-registry-proposal-sha256:{'d' * 64}",
             "proposal_snapshot_digest": "d" * 64,
@@ -565,7 +565,12 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
             },
             "prior_stage_receipt_digests": {
                 "S1I-P0": p0["receipt_digest"],
-                "W0": w0["receipt_digest"],
+                **{
+                    dependency: self.load(
+                        HOOK.WAVE_RECEIPT_ROOT / f"{dependency}.json"
+                    )["receipt_digest"]
+                    for dependency in HOOK.stage_prior_dependencies(stage)
+                },
             },
         }
         evidence["implementation_semantic_digest"] = HOOK.object_digest(
@@ -858,6 +863,95 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
         self.assertEqual(receipt["status"], "alignment_passed")
         self.assertIn("w2_w0_source_lineage_verified", receipt["checks"])
         self.assertIn("w2_positive_boundary_attack_tests_verified", receipt["checks"])
+
+    def test_w3_positive_closes_interval_intersection_and_prefix_projection_wave(self) -> None:
+        self.create_w1_w2_fixture("W3")
+        receipt = HOOK.run_alignment(self.root, "W3")
+        self.assertEqual(receipt["status"], "alignment_passed")
+        self.assertIn("w3_atomic_unit_receipts_verified", receipt["checks"])
+        self.assertIn("w3_registry_complete_wave_binding_admission_verified", receipt["checks"])
+        self.assertIn("w3_positive_boundary_attack_tests_verified", receipt["checks"])
+        self.assertIn("w3_trusted_dispatcher_deferred_to_w5_verified", receipt["checks"])
+        self.assertFalse(receipt["runtime_implemented"])
+        self.assertFalse(receipt["production_deployed"])
+
+    def test_w4_positive_closes_exact_time_route_state_and_consistency_wave(self) -> None:
+        self.create_w1_w2_fixture("W4")
+        receipt = HOOK.run_alignment(self.root, "W4")
+        self.assertEqual(receipt["status"], "alignment_passed")
+        self.assertIn("w4_atomic_unit_receipts_verified", receipt["checks"])
+        self.assertIn("w4_registry_complete_wave_binding_admission_verified", receipt["checks"])
+        self.assertIn("w4_positive_boundary_attack_tests_verified", receipt["checks"])
+        self.assertIn("w4_trusted_dispatcher_deferred_to_w5_verified", receipt["checks"])
+        self.assertFalse(receipt["runtime_implemented"])
+        self.assertFalse(receipt["production_deployed"])
+
+    def test_w3_rejects_hidden_second_transform_after_full_resign(self) -> None:
+        evidence = self.create_w1_w2_fixture("W3")
+        operator = next(
+            item for item in evidence["atomic_unit_receipts"]
+            if item["unit_id"] == "OP-38"
+        )
+        operator["business_transform_count"] = 2
+        operator["registered_atomic_operation_count"] = 2
+        operator["receipt_digest"] = HOOK.object_digest(operator, {"receipt_digest"})
+        self.resign_w1_w2_evidence("W3", evidence)
+        self.assert_alignment_error(
+            "w1_w2_hidden_second_transform",
+            lambda: HOOK.run_alignment(self.root, "W3"),
+        )
+
+    def test_w4_rejects_hidden_second_population_read_after_full_resign(self) -> None:
+        evidence = self.create_w1_w2_fixture("W4")
+        tool = next(
+            item for item in evidence["atomic_unit_receipts"]
+            if item["unit_id"] == "TOOL-11"
+        )
+        tool["fact_population_read_count"] = 2
+        tool["receipt_digest"] = HOOK.object_digest(tool, {"receipt_digest"})
+        self.resign_w1_w2_evidence("W4", evidence)
+        self.assert_alignment_error(
+            "w1_w2_hidden_second_population_read",
+            lambda: HOOK.run_alignment(self.root, "W4"),
+        )
+
+    def test_w4_rejects_skipping_w3_governance_receipt_after_full_resign(self) -> None:
+        evidence = self.create_w1_w2_fixture("W4")
+        evidence["prior_stage_receipt_digests"].pop("W3")
+        self.resign_w1_w2_evidence("W4", evidence)
+        self.assert_alignment_error(
+            "wave_prior_binding_mismatch",
+            lambda: HOOK.run_alignment(self.root, "W4"),
+        )
+
+    def test_w4_rejects_nonempty_registry_execution_allowlist(self) -> None:
+        evidence = self.create_w1_w2_fixture("W4")
+        admission = evidence["registry_binding_projection"]["admission_receipt"]
+        admission["execution_allowed_unit_ids"] = ["TOOL-11"]
+        admission["receipt_digest"] = HOOK.object_digest(admission, {"receipt_digest"})
+        self.resign_w1_w2_evidence("W4", evidence)
+        self.assert_alignment_error(
+            "w1_w2_registry_execution_authorization_overclaim",
+            lambda: HOOK.run_alignment(self.root, "W4"),
+        )
+
+    def test_w4_rejects_p2_1_unit_smuggling_after_full_resign(self) -> None:
+        evidence = self.create_w1_w2_fixture("W4")
+        evidence["p2_1_units_included"] = ["OP-34"]
+        self.resign_w1_w2_evidence("W4", evidence)
+        self.assert_alignment_error(
+            "p2_1_unit_smuggled",
+            lambda: HOOK.run_alignment(self.root, "W4"),
+        )
+
+    def test_w4_rejects_user_effect_overclaim_after_full_resign(self) -> None:
+        evidence = self.create_w1_w2_fixture("W4")
+        evidence["effect"] = "user_facing_country_outage_investigation_answer_available"
+        self.resign_w1_w2_evidence("W4", evidence)
+        self.assert_alignment_error(
+            "wave_effect_not_verified",
+            lambda: HOOK.run_alignment(self.root, "W4"),
+        )
 
     def test_w1_rejects_static_analysis_masquerading_as_execution_coverage(self) -> None:
         evidence = self.create_w1_w2_fixture("W1")

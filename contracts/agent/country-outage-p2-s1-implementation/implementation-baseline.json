@@ -35,7 +35,7 @@
     "recovery_judgment": false,
     "user_impact_judgment": false
   },
-  "content_digest": "358118877e61852d7e4e343516807adb80b8725463bfba521e3cec26111fb1f5",
+  "content_digest": "c39af4604f0df1dc58e47725a7ceab5197e1e06373f38ef12a66a68eae350d0a",
   "deferred_scope": {
     "dynamic_fan_out_question_subgoals": {
       "Q20": [
@@ -323,7 +323,7 @@
         "W1",
         "W2"
       ],
-      "effect": "state_interval_overlap_and_fixed_cohort_prefix_set_implemented",
+      "effect": "offline_state_interval_overlap_and_fixed_cohort_prefix_set_atomic_harness_and_non_callable_binding_verified",
       "stage": "W3",
       "unit_ids": [
         "OP-38",
@@ -335,7 +335,7 @@
         "W0",
         "W2"
       ],
-      "effect": "exact_time_route_state_path_and_vp_consistency_implemented",
+      "effect": "offline_exact_time_route_state_path_vp_consistency_atomic_harness_and_non_callable_binding_verified",
       "stage": "W4",
       "unit_ids": [
         "TOOL-11",

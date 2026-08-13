@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json",
-  "title": "RRC25 国家中断 P2-S1 W1/W2 原子 Tool 运行时合同",
-  "description": "冻结 TOOL-07/08/09/10/12 的实际请求、ResultSet page 与失败 envelope。该合同不授权 API、跨页冻结、导出或运行时激活。",
+  "title": "RRC25 国家中断 P2-S1 W1/W2/W4 原子 Tool 运行时合同",
+  "description": "冻结 TOOL-07/08/09/10/11/12 的实际请求、ResultSet page 与失败 envelope。该合同不授权 API、跨页冻结、导出或运行时激活。",
   "type": "object",
   "required": ["schema_version", "contract_scope"],
   "properties": {
@@ -121,6 +121,26 @@
       "not": {"required": ["state_point_utc", "time_range_half_open"]},
       "additionalProperties": false
     },
+    "tool11Request": {
+      "type": "object",
+      "required": ["identity", "state_point_utc", "page_size"],
+      "properties": {
+        "identity": {"$ref": "#/$defs/identity"},
+        "state_point_utc": {"$ref": "#/$defs/utc"},
+        "page_size": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "page_token": {"type": ["string", "null"]},
+        "prefix": {"$ref": "#/$defs/nonEmptyString"},
+        "afi": {"$ref": "#/$defs/afi"},
+        "peer_asn_direction_id": {"$ref": "#/$defs/nonEmptyString"},
+        "route_observation_key": {"$ref": "#/$defs/nonEmptyString"},
+        "vp_id": {"$ref": "#/$defs/nonEmptyString"},
+        "peer_id": {"$ref": "#/$defs/nonEmptyString"},
+        "visibility": {"enum": ["visible", "invisible", "unknown", "missing"]},
+        "origin_asn": {"$ref": "#/$defs/asn"},
+        "contains_asn": {"$ref": "#/$defs/asn"}
+      },
+      "additionalProperties": false
+    },
     "tool12Request": {
       "type": "object",
       "required": ["identity", "page_size"],
@@ -147,6 +167,7 @@
         {"$ref": "#/$defs/tool08Request"},
         {"$ref": "#/$defs/tool09Request"},
         {"$ref": "#/$defs/tool10Request"},
+        {"$ref": "#/$defs/tool11Request"},
         {"$ref": "#/$defs/tool12Request"}
       ]
     },
@@ -230,6 +251,75 @@
       },
       "additionalProperties": false
     },
+    "tool11Member": {
+      "type": "object",
+      "required": ["state_point_utc", "prefix", "afi", "peer_asn_direction_id", "route_observation_key", "vp_id", "peer_id", "visibility", "origin_status", "origin_asns", "path_status", "common_path_status", "path_id", "path_digest", "path_canonicalization_profile_id", "path_canonicalization_profile_digest", "path_segments", "last_event_id", "last_update_utc", "checkpoint_id", "projection_receipt_digest", "quality_flags", "evidence_ref"],
+      "properties": {
+        "state_point_utc": {"$ref": "#/$defs/utc"},
+        "prefix": {"$ref": "#/$defs/nonEmptyString"},
+        "afi": {"$ref": "#/$defs/afi"},
+        "peer_asn_direction_id": {"$ref": "#/$defs/nonEmptyString"},
+        "route_observation_key": {"$ref": "#/$defs/nonEmptyString"},
+        "vp_id": {"$ref": "#/$defs/nonEmptyString"},
+        "peer_id": {"$ref": "#/$defs/nonEmptyString"},
+        "visibility": {"enum": ["visible", "invisible", "unknown", "missing"]},
+        "origin_status": {"enum": ["known_single", "known_moas", "unknown", "not_applicable"]},
+        "origin_asns": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/asn"}},
+        "path_status": {"enum": ["known_ordered", "known_unordered", "unknown", "not_applicable"]},
+        "common_path_status": {"enum": ["ordered", "unordered", "ambiguous", "invalid", "unknown", "not_applicable"]},
+        "path_id": {"type": ["string", "null"]},
+        "path_digest": {"anyOf": [{"$ref": "#/$defs/hex64"}, {"type": "null"}]},
+        "path_canonicalization_profile_id": {"type": ["string", "null"]},
+        "path_canonicalization_profile_digest": {"anyOf": [{"$ref": "#/$defs/hex64"}, {"type": "null"}]},
+        "path_segments": {"type": "array", "items": {"$ref": "#/$defs/pathSegment"}},
+        "last_event_id": {"$ref": "#/$defs/nonEmptyString"},
+        "last_update_utc": {"$ref": "#/$defs/utc"},
+        "checkpoint_id": {"$ref": "#/$defs/nonEmptyString"},
+        "projection_receipt_digest": {"$ref": "#/$defs/hex64"},
+        "quality_flags": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+        "evidence_ref": {"$ref": "#/$defs/evidenceRef"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"path_status": {"enum": ["known_ordered", "known_unordered"]}}, "required": ["path_status"]},
+          "then": {
+            "properties": {
+              "path_id": {"$ref": "#/$defs/nonEmptyString"},
+              "path_digest": {"$ref": "#/$defs/hex64"},
+              "path_canonicalization_profile_id": {"$ref": "#/$defs/nonEmptyString"},
+              "path_canonicalization_profile_digest": {"$ref": "#/$defs/hex64"},
+              "path_segments": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/pathSegment"}}
+            }
+          },
+          "else": {
+            "properties": {
+              "path_id": {"type": "null"},
+              "path_digest": {"type": "null"},
+              "path_canonicalization_profile_id": {"type": "null"},
+              "path_canonicalization_profile_digest": {"type": "null"},
+              "path_segments": {"type": "array", "maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"origin_status": {"const": "known_single"}}, "required": ["origin_status"]},
+          "then": {"properties": {"origin_asns": {"minItems": 1, "maxItems": 1}}}
+        },
+        {
+          "if": {"properties": {"origin_status": {"const": "known_moas"}}, "required": ["origin_status"]},
+          "then": {"properties": {"origin_asns": {"minItems": 2}}}
+        },
+        {
+          "if": {"properties": {"path_status": {"const": "known_ordered"}}, "required": ["path_status"]},
+          "then": {"properties": {"common_path_status": {"const": "ordered"}}}
+        },
+        {
+          "if": {"properties": {"path_status": {"const": "known_unordered"}}, "required": ["path_status"]},
+          "then": {"properties": {"common_path_status": {"const": "unordered"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
     "tool12Member": {
       "type": "object",
       "required": ["path_association_id", "anchor_asn", "known_origin_asn", "origin_status", "observed_origin_asn", "prefix", "afi", "path_id", "path_digest", "path_canonicalization_profile_id", "path_canonicalization_profile_digest", "path_segments", "path_parse_status", "common_path_status", "ordered_sequence_eligible", "peer_asn_direction_ids", "route_observation_count", "evidence_ref"],
@@ -288,6 +378,11 @@
         "classification": {"$ref": "#/$defs/nonEmptyString"},
         "path_id": {"$ref": "#/$defs/nonEmptyString"},
         "peer_asn_direction_id": {"$ref": "#/$defs/nonEmptyString"},
+        "route_observation_key": {"$ref": "#/$defs/nonEmptyString"},
+        "vp_id": {"$ref": "#/$defs/nonEmptyString"},
+        "peer_id": {"$ref": "#/$defs/nonEmptyString"},
+        "visibility": {"enum": ["visible", "invisible", "unknown", "missing"]},
+        "origin_asn": {"$ref": "#/$defs/asn"},
         "ordered_sequence_eligible": {"type": "boolean"}
       },
       "additionalProperties": false
@@ -303,8 +398,9 @@
       "required": ["schema_version", "tool_id", "tool_version", "publication_id", "identity_digest", "normalized_query", "query_digest", "stable_sort_digest", "source_store_id", "source_store_content_sha256", "source_population_id", "source_dataset_digest", "source_schema_ref", "source_schema_digest", "source_index_digest", "source_materialization_receipt_digest", "source_population_binding", "path_association_index_digest", "path_association_materialization_receipt_digest", "filter_mode", "source_completeness", "complete_claim_label", "matched_member_keys_digest", "matched_total_count", "page_member_keys_digest", "page_returned_count", "page_offset", "next_offset", "disposition", "receipt_digest", "receipt_auth_tag"],
       "properties": {
         "schema_version": {"const": "country_outage_p2_s1_query_receipt_v1"},
-        "tool_id": {"enum": ["TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10", "TOOL-12"]},
+        "tool_id": {"enum": ["TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10", "TOOL-11", "TOOL-12"]},
         "tool_version": {"const": "1.0.0"},
+        "tool_run_id": {"type": "string", "pattern": "^tool-run-sha256:[0-9a-f]{64}$"},
         "publication_id": {"$ref": "#/$defs/nonEmptyString"},
         "identity_digest": {"$ref": "#/$defs/hex64"},
         "normalized_query": {"$ref": "#/$defs/normalizedQuery"},
@@ -337,6 +433,20 @@
         "filter_profile_id": {"$ref": "#/$defs/nonEmptyString"},
         "filter_profile_digest": {"$ref": "#/$defs/hex64"},
         "path_asn_membership_index_id": {"$ref": "#/$defs/nonEmptyString"},
+        "path_asn_membership_profile_id": {"$ref": "#/$defs/nonEmptyString"},
+        "path_asn_membership_profile_digest": {"$ref": "#/$defs/hex64"},
+        "path_asn_membership_index_digest": {"$ref": "#/$defs/hex64"},
+        "path_asn_membership_materialization_receipt_digest": {"$ref": "#/$defs/hex64"},
+        "receipt_kind": {"$ref": "#/$defs/nonEmptyString"},
+        "exact_state_point_utc": {"$ref": "#/$defs/utc"},
+        "state_point_utc": {"$ref": "#/$defs/utc"},
+        "contains_asn": {"anyOf": [{"$ref": "#/$defs/asn"}, {"type": "null"}]},
+        "total_count": {"type": "integer", "minimum": 0},
+        "eligible_row_predicate": {"$ref": "#/$defs/nonEmptyString"},
+        "state_time_semantics": {"$ref": "#/$defs/nonEmptyString"},
+        "query_time_path_parsing": {"type": "boolean"},
+        "query_time_route_event_replay": {"type": "boolean"},
+        "nearest_state_fill": {"type": "boolean"},
         "anchor_before_known_origin_index_id": {"$ref": "#/$defs/nonEmptyString"},
         "anchor_population_source_ref": {"$ref": "#/$defs/nonEmptyString"},
         "anchor_population_manifest_digest": {"$ref": "#/$defs/hex64"},
@@ -359,13 +469,31 @@
       },
       "additionalProperties": false
     },
+    "tool11QueryReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/queryReceipt"},
+        {
+          "required": ["receipt_kind", "tool_run_id", "exact_state_point_utc", "state_point_utc", "target_contains_asn", "contains_asn", "path_asn_membership_profile_id", "path_asn_membership_profile_digest", "path_asn_membership_index_id", "path_asn_membership_index_digest", "path_asn_membership_materialization_receipt_digest", "eligible_row_predicate", "matched_member_keys_digest", "matched_total_count", "total_count", "disposition", "state_time_semantics", "query_time_path_parsing", "query_time_route_event_replay", "nearest_state_fill"],
+          "properties": {
+            "tool_id": {"const": "TOOL-11"},
+            "receipt_kind": {"const": "exact_route_state_query"},
+            "source_population_id": {"const": "materialized_route_state_rows_at_exact_time"},
+            "complete_claim_label": {"const": "complete_within_exact_route_state_population"},
+            "state_time_semantics": {"const": "after_all_legal_events_through_exact_state_point"},
+            "query_time_path_parsing": {"const": false},
+            "query_time_route_event_replay": {"const": false},
+            "nearest_state_fill": {"const": false}
+          }
+        }
+      ]
+    },
     "toolResultPage": {
       "type": "object",
       "required": ["result_set_id", "tool_run_id", "tool_id", "tool_version", "query_digest", "identity_digest", "source_population_id", "source_dataset_digest", "normalized_query", "stable_sort", "stable_sort_digest", "members", "returned_count", "total_count", "page_complete", "page_offset", "set_completeness", "next_page_token", "query_receipt", "query_receipt_digest", "evidence_refs", "limitations", "content_digest"],
       "properties": {
         "result_set_id": {"type": "string", "pattern": "^result-set-sha256:[0-9a-f]{64}$"},
         "tool_run_id": {"type": "string", "pattern": "^tool-run-sha256:[0-9a-f]{64}$"},
-        "tool_id": {"enum": ["TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10", "TOOL-12"]},
+        "tool_id": {"enum": ["TOOL-07", "TOOL-08", "TOOL-09", "TOOL-10", "TOOL-11", "TOOL-12"]},
         "tool_version": {"const": "1.0.0"},
         "query_digest": {"$ref": "#/$defs/hex64"},
         "identity_digest": {"$ref": "#/$defs/hex64"},
@@ -374,7 +502,7 @@
         "normalized_query": {"$ref": "#/$defs/normalizedQuery"},
         "stable_sort": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonEmptyString"}},
         "stable_sort_digest": {"$ref": "#/$defs/hex64"},
-        "members": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/tool07Member"}, {"$ref": "#/$defs/tool08Member"}, {"$ref": "#/$defs/tool09Member"}, {"$ref": "#/$defs/tool10Member"}, {"$ref": "#/$defs/tool12Member"}]}},
+        "members": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/tool07Member"}, {"$ref": "#/$defs/tool08Member"}, {"$ref": "#/$defs/tool09Member"}, {"$ref": "#/$defs/tool10Member"}, {"$ref": "#/$defs/tool11Member"}, {"$ref": "#/$defs/tool12Member"}]}},
         "returned_count": {"type": "integer", "minimum": 0},
         "total_count": {"type": "integer", "minimum": 0},
         "page_complete": {"const": true},
@@ -457,6 +585,19 @@
                 {"properties": {"tool_id": {"const": "TOOL-10"}}}
               ]
             }
+          }
+        }
+      ]
+    },
+    "tool11ResultPage": {
+      "allOf": [
+        {"$ref": "#/$defs/toolResultPage"},
+        {
+          "properties": {
+            "tool_id": {"const": "TOOL-11"},
+            "source_population_id": {"const": "materialized_route_state_rows_at_exact_time"},
+            "members": {"type": "array", "items": {"$ref": "#/$defs/tool11Member"}},
+            "query_receipt": {"$ref": "#/$defs/tool11QueryReceipt"}
           }
         }
       ]

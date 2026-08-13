@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""重建 P2-S1 W0/W1/W2 同候选阶段证据。
+"""重建 P2-S1 W0-W4 同候选阶段证据。
 
 该脚本只从当前仓库字节、冻结 runner 回执和 TypeScript Registry 实际输出
 构造离线验收证据；不执行 Tool/Operator，不授予运行时执行，也不部署。
@@ -194,15 +194,17 @@ def projection_from_bundle(stage: str, bundle: dict[str, Any]) -> dict[str, Any]
     )
     proposal = payload["proposal_snapshot_ref"]
     previous = payload["previous_snapshot_ref"]
-    if stage == "W2":
-        # W2 的兼容投影视图必须承接当前 W1 投影，而不是把 TypeScript
+    if stage != "W1":
+        # W2-W4 的兼容投影视图必须承接前一 Registry 波次投影，而不是把 TypeScript
         # 治理对象的摘要混入 Python 投影摘要空间。实际治理链由 bundle 单独验证。
-        w1_projection = load(HOOK.WAVE_EVIDENCE_ROOT / "W1.json")[
+        wave_index = HOOK.REGISTRY_WAVE_SEQUENCE.index(stage)
+        previous_stage = HOOK.REGISTRY_WAVE_SEQUENCE[wave_index - 1]
+        previous_projection = load(HOOK.WAVE_EVIDENCE_ROOT / f"{previous_stage}.json")[
             "registry_binding_projection"
         ]["snapshot"]
-        previous_snapshot_id = w1_projection["snapshot_id"]
-        previous_snapshot_digest = w1_projection["snapshot_digest"]
-        previous_registry_revision = w1_projection["registry_revision"]
+        previous_snapshot_id = previous_projection["snapshot_id"]
+        previous_snapshot_digest = previous_projection["snapshot_digest"]
+        previous_registry_revision = previous_projection["registry_revision"]
     else:
         previous_snapshot_id = previous["registry_snapshot_id"]
         previous_snapshot_digest = previous["snapshot_digest"].removeprefix("sha256:")
@@ -298,7 +300,7 @@ def build_wave(stage: str) -> dict[str, Any]:
     baseline = load(HOOK.BASELINE_PATH)
     tool_map, operator_map = HOOK._catalog_units(ROOT)
     wave_units = list(HOOK.WAVE_CONTRACT[stage]["unit_ids"])
-    artifacts = [artifact(path, role) for path, role in HOOK.W1_W2_SHARED_ARTIFACT_ROLES.items()]
+    artifacts = [artifact(path, role) for path, role in HOOK.atomic_wave_artifact_roles(stage).items()]
     frozen_roles = {
         HOOK.TOOL_CATALOG_PATH: "frozen_tool_catalog",
         HOOK.TOOL_CONTRACT_SCHEMA_PATH: "frozen_tool_contract_schema",
@@ -404,7 +406,10 @@ def build_wave(stage: str) -> dict[str, Any]:
         },
         "prior_stage_receipt_digests": {
             "S1I-P0": p0["receipt_digest"],
-            "W0": w0_receipt["receipt_digest"],
+            **{
+                dependency: load(HOOK.WAVE_RECEIPT_ROOT / f"{dependency}.json")["receipt_digest"]
+                for dependency in HOOK.stage_prior_dependencies(stage)
+            },
         },
     }
     return finalize(stage, evidence)
@@ -412,7 +417,7 @@ def build_wave(stage: str) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", required=True, choices=("W0", "W1", "W2"))
+    parser.add_argument("--stage", required=True, choices=("W0", "W1", "W2", "W3", "W4"))
     args = parser.parse_args()
     evidence = build_w0() if args.stage == "W0" else build_wave(args.stage)
     write(HOOK.WAVE_EVIDENCE_ROOT / f"{args.stage}.json", evidence)

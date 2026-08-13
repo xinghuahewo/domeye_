@@ -86,6 +86,9 @@ class CountryOutageP2S1ToolsTest(unittest.TestCase):
                     "end_utc": "2026-02-27T00:05:00Z",
                 }
             ),
+            "tool11Request": self.request(
+                state_point_utc="2026-02-27T00:00:00Z", contains_asn=49666
+            ),
             "tool12Request": self.request(contains_asn=49666),
         }
         results = {
@@ -93,6 +96,9 @@ class CountryOutageP2S1ToolsTest(unittest.TestCase):
             "tool08ResultPage": self.tools.query_prefix_states(requests["tool08Request"]),
             "tool09ResultPage": self.tools.query_as_states(requests["tool09Request"]),
             "tool10ResultPage": self.tools.query_new_prefix_states(requests["tool10Request"]),
+            "tool11ResultPage": self.tools.query_materialized_route_states_at_time(
+                requests["tool11Request"]
+            ),
             "tool12ResultPage": self.tools.query_window_path_associations(requests["tool12Request"]),
         }
         failure = self.assert_error(
@@ -107,6 +113,8 @@ class CountryOutageP2S1ToolsTest(unittest.TestCase):
         invalid_result.pop("content_digest")
         invalid_path = copy.deepcopy(results["tool12ResultPage"])
         invalid_path["members"][0]["ordered_sequence_eligible"] = False
+        invalid_exact_time = copy.deepcopy(results["tool11ResultPage"])
+        invalid_exact_time["query_receipt"]["query_time_route_event_replay"] = True
         payload = {
             "requests": requests,
             "results": results,
@@ -115,6 +123,7 @@ class CountryOutageP2S1ToolsTest(unittest.TestCase):
                 ["tool07Request", invalid_request],
                 ["tool07ResultPage", invalid_result],
                 ["tool12ResultPage", invalid_path],
+                ["tool11ResultPage", invalid_exact_time],
             ],
         }
         script = r'''
@@ -202,6 +211,224 @@ if errors:
         self.assertEqual(new_prefix["total_count"], 1)
         self.assertEqual(new_prefix["members"][0]["first_observed_at_utc"], "2026-02-27T00:00:00Z")
         self.assertNotIn("path_id", new_prefix["members"][0])
+
+    def test_tool11_reads_one_exact_state_population_without_replay_or_second_population(self) -> None:
+        result = self.tools.query_materialized_route_states_at_time(
+            self.request(
+                state_point_utc="2026-02-27T00:05:00Z",
+                prefix="109.74.224.0/20",
+                afi=4,
+                route_observation_key="rrc25:vp-a:peer-a:109.74.224.0/20:ipv4",
+                peer_asn_direction_id="rrc25:64500",
+                vp_id="vp-a",
+                peer_id="peer-a",
+                visibility="visible",
+                origin_asn=58224,
+            )
+        )
+        self.assertEqual(result["tool_id"], "TOOL-11")
+        self.assertEqual(result["source_population_id"], "materialized_route_state_rows_at_exact_time")
+        self.assertEqual(result["total_count"], 1)
+        member = result["members"][0]
+        self.assertEqual(member["state_point_utc"], "2026-02-27T00:05:00Z")
+        self.assertEqual(member["last_update_utc"], "2026-02-27T00:05:00Z")
+        self.assertEqual(member["checkpoint_id"], "checkpoint_fixture_1")
+        self.assertEqual(member["origin_asns"], [58224])
+        self.assertEqual(member["origin_status"], "known_single")
+        self.assertEqual(member["path_status"], "known_ordered")
+        self.assertEqual(member["common_path_status"], "ordered")
+        self.assertEqual(
+            self.store.population_calls,
+            ["materialized_route_state_rows_at_exact_time"],
+        )
+        self.assertEqual(
+            self.store.index_calls,
+            ["materialized_route_state_rows_at_exact_time"],
+        )
+        receipt = result["query_receipt"]
+        self.assertEqual(receipt["exact_state_point_utc"], "2026-02-27T00:05:00Z")
+        self.assertFalse(receipt["query_time_route_event_replay"])
+        self.assertFalse(receipt["nearest_state_fill"])
+        self.assertFalse(receipt["query_time_path_parsing"])
+        self.assertTrue(self.tools.verify_query_receipt(receipt))
+
+    def test_tool11_contains_asn_uses_same_population_native_index_and_closes_empty(self) -> None:
+        matched = self.tools.query_materialized_route_states_at_time(
+            self.request(state_point_utc="2026-02-27T00:00:00Z", contains_asn=49666)
+        )
+        self.assertEqual(matched["total_count"], 1)
+        receipt = matched["query_receipt"]
+        self.assertEqual(receipt["filter_mode"], "pre_materialized_native_index")
+        self.assertEqual(receipt["tool_run_id"], matched["tool_run_id"])
+        self.assertEqual(receipt["state_point_utc"], "2026-02-27T00:00:00Z")
+        self.assertEqual(receipt["contains_asn"], 49666)
+        self.assertEqual(receipt["total_count"], matched["total_count"])
+        self.assertEqual(receipt["target_contains_asn"], 49666)
+        self.assertEqual(
+            receipt["path_asn_membership_profile_digest"],
+            "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2",
+        )
+        self.assertEqual(receipt["path_asn_membership_index_digest"], receipt["source_index_digest"])
+        self.assertEqual(
+            receipt["path_asn_membership_materialization_receipt_digest"],
+            receipt["source_materialization_receipt_digest"],
+        )
+        empty = self.tools.query_materialized_route_states_at_time(
+            self.request(state_point_utc="2026-02-27T00:00:00Z", contains_asn=64496)
+        )
+        self.assertEqual(empty["members"], [])
+        self.assertEqual(empty["set_completeness"], "complete")
+        self.assertEqual(empty["query_receipt"]["disposition"], "complete_empty")
+
+    def test_tool11_requires_exact_grid_point_and_never_fills_nearest_or_future_state(self) -> None:
+        self.assert_error(
+            "invalid_input",
+            lambda: self.tools.query_materialized_route_states_at_time(self.request()),
+        )
+        self.assert_error(
+            "invalid_input",
+            lambda: self.tools.query_materialized_route_states_at_time(
+                self.request(state_point_utc="2026-02-27T00:01:00Z")
+            ),
+        )
+        before = self.tools.query_materialized_route_states_at_time(
+            self.request(state_point_utc="2026-02-27T00:00:00Z")
+        )
+        self.assertEqual(before["total_count"], 1)
+        self.assertEqual(before["members"][0]["checkpoint_id"], "checkpoint_fixture_0")
+        self.assertNotEqual(before["members"][0]["checkpoint_id"], "checkpoint_fixture_1")
+        self.assert_error(
+            "invalid_input",
+            lambda: self.tools.query_materialized_route_states_at_time(
+                {
+                    "identity": identity(),
+                    "page_size": 100,
+                    "state_point_utc": "2026-02-27T00:10:00Z",
+                }
+            ),
+        )
+
+    def test_tool11_query_receipt_hmac_binds_target_time_index_and_members(self) -> None:
+        result = self.tools.query_materialized_route_states_at_time(
+            self.request(state_point_utc="2026-02-27T00:00:00Z", contains_asn=49666)
+        )
+        receipt = result["query_receipt"]
+        self.assertTrue(self.tools.verify_query_receipt(receipt))
+        for field, forged in (
+            ("exact_state_point_utc", "2026-02-27T00:05:00Z"),
+            ("target_contains_asn", 58224),
+            ("path_asn_membership_index_digest", "0" * 64),
+            ("matched_member_keys_digest", "0" * 64),
+        ):
+            with self.subTest(field=field):
+                tampered = copy.deepcopy(receipt)
+                tampered[field] = forged
+                self.assertFalse(self.tools.verify_query_receipt(tampered))
+
+    def test_tool11_rejects_query_time_join_replay_and_nearest_state_controls(self) -> None:
+        for forbidden in (
+            "time_range_half_open",
+            "checkpoint_id",
+            "replay_route_events",
+            "nearest_state",
+            "window_path_association",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assert_error(
+                    "unsupported_filter",
+                    lambda forbidden=forbidden: self.tools.query_materialized_route_states_at_time(
+                        self.request(state_point_utc="2026-02-27T00:00:00Z", **{forbidden: True})
+                    ),
+                )
+
+    def test_tool11_index_content_profile_and_row_tamper_fail_before_receipt(self) -> None:
+        attacks = (
+            lambda store: store.load_index("materialized_route_state_rows_at_exact_time")[
+                "secondary_indexes"
+            ]["path_asn_membership"].__setitem__("profile_id", "FORGED"),
+            lambda store: store.load_index("materialized_route_state_rows_at_exact_time")[
+                "secondary_indexes"
+            ]["path_asn_membership"]["members_by_asn"].__setitem__("49666", []),
+            lambda store: store.load_population("materialized_route_state_rows_at_exact_time")[0].__setitem__(
+                "path_canonicalization_profile_digest", "0" * 64
+            ),
+            lambda store: store.load_population("materialized_route_state_rows_at_exact_time")[0].__setitem__(
+                "last_update_utc", "2026-02-27T00:05:00Z"
+            ),
+        )
+        for attack in attacks:
+            with self.subTest(attack=repr(attack)):
+                store = SpyStore()
+                tools = CountryOutageP2S1Tools(
+                    store,
+                    page_token_key=TOKEN_KEY,
+                    query_receipt_key=RECEIPT_KEY,
+                )
+                store.verify()
+                attack(store)
+                error = self.assert_error(
+                    "evidence_unclosed",
+                    lambda: tools.query_materialized_route_states_at_time(
+                        self.request(state_point_utc="2026-02-27T00:00:00Z", contains_asn=49666)
+                    ),
+                )
+                self.assertIsNone(error.receipt)
+
+    def test_tool11_rejects_native_index_member_without_target_asn_or_eligible_path(self) -> None:
+        attacks = (
+            lambda rows: rows[0].__setitem__(
+                "path_segments", [{"segment_type": "as_sequence", "asns": [3257, 58224]}]
+            ),
+            lambda rows: rows[0].__setitem__("visibility", "invisible"),
+            lambda rows: rows[0].__setitem__("common_path_status", "ambiguous"),
+        )
+        for attack in attacks:
+            with self.subTest(attack=repr(attack)):
+                store = SpyStore()
+                tools = CountryOutageP2S1Tools(
+                    store,
+                    page_token_key=TOKEN_KEY,
+                    query_receipt_key=RECEIPT_KEY,
+                )
+                rows = store.load_population("materialized_route_state_rows_at_exact_time")
+                attack(rows)
+                manifest = next(
+                    item for item in store.manifest["population_manifests"]
+                    if item["population_id"] == "materialized_route_state_rows_at_exact_time"
+                )
+                row_bytes = b"".join(
+                    (json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+                    for row in rows
+                )
+                manifest["row_file"]["size_bytes"] = len(row_bytes)
+                manifest["row_file"]["sha256"] = hashlib.sha256(row_bytes).hexdigest()
+                error = self.assert_error(
+                    "evidence_unclosed",
+                    lambda: tools.query_materialized_route_states_at_time(
+                        self.request(
+                            state_point_utc="2026-02-27T00:00:00Z",
+                            contains_asn=49666,
+                        )
+                    ),
+                )
+                self.assertIsNone(error.receipt)
+
+    def test_tool11_path_at_time_semantics_do_not_claim_global_path_or_traffic(self) -> None:
+        result = self.tools.query_materialized_route_states_at_time(
+            self.request(state_point_utc="2026-02-27T00:00:00Z", contains_asn=49666)
+        )
+        self.assertIn(
+            "path_at_time_is_collector_observation_not_global_reachability_or_traffic",
+            result["limitations"],
+        )
+        self.assertIn(
+            "active_path_requires_visible_and_ordered_or_unordered_common_path_status",
+            result["limitations"],
+        )
+        self.assertEqual(
+            result["query_receipt"]["state_time_semantics"],
+            "after_all_legal_events_through_exact_state_point",
+        )
 
     def test_stable_pagination_closes_without_duplicates(self) -> None:
         first = self.tools.query_prefix_states({"identity": identity(), "page_size": 1})
@@ -472,7 +699,7 @@ if errors:
         )
         self.assert_error(
             "unsupported_filter",
-            lambda: self.tools.execute("TOOL-11", self.request()),
+            lambda: self.tools.execute("TOOL-13", self.request()),
         )
         self.assert_error(
             "invalid_input",
