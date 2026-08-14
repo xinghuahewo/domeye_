@@ -1,0 +1,152 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
+    },
+    {
+      "path": "agent-sidecar/package.json",
+      "sha256": "5ee7d35e0c89bac61e2e40fd0b54e99222f37ea3ad2c5f9dab72aebe0848e372",
+      "size_bytes": 2481
+    },
+    {
+      "path": "agent-sidecar/package-lock.json",
+      "sha256": "eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6",
+      "size_bytes": 77295
+    },
+    {
+      "path": "agent-sidecar/tsconfig.json",
+      "sha256": "0cbffe42a34be0d2ba5e7f725c062604c555d787927861c4ceed0f6c45578b1f",
+      "size_bytes": 464
+    },
+    {
+      "path": "agent-sidecar/src/chat/index.ts",
+      "sha256": "89b592b8092f0ff84aea6f8a4a20cf1f55a404c76f5cce17f55682c50ce70e04",
+      "size_bytes": 559
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-composition-contracts.ts",
+      "sha256": "87275b0216197b515b9540eb2743fda042c0237a310d7b88d0a8fcf5c796c7bf",
+      "size_bytes": 21424
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-model-runner.ts",
+      "sha256": "4d4a52a067db0ee53d678ae705111084f9222d5dc5dddd39ec4a1155dd5c1240",
+      "size_bytes": 12916
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-dual-artifact-store.ts",
+      "sha256": "5624e9b1fcb0b7663e5097c782bad1f2ca819c1a30e2bc41a204267e4f46641c",
+      "size_bytes": 11340
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-teacher-plan-grounder.ts",
+      "sha256": "8b362bfc970bb9432df6b043eac30e89a147cf923186aef4d8a7c7be8b042baa",
+      "size_bytes": 8491
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-gate-validator.ts",
+      "sha256": "f64cb138e6bc6d817a81fb904502527c760ee7ea02684182a361a25945e40ad4",
+      "size_bytes": 14414
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-oracle-materializer.ts",
+      "sha256": "025695ede505fd7f314e1afb1af2fdd5e05ec83aed1539d2ae21acf8ebff362b",
+      "size_bytes": 4080
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-alignment-evaluator.ts",
+      "sha256": "3c1e671d58c4577291669b5f7224302e05a518cc60096d373f75cdf1fcf041a3",
+      "size_bytes": 4775
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-composition-runtime.ts",
+      "sha256": "df77f584af21aa08ea96c48151a7213310cbf27efbb29516abcdecfbcd286b08",
+      "size_bytes": 32677
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-integrated-answer-runtime.ts",
+      "sha256": "0ca7718c00bd9d2dfc5dcf4355340f875280c78d44fff317260308668f2c63f2",
+      "size_bytes": 12618
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-planning-grounding-port.ts",
+      "sha256": "fa55a6835148dc4684d281b084ae38ca592114ad0508fb6dec66369f65c53413",
+      "size_bytes": 37263
+    },
+    {
+      "path": "agent-sidecar/src/server/p2-s1-w5-http-handler.ts",
+      "sha256": "856f8bed252bc4943f0558a2bdac52e52a638296ee9747e782d7185375de4540",
+      "size_bytes": 11719
+    },
+    {
+      "path": "agent-sidecar/src/cli/formal-p2-s1-w5-sidecar.ts",
+      "sha256": "1ad540fd1f3e6926eb23a54633c2090cb97466c9b206309498d4e32bae74a0a0",
+      "size_bytes": 6371
+    },
+    {
+      "path": "agent-sidecar/src/cli/serve-formal-p2-s1-w5.ts",
+      "sha256": "aa2563f7b88335d02a529c6358ff3339cde31486b11d92b84f24dfa0a8a4a218",
+      "size_bytes": 1045
+    },
+    {
+      "path": "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+      "sha256": "4815949519e97d72f2dd89ec216bf34e263716bafef0c61d5e314572abd890ba",
+      "size_bytes": 24930
+    },
+    {
+      "path": "agent-sidecar/tests/p2-s1-w5-integrated-answer-test-server.test.ts",
+      "sha256": "39bc160ba391c0cc1237fe47dc18193e1d8725d73eae98abb08293609d688e27",
+      "size_bytes": 1531
+    },
+    {
+      "path": "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+      "sha256": "7b43b80c40f39f4167543b9df45fa6351ac50dd60cc1ff6a622b357cae4d8623",
+      "size_bytes": 26030
+    }
+  ],
+  "category": "local_fixture_sol_host_ds_chain",
+  "command": [
+    "bash",
+    "-lc",
+    "npm run test:p2-s1-w5"
+  ],
+  "completed_at_utc": "2026-08-14T03:39:31Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n> domeye-country-outage-agent-sidecar@0.1.0 test:p2-s1-w5\n> npm run build && node --test dist/tests/p2-s1-w5-*.test.js\n\n\n> domeye-country-outage-agent-sidecar@0.1.0 prebuild\n> npm run vendor:patch:verify\n\n\n> domeye-country-outage-agent-sidecar@0.1.0 vendor:patch:verify\n> node scripts/apply_pi_response_model_patch.mjs --verify\n\n{\"event\":\"country_outage_pi_response_model_vendor_patch\",\"patchId\":\"pi-ai-openai-completions-response-model-v1\",\"outcome\":\"verified\",\"patchedSourceSha256\":\"9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504\"}\n\n> domeye-country-outage-agent-sidecar@0.1.0 build\n> tsc -p tsconfig.json\n\nTAP version 13\n# Subtest: W5 按 Sol planning→Host→Sol reference→DS first/revision 顺序发布，revision 最多一次\nok 1 - W5 按 Sol planning→Host→Sol reference→DS first/revision 顺序发布，revision 最多一次\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: DS first 已通过时即使 fixture 含 revision 也不得调用第二次\nok 2 - DS first 已通过时即使 fixture 含 revision 也不得调用第二次\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: planning unavailable 不创建 Dual flow；reference unavailable 闭合 teacher_unavailable\nok 3 - planning unavailable 不创建 Dual flow；reference unavailable 闭合 teacher_unavailable\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Teacher Gate 拒绝不生成 Oracle receipt；Oracle coverage 拒绝必须先通过五 Gate\nok 4 - Teacher Gate 拒绝不生成 Oracle receipt；Oracle coverage 拒绝必须先通过五 Gate\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Student Gate 和 Alignment 各自形成穷尽拒绝终态\nok 5 - Student Gate 和 Alignment 各自形成穷尽拒绝终态\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 显式降级必须绑定受信授权、新 plan revision 与新 EvidenceGraph，且不得声称 aligned\nok 6 - 显式降级必须绑定受信授权、新 plan revision 与新 EvidenceGraph，且不得声称 aligned\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 攻击：Teacher 不得夹带 Tool ID；typed claim 不得用知识解释冒充事件事实\nok 7 - 攻击：Teacher 不得夹带 Tool ID；typed claim 不得用知识解释冒充事件事实\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 幂等键固定请求，冲突请求失败关闭\nok 8 - 幂等键固定请求，冲突请求失败关闭\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 独立 HTTP 只接受 fixture ID，不接受调用方自报模型、计划、证据或 Oracle\nok 9 - 独立 HTTP 只接受 fixture ID，不接受调用方自报模型、计划、证据或 Oracle\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: integrated answer HTTP 实际执行 CompositionRuntime 全阶段并绑定 Host Graph/Oracle\nok 10 - integrated answer HTTP 实际执行 CompositionRuntime 全阶段并绑定 Host Graph/Oracle\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: dist/tests/p2-s1-w5-integrated-answer-test-server.test.js\nok 2 - dist/tests/p2-s1-w5-integrated-answer-test-server.test.js\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 成功：planning/grounding 只执行一次 Sol planning，返回受信 projection 并明确完整 Plan 归 Python Host\nok 12 - 成功：planning/grounding 只执行一次 Sol planning，返回受信 projection 并明确完整 Plan 归 Python Host\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 缺冻结 execution template 的 fixture 在 Sol planning 前 typed fail-closed\nok 13 - 缺冻结 execution template 的 fixture 在 Sol planning 前 typed fail-closed\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: projection A + recipe B 无法通过 projection/receipt 闭包\nok 14 - projection A + recipe B 无法通过 projection/receipt 闭包\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Plan、Registry、capability、node、parameter 与 binding source 漂移均失败关闭\nok 15 - Plan、Registry、capability、node、parameter 与 binding source 漂移均失败关闭\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: ghost unit 即使重算 recipe/projection 摘要也被冻结 unit 映射拒绝\nok 16 - ghost unit 即使重算 recipe/projection 摘要也被冻结 unit 映射拒绝\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 缺完整 fixture：不得把 grounding projection 冒充完整 InvestigationPlan artifact\nok 17 - 缺完整 fixture：不得把 grounding projection 冒充完整 InvestigationPlan artifact\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: goal、identity binding 与 fixture mismatch 在模型调用前失败关闭\nok 18 - goal、identity binding 与 fixture mismatch 在模型调用前失败关闭\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 摘要漂移：goal、binding summary 与 fixture 自身摘要均失败关闭\nok 19 - 摘要漂移：goal、binding summary 与 fixture 自身摘要均失败关闭\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 相同幂等请求只 replay 一次；冲突请求不触发第二次 planning\nok 20 - 相同幂等请求只 replay 一次；冲突请求不触发第二次 planning\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: planning unavailable 返回 typed fail-closed，且不运行 reference、DS 或完整 Dual flow\nok 21 - planning unavailable 返回 typed fail-closed，且不运行 reference、DS 或完整 Dual flow\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: TeacherSemanticPlan 夹带 execution unit 时在 Host validation 拒绝\nok 22 - TeacherSemanticPlan 夹带 execution unit 时在 Host validation 拒绝\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 外部模型端口在装配阶段即被拒绝，不能发起任何 provider 调用\nok 23 - 外部模型端口在装配阶段即被拒绝，不能发起任何 provider 调用\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: HTTP 合同只接收 fixture、goal、binding summary 和幂等键；不得启动 /runs\nok 24 - HTTP 合同只接收 fixture、goal、binding summary 和幂等键；不得启动 /runs\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: CLI 正式 W5 Sidecar 默认装配独立 planning/grounding runtime，仍保持本地 fixture 边界\nok 25 - CLI 正式 W5 Sidecar 默认装配独立 planning/grounding runtime，仍保持本地 fixture 边界\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n1..25\n# tests 25\n# suites 0\n# pass 25\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms <ELAPSED>\n\n[stderr]\n",
+  "normalized_output_sha256": "4bf70fbe1ee25c51f36bf4d9735ed2496fc59641ec6d146f6005bf1b7bcbd21a",
+  "passed": true,
+  "receipt_digest": "81e96c759ac54b8401981c89cd205ebaee75d6288314927e4b96f5cc8b6b9a1d",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.2.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+    "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts"
+  ],
+  "skipped_count": 0,
+  "stage": "W5",
+  "started_at_utc": "2026-08-14T03:39:26Z",
+  "suite_id": "w5-sidecar",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+      "unit_ids": []
+    }
+  ],
+  "tested_execution_unit_ids": [],
+  "tested_unit_ids": [],
+  "tests_run": 25,
+  "working_directory": "agent-sidecar"
+}

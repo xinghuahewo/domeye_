@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "8d11a3a83783dd32e15e0000c54d45b3a16e0d5cf2b0d723fca9318225cb6e92",
-      "size_bytes": 24185
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -58,14 +58,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_independent_count_operators_and_tamper",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics"
   ],
-  "completed_at_utc": "2026-08-13T06:21:04Z",
+  "completed_at_utc": "2026-08-14T03:19:25Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_tool12_contains_asn_uses_verified_native_index (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_contains_asn_zero_is_complete_empty (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_deterministic_replay_preserves_ids_digests_and_receipts (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_path_positions_prepend_neighbors_and_order (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_unordered_path_is_not_linearized (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_path_prefix_path_direction_projections (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_observed_downstream_projection_not_customer_cone (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_independent_count_operators_and_tamper (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_set_operations_and_empty_semantics (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "673d92207b12e9e0777bbed1eeada88375c3d30ad619815b9b24a3ef0e058f6c",
   "passed": true,
-  "receipt_digest": "ea11b46d3046ceed628ea2c2f2719e2ba7400cedaa9a30b2b4bd181e7412630b",
+  "receipt_digest": "1bd5ed5b3a01dd0a7b26986258916872a352cf34fbc028be3c2b9b870e3f1ecd",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -83,7 +83,7 @@
   ],
   "skipped_count": 0,
   "stage": "W2",
-  "started_at_utc": "2026-08-13T06:21:03Z",
+  "started_at_utc": "2026-08-14T03:19:25Z",
   "suite_id": "w2-positive",
   "test_case_coverage": [
     {

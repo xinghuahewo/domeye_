@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "8d11a3a83783dd32e15e0000c54d45b3a16e0d5cf2b0d723fca9318225cb6e92",
-      "size_bytes": 24185
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -55,14 +55,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_population_attacks_fail_closed",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_operator_functions_do_not_call_other_operator_functions"
   ],
-  "completed_at_utc": "2026-08-13T06:21:03Z",
+  "completed_at_utc": "2026-08-14T03:19:27Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_query_receipt_tamper_is_detected (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_store_index_object_replacement_after_verification_fails_before_receipt (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_store_row_object_replacement_after_verification_fails_before_receipt (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_unsupported_fields_false_anchor_and_deferred_tool_fail_closed (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_op15_compact_receipt_requires_resolved_full_output (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_set_population_attacks_fail_closed (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_operator_functions_do_not_call_other_operator_functions (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\n\n----------------------------------------------------------------------\nRan 7 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "f6a268959278c77857c5ed2ad085f08033f0ec19065a76092dba58b42c867efb",
   "passed": true,
-  "receipt_digest": "c368ad765bcc2a5dde4abeac20342bb035af904d77ca2afe744f00e331f9cd6e",
+  "receipt_digest": "2aab3d1624cf3b5c7da2e334e6f151faa263218715577098040104808738b696",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -77,7 +77,7 @@
   ],
   "skipped_count": 0,
   "stage": "W2",
-  "started_at_utc": "2026-08-13T06:21:03Z",
+  "started_at_utc": "2026-08-14T03:19:27Z",
   "suite_id": "w2-attack",
   "test_case_coverage": [
     {

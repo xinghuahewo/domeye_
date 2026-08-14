@@ -459,7 +459,7 @@
     "trusted_dispatcher_implemented": false,
     "user_answer_available": false
   },
-  "content_digest": "bcc22348fc31c9419960bf45f6a357e7142fa61fbf261a3919996f1096d11551",
+  "content_digest": "fb88211e932b9dc3c646351758aba77243e5d59a57e340b1915f93977bd1c3b6",
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "effect": "offline_window_path_set_count_atomic_harness_and_non_callable_binding_verified",
   "effect_verified": true,
@@ -489,8 +489,8 @@
       "size_bytes": 185219
     }
   ],
-  "implementation_candidate_id": "country-outage-p2-s1-w2-7a532242662809879e15e989",
-  "implementation_semantic_digest": "7a532242662809879e15e989c1d19b6ef2ffba9ddec50ac2fb75957d608d858a",
+  "implementation_candidate_id": "country-outage-p2-s1-w2-95125275e932e0d08619d022",
+  "implementation_semantic_digest": "95125275e932e0d08619d02209355d8b7def16a4499b92c55d474ec2415d5f2e",
   "implemented_unit_ids": [
     "TOOL-12",
     "OP-15",
@@ -515,7 +515,7 @@
   },
   "prior_stage_receipt_digests": {
     "S1I-P0": "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "W0": "eb6fb53994a344c2bb3a6085f17269df851356b42ccbcf53301ec408ab0cd013"
+    "W0": "f4b55dc602aeb31ac0b2912d6b990d09cc754f9cf31033c2cbc271bfa03de619"
   },
   "production_deployed": false,
   "registry_binding_projection": {
@@ -731,22 +731,22 @@
       "wave_id": "W2"
     },
     "source_runtime_bundle": {
-      "admission_receipt_digest": "sha256:27e6925cd8b6064d5f8e5e3a10affcaee2129dcf71629cb4d01360d601d74c3c",
-      "content_digest": "sha256:b250ad7db0af30c5105f7a6c2e25352cd724c47d2c6eaff92f4f7fd88189e169",
-      "handler_manifest_digest": "sha256:8ef6c320efed4b8e691065b46e15424d51a972393825f52ea4c5aa92fb8b6a65",
-      "handler_manifest_id": "p2-s1-handler-manifest-sha256:8ef6c320efed4b8e691065b46e15424d51a972393825f52ea4c5aa92fb8b6a65",
+      "admission_receipt_digest": "sha256:dd61049fa2c48a0d7bfba201e4768cf7350925ffc9c590998d510a0b1fcbbd71",
+      "content_digest": "sha256:3f6dcce4695a64f1ea3bad23ec0d1ee92daffa32e24580eb14cc4f0685643375",
+      "handler_manifest_digest": "sha256:be4dca2619e501acfc5b16a083fe122d09f5672d9a323e9da43d1f3e0c440f92",
+      "handler_manifest_id": "p2-s1-handler-manifest-sha256:be4dca2619e501acfc5b16a083fe122d09f5672d9a323e9da43d1f3e0c440f92",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime/W2.json",
-      "sha256": "02218e4ee83f9143eadecdf340823e86b6ee8f8171eb85680b94fa0d50a4e018",
-      "snapshot_digest": "sha256:7de1ed2d017532f0c1b4d773f5db07ee3dde4c09628128b805c4fd05e752f505",
-      "snapshot_id": "p2-s1-registry-wave-sha256:7de1ed2d017532f0c1b4d773f5db07ee3dde4c09628128b805c4fd05e752f505"
+      "sha256": "d8c040b3d63077752b05b38cb0deaf92b7419011d3f32debc8b8e9fd23afa82a",
+      "snapshot_digest": "sha256:c3e0223fd5a78892aad7cb64af2662c521468c4bfac94d150d8a3d45dc259f70",
+      "snapshot_id": "p2-s1-registry-wave-sha256:c3e0223fd5a78892aad7cb64af2662c521468c4bfac94d150d8a3d45dc259f70"
     }
   },
   "registry_runtime_evidence": {
-    "content_digest": "sha256:b250ad7db0af30c5105f7a6c2e25352cd724c47d2c6eaff92f4f7fd88189e169",
+    "content_digest": "sha256:3f6dcce4695a64f1ea3bad23ec0d1ee92daffa32e24580eb14cc4f0685643375",
     "generator_path": "contracts/agent/country-outage-p2-s1-implementation/tools/generate_registry_evidence.ts",
     "generator_sha256": "fbeb3cefd67fdab7e1a6dc76b521f9edac1866ca88c9a60a5e82ac920ac55c95",
     "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime/W2.json",
-    "sha256": "02218e4ee83f9143eadecdf340823e86b6ee8f8171eb85680b94fa0d50a4e018"
+    "sha256": "d8c040b3d63077752b05b38cb0deaf92b7419011d3f32debc8b8e9fd23afa82a"
   },
   "schema_version": "country_outage_p2_s1_implementation_wave_evidence_v1",
   "stage": "W2",
@@ -761,22 +761,22 @@
     {
       "category": "positive",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w2-positive.json",
-      "receipt_digest": "ea11b46d3046ceed628ea2c2f2719e2ba7400cedaa9a30b2b4bd181e7412630b",
-      "sha256": "4d9efe6bae5175f7c341ba376ddde70ea2de64ea7efbf1a2b9ac563bc5cf0f81",
+      "receipt_digest": "1bd5ed5b3a01dd0a7b26986258916872a352cf34fbc028be3c2b9b870e3f1ecd",
+      "sha256": "b072f923957fcb439ab05ad9d6f861cce4c3ad604d03bd9369e98096ec35ad2a",
       "suite_id": "w2-positive"
     },
     {
       "category": "boundary",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w2-boundary.json",
-      "receipt_digest": "e2ab70ce91a0bdd753a2df7ef2137a8921415e3c104868030dd85191808f12c6",
-      "sha256": "edddc348e2ad8bc91b5192122d515b9bab9f47a50b596f0e7ea8b985a194a50d",
+      "receipt_digest": "3d6e0978e15dcf8dfe1bb2faf403042e3dd82fab4149f2b3143b59d909f03a38",
+      "sha256": "bb7c554a8d53606b986cd6e6498bda410525521ad23ab8cc4a142c4f6b41ba31",
       "suite_id": "w2-boundary"
     },
     {
       "category": "attack",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w2-attack.json",
-      "receipt_digest": "c368ad765bcc2a5dde4abeac20342bb035af904d77ca2afe744f00e331f9cd6e",
-      "sha256": "bb8b7ab9b48037d54991205b1927b329364f482af0b0994df5fef5ef9b2876e1",
+      "receipt_digest": "2aab3d1624cf3b5c7da2e334e6f151faa263218715577098040104808738b696",
+      "sha256": "242a7f19caad40abad866274d1820b10c6243b565636a5d111ade8e47e6ce35f",
       "suite_id": "w2-attack"
     }
   ],
@@ -803,6 +803,6 @@
       "size_bytes": 31262
     },
     "store_id": "country_outage_p2_s1_source_store_v1_4b6151c6f34a74f7396df7750d87567d3bc3163eb2545ad0300f3d8c7b969b47",
-    "w0_receipt_digest": "eb6fb53994a344c2bb3a6085f17269df851356b42ccbcf53301ec408ab0cd013"
+    "w0_receipt_digest": "f4b55dc602aeb31ac0b2912d6b990d09cc754f9cf31033c2cbc271bfa03de619"
   }
 }

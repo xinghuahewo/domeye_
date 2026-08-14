@@ -185,7 +185,7 @@
     "trusted_dispatcher_implemented": false,
     "user_answer_available": false
   },
-  "content_digest": "4771c5d990c44999408c49df6ddcffbc8a3f4ad75ffa7c854c8e31857f6be1ff",
+  "content_digest": "7e2ebffdedde505ecd69fc71a171350bb2fdf2fd34ee66e23558c58409804987",
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "effect": "offline_state_interval_overlap_and_fixed_cohort_prefix_set_atomic_harness_and_non_callable_binding_verified",
   "effect_verified": true,
@@ -215,8 +215,8 @@
       "size_bytes": 185219
     }
   ],
-  "implementation_candidate_id": "country-outage-p2-s1-w3-5b3c6bade0798f1ed2655a7d",
-  "implementation_semantic_digest": "5b3c6bade0798f1ed2655a7d40a638fb78aa91017b060f2e12281dcbd122ff2d",
+  "implementation_candidate_id": "country-outage-p2-s1-w3-fa2e5faa809549f161f31e60",
+  "implementation_semantic_digest": "fa2e5faa809549f161f31e604117cf2449b1773d6ace17194e889bd7798e72e5",
   "implemented_unit_ids": [
     "OP-38",
     "OP-39"
@@ -228,8 +228,8 @@
   },
   "prior_stage_receipt_digests": {
     "S1I-P0": "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "W1": "8fbf092fecffe241dad9e03fff076e4805143509c1a665ea755816171350b7c2",
-    "W2": "7feb0c930fc836525577dde3f49df52311cb237489dab30d7ca1491384feaf45"
+    "W1": "5d4ee940cf99713ae671bbc912c22443e2e6cb845cd8cf5498bb7703101a1f43",
+    "W2": "b2f5f7ff8fed5f23969efc291924ad03fec4a81fc9752a9a191863eb812ad862"
   },
   "production_deployed": false,
   "registry_binding_projection": {
@@ -397,22 +397,22 @@
       "wave_id": "W3"
     },
     "source_runtime_bundle": {
-      "admission_receipt_digest": "sha256:c5ee617c29d182074fdfeab02e02e49abf4b2ee724c37e02f3345cff791230d9",
-      "content_digest": "sha256:19ed6d1d0e660653b50ccdb673ccc0318b8b2ddac03fd9d09c67faf84e3cc6e1",
-      "handler_manifest_digest": "sha256:a911bcad13579ed3b02a275e3d90c6e0566b5c4c7482e0529acce7c9f6751c55",
-      "handler_manifest_id": "p2-s1-handler-manifest-sha256:a911bcad13579ed3b02a275e3d90c6e0566b5c4c7482e0529acce7c9f6751c55",
+      "admission_receipt_digest": "sha256:9b8f3d374f9430500bf6a49cffb0f4f6053be12aadfc36e46ef1cd806d41854c",
+      "content_digest": "sha256:29ef7956f9c06a1c89c5769161d15e33115c8a442eb9c7d1e3aca4d91898b493",
+      "handler_manifest_digest": "sha256:dd7d138ec7bbe56c015eede51289a038df97a6abde4f8a0210d42f71ca32d825",
+      "handler_manifest_id": "p2-s1-handler-manifest-sha256:dd7d138ec7bbe56c015eede51289a038df97a6abde4f8a0210d42f71ca32d825",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime/W3.json",
-      "sha256": "12c76b74bc98c08616953a634412f098333627e341076d500a6c5c6205671f75",
-      "snapshot_digest": "sha256:1a92ff3bbbe717b91de84a8d6ed378aaa648c34bfa265757c472ba7f0272d4de",
-      "snapshot_id": "p2-s1-registry-wave-sha256:1a92ff3bbbe717b91de84a8d6ed378aaa648c34bfa265757c472ba7f0272d4de"
+      "sha256": "ef8037710321a5ef27b414647896d63dfccbaadde379606a5f53bb8b810e9c16",
+      "snapshot_digest": "sha256:d228c6d267d98acd887daf2f9e4c39e4cd042f0b0c66acc5e5ce40d254f24f92",
+      "snapshot_id": "p2-s1-registry-wave-sha256:d228c6d267d98acd887daf2f9e4c39e4cd042f0b0c66acc5e5ce40d254f24f92"
     }
   },
   "registry_runtime_evidence": {
-    "content_digest": "sha256:19ed6d1d0e660653b50ccdb673ccc0318b8b2ddac03fd9d09c67faf84e3cc6e1",
+    "content_digest": "sha256:29ef7956f9c06a1c89c5769161d15e33115c8a442eb9c7d1e3aca4d91898b493",
     "generator_path": "contracts/agent/country-outage-p2-s1-implementation/tools/generate_registry_evidence.ts",
     "generator_sha256": "fbeb3cefd67fdab7e1a6dc76b521f9edac1866ca88c9a60a5e82ac920ac55c95",
     "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime/W3.json",
-    "sha256": "12c76b74bc98c08616953a634412f098333627e341076d500a6c5c6205671f75"
+    "sha256": "ef8037710321a5ef27b414647896d63dfccbaadde379606a5f53bb8b810e9c16"
   },
   "schema_version": "country_outage_p2_s1_implementation_wave_evidence_v1",
   "stage": "W3",
@@ -427,22 +427,22 @@
     {
       "category": "positive",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w3-positive.json",
-      "receipt_digest": "fdd26ab4273f8c3b0e7b81c23ac470f444ab3bd411802d4f41a413bb13b17a80",
-      "sha256": "71ca5c7b7f14db373745edec599168b5f3a88feef85b6fa61814e5fd3a2919a4",
+      "receipt_digest": "8394c150d476e678620575a69d011e0f166a74b6d99a738198f0185ed232f2d4",
+      "sha256": "cc433cc588e512bfead252eca61898c54c3d20ad755e91873938245fa653b0bc",
       "suite_id": "w3-positive"
     },
     {
       "category": "boundary",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w3-boundary.json",
-      "receipt_digest": "ba26df476f10ecfb3fedf73243394245f4c0ed1acba4b0d713204514ab12bbfc",
-      "sha256": "a2a4fc991cfd35078dbfc4100c992cbb73929ffd8fa6851d22c122b57afa6946",
+      "receipt_digest": "1650dda5fb5834e91e46a56fd814d7dd845f0de04651c979f8787729493e7846",
+      "sha256": "f43b8880810f68e75f56a3b9f7cf0d230db88eac0e22a42d5e627811265dab26",
       "suite_id": "w3-boundary"
     },
     {
       "category": "attack",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w3-attack.json",
-      "receipt_digest": "f607ff76031d5e4884a26cdeaca859ba69e308230d3cb82b9cac0567773eab51",
-      "sha256": "2c3b3771d858d4a691021fe1011275848a915c1531ece36b48e61272ebbc83db",
+      "receipt_digest": "332cb988d7ca654b154ebf2d343a528d30e0173ba6a1b613b2b8d271f8ad3973",
+      "sha256": "961651bb3c275017dd84a27b8e2c2b325b669df6ffd5c5df6b59e139b69633a5",
       "suite_id": "w3-attack"
     }
   ],
@@ -461,6 +461,6 @@
       "size_bytes": 31262
     },
     "store_id": "country_outage_p2_s1_source_store_v1_4b6151c6f34a74f7396df7750d87567d3bc3163eb2545ad0300f3d8c7b969b47",
-    "w0_receipt_digest": "eb6fb53994a344c2bb3a6085f17269df851356b42ccbcf53301ec408ab0cd013"
+    "w0_receipt_digest": "f4b55dc602aeb31ac0b2912d6b990d09cc754f9cf31033c2cbc271bfa03de619"
   }
 }

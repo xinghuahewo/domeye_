@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "8d11a3a83783dd32e15e0000c54d45b3a16e0d5cf2b0d723fca9318225cb6e92",
-      "size_bytes": 24185
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -50,14 +50,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op38_half_open_overlap_empty_and_interval_attacks",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op39_prefix_projection_dedup_empty_and_attacks"
   ],
-  "completed_at_utc": "2026-08-13T06:21:08Z",
+  "completed_at_utc": "2026-08-14T03:19:27Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_op38_half_open_overlap_empty_and_interval_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_op39_prefix_projection_dedup_empty_and_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "1f3db314836257c9d40c1e2c24690254f0fe5d9fbff545814cd69b8c8580f4f2",
   "passed": true,
-  "receipt_digest": "f607ff76031d5e4884a26cdeaca859ba69e308230d3cb82b9cac0567773eab51",
+  "receipt_digest": "332cb988d7ca654b154ebf2d343a528d30e0173ba6a1b613b2b8d271f8ad3973",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -67,7 +67,7 @@
   ],
   "skipped_count": 0,
   "stage": "W3",
-  "started_at_utc": "2026-08-13T06:21:08Z",
+  "started_at_utc": "2026-08-14T03:19:27Z",
   "suite_id": "w3-attack",
   "test_case_coverage": [
     {

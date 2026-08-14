@@ -26,7 +26,7 @@ def test_openapi_paths_match_runtime_routes(app):
     assert set(contract['paths']) == runtime_paths
 
 
-def test_openapi_only_allows_narrow_ephemeral_agent_post_operations():
+def test_openapi_only_allows_explicit_agent_state_machine_post_operations():
     project_root = Path(__file__).resolve().parents[3]
     contract = json.loads(
         (project_root / 'contracts' / 'openapi.json').read_text(encoding='utf-8')
@@ -35,6 +35,26 @@ def test_openapi_only_allows_narrow_ephemeral_agent_post_operations():
         '/api/v2/country-outage/reports',
         '/api/v2/country-outage/reports/{report_id}/questions',
         '/api/v2/country-outage/runs/{run_id}/abort',
+        '/api/v2/country-outage/chat/conversations',
+        '/api/v2/country-outage/chat/conversations/{conversation_id}/turns',
+        '/api/v2/country-outage/chat/conversations/{conversation_id}/rebind',
+        (
+            '/api/v2/country-outage/chat/conversations/{conversation_id}/turns/'
+            '{turn_id}/cancel'
+        ),
+        '/api/v2/country-outage/investigations',
+        '/api/v2/country-outage/investigations/{investigation_id}/start',
+        '/api/v2/country-outage/investigations/{investigation_id}/cancel',
+        (
+            '/api/v2/country-outage/investigations/{investigation_id}/nodes/'
+            '{node_id}/cancel'
+        ),
+        (
+            '/api/v2/country-outage/investigations/{investigation_id}/nodes/'
+            '{node_id}/reruns'
+        ),
+        '/api/v2/country-outage/investigations/{investigation_id}/turns',
+        '/api/v2/country-outage/investigations/{investigation_id}/exports',
     }
     actual_posts = set()
     for path, path_item in contract['paths'].items():
@@ -411,3 +431,41 @@ def test_openapi_requires_legacy_event_semantic_guardrails():
     assert schemas['EventDetail']['properties']['semantic_guardrails'] == guardrail_ref
     assert 'semantic_guardrails' in schemas['EvidenceBundle']['required']
     assert schemas['EvidenceBundle']['properties']['semantic_guardrails'] == guardrail_ref
+
+
+def test_openapi_w5_turn_answer_is_closed_versioned_and_fixture_bounded():
+    project_root = Path(__file__).resolve().parents[3]
+    contract = json.loads(
+        (project_root / 'contracts' / 'openapi.json').read_text(encoding='utf-8')
+    )
+    path = (
+        '/api/v2/country-outage/investigations/{investigation_id}/turns/'
+        '{turn_id}/revisions/{turn_revision}'
+    )
+    assert contract['paths'][path]['get']['responses']['200']['content']['application/json']['schema'] == {
+        '$ref': '#/components/schemas/CountryOutageInvestigationTurnEnvelope'
+    }
+    schemas = contract['components']['schemas']
+    for name in (
+        'CountryOutageInvestigationTurnRef',
+        'CountryOutageInvestigationAnswerClaim',
+        'CountryOutageInvestigationAnswer',
+        'CountryOutageInvestigationTurn',
+        'CountryOutageInvestigationTurnEnvelope',
+        'CountryOutageInvestigationTurnActionResponse',
+    ):
+        assert schemas[name]['additionalProperties'] is False
+    boundary = schemas['CountryOutageInvestigationAnswer']['properties']['fixture_boundary']
+    assert boundary['additionalProperties'] is False
+    assert boundary['properties']['external_provider_called']['const'] is False
+    assert boundary['properties']['fixture_replay_only']['const'] is True
+    assert boundary['properties']['runtime_integrated']['const'] is True
+    assert boundary['properties']['production_deployed']['const'] is False
+    assert 'turn_refs' in schemas['CountryOutageInvestigation']['required']
+    claim = schemas['CountryOutageInvestigationAnswerClaim']
+    assert set(claim['required']) == {
+        'claim_id', 'claim_kind', 'claim_relation', 'text', 'fact_ids',
+        'source_node_ids', 'source_value_digests', 'evidence_refs',
+        'boundary_assertion_ids', 'verification_requirements',
+    }
+    assert 'gate' in schemas['CountryOutageInvestigationReceipt']['properties']['receipt_kind']['enum']

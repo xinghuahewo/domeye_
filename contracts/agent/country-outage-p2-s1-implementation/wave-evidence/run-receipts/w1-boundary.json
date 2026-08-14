@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "8d11a3a83783dd32e15e0000c54d45b3a16e0d5cf2b0d723fca9318225cb6e92",
-      "size_bytes": 24185
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -52,14 +52,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests.test_op13_asn_binding_normal_ties_and_attacks",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_actual_input_output_examples_validate_frozen_draft202012_schema"
   ],
-  "completed_at_utc": "2026-08-13T06:21:03Z",
+  "completed_at_utc": "2026-08-14T03:19:25Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_interval_gap_and_unknown_break_runs (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_complete_empty_requires_valid_population_binding (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_op13_asn_binding_normal_ties_and_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_actual_input_output_examples_validate_frozen_draft202012_schema (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests)\n每个 Operator 至少一个实际正例按冻结 Input/Output $def 完整验证。 ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "5069c242aa1011342eb4270a12f1cfc6c22645996f9ab45a1ca4aac77b029845",
   "passed": true,
-  "receipt_digest": "89afeba3727f4ed895622c6e1abbef1ec74f985821050c4f9c4175030206680d",
+  "receipt_digest": "2f20d054b307a875fe78a27676920dfe01cad74e94729390ba196daa5203693b",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -71,7 +71,7 @@
   ],
   "skipped_count": 0,
   "stage": "W1",
-  "started_at_utc": "2026-08-13T06:20:59Z",
+  "started_at_utc": "2026-08-14T03:19:24Z",
   "suite_id": "w1-boundary",
   "test_case_coverage": [
     {
