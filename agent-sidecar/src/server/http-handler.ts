@@ -25,6 +25,22 @@ import type {
   P1ChatApplication,
   P1ChatEvent,
 } from '../chat/contracts.js'
+import {
+  P1ReadModelError,
+} from '../chat/general-read-model-provider.js'
+import {
+  P1RuntimeV2SingleTurnError,
+  type P1RuntimeV2SingleTurnRequest,
+  type P1RuntimeV2SingleTurnService,
+} from '../chat/runtime-v2-single-turn.js'
+import {
+  P1SemanticPlanError,
+  type P1RuntimeV2SemanticRequest,
+  type P1RuntimeV2SemanticTurnService,
+} from '../chat/runtime-v2-semantic.js'
+import type {
+  P1RuntimeV2ConversationService,
+} from '../chat/runtime-v2-conversation.js'
 
 const BASE_PATH = '/country-outage'
 const MAX_REQUEST_BYTES = 64 * 1024
@@ -38,9 +54,176 @@ export interface CountryOutageAgentHttpHandlerOptions {
   manager?: CountryOutageSessionManager
   /** P1 事件绑定聊天是独立于报告追问的窄应用。 */
   chat?: P1ChatApplication
+  /** P1 Runtime v2 S1 的无状态受控单轮垂直切片。 */
+  runtimeV2SingleTurn?: P1RuntimeV2SingleTurnService
+  /** P1 Runtime v2 S2 的开放 UserGoalPlan 到封闭 GroundingPlan 入口。 */
+  runtimeV2SemanticTurn?: P1RuntimeV2SemanticTurnService
+  /** P1 Runtime v2 S3 的事务化多轮状态与事件重绑定入口。 */
+  runtimeV2Conversation?: P1RuntimeV2ConversationService
   authenticate: AuthenticateCountryOutageRequest
   basePath?: string
   sseHeartbeatMs?: number
+}
+
+function createRuntimeV2SemanticBody(
+  value: unknown,
+): P1RuntimeV2SemanticRequest {
+  const body = objectBody(value)
+  exactKeys(body, [
+    'event_reference', 'publication_id', 'revision', 'question',
+  ])
+  const eventReference = body.event_reference
+  if (
+    typeof eventReference !== 'string'
+    || !/^country_outage\/\d{4}-\d{2}-\d{2}[ +]\d{2}:\d{2}:\d{2}\/[A-Z]{2}\/[1-9]\d*\/r$/.test(eventReference)
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_event_reference',
+      'event_reference 不是合法 country_outage 引用',
+    )
+  }
+  if (
+    typeof body.publication_id !== 'string'
+    || !body.publication_id
+    || body.publication_id.length > 256
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_publication_id',
+      'publication_id 无效',
+    )
+  }
+  if (
+    typeof body.revision !== 'number'
+    || !Number.isSafeInteger(body.revision)
+    || body.revision < 1
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_revision',
+      'revision 必须是正整数',
+    )
+  }
+  if (
+    typeof body.question !== 'string'
+    || body.question.trim().length < 1
+    || body.question.length > 2_000
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_question',
+      'question 必须是 1 至 2,000 字符的非空文本',
+    )
+  }
+  return {
+    event_reference: eventReference,
+    publication_id: body.publication_id,
+    revision: body.revision,
+    question: body.question,
+  }
+}
+
+function createRuntimeV2SingleTurnBody(
+  value: unknown,
+): P1RuntimeV2SingleTurnRequest {
+  const body = objectBody(value)
+  exactKeys(body, [
+    'event_reference',
+    'publication_id',
+    'revision',
+    'controlled_goal',
+  ])
+  const eventReference = body.event_reference
+  if (
+    typeof eventReference !== 'string'
+    || !/^country_outage\/\d{4}-\d{2}-\d{2}[ +]\d{2}:\d{2}:\d{2}\/[A-Z]{2}\/[1-9]\d*\/r$/.test(eventReference)
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_event_reference',
+      'event_reference 不是合法 country_outage 引用',
+    )
+  }
+  if (
+    typeof body.publication_id !== 'string'
+    || !body.publication_id
+    || body.publication_id.length > 256
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_publication_id',
+      'publication_id 无效',
+    )
+  }
+  if (
+    typeof body.revision !== 'number'
+    || !Number.isSafeInteger(body.revision)
+    || body.revision < 1
+  ) {
+    throw new CountryOutageHttpError(
+      400,
+      'invalid_revision',
+      'revision 必须是正整数',
+    )
+  }
+  if (body.controlled_goal !== 'event_summary') {
+    throw new CountryOutageHttpError(
+      400,
+      'unsupported_goal',
+      'S1 受控入口只接受 event_summary',
+    )
+  }
+  return {
+    event_reference: eventReference,
+    publication_id: body.publication_id,
+    revision: body.revision,
+    controlled_goal: 'event_summary',
+  }
+}
+
+function runtimeV2HttpError(error: unknown): CountryOutageHttpError {
+  if (error instanceof CountryOutageHttpError) return error
+  if (
+    !(error instanceof P1RuntimeV2SingleTurnError)
+    && !(error instanceof P1SemanticPlanError)
+    && !(error instanceof P1ReadModelError)
+  ) {
+    return new CountryOutageHttpError(
+      500,
+      'runtime_v2_internal_error',
+      'P1 Runtime v2 单轮请求处理失败',
+    )
+  }
+  const statusByCode: Record<string, number> = {
+    permission_denied: 403,
+    invalid_reference: 400,
+    unsupported_goal: 400,
+    binding_conflict: 409,
+    publication_identity_conflict: 409,
+    lifecycle_identity_conflict: 409,
+    unsupported_event: 409,
+    capability_unavailable: 409,
+    evidence_not_found: 404,
+    invalid_data: 422,
+    data_api_unavailable: 503,
+    tool_timeout: 504,
+    cancelled: 499,
+    invalid_question: 400,
+    grounding_plan_rejected: 422,
+    grounding_plan_schema_invalid: 422,
+    contract_invalid: 503,
+    invalid_idempotency_key: 400,
+    idempotency_conflict: 409,
+    revision_drift: 409,
+    conversation_expired: 410,
+  }
+  return new CountryOutageHttpError(
+    statusByCode[error.code] ?? 500,
+    error.code,
+    error.message,
+    error.retryable,
+  )
 }
 
 function createP1ConversationBody(
@@ -502,6 +685,242 @@ export function createCountryOutageAgentHttpHandler(
     void (async () => {
       const url = new URL(request.url ?? '/', 'http://sidecar.invalid')
       const pathname = url.pathname
+
+      if (pathname === `${basePath}/runtime-v2/conversations`) {
+        if (!options.runtimeV2Conversation) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_conversation_not_configured',
+            'P1 Runtime v2 多轮会话尚未配置',
+          )
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createP1ConversationBody(request, await readJson(request))
+        const controller = new AbortController()
+        const abort = (): void => controller.abort()
+        request.once('aborted', abort)
+        response.once('close', () => {
+          if (!response.writableEnded) abort()
+        })
+        try {
+          const result = await options.runtimeV2Conversation.createConversation(
+            principal,
+            body,
+            controller.signal,
+          )
+          writeJson(response, result.deduplicated ? 200 : 201, result)
+        } catch (error) {
+          throw runtimeV2HttpError(error)
+        } finally {
+          request.removeListener('aborted', abort)
+        }
+        return
+      }
+
+      const runtimeV2ConversationMatch = pathname.match(
+        new RegExp(`^${basePath}/runtime-v2/conversations/([^/]+)$`),
+      )
+      if (runtimeV2ConversationMatch) {
+        if (!options.runtimeV2Conversation) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_conversation_not_configured',
+            'P1 Runtime v2 多轮会话尚未配置',
+          )
+        }
+        if (request.method !== 'GET') {
+          methodNotAllowed(response, 'GET')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const result = await options.runtimeV2Conversation.getConversation(
+          principal,
+          decodeURIComponent(runtimeV2ConversationMatch[1]!),
+        )
+        writeJson(response, 200, result)
+        return
+      }
+
+      const runtimeV2TurnsMatch = pathname.match(
+        new RegExp(`^${basePath}/runtime-v2/conversations/([^/]+)/turns$`),
+      )
+      if (runtimeV2TurnsMatch) {
+        if (!options.runtimeV2Conversation) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_conversation_not_configured',
+            'P1 Runtime v2 多轮会话尚未配置',
+          )
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createP1TurnBody(request, await readJson(request))
+        const controller = new AbortController()
+        const abort = (): void => controller.abort()
+        request.once('aborted', abort)
+        response.once('close', () => {
+          if (!response.writableEnded) abort()
+        })
+        try {
+          const result = await options.runtimeV2Conversation.createTurn(
+            principal,
+            decodeURIComponent(runtimeV2TurnsMatch[1]!),
+            body,
+            controller.signal,
+          )
+          writeJson(response, result.deduplicated ? 200 : 201, result)
+        } catch (error) {
+          throw runtimeV2HttpError(error)
+        } finally {
+          request.removeListener('aborted', abort)
+        }
+        return
+      }
+
+      const runtimeV2CancelMatch = pathname.match(
+        new RegExp(
+          `^${basePath}/runtime-v2/conversations/([^/]+)/turns/([^/]+)/cancel$`,
+        ),
+      )
+      if (runtimeV2CancelMatch) {
+        if (!options.runtimeV2Conversation) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_conversation_not_configured',
+            'P1 Runtime v2 多轮会话尚未配置',
+          )
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const body = objectBody(await readJson(request))
+        exactKeys(body, [])
+        const principal = await authenticate(options, request)
+        const result = await options.runtimeV2Conversation.cancelTurn(
+          principal,
+          decodeURIComponent(runtimeV2CancelMatch[1]!),
+          decodeURIComponent(runtimeV2CancelMatch[2]!),
+        )
+        writeJson(response, 200, result)
+        return
+      }
+
+      const runtimeV2RebindMatch = pathname.match(
+        new RegExp(`^${basePath}/runtime-v2/conversations/([^/]+)/rebind$`),
+      )
+      if (runtimeV2RebindMatch) {
+        if (!options.runtimeV2Conversation) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_conversation_not_configured',
+            'P1 Runtime v2 多轮会话尚未配置',
+          )
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createP1ConversationBody(request, await readJson(request))
+        const controller = new AbortController()
+        const abort = (): void => controller.abort()
+        request.once('aborted', abort)
+        response.once('close', () => {
+          if (!response.writableEnded) abort()
+        })
+        try {
+          const result = await options.runtimeV2Conversation.rebind(
+            principal,
+            decodeURIComponent(runtimeV2RebindMatch[1]!),
+            body,
+            controller.signal,
+          )
+          writeJson(response, 200, result)
+        } catch (error) {
+          throw runtimeV2HttpError(error)
+        } finally {
+          request.removeListener('aborted', abort)
+        }
+        return
+      }
+
+      if (pathname === `${basePath}/runtime-v2/semantic-turn`) {
+        if (!options.runtimeV2SemanticTurn) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_semantic_not_configured',
+            'P1 Runtime v2 语义模型候选尚未配置',
+          )
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createRuntimeV2SemanticBody(await readJson(request))
+        const controller = new AbortController()
+        const abort = (): void => controller.abort()
+        request.once('aborted', abort)
+        response.once('close', () => {
+          if (!response.writableEnded) abort()
+        })
+        try {
+          const result = await options.runtimeV2SemanticTurn.answer(
+            principal,
+            body,
+            controller.signal,
+          )
+          writeJson(response, 200, result)
+        } catch (error) {
+          throw runtimeV2HttpError(error)
+        } finally {
+          request.removeListener('aborted', abort)
+        }
+        return
+      }
+
+      if (pathname === `${basePath}/runtime-v2/single-turn`) {
+        if (!options.runtimeV2SingleTurn) {
+          throw new CountryOutageHttpError(
+            503,
+            'p1_runtime_v2_not_configured',
+            'P1 Runtime v2 单轮能力尚未配置',
+          )
+        }
+        if (request.method !== 'POST') {
+          methodNotAllowed(response, 'POST')
+          return
+        }
+        const principal = await authenticate(options, request)
+        const body = createRuntimeV2SingleTurnBody(await readJson(request))
+        const controller = new AbortController()
+        const abort = (): void => controller.abort()
+        request.once('aborted', abort)
+        response.once('close', () => {
+          if (!response.writableEnded) abort()
+        })
+        try {
+          const result = await options.runtimeV2SingleTurn.answer(
+            principal,
+            body,
+            controller.signal,
+          )
+          writeJson(response, 200, result)
+        } catch (error) {
+          throw runtimeV2HttpError(error)
+        } finally {
+          request.removeListener('aborted', abort)
+        }
+        return
+      }
 
       if (pathname === `${basePath}/chat/conversations`) {
         if (!options.chat) {

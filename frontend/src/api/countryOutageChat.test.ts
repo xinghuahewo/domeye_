@@ -11,6 +11,121 @@ afterEach(() => {
 })
 
 describe('P1 事件绑定聊天 API', () => {
+  it('S2 语义轮次只发送冻结身份和用户原问题', async () => {
+    const payload = {
+      schema_version: 'country_outage_p1_semantic_turn_v2',
+      answerability: 'partial',
+      results: [],
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => payload,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const request = {
+      event_reference: 'country_outage/2026-02-27 09:12:32/IR/1/r',
+      publication_id: 'publication-test',
+      revision: 1,
+      question: '现在还有多少前缀不可见，是不是全国都断了？',
+    }
+
+    await expect(
+      countryOutageChatApi.createRuntimeV2SemanticTurn(request),
+    ).resolves.toEqual(payload)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v2/country-outage/runtime-v2/semantic-turn',
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: undefined,
+      },
+    )
+  })
+
+  it('S1 受控单轮请求只发送冻结身份和 event_summary', async () => {
+    const payload = {
+      schema_version: 'country_outage_p1_single_turn_v2',
+      answerability: 'partial',
+      answer_text: '确定性事件概览',
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => payload,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const request = {
+      event_reference: 'country_outage/2026-02-27 09:12:32/IR/1/r',
+      publication_id: 'publication-test',
+      revision: 1,
+      controlled_goal: 'event_summary' as const,
+    }
+
+    await expect(
+      countryOutageChatApi.createRuntimeV2SingleTurn(request),
+    ).resolves.toEqual(payload)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v2/country-outage/runtime-v2/single-turn',
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: undefined,
+      },
+    )
+  })
+
+  it('S3 会话轮次只发送原问题和幂等键到事务化窄接口', async () => {
+    const payload = {
+      turn: {
+        turn_id: 'p1v2turn_test',
+        state: 'completed',
+      },
+      deduplicated: false,
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => payload,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const request = {
+      question: '到最后还剩多少？',
+      idempotency_key: 'turn-runtime-v2-0001',
+    }
+
+    await expect(
+      countryOutageChatApi.createRuntimeV2ConversationTurn(
+        'p1v2_conversation',
+        request,
+      ),
+    ).resolves.toEqual(payload)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v2/country-outage/runtime-v2/conversations/p1v2_conversation/turns',
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'turn-runtime-v2-0001',
+        },
+        body: JSON.stringify(request),
+        signal: undefined,
+      },
+    )
+  })
+
   it('创建会话时把 publication/revision 和幂等键送到窄接口', async () => {
     const payload = {
       conversation: {

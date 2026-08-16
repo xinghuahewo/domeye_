@@ -1,0 +1,148 @@
+{
+  "schema_version": "country_outage_p1_semantic_turn_v2",
+  "answerability": "unsupported",
+  "binding": {
+    "event_type": "country_outage",
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+    "country_code": "IR",
+    "detected_at_utc": null,
+    "window_start_utc": "2026-02-27T00:10:00Z",
+    "window_end_utc": "2026-03-11T00:00:00Z",
+    "data_through": "2026-03-11T00:00:00Z",
+    "is_final_in_data_range": false,
+    "lifecycle_state": "event_end_unknown",
+    "observation_state": "evidence_complete",
+    "quality_state": "complete",
+    "missing_slot_count": 0,
+    "capabilities": {
+      "overview": "available",
+      "event_series": "available",
+      "affected_as": "available",
+      "path_downstreams": "available",
+      "full_path_evidence": "audit_only"
+    }
+  },
+  "semantic_plan": {
+    "schema_version": "country_outage_p1_semantic_plan_v2",
+    "user_goal_plan": {
+      "plan_revision": "user-goal-plan-v2",
+      "original_question": "给这次事件写一套处置建议",
+      "goals": [
+        {
+          "goal_id": "goal-1",
+          "requested_goal": "为这次事件提供一套处置建议",
+          "normalized_kind": "incident_response_recommendations",
+          "entities": {},
+          "references": [],
+          "ambiguity": "none",
+          "context_dependencies": []
+        }
+      ],
+      "state_proposal": {
+        "inherit": [],
+        "set": {},
+        "clear": [],
+        "reason_codes": []
+      },
+      "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+      "confidence": 0.95
+    },
+    "grounding_plan": {
+      "plan_revision": "grounding-plan-v2",
+      "identity": {
+        "binding_phase": "bound",
+        "event_type": "country_outage",
+        "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+        "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+        "revision": 1,
+        "collector_id": "rrc25",
+        "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+        "country_code": "IR",
+        "window_start_utc": "2026-02-27T00:10:00Z",
+        "window_end_utc": "2026-03-11T00:00:00Z",
+        "data_through": "2026-03-11T00:00:00Z",
+        "is_final_in_data_range": false,
+        "lifecycle_state": "event_end_unknown",
+        "observation_state": "evidence_complete",
+        "capabilities": {
+          "overview": "available",
+          "event_series": "available",
+          "affected_as": "available",
+          "path_downstreams": "available",
+          "full_path_evidence": "audit_only"
+        }
+      },
+      "decisions": [
+        {
+          "goal_id": "goal-1",
+          "answerability": "unsupported",
+          "node_ids": [],
+          "reason_codes": [
+            "remediation_recommendation_not_in_p1"
+          ]
+        }
+      ],
+      "nodes": [],
+      "authorization_scope": [
+        "country_outage:read"
+      ],
+      "validation": {
+        "status": "passed",
+        "errors": []
+      }
+    }
+  },
+  "results": [
+    {
+      "goal_id": "goal-1",
+      "requested_goal": "为这次事件提供一套处置建议",
+      "normalized_kind": "incident_response_recommendations",
+      "answerability": "unsupported",
+      "text": "事件处置建议不属于 P1 的只读 RRC25 事实问答能力，当前不会生成或执行处置方案。",
+      "evidence_refs": [],
+      "limitations": [
+        "事件处置建议不属于 P1 的只读 RRC25 事实问答能力，当前不会生成或执行处置方案。"
+      ]
+    }
+  ],
+  "answer_text": "事件处置建议不属于 P1 的只读 RRC25 事实问答能力，当前不会生成或执行处置方案。",
+  "evidence": [],
+  "limitations": [
+    "事件处置建议不属于 P1 的只读 RRC25 事实问答能力，当前不会生成或执行处置方案。"
+  ],
+  "unknowns": [
+    "为这次事件提供一套处置建议"
+  ],
+  "execution_trace": {
+    "binding_preflight": "passed",
+    "nodes": [],
+    "authorization": {
+      "original_scope": "country_outage_event_read:IR",
+      "effective_permission": "country_outage:read",
+      "basis": "event_read_country",
+      "country_code": "IR"
+    },
+    "planner_outcome": "accepted",
+    "model_generated_fact_count": 0,
+    "state_commit": "none"
+  },
+  "validation": {
+    "user_goal_schema": "passed",
+    "grounding_schema": "passed",
+    "grounding_legality": "passed",
+    "answer_evidence": "passed",
+    "errors": []
+  },
+  "runtime_identity": {
+    "implementation": "p1-runtime-v2-semantic-turn",
+    "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+    "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "collector": "rrc25"
+  },
+  "completed_at": "2026-08-09T12:14:23.547Z"
+}

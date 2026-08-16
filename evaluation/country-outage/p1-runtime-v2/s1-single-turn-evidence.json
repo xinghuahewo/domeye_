@@ -1,0 +1,121 @@
+{
+  "schema_version": "country_outage_p1_s1_single_turn_evidence_v2",
+  "captured_at_utc": "2026-08-09T11:20:25Z",
+  "candidate": {
+    "base_commit": "36c9f34dfd9709ab6426f551a36fa70d65cc517f",
+    "implementation": "p1-runtime-v2-single-turn",
+    "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+    "source_sha256": {
+      "agent-sidecar/src/chat/runtime-v2-single-turn.ts": "a25e37f3ac4e28ffd8b779c8e02ce2150fc60c7005f7563bc5bf61555ff8736e",
+      "agent-sidecar/src/chat/general-read-model-provider.ts": "56cf20db488909f812ddf6ffa6d76f23fddbafc231871b0bc496edffa3d888e3",
+      "agent-sidecar/src/server/http-handler.ts": "2f85c1e058bbb949a1d6c8ff4a01be511dd8ec26b4d94660ca5853af414d97ec",
+      "agent-sidecar/src/cli/serve-acceptance.ts": "cd943cde560761ba4bc76647af4b68a63b1f9716ea94fc5ab98ac6284fa37dbd",
+      "agent-sidecar/src/cli/formal-sidecar.ts": "894adcf4022e7611fd543e38d6284ce111a1ecc457ab0486de062d0cbbef18f7",
+      "agent-sidecar/tests/p1-runtime-v2.test.ts": "db58be97602643153af835eca3adfe851f7bf7ed6d6076961975da1fcefdb236",
+      "agent-sidecar/tests/p1-http-handler.test.ts": "f64f598709d4bbd735703eb0aaf85ba192cc533ec860e618f3b42532f600d369",
+      "backend/web/api/v2/country_outage_chat_proxy.py": "a946f935032fc7420b65aeeefd567303a0107e6a0ce32af25ea6fa34918194b9",
+      "backend/web/api/v2/country_outage_agent_proxy.py": "b4ef44081ecace42bf6c6ea06b231f64143550ca1803f396b5cd209a969cb787",
+      "backend/web/api/v2/route.py": "8f6f471e453f44c4168e9e2c8f404543847444658d90c8b479f5c36da257b1a3",
+      "backend/web/tests/test_country_outage_chat_proxy.py": "ad11fd4a293bc979d6c198ad44a20c2798b544d4b4547ff9dd95f8c6610ebdc3",
+      "frontend/src/api/countryOutageChat.ts": "67f73384a6b7c43fd33cc0c30a63cd200d7e9eb7bb7dec3792b13defb8e8aff3",
+      "frontend/src/api/countryOutageChat.test.ts": "f920c5247b37b144129ac34c177b2eefce087f77842de2971788b5a138dd8b99",
+      "frontend/src/pages/CountryOutageChatPage.vue": "fad05590a39b429028a267de8734e4fffcde005edbe4560bedbbf62b8164d01d",
+      "frontend/src/pages/CountryOutageChatPage.test.ts": "b0d44ad4d7421ba7861369162080621dcab5d817a88d4cd1778e9ed226f4740a"
+    }
+  },
+  "same_candidate_http_journey": {
+    "receipt": "evaluation/country-outage/p1-runtime-v2/s1-http-journey-receipt.json",
+    "receipt_sha256": "60a38260cc2cea50069f1a84b11bf685c6b2f55dd9b7955c4fe18b25d0b0d2a1",
+    "same_origin_status": 200,
+    "answerability": "partial",
+    "principal_scope": "country_outage_event_read:IR",
+    "authorization_basis": "event_read_country",
+    "evidence_ref_count": 12,
+    "model_generated_fact_count": 0,
+    "state_commit": "none",
+    "validation_passed": true
+  },
+  "same_candidate_browser_journeys": {
+    "url": "http://127.0.0.1:29471/events/chat?ref=country_outage%2F2026-02-27%2009%3A12%3A32%2FIR%2F1%2Fr&publication_id=country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f&revision=1",
+    "viewport": "1440x1100",
+    "success": {
+      "screenshot": "evaluation/country-outage/p1-runtime-v2/s1-browser-journey.png",
+      "screenshot_sha256": "5354ceb454404f7e18122352f8e2020b04ff839929bb5fad081ea852be19b3a7",
+      "network": "POST /api/v2/country-outage/runtime-v2/single-turn -> 200",
+      "visible_assertions": [
+        "确定性事件概览",
+        "部分回答",
+        "FACTS VALIDATED",
+        "0 MODEL FACTS",
+        "NO STATE COMMIT",
+        "峰值 3,855",
+        "数据截止时 1,024",
+        "窗口内不同 AS 525",
+        "事件结束时间未知",
+        "12 条字段级证据",
+        "限制",
+        "未知",
+        "TOOL-01 -> TOOL-02"
+      ]
+    },
+    "failed_closed": {
+      "screenshot": "evaluation/country-outage/p1-runtime-v2/s1-browser-failed-closed.png",
+      "screenshot_sha256": "8d4171489d185b5cb08f76f6efbf7d34ef759f06cde726701638ccd511d358a5",
+      "network": "POST /api/v2/country-outage/runtime-v2/single-turn -> 503",
+      "visible_assertions": [
+        "FAILED CLOSED",
+        "本机国家中断 Agent 暂不可用",
+        "本次请求未产生回答或状态变更"
+      ],
+      "raw_transport_detail_exposed": false
+    }
+  },
+  "failure_matrix": {
+    "runtime_and_http_command": "cd agent-sidecar && npm run build && node --test dist/tests/p1-runtime-v2.test.js dist/tests/p1-http-handler.test.js",
+    "runtime_and_http_tests": 25,
+    "runtime_and_http_passed": 25,
+    "full_sidecar_tests": 592,
+    "full_sidecar_passed": 592,
+    "backend_command": "cd backend && .venv/bin/python -m pytest -q web/tests/test_country_outage_chat_proxy.py web/tests/test_country_outage_agent_proxy.py web/tests/test_country_outage_agent_identity.py",
+    "backend_tests": 79,
+    "backend_passed": 79,
+    "frontend_build": "passed",
+    "frontend_targeted_tests": 14,
+    "frontend_targeted_passed": 14,
+    "covered": [
+      "same_publication_deterministic_answer",
+      "partial_answerability_for_unknown_event_end",
+      "dynamic_affected_as_population",
+      "null_event_end_unknown",
+      "missing_critical_fact",
+      "null_critical_number",
+      "empty_critical_string",
+      "empty_event_reference",
+      "wrong_publication_before_overview",
+      "unrelated_permission_zero_tool",
+      "global_event_read_permission",
+      "matching_country_scoped_permission",
+      "wrong_country_scoped_permission_before_overview",
+      "comma_combined_canonical_permission",
+      "capability_unavailable",
+      "tool_timeout_no_half_answer",
+      "pre_cancel_zero_tool",
+      "cancel_between_tool_01_and_tool_02",
+      "cancel_after_tool_02_before_publish",
+      "overview_identity_conflict",
+      "same_publication_detected_time_completion",
+      "real_http_provider_timeout",
+      "real_http_provider_user_cancel",
+      "real_http_provider_pre_cancel_zero_fetch",
+      "same_candidate_http_success_and_error_mapping"
+    ]
+  },
+  "s1_semantic_corrections": [
+    "包含未知事件结束子目标的事件概览标记为 partial，而不是 supported。",
+    "HTTP Provider 区分 tool_timeout、cancelled 与 data_api_unavailable，并在已取消、Tool 之间及发布前失败关闭。",
+    "授权层保留原始 scope，并只把匹配实际事件国家的 scoped 权限归一为有效只读权限。",
+    "null、undefined、空字符串和空事件引用分别测试，不把空值补成 0。",
+    "Sidecar、同源后端代理和浏览器页面消费同一 Runtime v2 单轮服务；固定 event_summary 明示为 S1 受控入口，不冒充 S2 开放语义规划。",
+    "依赖不可用时移除旧答案并展示稳定 FAILED CLOSED，不暴露底层连接池细节。"
+  ]
+}

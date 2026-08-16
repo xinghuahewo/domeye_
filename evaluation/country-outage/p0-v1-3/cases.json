@@ -112,7 +112,7 @@
       "evidence_refs": ["live.overview_facts", "live.series.selected_extrema.affected_asn_count", "live.series.selected_extrema.route_interrupted_asn_count"],
       "additional_expected_facts": [
         {"metric": "affected_asn_count", "maximum": 350, "maximum_at_utc": "2026-03-02T11:30:00Z", "unit": "asn"},
-        {"metric": "route_interrupted_asn_count", "maximum": 94, "maximum_at_utc": "2026-02-28T14:35:00Z", "unit": "asn"}
+        {"metric": "route_interrupted_asn_count", "maximum": 94, "maximum_at_utc": "2026-02-28T13:50:00Z", "unit": "asn"}
       ],
       "required_answer_points": ["区分累计受影响 AS 人口 525/151 与逐槽时序峰值 350/94", "两个 AS 峰值不在同一时点，均不等于全国或用户影响"],
       "hard_gates": ["population_names", "asn_peak_times", "cumulative_vs_slot_peak", "no_national_user_scope"]

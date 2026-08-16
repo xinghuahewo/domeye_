@@ -378,11 +378,11 @@ def _json_proxy(method: str, path: str, body: dict | None = None):
         )
     except PermissionError as error:
         return _error(401, "authentication_required", str(error))
-    except (requests.RequestException, RuntimeError) as error:
+    except (requests.RequestException, RuntimeError):
         return _error(
             503,
             "agent_unavailable",
-            str(error),
+            "本机国家中断 Agent 暂不可用，本次请求未产生回答或状态变更",
             retryable=True,
             next_action="确认本机 Sidecar 配置与运行状态后重试",
         )

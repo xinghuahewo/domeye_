@@ -350,7 +350,7 @@ def validate_oracle(oracle: dict[str, Any], capability_ids: set[str]) -> list[st
         "unit": "asn",
     } or as_peaks.get("route_interrupted_asn_count") != {
         "maximum": 94,
-        "maximum_at_utc": "2026-02-28T14:35:00Z",
+        "maximum_at_utc": "2026-02-28T13:50:00Z",
         "last": 35,
         "unit": "asn",
     }:
@@ -460,7 +460,7 @@ def validate_cases(case_set: dict[str, Any], capability_ids: set[str]) -> list[s
         if isinstance(item, dict)
     } != {
         ("affected_asn_count", 350, "2026-03-02T11:30:00Z"),
-        ("route_interrupted_asn_count", 94, "2026-02-28T14:35:00Z"),
+        ("route_interrupted_asn_count", 94, "2026-02-28T13:50:00Z"),
     }:
         errors.append("P013-D-08 未真实覆盖 CAP-005 两条 AS 时序峰值")
     nationwide = by_new_id.get("P013-B-01", {})

@@ -128,6 +128,194 @@ class CountryOutageChatProxyTest(unittest.TestCase):
         self.assertIn("未授权字段", response.get_json()["error"]["message"])
         request_sidecar.assert_not_called()
 
+    def test_runtime_v2_single_turn_forwards_only_controlled_s1_request(self):
+        calls = []
+        payload = {
+            "schema_version": "country_outage_p1_single_turn_v2",
+            "answerability": "partial",
+            "answer_text": "确定性事件概览",
+            "evidence": [],
+            "limitations": [],
+            "unknowns": [],
+        }
+
+        def fake_request(method, path, **kwargs):
+            calls.append((method, path, kwargs))
+            return FakeUpstream(payload, 200)
+
+        with patch(
+            "web.api.v2.country_outage_agent_proxy._request_sidecar",
+            side_effect=fake_request,
+        ):
+            response = self.client().post(
+                "/api/v2/country-outage/runtime-v2/single-turn",
+                json={
+                    "event_reference": REFERENCE,
+                    "publication_id": "publication-runtime-v2",
+                    "revision": 1,
+                    "controlled_goal": "event_summary",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calls[0][0:2], (
+            "POST", "/country-outage/runtime-v2/single-turn"
+        ))
+        self.assertEqual(
+            calls[0][2]["headers"]["X-Domeye-Authorization-Scope"],
+            "country_outage_event_read",
+        )
+        self.assertEqual(
+            calls[0][2]["json"]["controlled_goal"], "event_summary"
+        )
+
+    def test_runtime_v2_rejects_open_goal_and_extra_fields_before_sidecar(self):
+        with patch(
+            "web.api.v2.country_outage_agent_proxy._request_sidecar"
+        ) as request_sidecar:
+            response = self.client().post(
+                "/api/v2/country-outage/runtime-v2/single-turn",
+                json={
+                    "event_reference": REFERENCE,
+                    "publication_id": "publication-runtime-v2",
+                    "revision": 1,
+                    "controlled_goal": "root_cause_analysis",
+                    "external_urls": ["https://example.test"],
+                },
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "invalid_runtime_v2_request",
+        )
+        request_sidecar.assert_not_called()
+
+    def test_runtime_v2_semantic_turn_forwards_open_question_without_tool_fields(self):
+        calls = []
+        payload = {
+            "schema_version": "country_outage_p1_semantic_turn_v2",
+            "answerability": "partial",
+            "results": [],
+            "evidence": [],
+        }
+
+        def fake_request(method, path, **kwargs):
+            calls.append((method, path, kwargs))
+            return FakeUpstream(payload, 200)
+
+        with patch(
+            "web.api.v2.country_outage_agent_proxy._request_sidecar",
+            side_effect=fake_request,
+        ):
+            response = self.client().post(
+                "/api/v2/country-outage/runtime-v2/semantic-turn",
+                json={
+                    "event_reference": REFERENCE,
+                    "publication_id": "publication-runtime-v2",
+                    "revision": 1,
+                    "question": "现在还有多少前缀不可见，是不是全国都断了？",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(calls[0][0:2], (
+            "POST", "/country-outage/runtime-v2/semantic-turn"
+        ))
+        self.assertEqual(
+            calls[0][2]["json"]["question"],
+            "现在还有多少前缀不可见，是不是全国都断了？",
+        )
+        self.assertNotIn("tools", calls[0][2]["json"])
+        self.assertNotIn("external_urls", calls[0][2]["json"])
+
+    def test_runtime_v2_semantic_turn_rejects_tool_and_external_fields(self):
+        with patch(
+            "web.api.v2.country_outage_agent_proxy._request_sidecar"
+        ) as request_sidecar:
+            response = self.client().post(
+                "/api/v2/country-outage/runtime-v2/semantic-turn",
+                json={
+                    "event_reference": REFERENCE,
+                    "publication_id": "publication-runtime-v2",
+                    "revision": 1,
+                    "question": "为什么断网",
+                    "tool": "root_cause_analysis",
+                    "external_urls": ["https://example.test"],
+                },
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "invalid_runtime_v2_request",
+        )
+        request_sidecar.assert_not_called()
+
+    def test_runtime_v2_s3_conversation_and_turn_use_separate_bounded_paths(self):
+        calls = []
+
+        def fake_request(method, path, **kwargs):
+            calls.append((method, path, kwargs))
+            return FakeUpstream({"ok": True}, 201)
+
+        with patch(
+            "web.api.v2.country_outage_agent_proxy._request_sidecar",
+            side_effect=fake_request,
+        ):
+            created = self.client().post(
+                "/api/v2/country-outage/runtime-v2/conversations",
+                json={
+                    "event_reference": REFERENCE,
+                    "publication_id": "publication-runtime-v2",
+                    "revision": 1,
+                    "idempotency_key": "runtime-v2-create-01",
+                },
+                headers={"Idempotency-Key": "runtime-v2-create-01"},
+            )
+            turn = self.client().post(
+                "/api/v2/country-outage/runtime-v2/conversations/p1v2_abc/turns",
+                json={
+                    "question": "到最后还剩多少",
+                    "idempotency_key": "runtime-v2-turn-0001",
+                },
+                headers={"Idempotency-Key": "runtime-v2-turn-0001"},
+            )
+
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(turn.status_code, 201)
+        self.assertEqual(calls[0][0:2], (
+            "POST", "/country-outage/runtime-v2/conversations"
+        ))
+        self.assertEqual(calls[1][0:2], (
+            "POST",
+            "/country-outage/runtime-v2/conversations/p1v2_abc/turns",
+        ))
+        self.assertEqual(
+            calls[1][2]["headers"]["Idempotency-Key"],
+            "runtime-v2-turn-0001",
+        )
+        self.assertNotIn("state", calls[1][2]["json"])
+        self.assertNotIn("tools", calls[1][2]["json"])
+
+    def test_runtime_v2_s3_rejects_client_state_and_tools_before_sidecar(self):
+        with patch(
+            "web.api.v2.country_outage_agent_proxy._request_sidecar"
+        ) as request_sidecar:
+            response = self.client().post(
+                "/api/v2/country-outage/runtime-v2/conversations/p1v2_abc/turns",
+                json={
+                    "question": "继续",
+                    "idempotency_key": "runtime-v2-turn-0002",
+                    "dialog_state": {"metric": "interrupted_prefix_count"},
+                    "tools": ["root_cause_analysis"],
+                },
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "invalid_runtime_v2_request",
+        )
+        request_sidecar.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import {
   countryOutageChatApi,
   createP1IdempotencyKey,
-  type P1Answerability,
-  type P1ChatConversation,
-  type P1ChatEvent,
-  type P1ChatTurn,
+  type P1RuntimeV2Conversation,
+  type P1RuntimeV2ConversationTurn,
+  type P1RuntimeV2SingleTurnAnswer,
+  type P1SemanticAnswerability,
 } from '@/api/countryOutageChat'
 import PageState from '@/components/PageState.vue'
 import { errorMessage } from '@/utils/normalize'
@@ -16,10 +16,11 @@ import { errorMessage } from '@/utils/normalize'
 defineOptions({ name: 'CountryOutageChatPage' })
 
 const route = useRoute()
+const router = useRouter()
 const reference = computed(() => textQuery('ref'))
 const publicationId = computed(() => textQuery('publication_id'))
 const revision = computed(() => Number(textQuery('revision')))
-const conversation = ref<P1ChatConversation | null>(null)
+const conversation = ref<P1RuntimeV2Conversation | null>(null)
 const question = ref('')
 const loading = ref(true)
 const sending = ref(false)
@@ -29,8 +30,18 @@ const recoveryNotice = ref('')
 const connection = ref<'connecting' | 'connected' | 'retrying'>('connecting')
 const activeTurnId = ref('')
 const liveStatus = ref('正在建立事件绑定会话')
+const rebindOpen = ref(false)
+const rebindReference = ref('')
+const rebindPublication = ref('')
+const rebindRevision = ref(1)
+const rebinding = ref(false)
+const rebindError = ref('')
+const runtimeSummary = ref<P1RuntimeV2SingleTurnAnswer | null>(null)
+const runtimeSummaryLoading = ref(false)
+const runtimeSummaryError = ref('')
 const composer = ref<HTMLTextAreaElement | null>(null)
-let subscription: { close(): void } | null = null
+let runtimeSummaryController: AbortController | null = null
+let conversationTurnController: AbortController | null = null
 
 const suggestions = [
   '这次伊朗事件发生了什么？',
@@ -41,8 +52,8 @@ const suggestions = [
   '仅凭这页 RRC25 数据能证明什么、不能证明什么？',
 ]
 
-const statusLabel: Record<P1Answerability, string> = {
-  answerable: '已回答',
+const statusLabel: Record<P1SemanticAnswerability, string> = {
+  supported: '已回答',
   partial: '部分回答',
   clarify: '需要澄清',
   unsupported: '当前不支持',
@@ -78,7 +89,7 @@ const backLink = computed(() => ({
 }))
 
 const contextChips = computed(() => {
-  const state = conversation.value?.state
+  const state = conversation.value?.dialog_state
   if (!state) return []
   return [
     state.topic ? `主题 · ${state.topic}` : '',
@@ -88,60 +99,22 @@ const contextChips = computed(() => {
   ].filter(Boolean)
 })
 
-function mergeTurn(next: P1ChatTurn) {
+function mergeRuntimeTurn(next: P1RuntimeV2ConversationTurn, temporaryId?: string) {
   if (!conversation.value) return
-  const index = conversation.value.turns.findIndex((turn) => turn.turn_id === next.turn_id)
+  const index = conversation.value.turns.findIndex((turn) =>
+    turn.turn_id === next.turn_id || turn.turn_id === temporaryId)
   if (index < 0) conversation.value.turns.push(next)
   else conversation.value.turns[index] = next
-  if (next.answer?.validation.passed) {
-    const transition = next.answer.transition
-    const state = conversation.value.state as unknown as Record<string, unknown>
-    for (const key of transition.clear) state[key] = null
-    for (const [key, value] of Object.entries(transition.set)) state[key] = value
-    conversation.value.state.last_committed_turn_number = next.turn_number
+  if (next.answer?.state_receipt.status === 'committed') {
+    conversation.value.dialog_state = next.answer.state_receipt.after
   }
-}
-
-function receiveEvent(event: P1ChatEvent) {
-  if (event.turn_id && event.state && sending.value) {
-    activeTurnId.value = event.turn_id
-    const labels: Partial<Record<P1ChatTurn['state'], string>> = {
-      queued: '问题已排队',
-      understanding: '正在理解问题并锁定上下文',
-      reading_facts: '正在读取同一 publication 的事实',
-      validating: '正在校验事实、引用与边界',
-      completed: '回答完成',
-      failed: '回答失败',
-      cancelled: '本轮已取消',
-    }
-    liveStatus.value = labels[event.state] || '正在处理'
+  if (next.answer?.state_receipt.proposed.clear.includes('event_binding')) {
+    conversation.value.active_binding_generation = null
   }
-  if (event.answer) {
-    mergeTurn({
-      turn_id: event.answer.turn_id,
-      turn_number: event.answer.turn_number,
-      question: conversation.value?.turns.find((turn) => turn.turn_id === event.answer?.turn_id)?.question || question.value,
-      state: event.state || 'completed',
-      answer: event.answer,
-      created_at: event.emitted_at,
-      completed_at: event.answer.completed_at,
-    })
-  }
-}
-
-function connectEvents() {
-  subscription?.close()
-  if (!conversation.value) return
-  connection.value = 'connecting'
-  subscription = countryOutageChatApi.subscribe(conversation.value.conversation_id, {
-    onEvent: receiveEvent,
-    onConnectionChange: (state) => { connection.value = state },
-    onProtocolError: (message) => { error.value = message },
-  })
 }
 
 async function createConversation() {
-  const response = await countryOutageChatApi.createConversation({
+  const response = await countryOutageChatApi.createRuntimeV2Conversation({
     event_reference: reference.value,
     publication_id: publicationId.value,
     revision: revision.value,
@@ -169,14 +142,14 @@ async function load() {
     const savedId = localStorage.getItem(storageKey.value)
     if (savedId) {
       try {
-        conversation.value = await countryOutageChatApi.getConversation(savedId)
+        conversation.value = await countryOutageChatApi.getRuntimeV2Conversation(savedId)
       } catch {
         localStorage.removeItem(storageKey.value)
         recoveryNotice.value = '上一短期会话已到期或因服务重启不可恢复；已按同一事件身份创建新会话，旧回答不会被静默改写。'
       }
     }
     if (!conversation.value) await createConversation()
-    connectEvents()
+    connection.value = 'connected'
     liveStatus.value = '事件绑定会话已就绪'
   } catch (cause) {
     error.value = errorMessage(cause)
@@ -186,10 +159,40 @@ async function load() {
 }
 
 async function restart() {
-  subscription?.close()
   if (conversation.value) localStorage.removeItem(storageKey.value)
   conversation.value = null
   await load()
+}
+
+async function runControlledEventSummary() {
+  if (!conversation.value || runtimeSummaryLoading.value) return
+  runtimeSummaryController?.abort()
+  runtimeSummaryController = new AbortController()
+  runtimeSummary.value = null
+  runtimeSummaryError.value = ''
+  runtimeSummaryLoading.value = true
+  try {
+    runtimeSummary.value = await countryOutageChatApi.createRuntimeV2SingleTurn(
+      {
+        event_reference: conversation.value.binding.legacy_reference,
+        publication_id: conversation.value.binding.publication_id,
+        revision: conversation.value.binding.revision,
+        controlled_goal: 'event_summary',
+      },
+      runtimeSummaryController.signal,
+    )
+  } catch (cause) {
+    runtimeSummaryError.value = runtimeSummaryController.signal.aborted
+      ? '本次确定性读取已取消，未发布回答或提交状态。'
+      : errorMessage(cause)
+  } finally {
+    runtimeSummaryLoading.value = false
+    runtimeSummaryController = null
+  }
+}
+
+function cancelControlledEventSummary() {
+  runtimeSummaryController?.abort()
 }
 
 async function submit(value = question.value) {
@@ -199,45 +202,137 @@ async function submit(value = question.value) {
   sending.value = true
   activeTurnId.value = ''
   error.value = ''
-  liveStatus.value = '正在提交问题'
-  const placeholder: P1ChatTurn = {
+  liveStatus.value = '正在生成开放 UserGoalPlan'
+  conversationTurnController?.abort()
+  conversationTurnController = new AbortController()
+  const placeholder: P1RuntimeV2ConversationTurn = {
     turn_id: `pending-${Date.now()}`,
     turn_number: conversation.value.turns.length + 1,
     question: normalized,
-    state: 'queued',
+    state: 'understanding',
     created_at: new Date().toISOString(),
   }
   conversation.value.turns.push(placeholder)
+  activeTurnId.value = placeholder.turn_id
   try {
-    const response = await countryOutageChatApi.createTurn(
+    const response = await countryOutageChatApi.createRuntimeV2ConversationTurn(
       conversation.value.conversation_id,
-      { question: normalized, idempotency_key: createP1IdempotencyKey('turn') },
+      {
+        question: normalized,
+        idempotency_key: createP1IdempotencyKey('turn'),
+      },
+      conversationTurnController.signal,
     )
-    conversation.value.turns = conversation.value.turns.filter((turn) => turn.turn_id !== placeholder.turn_id)
-    mergeTurn(response.turn)
-    liveStatus.value = response.turn.state === 'completed' ? '回答完成' : `本轮状态：${response.turn.state}`
+    mergeRuntimeTurn(response.turn, placeholder.turn_id)
+    const requiresAuthoritativeConversationRefresh = response.turn.answer
+      && conversation.value
+      && (
+        response.turn.answer.binding.publication_id
+          !== conversation.value.binding.publication_id
+        || response.turn.answer.binding.revision
+          !== conversation.value.binding.revision
+        || response.turn.answer.state_receipt.proposed.reason_codes.includes(
+          'event_switch_rebound_atomically',
+        )
+      )
+    if (requiresAuthoritativeConversationRefresh) {
+      try {
+        conversation.value = await countryOutageChatApi.getRuntimeV2Conversation(
+          conversation.value.conversation_id,
+        )
+      } catch {
+        connection.value = 'retrying'
+      }
+    }
+    activeTurnId.value = response.turn.turn_id
+    liveStatus.value = response.turn.state === 'completed'
+      ? response.turn.answer?.execution_trace.state_commit === 'committed'
+        ? '回答完成：事实与状态事务均已校验并提交'
+        : '回答完成：本轮没有可提交的上下文变化'
+      : response.turn.error?.message || '本轮失败关闭'
   } catch (cause) {
-    conversation.value.turns = conversation.value.turns.filter((turn) => turn.turn_id !== placeholder.turn_id)
-    error.value = errorMessage(cause)
-    liveStatus.value = '本轮请求失败'
+    placeholder.state = conversationTurnController.signal.aborted ? 'cancelled' : 'failed'
+    placeholder.error = {
+      code: placeholder.state === 'cancelled' ? 'cancelled' : 'request_failed',
+      message: placeholder.state === 'cancelled'
+        ? '本轮已取消；未发布回答，也未提交状态。'
+        : errorMessage(cause),
+      retryable: placeholder.state !== 'cancelled',
+    }
+    liveStatus.value = placeholder.state === 'cancelled'
+      ? '本轮已取消'
+      : '本轮失败关闭'
+    if (conversation.value) {
+      try {
+        connection.value = 'retrying'
+        conversation.value = await countryOutageChatApi.getRuntimeV2Conversation(
+          conversation.value.conversation_id,
+        )
+        connection.value = 'connected'
+      } catch {
+        connection.value = 'retrying'
+      }
+    }
   } finally {
     sending.value = false
     activeTurnId.value = ''
+    conversationTurnController = null
     await nextTick()
     composer.value?.focus()
   }
 }
 
 async function cancel() {
-  if (!conversation.value || !activeTurnId.value || cancelling.value) return
+  if (!sending.value || cancelling.value) return
   cancelling.value = true
   try {
-    await countryOutageChatApi.cancelTurn(conversation.value.conversation_id, activeTurnId.value)
-    liveStatus.value = '取消请求已确认，本轮不会提交新上下文'
-  } catch (cause) {
-    error.value = errorMessage(cause)
+    conversationTurnController?.abort()
+    liveStatus.value = '取消信号已发送；本轮不会提交状态'
   } finally {
     cancelling.value = false
+  }
+}
+
+function openRebind() {
+  rebindOpen.value = !rebindOpen.value
+  rebindError.value = ''
+  rebindReference.value = conversation.value?.binding.legacy_reference || ''
+  rebindPublication.value = conversation.value?.binding.publication_id || ''
+  rebindRevision.value = conversation.value?.binding.revision || 1
+}
+
+async function rebindConversation() {
+  if (!conversation.value || rebinding.value) return
+  const oldStorageKey = storageKey.value
+  rebinding.value = true
+  rebindError.value = ''
+  try {
+    const response = await countryOutageChatApi.rebindRuntimeV2Conversation(
+      conversation.value.conversation_id,
+      {
+        event_reference: rebindReference.value.trim(),
+        publication_id: rebindPublication.value.trim(),
+        revision: rebindRevision.value,
+        idempotency_key: createP1IdempotencyKey('conversation'),
+      },
+    )
+    conversation.value = response.conversation
+    await router.replace({
+      query: {
+        ...route.query,
+        ref: response.conversation.binding.legacy_reference,
+        publication_id: response.conversation.binding.publication_id,
+        revision: String(response.conversation.binding.revision),
+      },
+    })
+    localStorage.removeItem(oldStorageKey)
+    localStorage.setItem(storageKey.value, response.conversation.conversation_id)
+    rebindOpen.value = false
+    recoveryNotice.value = `已切换到 binding generation ${response.conversation.binding_generation}；旧回答保留原 publication，执行上下文已清空。`
+  } catch (cause) {
+    rebindError.value = errorMessage(cause)
+  } finally {
+    rebinding.value = false
   }
 }
 
@@ -249,7 +344,10 @@ function onComposerKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => { void load() })
-onBeforeUnmount(() => subscription?.close())
+onBeforeUnmount(() => {
+  runtimeSummaryController?.abort()
+  conversationTurnController?.abort()
+})
 </script>
 
 <template>
@@ -301,11 +399,26 @@ onBeforeUnmount(() => subscription?.close())
           </div>
           <dl class="session-facts">
             <div><dt>会话</dt><dd :title="conversation.conversation_id">{{ shortIdentity(conversation.conversation_id) }}</dd></div>
-            <div><dt>已提交轮次</dt><dd>{{ conversation.state.last_committed_turn_number }}</dd></div>
+            <div><dt>状态提交轮次</dt><dd>{{ conversation.dialog_state.last_committed_turn_number }}</dd></div>
+            <div><dt>绑定代次</dt><dd>G{{ conversation.binding_generation }}</dd></div>
+            <div><dt>活动执行绑定</dt><dd>{{ conversation.active_binding_generation === null ? 'SUSPENDED' : `G${conversation.active_binding_generation}` }}</dd></div>
+            <div><dt>证据状态</dt><dd>IMMUTABLE · {{ conversation.evidence_state.collector_id.toUpperCase() }}</dd></div>
             <div><dt>到期时间</dt><dd>{{ localTime(conversation.expires_at) }}</dd></div>
             <div><dt>状态流</dt><dd :class="`is-${connection}`">{{ connection }}</dd></div>
           </dl>
           <button class="restart" type="button" @click="restart">以当前事件新建会话</button>
+          <button class="restart switch-event" type="button" @click="openRebind">
+            {{ rebindOpen ? '收起事件切换' : '切换事件 / revision' }}
+          </button>
+          <form v-if="rebindOpen" class="rebind-form" @submit.prevent="rebindConversation">
+            <label>事件引用<input v-model="rebindReference" required /></label>
+            <label>Publication<input v-model="rebindPublication" required /></label>
+            <label>Revision<input v-model.number="rebindRevision" type="number" min="1" required /></label>
+            <p v-if="rebindError" role="alert">{{ rebindError }}</p>
+            <button type="submit" :disabled="rebinding">
+              {{ rebinding ? '正在验证新 EvidenceState…' : '验证后原子切换' }}
+            </button>
+          </form>
           <p class="boundary">不接入 OONI / IODA / Cloudflare，不判断真实用户影响、责任或原因。</p>
         </aside>
 
@@ -316,8 +429,71 @@ onBeforeUnmount(() => subscription?.close())
               <div><small>VERIFIED DIALOGUE</small><h2>证据对话</h2></div>
             </div>
             <i aria-hidden="true"></i>
-            <b>{{ conversation.turns.length }} TURNS</b>
+            <b>{{ conversation.turns.length }} S3 TURNS</b>
           </div>
+
+          <section class="runtime-slice" aria-labelledby="runtime-slice-title">
+            <header>
+              <div>
+                <small>S1 · CONTROLLED SINGLE TURN</small>
+                <h2 id="runtime-slice-title">确定性事件概览</h2>
+                <p>固定目标 event_summary；这是 S1 同候选垂直切片，不冒充开放自然语言规划。</p>
+              </div>
+              <button
+                v-if="!runtimeSummaryLoading"
+                type="button"
+                @click="runControlledEventSummary"
+              >{{ runtimeSummary ? '重新读取并校验' : '读取当前事件概览' }}</button>
+              <button
+                v-else
+                class="cancel-runtime"
+                type="button"
+                @click="cancelControlledEventSummary"
+              >取消读取</button>
+            </header>
+
+            <p v-if="runtimeSummaryLoading" class="runtime-progress" role="status" aria-live="polite">
+              正在解析事件身份、读取 RRC25 overview 并校验证据……
+            </p>
+            <p v-if="runtimeSummaryError" class="runtime-error" role="alert">
+              <b>FAILED CLOSED</b>{{ runtimeSummaryError }}
+            </p>
+
+            <article v-if="runtimeSummary" class="runtime-answer">
+              <div class="runtime-verdict">
+                <strong>部分回答</strong>
+                <span>✓ FACTS VALIDATED</span>
+                <span>0 MODEL FACTS</span>
+                <span>NO STATE COMMIT</span>
+              </div>
+              <p class="runtime-answer-text">{{ runtimeSummary.answer_text }}</p>
+              <div class="runtime-boundaries">
+                <section>
+                  <h3>限制</h3>
+                  <ul><li v-for="item in runtimeSummary.limitations" :key="item">{{ item }}</li></ul>
+                </section>
+                <section>
+                  <h3>未知</h3>
+                  <ul><li v-for="item in runtimeSummary.unknowns" :key="item">{{ item }}</li></ul>
+                </section>
+              </div>
+              <details class="runtime-evidence">
+                <summary>查看 {{ runtimeSummary.evidence.length }} 条字段级证据</summary>
+                <ol>
+                  <li v-for="item in runtimeSummary.evidence" :key="item.evidence_ref">
+                    <code>{{ item.evidence_ref }}</code>
+                    <span>{{ item.value === null ? 'NULL / 未知' : item.value }} {{ item.unit || '' }}</span>
+                    <small>{{ item.observed_at_utc || '无单独观测时点' }}</small>
+                  </li>
+                </ol>
+              </details>
+              <footer>
+                <span>{{ runtimeSummary.execution_trace.nodes.map((node) => node.execution_unit).join(' → ') }}</span>
+                <span>{{ runtimeSummary.binding.publication_id }} · R{{ runtimeSummary.binding.revision }}</span>
+                <span>{{ runtimeSummary.runtime_identity.contract_revision }}</span>
+              </footer>
+            </article>
+          </section>
 
           <p v-if="recoveryNotice" class="recovery-notice" role="status">
             <b>会话恢复说明</b>{{ recoveryNotice }}
@@ -325,8 +501,8 @@ onBeforeUnmount(() => subscription?.close())
 
           <div v-if="conversation.turns.length === 0" class="empty-state">
             <span>NO TURNS YET</span>
-            <h2>从当前事件已有事实开始</h2>
-            <p>每轮都会显示回答等级、证据字段、限制和本轮状态变化。</p>
+            <h2>自然表达目标，确定执行事实</h2>
+            <p>同义、口语、错序和多意图先形成开放目标，再经过封闭能力与证据门。</p>
             <div>
               <button v-for="item in suggestions" :key="item" type="button" @click="submit(item)">{{ item }}</button>
             </div>
@@ -342,14 +518,15 @@ onBeforeUnmount(() => subscription?.close())
               <article v-if="turn.answer" :class="['agent-answer', `is-${turn.answer.answerability}`]">
                 <header>
                   <div>
-                    <span>RRC25 FACT SERVICE</span>
+                    <span>OPEN USER GOAL → CLOSED GROUNDING</span>
                     <h3>{{ statusLabel[turn.answer.answerability] }}</h3>
                   </div>
                   <time>{{ localTime(turn.answer.completed_at) }}</time>
                 </header>
 
-                <section v-for="result in turn.answer.results" :key="result.subrequest_id" class="subanswer">
-                  <b>{{ statusLabel[result.answerability] }} · {{ result.intents.join(' + ') }}</b>
+                <section v-for="result in turn.answer.results" :key="result.goal_id" class="subanswer">
+                  <b>{{ statusLabel[result.answerability] }} · {{ result.normalized_kind }}</b>
+                  <small>原目标：{{ result.requested_goal }}</small>
                   <p>{{ result.text }}</p>
                 </section>
 
@@ -369,22 +546,26 @@ onBeforeUnmount(() => subscription?.close())
                   <ol>
                     <li v-for="item in turn.answer.evidence" :key="item.evidence_ref">
                       <code>{{ item.evidence_ref }}</code>
-                      <span>{{ item.label }}</span>
+                      <span>{{ item.source }} · {{ item.field_path }}</span>
                       <b>{{ item.value === null ? 'NULL / 未知' : item.value }} {{ item.unit || '' }}</b>
                     </li>
                   </ol>
                 </details>
 
                 <footer>
-                  <span>R{{ turn.answer.binding.revision }} · {{ turn.answer.binding.collector_id.toUpperCase() }}</span>
-                  <span>{{ turn.answer.validation.passed ? '✓ FACTS VALIDATED' : '× FAILED CLOSED' }}</span>
-                  <span v-if="turn.answer.transition.reason_codes.length">{{ turn.answer.transition.reason_codes.join(' · ') }}</span>
+                  <span :title="turn.answer.binding.publication_id">{{ shortIdentity(turn.answer.binding.publication_id) }} · R{{ turn.answer.binding.revision }} · {{ turn.answer.binding.collector_id.toUpperCase() }}</span>
+                  <span>{{ turn.answer.validation.grounding_legality === 'passed' ? '✓ GROUNDING 100% LEGAL' : '× FAILED CLOSED' }}</span>
+                  <span>{{ turn.answer.execution_trace.planner_outcome }} · 0 MODEL FACTS · STATE {{ turn.answer.execution_trace.state_commit.toUpperCase() }}</span>
+                  <span>TX {{ turn.answer.state_receipt.status.toUpperCase() }} · {{ turn.answer.execution_trace.nodes.length }} RECEIPTS</span>
                 </footer>
               </article>
 
               <article v-else :class="['processing-card', `is-${turn.state}`]">
                 <span class="pulse" aria-hidden="true"></span>
-                <div><b>{{ liveStatus }}</b><small>不会在校验完成前发布答案或更新上下文</small></div>
+                <div>
+                  <b>{{ turn.error?.message || liveStatus }}</b>
+                  <small>不会在校验完成前发布答案或更新上下文</small>
+                </div>
               </article>
             </li>
           </ol>
@@ -393,7 +574,7 @@ onBeforeUnmount(() => subscription?.close())
 
           <form class="composer" @submit.prevent="submit()">
             <div class="composer-meta">
-              <span>03 · ASK WITHIN THIS PUBLICATION</span>
+              <span>03 · OPEN GOAL / CLOSED EXECUTION</span>
               <span aria-live="polite">{{ liveStatus }}</span>
             </div>
             <label>
@@ -410,7 +591,7 @@ onBeforeUnmount(() => subscription?.close())
             </label>
             <div class="composer-actions">
               <small>Enter 发送 · Shift+Enter 换行 · 仅当前事件事实</small>
-              <button v-if="sending" type="button" :disabled="!activeTurnId || cancelling" class="cancel" @click="cancel">
+              <button v-if="sending" type="button" :disabled="cancelling" class="cancel" @click="cancel">
                 {{ cancelling ? '正在取消…' : '取消本轮' }}
               </button>
               <button v-else type="submit" :disabled="!question.trim()">发送问题 <span>↗</span></button>
@@ -453,11 +634,44 @@ onBeforeUnmount(() => subscription?.close())
 .session-facts dd.is-retrying { color: #a85128; }
 .restart { width: 100%; min-height: 38px; cursor: pointer; color: var(--ink); background: transparent; border: 1px solid #9aa7aa; font-size: 10px; font-weight: 800; }
 .restart:hover { background: #fff; }
+.switch-event { margin-top: 7px; }
+.rebind-form { display: grid; gap: 8px; margin-top: 9px; padding: 10px; background: #fff; border: 1px solid #d4d0c7; }
+.rebind-form label { display: grid; gap: 4px; color: #766f68; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.rebind-form input { width: 100%; min-width: 0; padding: 7px; color: #263d48; background: #f7f8f6; border: 1px solid #bdc7c8; font: 8px/1.4 var(--mono); box-sizing: border-box; }
+.rebind-form p { margin: 0; color: #9a3730; font-size: 8px; line-height: 1.4; }
+.rebind-form button { min-height: 34px; cursor: pointer; color: #fff; background: #275f70; border: 0; font-size: 9px; font-weight: 800; }
+.rebind-form button:disabled { cursor: wait; opacity: .55; }
 .boundary { margin: 14px 0 0; padding-left: 9px; color: #87573b; border-left: 3px solid var(--signal); font-size: 9px; line-height: 1.6; }
 .conversation-panel { display: flex; flex-direction: column; min-width: 0; min-height: 720px; background: #fbfcfb; }
 .conversation-head { display: flex; align-items: center; gap: 15px; padding: 21px 25px; border-bottom: 1px solid var(--line); }
 .conversation-head i { flex: 1; height: 1px; background: var(--line); }
 .conversation-head > b { color: #819097; font: 800 8px/1 var(--mono); letter-spacing: .08em; }
+.runtime-slice { margin: 18px 24px 4px; border: 1px solid #b8c8cc; background: #eef4f3; }
+.runtime-slice > header { display: flex; justify-content: space-between; gap: 22px; align-items: center; padding: 17px 18px; border-bottom: 1px solid #cbd8da; }
+.runtime-slice > header small { color: var(--signal); font: 850 8px/1 var(--mono); letter-spacing: .1em; }
+.runtime-slice > header h2 { margin: 5px 0 3px; color: var(--ink); font-size: 18px; }
+.runtime-slice > header p { margin: 0; color: #64777e; font-size: 9px; line-height: 1.55; }
+.runtime-slice > header button { flex: none; min-width: 145px; min-height: 38px; padding: 8px 13px; cursor: pointer; color: #fff; background: #216b77; border: 0; font-size: 10px; font-weight: 850; }
+.runtime-slice > header button.cancel-runtime { background: #94453d; }
+.runtime-progress, .runtime-error { margin: 0; padding: 13px 18px; font-size: 10px; }
+.runtime-progress { color: #315864; background: #f6faf9; }
+.runtime-error { color: #8f302b; background: #fff0ed; }
+.runtime-error b { margin-right: 9px; font: 850 8px/1 var(--mono); }
+.runtime-answer { background: #fff; }
+.runtime-verdict { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 11px 18px; color: #5f777e; background: #f6f8f7; border-bottom: 1px solid #d9e1e1; font: 800 8px/1 var(--mono); }
+.runtime-verdict strong { color: #a75b27; font-size: 11px; }
+.runtime-answer-text { margin: 0; padding: 17px 18px; color: #2d424b; white-space: pre-line; font-size: 12px; line-height: 1.75; }
+.runtime-boundaries { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 18px 15px; background: #ddd7ce; border: 1px solid #ddd7ce; }
+.runtime-boundaries section { padding: 10px 12px; background: #fbf7ef; }
+.runtime-boundaries h3 { margin: 0; color: #87573b; font-size: 9px; }
+.runtime-boundaries ul { margin: 6px 0 0; padding-left: 16px; color: #665d56; font-size: 9px; line-height: 1.55; }
+.runtime-evidence { margin: 0 18px 15px; border: 1px solid #d4dddf; }
+.runtime-evidence summary { padding: 9px 11px; cursor: pointer; color: #23677f; background: #f3f7f7; font-size: 9px; font-weight: 800; }
+.runtime-evidence ol { margin: 0; padding: 0; list-style: none; }
+.runtime-evidence li { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(130px, .7fr) minmax(150px, .7fr); gap: 9px; padding: 8px 10px; border-top: 1px solid #e2e8e8; }
+.runtime-evidence code { overflow-wrap: anywhere; color: #2b677c; font: 8px/1.4 var(--mono); }
+.runtime-evidence span, .runtime-evidence small { color: #596c73; font-size: 8px; }
+.runtime-answer > footer { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 18px; color: #73858b; background: #f4f7f6; border-top: 1px solid #dce3e2; font: 800 7px/1.4 var(--mono); }
 .recovery-notice { margin: 12px 24px 0; padding: 10px 12px; color: #6f4a31; background: #fff3e7; border-left: 4px solid var(--signal); font-size: 10px; line-height: 1.55; }
 .recovery-notice b { margin-right: 8px; color: #8b4823; }
 .empty-state { display: grid; flex: 1; align-content: center; justify-items: center; min-height: 300px; padding: 45px 30px; text-align: center; background-image: radial-gradient(#dce3e3 1px, transparent 1px); background-size: 22px 22px; }
@@ -530,6 +744,7 @@ onBeforeUnmount(() => subscription?.close())
   .context-panel { border-right: 0; border-bottom: 1px solid #d5d1c8; }
   .context-panel .session-facts { grid-template-columns: repeat(2, 1fr); gap: 0 14px; }
   .conversation-panel { min-height: 600px; }
+  .runtime-slice > header { align-items: flex-start; }
 }
 @media (max-width: 640px) {
   .chat-page { padding: 0; }
@@ -539,6 +754,10 @@ onBeforeUnmount(() => subscription?.close())
   .context-panel { padding: 19px 16px; }
   .context-panel .session-facts { grid-template-columns: 1fr; }
   .conversation-head { padding: 17px 16px; }
+  .runtime-slice { margin: 12px 12px 4px; }
+  .runtime-slice > header { display: grid; }
+  .runtime-slice > header button { width: 100%; }
+  .runtime-boundaries, .runtime-evidence li { grid-template-columns: 1fr; }
   .turn-list { max-height: none; padding: 20px 13px 32px; }
   .user-message, .agent-answer, .processing-card { width: 100%; box-sizing: border-box; }
   .empty-state { padding: 35px 16px; }

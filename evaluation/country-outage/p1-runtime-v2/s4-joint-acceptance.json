@@ -1,0 +1,144 @@
+{
+  "schema_version": "country_outage_p1_s4_joint_acceptance_v2",
+  "candidate_id": "p1-runtime-v2-395d2d180aa1f3c4",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "observed_at": "2026-08-09T19:32:07.646Z",
+  "candidate_scope": "local_development_candidate",
+  "runtime": {
+    "frontend": "http://127.0.0.1:29471",
+    "backend_proxy": "http://127.0.0.1:29473/api/v2/country-outage/runtime-v2",
+    "sidecar": "http://127.0.0.1:29474/country-outage/runtime-v2",
+    "semantic_model_identity": "codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "persistence": "ephemeral"
+  },
+  "event_binding": {
+    "event_type": "country_outage",
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+    "country_code": "IR",
+    "detected_at_utc": null,
+    "window_start_utc": "2026-02-27T00:10:00Z",
+    "window_end_utc": "2026-03-11T00:00:00Z",
+    "data_through": "2026-03-11T00:00:00Z",
+    "is_final_in_data_range": false,
+    "lifecycle_state": "event_end_unknown",
+    "observation_state": "evidence_complete",
+    "quality_state": "complete",
+    "missing_slot_count": 0,
+    "capabilities": {
+      "overview": "available",
+      "event_series": "available",
+      "affected_as": "available",
+      "path_downstreams": "available",
+      "full_path_evidence": "audit_only"
+    },
+    "binding_generation": 1,
+    "active_binding_generation": 1
+  },
+  "browser_journey": {
+    "conversation_id": "p1v2_ea84b80b39b143aa8451211b7224cf8c",
+    "raw_api_receipt": {
+      "artifact": "evaluation/country-outage/p1-runtime-v2/s4-browser-api-conversation.json",
+      "json_pointer": "/raw_response",
+      "http_status": 200
+    },
+    "viewport_evidence": [
+      {
+        "viewport": "1440x1100",
+        "screenshot": "evaluation/country-outage/p1-runtime-v2/s4-browser-desktop.png"
+      },
+      {
+        "viewport": "375x900",
+        "screenshot": "evaluation/country-outage/p1-runtime-v2/s4-browser-narrow.png"
+      }
+    ],
+    "snapshot": "evaluation/country-outage/p1-runtime-v2/s4-browser-desktop.snapshot.txt",
+    "turns": [
+      {
+        "turn_number": 1,
+        "question": "按时间线列出这次事件的已知事实。",
+        "answerability": "supported",
+        "user_goal_kinds": [
+          "fact_timeline"
+        ],
+        "grounding_nodes": 4,
+        "executed_nodes": 4,
+        "evidence_count": 18,
+        "model_generated_fact_count": 0,
+        "state_commit": "committed",
+        "grounding_legality": "passed",
+        "semantic_truth": "六个有序事实节点分别绑定来源证据，并保留 event_end_unknown；时间线不解释为因果链"
+      },
+      {
+        "turn_number": 2,
+        "question": "伊朗人现在还有互联网吗，是不是全国都断了？",
+        "answerability": "partial",
+        "user_goal_kinds": [
+          "current_prefix_state",
+          "real_user_or_national_impact"
+        ],
+        "grounding_nodes": 2,
+        "executed_nodes": 2,
+        "evidence_count": 5,
+        "model_generated_fact_count": 0,
+        "state_commit": "committed",
+        "grounding_legality": "passed",
+        "semantic_truth": "回答 data_through 时点的 1024 个中断前缀控制面事实；逐子目标拒绝全国中断、真实用户可达性和受影响用户数推断"
+      },
+      {
+        "turn_number": 3,
+        "question": "这次观测覆盖多大范围？",
+        "answerability": "supported",
+        "user_goal_kinds": [
+          "current_scope"
+        ],
+        "grounding_nodes": 2,
+        "executed_nodes": 2,
+        "evidence_count": 9,
+        "model_generated_fact_count": 0,
+        "state_commit": "none",
+        "grounding_legality": "passed",
+        "semantic_truth": "区分 525/151 累计 AS 人口与逐槽峰值 350@2026-03-02T11:30Z、94@2026-02-28T13:50Z，并拒绝全国/用户外推"
+      }
+    ],
+    "final_dialog_state": {
+      "topic": "timeline",
+      "asn": null,
+      "address_family": null,
+      "metric": "interrupted_prefix_count",
+      "evidence_anchor": "current.interrupted_prefix_count",
+      "pending_clarification": null,
+      "last_committed_turn_number": 2
+    }
+  },
+  "evaluation_receipts": {
+    "p0_raw": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+    "p0_results": "evaluation/country-outage/p1-runtime-v2/s4-p0-v1-3-results.json",
+    "semantic_current_prompt": "evaluation/country-outage/p1-runtime-v2/s4-semantic-current-prompt-candidate.json",
+    "semantic_evaluation": "evaluation/country-outage/p1-runtime-v2/s4-semantic-current-prompt-evaluation.json"
+  },
+  "evidence_layers": {
+    "live_browser_and_api": "同一会话保存 UI 截图与完整 API 响应，证明自然语言、计划、Tool、证据、状态和响应式界面联合旅程",
+    "live_p0_matrix": "33 个真实模型/API 案例保留每次尝试，2 个不能安全在线制造的冲突使用同候选确定性故障注入",
+    "deterministic_tests": "证明跨 publication/revision、权限、取消、TTL、幂等代次、共享身份冲突和逐目标回滚等事务边界",
+    "alignment_hook": "只检查 Task Spec、Plan、阶段映射与路径约束，不代替产品语义和运行效果验收"
+  },
+  "unclosed_unknowns": [
+    "当前只有 RRC25 控制面事实，不能证明真实用户可达性、全国中断、原因、责任、恢复、业务损失或数据面一致性",
+    "本候选未合并、未部署、未做生产模型供应商认证，也未开始 P2 组合调查",
+    "SEM-004 把“数据看到哪儿了”归一为 event_identity；可安全返回 data-through，但继续保守计为一个目标保真失分"
+  ],
+  "boundary": {
+    "local_candidate_only": true,
+    "merged": false,
+    "deployed": false,
+    "production_verified": false,
+    "p2_or_rca": false,
+    "external_sources_connected": false
+  }
+}

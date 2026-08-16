@@ -1,0 +1,228 @@
+- complementary
+  - link "返回 Domeye Core 首页" [ref=e1]
+    - strong
+      - StaticText "Domeye Core"
+    - StaticText "ROUTING OBSERVATORY"
+  - navigation "主导航" [ref=e2]
+    - generic
+      - paragraph
+        - StaticText "监测"
+      - link "核心态势" [ref=e4]
+        - StaticText "核心态势"
+      - link "异常事件" [ref=e5]
+        - StaticText "异常事件"
+    - generic
+      - paragraph
+        - StaticText "时序特征"
+      - link "综合特征" [ref=e6]
+        - StaticText "综合特征"
+      - link "国家特征" [ref=e7]
+        - StaticText "国家特征"
+      - link "AS 特征" [ref=e8]
+        - StaticText "AS 特征"
+  - status
+    - strong
+      - StaticText "API 在线"
+    - paragraph
+      - StaticText "最近检查 03:31:34"
+    - StaticText "数据历史"
+    - StaticText "2026-02-01 起"
+- banner
+  - generic "当前位置"
+    - StaticText "异常监测"
+    - strong
+      - StaticText "事件问答"
+  - StaticText "数据范围"
+  - strong
+    - StaticText "2026-02-01 至 2026-03-31"
+  - strong
+    - StaticText "API 正常"
+- main
+  - main
+    - sectionheader
+      - link "← 返回事件证据" [ref=e9]
+      - paragraph
+        - StaticText "RRC25 · EVENT-BOUND Q&A"
+      - heading "伊朗事件问答台" [level=1, ref=e10]
+      - StaticText "只回答当前页面/API 的确定性事实"
+      - DescriptionList
+        - term "PUBLICATION"
+        - definition
+          - StaticText "country_outa…b2bc833f"
+        - term "REVISION"
+        - definition
+          - StaticText "R1"
+        - term "COLLECTOR"
+        - definition
+          - StaticText "RRC25"
+        - term "DATA THROUGH"
+        - definition
+          - StaticText "2026/03/11 08:00"
+        - term "FINALITY"
+        - definition
+          - StaticText "END UNKNOWN"
+    - complementary "当前对话上下文"
+      - StaticText "01"
+      - StaticText "BOUND CONTEXT"
+      - heading "当前上下文" [level=2, ref=e11]
+      - paragraph
+        - StaticText "上下文只继承已校验的结构化状态，不把原始聊天历史当作事实。"
+      - StaticText "主题 · timeline"
+      - StaticText "指标 · interrupted_prefix_count"
+      - DescriptionList
+        - term "会话"
+        - definition
+          - StaticText "p1v2_ea84b80…7224cf8c"
+        - term "状态提交轮次"
+        - definition
+          - StaticText "2"
+        - term "绑定代次"
+        - definition
+          - StaticText "G1"
+        - term "活动执行绑定"
+        - definition
+          - StaticText "G1"
+        - term "证据状态"
+        - definition
+          - StaticText "IMMUTABLE · RRC25"
+        - term "到期时间"
+        - definition
+          - StaticText "2026/08/10 04:00"
+        - term "状态流"
+        - definition
+          - StaticText "connected"
+      - button "以当前事件新建会话" [ref=e12]
+      - button "切换事件 / revision" [ref=e13]
+      - paragraph
+        - StaticText "不接入 OONI / IODA / Cloudflare，不判断真实用户影响、责任或原因。"
+    - region "事件问答消息" [ref=e3]
+      - StaticText "02"
+      - StaticText "VERIFIED DIALOGUE"
+      - heading "证据对话" [level=2, ref=e14]
+      - StaticText "3 S3 TURNS"
+      - region "确定性事件概览" [ref=e15]
+        - sectionheader
+          - StaticText "S1 · CONTROLLED SINGLE TURN"
+          - heading "确定性事件概览" [level=2, ref=e17]
+          - paragraph
+            - StaticText "固定目标 event_summary；这是 S1 同候选垂直切片，不冒充开放自然语言规划。"
+          - button "读取当前事件概览" [ref=e18]
+      - list
+        - listitem [level=1]
+          - article
+            - StaticText "YOU · 01"
+            - paragraph
+              - StaticText "按时间线列出这次事件的已知事实。"
+          - article
+            - sectionheader
+              - StaticText "OPEN USER GOAL → CLOSED GROUNDING"
+              - heading "已回答" [level=3, ref=e20]
+              - time
+                - StaticText "2026/08/10 03:31"
+            - generic
+              - StaticText "已回答 · fact_timeline原目标：按时间线列出这次事件的已知事实"
+              - paragraph
+                - StaticText "按时间排序：观测窗口从 2026-02-27T00:10:00Z 开始；页面检测时间为 2026-02-27T01:12:32Z；中断前缀在 2026-02-27T23:15:00Z 达到峰值 3855；完全中断前缀在 2026-02-28T14:35:00Z 达到峰值 1553；受影响 AS 在 2026-03-02T11:30:00Z 达到峰值 350；数据截至 2026-03-11T00:00:00Z 时仍有 1024 个中断前缀；事件结束时点仍未知。这是事实时间线，不是因果链。"
+            - generic
+              - heading "限制" [level=4, ref=e21]
+              - list
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "仅反映 RRC25 BGP 控制面观测，不等同于用户实际连通性、流量变化或中断原因。"
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "相邻事实节点只表示时间顺序，不表示因果关系。"
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "event_end_at_utc 为 null，事件结束时点仍未知。"
+            - generic
+              - heading "未知" [level=4, ref=e22]
+              - list
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "event_end_at_utc：event_end_unknown"
+            - group
+              - DisclosureTriangle "查看 18 条字段级证据" [expanded=false]
+                - StaticText "查看 18 条字段级证据"
+            - sectionfooter
+              - StaticText "country_outa…b2bc833f · R1 · RRC25"
+              - StaticText "✓ GROUNDING 100% LEGAL"
+              - StaticText "accepted · 0 MODEL FACTS · STATE COMMITTED"
+              - StaticText "TX COMMITTED · 4 RECEIPTS"
+        - listitem [level=1]
+          - article
+            - StaticText "YOU · 02"
+            - paragraph
+              - StaticText "伊朗人现在还有互联网吗，是不是全国都断了？"
+          - article
+            - sectionheader
+              - StaticText "OPEN USER GOAL → CLOSED GROUNDING"
+              - heading "部分回答" [level=3, ref=e23]
+              - time
+                - StaticText "2026/08/10 03:31"
+            - generic
+              - StaticText "已回答 · current_prefix_state原目标：判断当前控制面是否仍存在不可见或中断前缀"
+              - paragraph
+                - StaticText "截至北京时间 2026-03-11 08:00:00，仍有 1,024 个中断前缀，其中 318 个完全不可见；涉及 14,867 个不可见方向和 121 个受影响 AS。"
+            - generic
+              - StaticText "当前不支持 · real_user_or_national_impact原目标：伊朗人现在还有互联网吗，是不是全国都断了？"
+              - paragraph
+                - StaticText "当前证据描述 RRC25 可见的路由控制面，不能据此判断全国是否断网、真实用户是否可联网，也不能量化受影响用户数。"
+            - generic
+              - heading "限制" [level=4, ref=e24]
+              - list
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "这是数据截止时点，不是当前实时状态。"
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "当前证据描述 RRC25 可见的路由控制面，不能据此判断全国是否断网、真实用户是否可联网，也不能量化受影响用户数。"
+            - generic
+              - heading "未知" [level=4, ref=e25]
+              - list
+                - listitem [level=2]
+                  - ListMarker "◦ "
+                  - StaticText "伊朗人现在还有互联网吗，是不是全国都断了？"
+            - group
+              - DisclosureTriangle "查看 5 条字段级证据" [expanded=false]
+                - StaticText "查看 5 条字段级证据"
+            - sectionfooter
+              - StaticText "country_outa…b2bc833f · R1 · RRC25"
+              - StaticText "✓ GROUNDING 100% LEGAL"
+              - StaticText "accepted · 0 MODEL FACTS · STATE COMMITTED"
+              - StaticText "TX COMMITTED · 2 RECEIPTS"
+        - listitem [level=1]
+          - article
+            - StaticText "YOU · 03"
+            - paragraph
+              - StaticText "这次观测覆盖多大范围？"
+          - article
+            - sectionheader
+              - StaticText "OPEN USER GOAL → CLOSED GROUNDING"
+              - heading "已回答" [level=3, ref=e26]
+              - time
+                - StaticText "2026/08/10 03:31"
+            - generic
+              - StaticText "已回答 · current_scope原目标：这次观测覆盖多大范围"
+              - paragraph
+                - StaticText "固定 cohort 含 572 个 AS、9257 个前缀和 368675 个独立观察方向；窗口内累计 525 个 AS 受影响、151 个 AS 的固定前缀曾全部不可见。逐槽受影响 AS 峰值为 350（2026-03-02T11:30:00Z），固定前缀全部不可见 AS 峰值为 94（2026-02-28T13:50:00Z）。累计人口与逐槽峰值不同，也不等于全国或真实用户影响。"
+            - group
+              - DisclosureTriangle "查看 9 条字段级证据" [expanded=false]
+                - StaticText "查看 9 条字段级证据"
+            - sectionfooter
+              - StaticText "country_outa…b2bc833f · R1 · RRC25"
+              - StaticText "✓ GROUNDING 100% LEGAL"
+              - StaticText "accepted · 0 MODEL FACTS · STATE NONE"
+              - StaticText "TX NONE · 2 RECEIPTS"
+      - form
+        - StaticText "03 · OPEN GOAL / CLOSED EXECUTION"
+        - StaticText "回答完成：本轮没有可提交的上下文变化"
+        - LabelText
+          - StaticText "围绕当前事件提问"
+          - textbox "围绕当前事件提问" [ref=e19]
+        - StaticText "Enter 发送 · Shift+Enter 换行 · 仅当前事件事实"
+        - button "发送问题 ↗" [disabled, ref=e16]
+          - StaticText "发送问题 ↗"
+- contentinfo
+  - StaticText "Domeye Core · 路由异常检测核心工作台"
+  - StaticText "Asia/Shanghai · UTC+08"

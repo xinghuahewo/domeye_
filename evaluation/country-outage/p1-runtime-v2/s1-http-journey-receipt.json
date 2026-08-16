@@ -1,0 +1,67 @@
+{
+  "schema_version": "country_outage_p1_s1_http_journey_receipt_v1",
+  "captured_at_utc": "2026-08-09T11:20:25Z",
+  "candidate": {
+    "implementation": "p1-runtime-v2-single-turn",
+    "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+    "sidecar_url": "http://127.0.0.1:29474/country-outage/runtime-v2/single-turn",
+    "same_origin_url": "http://127.0.0.1:29473/api/v2/country-outage/runtime-v2/single-turn",
+    "upstream_data_api": "http://10.99.8.16:28471/api/v2/",
+    "probe_mode": "read_only"
+  },
+  "request": {
+    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "controlled_goal": "event_summary",
+    "principal_scope": "country_outage_event_read:IR"
+  },
+  "transport": {
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "cache_control": "no-store",
+    "response_bytes": 8021,
+    "response_sha256": "fa2e405deb4e9b246cd2e315b0ed03abd95b90464ab79471d1119e6315548fac"
+  },
+  "response_projection": {
+    "schema_version": "country_outage_p1_single_turn_v2",
+    "answerability": "partial",
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+    "detected_at_utc": "2026-02-27T01:12:32Z",
+    "window_start_utc": "2026-02-27T00:10:00Z",
+    "window_end_utc": "2026-03-11T00:00:00Z",
+    "data_through": "2026-03-11T00:00:00Z",
+    "is_final_in_data_range": false,
+    "lifecycle_state": "event_end_unknown",
+    "fixed_prefix_count": 9257,
+    "interrupted_prefix_peak": 3855,
+    "interrupted_prefix_peak_at_utc": "2026-02-27T23:15:00Z",
+    "current_interrupted_prefix_count": 1024,
+    "affected_as_count": 525,
+    "event_end_at_utc": null,
+    "evidence_ref_count": 12,
+    "execution_units": [
+      "TOOL-01",
+      "TOOL-02"
+    ],
+    "authorization": {
+      "original_scope": "country_outage_event_read:IR",
+      "effective_permission": "country_outage:read",
+      "basis": "event_read_country",
+      "country_code": "IR"
+    },
+    "model_generated_fact_count": 0,
+    "state_commit": "none",
+    "validation_passed": true
+  },
+  "semantic_assertions": [
+    "event_end_at_utc=null 保持未知，不解释为 0、恢复或事件结束",
+    "window_end 和 data_through 不证明事件已经恢复或结束",
+    "受影响 AS 525 是窗口内不同 AS 人口，不是同时峰值",
+    "仅使用 RRC25 BGP 控制面事实，不推断用户影响、全国中断、责任或原因"
+  ]
+}

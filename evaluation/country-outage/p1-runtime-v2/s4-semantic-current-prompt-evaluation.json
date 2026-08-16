@@ -1,0 +1,497 @@
+{
+  "blind_input": true,
+  "candidate_id": "p1-runtime-v2-395d2d180aa1f3c4",
+  "candidate_identity": "codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+  "case_results": [
+    {
+      "case_id": "S2-SEM-001",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_summary",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "这次伊朗事件发生了什么？"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-002",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_summary",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "了解这波事件到底发生了什么"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-003",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_summary",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "梳理并概述这次异常"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-004",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_identity",
+          "expert_goal_semantics_required": true,
+          "failures": [
+            "normalized_kind_semantics"
+          ],
+          "passed": false,
+          "reference_index": 1,
+          "requested_goal": "数据看到哪儿了"
+        },
+        {
+          "candidate_kind": "event_summary",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 2,
+          "requested_goal": "前面到底发生了啥"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-005",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_end_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "这个事件结束了吗？"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-006",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_end_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "这事儿算完了吗"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-007",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "current_prefix_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "现在还有多少前缀不可见"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-008",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "current_prefix_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "到最后还剩多少路由没回来"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-009",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "current_scope",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "固定范围里目前的中断规模是多少"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-010",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "cause_or_responsibility",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "为什么会断？"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-011",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "cause_or_responsibility",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "这是谁的责任"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-012",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "cause_or_responsibility",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "判断是否由政府操作导致"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-013",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "real_user_or_national_impact",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "伊朗是不是全国都断网了"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-014",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "real_user_or_national_impact",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "普通用户现在还能上网吗"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-015",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "dns_http_traffic",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "DNS、HTTP 和流量有没有一起掉？"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-016",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "external_evidence",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "OONI 和 IODA 对该事件怎么说"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-017",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "current_prefix_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "现在还有多少前缀不可见"
+        },
+        {
+          "candidate_kind": "real_user_or_national_impact",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 2,
+          "requested_goal": "是不是全国都断了"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-018",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "event_summary",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "先说发生了什么"
+        },
+        {
+          "candidate_kind": "cause_or_responsibility",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 2,
+          "requested_goal": "是不是政府干的"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-019",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "current_prefix_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "路由还剩多少没恢复"
+        },
+        {
+          "candidate_kind": "real_user_or_national_impact",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 2,
+          "requested_goal": "用户是不是也都上不了网"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-020",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "observation_window",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "窗口截止到哪"
+        },
+        {
+          "candidate_kind": "event_end_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 2,
+          "requested_goal": "事件到底完没完"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-021",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "incident_response_recommendations",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "为这次事件提供一套处置建议"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-022",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "metric_followup",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "询问“那个数字”目前的值"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-023",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "cause_or_responsibility",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "告诉我是谁干的"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    },
+    {
+      "case_id": "S2-SEM-024",
+      "extra_goal_count": 0,
+      "goal_results": [
+        {
+          "candidate_kind": "external_evidence",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 1,
+          "requested_goal": "OONI 有没有证据"
+        },
+        {
+          "candidate_kind": "current_prefix_state",
+          "expert_goal_semantics_required": true,
+          "failures": [],
+          "passed": true,
+          "reference_index": 2,
+          "requested_goal": "当前不可见前缀"
+        }
+      ],
+      "host_normalization_warnings": [],
+      "schema_errors": [],
+      "schema_valid": true
+    }
+  ],
+  "counts": {
+    "case_count": 24,
+    "extra_goal_count": 0,
+    "machine_correct_subgoal_count": 29,
+    "reference_subgoal_count": 30,
+    "schema_valid_case_count": 24,
+    "scoring_denominator": 30
+  },
+  "evaluated_at": "2026-08-09T19:27:28.971513Z",
+  "evaluation_characterization": "冻结 runtime prompt 回归集；逐题输入未包含参考答案，但不据此宣称开放集泛化能力",
+  "grounding_legality": {
+    "rate": 1.0,
+    "required": 1.0,
+    "status": "passed",
+    "total_case_count": 24,
+    "validated_case_count": 24
+  },
+  "metrics": {
+    "expert_correct_subgoal_count": 29,
+    "expert_goal_semantics_review": "passed",
+    "expert_reviewed_subgoal_count": 30,
+    "final_goal_fidelity_gate": "passed",
+    "known_error_case_ids": [
+      "S2-SEM-004"
+    ],
+    "machine_gate_passed": true,
+    "machine_goal_fidelity": 0.9666666666666667,
+    "required_goal_fidelity": 0.95
+  },
+  "prompt_identity": "runtime-prompt-v2-current-s4:conversation:has_dialog_state=true",
+  "schema_version": "country_outage_p1_s2_semantic_evaluation_v1",
+  "variant_revision": "p1-runtime-v2-s2-variants-20260809-r2"
+}

@@ -42,6 +42,14 @@ export interface P1GeneralReadModelProvider {
   ): Promise<JsonObject | null>
 }
 
+export interface P1RuntimeV2ReadProvider {
+  resolve(reference: string, signal?: AbortSignal): Promise<P1ConversationBinding>
+  readOverview(
+    binding: P1ConversationBinding,
+    signal?: AbortSignal,
+  ): Promise<JsonObject>
+}
+
 export class P1ReadModelError extends Error {
   constructor(
     public readonly code: string,
@@ -81,6 +89,18 @@ function bool(value: unknown, label: string): boolean {
   return value
 }
 
+function capabilityState(
+  value: unknown,
+  label: string,
+  allowed: readonly string[],
+): string {
+  const result = string(value, label)
+  if (!allowed.includes(result)) {
+    throw new P1ReadModelError('invalid_data', `${label} 状态无效`)
+  }
+  return result
+}
+
 function bindingFromResolution(value: JsonObject): P1ConversationBinding {
   if (
     value.schema_version !== 'country_outage_general_resolution_v1' ||
@@ -92,7 +112,9 @@ function bindingFromResolution(value: JsonObject): P1ConversationBinding {
       'P1 只接受 RRC25 country_outage general read-model 事件',
     )
   }
+  const capabilities = object(value.capabilities, 'capabilities')
   return {
+    event_type: 'country_outage',
     incident_id: string(value.incident_id, 'incident_id'),
     legacy_reference: string(value.legacy_reference, 'legacy_reference'),
     publication_id: string(value.publication_id, 'publication_id'),
@@ -100,6 +122,10 @@ function bindingFromResolution(value: JsonObject): P1ConversationBinding {
     collector_id: 'rrc25',
     cohort_id: string(value.cohort_id, 'cohort_id'),
     country_code: string(value.country_code, 'country_code'),
+    detected_at_utc:
+      value.detected_at_utc === undefined || value.detected_at_utc === null
+        ? null
+        : string(value.detected_at_utc, 'detected_at_utc'),
     window_start_utc: string(value.window_start_utc, 'window_start_utc'),
     window_end_utc: string(value.window_end_utc, 'window_end_utc'),
     data_through:
@@ -111,6 +137,36 @@ function bindingFromResolution(value: JsonObject): P1ConversationBinding {
       'is_final_in_data_range',
     ),
     lifecycle_state: string(value.lifecycle_state, 'lifecycle_state'),
+    observation_state: string(value.observation_state, 'observation_state'),
+    quality_state: string(value.quality_state, 'quality_state'),
+    missing_slot_count: number(value.missing_slot_count, 'missing_slot_count'),
+    capabilities: {
+      overview: capabilityState(
+        capabilities.overview,
+        'capabilities.overview',
+        ['available', 'unavailable'],
+      ) as 'available' | 'unavailable',
+      event_series: capabilityState(
+        capabilities.event_series,
+        'capabilities.event_series',
+        ['available', 'unavailable'],
+      ) as 'available' | 'unavailable',
+      affected_as: capabilityState(
+        capabilities.affected_as,
+        'capabilities.affected_as',
+        ['available', 'unavailable'],
+      ) as 'available' | 'unavailable',
+      path_downstreams: capabilityState(
+        capabilities.path_downstreams,
+        'capabilities.path_downstreams',
+        ['available', 'unavailable'],
+      ) as 'available' | 'unavailable',
+      full_path_evidence: capabilityState(
+        capabilities.full_path_evidence,
+        'capabilities.full_path_evidence',
+        ['audit_only', 'unavailable'],
+      ) as 'audit_only' | 'unavailable',
+    },
   }
 }
 
@@ -125,6 +181,11 @@ function assertSameIdentity(
     payload.revision,
     payload.collector_id,
     payload.cohort_id,
+    payload.window_start_utc,
+    payload.window_end_utc,
+    payload.data_through,
+    payload.is_final_in_data_range,
+    payload.lifecycle_state,
   ]
   const expected = [
     binding.incident_id,
@@ -132,6 +193,11 @@ function assertSameIdentity(
     binding.revision,
     binding.collector_id,
     binding.cohort_id,
+    binding.window_start_utc,
+    binding.window_end_utc,
+    binding.data_through,
+    binding.is_final_in_data_range,
+    binding.lifecycle_state,
   ]
   if (actual.some((value, index) => value !== expected[index])) {
     throw new P1ReadModelError(
@@ -150,7 +216,7 @@ function extrema(values: unknown, label: string): { maximum: number, minimum: nu
 }
 
 export class HttpP1GeneralReadModelProvider
-implements P1GeneralReadModelProvider {
+implements P1GeneralReadModelProvider, P1RuntimeV2ReadProvider {
   constructor(
     private readonly baseUrl: string,
     private readonly timeoutMs = 15_000,
@@ -170,11 +236,19 @@ implements P1GeneralReadModelProvider {
     params: Record<string, string | number>,
     signal?: AbortSignal,
   ): Promise<JsonObject> {
+    if (signal?.aborted) {
+      throw new P1ReadModelError('cancelled', '数据读取已取消')
+    }
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
+    let timedOut = false
+    const timeout = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, this.timeoutMs)
     timeout.unref()
     const abort = (): void => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) controller.abort()
     try {
       const response = await fetch(this.url(path, params), {
         headers: { Accept: 'application/json' },
@@ -193,6 +267,9 @@ implements P1GeneralReadModelProvider {
       if (signal?.aborted) {
         throw new P1ReadModelError('cancelled', '数据读取已取消')
       }
+      if (timedOut) {
+        throw new P1ReadModelError('tool_timeout', 'Domeye 数据 API 读取超时', true)
+      }
       throw new P1ReadModelError(
         'data_api_unavailable',
         error instanceof Error ? error.message : 'Domeye 数据 API 不可用',
@@ -207,6 +284,25 @@ implements P1GeneralReadModelProvider {
   async resolve(reference: string, signal?: AbortSignal): Promise<P1ConversationBinding> {
     const resolution = await this.get('events/resolve', { ref: reference }, signal)
     return bindingFromResolution(resolution)
+  }
+
+  async readOverview(
+    binding: P1ConversationBinding,
+    signal?: AbortSignal,
+  ): Promise<JsonObject> {
+    if (binding.capabilities.overview !== 'available') {
+      throw new P1ReadModelError(
+        'capability_unavailable',
+        '当前事件未协商 overview=available',
+      )
+    }
+    const overview = await this.get(
+      `country-outages/${encodeURIComponent(binding.incident_id)}/overview`,
+      { publication_id: binding.publication_id },
+      signal,
+    )
+    assertSameIdentity(overview, binding, 'overview')
+    return overview
   }
 
   async load(

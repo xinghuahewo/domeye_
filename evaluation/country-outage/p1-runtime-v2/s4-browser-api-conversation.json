@@ -1,0 +1,1470 @@
+{
+  "schema_version": "country_outage_p1_s4_browser_api_conversation_v1",
+  "candidate_id": "p1-runtime-v2-395d2d180aa1f3c4",
+  "captured_at": "2026-08-09T19:32:07.646Z",
+  "api_base": "http://127.0.0.1:29473/api/v2/country-outage/runtime-v2",
+  "conversation_id": "p1v2_ea84b80b39b143aa8451211b7224cf8c",
+  "http_status": 200,
+  "raw_response": {
+    "schema_version": "country_outage_p1_runtime_v2_conversation_v1",
+    "conversation_id": "p1v2_ea84b80b39b143aa8451211b7224cf8c",
+    "binding": {
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "detected_at_utc": null,
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "quality_state": "complete",
+      "missing_slot_count": 0,
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "binding_generation": 1,
+    "active_binding_generation": 1,
+    "evidence_state": {
+      "immutable": true,
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "loaded_at": "2026-08-09T19:30:33.047Z"
+    },
+    "dialog_state": {
+      "topic": "timeline",
+      "asn": null,
+      "address_family": null,
+      "metric": "interrupted_prefix_count",
+      "evidence_anchor": "current.interrupted_prefix_count",
+      "pending_clarification": null,
+      "last_committed_turn_number": 2
+    },
+    "turns": [
+      {
+        "turn_id": "p1v2turn_060dc955eae64608acd9bde8d8abad36",
+        "turn_number": 1,
+        "question": "按时间线列出这次事件的已知事实。",
+        "state": "completed",
+        "created_at": "2026-08-09T19:30:47.223Z",
+        "answer": {
+          "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v1",
+          "conversation_id": "p1v2_ea84b80b39b143aa8451211b7224cf8c",
+          "turn_id": "p1v2turn_060dc955eae64608acd9bde8d8abad36",
+          "turn_number": 1,
+          "answerability": "supported",
+          "binding": {
+            "event_type": "country_outage",
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25",
+            "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+            "country_code": "IR",
+            "detected_at_utc": null,
+            "window_start_utc": "2026-02-27T00:10:00Z",
+            "window_end_utc": "2026-03-11T00:00:00Z",
+            "data_through": "2026-03-11T00:00:00Z",
+            "is_final_in_data_range": false,
+            "lifecycle_state": "event_end_unknown",
+            "observation_state": "evidence_complete",
+            "quality_state": "complete",
+            "missing_slot_count": 0,
+            "capabilities": {
+              "overview": "available",
+              "event_series": "available",
+              "affected_as": "available",
+              "path_downstreams": "available",
+              "full_path_evidence": "audit_only"
+            }
+          },
+          "semantic_plan": {
+            "schema_version": "country_outage_p1_semantic_plan_v2",
+            "user_goal_plan": {
+              "plan_revision": "user-goal-plan-v2",
+              "original_question": "按时间线列出这次事件的已知事实。",
+              "goals": [
+                {
+                  "goal_id": "goal-1",
+                  "requested_goal": "按时间线列出这次事件的已知事实",
+                  "normalized_kind": "fact_timeline",
+                  "entities": {},
+                  "references": [],
+                  "ambiguity": "none",
+                  "context_dependencies": []
+                }
+              ],
+              "state_proposal": {
+                "inherit": [],
+                "set": {},
+                "clear": [],
+                "reason_codes": []
+              },
+              "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+              "confidence": 0.95
+            },
+            "grounding_plan": {
+              "plan_revision": "grounding-plan-v2",
+              "identity": {
+                "binding_phase": "bound",
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "decisions": [
+                {
+                  "goal_id": "goal-1",
+                  "answerability": "supported",
+                  "node_ids": [
+                    "node-1",
+                    "node-2",
+                    "node-3",
+                    "node-4"
+                  ],
+                  "reason_codes": [
+                    "fact_timeline_grounded"
+                  ]
+                }
+              ],
+              "nodes": [
+                {
+                  "node_id": "node-1",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-01",
+                  "capability_ids": [
+                    "CAP-001"
+                  ],
+                  "inputs": {
+                    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                    "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "expected_revision": 1
+                  },
+                  "input_sources": {
+                    "event_reference": "binding",
+                    "expected_publication_id": "binding",
+                    "expected_revision": "binding"
+                  },
+                  "depends_on": [],
+                  "expected_evidence_sources": [
+                    "resolution"
+                  ]
+                },
+                {
+                  "node_id": "node-2",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-02",
+                  "capability_ids": [
+                    "CAP-002",
+                    "CAP-003",
+                    "CAP-004"
+                  ],
+                  "inputs": {
+                    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "revision": 1
+                  },
+                  "input_sources": {
+                    "incident_id": "binding",
+                    "publication_id": "binding",
+                    "revision": "binding"
+                  },
+                  "depends_on": [
+                    "node-1"
+                  ],
+                  "expected_evidence_sources": [
+                    "overview"
+                  ]
+                },
+                {
+                  "node_id": "node-3",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-03",
+                  "capability_ids": [
+                    "CAP-009"
+                  ],
+                  "inputs": {
+                    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "revision": 1,
+                    "metrics": [
+                      "interrupted_prefix_count",
+                      "completely_interrupted_prefix_count",
+                      "affected_asn_count"
+                    ]
+                  },
+                  "input_sources": {
+                    "incident_id": "binding",
+                    "publication_id": "binding",
+                    "revision": "binding",
+                    "metrics": "binding"
+                  },
+                  "depends_on": [
+                    "node-1"
+                  ],
+                  "expected_evidence_sources": [
+                    "series"
+                  ]
+                },
+                {
+                  "node_id": "node-4",
+                  "goal_id": "goal-1",
+                  "execution_unit": "OP-03",
+                  "capability_ids": [
+                    "CAP-018"
+                  ],
+                  "inputs": {
+                    "source_node_ids": [
+                      "node-2",
+                      "node-3"
+                    ],
+                    "lifecycle_state": "event_end_unknown"
+                  },
+                  "input_sources": {
+                    "source_node_ids": "binding",
+                    "lifecycle_state": "binding"
+                  },
+                  "depends_on": [
+                    "node-2",
+                    "node-3"
+                  ],
+                  "expected_evidence_sources": [
+                    "derived"
+                  ]
+                }
+              ],
+              "authorization_scope": [
+                "country_outage:read"
+              ],
+              "validation": {
+                "status": "passed",
+                "errors": []
+              }
+            }
+          },
+          "results": [
+            {
+              "goal_id": "goal-1",
+              "requested_goal": "按时间线列出这次事件的已知事实",
+              "normalized_kind": "fact_timeline",
+              "answerability": "supported",
+              "text": "按时间排序：观测窗口从 2026-02-27T00:10:00Z 开始；页面检测时间为 2026-02-27T01:12:32Z；中断前缀在 2026-02-27T23:15:00Z 达到峰值 3855；完全中断前缀在 2026-02-28T14:35:00Z 达到峰值 1553；受影响 AS 在 2026-03-02T11:30:00Z 达到峰值 350；数据截至 2026-03-11T00:00:00Z 时仍有 1024 个中断前缀；事件结束时点仍未知。这是事实时间线，不是因果链。",
+              "evidence_refs": [
+                "cohort.fixed_prefix_count",
+                "scope_counts.affected_as_count",
+                "peaks.interrupted_prefix_count.value",
+                "resolution.window_start_utc",
+                "overview.event.detected_at_utc",
+                "overview.peaks.interrupted_prefix_count",
+                "overview.peaks.completely_interrupted_prefix_count",
+                "series.extrema.affected_asn_count",
+                "overview.current.interrupted_prefix_count",
+                "derived.fact_timeline.ordered_fact_nodes.0",
+                "derived.fact_timeline.ordered_fact_nodes.1",
+                "derived.fact_timeline.ordered_fact_nodes.2",
+                "derived.fact_timeline.ordered_fact_nodes.3",
+                "derived.fact_timeline.ordered_fact_nodes.4",
+                "derived.fact_timeline.ordered_fact_nodes.5",
+                "overview.event.event_end_at_utc",
+                "derived.fact_timeline.terminal_unknown"
+              ],
+              "limitations": [
+                "仅反映 RRC25 BGP 控制面观测，不等同于用户实际连通性、流量变化或中断原因。",
+                "相邻事实节点只表示时间顺序，不表示因果关系。",
+                "event_end_at_utc 为 null，事件结束时点仍未知。"
+              ]
+            }
+          ],
+          "answer_text": "按时间排序：观测窗口从 2026-02-27T00:10:00Z 开始；页面检测时间为 2026-02-27T01:12:32Z；中断前缀在 2026-02-27T23:15:00Z 达到峰值 3855；完全中断前缀在 2026-02-28T14:35:00Z 达到峰值 1553；受影响 AS 在 2026-03-02T11:30:00Z 达到峰值 350；数据截至 2026-03-11T00:00:00Z 时仍有 1024 个中断前缀；事件结束时点仍未知。这是事实时间线，不是因果链。",
+          "evidence": [
+            {
+              "evidence_ref": "resolution.data_through",
+              "source": "resolution",
+              "field_path": "data_through",
+              "value": "2026-03-11T00:00:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-03-11T00:00:00Z",
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "cohort.fixed_prefix_count",
+              "source": "overview",
+              "field_path": "cohort.fixed_prefix_count",
+              "value": 9257,
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "scope_counts.affected_as_count",
+              "source": "overview",
+              "field_path": "scope_counts.affected_as_count",
+              "value": 525,
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "peaks.interrupted_prefix_count.value",
+              "source": "overview",
+              "field_path": "peaks.interrupted_prefix_count.value",
+              "value": 3855,
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "resolution.window_start_utc",
+              "source": "resolution",
+              "field_path": "window_start_utc",
+              "value": "2026-02-27T00:10:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-02-27T00:10:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "overview.event.detected_at_utc",
+              "source": "overview",
+              "field_path": "event.detected_at_utc",
+              "value": "2026-02-27T01:12:32Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-02-27T01:12:32Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "overview.peaks.interrupted_prefix_count",
+              "source": "overview",
+              "field_path": "peaks.interrupted_prefix_count",
+              "value": 3855,
+              "unit": "prefix",
+              "observed_at_utc": "2026-02-27T23:15:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "overview.peaks.completely_interrupted_prefix_count",
+              "source": "overview",
+              "field_path": "peaks.completely_interrupted_prefix_count",
+              "value": 1553,
+              "unit": "prefix",
+              "observed_at_utc": "2026-02-28T14:35:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "series.extrema.affected_asn_count",
+              "source": "series",
+              "field_path": "extrema.affected_asn_count",
+              "value": 350,
+              "unit": "asn",
+              "observed_at_utc": "2026-03-02T11:30:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "overview.current.interrupted_prefix_count",
+              "source": "overview",
+              "field_path": "current.interrupted_prefix_count",
+              "value": 1024,
+              "unit": "prefix",
+              "observed_at_utc": "2026-03-11T00:00:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.ordered_fact_nodes.0",
+              "source": "derived",
+              "field_path": "fact_timeline.ordered_fact_nodes.0.window_start",
+              "value": "2026-02-27T00:10:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-02-27T00:10:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.ordered_fact_nodes.1",
+              "source": "derived",
+              "field_path": "fact_timeline.ordered_fact_nodes.1.detected",
+              "value": "2026-02-27T01:12:32Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-02-27T01:12:32Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.ordered_fact_nodes.2",
+              "source": "derived",
+              "field_path": "fact_timeline.ordered_fact_nodes.2.interrupted_prefix_peak",
+              "value": 3855,
+              "unit": "prefix",
+              "observed_at_utc": "2026-02-27T23:15:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.ordered_fact_nodes.3",
+              "source": "derived",
+              "field_path": "fact_timeline.ordered_fact_nodes.3.completely_interrupted_prefix_peak",
+              "value": 1553,
+              "unit": "prefix",
+              "observed_at_utc": "2026-02-28T14:35:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.ordered_fact_nodes.4",
+              "source": "derived",
+              "field_path": "fact_timeline.ordered_fact_nodes.4.affected_asn_peak",
+              "value": 350,
+              "unit": "asn",
+              "observed_at_utc": "2026-03-02T11:30:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.ordered_fact_nodes.5",
+              "source": "derived",
+              "field_path": "fact_timeline.ordered_fact_nodes.5.data_through",
+              "value": 1024,
+              "unit": "prefix",
+              "observed_at_utc": "2026-03-11T00:00:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "overview.event.event_end_at_utc",
+              "source": "overview",
+              "field_path": "event.event_end_at_utc",
+              "value": null,
+              "unit": "UTC",
+              "observed_at_utc": "2026-03-11T00:00:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "evidence_ref": "derived.fact_timeline.terminal_unknown",
+              "source": "derived",
+              "field_path": "fact_timeline.terminal_unknown.event_end_unknown",
+              "value": "event_end_unknown",
+              "unit": null,
+              "observed_at_utc": "2026-03-11T00:00:00Z"
+            }
+          ],
+          "limitations": [
+            "仅反映 RRC25 BGP 控制面观测，不等同于用户实际连通性、流量变化或中断原因。",
+            "相邻事实节点只表示时间顺序，不表示因果关系。",
+            "event_end_at_utc 为 null，事件结束时点仍未知。"
+          ],
+          "unknowns": [
+            "event_end_at_utc：event_end_unknown"
+          ],
+          "execution_trace": {
+            "binding_preflight": "passed",
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "resolution.data_through",
+                  "resolution.window_start_utc"
+                ],
+                "receipt_id": "p1v2turn_060dc955eae64608acd9bde8d8abad36:node-1",
+                "execution_mode": "verified_evidence_state_read"
+              },
+              {
+                "node_id": "node-2",
+                "execution_unit": "TOOL-02",
+                "capability_ids": [
+                  "CAP-002",
+                  "CAP-003",
+                  "CAP-004"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "cohort.fixed_prefix_count",
+                  "scope_counts.affected_as_count",
+                  "peaks.interrupted_prefix_count.value",
+                  "overview.event.detected_at_utc",
+                  "overview.peaks.interrupted_prefix_count",
+                  "overview.peaks.completely_interrupted_prefix_count",
+                  "overview.current.interrupted_prefix_count",
+                  "overview.event.event_end_at_utc"
+                ],
+                "receipt_id": "p1v2turn_060dc955eae64608acd9bde8d8abad36:node-2",
+                "execution_mode": "verified_evidence_state_read"
+              },
+              {
+                "node_id": "node-3",
+                "execution_unit": "TOOL-03",
+                "capability_ids": [
+                  "CAP-009"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "series.extrema.affected_asn_count"
+                ],
+                "receipt_id": "p1v2turn_060dc955eae64608acd9bde8d8abad36:node-3",
+                "execution_mode": "verified_evidence_state_read"
+              },
+              {
+                "node_id": "node-4",
+                "execution_unit": "OP-03",
+                "capability_ids": [
+                  "CAP-018"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "derived.fact_timeline.ordered_fact_nodes.0",
+                  "derived.fact_timeline.ordered_fact_nodes.1",
+                  "derived.fact_timeline.ordered_fact_nodes.2",
+                  "derived.fact_timeline.ordered_fact_nodes.3",
+                  "derived.fact_timeline.ordered_fact_nodes.4",
+                  "derived.fact_timeline.ordered_fact_nodes.5",
+                  "derived.fact_timeline.terminal_unknown"
+                ],
+                "receipt_id": "p1v2turn_060dc955eae64608acd9bde8d8abad36:node-4",
+                "execution_mode": "verified_evidence_state_read"
+              }
+            ],
+            "authorization": {
+              "original_scope": "country_outage_event_read:IR",
+              "effective_permission": "country_outage:read",
+              "basis": "event_read_country",
+              "country_code": "IR"
+            },
+            "planner_outcome": "accepted",
+            "model_generated_fact_count": 0,
+            "state_commit": "committed"
+          },
+          "state_receipt": {
+            "before": {
+              "topic": null,
+              "asn": null,
+              "address_family": null,
+              "metric": null,
+              "evidence_anchor": null,
+              "pending_clarification": null,
+              "last_committed_turn_number": 0
+            },
+            "proposed": {
+              "inherit": [
+                "event_binding"
+              ],
+              "set": {
+                "topic": "timeline",
+                "metric": "interrupted_prefix_count",
+                "evidence_anchor": "cohort.fixed_prefix_count"
+              },
+              "clear": [
+                "pending_clarification"
+              ],
+              "reason_codes": []
+            },
+            "after": {
+              "topic": "timeline",
+              "asn": null,
+              "address_family": null,
+              "metric": "interrupted_prefix_count",
+              "evidence_anchor": "cohort.fixed_prefix_count",
+              "pending_clarification": null,
+              "last_committed_turn_number": 1
+            },
+            "status": "committed",
+            "transaction_checks": {
+              "plan_validated": true,
+              "permission_validated": true,
+              "execution_validated": true,
+              "evidence_validated": true,
+              "binding_revalidated": true,
+              "cancelled": false
+            }
+          },
+          "validation": {
+            "user_goal_schema": "passed",
+            "grounding_schema": "passed",
+            "grounding_legality": "passed",
+            "answer_evidence": "passed",
+            "errors": []
+          },
+          "runtime_identity": {
+            "implementation": "p1-runtime-v2-semantic-turn",
+            "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+            "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "collector": "rrc25"
+          },
+          "completed_at": "2026-08-09T19:31:04.530Z"
+        },
+        "completed_at": "2026-08-09T19:31:04.530Z"
+      },
+      {
+        "turn_id": "p1v2turn_1ffa4f324175440db3235628feb0d8a3",
+        "turn_number": 2,
+        "question": "伊朗人现在还有互联网吗，是不是全国都断了？",
+        "state": "completed",
+        "created_at": "2026-08-09T19:31:13.889Z",
+        "answer": {
+          "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v1",
+          "conversation_id": "p1v2_ea84b80b39b143aa8451211b7224cf8c",
+          "turn_id": "p1v2turn_1ffa4f324175440db3235628feb0d8a3",
+          "turn_number": 2,
+          "answerability": "partial",
+          "binding": {
+            "event_type": "country_outage",
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25",
+            "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+            "country_code": "IR",
+            "detected_at_utc": null,
+            "window_start_utc": "2026-02-27T00:10:00Z",
+            "window_end_utc": "2026-03-11T00:00:00Z",
+            "data_through": "2026-03-11T00:00:00Z",
+            "is_final_in_data_range": false,
+            "lifecycle_state": "event_end_unknown",
+            "observation_state": "evidence_complete",
+            "quality_state": "complete",
+            "missing_slot_count": 0,
+            "capabilities": {
+              "overview": "available",
+              "event_series": "available",
+              "affected_as": "available",
+              "path_downstreams": "available",
+              "full_path_evidence": "audit_only"
+            }
+          },
+          "semantic_plan": {
+            "schema_version": "country_outage_p1_semantic_plan_v2",
+            "user_goal_plan": {
+              "plan_revision": "user-goal-plan-v2",
+              "original_question": "伊朗人现在还有互联网吗，是不是全国都断了？",
+              "goals": [
+                {
+                  "goal_id": "goal-1",
+                  "requested_goal": "判断当前控制面是否仍存在不可见或中断前缀",
+                  "normalized_kind": "current_prefix_state",
+                  "entities": {},
+                  "references": [],
+                  "ambiguity": "none",
+                  "context_dependencies": []
+                },
+                {
+                  "goal_id": "goal-2",
+                  "requested_goal": "伊朗人现在还有互联网吗，是不是全国都断了？",
+                  "normalized_kind": "real_user_or_national_impact",
+                  "entities": {},
+                  "references": [],
+                  "ambiguity": "none",
+                  "context_dependencies": []
+                }
+              ],
+              "state_proposal": {
+                "inherit": [],
+                "set": {},
+                "clear": [],
+                "reason_codes": []
+              },
+              "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+              "confidence": 0.95
+            },
+            "grounding_plan": {
+              "plan_revision": "grounding-plan-v2",
+              "identity": {
+                "binding_phase": "bound",
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "decisions": [
+                {
+                  "goal_id": "goal-1",
+                  "answerability": "supported",
+                  "node_ids": [
+                    "node-1",
+                    "node-2"
+                  ],
+                  "reason_codes": [
+                    "current_prefix_state_grounded"
+                  ]
+                },
+                {
+                  "goal_id": "goal-2",
+                  "answerability": "unsupported",
+                  "node_ids": [],
+                  "reason_codes": [
+                    "rrc25_control_plane_is_not_user_or_national_impact_evidence"
+                  ]
+                }
+              ],
+              "nodes": [
+                {
+                  "node_id": "node-1",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-01",
+                  "capability_ids": [
+                    "CAP-001"
+                  ],
+                  "inputs": {
+                    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                    "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "expected_revision": 1
+                  },
+                  "input_sources": {
+                    "event_reference": "binding",
+                    "expected_publication_id": "binding",
+                    "expected_revision": "binding"
+                  },
+                  "depends_on": [],
+                  "expected_evidence_sources": [
+                    "resolution"
+                  ]
+                },
+                {
+                  "node_id": "node-2",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-02",
+                  "capability_ids": [
+                    "CAP-003"
+                  ],
+                  "inputs": {
+                    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "revision": 1
+                  },
+                  "input_sources": {
+                    "incident_id": "binding",
+                    "publication_id": "binding",
+                    "revision": "binding"
+                  },
+                  "depends_on": [
+                    "node-1"
+                  ],
+                  "expected_evidence_sources": [
+                    "overview"
+                  ]
+                }
+              ],
+              "authorization_scope": [
+                "country_outage:read"
+              ],
+              "validation": {
+                "status": "passed",
+                "errors": []
+              }
+            }
+          },
+          "results": [
+            {
+              "goal_id": "goal-1",
+              "requested_goal": "判断当前控制面是否仍存在不可见或中断前缀",
+              "normalized_kind": "current_prefix_state",
+              "answerability": "supported",
+              "text": "截至北京时间 2026-03-11 08:00:00，仍有 1,024 个中断前缀，其中 318 个完全不可见；涉及 14,867 个不可见方向和 121 个受影响 AS。",
+              "evidence_refs": [
+                "current.interrupted_prefix_count",
+                "current.completely_interrupted_prefix_count",
+                "current.invisible_direction_count",
+                "current.affected_asn_count"
+              ],
+              "limitations": [
+                "这是数据截止时点，不是当前实时状态。"
+              ]
+            },
+            {
+              "goal_id": "goal-2",
+              "requested_goal": "伊朗人现在还有互联网吗，是不是全国都断了？",
+              "normalized_kind": "real_user_or_national_impact",
+              "answerability": "unsupported",
+              "text": "当前证据描述 RRC25 可见的路由控制面，不能据此判断全国是否断网、真实用户是否可联网，也不能量化受影响用户数。",
+              "evidence_refs": [],
+              "limitations": [
+                "当前证据描述 RRC25 可见的路由控制面，不能据此判断全国是否断网、真实用户是否可联网，也不能量化受影响用户数。"
+              ]
+            }
+          ],
+          "answer_text": "截至北京时间 2026-03-11 08:00:00，仍有 1,024 个中断前缀，其中 318 个完全不可见；涉及 14,867 个不可见方向和 121 个受影响 AS。\n当前证据描述 RRC25 可见的路由控制面，不能据此判断全国是否断网、真实用户是否可联网，也不能量化受影响用户数。",
+          "evidence": [
+            {
+              "evidence_ref": "resolution.data_through",
+              "source": "resolution",
+              "field_path": "data_through",
+              "value": "2026-03-11T00:00:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-03-11T00:00:00Z",
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "current.interrupted_prefix_count",
+              "source": "overview",
+              "field_path": "current.interrupted_prefix_count",
+              "value": 1024,
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "current.completely_interrupted_prefix_count",
+              "source": "overview",
+              "field_path": "current.completely_interrupted_prefix_count",
+              "value": 318,
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "current.invisible_direction_count",
+              "source": "overview",
+              "field_path": "current.invisible_direction_count",
+              "value": 14867,
+              "unit": "peer_asn_direction",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "current.affected_asn_count",
+              "source": "overview",
+              "field_path": "current.affected_asn_count",
+              "value": 121,
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            }
+          ],
+          "limitations": [
+            "这是数据截止时点，不是当前实时状态。",
+            "当前证据描述 RRC25 可见的路由控制面，不能据此判断全国是否断网、真实用户是否可联网，也不能量化受影响用户数。"
+          ],
+          "unknowns": [
+            "伊朗人现在还有互联网吗，是不是全国都断了？"
+          ],
+          "execution_trace": {
+            "binding_preflight": "passed",
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "resolution.data_through"
+                ],
+                "receipt_id": "p1v2turn_1ffa4f324175440db3235628feb0d8a3:node-1",
+                "execution_mode": "verified_evidence_state_read"
+              },
+              {
+                "node_id": "node-2",
+                "execution_unit": "TOOL-02",
+                "capability_ids": [
+                  "CAP-003"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "current.interrupted_prefix_count",
+                  "current.completely_interrupted_prefix_count",
+                  "current.invisible_direction_count",
+                  "current.affected_asn_count"
+                ],
+                "receipt_id": "p1v2turn_1ffa4f324175440db3235628feb0d8a3:node-2",
+                "execution_mode": "verified_evidence_state_read"
+              }
+            ],
+            "authorization": {
+              "original_scope": "country_outage_event_read:IR",
+              "effective_permission": "country_outage:read",
+              "basis": "event_read_country",
+              "country_code": "IR"
+            },
+            "planner_outcome": "accepted",
+            "model_generated_fact_count": 0,
+            "state_commit": "committed"
+          },
+          "state_receipt": {
+            "before": {
+              "topic": "timeline",
+              "asn": null,
+              "address_family": null,
+              "metric": "interrupted_prefix_count",
+              "evidence_anchor": "cohort.fixed_prefix_count",
+              "pending_clarification": null,
+              "last_committed_turn_number": 1
+            },
+            "proposed": {
+              "inherit": [
+                "event_binding"
+              ],
+              "set": {
+                "topic": "timeline",
+                "metric": "interrupted_prefix_count",
+                "evidence_anchor": "current.interrupted_prefix_count"
+              },
+              "clear": [
+                "pending_clarification"
+              ],
+              "reason_codes": []
+            },
+            "after": {
+              "topic": "timeline",
+              "asn": null,
+              "address_family": null,
+              "metric": "interrupted_prefix_count",
+              "evidence_anchor": "current.interrupted_prefix_count",
+              "pending_clarification": null,
+              "last_committed_turn_number": 2
+            },
+            "status": "committed",
+            "transaction_checks": {
+              "plan_validated": true,
+              "permission_validated": true,
+              "execution_validated": true,
+              "evidence_validated": true,
+              "binding_revalidated": true,
+              "cancelled": false
+            }
+          },
+          "validation": {
+            "user_goal_schema": "passed",
+            "grounding_schema": "passed",
+            "grounding_legality": "passed",
+            "answer_evidence": "passed",
+            "errors": []
+          },
+          "runtime_identity": {
+            "implementation": "p1-runtime-v2-semantic-turn",
+            "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+            "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "collector": "rrc25"
+          },
+          "completed_at": "2026-08-09T19:31:33.808Z"
+        },
+        "completed_at": "2026-08-09T19:31:33.808Z"
+      },
+      {
+        "turn_id": "p1v2turn_13e6f7e173b946be861dc7478891079d",
+        "turn_number": 3,
+        "question": "这次观测覆盖多大范围？",
+        "state": "completed",
+        "created_at": "2026-08-09T19:31:40.590Z",
+        "answer": {
+          "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v1",
+          "conversation_id": "p1v2_ea84b80b39b143aa8451211b7224cf8c",
+          "turn_id": "p1v2turn_13e6f7e173b946be861dc7478891079d",
+          "turn_number": 3,
+          "answerability": "supported",
+          "binding": {
+            "event_type": "country_outage",
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25",
+            "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+            "country_code": "IR",
+            "detected_at_utc": null,
+            "window_start_utc": "2026-02-27T00:10:00Z",
+            "window_end_utc": "2026-03-11T00:00:00Z",
+            "data_through": "2026-03-11T00:00:00Z",
+            "is_final_in_data_range": false,
+            "lifecycle_state": "event_end_unknown",
+            "observation_state": "evidence_complete",
+            "quality_state": "complete",
+            "missing_slot_count": 0,
+            "capabilities": {
+              "overview": "available",
+              "event_series": "available",
+              "affected_as": "available",
+              "path_downstreams": "available",
+              "full_path_evidence": "audit_only"
+            }
+          },
+          "semantic_plan": {
+            "schema_version": "country_outage_p1_semantic_plan_v2",
+            "user_goal_plan": {
+              "plan_revision": "user-goal-plan-v2",
+              "original_question": "这次观测覆盖多大范围？",
+              "goals": [
+                {
+                  "goal_id": "goal-1",
+                  "requested_goal": "这次观测覆盖多大范围",
+                  "normalized_kind": "current_scope",
+                  "entities": {},
+                  "references": [],
+                  "ambiguity": "none",
+                  "context_dependencies": []
+                }
+              ],
+              "state_proposal": {
+                "inherit": [],
+                "set": {},
+                "clear": [],
+                "reason_codes": []
+              },
+              "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+              "confidence": 0.95
+            },
+            "grounding_plan": {
+              "plan_revision": "grounding-plan-v2",
+              "identity": {
+                "binding_phase": "bound",
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "decisions": [
+                {
+                  "goal_id": "goal-1",
+                  "answerability": "supported",
+                  "node_ids": [
+                    "node-1",
+                    "node-2"
+                  ],
+                  "reason_codes": [
+                    "current_scope_grounded"
+                  ]
+                }
+              ],
+              "nodes": [
+                {
+                  "node_id": "node-1",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-01",
+                  "capability_ids": [
+                    "CAP-001"
+                  ],
+                  "inputs": {
+                    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                    "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "expected_revision": 1
+                  },
+                  "input_sources": {
+                    "event_reference": "binding",
+                    "expected_publication_id": "binding",
+                    "expected_revision": "binding"
+                  },
+                  "depends_on": [],
+                  "expected_evidence_sources": [
+                    "resolution"
+                  ]
+                },
+                {
+                  "node_id": "node-2",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-02",
+                  "capability_ids": [
+                    "CAP-003",
+                    "CAP-005"
+                  ],
+                  "inputs": {
+                    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "revision": 1
+                  },
+                  "input_sources": {
+                    "incident_id": "binding",
+                    "publication_id": "binding",
+                    "revision": "binding"
+                  },
+                  "depends_on": [
+                    "node-1"
+                  ],
+                  "expected_evidence_sources": [
+                    "overview"
+                  ]
+                }
+              ],
+              "authorization_scope": [
+                "country_outage:read"
+              ],
+              "validation": {
+                "status": "passed",
+                "errors": []
+              }
+            }
+          },
+          "results": [
+            {
+              "goal_id": "goal-1",
+              "requested_goal": "这次观测覆盖多大范围",
+              "normalized_kind": "current_scope",
+              "answerability": "supported",
+              "text": "固定 cohort 含 572 个 AS、9257 个前缀和 368675 个独立观察方向；窗口内累计 525 个 AS 受影响、151 个 AS 的固定前缀曾全部不可见。逐槽受影响 AS 峰值为 350（2026-03-02T11:30:00Z），固定前缀全部不可见 AS 峰值为 94（2026-02-28T13:50:00Z）。累计人口与逐槽峰值不同，也不等于全国或真实用户影响。",
+              "evidence_refs": [
+                "cohort.fixed_asn_count",
+                "cohort.fixed_prefix_count",
+                "cohort.independent_direction_relation_count",
+                "scope_counts.affected_as_count",
+                "peaks.affected_asn_count.value",
+                "peaks.affected_asn_count.state_point_utc",
+                "peaks.route_interrupted_asn_count.value",
+                "peaks.route_interrupted_asn_count.state_point_utc"
+              ],
+              "limitations": []
+            }
+          ],
+          "answer_text": "固定 cohort 含 572 个 AS、9257 个前缀和 368675 个独立观察方向；窗口内累计 525 个 AS 受影响、151 个 AS 的固定前缀曾全部不可见。逐槽受影响 AS 峰值为 350（2026-03-02T11:30:00Z），固定前缀全部不可见 AS 峰值为 94（2026-02-28T13:50:00Z）。累计人口与逐槽峰值不同，也不等于全国或真实用户影响。",
+          "evidence": [
+            {
+              "evidence_ref": "resolution.data_through",
+              "source": "resolution",
+              "field_path": "data_through",
+              "value": "2026-03-11T00:00:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-03-11T00:00:00Z",
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "cohort.fixed_asn_count",
+              "source": "overview",
+              "field_path": "cohort.fixed_asn_count",
+              "value": 572,
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "cohort.fixed_prefix_count",
+              "source": "overview",
+              "field_path": "cohort.fixed_prefix_count",
+              "value": 9257,
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "cohort.independent_direction_relation_count",
+              "source": "overview",
+              "field_path": "cohort.independent_direction_relation_count",
+              "value": 368675,
+              "unit": "peer_asn_direction",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "scope_counts.affected_as_count",
+              "source": "overview",
+              "field_path": "scope_counts.affected_as_count",
+              "value": 525,
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "source": "overview",
+              "evidence_ref": "peaks.affected_asn_count.value",
+              "field_path": "peaks.affected_asn_count.value",
+              "value": 350,
+              "unit": "asn",
+              "observed_at_utc": "2026-03-02T11:30:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "source": "overview",
+              "evidence_ref": "peaks.affected_asn_count.state_point_utc",
+              "field_path": "peaks.affected_asn_count.state_point_utc",
+              "value": "2026-03-02T11:30:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-03-02T11:30:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "source": "overview",
+              "evidence_ref": "peaks.route_interrupted_asn_count.value",
+              "field_path": "peaks.route_interrupted_asn_count.value",
+              "value": 94,
+              "unit": "asn",
+              "observed_at_utc": "2026-02-28T13:50:00Z"
+            },
+            {
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "source": "overview",
+              "evidence_ref": "peaks.route_interrupted_asn_count.state_point_utc",
+              "field_path": "peaks.route_interrupted_asn_count.state_point_utc",
+              "value": "2026-02-28T13:50:00Z",
+              "unit": "UTC",
+              "observed_at_utc": "2026-02-28T13:50:00Z"
+            }
+          ],
+          "limitations": [],
+          "unknowns": [],
+          "execution_trace": {
+            "binding_preflight": "passed",
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "resolution.data_through"
+                ],
+                "receipt_id": "p1v2turn_13e6f7e173b946be861dc7478891079d:node-1",
+                "execution_mode": "verified_evidence_state_read"
+              },
+              {
+                "node_id": "node-2",
+                "execution_unit": "TOOL-02",
+                "capability_ids": [
+                  "CAP-003",
+                  "CAP-005"
+                ],
+                "status": "passed",
+                "evidence_refs": [
+                  "cohort.fixed_asn_count",
+                  "cohort.fixed_prefix_count",
+                  "cohort.independent_direction_relation_count",
+                  "scope_counts.affected_as_count",
+                  "peaks.affected_asn_count.value",
+                  "peaks.affected_asn_count.state_point_utc",
+                  "peaks.route_interrupted_asn_count.value",
+                  "peaks.route_interrupted_asn_count.state_point_utc"
+                ],
+                "receipt_id": "p1v2turn_13e6f7e173b946be861dc7478891079d:node-2",
+                "execution_mode": "verified_evidence_state_read"
+              }
+            ],
+            "authorization": {
+              "original_scope": "country_outage_event_read:IR",
+              "effective_permission": "country_outage:read",
+              "basis": "event_read_country",
+              "country_code": "IR"
+            },
+            "planner_outcome": "accepted",
+            "model_generated_fact_count": 0,
+            "state_commit": "none"
+          },
+          "state_receipt": {
+            "before": {
+              "topic": "timeline",
+              "asn": null,
+              "address_family": null,
+              "metric": "interrupted_prefix_count",
+              "evidence_anchor": "current.interrupted_prefix_count",
+              "pending_clarification": null,
+              "last_committed_turn_number": 2
+            },
+            "proposed": {
+              "inherit": [
+                "event_binding"
+              ],
+              "set": {},
+              "clear": [
+                "pending_clarification"
+              ],
+              "reason_codes": []
+            },
+            "after": {
+              "topic": "timeline",
+              "asn": null,
+              "address_family": null,
+              "metric": "interrupted_prefix_count",
+              "evidence_anchor": "current.interrupted_prefix_count",
+              "pending_clarification": null,
+              "last_committed_turn_number": 2
+            },
+            "status": "none",
+            "transaction_checks": {
+              "plan_validated": true,
+              "permission_validated": true,
+              "execution_validated": true,
+              "evidence_validated": true,
+              "binding_revalidated": true,
+              "cancelled": false
+            }
+          },
+          "validation": {
+            "user_goal_schema": "passed",
+            "grounding_schema": "passed",
+            "grounding_legality": "passed",
+            "answer_evidence": "passed",
+            "errors": []
+          },
+          "runtime_identity": {
+            "implementation": "p1-runtime-v2-semantic-turn",
+            "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+            "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "collector": "rrc25"
+          },
+          "completed_at": "2026-08-09T19:31:52.619Z"
+        },
+        "completed_at": "2026-08-09T19:31:52.619Z"
+      }
+    ],
+    "binding_history": [
+      {
+        "generation": 1,
+        "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+        "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+        "revision": 1,
+        "switched_at": "2026-08-09T19:30:33.047Z"
+      }
+    ],
+    "expires_at": "2026-08-09T20:00:33.047Z",
+    "created_at": "2026-08-09T19:30:33.047Z"
+  },
+  "boundary": {
+    "browser_and_api_same_conversation": true,
+    "collector_id": "rrc25",
+    "local_candidate_only": true,
+    "merged": false,
+    "deployed": false
+  }
+}

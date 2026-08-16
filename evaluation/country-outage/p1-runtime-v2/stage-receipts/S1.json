@@ -1,0 +1,130 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v2",
+  "stage": "S1",
+  "stage_name": "确定性单轮问答垂直切片",
+  "status": "completed",
+  "conclusion": "已修正",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "requirements": [
+    "P1-UX-01",
+    "P1-UX-03",
+    "P1-UX-04",
+    "P1-UX-05",
+    "P1-UX-10",
+    "P1-CTR-04",
+    "P1-CTR-05",
+    "P1-CTR-06",
+    "P1-CTR-07",
+    "P1-CTR-08",
+    "P1-CTR-09",
+    "P1-CTR-10",
+    "P1-CTR-16",
+    "P1-SCE-01"
+  ],
+  "checks": [
+    {
+      "name": "S0 不可变入口与运行合同",
+      "passed": true,
+      "result": "17 selected；5 defer；4 reject；8 unknown；9 execution units；102 Oracle"
+    },
+    {
+      "name": "Runtime v2 单轮与 HTTP 失败矩阵",
+      "passed": true,
+      "result": "25/25；覆盖正常、null、空字符串、空引用、错误 publication、权限、能力不可用、超时与三处取消硬门"
+    },
+    {
+      "name": "Sidecar 全量回归",
+      "passed": true,
+      "result": "592/592"
+    },
+    {
+      "name": "同源后端代理与身份回归",
+      "passed": true,
+      "result": "相关 pytest 79/79；TASK required unittest 5/5"
+    },
+    {
+      "name": "前端构建与相关回归",
+      "passed": true,
+      "result": "生产构建通过；14/14"
+    },
+    {
+      "name": "同候选真实 HTTP 旅程",
+      "passed": true,
+      "result": "POST 同源 Runtime v2 接口 200；partial；12 evidence refs；IR scoped 权限；0 model facts；state_commit=none"
+    },
+    {
+      "name": "同候选真实浏览器成功旅程",
+      "passed": true,
+      "result": "页面显示状态、事实、12 条证据、限制、未知、执行单元、零模型事实和零状态提交"
+    },
+    {
+      "name": "同候选真实浏览器失败关闭旅程",
+      "passed": true,
+      "result": "Sidecar 不可用时返回 503；清除旧答案；显示稳定 FAILED CLOSED；不暴露底层连接信息"
+    },
+    {
+      "name": "RRC25 live 语义真值",
+      "passed": true,
+      "result": "9257；3855@2026-02-27T23:15:00Z；1024；窗口内不同 AS 525；event_end=null；event_end_unknown；partial"
+    },
+    {
+      "name": "P0 v1.3 入口回归",
+      "passed": true,
+      "result": "16 个系统表面；26 项能力；8 unknown；10 Oracle seed；35 案例"
+    },
+    {
+      "name": "冻结核心摘要",
+      "passed": true,
+      "result": "backend/core.sha256 全部 OK"
+    },
+    {
+      "name": "差异格式检查",
+      "passed": true,
+      "result": "git diff --check exit 0"
+    }
+  ],
+  "alignment_hook": {
+    "command": "python3 .codex/hooks/country_outage_agent_p1_alignment.py --stage S1",
+    "exit_code": 0,
+    "conclusion": "已修正",
+    "closed_deviation": "为稳定失败文案加入单一通用代理文件白名单；未扩大到其他后端目录"
+  },
+  "independent_semantic_review": {
+    "role": "独立人类专家模拟子 Agent",
+    "verdict": "PASS",
+    "review_rounds": 2,
+    "scope": [
+      "Runtime Service 到 Sidecar、Flask 与页面的同候选接线",
+      "RRC25 live 事实与 partial 回答语义",
+      "字段证据、限制、未知与 525 人口解释",
+      "原始权限 scope、国家匹配与有效权限映射",
+      "预取消、Tool 间取消与发布前取消",
+      "null、空字符串、空引用和身份冲突失败关闭",
+      "受控 event_summary 不冒充 S2 开放语义规划"
+    ],
+    "closed_blockers": [
+      "Runtime v2 未接真实 HTTP/页面用户旅程",
+      "实际 country_outage_event_read:IR 权限被拒绝且 trace 丢失原始 scope",
+      "预取消、Tool 间取消和关键空值没有失败关闭证据"
+    ],
+    "remaining_blockers": [],
+    "non_blocking_followups": [
+      "可在后续保存脱敏完整 HTTP 响应，便于离线复算 response_sha256",
+      "S3 引入状态提交前补同源 Flask 层端到端取消传播证明"
+    ]
+  },
+  "evidence": [
+    "evaluation/country-outage/p1-runtime-v2/s1-single-turn-evidence.json",
+    "evaluation/country-outage/p1-runtime-v2/s1-http-journey-receipt.json",
+    "evaluation/country-outage/p1-runtime-v2/s1-browser-journey.png",
+    "evaluation/country-outage/p1-runtime-v2/s1-browser-failed-closed.png",
+    "agent-sidecar/src/chat/runtime-v2-single-turn.ts",
+    "agent-sidecar/tests/p1-runtime-v2.test.ts",
+    "agent-sidecar/tests/p1-http-handler.test.ts",
+    "backend/web/tests/test_country_outage_chat_proxy.py",
+    "frontend/src/api/countryOutageChat.test.ts",
+    "frontend/src/pages/CountryOutageChatPage.test.ts"
+  ],
+  "boundary": "只证明 S1 的受控 event_summary 确定性单轮垂直切片在本地同候选成立；不宣称 S2 开放 UserGoalPlan、S3 多轮状态、S4 联合验收、合并、部署或生产验证。"
+}

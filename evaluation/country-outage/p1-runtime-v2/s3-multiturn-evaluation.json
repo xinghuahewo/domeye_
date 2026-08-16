@@ -1,0 +1,255 @@
+{
+  "schema_version": "country_outage_p1_s3_multiturn_evaluation_v1",
+  "candidate_id": "p1-runtime-v2-candidate-11854ee5be1e",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "evaluated_at": "2026-08-09T21:38:00+08:00",
+  "runtime": {
+    "mode": "local_development_candidate",
+    "semantic_provider": "codex-cli",
+    "model": "gpt-5.6-sol",
+    "sidecar": "127.0.0.1:29474",
+    "backend": "127.0.0.1:29473",
+    "frontend": "127.0.0.1:29471",
+    "production_claim": false
+  },
+  "p0_multiturn_journeys": [
+    {
+      "journey_id": "P0-M01",
+      "turns": [
+        "哪个时点的中断前缀最多？",
+        "到最后还剩多少？"
+      ],
+      "observed": {
+        "first_kind": "prefix_peak",
+        "peak_value": 3855,
+        "peak_local_time": "2026-02-28T07:15:00+08:00",
+        "followup_kind": "metric_followup",
+        "followup_context_dependencies": ["prior_metric"],
+        "current_interrupted_prefix_count": 1024,
+        "state_metric": "interrupted_prefix_count",
+        "refresh_restored_turn_count": 2,
+        "refresh_restored_binding_generation": 1
+      },
+      "verdict": "pass"
+    },
+    {
+      "journey_id": "P0-M02",
+      "turns": [
+        "AS48715 在这次事件中怎样？",
+        "不对，我要看 AS49556。"
+      ],
+      "observed": {
+        "first_asn": 48715,
+        "corrected_asn": 49556,
+        "corrected_fixed_prefix_count": 50,
+        "corrected_peak_complete_prefix_count": 50,
+        "corrected_peak_invisible_direction_count": 2103,
+        "old_asn_fact_leak_in_second_answer": false
+      },
+      "verdict": "pass"
+    },
+    {
+      "journey_id": "P0-M03",
+      "turns": [
+        "IPv4 和 IPv6 的可见地址变化有什么不同？",
+        "给我看一个实际路径样本。"
+      ],
+      "observed": {
+        "compare_kind": "address_family_compare",
+        "ipv4_drop": 579072,
+        "ipv6_slash48_drop": 4,
+        "path_kind": "path_sample",
+        "path_prefix": "109.74.224.0/20",
+        "final_topic": "path",
+        "final_address_family": null
+      },
+      "verdict": "pass"
+    },
+    {
+      "journey_id": "P0-M04",
+      "turns": [
+        "峰值呢？",
+        "换成伊朗另一次事件。",
+        "最近那次。"
+      ],
+      "observed": {
+        "switch_kind": "event_switch",
+        "switch_answerability": "clarify",
+        "pending_clarification": "event_reference",
+        "active_binding_suspended": true,
+        "old_metric_cleared": true,
+        "recent_reference_auto_selected": false,
+        "old_peak_reused_in_recent_answer": false,
+        "suspended_followup_zero_execution": true,
+        "grounding_node_count": 0,
+        "execution_receipt_count": 0,
+        "evidence_count": 0,
+        "model_generated_fact_count": 0,
+        "unique_reference_rebind_supported": true,
+        "active_binding_generation_after_rebind": 3,
+        "old_turn_publication_identity_preserved": true
+      },
+      "verdict": "pass"
+    },
+    {
+      "journey_id": "P0-M05",
+      "turns": [
+        "峰值呢？",
+        "证据在哪里？",
+        "所以到底是谁造成的？"
+      ],
+      "observed": {
+        "evidence_kind": "evidence_trace",
+        "dataset_identity_present": true,
+        "cause_kind": "cause_or_responsibility",
+        "cause_answerability": "partial",
+        "cause_asserted": false,
+        "final_topic": "boundary",
+        "final_metric": null
+      },
+      "verdict": "pass"
+    }
+  ],
+  "failure_and_recovery": [
+    {
+      "scenario": "browser_user_cancel_then_retry",
+      "cancelled_answer_published": false,
+      "cancelled_state_committed": false,
+      "retry_question": "现在还有多少前缀不可见？",
+      "retry_value": 1024,
+      "retry_verdict": "pass"
+    },
+    {
+      "scenario": "revision_drift",
+      "answer_published": false,
+      "dialog_state_changed": false,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "two_phase_rebind",
+      "chat_unique_reference_rebind_supported": true,
+      "chat_rebind_uses_tool_01_receipt": true,
+      "successful_rebind_clears_dialog_state": true,
+      "old_turn_binding_preserved": true,
+      "failed_rebind_preserves_old_binding_evidence_and_dialog_state": true,
+      "same_idempotency_key_does_not_increment_generation_twice": true,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "one_subgoal_tool_failure",
+      "successful_sibling_fact_preserved": true,
+      "failed_subgoal_answerability": "invalid_data",
+      "failed_subgoal_evidence_count": 0,
+      "shared_identity_conflict_still_rolls_back_entire_turn": true,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "p0_x02_missing_update_track_is_not_zero",
+      "answerability": "invalid_data",
+      "grounding_node_count": 0,
+      "evidence_count": 0,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "p0_x04_cross_publication_overview_series_conflict",
+      "answer_published": false,
+      "dialog_state_changed": false,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "capability_only_postflight_drift",
+      "answer_published": false,
+      "dialog_state_changed": false,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "ttl_expires_during_execution",
+      "answer_published": false,
+      "dialog_state_changed": false,
+      "verdict": "pass_by_deterministic_test"
+    },
+    {
+      "scenario": "goal_scoped_execution_receipts",
+      "successful_nodes_reference_only_their_own_evidence": true,
+      "failed_subgoal_has_no_evidence": true,
+      "verdict": "pass_by_deterministic_test"
+    }
+  ],
+  "closed_findings": [
+    {
+      "finding": "数量省略曾被模型解释为 event_end_state",
+      "resolution": "只在 S3 对话 Prompt 中明确 prior_metric 继承语义；宿主不做关键词改写",
+      "live_retest": "metric_followup_and_1024"
+    },
+    {
+      "finding": "一次 IPv4/IPv6 比较产生未登记实体字段",
+      "resolution": "只在 S3 对话 Prompt 中明确 address_family=both 的合法表达；Schema 硬门保持不变",
+      "live_retest": "address_family_compare_and_579072_vs_4"
+    },
+    {
+      "finding": "零执行的事件切换澄清曾展示 resolver 字段证据",
+      "resolution": "只有真实 TOOL-01 节点存在时才把 resolution 作为回答证据；binding preflight 仍保留在执行轨迹",
+      "final_test": "zero_nodes_zero_evidence"
+    },
+    {
+      "finding": "同 publication 重新绑定后前端仍显示旧代次和 SUSPENDED",
+      "resolution": "聊天事件切换原子提交后始终读取权威会话，不以 publication 或 revision 是否变化作为唯一刷新条件",
+      "live_retest": "binding_generation_3_and_active_binding_generation_3"
+    }
+  ],
+  "regression": {
+    "sidecar": "634/634",
+    "s3_multiturn_deterministic": "23/23",
+    "backend_proxy": "9/9",
+    "frontend": "224/224",
+    "frontend_build": "pass"
+  },
+  "final_same_candidate_browser_smoke": {
+    "conversation_id": "p1v2_de3f56e90766483ebc0a399e23d2fbb1",
+    "turns": [
+      "换一个事件",
+      "切换到 country_outage/2026-02-27 09:12:32/IR/1/r",
+      "换一个事件",
+      "峰值呢",
+      "切换到 country_outage/2026-02-27 09:12:32/IR/1/r"
+    ],
+    "ambiguous_switch_answerability": "clarify",
+    "ambiguous_switch_grounding_node_count": 0,
+    "suspended_peak_answerability": "clarify",
+    "suspended_peak_grounding_node_count": 0,
+    "suspended_peak_execution_receipt_count": 0,
+    "suspended_peak_evidence_count": 0,
+    "model_generated_fact_count": 0,
+    "exact_reference_switch_answerability": "supported",
+    "exact_reference_switch_tool_01_receipt_count": 1,
+    "binding_generation": 3,
+    "active_binding_generation": 3,
+    "pending_clarification_after_rebind": null,
+    "last_committed_turn_number": 5,
+    "old_event_value_reused": false,
+    "screenshot": "evaluation/country-outage/p1-runtime-v2/s3-browser-multiturn.png",
+    "verdict": "pass"
+  },
+  "independent_semantic_review": {
+    "role": "独立人类专家模拟子 Agent",
+    "verdict": "PASS",
+    "review_rounds": 3,
+    "direct_live_retest": {
+      "case_id": "P013-X-02",
+      "normalized_kind": "capability_absent_not_zero",
+      "answerability": "invalid_data",
+      "grounding_node_count": 0,
+      "evidence_count": 0,
+      "state_commit": "none",
+      "semantic_truth": "Update 轨道不可用，不等于数量为 0"
+    },
+    "remaining_blockers": [],
+    "s4_non_blocking_followups": [
+      "最终 candidate_id 仍需在 S4 绑定代码、Prompt、配置和模型摘要",
+      "浏览器 exact rebind 使用同一 publication；跨 publication 身份由确定性测试证明，S4 联合证据需清楚区分"
+    ]
+  },
+  "conclusion": "pass",
+  "boundary": "只证明本地开发候选的 S3 多轮状态、失败恢复与事件切换效果；不宣称 S4 联合最终验收、合并、部署、生产模型认证、P2 调查或 RCA。"
+}

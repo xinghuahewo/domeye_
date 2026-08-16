@@ -124,7 +124,7 @@
       "inputs": {"metrics": ["affected_asn_count", "route_interrupted_asn_count"], "null_policy": "exclude_null", "tie_policy": "first_observed_occurrence"},
       "expected": {
         "affected_asn_count": {"maximum": 350, "maximum_at_utc": "2026-03-02T11:30:00Z", "last": 121, "unit": "asn"},
-        "route_interrupted_asn_count": {"maximum": 94, "maximum_at_utc": "2026-02-28T14:35:00Z", "last": 35, "unit": "asn"},
+        "route_interrupted_asn_count": {"maximum": 94, "maximum_at_utc": "2026-02-28T13:50:00Z", "last": 35, "unit": "asn"},
         "same_peak_time": false,
         "population_boundary": {"affected_as_count": 525, "route_interrupted_as_count": 151, "semantics": "distinct_as_population_over_window_not_slot_peak"}
       },

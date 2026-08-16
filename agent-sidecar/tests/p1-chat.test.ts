@@ -9,6 +9,7 @@ import {
 
 const reference = 'country_outage/2026-02-27 09:12:32/IR/1/r'
 const binding = {
+  event_type: 'country_outage' as const,
   incident_id: 'incident-ir',
   legacy_reference: reference,
   publication_id: 'publication-ir',
@@ -16,11 +17,22 @@ const binding = {
   collector_id: 'rrc25' as const,
   cohort_id: 'cohort-ir',
   country_code: 'IR',
+  detected_at_utc: '2026-02-27T01:12:32Z',
   window_start_utc: '2026-02-27T00:10:00Z',
   window_end_utc: '2026-03-11T00:00:00Z',
   data_through: '2026-03-11T00:00:00Z',
   is_final_in_data_range: false,
   lifecycle_state: 'event_end_unknown',
+  observation_state: 'evidence_complete',
+  quality_state: 'complete',
+  missing_slot_count: 0,
+  capabilities: {
+    overview: 'available' as const,
+    event_series: 'available' as const,
+    affected_as: 'available' as const,
+    path_downstreams: 'available' as const,
+    full_path_evidence: 'audit_only' as const,
+  },
 }
 
 function bundle(): P1FactBundle {

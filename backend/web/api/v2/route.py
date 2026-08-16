@@ -28,6 +28,13 @@ from .country_outage_chat_proxy import (
     CountryOutageChatRebindResource,
     CountryOutageChatTurnCancelResource,
     CountryOutageChatTurnCollectionResource,
+    CountryOutageRuntimeV2SemanticTurnResource,
+    CountryOutageRuntimeV2SingleTurnResource,
+    CountryOutageRuntimeV2ConversationCollectionResource,
+    CountryOutageRuntimeV2ConversationResource,
+    CountryOutageRuntimeV2TurnCancelResource,
+    CountryOutageRuntimeV2TurnCollectionResource,
+    CountryOutageRuntimeV2RebindResource,
 )
 
 
@@ -89,6 +96,37 @@ api.add_resource(
         "/country-outage/reports/<report_id>/questions/<question_id>/"
         "artifacts/external-appendix"
     ),
+)
+api.add_resource(
+    CountryOutageRuntimeV2SingleTurnResource,
+    "/country-outage/runtime-v2/single-turn",
+)
+api.add_resource(
+    CountryOutageRuntimeV2SemanticTurnResource,
+    "/country-outage/runtime-v2/semantic-turn",
+)
+api.add_resource(
+    CountryOutageRuntimeV2ConversationCollectionResource,
+    "/country-outage/runtime-v2/conversations",
+)
+api.add_resource(
+    CountryOutageRuntimeV2ConversationResource,
+    "/country-outage/runtime-v2/conversations/<conversation_id>",
+)
+api.add_resource(
+    CountryOutageRuntimeV2TurnCollectionResource,
+    "/country-outage/runtime-v2/conversations/<conversation_id>/turns",
+)
+api.add_resource(
+    CountryOutageRuntimeV2TurnCancelResource,
+    (
+        "/country-outage/runtime-v2/conversations/<conversation_id>/turns/"
+        "<turn_id>/cancel"
+    ),
+)
+api.add_resource(
+    CountryOutageRuntimeV2RebindResource,
+    "/country-outage/runtime-v2/conversations/<conversation_id>/rebind",
 )
 api.add_resource(
     CountryOutageChatConversationCollectionResource,

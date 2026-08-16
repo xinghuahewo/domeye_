@@ -1,0 +1,129 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v2",
+  "stage": "S3",
+  "stage_name": "多轮状态、事件切换与失败恢复",
+  "status": "completed",
+  "conclusion": "已修正",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "requirements": [
+    "P1-UX-07",
+    "P1-UX-08",
+    "P1-UX-09",
+    "P1-UX-10",
+    "P1-CTR-02",
+    "P1-CTR-10",
+    "P1-CTR-14",
+    "P1-CTR-15",
+    "P1-CTR-16",
+    "P1-SCE-07",
+    "P1-SCE-09",
+    "P1-SCE-10",
+    "P1-SCE-12"
+  ],
+  "checks": [
+    {
+      "name": "P0 五个多轮旅程",
+      "passed": true,
+      "result": "M01-M05 逐旅程通过；省略继承、ASN 修正、主题切换、事件切换澄清和证据后原因边界均保持产品真值"
+    },
+    {
+      "name": "事件绑定暂停与旧事实隔离",
+      "passed": true,
+      "result": "模糊 event_switch 清除活动执行绑定；同轮或后续事实目标均零节点、零证据、无旧值复用"
+    },
+    {
+      "name": "聊天内两阶段原子重新绑定",
+      "passed": true,
+      "result": "唯一合法引用经 TOOL-01 解析、权限和 RRC25 身份校验后恢复绑定；旧轮次身份不改写；代次与幂等键绑定"
+    },
+    {
+      "name": "缺失、空值、不可用和冲突",
+      "passed": true,
+      "result": "P0-X-02 为 invalid_data 且明确不可用不等于 0；null event_end、空 ASN、trend/外部未配置和跨 publication 冲突分别正确失败关闭"
+    },
+    {
+      "name": "状态事务和失败恢复",
+      "passed": true,
+      "result": "权限、取消、模型错误、revision/capability 漂移、执行跨 TTL、工具局部失败和共享身份冲突不发布半成品或污染状态"
+    },
+    {
+      "name": "逐子目标执行回执",
+      "passed": true,
+      "result": "成功节点只引用自身证据；失败子目标无证据；共享身份冲突仍回滚整轮"
+    },
+    {
+      "name": "同候选浏览器与 API 旅程",
+      "passed": true,
+      "result": "5 turns；模糊切换后峰值追问零执行；唯一引用恢复到 G3/active G3；页面和权威会话一致"
+    },
+    {
+      "name": "Sidecar 全量回归",
+      "passed": true,
+      "result": "634/634"
+    },
+    {
+      "name": "S3 多轮定向回归",
+      "passed": true,
+      "result": "23/23"
+    },
+    {
+      "name": "后端同源代理回归",
+      "passed": true,
+      "result": "9/9"
+    },
+    {
+      "name": "前端全量回归与构建",
+      "passed": true,
+      "result": "224/224；vue-tsc 与 Vite build 通过"
+    },
+    {
+      "name": "P0 v1.3 入口保持",
+      "passed": true,
+      "result": "16 个系统表面；26 项能力；17 adopt / 5 defer / 4 reject；8 unknown；10 Oracle seed；35 个案例"
+    }
+  ],
+  "alignment_hook": {
+    "command": "python3 .codex/hooks/country_outage_agent_p1_alignment.py --stage S3",
+    "exit_code": 0,
+    "conclusion": "已修正",
+    "closed_deviation": "关闭阻断歧义继承、活动绑定未清除、聊天切换死端、代次幂等、跨 TTL、P0-X-02/P0-X-04、capability 漂移、证据归属和同 publication 前端状态不同步"
+  },
+  "independent_semantic_review": {
+    "role": "独立人类专家模拟子 Agent",
+    "verdict": "PASS",
+    "review_rounds": 3,
+    "scope": [
+      "P0 M01-M05 多轮产品语义真值",
+      "同轮 event_switch 与事实目标的旧事件隔离",
+      "活动绑定暂停、唯一引用 TOOL-01 原子 rebind 和旧轮次身份保持",
+      "P0-X-02、P0-X-04、capability drift、TTL、generation idempotency",
+      "逐子目标执行回执和浏览器 G3/active G3"
+    ],
+    "closed_blockers": [
+      "blocking ambiguity 曾继承并执行旧 ASN",
+      "event_binding 只清对话槽而未暂停执行绑定",
+      "聊天唯一事件引用无法结束 event switch 澄清",
+      "同轮事件切换仍可能执行旧事实",
+      "幂等键未绑定 binding generation",
+      "执行跨 TTL 仍可能提交",
+      "P0-X-02 与 P0-X-04 没有按原真值验收",
+      "capability-only 漂移未参与 postflight",
+      "同 publication rebind 后前端仍显示旧代次"
+    ],
+    "remaining_blockers": [],
+    "s4_non_blocking_followups": [
+      "最终 candidate_id 需绑定代码、Prompt、配置和模型摘要",
+      "浏览器同 publication rebind 与确定性跨 publication 测试需在 S4 证据中分层说明"
+    ]
+  },
+  "evidence": [
+    "agent-sidecar/src/chat/runtime-v2-conversation.ts",
+    "agent-sidecar/tests/p1-runtime-v2-conversation.test.ts",
+    "frontend/src/pages/CountryOutageChatPage.vue",
+    "frontend/src/pages/CountryOutageChatPage.test.ts",
+    "evaluation/country-outage/p1-runtime-v2/s3-multiturn-evaluation.json",
+    "evaluation/country-outage/p1-runtime-v2/s3-browser-multiturn.png"
+  ],
+  "boundary": "只证明 S3 在本地开发候选上的多轮状态、事件/revision 切换和失败恢复；不宣称 S4 同候选联合最终验收、合并、部署、生产模型认证、P2 调查或 RCA。"
+}

@@ -1,0 +1,178 @@
+{
+  "schema_version": "country_outage_p1_oracle_fixtures_v2",
+  "fixture_revision": "p1-runtime-v2-s0-20260809",
+  "source": {
+    "p0_live_evidence": "evaluation/country-outage/p0-v1-3/evidence/live-probe-20260809.json",
+    "capture_kind": "immutable_minimal_projection",
+    "collector_id": "rrc25",
+    "endpoint_responses": {
+      "resolve": {"endpoint": "GET /api/v2/events/resolve", "query": {"ref": "country_outage/2026-02-27 09:12:32/IR/1/r"}, "response_sha256": "c518a2b2b79746d3f4bbb237a3446751f7e9ff42aeaaffdff916320e57e53d64"},
+      "overview": {"endpoint": "GET /api/v2/country-outages/{incident_id}/overview", "query": {"publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f"}, "response_sha256": "7a9b741f8e156c409451bc1bed1c0c29ab65004bb7a3b49d1b38f9644b257733"},
+      "series": {"endpoint": "GET /api/v2/country-outages/{incident_id}/series", "query": {"publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f"}, "response_sha256": "45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6"},
+      "asns_48715": {"endpoint": "GET /api/v2/country-outages/{incident_id}/asns", "query": {"publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "query": "48715", "classification": "route_interrupted", "sort": "asn_asc", "page": 1, "page_size": 10}, "response_sha256": "374e36d336356827b950e969a615c871cc2f5932f40c03ebc743574292210a18"},
+      "paths_49666_concurrent": {"endpoint": "GET /api/v2/country-outages/{incident_id}/path-downstreams", "query": {"publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "affected_asn": 49666, "scope": "concurrent", "query": "", "page": 1, "page_size": 15}, "response_sha256": "87b9952c0b8368a5ff31c0f3bf83dbc213eb9ab5e2b7e935a0eced824c60c1b4"},
+      "audit": {"endpoint": "GET /api/v2/country-outages/{incident_id}/audit", "query": {"publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f"}, "response_sha256": "6e87d5bd1deafd72310f8237f646454aac203fe7db07321ff3d027b918e2d80c"}
+    }
+  },
+  "fixtures": {
+    "FX-IDENTITY": {
+      "provenance_ref": "resolve",
+      "event_type": "country_outage",
+      "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "detected_at_utc": "2026-02-27T01:12:32Z",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "quality_state": "complete",
+      "missing_slot_count": 0,
+      "capabilities": {"overview": "available", "event_series": "available", "affected_as": "available", "path_downstreams": "available", "full_path_evidence": "audit_only"}
+    },
+    "FX-OVERVIEW": {
+      "provenance_ref": "overview",
+      "identity_fixture": "FX-IDENTITY",
+      "event": {"detected_at_utc": "2026-02-27T01:12:32Z", "event_end_at_utc": null, "event_duration_seconds": null},
+      "cohort": {"cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "fixed_asn_count": 572, "fixed_prefix_count": 9257, "independent_direction_relation_count": 368675, "new_prefix_count": 701},
+      "current": {"interrupted_prefix_count": 1024, "completely_interrupted_prefix_count": 318, "invisible_direction_count": 14867, "affected_asn_count": 121, "route_interrupted_asn_count": 35, "fixed_visible_ipv4_address_count": 10069760, "fixed_visible_ipv6_slash48_count": 267288},
+      "peaks": {
+        "interrupted_prefix_count": {"value": 3855, "state_point_utc": "2026-02-27T23:15:00Z"},
+        "completely_interrupted_prefix_count": {"value": 1553, "state_point_utc": "2026-02-28T14:35:00Z"},
+        "invisible_direction_count": {"value": 65783, "state_point_utc": "2026-02-28T14:35:00Z"},
+        "affected_asn_count": {"value": 350, "state_point_utc": "2026-03-02T11:30:00Z"},
+        "route_interrupted_asn_count": {"value": 94, "state_point_utc": "2026-02-28T13:50:00Z"}
+      },
+      "affected_as_count": 525,
+      "route_interrupted_as_count": 151,
+      "semantic_boundary": "rrc25_control_plane_observation_not_user_impact_or_cause"
+    },
+    "FX-SERIES": {
+      "provenance_ref": "series",
+      "identity_fixture": "FX-IDENTITY",
+      "point_count": 3455,
+      "track_count": 15,
+      "extrema": {
+        "interrupted_prefix_count": {"minimum": 0, "maximum": 3855, "maximum_at_utc": "2026-02-27T23:15:00Z", "last": 1024, "unit": "prefix"},
+        "affected_asn_count": {"maximum": 350, "maximum_at_utc": "2026-03-02T11:30:00Z", "last": 121, "unit": "asn"},
+        "route_interrupted_asn_count": {"maximum": 94, "maximum_at_utc": "2026-02-28T13:50:00Z", "last": 35, "unit": "asn"},
+        "fixed_visible_ipv4_address_count": {"maximum": 10156800, "minimum": 9577728, "drop": 579072, "unit": "unique_ipv4_address"},
+        "fixed_visible_ipv6_slash48_count": {"maximum": 267292, "minimum": 267288, "drop": 4, "unit": "ipv6_slash48_equivalent"}
+      },
+      "track_samples": {
+        "fixed_visible_ipv4_address_count": {"point_count": 3455, "timestamp_count": 3455, "track_length": 3455, "first": 10156800, "last": 10069760, "unit": "unique_ipv4_address"},
+        "fixed_visible_ipv6_slash48_count": {"point_count": 3455, "timestamp_count": 3455, "track_length": 3455, "first": 267292, "last": 267288, "unit": "ipv6_slash48_equivalent"}
+      },
+      "new_last": {"new_cumulative_ipv4_prefix_count": 700, "new_cumulative_ipv4_address_count": 244291, "new_cumulative_ipv6_prefix_count": 1, "new_cumulative_ipv6_slash48_count": 524288, "new_visible_ipv4_prefix_count": 111, "new_visible_ipv4_address_count": 19523, "new_visible_ipv6_prefix_count": 1, "new_visible_ipv6_slash48_count": 524288},
+      "track_definitions": {
+        "affected_asn_count": {"definition": "至少一个固定前缀部分或完全中断且没有未知前缀的 AS。", "label": "受影响 AS", "unit": "asn"},
+        "completely_interrupted_prefix_count": {"definition": "全部预期独立 peer ASN 方向均不可见的固定唯一前缀。", "label": "完全中断前缀", "unit": "prefix"},
+        "interrupted_prefix_count": {"definition": "部分中断与完全中断的固定唯一前缀合计。", "label": "前缀路由中断", "unit": "prefix"},
+        "invisible_direction_count": {"definition": "按 RRC25 peer ASN 去重的不可见观察方向。", "label": "不可见独立观察方向", "unit": "peer_asn_direction"},
+        "route_interrupted_asn_count": {"definition": "全部固定前缀均完全中断且没有未知前缀的 AS。", "label": "AS 路由中断", "unit": "asn"},
+        "fixed_visible_ipv4_address_count": {"definition": "规范化、去重并合重叠后的 IPv4 唯一地址并集。", "label": "固定前缀可见 IPv4 地址量", "unit": "unique_ipv4_address"},
+        "fixed_visible_ipv6_slash48_count": {"definition": "规范化、去重并合后的 IPv6 /48 等价并集。", "label": "固定前缀可见 IPv6 /48 等价量", "unit": "ipv6_slash48_equivalent"},
+        "new_cumulative_ipv4_prefix_count": {"definition": "事件窗口内曾首次出现的新 IPv4 前缀累计数。", "label": "累计出现新 IPv4 前缀", "unit": "prefix"},
+        "new_cumulative_ipv4_address_count": {"definition": "累计新 IPv4 前缀的唯一地址并集。", "label": "累计出现新 IPv4 地址量", "unit": "unique_ipv4_address"},
+        "new_cumulative_ipv6_prefix_count": {"definition": "事件窗口内曾首次出现的新 IPv6 前缀累计数。", "label": "累计出现新 IPv6 前缀", "unit": "prefix"},
+        "new_cumulative_ipv6_slash48_count": {"definition": "累计新 IPv6 前缀的 /48 等价并集。", "label": "累计出现新 IPv6 /48 等价量", "unit": "ipv6_slash48_equivalent"},
+        "new_visible_ipv4_prefix_count": {"definition": "cohort 冻结后首次出现且当前可见的新 IPv4 前缀。", "label": "当前可见新 IPv4 前缀", "unit": "prefix"},
+        "new_visible_ipv4_address_count": {"definition": "当前可见新 IPv4 前缀的唯一地址并集。", "label": "当前可见新 IPv4 地址量", "unit": "unique_ipv4_address"},
+        "new_visible_ipv6_prefix_count": {"definition": "cohort 冻结后首次出现且当前可见的新 IPv6 前缀。", "label": "当前可见新 IPv6 前缀", "unit": "prefix"},
+        "new_visible_ipv6_slash48_count": {"definition": "当前可见新 IPv6 前缀的 /48 等价并集。", "label": "当前可见新 IPv6 /48 等价量", "unit": "ipv6_slash48_equivalent"}
+      }
+    },
+    "FX-ASNS": {
+      "provenance_ref": "asns_48715",
+      "identity_fixture": "FX-IDENTITY",
+      "query": "48715",
+      "classification": "route_interrupted",
+      "sort": "asn_asc",
+      "page": 1,
+      "page_size": 10,
+      "total": 1,
+      "items": [{"asn": 48715, "event_classification": "route_interrupted", "fixed_prefix_count": 73, "peak_complete_prefix_count": 73, "path_downstream_asn_count": 1, "concurrent_downstream_asn_count": 1, "as_name": "SEFROYEKPARDAZENG-AS", "name_state": "observed", "organization": "Sefroyek Pardaz工程公司", "organization_state": "observed", "nature": "互联网服务提供商", "nature_state": "observed"}]
+    },
+    "FX-PATHS": {
+      "provenance_ref": "paths_49666_concurrent",
+      "identity_fixture": "FX-IDENTITY",
+      "affected_asn": 49666,
+      "scope": "concurrent",
+      "query": "",
+      "page": 1,
+      "page_size": 15,
+      "total": 498,
+      "relationship_semantics": "observed_ordered_rrc25_path_association_not_dependency_or_cause",
+      "items": [{"affected_asn": 49666, "downstream_asn": 58224, "observed_path_count": 611, "associated_fixed_prefix_count": 1181, "independent_direction_count": 44, "path_samples": [{"prefix": "109.74.224.0/20", "as_path_canonical": "33874 6758 1273 3257 49666 48159 58224", "independent_peer_asns": [33874]}, {"prefix": "109.74.224.0/20", "as_path_canonical": "14840 6762 49666 48159 58224", "independent_peer_asns": [14840]}, {"prefix": "109.74.224.0/20", "as_path_canonical": "34872 24961 49666 48159 58224", "independent_peer_asns": [34872]}]}]
+    },
+    "FX-AUDIT": {
+      "provenance_ref": "audit",
+      "identity_fixture": "FX-IDENTITY",
+      "run_id": "general_read_model_run_v1_63be5d12ef847d74824efe5be9892f8a",
+      "dataset_id": "general_read_model_dataset_v1_63be5d12ef847d74824efe5be9892f8a",
+      "implementation_id": "git:d1f4d11fa7467dad2612e3776bbb5573c633064b",
+      "manifest_sha256": "1d1e0463af18cf1320ce37f918ed47fdfb4e1a4f78a73f198923db50a4fca5b9",
+      "event_read_model_id": "country_event_read_model_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "event_content_sha256": "faad748847d97d4e6809898ae80e1a691a0d0e248896cfc3459d7df32c5ec127",
+      "source_identities": {"source_event_cohort_dataset_id": "event_cohort_dataset_v1_11c18b460a735c1acfa5f925d09c1bd8", "source_event_cohort_content_sha256": "75d53ae4ba355c859d70b79aabf3ca597915fbfc66239f9eaa050b7c6004dd6c", "source_event_cohort_manifest_sha256": "3bebb14181912e645e0e1d25439edda9be2e327e059e715655852d102455fef6", "source_event_metric_dataset_id": "event_metric_dataset_v1_136ef94a1068d83f25f844c0fc85f756", "source_event_metric_content_sha256": "1b38ec27bc444e6086c3e34c363089b1d739a6ef3bd0dbf156a027d234c70905", "source_event_metric_manifest_sha256": "c745153178e7e8a0ccf8ba4e5ac285aa76b66cc3980bdeacb28b40939b0d23d5", "source_event_as_path_dataset_id": "event_as_path_dataset_v1_027b658b0a3121f9ec41d33da3a01504", "source_event_as_path_content_sha256": "1398f13b5271ee96fa6591bf62f3bf9fa94dc2dd594a7cc8673a64b1c65ed797", "source_event_as_path_manifest_sha256": "b286c8973ac0af139e1f309c6362c77e951961b3691887c77cbdf4365b64bfa5", "source_lifecycle_snapshot_id": "event_lifecycle_snapshot_v1_7a76c506bd8641406c0d87ba2fdd98f4", "source_lifecycle_snapshot_content_sha256": "7a76c506bd8641406c0d87ba2fdd98f4bb4ecd5da29116e0ef8ea87e412b3426"},
+      "files": {"overview": {"sha256": "64db8bb28ba3a4c9008fb85434ff450ba522878bb0a40ee6af8a05bcd8bb1c17", "size_bytes": 1055}, "series": {"sha256": "a46dd79318320293f7b5559cb5024297a5cff48235a591efdfabc1e8f7c00b40", "size_bytes": 32208}, "affected_as": {"sha256": "5d30a77f885242a23ce6f39462e2e8b810cb2fa8df3796acba673b8209eb38f5", "size_bytes": 25953}, "path_downstreams": {"sha256": "edb9e1514534ae19ff4d5dd8a5fe9cad3590dba0087ac3c55a9280a81494b091", "size_bytes": 402585}},
+      "causal_boundary": "rrc25_path_association_is_not_dependency_propagation_user_impact_or_cause"
+    },
+    "FX-OP01-ROUTE": {
+      "provenance_ref": "series",
+      "execution_unit": "OP-01",
+      "execution_request": {
+        "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"},
+        "metric": "route_interrupted_asn_count",
+        "timestamps": ["2026-02-27T00:10:00Z", "2026-02-28T13:45:00Z", "2026-02-28T13:50:00Z", "2026-02-28T13:55:00Z", "2026-03-11T00:00:00Z"],
+        "values": [0, 92, 94, 94, 35],
+        "unit": "asn",
+        "tie_policy": "first_observed_occurrence",
+        "source_evidence_refs": ["series.tracks.route_interrupted_asn_count", "series.timestamps"]
+      }
+    },
+    "FX-OP02-ADDRESS": {
+      "provenance_ref": "series",
+      "execution_unit": "OP-02",
+      "execution_request": {
+        "ipv4_extrema": {"source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "metric": "fixed_visible_ipv4_address_count", "first": 10156800, "last": 10069760, "minimum": 9577728, "minimum_at_utc": "2026-02-28T14:35:00Z", "maximum": 10156800, "maximum_at_utc": "2026-02-27T00:10:00Z", "difference": 579072, "unit": "unique_ipv4_address", "source_evidence_refs": ["series.tracks.fixed_visible_ipv4_address_count", "series.timestamps"]},
+        "ipv6_extrema": {"source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "metric": "fixed_visible_ipv6_slash48_count", "first": 267292, "last": 267288, "minimum": 267288, "minimum_at_utc": "2026-03-04T08:55:00Z", "maximum": 267292, "maximum_at_utc": "2026-02-27T00:10:00Z", "difference": 4, "unit": "ipv6_slash48_equivalent", "source_evidence_refs": ["series.tracks.fixed_visible_ipv6_slash48_count", "series.timestamps"]}
+      }
+    },
+    "FX-OP03-TIMELINE": {
+      "provenance_ref": "overview",
+      "execution_unit": "OP-03",
+      "execution_request": {
+        "identity_nodes": [
+          {"fact_id": "fact-window-start", "kind": "window_start", "at_utc": "2026-02-27T00:10:00Z", "value": "2026-02-27T00:10:00Z", "unit": "UTC", "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "evidence_ref": "resolution.window_start_utc"},
+          {"fact_id": "fact-detected", "kind": "detected", "at_utc": "2026-02-27T01:12:32Z", "value": "2026-02-27T01:12:32Z", "unit": "UTC", "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "evidence_ref": "overview.event.detected_at_utc"}
+        ],
+        "peak_nodes": [
+          {"fact_id": "fact-interrupted-peak", "kind": "interrupted_prefix_peak", "at_utc": "2026-02-27T23:15:00Z", "value": 3855, "unit": "prefix", "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "evidence_ref": "overview.peaks.interrupted_prefix_count"},
+          {"fact_id": "fact-complete-peak", "kind": "completely_interrupted_prefix_peak", "at_utc": "2026-02-28T14:35:00Z", "value": 1553, "unit": "prefix", "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "evidence_ref": "overview.peaks.completely_interrupted_prefix_count"},
+          {"fact_id": "fact-affected-asn-peak", "kind": "affected_asn_peak", "at_utc": "2026-03-02T11:30:00Z", "value": 350, "unit": "asn", "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "evidence_ref": "series.extrema.affected_asn_count"}
+        ],
+        "data_through_node": {"fact_id": "fact-data-through", "kind": "data_through", "at_utc": "2026-03-11T00:00:00Z", "value": 1024, "unit": "prefix", "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"}, "evidence_ref": "overview.current.interrupted_prefix_count"},
+        "required_kinds": ["window_start", "detected", "interrupted_prefix_peak", "completely_interrupted_prefix_peak", "affected_asn_peak", "data_through"],
+        "lifecycle_state": "event_end_unknown"
+      },
+      "evidence_map": {
+        "source_identity": {"event_type": "country_outage", "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb", "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "revision": 1, "collector_id": "rrc25", "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698", "window_start_utc": "2026-02-27T00:10:00Z", "window_end_utc": "2026-03-11T00:00:00Z", "data_through": "2026-03-11T00:00:00Z", "is_final_in_data_range": false, "lifecycle_state": "event_end_unknown"},
+        "entries": {
+          "resolution.window_start_utc": {"source_node_id": "node-tool01", "kind": "window_start", "at_utc": "2026-02-27T00:10:00Z", "value": "2026-02-27T00:10:00Z", "unit": "UTC"},
+          "overview.event.detected_at_utc": {"source_node_id": "node-tool02", "kind": "detected", "at_utc": "2026-02-27T01:12:32Z", "value": "2026-02-27T01:12:32Z", "unit": "UTC"},
+          "overview.peaks.interrupted_prefix_count": {"source_node_id": "node-tool02", "kind": "interrupted_prefix_peak", "at_utc": "2026-02-27T23:15:00Z", "value": 3855, "unit": "prefix"},
+          "overview.peaks.completely_interrupted_prefix_count": {"source_node_id": "node-tool02", "kind": "completely_interrupted_prefix_peak", "at_utc": "2026-02-28T14:35:00Z", "value": 1553, "unit": "prefix"},
+          "series.extrema.affected_asn_count": {"source_node_id": "node-op01-affected-asn", "kind": "affected_asn_peak", "at_utc": "2026-03-02T11:30:00Z", "value": 350, "unit": "asn"},
+          "overview.current.interrupted_prefix_count": {"source_node_id": "node-tool02", "kind": "data_through", "at_utc": "2026-03-11T00:00:00Z", "value": 1024, "unit": "prefix"}
+        }
+      }
+    }
+  }
+}
