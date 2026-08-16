@@ -155,6 +155,8 @@ W1_W2_TASK_ID = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-20260813"
 W1_W2_TARGET_VERSION = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-v1"
 W3_W4_TASK_ID = "country-outage-agent-p2-s1-w3-w4-atomic-runtime-20260813"
 W3_W4_TARGET_VERSION = "country-outage-agent-p2-s1-w3-w4-atomic-runtime-v1"
+W3_W4_ERRATA_TASK_ID = "country-outage-agent-p2-s1-w3-w4-op33-empty-population-errata-20260813"
+W3_W4_ERRATA_TARGET_VERSION = "country-outage-agent-p2-s1-w3-w4-op33-empty-population-errata-v1"
 REGISTRY_WAVE_SEQUENCE = ["W1", "W2", "W3", "W4"]
 STRUCTURAL_BINDING_PATH = Path(
     "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json"
@@ -193,10 +195,10 @@ W1_W2_REGISTRY_EVIDENCE_ROOT = Path(
     "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime"
 )
 W1_W2_REGISTRY_EVIDENCE_SHA256 = {
-    "W1": "ee992ac8144b2d4e097f921827fbea97743524ff96426c1035263380f1bb29fa",
-    "W2": "080c9383401f50b7dfc4a1866b5922670fcd8a7ead16a908d45fce7e53a4e437",
-    "W3": "2cee0ac652a5488a8bc7be08ebc253e9c8255b06d483ba985ee2420e20bf8e31",
-    "W4": "bc8570bbe7b0f91b3921c8b19d28606b8a03df8730b43223cecee300528a8ef7",
+    "W1": "c8d0dad59e2f22be22580acc93166da3723543b2de1546ed1ab90568b55c0a06",
+    "W2": "9cc53c0d84f43f86dc078420fd76e2b51328b83e0ce5b101b947a3d9878fdb35",
+    "W3": "b2ae3d95e42439104b9073cf0f83aca54bc2fdb1adf007206bb64b6c6d94369b",
+    "W4": "911c5c9595a4dd741aff4665eaf6cb375a95f47a444c7edd9c1c9c336f496510",
 }
 W1_W2_SOURCE_STORE_PATH = Path("backend/services/country_outage_p2_s1_source_store.py")
 W1_W2_SOURCE_SCHEMA_PATHS = {
@@ -230,20 +232,20 @@ W1_W4_ALL_UNIT_IDS = set(
 P2_1_UNIT_IDS = {"PLAN-CAP-02", "TOOL-13", "OP-34"}
 REGISTRY_SNAPSHOT_ID = re.compile(r"^p2-s1-registry-wave-sha256:[0-9a-f]{64}$")
 STAGE_TEST_RUN_RECEIPTS = {
-    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "599b729287ef1fb4b3fd9adc71d53549b8d97d6511a8966a5ccf91d96989d1cc"),
-    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "4fa6f1963a87070a1908f4af5c2891805f287d7ba6101c40d61449b75eb05654"),
-    "w1-positive": ("W1", "positive", "1fa8cf89a1c15242bbb70db84e36a1691d428dcbe4f1217d4b01669a7c3f51a6"),
-    "w1-boundary": ("W1", "boundary", "b6eae94bd497a78bf5eefa7f1edf9dfe65f68fc9bad329d4926ff10f84da216d"),
-    "w1-attack": ("W1", "attack", "ac416b1aa5f8e39e76d22417f834405ae229f66cda064d6260bd3c0dc39fd4bd"),
-    "w2-positive": ("W2", "positive", "00443b97cb14b96aeb92c7c2c1d4080cde784f7494f8da15325912e9efb8ece3"),
-    "w2-boundary": ("W2", "boundary", "05ad37e8ed1e2d15703ededdc6225d5dd0262354c2bc142cabdcabae9f5a4b89"),
-    "w2-attack": ("W2", "attack", "a60030a1edd4ddb9148ba88c05f612e90f526bfa7893e6c6f8554caa8fa5ba05"),
-    "w3-positive": ("W3", "positive", "6438d5087cf165139b6cda967100c6a90f1264fcaf23bc57cbacd35bc3d1244e"),
-    "w3-boundary": ("W3", "boundary", "fc822b55f862d95549801ca10190754056d63fca0f3b87673f2d718c114f5baa"),
-    "w3-attack": ("W3", "attack", "29b0bd78642520921b4211a6eb6f3ea624a711dd30db768cacac7aee35a3bf66"),
-    "w4-positive": ("W4", "positive", "a477a81d5213b91f4d526e8d048231f11790388b1a4e10a61bf4654b2f6b4c18"),
-    "w4-boundary": ("W4", "boundary", "bf291a42eff3e4980a120ade53626db58c1d5bf059407b68a2f5afebb6cf8371"),
-    "w4-attack": ("W4", "attack", "dfd1913297acec40b09ad6e43ec618851aa7717ed89d5b3cc5a74784e0a0aaf4"),
+    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "96d2714e5960a9e9803b63511c3f0370d6e54e6fb4a900bbee1d87a65580acd7"),
+    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "ac32c3800e4c41bc39625103446116c32249b5a9240a8be8ca2cdc9d954b18c1"),
+    "w1-positive": ("W1", "positive", "181a5187c8283d4b9cac1e5e72361d6275eed589b6bd23e0b352cf578c70c5fd"),
+    "w1-boundary": ("W1", "boundary", "3d4fdc41d365310329f8d7e34021830c3c4fb4ff747ca66a26a712d871cab744"),
+    "w1-attack": ("W1", "attack", "c28c779915ebd1409bb9db2a7570e19a285c258808691bb22b3c3cccedcccc3b"),
+    "w2-positive": ("W2", "positive", "3d95af9ba2f7096d522857cf4ba37dcc35bc59010e9b455bfa541f9f71b48cce"),
+    "w2-boundary": ("W2", "boundary", "5fc1aa54c6de15cbf011cb4befaa094feed4e30197c81f60cb65223e25de1dbd"),
+    "w2-attack": ("W2", "attack", "65f4021f96130b914dd2efd020347bb8a98d5a5584577d775286be793f963618"),
+    "w3-positive": ("W3", "positive", "c8a2392ce3c86f301bdb0688876c28eed4568897770dafd2fe2a8953266050ad"),
+    "w3-boundary": ("W3", "boundary", "f21727356fb5d01dd43b4c53b8f081ac74c562d4b8bbef83137ee13c08581633"),
+    "w3-attack": ("W3", "attack", "224e2533e68821e3d514467aff67be23ad96326aaebdcb37e71a99c112af0b84"),
+    "w4-positive": ("W4", "positive", "7a0a0d4bd89fc7307fb3668bb0f5c1dbe2aa5c356fd93a6194adb3fcde5a1bb7"),
+    "w4-boundary": ("W4", "boundary", "ae96a3eee481d3b56fc9961f6f5a0437ce47b0010fba37b78a7ceb8e207c6c35"),
+    "w4-attack": ("W4", "attack", "dc0048407911451b6848377fad3a14ee1841b9805b732d5084404db51eb8f628"),
 }
 
 
@@ -476,14 +478,20 @@ def validate_task(root: Path) -> list[str]:
     task_id = task.get("taskId")
     w0_task = task_id == "country-outage-agent-p2-s1-w0-source-governance-20260813"
     w1_w2_task = task_id == W1_W2_TASK_ID
-    w3_w4_task = task_id == W3_W4_TASK_ID
+    w3_w4_errata_task = task_id == W3_W4_ERRATA_TASK_ID
+    w3_w4_task = task_id == W3_W4_TASK_ID or w3_w4_errata_task
     expect(w0_task or w1_w2_task or w3_w4_task, "task_identity_mismatch", "Task ID 不属于冻结的 W0、W1/W2 或 W3/W4 实现任务")
     if w0_task:
         exact(task.get("targetVersion"), "country-outage-agent-p2-s1-w0-source-governance-v1", "task_version_mismatch", "W0 目标版本不匹配")
     elif w1_w2_task:
         exact(task.get("targetVersion"), W1_W2_TARGET_VERSION, "task_version_mismatch", "W1/W2 目标版本不匹配")
     else:
-        exact(task.get("targetVersion"), W3_W4_TARGET_VERSION, "task_version_mismatch", "W3/W4 目标版本不匹配")
+        exact(
+            task.get("targetVersion"),
+            W3_W4_ERRATA_TARGET_VERSION if w3_w4_errata_task else W3_W4_TARGET_VERSION,
+            "task_version_mismatch",
+            "W3/W4 目标版本不匹配",
+        )
     transition = task.get("taskTransition")
     expect(isinstance(transition, dict), "task_transition_missing", "缺少任务迁移记录")
     exact(transition.get("frozenDesignCandidateId"), DESIGN_CANDIDATE_ID, "task_design_binding_mismatch", "Task 未绑定冻结设计候选")
@@ -508,11 +516,19 @@ def validate_task(root: Path) -> list[str]:
         exact(transition.get("supersedesTaskId"), "country-outage-agent-p2-s1-w0-source-governance-20260813", "task_transition_invalid", "W1/W2 未显式继承 W0 Task")
         exact(transition.get("w0ReceiptDigest"), W0_TRANSITION_RECEIPT_DIGEST, "task_w0_binding_mismatch", "W1/W2 Task 未绑定创建时冻结的 W0 回执")
     else:
-        exact(transition.get("supersedesTaskId"), W1_W2_TASK_ID, "task_transition_invalid", "W3/W4 未显式继承已通过独立复审的 W1/W2 Task")
+        exact(
+            transition.get("supersedesTaskId"),
+            W3_W4_TASK_ID if w3_w4_errata_task else W1_W2_TASK_ID,
+            "task_transition_invalid",
+            "W3/W4 未显式继承已通过的前序 Task",
+        )
         exact(transition.get("implementationBaselineSha256"), "9dc80bec20db0c68ee044c4da9e4148a2a2ab7bd1c70c8863ae737cc6231422f", "task_baseline_transition_mismatch", "W3/W4 Task 创建时的实现基线摘要漂移")
         exact(transition.get("w0ReceiptDigest"), "cbab6787eeec1071c1c982063085f6fadb16e85e584c76289a43b31aecd4108c", "task_w0_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W0 回执")
         exact(transition.get("w1ReceiptDigest"), "2ac94ea56923bd8dff140af56aa6e8a876860931f6bd8fd479a4908eeaa34c73", "task_w1_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W1 回执")
         exact(transition.get("w2ReceiptDigest"), "b4672f844e559d3bdf44d713fd02f674ec431f4caacb77c3afa85886c27298a1", "task_w2_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W2 回执")
+        if w3_w4_errata_task:
+            exact(transition.get("w3ReceiptDigest"), "f5c4dd1ea7208e023a9432b4ab4c273ca0f8cf4a5e15fbfeb181210ef542c6a2", "task_w3_binding_mismatch", "勘误 Task 未绑定前序 W3 回执")
+            exact(transition.get("w4ReceiptDigest"), "2453e5d884e6ae821cd00573b467f430bfc838a5a6902b4ebc8d20402d246b6a", "task_w4_binding_mismatch", "勘误 Task 未绑定前序 W4 回执")
     for path in (
         W1_W2_TOOL_IMPLEMENTATION_PATH,
         W1_W2_OPERATOR_IMPLEMENTATION_PATH,

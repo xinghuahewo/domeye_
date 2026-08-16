@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "2a88b6d668f38d607136d7d856d7b2942dcd758593abfc5e15659578712796eb",
-      "size_bytes": 23872
+      "sha256": "2faa95b0f039c8d7e494c8efcd59e84d12961667930649a67511ccb264b17f6c",
+      "size_bytes": 24185
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -12,8 +12,8 @@
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
-      "sha256": "4dd544c8e654328189f9641d646bf357da868518d439b44b11062c1e4c77b2b0",
-      "size_bytes": 78269
+      "sha256": "a54f07b1492aa76800c7aa96be7fe37b338d45ac68eff01ffdf3613126df1582",
+      "size_bytes": 81182
     },
     {
       "path": "backend/services/country_outage_p2_s1_tools.py",
@@ -37,8 +37,8 @@
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json",
-      "sha256": "b2d57637c3003938961a5dd4e73bfef8abd18f4f862f753b21310b86c257d626",
-      "size_bytes": 185269
+      "sha256": "dd154f4d6dc0dcc8d001150395c1f110367576c60ed2329fc5d6bc564658fb56",
+      "size_bytes": 185219
     }
   ],
   "category": "positive",
@@ -58,14 +58,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_independent_count_operators_and_tamper",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics"
   ],
-  "completed_at_utc": "2026-08-13T05:39:53Z",
+  "completed_at_utc": "2026-08-13T05:47:30Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_tool12_contains_asn_uses_verified_native_index (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_contains_asn_zero_is_complete_empty (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_anchor_and_contains_intersection_binds_all_native_receipt_fields (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_deterministic_replay_preserves_ids_digests_and_receipts (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_path_positions_prepend_neighbors_and_order (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_unordered_path_is_not_linearized (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_path_prefix_path_direction_projections (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_observed_downstream_projection_not_customer_cone (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_independent_count_operators_and_tamper (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_set_operations_and_empty_semantics (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "673d92207b12e9e0777bbed1eeada88375c3d30ad619815b9b24a3ef0e058f6c",
   "passed": true,
-  "receipt_digest": "513d9408dab3d5d5fe0a19e97bc37aeaa4908dc70fafcc5a362037cd87b341c0",
+  "receipt_digest": "fa383cc6ceae1d1f8359a474b9f4b459c7f05a9cafdcd37179f8194307e7f022",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -83,7 +83,7 @@
   ],
   "skipped_count": 0,
   "stage": "W2",
-  "started_at_utc": "2026-08-13T05:39:53Z",
+  "started_at_utc": "2026-08-13T05:47:30Z",
   "suite_id": "w2-positive",
   "test_case_coverage": [
     {

@@ -181,6 +181,7 @@ SUITES: dict[str, dict[str, Any]] = {
             _test_id(OPERATORS, "OperatorW3W4Tests", "test_op29_directed_relations_missing_not_comparable_and_attacks"),
             _test_id(OPERATORS, "OperatorW3W4Tests", "test_vp_consistency_precedence_empty_and_attacks"),
             _test_id(OPERATORS, "OperatorW3W4Tests", "test_op33_exact_join_preserves_unmatched_and_rejects_future_fill"),
+            _test_id(OPERATORS, "OperatorAtomicityAndBoundaryTests", "test_op33_empty_population_inputs_and_outputs_validate_frozen_schema"),
             _test_id(OPERATORS, "OperatorW3W4Tests", "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"),
         ],
     },
@@ -257,6 +258,7 @@ def test_case_units(suite_id: str, test_id: str) -> list[str]:
         "test_op29_directed_relations_missing_not_comparable_and_attacks": ["OP-29"],
         "test_vp_consistency_precedence_empty_and_attacks": ["OP-30", "OP-31", "OP-32"],
         "test_op33_exact_join_preserves_unmatched_and_rejects_future_fill": ["OP-33"],
+        "test_op33_empty_population_inputs_and_outputs_validate_frozen_schema": ["OP-33"],
         "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks": ["OP-29", "OP-37"],
         "test_op38_half_open_overlap_empty_and_interval_attacks": ["OP-38"],
         "test_op39_prefix_projection_dedup_empty_and_attacks": ["OP-39"],
@@ -281,6 +283,7 @@ def coverage_for_test_case(suite_id: str, test_id: str) -> dict[str, Any]:
     elif name in {
         "test_actual_input_output_examples_validate_frozen_draft202012_schema",
         "test_actual_request_result_and_failure_envelopes_validate_draft202012_schema",
+        "test_op33_empty_population_inputs_and_outputs_validate_frozen_schema",
     }:
         coverage_kind = "direct_execution_and_schema_validation"
         executed_unit_ids = list(unit_ids)

@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "2a88b6d668f38d607136d7d856d7b2942dcd758593abfc5e15659578712796eb",
-      "size_bytes": 23872
+      "sha256": "2faa95b0f039c8d7e494c8efcd59e84d12961667930649a67511ccb264b17f6c",
+      "size_bytes": 24185
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -12,8 +12,8 @@
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
-      "sha256": "4dd544c8e654328189f9641d646bf357da868518d439b44b11062c1e4c77b2b0",
-      "size_bytes": 78269
+      "sha256": "a54f07b1492aa76800c7aa96be7fe37b338d45ac68eff01ffdf3613126df1582",
+      "size_bytes": 81182
     },
     {
       "path": "backend/services/country_outage_p2_s1_tools.py",
@@ -37,8 +37,8 @@
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json",
-      "sha256": "b2d57637c3003938961a5dd4e73bfef8abd18f4f862f753b21310b86c257d626",
-      "size_bytes": 185269
+      "sha256": "dd154f4d6dc0dcc8d001150395c1f110367576c60ed2329fc5d6bc564658fb56",
+      "size_bytes": 185219
     }
   ],
   "category": "boundary",
@@ -52,16 +52,17 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op29_directed_relations_missing_not_comparable_and_attacks",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_vp_consistency_precedence_empty_and_attacks",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op33_exact_join_preserves_unmatched_and_rejects_future_fill",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_op33_empty_population_inputs_and_outputs_validate_frozen_schema",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"
   ],
-  "completed_at_utc": "2026-08-13T05:40:01Z",
+  "completed_at_utc": "2026-08-13T05:47:38Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
-  "normalized_output": "[stdout]\n\n[stderr]\ntest_tool11_contains_asn_uses_same_population_native_index_and_closes_empty (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool11_requires_exact_grid_point_and_never_fills_nearest_or_future_state (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_op29_directed_relations_missing_not_comparable_and_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_vp_consistency_precedence_empty_and_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_op33_exact_join_preserves_unmatched_and_rejects_future_fill (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in <ELAPSED>\n\nOK\n",
-  "normalized_output_sha256": "ec3595e3f3a5f60f0377543f9c2c65492f6b8f90f08169da92febf229fc0af74",
+  "normalized_output": "[stdout]\n\n[stderr]\ntest_tool11_contains_asn_uses_same_population_native_index_and_closes_empty (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool11_requires_exact_grid_point_and_never_fills_nearest_or_future_state (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_op29_directed_relations_missing_not_comparable_and_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_vp_consistency_precedence_empty_and_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_op33_exact_join_preserves_unmatched_and_rejects_future_fill (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\ntest_op33_empty_population_inputs_and_outputs_validate_frozen_schema (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests)\nOP-33 的左右完整人口可分别或同时为空，空人口仍须继承人口 Evidence。 ... ok\ntest_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests) ... ok\n\n----------------------------------------------------------------------\nRan 7 tests in <ELAPSED>\n\nOK\n",
+  "normalized_output_sha256": "8e82fed0fc41117bb44e9545e1b82aa396b8449f476ffd860d650ba968f55eab",
   "passed": true,
-  "receipt_digest": "01f0880e6f5444378de52bf39edf26c0191ec9ff614dfe593e3da8ff667ae1b3",
+  "receipt_digest": "dabf7ff652f97f00791734958602d139579a37109538bbcca75784f230d5763b",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -71,11 +72,12 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op29_directed_relations_missing_not_comparable_and_attacks",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_vp_consistency_precedence_empty_and_attacks",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op33_exact_join_preserves_unmatched_and_rejects_future_fill",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_op33_empty_population_inputs_and_outputs_validate_frozen_schema",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW3W4Tests.test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"
   ],
   "skipped_count": 0,
   "stage": "W4",
-  "started_at_utc": "2026-08-13T05:40:01Z",
+  "started_at_utc": "2026-08-13T05:47:36Z",
   "suite_id": "w4-boundary",
   "test_case_coverage": [
     {
@@ -133,6 +135,16 @@
       ]
     },
     {
+      "coverage_kind": "direct_execution_and_schema_validation",
+      "executed_unit_ids": [
+        "OP-33"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_op33_empty_population_inputs_and_outputs_validate_frozen_schema",
+      "unit_ids": [
+        "OP-33"
+      ]
+    },
+    {
       "coverage_kind": "direct_execution",
       "executed_unit_ids": [
         "OP-29",
@@ -163,6 +175,6 @@
     "OP-37",
     "TOOL-11"
   ],
-  "tests_run": 6,
+  "tests_run": 7,
   "working_directory": "."
 }
