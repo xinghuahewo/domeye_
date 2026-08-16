@@ -26,6 +26,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '事件问答', section: '异常监测' },
   },
   {
+    path: '/events/investigation',
+    name: 'country-outage-investigation',
+    component: () => import('@/pages/CountryOutageInvestigationPage.vue'),
+    meta: { title: '组合调查', section: '异常监测' },
+  },
+  {
     path: '/features',
     name: 'features',
     component: () => import('@/pages/FeaturesPage.vue'),

@@ -61,6 +61,30 @@ let observationRefreshTimer: ReturnType<typeof setInterval> | undefined
 const observationRequests = new CountryOutageObservationRequestGate()
 
 const reference = computed(() => typeof route.query.ref === 'string' ? route.query.ref : '')
+const investigationEntry = computed(() => {
+  const identity = generalPage.value?.resolution
+  if (identity) {
+    return {
+      name: 'country-outage-investigation',
+      query: {
+        ref: reference.value,
+        publication_id: identity.publication_id,
+        revision: String(identity.revision),
+      },
+    }
+  }
+  if (observation.value?.publication_id && observation.value.revision) {
+    return {
+      name: 'country-outage-investigation',
+      query: {
+        ref: reference.value,
+        publication_id: observation.value.publication_id,
+        revision: String(observation.value.revision),
+      },
+    }
+  }
+  return null
+})
 
 const keyLabels: Record<string, string> = {
   hijacked_prefix: '被劫持前缀',
@@ -342,13 +366,30 @@ onBeforeUnmount(() => {
       @retry="load"
     />
 
-    <CountryOutageGeneralPage
-      v-else-if="generalPage"
-      :page="generalPage"
-      :reference="reference"
-    />
+    <template v-else-if="generalPage">
+      <aside class="investigation-entry" aria-label="本地组合调查入口">
+        <div>
+          <span>P2-S1 W5 · LOCAL ISOLATED</span>
+          <strong>用可见静态计划组合调查当前 RRC25 publication</strong>
+          <p>支持节点状态、取消、单步重跑、稳定预览、证据追溯与完整导出；不表示生产部署。</p>
+        </div>
+        <RouterLink v-if="investigationEntry" :to="investigationEntry">创建组合调查 →</RouterLink>
+      </aside>
+      <CountryOutageGeneralPage
+        :page="generalPage"
+        :reference="reference"
+      />
+    </template>
 
     <template v-else-if="observation">
+      <aside class="investigation-entry" aria-label="本地组合调查入口">
+        <div>
+          <span>P2-S1 W5 · LOCAL ISOLATED</span>
+          <strong>创建当前冻结事件的组合调查</strong>
+          <p>仅组合已准入 W1–W4 原子能力；P2.1 动态 fan-out 继续延期。</p>
+        </div>
+        <RouterLink v-if="investigationEntry" :to="investigationEntry">创建组合调查 →</RouterLink>
+      </aside>
       <nav class="country-outage-view-switch" aria-label="国家中断事件视图">
         <div role="tablist" aria-label="数据观测与报告">
           <button
@@ -741,6 +782,38 @@ onBeforeUnmount(() => {
   background: rgba(18, 29, 38, .97);
   border-bottom: 1px solid #42515c;
   backdrop-filter: blur(12px);
+}
+
+.investigation-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid #c9d9e4;
+  border-left: 4px solid #27658d;
+  background: #f2f8fb;
+}
+
+.investigation-entry span {
+  color: #52728a;
+  font-size: .72rem;
+  letter-spacing: .1em;
+}
+
+.investigation-entry strong,
+.investigation-entry p {
+  display: block;
+  margin: .2rem 0 0;
+}
+
+.investigation-entry a {
+  flex: none;
+  padding: .65rem .85rem;
+  color: #fff;
+  background: #1c5278;
+  text-decoration: none;
 }
 
 .country-outage-view-switch > div {

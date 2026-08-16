@@ -1,0 +1,109 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "270aa0786eff3cbcd24de2e0f601f6d57b3ddcb855791ebc16301b0cced670cc",
+      "size_bytes": 30489
+    },
+    {
+      "path": "frontend/src/api/countryOutageInvestigation.ts",
+      "sha256": "59c99c0228f8f2c415cc5a7cb1219a6c335738b1d1401723dbffc4b12894f30a",
+      "size_bytes": 6949
+    },
+    {
+      "path": "frontend/src/api/countryOutageInvestigation.test.ts",
+      "sha256": "c18b6a09f676a3e69ebc4edd4007a0a874ad166da05cf6c4db5fc6d7a5f01ffd",
+      "size_bytes": 4293
+    },
+    {
+      "path": "frontend/src/pages/CountryOutageInvestigationPage.vue",
+      "sha256": "109284ede70e0a2ed88630945c1cdf32f19b39c49867f3c323936127dfefbcd0",
+      "size_bytes": 24503
+    },
+    {
+      "path": "frontend/src/pages/CountryOutageInvestigationPage.test.ts",
+      "sha256": "e3325612ee5da10440244601a61334fa5104008e0b215ae09950de621e2c13f5",
+      "size_bytes": 2134
+    },
+    {
+      "path": "frontend/src/pages/EventDetailPage.vue",
+      "sha256": "abda1255a920973d17103e3773d69ce9b29c25e864fafb4938e0bbe13d3b8ad2",
+      "size_bytes": 38952
+    },
+    {
+      "path": "frontend/src/pages/EventDetailPage.test.ts",
+      "sha256": "e7506a257b7b698df68788c835691065203003fc50f5a8437575693b9184e252",
+      "size_bytes": 908
+    },
+    {
+      "path": "frontend/src/components/CountryOutageInvestigationPlan.vue",
+      "sha256": "9c18316de4441be0f817cbbd524de32b7970f80bed5dc0cf4b1aa1b2ccae1c12",
+      "size_bytes": 4398
+    },
+    {
+      "path": "frontend/src/router/index.ts",
+      "sha256": "e213edc6e862e9d130b11a70da9a363465dee5eb00d27307437d88d02b7e8e92",
+      "size_bytes": 2619
+    },
+    {
+      "path": "frontend/src/types/api.ts",
+      "sha256": "5b65c97e17fdea963d3f73d4a388afc722f13ed6f1c3691214aeaf2102be1b84",
+      "size_bytes": 35747
+    },
+    {
+      "path": "frontend/src/types/openapi.generated.d.ts",
+      "sha256": "8bf89c784d246a943c22e488ad4b7cd143ad40afab248ce8f463528f9c5f0686",
+      "size_bytes": 222241
+    }
+  ],
+  "category": "ui_journey_typecheck_and_build",
+  "command": [
+    "bash",
+    "-lc",
+    "npm test -- --run src/api/countryOutageInvestigation.test.ts src/pages/CountryOutageInvestigationPage.test.ts src/pages/EventDetailPage.test.ts && npm run typecheck && npm run build"
+  ],
+  "completed_at_utc": "2026-08-13T07:22:55Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n> domeye-core-frontend@0.1.0 test\n> vitest run --run src/api/countryOutageInvestigation.test.ts src/pages/CountryOutageInvestigationPage.test.ts src/pages/EventDetailPage.test.ts\n\n\n RUN  v3.2.7 <REPO_ROOT>/frontend\n\n ✓ src/pages/CountryOutageInvestigationPage.test.ts (5 tests) 3ms\n ✓ src/pages/EventDetailPage.test.ts (2 tests) 3ms\n ✓ src/api/countryOutageInvestigation.test.ts (6 tests) 7ms\n\n Test Files  3 passed (3)\n      Tests  13 passed (13)\n   Start at  15:22:14\n   Duration <ELAPSED> (transform 290ms, setup 0ms, collect 424ms, tests 12ms, environment 0ms, prepare 1.36s)\n\n\n> domeye-core-frontend@0.1.0 typecheck\n> vue-tsc --noEmit\n\n\n> domeye-core-frontend@0.1.0 build\n> vue-tsc --noEmit && vite build\n\nvite v6.4.3 building for production...\ntransforming...\n✓ 758 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                                                             0.62 kB │ gzip:   0.40 kB\ndist/assets/SparklinePair-DReRfU9N.css                                      0.47 kB │ gzip:   0.24 kB\ndist/assets/NotFoundPage-D-fwG2SF.css                                       0.80 kB │ gzip:   0.40 kB\ndist/assets/FeaturesPage-eOc99a_E.css                                       1.75 kB │ gzip:   0.58 kB\ndist/assets/EventsPage-BQEJe_ir.css                                         2.51 kB │ gzip:   0.82 kB\ndist/assets/CountryOutageInvestigationPage-C5-s4vTp.css                     4.72 kB │ gzip:   1.20 kB\ndist/assets/CountryPage-D-XTy1mg.css                                        7.90 kB │ gzip:   1.63 kB\ndist/assets/HomePage-DszlB_DD.css                                           9.54 kB │ gzip:   2.14 kB\ndist/assets/AsnPage-CRlW7Ckp.css                                            9.63 kB │ gzip:   1.95 kB\ndist/assets/CountryOutageChatPage-BpVgcw9x.css                             12.38 kB │ gzip:   3.18 kB\ndist/assets/index-CfsxnG6w.css                                             12.54 kB │ gzip:   3.59 kB\ndist/assets/EventDetailPage-6SDxTtN5.css                                   88.32 kB │ gzip:  15.95 kB\ndist/assets/_plugin-vue_export-helper-DlAUqK2U.js                           0.09 kB │ gzip:   0.10 kB\ndist/assets/NotFoundPage-DRM79Y3X.js                                        0.65 kB │ gzip:   0.54 kB\ndist/assets/SparklinePair-BBGDGrZG.js                                       1.10 kB │ gzip:   0.70 kB\ndist/assets/features-C-5zauK7.js                                            1.18 kB │ gzip:   0.42 kB\ndist/assets/EventTable.vue_vue_type_script_setup_true_lang-CSy5cAlr.js      1.62 kB │ gzip:   0.88 kB\ndist/assets/LineChart.vue_vue_type_script_setup_true_lang-Cjl0LtD2.js       4.09 kB │ gzip:   2.06 kB\ndist/assets/FeaturesPage-ZiaijkcT.js                                        6.05 kB │ gzip:   2.77 kB\ndist/assets/EventsPage-C3n3jErn.js                                          7.02 kB │ gzip:   3.16 kB\ndist/assets/events-BS7wwjKV.js                                              8.79 kB │ gzip:   2.97 kB\ndist/assets/CountryPage-CgMub26Y.js                                        10.92 kB │ gzip:   4.46 kB\ndist/assets/CountryOutageChatPage-DKV8OC8p.js                              13.45 kB │ gzip:   5.77 kB\ndist/assets/AsnPage-Cy9NEpQu.js                                            13.58 kB │ gzip:   5.57 kB\ndist/assets/CountryOutageInvestigationPage-Bk12Vv-E.js                     19.62 kB │ gzip:   7.42 kB\ndist/assets/HomePage-D9cho7oa.js                                           22.25 kB │ gzip:   8.38 kB\ndist/assets/normalize-RvpelWSl.js                                          23.14 kB │ gzip:   7.11 kB\ndist/assets/index-D18qU43S.js                                             154.48 kB │ gzip:  59.70 kB\ndist/assets/EventDetailPage-AZV8lW86.js                                   194.49 kB │ gzip:  59.75 kB\ndist/assets/chartTime-DLzz1ivO.js                                       1,127.59 kB │ gzip: 379.26 kB\n✓ built in 15.07s\n\n[stderr]\n",
+  "normalized_output_sha256": "f1cdd11aa3d6bbd0698975b4c8af5a6a272e101ec07f46925db166a833f754f2",
+  "passed": true,
+  "receipt_digest": "278d530c6effe11b66915e91d1c6d2b9c4f8494a92bcb52e85fdc1c5a279df77",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.1.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "frontend/src/api/countryOutageInvestigation.test.ts",
+    "frontend/src/pages/CountryOutageInvestigationPage.test.ts",
+    "frontend/src/pages/EventDetailPage.test.ts"
+  ],
+  "skipped_count": 0,
+  "stage": "W5",
+  "started_at_utc": "2026-08-13T07:22:10Z",
+  "suite_id": "w5-frontend",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "frontend/src/api/countryOutageInvestigation.test.ts",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "frontend/src/pages/CountryOutageInvestigationPage.test.ts",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "frontend/src/pages/EventDetailPage.test.ts",
+      "unit_ids": []
+    }
+  ],
+  "tested_execution_unit_ids": [],
+  "tested_unit_ids": [],
+  "tests_run": 13,
+  "working_directory": "frontend"
+}

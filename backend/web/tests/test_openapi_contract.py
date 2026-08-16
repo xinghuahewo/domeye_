@@ -26,7 +26,7 @@ def test_openapi_paths_match_runtime_routes(app):
     assert set(contract['paths']) == runtime_paths
 
 
-def test_openapi_only_allows_narrow_ephemeral_agent_post_operations():
+def test_openapi_only_allows_explicit_agent_state_machine_post_operations():
     project_root = Path(__file__).resolve().parents[3]
     contract = json.loads(
         (project_root / 'contracts' / 'openapi.json').read_text(encoding='utf-8')
@@ -35,6 +35,26 @@ def test_openapi_only_allows_narrow_ephemeral_agent_post_operations():
         '/api/v2/country-outage/reports',
         '/api/v2/country-outage/reports/{report_id}/questions',
         '/api/v2/country-outage/runs/{run_id}/abort',
+        '/api/v2/country-outage/chat/conversations',
+        '/api/v2/country-outage/chat/conversations/{conversation_id}/turns',
+        '/api/v2/country-outage/chat/conversations/{conversation_id}/rebind',
+        (
+            '/api/v2/country-outage/chat/conversations/{conversation_id}/turns/'
+            '{turn_id}/cancel'
+        ),
+        '/api/v2/country-outage/investigations',
+        '/api/v2/country-outage/investigations/{investigation_id}/start',
+        '/api/v2/country-outage/investigations/{investigation_id}/cancel',
+        (
+            '/api/v2/country-outage/investigations/{investigation_id}/nodes/'
+            '{node_id}/cancel'
+        ),
+        (
+            '/api/v2/country-outage/investigations/{investigation_id}/nodes/'
+            '{node_id}/reruns'
+        ),
+        '/api/v2/country-outage/investigations/{investigation_id}/turns',
+        '/api/v2/country-outage/investigations/{investigation_id}/exports',
     }
     actual_posts = set()
     for path, path_item in contract['paths'].items():

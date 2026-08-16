@@ -389,6 +389,310 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/country-outage/chat/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 创建绑定单一国家中断 publication 的短期 P1 页面问答会话；不创建 P2 调查。 */
+        post: operations["createCountryOutageChatConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/chat/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCountryOutageChatConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/chat/conversations/{conversation_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 在 P1 会话内提交自然语言问题；请求不能选择 Tool 或直接写状态。 */
+        post: operations["createCountryOutageChatTurn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/chat/conversations/{conversation_id}/rebind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 以原子 generation 切换 P1 会话绑定的 publication；不复用旧事件 Evidence。 */
+        post: operations["rebindCountryOutageChatConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/chat/conversations/{conversation_id}/turns/{turn_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelCountryOutageChatTurn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 在本地隔离 W5 runtime 中为一个冻结 RRC25 publication 创建可见、静态且受 Registry 控制的 InvestigationPlan；创建不表示生产执行或模型晋级。 */
+        post: operations["createCountryOutageInvestigation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取当前用户拥有的调查 revision、可见计划、节点、关键发现、时间线、限制和制品引用。不存在与越权均不暴露他人调查。 */
+        get: operations["getCountryOutageInvestigation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 显式开始已准入静态 DAG；CAS 冲突失败关闭，不允许 API handler 隐式 fan-out。 */
+        post: operations["startCountryOutageInvestigation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 取消尚未提交的调查工作并保留已提交 Evidence；提交/取消竞态由 CAS 决定唯一结果。 */
+        post: operations["cancelCountryOutageInvestigation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/nodes/{node_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 取消一个节点尚未提交的工作；已提交 Evidence 保留。 */
+        post: operations["cancelCountryOutageInvestigationNode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/nodes/{node_id}/reruns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 仅为指定节点及静态 DAG 下游影响闭包创建新 revision；未受影响制品必须通过摘要和复用回执复用。 */
+        post: operations["rerunCountryOutageInvestigationNode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 提交同一调查内的追问；必须绑定已提交 node revision 和可选 selection_ref，禁止模型猜测“那个”所指对象。 */
+        post: operations["createCountryOutageInvestigationTurn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/result-sets/{result_set_id}/revisions/{result_set_revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取冻结 ResultSet 的稳定预览或分页；page token 绑定调查、ResultSet 与 revision。 */
+        get: operations["getCountryOutageInvestigationResultSet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/evidence-graphs/{graph_revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取绑定调查 revision、Registry snapshot、Tool/Operator 输出和 publication 的 Evidence Graph。 */
+        get: operations["getCountryOutageInvestigationEvidenceGraph"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取 Tool、Operator、模型、费用、延迟、复用及事务回执；回执不等于生产或模型晋级。 */
+        get: operations["getCountryOutageInvestigationReceipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 为一个冻结 ResultSet revision 请求完整 CSV、JSON 或 Markdown 导出；Renderer 不计算事实、不改变人口。 */
+        post: operations["createCountryOutageInvestigationExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 读取导出事务状态和已提交摘要。 */
+        get: operations["getCountryOutageInvestigationExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/country-outage/investigations/{investigation_id}/exports/{export_id}/artifact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 下载已提交导出；字节顺序、成员数和摘要必须与冻结 ResultSet revision 闭合。 */
+        get: operations["downloadCountryOutageInvestigationExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/{event_type}/{start_time}/{problem}/{event_id}/{source}": {
         parameters: {
             query?: never;
@@ -633,6 +937,381 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CountryOutageChatBindingRequest: {
+            event_reference: string;
+            publication_id: string;
+            revision: number;
+            idempotency_key: string;
+        };
+        CountryOutageChatTurnRequest: {
+            question: string;
+            idempotency_key: string;
+        };
+        /** @description 现有 P1 会话、轮次或取消响应；精确运行时字段由 P1 合同维护。 */
+        CountryOutageChatEnvelope: {
+            [key: string]: unknown;
+        };
+        CountryOutageInvestigationCreateRequest: {
+            event_reference: string;
+            publication_id: string;
+            revision: number;
+            goal: string;
+            idempotency_key: string;
+        };
+        CountryOutageInvestigationCasRequest: {
+            idempotency_key: string;
+            expected_investigation_revision: number;
+            expected_current_digest: string;
+        };
+        CountryOutageInvestigationAnchor: {
+            node_id: string;
+            node_revision: number;
+            selection_ref?: string;
+        };
+        CountryOutageInvestigationTurnRequest: {
+            idempotency_key: string;
+            expected_investigation_revision: number;
+            expected_current_digest: string;
+            question: string;
+            anchor: components["schemas"]["CountryOutageInvestigationAnchor"];
+        };
+        CountryOutageInvestigationExportRequest: {
+            idempotency_key: string;
+            expected_investigation_revision: number;
+            expected_current_digest: string;
+            result_set_id: string;
+            result_set_revision: number;
+            /** @enum {string} */
+            format: "csv" | "json" | "markdown";
+        };
+        CountryOutageInvestigationIdentity: {
+            incident_id: string;
+            publication_id: string;
+            publication_revision: number;
+            publication_digest: string;
+            /** @constant */
+            collector_id: "rrc25";
+            cohort_id: string;
+            cohort_digest: string;
+            /** Format: date-time */
+            window_start_utc: string;
+            /** Format: date-time */
+            window_end_utc: string;
+            /** Format: date-time */
+            data_through_utc: string;
+            /** @enum {string} */
+            finality: "event_end_unknown" | "event_end_known";
+            registry_snapshot_id: string;
+            registry_snapshot_digest: string;
+            binding_generation: number;
+            identity_digest: string;
+        };
+        /** @description 静态 DAG 的公开投影；执行参数与内部 binding 不作为第二业务 API 返回。 */
+        CountryOutageInvestigationPlanNode: {
+            node_id: string;
+            unit_id: string;
+            /** @enum {string} */
+            requiredness: "required" | "optional" | "boundary_only";
+            depends_on: string[];
+            /** @enum {string} */
+            dependency_mode: "hard" | "soft";
+        };
+        CountryOutageInvestigationPlan: {
+            /** @constant */
+            schema_version: "country_outage_p2_s1_w5_investigation_plan_v1";
+            plan_id: string;
+            plan_revision: number;
+            /** @constant */
+            plan_state: "admitted";
+            goal: string;
+            identity_digest: string;
+            registry_snapshot_id: string;
+            registry_snapshot_digest: string;
+            nodes: components["schemas"]["CountryOutageInvestigationPlanNode"][];
+            plan_digest: string;
+        };
+        CountryOutageInvestigationResultSetRef: {
+            result_set_id: string;
+            result_set_revision: number;
+        };
+        CountryOutageInvestigationNode: {
+            node_id: string;
+            unit_id: string;
+            execution_revision: number;
+            /** @enum {string} */
+            state: "pending" | "ready" | "running" | "prepared" | "passed" | "committed" | "reused" | "failed" | "cancelled" | "skipped_dependency_failed";
+            result_set_refs: components["schemas"]["CountryOutageInvestigationResultSetRef"][];
+            failure_code: string | null;
+            receipt_digest: string | null;
+        };
+        CountryOutageInvestigationLimitation: {
+            /** @enum {string} */
+            code: "local_w5_only" | "rrc25_control_plane_only" | "no_rca_or_impact_claim" | "p2_1_deferred" | "external_evidence_required";
+            /** @enum {string} */
+            severity: "info" | "warning" | "error";
+            message_zh: string;
+        };
+        CountryOutageInvestigation: {
+            investigation_id: string;
+            investigation_revision: number;
+            parent_investigation_revision?: number | null;
+            /** @enum {string} */
+            status: "draft" | "admitted" | "pending" | "running" | "cancel_requested" | "partially_completed" | "completed" | "cancelled" | "failed";
+            current_digest: string;
+            identity: components["schemas"]["CountryOutageInvestigationIdentity"];
+            plan: components["schemas"]["CountryOutageInvestigationPlan"];
+            nodes: components["schemas"]["CountryOutageInvestigationNode"][];
+            limitations: components["schemas"]["CountryOutageInvestigationLimitation"][];
+            evidence_graph_revision?: number | null;
+            /** @constant */
+            local_execution: true;
+            /** @constant */
+            production_deployed: false;
+        };
+        CountryOutageInvestigationEnvelope: {
+            investigation: components["schemas"]["CountryOutageInvestigation"];
+            deduplicated?: boolean;
+        };
+        CountryOutageInvestigationActionResponse: {
+            accepted: boolean;
+            deduplicated: boolean;
+            investigation: components["schemas"]["CountryOutageInvestigation"];
+        };
+        CountryOutageInvestigationEvidenceRef: {
+            evidence_id: string;
+            source_digest: string;
+            member_key: string;
+        };
+        CountryOutageInvestigationPathSegment: {
+            /** @enum {string} */
+            segment_type: "as_sequence" | "as_set" | "confederation_sequence" | "confederation_set";
+            asns: number[];
+        };
+        CountryOutageInvestigationTool07Member: {
+            cohort_member_id: string;
+            prefix: string;
+            /** @enum {integer} */
+            afi: 4 | 6;
+            country_origin_asns: number[];
+            expected_peer_asn_direction_ids: string[];
+            expected_route_observation_keys: string[];
+            membership_basis: string;
+            evidence_ref: components["schemas"]["CountryOutageInvestigationEvidenceRef"];
+        };
+        CountryOutageInvestigationTool08Member: {
+            /** Format: date-time */
+            state_point_utc: string;
+            prefix: string;
+            /** @enum {integer} */
+            afi: 4 | 6;
+            /** @enum {string} */
+            classification: "normal" | "partial" | "complete" | "unknown";
+            expected_direction_count: number;
+            visible_direction_count: number;
+            invisible_direction_count: number;
+            unknown_direction_count: number;
+            evidence_ref: components["schemas"]["CountryOutageInvestigationEvidenceRef"];
+        };
+        CountryOutageInvestigationTool09Member: {
+            /** Format: date-time */
+            state_point_utc: string;
+            asn: number;
+            /** @enum {string} */
+            classification: "normal" | "affected" | "route_interrupted" | "unknown";
+            fixed_prefix_count: number;
+            partial_prefix_count: number;
+            complete_prefix_count: number;
+            unknown_prefix_count: number;
+            invisible_direction_count: number;
+            evidence_ref: components["schemas"]["CountryOutageInvestigationEvidenceRef"];
+        };
+        CountryOutageInvestigationTool10Member: {
+            new_prefix_state_id: string;
+            prefix: string;
+            /** @enum {integer} */
+            afi: 4 | 6;
+            /** Format: date-time */
+            first_observed_at_utc: string;
+            /** Format: date-time */
+            state_point_utc: string;
+            /** @enum {string} */
+            classification: "normal" | "partial" | "complete" | "unknown";
+            evidence_ref: components["schemas"]["CountryOutageInvestigationEvidenceRef"];
+        };
+        CountryOutageInvestigationTool11Member: {
+            /** Format: date-time */
+            state_point_utc: string;
+            prefix: string;
+            /** @enum {integer} */
+            afi: 4 | 6;
+            peer_asn_direction_id: string;
+            route_observation_key: string;
+            vp_id: string;
+            peer_id: string;
+            /** @enum {string} */
+            visibility: "visible" | "invisible" | "unknown" | "missing";
+            /** @enum {string} */
+            origin_status: "known_single" | "known_moas" | "unknown" | "not_applicable";
+            origin_asns: number[];
+            /** @enum {string} */
+            path_status: "known_ordered" | "known_unordered" | "unknown" | "not_applicable";
+            /** @enum {string} */
+            common_path_status: "ordered" | "unordered" | "ambiguous" | "invalid" | "unknown" | "not_applicable";
+            path_id: string | null;
+            path_digest: string | null;
+            path_canonicalization_profile_id: string | null;
+            path_canonicalization_profile_digest: string | null;
+            path_segments: components["schemas"]["CountryOutageInvestigationPathSegment"][];
+            last_event_id: string;
+            /** Format: date-time */
+            last_update_utc: string;
+            checkpoint_id: string;
+            projection_receipt_digest: string;
+            quality_flags: string[];
+            evidence_ref: components["schemas"]["CountryOutageInvestigationEvidenceRef"];
+        };
+        CountryOutageInvestigationTool12Member: {
+            path_association_id: string;
+            anchor_asn: number;
+            known_origin_asn: number;
+            /** @constant */
+            origin_status: "known";
+            observed_origin_asn: number;
+            prefix: string;
+            /** @enum {integer} */
+            afi: 4 | 6;
+            path_id: string;
+            path_digest: string;
+            path_canonicalization_profile_id: string;
+            path_canonicalization_profile_digest: string;
+            path_segments: components["schemas"]["CountryOutageInvestigationPathSegment"][];
+            /** @constant */
+            path_parse_status: "ordered";
+            /** @constant */
+            common_path_status: "ordered";
+            /** @constant */
+            ordered_sequence_eligible: true;
+            peer_asn_direction_ids: string[];
+            route_observation_count: number;
+            evidence_ref: components["schemas"]["CountryOutageInvestigationEvidenceRef"];
+        };
+        CountryOutageInvestigationResultSetMember: components["schemas"]["CountryOutageInvestigationTool07Member"] | components["schemas"]["CountryOutageInvestigationTool08Member"] | components["schemas"]["CountryOutageInvestigationTool09Member"] | components["schemas"]["CountryOutageInvestigationTool10Member"] | components["schemas"]["CountryOutageInvestigationTool11Member"] | components["schemas"]["CountryOutageInvestigationTool12Member"];
+        CountryOutageInvestigationResultSet: {
+            /** @constant */
+            schema_version: "country_outage_p2_s1_w5_result_set_page_v1";
+            result_set_id: string;
+            result_set_revision: number;
+            members: components["schemas"]["CountryOutageInvestigationResultSetMember"][];
+            returned_count: number;
+            total_count: number;
+            /** @enum {string} */
+            set_completeness: "complete" | "partial" | "limited_sample" | "source_incomplete" | "missing" | "not_comparable";
+            page_token: string | null;
+            next_page_token: string | null;
+            content_digest: string;
+        };
+        CountryOutageInvestigationEvidenceNode: {
+            node_id: string;
+            /** @enum {string} */
+            node_type: "fact" | "derived_fact" | "result_set" | "limitation" | "unknown" | "execution_failure";
+            producer_plan_node_id: string;
+            identity_digest: string;
+            payload_digest: string;
+            evidence_refs: string[];
+            producer_receipt_digest: string;
+        };
+        CountryOutageInvestigationEvidenceEdge: {
+            edge_id: string;
+            /** @enum {string} */
+            edge_type: "derived_from" | "supports" | "limits" | "contradicts" | "related_to";
+            from_node_id: string;
+            to_node_id: string;
+            producer_plan_node_id: string;
+            producer_receipt_digest: string;
+        };
+        /** @description Evidence Graph 的公开闭合投影；不返回 payload，避免把内部结果对象当作第二业务 API。 */
+        CountryOutageInvestigationEvidenceGraph: {
+            /** @constant */
+            schema_version: "country_outage_p2_s1_w5_evidence_graph_v1";
+            graph_id: string;
+            graph_revision: number;
+            parent_graph_revision: number | null;
+            /** @constant */
+            graph_state: "committed";
+            investigation_id: string;
+            investigation_revision: number;
+            plan_id: string;
+            plan_revision: number;
+            plan_digest: string;
+            identity: components["schemas"]["CountryOutageInvestigationIdentity"];
+            nodes: components["schemas"]["CountryOutageInvestigationEvidenceNode"][];
+            edges: components["schemas"]["CountryOutageInvestigationEvidenceEdge"][];
+            root_node_ids: string[];
+            runtime_boundary: components["schemas"]["CountryOutageInvestigationRuntimeBoundary"];
+            content_digest: string;
+            commit_receipt_digest: string;
+            graph_digest: string;
+        };
+        CountryOutageInvestigationRuntimeBoundary: {
+            /** @constant */
+            local_execution: true;
+            /** @constant */
+            runtime_implemented: true;
+            /** @constant */
+            production_deployed: false;
+        };
+        CountryOutageInvestigationReceipt: {
+            /** @enum {string} */
+            receipt_kind: "tool" | "operator" | "model" | "cost" | "latency" | "reuse" | "transaction" | "result_set_freeze" | "evidence_graph_commit" | "authorization" | "delivery_commit";
+            receipt_digest: string;
+            investigation_id?: string;
+            node_id?: string;
+            unit_id?: string;
+            /** @enum {string} */
+            state?: "succeeded" | "failed" | "cancelled" | "skipped" | "reused";
+            result_digest?: string | null;
+            error_digest?: string | null;
+            result_set_id?: string;
+            result_set_revision?: number;
+            manifest_digest?: string;
+            content_digest?: string;
+            returned_count?: number;
+            total_count?: number;
+            graph_id?: string;
+            graph_revision?: number;
+            node_count?: number;
+            edge_count?: number;
+            export_id?: string;
+            artifact_sha256?: string;
+            /** @enum {string} */
+            disposition?: "frozen_complete" | "committed" | "committed_local_only";
+            owner?: string;
+            /** @constant */
+            action?: "export";
+        };
+        CountryOutageInvestigationReceiptPage: {
+            receipts: components["schemas"]["CountryOutageInvestigationReceipt"][];
+            next_cursor: string | null;
+        };
+        CountryOutageInvestigationExport: {
+            export_id: string;
+            /** @enum {string} */
+            state: "requested" | "rendering" | "prepared" | "committed" | "failed" | "cancelled";
+            /** @enum {string} */
+            format: "csv" | "json" | "markdown";
+            result_set_id: string;
+            result_set_revision: number;
+            sha256: string | null;
+        };
+        CountryOutageInvestigationExportEnvelope: {
+            export: components["schemas"]["CountryOutageInvestigationExport"];
+        };
+        CountryOutageInvestigationExportActionResponse: {
+            accepted: boolean;
+            deduplicated: boolean;
+            export: components["schemas"]["CountryOutageInvestigationExport"];
+            investigation: components["schemas"]["CountryOutageInvestigation"];
+        };
         P0ErrorResponse: {
             /** @constant */
             schema_version: "p0_error_v1";
@@ -3316,6 +3995,42 @@ export interface components {
                 "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
             };
         };
+        /** @description 严格 JSON、路径、幂等、CAS、分页或 anchor 不合法 */
+        CountryOutageInvestigationBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 调查或制品不存在，或不属于当前用户/调查 */
+        CountryOutageInvestigationNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 幂等、CAS、revision、状态、身份或制品闭包冲突 */
+        CountryOutageInvestigationConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 本地隔离 W5 runtime 未配置、未恢复或暂不可用；不表示生产故障 */
+        CountryOutageInvestigationUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
     };
     parameters: {
         StartTime: string;
@@ -3324,6 +4039,11 @@ export interface components {
         Country: string;
         PageNum: number;
         FeaturePageSize: 5 | 10 | 20 | 50;
+        InvestigationId: string;
+        InvestigationNodeId: string;
+        /** @description 必须与请求体 idempotency_key 完全一致。 */
+        InvestigationIdempotencyKey: string;
+        CountryOutageConversationId: string;
     };
     requestBodies: never;
     headers: never;
@@ -4089,6 +4809,586 @@ export interface operations {
             };
             410: components["responses"]["CountryOutageAgentExpired"];
             503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    createCountryOutageChatConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageChatBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description 幂等命中既有会话 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            /** @description 会话已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    getCountryOutageChatConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["CountryOutageConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前用户短期 P1 会话 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    createCountryOutageChatTurn: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                conversation_id: components["parameters"]["CountryOutageConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageChatTurnRequest"];
+            };
+        };
+        responses: {
+            /** @description 幂等命中既有轮次 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            /** @description 轮次已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            409: components["responses"]["CountryOutageAgentConflict"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    rebindCountryOutageChatConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                conversation_id: components["parameters"]["CountryOutageConversationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageChatBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description 会话绑定已原子切换 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            409: components["responses"]["CountryOutageAgentConflict"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    cancelCountryOutageChatTurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["CountryOutageConversationId"];
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description 轮次取消状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageChatEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageAgentBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageAgentNotFound"];
+            503: components["responses"]["CountryOutageAgentUnavailable"];
+        };
+    };
+    createCountryOutageInvestigation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description 调查与已准入计划已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    getCountryOutageInvestigation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 调查当前快照 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationEnvelope"];
+                };
+            };
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    startCountryOutageInvestigation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationCasRequest"];
+            };
+        };
+        responses: {
+            /** @description 开始请求已接受 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationActionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    cancelCountryOutageInvestigation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationCasRequest"];
+            };
+        };
+        responses: {
+            /** @description 取消请求已接受 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationActionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    cancelCountryOutageInvestigationNode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+                node_id: components["parameters"]["InvestigationNodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationCasRequest"];
+            };
+        };
+        responses: {
+            /** @description 节点取消请求已接受 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationActionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    rerunCountryOutageInvestigationNode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+                node_id: components["parameters"]["InvestigationNodeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationCasRequest"];
+            };
+        };
+        responses: {
+            /** @description 单节点重跑请求已接受 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationActionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    createCountryOutageInvestigationTurn: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationTurnRequest"];
+            };
+        };
+        responses: {
+            /** @description 追问已接受 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationActionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    getCountryOutageInvestigationResultSet: {
+        parameters: {
+            query?: {
+                page_token?: string;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+                result_set_id: string;
+                result_set_revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 冻结 ResultSet 页面 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationResultSet"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    getCountryOutageInvestigationEvidenceGraph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+                graph_revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidence Graph */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationEvidenceGraph"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    getCountryOutageInvestigationReceipts: {
+        parameters: {
+            query?: {
+                kind?: "tool" | "operator" | "model" | "cost" | "latency" | "reuse" | "transaction";
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 回执页面 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationReceiptPage"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    createCountryOutageInvestigationExport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 必须与请求体 idempotency_key 完全一致。 */
+                "Idempotency-Key": components["parameters"]["InvestigationIdempotencyKey"];
+            };
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CountryOutageInvestigationExportRequest"];
+            };
+        };
+        responses: {
+            /** @description 导出请求已接受 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationExportActionResponse"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    getCountryOutageInvestigationExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 导出状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountryOutageInvestigationExportEnvelope"];
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
+        };
+    };
+    downloadCountryOutageInvestigationExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: components["parameters"]["InvestigationId"];
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已提交导出字节 */
+            200: {
+                headers: {
+                    "Content-Disposition": string;
+                    "X-Content-SHA256": string;
+                    "X-Content-Type-Options": "nosniff";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/json": components["schemas"]["CountryOutageInvestigationResultSetMember"][];
+                    "text/markdown": string;
+                };
+            };
+            400: components["responses"]["CountryOutageInvestigationBadRequest"];
+            401: components["responses"]["CountryOutageAgentUnauthenticated"];
+            404: components["responses"]["CountryOutageInvestigationNotFound"];
+            409: components["responses"]["CountryOutageInvestigationConflict"];
+            503: components["responses"]["CountryOutageInvestigationUnavailable"];
         };
     };
     getEventDetail: {

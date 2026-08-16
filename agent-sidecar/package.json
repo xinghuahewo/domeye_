@@ -25,8 +25,10 @@
     "start:acceptance": "npm run build && node dist/src/cli/serve-acceptance.js",
     "start:formal": "npm run build && node dist/src/cli/serve-formal.js",
     "start:formal:p1": "npm run build && node dist/src/cli/serve-formal-p1.js",
+    "start:formal:p2-s1-w5": "npm run build && node dist/src/cli/serve-formal-p2-s1-w5.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "test:p2-s1-w5": "npm run build && node --test dist/tests/p2-s1-w5-*.test.js",
     "vendor:patch:apply": "node scripts/apply_pi_response_model_patch.mjs --apply",
     "vendor:patch:verify": "node scripts/apply_pi_response_model_patch.mjs --verify"
   },

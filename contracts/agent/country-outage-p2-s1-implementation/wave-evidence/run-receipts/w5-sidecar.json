@@ -1,0 +1,110 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "270aa0786eff3cbcd24de2e0f601f6d57b3ddcb855791ebc16301b0cced670cc",
+      "size_bytes": 30489
+    },
+    {
+      "path": "agent-sidecar/package.json",
+      "sha256": "274559f6ef85f924aade1fc8390272b5e48a1e5185cbb27cbe841afeeb01a724",
+      "size_bytes": 2499
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-composition-contracts.ts",
+      "sha256": "87275b0216197b515b9540eb2743fda042c0237a310d7b88d0a8fcf5c796c7bf",
+      "size_bytes": 21424
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-model-runner.ts",
+      "sha256": "4d4a52a067db0ee53d678ae705111084f9222d5dc5dddd39ec4a1155dd5c1240",
+      "size_bytes": 12916
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-dual-artifact-store.ts",
+      "sha256": "5624e9b1fcb0b7663e5097c782bad1f2ca819c1a30e2bc41a204267e4f46641c",
+      "size_bytes": 11340
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-teacher-plan-grounder.ts",
+      "sha256": "8b362bfc970bb9432df6b043eac30e89a147cf923186aef4d8a7c7be8b042baa",
+      "size_bytes": 8491
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-gate-validator.ts",
+      "sha256": "f64cb138e6bc6d817a81fb904502527c760ee7ea02684182a361a25945e40ad4",
+      "size_bytes": 14414
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-oracle-materializer.ts",
+      "sha256": "025695ede505fd7f314e1afb1af2fdd5e05ec83aed1539d2ae21acf8ebff362b",
+      "size_bytes": 4080
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-alignment-evaluator.ts",
+      "sha256": "3c1e671d58c4577291669b5f7224302e05a518cc60096d373f75cdf1fcf041a3",
+      "size_bytes": 4775
+    },
+    {
+      "path": "agent-sidecar/src/chat/p2-s1-composition-runtime.ts",
+      "sha256": "df77f584af21aa08ea96c48151a7213310cbf27efbb29516abcdecfbcd286b08",
+      "size_bytes": 32677
+    },
+    {
+      "path": "agent-sidecar/src/server/p2-s1-w5-http-handler.ts",
+      "sha256": "bcd42bab92823d0916a08291e74e7a8fced0edf94e130a80d10d5c3e0720320a",
+      "size_bytes": 4851
+    },
+    {
+      "path": "agent-sidecar/src/cli/formal-p2-s1-w5-sidecar.ts",
+      "sha256": "e888e7f9900b71aad751f71a8061ca267206645a6b2feb1222449f31b70a4b90",
+      "size_bytes": 5738
+    },
+    {
+      "path": "agent-sidecar/src/cli/serve-formal-p2-s1-w5.ts",
+      "sha256": "a9157a9fde93a7b18d263778af48fe091b199a20c2e4050f1c6966df3f8c4ec6",
+      "size_bytes": 906
+    },
+    {
+      "path": "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+      "sha256": "bcaad9b634353c8d4707614c38a62671afbcb4f93994a3bbd23565b9b0bce3fe",
+      "size_bytes": 19108
+    }
+  ],
+  "category": "local_fixture_sol_host_ds_chain",
+  "command": [
+    "bash",
+    "-lc",
+    "npm run build && node --test dist/tests/p2-s1-w5-composition-runtime.test.js"
+  ],
+  "completed_at_utc": "2026-08-13T07:22:10Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n> domeye-country-outage-agent-sidecar@0.1.0 prebuild\n> npm run vendor:patch:verify\n\n\n> domeye-country-outage-agent-sidecar@0.1.0 vendor:patch:verify\n> node scripts/apply_pi_response_model_patch.mjs --verify\n\n{\"event\":\"country_outage_pi_response_model_vendor_patch\",\"patchId\":\"pi-ai-openai-completions-response-model-v1\",\"outcome\":\"verified\",\"patchedSourceSha256\":\"9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504\"}\n\n> domeye-country-outage-agent-sidecar@0.1.0 build\n> tsc -p tsconfig.json\n\nTAP version 13\n# Subtest: W5 按 Sol planning→Host→Sol reference→DS first/revision 顺序发布，revision 最多一次\nok 1 - W5 按 Sol planning→Host→Sol reference→DS first/revision 顺序发布，revision 最多一次\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: DS first 已通过时即使 fixture 含 revision 也不得调用第二次\nok 2 - DS first 已通过时即使 fixture 含 revision 也不得调用第二次\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: planning unavailable 不创建 Dual flow；reference unavailable 闭合 teacher_unavailable\nok 3 - planning unavailable 不创建 Dual flow；reference unavailable 闭合 teacher_unavailable\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Teacher Gate 拒绝不生成 Oracle receipt；Oracle coverage 拒绝必须先通过五 Gate\nok 4 - Teacher Gate 拒绝不生成 Oracle receipt；Oracle coverage 拒绝必须先通过五 Gate\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: Student Gate 和 Alignment 各自形成穷尽拒绝终态\nok 5 - Student Gate 和 Alignment 各自形成穷尽拒绝终态\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 显式降级必须绑定受信授权、新 plan revision 与新 EvidenceGraph，且不得声称 aligned\nok 6 - 显式降级必须绑定受信授权、新 plan revision 与新 EvidenceGraph，且不得声称 aligned\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 攻击：Teacher 不得夹带 Tool ID；typed claim 不得用知识解释冒充事件事实\nok 7 - 攻击：Teacher 不得夹带 Tool ID；typed claim 不得用知识解释冒充事件事实\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 幂等键固定请求，冲突请求失败关闭\nok 8 - 幂等键固定请求，冲突请求失败关闭\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n# Subtest: 独立 HTTP 只接受 fixture ID，不接受调用方自报模型、计划、证据或 Oracle\nok 9 - 独立 HTTP 只接受 fixture ID，不接受调用方自报模型、计划、证据或 Oracle\n  ---\n  duration_ms: <ELAPSED>\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms <ELAPSED>\n\n[stderr]\n",
+  "normalized_output_sha256": "f64dce810eb7c53a14c17fc6cc79a56ecd08be19e382f8c6784821fad6f88efc",
+  "passed": true,
+  "receipt_digest": "737b633c4da9cd8aebd6523c4737f314e62c5db4061450e5fb7e5898abad68b6",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.1.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts"
+  ],
+  "skipped_count": 0,
+  "stage": "W5",
+  "started_at_utc": "2026-08-13T07:21:47Z",
+  "suite_id": "w5-sidecar",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+      "unit_ids": []
+    }
+  ],
+  "tested_execution_unit_ids": [],
+  "tested_unit_ids": [],
+  "tests_run": 9,
+  "working_directory": "agent-sidecar"
+}

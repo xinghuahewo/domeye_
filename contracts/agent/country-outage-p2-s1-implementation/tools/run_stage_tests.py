@@ -21,7 +21,7 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-RUNNER_VERSION = "1.0.0"
+RUNNER_VERSION = "1.2.0"
 RUNNER_PATH = "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py"
 
 W1_UNITS = [
@@ -31,11 +31,24 @@ W1_UNITS = [
 W2_UNITS = ["TOOL-12", *[f"OP-{number:02d}" for number in range(15, 29)]]
 W3_UNITS = ["OP-38", "OP-39"]
 W4_UNITS = ["TOOL-11", *[f"OP-{number:02d}" for number in range(29, 34)], "OP-37"]
+W5_UNITS = [
+    "PLAN-CAP-01",
+    "GATE-01", "GATE-02", "GATE-03", "GATE-04", "GATE-05",
+    "BOUNDARY-01",
+    "RENDERER-01", "RENDERER-02", "RENDERER-03",
+    "DELIVERY-01",
+]
 
 
 def wave_units_for_suite(suite_id: str) -> list[str]:
     wave = suite_id.split("-", 1)[0]
-    return {"w1": W1_UNITS, "w2": W2_UNITS, "w3": W3_UNITS, "w4": W4_UNITS}[wave]
+    return {
+        "w1": W1_UNITS,
+        "w2": W2_UNITS,
+        "w3": W3_UNITS,
+        "w4": W4_UNITS,
+        "w5": W5_UNITS,
+    }[wave]
 
 
 def _test_id(module: str, class_name: str, method: str) -> str:
@@ -197,12 +210,137 @@ SUITES: dict[str, dict[str, Any]] = {
             _test_id(OPERATORS, "OperatorW3W4Tests", "test_op37_only_same_slot_verified_exclusive_is_conflict_and_receipt_attacks"),
         ],
     },
+    "w5-python": {
+        "stage": "W5",
+        "category": "runtime_api_result_graph_export_and_cas",
+        "runner_kind": "python",
+        "command": [
+            "uv", "run", "--project", "backend", "python", "-m", "unittest", "-v",
+            "backend.web.tests.test_country_outage_p2_s1_runtime",
+            "backend.web.tests.test_country_outage_p2_s1_investigation_api",
+        ],
+        "tests": [
+            "backend.web.tests.test_country_outage_p2_s1_runtime",
+            "backend.web.tests.test_country_outage_p2_s1_investigation_api",
+        ],
+        # The module runs an end-to-end runtime suite. Exact control-unit calls
+        # come from its content-addressed execution trace, not this selector.
+        "tested_unit_ids": [],
+        "artifacts": [
+            ".codex/hooks/country_outage_agent_p2_s1_design_alignment.py",
+            "backend/services/country_outage_p2_s1_contract_runtime.py",
+            "backend/services/country_outage_p2_s1_trusted_store.py",
+            "backend/services/country_outage_p2_s1_registry_dispatcher.py",
+            "backend/services/country_outage_p2_s1_result_set.py",
+            "backend/services/country_outage_p2_s1_evidence_graph.py",
+            "backend/services/country_outage_p2_s1_delivery.py",
+            "backend/services/country_outage_p2_s1_investigation_runtime.py",
+            "contracts/agent/country-outage-p2-s1-implementation/w5-control-runtime.schema.json",
+            "backend/web/api/v2/country_outage_investigations.py",
+            "backend/web/api/v2/route.py",
+            "backend/web/tests/test_country_outage_p2_s1_runtime.py",
+            "backend/web/tests/test_country_outage_p2_s1_investigation_api.py",
+            "backend/pyproject.toml",
+            "backend/uv.lock",
+        ],
+    },
+    "w5-openapi": {
+        "stage": "W5",
+        "category": "openapi_contract_and_generated_types",
+        "runner_kind": "pytest",
+        "command": [
+            "bash", "-lc",
+            "uv run --project backend pytest -q backend/web/tests/test_openapi_contract.py && python3 dev/verify_openapi_types.py",
+        ],
+        "tests": ["backend.web.tests.test_openapi_contract"],
+        "tested_unit_ids": [],
+        "artifacts": [
+            "contracts/openapi.json",
+            "backend/web/tests/test_openapi_contract.py",
+            "dev/verify_openapi_types.py",
+            "frontend/package.json",
+            "frontend/package-lock.json",
+            "frontend/src/types/openapi.generated.d.ts",
+        ],
+    },
+    "w5-sidecar": {
+        "stage": "W5",
+        "category": "local_fixture_sol_host_ds_chain",
+        "runner_kind": "node",
+        "command": [
+            "bash", "-lc",
+            "npm run build && node --test dist/tests/p2-s1-w5-composition-runtime.test.js dist/tests/p2-s1-w5-planning-grounding-port.test.js",
+        ],
+        "working_directory": "agent-sidecar",
+        "tests": [
+            "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+            "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+        ],
+        "tested_unit_ids": [],
+        "artifacts": [
+            "agent-sidecar/package.json",
+            "agent-sidecar/package-lock.json",
+            "agent-sidecar/tsconfig.json",
+            "agent-sidecar/src/chat/index.ts",
+            "agent-sidecar/src/chat/p2-s1-composition-contracts.ts",
+            "agent-sidecar/src/chat/p2-s1-model-runner.ts",
+            "agent-sidecar/src/chat/p2-s1-dual-artifact-store.ts",
+            "agent-sidecar/src/chat/p2-s1-teacher-plan-grounder.ts",
+            "agent-sidecar/src/chat/p2-s1-gate-validator.ts",
+            "agent-sidecar/src/chat/p2-s1-oracle-materializer.ts",
+            "agent-sidecar/src/chat/p2-s1-alignment-evaluator.ts",
+            "agent-sidecar/src/chat/p2-s1-composition-runtime.ts",
+            "agent-sidecar/src/chat/p2-s1-planning-grounding-port.ts",
+            "agent-sidecar/src/server/p2-s1-w5-http-handler.ts",
+            "agent-sidecar/src/cli/formal-p2-s1-w5-sidecar.ts",
+            "agent-sidecar/src/cli/serve-formal-p2-s1-w5.ts",
+            "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+            "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+        ],
+    },
+    "w5-frontend": {
+        "stage": "W5",
+        "category": "ui_journey_typecheck_and_build",
+        "runner_kind": "vitest",
+        "command": [
+            "bash", "-lc",
+            "npm test -- --run src/api/countryOutageInvestigation.test.ts src/pages/CountryOutageInvestigationPage.test.ts src/pages/EventDetailPage.test.ts && npm run typecheck && npm run build",
+        ],
+        "working_directory": "frontend",
+        "tests": [
+            "frontend/src/api/countryOutageInvestigation.test.ts",
+            "frontend/src/pages/CountryOutageInvestigationPage.test.ts",
+            "frontend/src/pages/EventDetailPage.test.ts",
+        ],
+        "tested_unit_ids": [],
+        "artifacts": [
+            "frontend/src/api/countryOutageInvestigation.ts",
+            "frontend/package.json",
+            "frontend/package-lock.json",
+            "frontend/src/api/countryOutageInvestigation.test.ts",
+            "frontend/src/pages/CountryOutageInvestigationPage.vue",
+            "frontend/src/pages/CountryOutageInvestigationPage.test.ts",
+            "frontend/src/pages/EventDetailPage.vue",
+            "frontend/src/pages/EventDetailPage.test.ts",
+            "frontend/src/components/CountryOutageInvestigationPlan.vue",
+            "frontend/src/router/index.ts",
+            "frontend/src/types/api.ts",
+            "frontend/src/types/openapi.generated.d.ts",
+        ],
+    },
 }
 
 
 def test_case_units(suite_id: str, test_id: str) -> list[str]:
     """登记每个实际测试选择器直接覆盖的原子单元，禁止整波自报。"""
 
+    if suite_id == "w5-python":
+        # module selector only says which suite was invoked.  Per-unit execution
+        # coverage is asserted by the runtime suite's structured trace and the
+        # W5 Hook, not fabricated from the module name here.
+        return []
+    if suite_id.startswith("w5-"):
+        return []
     name = test_id.rsplit(".", 1)[-1]
     if suite_id.startswith("w0-"):
         return []
@@ -316,9 +454,15 @@ def file_binding(relative: str) -> dict[str, Any]:
 
 def normalize_output(text: str) -> str:
     text = text.replace(str(REPO_ROOT), "<REPO_ROOT>")
+    text = re.sub(r"/var/folders/[^\s]+/domeye-openapi-[^/\s]+", "<OPENAPI_TEMP>", text)
+    text = re.sub(r"\x1b\[[0-9;]*m", "", text)
     text = re.sub(r"Ran (\d+) tests? in [0-9.]+s", r"Ran \1 tests in <ELAPSED>", text)
     text = re.sub(r"duration_ms: [0-9.]+", "duration_ms: <ELAPSED>", text)
-    text = re.sub(r"# duration_ms [0-9.]+", "# duration_ms <ELAPSED>", text)
+    text = re.sub(r"([#ℹ]) duration_ms [0-9.]+", r"\1 duration_ms <ELAPSED>", text)
+    text = re.sub(r"Duration\s+[0-9.]+s", "Duration <ELAPSED>", text)
+    text = re.sub(r"(\d+) passed in [0-9.]+s", r"\1 passed in <ELAPSED>", text)
+    text = re.sub(r"(?m)^(\s*Start at)\s+\d{2}:\d{2}:\d{2}$", r"\1 <CLOCK>", text)
+    text = re.sub(r"\b\d+(?:\.\d+)?(?:ms|s)\b", "<ELAPSED>", text)
     return "\n".join(line.rstrip() for line in text.replace("\r\n", "\n").splitlines()).strip() + "\n"
 
 
@@ -330,31 +474,61 @@ def parse_python_count(text: str) -> int:
 
 
 def parse_node_summary(text: str, key: str) -> int:
-    matches = re.findall(rf"^# {re.escape(key)} (\d+)$", text, flags=re.MULTILINE)
+    matches = re.findall(rf"^[#ℹ] {re.escape(key)} (\d+)$", text, flags=re.MULTILINE)
     if not matches:
         raise RuntimeError(f"无法从 node:test 输出解析 {key}")
+    return int(matches[-1])
+
+
+def parse_vitest_count(text: str) -> int:
+    match = re.search(r"Tests\s+(\d+) passed", text)
+    if match is None:
+        raise RuntimeError("无法从 vitest 输出解析测试数量")
+    return int(match.group(1))
+
+
+def parse_pytest_count(text: str) -> int:
+    matches = re.findall(r"(?:^|\s)(\d+) passed in [0-9.]+s", text)
+    if not matches:
+        raise RuntimeError("无法从 pytest 输出解析测试数量")
     return int(matches[-1])
 
 
 def run_suite(suite_id: str) -> dict[str, Any]:
     definition = SUITES[suite_id]
     started = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    if definition.get("typescript"):
+    runner_kind = definition.get("runner_kind")
+    if "command" in definition:
+        command = list(definition["command"])
+        cwd = REPO_ROOT / definition.get("working_directory", ".")
+    elif definition.get("typescript"):
         command = ["bash", "-lc", "npm run build && node --test dist/tests/p2-s1-w0-source-governance.test.js"]
         cwd = REPO_ROOT / "agent-sidecar"
+        runner_kind = "node"
     else:
         selectors = definition.get("tests") or definition.get("modules")
         command = [sys.executable, "-m", "unittest", "-v", *selectors]
         cwd = REPO_ROOT
+        runner_kind = "python"
     completed = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False)
     finished = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     raw_output = f"[stdout]\n{completed.stdout}\n[stderr]\n{completed.stderr}"
     normalized = normalize_output(raw_output)
-    if definition.get("typescript"):
+    if runner_kind == "node":
         tests_run = parse_node_summary(raw_output, "tests")
         failures = parse_node_summary(raw_output, "fail")
         skipped = parse_node_summary(raw_output, "skipped")
         errors = 0
+    elif runner_kind == "vitest":
+        tests_run = parse_vitest_count(raw_output)
+        failures = 0 if completed.returncode == 0 else 1
+        errors = 0 if completed.returncode == 0 else 1
+        skipped = 0
+    elif runner_kind == "pytest":
+        tests_run = parse_pytest_count(raw_output)
+        failures = 0 if completed.returncode == 0 else 1
+        errors = 0 if completed.returncode == 0 else 1
+        skipped = 0
     else:
         tests_run = parse_python_count(raw_output)
         failures = 0 if completed.returncode == 0 else 1
@@ -371,7 +545,9 @@ def run_suite(suite_id: str) -> dict[str, Any]:
     record: dict[str, Any] = {
         "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
         "runner_id": "country_outage_p2_s1_stage_test_runner",
-        "runner_version": RUNNER_VERSION,
+        # 历史波次保持其已发布 receipt schema/version 语义；W5 才启用支持
+        # 多框架真实子进程与structured trace的1.2 runner合同。
+        "runner_version": RUNNER_VERSION if definition["stage"] == "W5" else "1.0.0",
         "suite_id": suite_id,
         "stage": definition["stage"],
         "category": definition["category"],

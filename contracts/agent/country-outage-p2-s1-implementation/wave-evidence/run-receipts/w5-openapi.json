@@ -1,0 +1,65 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "f6b256382cde35040b7e548e64fc4e64c91e68fbb39d1fa6daafff8164a98be3",
+      "size_bytes": 31098
+    },
+    {
+      "path": "contracts/openapi.json",
+      "sha256": "8385f57e6165ef3bcb136962e5ec0529d14d745e1e59e6c310f10a52d0566720",
+      "size_bytes": 201495
+    },
+    {
+      "path": "backend/web/tests/test_openapi_contract.py",
+      "sha256": "61a97395bb53ac54571cefa51f663bce57fdc0cc826c2e8788ff9841ff5e01ad",
+      "size_bytes": 16815
+    },
+    {
+      "path": "dev/verify_openapi_types.py",
+      "sha256": "c810f516d0f4ebdf7639578f7c7c6fb497dab4bc27146bc32dce969731ad5e28",
+      "size_bytes": 1022
+    },
+    {
+      "path": "frontend/src/types/openapi.generated.d.ts",
+      "sha256": "8bf89c784d246a943c22e488ad4b7cd143ad40afab248ce8f463528f9c5f0686",
+      "size_bytes": 222241
+    }
+  ],
+  "category": "openapi_contract_and_generated_types",
+  "command": [
+    "bash",
+    "-lc",
+    "uv run --project backend pytest -q backend/web/tests/test_openapi_contract.py && python3 dev/verify_openapi_types.py"
+  ],
+  "completed_at_utc": "2026-08-13T07:24:18Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n.......                                                                  [100%]\n7 passed in <ELAPSED>\n✨ openapi-typescript 7.13.0\n🚀 <REPO_ROOT>/contracts/openapi.json → <OPENAPI_TEMP>/openapi.generated.d.ts [566.8ms]\nOpenAPI 生成类型与契约一致。\n\n[stderr]\n",
+  "normalized_output_sha256": "2cec15de411d59a5aec0dd5fd4c7b6d12eaa18e7434369271998d334aac91c95",
+  "passed": true,
+  "receipt_digest": "7a4df8f9661849d9764a69cce2b638f8b6f0e902193a0bd3ccfc2ae2a1f1381f",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.1.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "backend.web.tests.test_openapi_contract"
+  ],
+  "skipped_count": 0,
+  "stage": "W5",
+  "started_at_utc": "2026-08-13T07:24:12Z",
+  "suite_id": "w5-openapi",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_openapi_contract",
+      "unit_ids": []
+    }
+  ],
+  "tested_execution_unit_ids": [],
+  "tested_unit_ids": [],
+  "tests_run": 7,
+  "working_directory": "."
+}

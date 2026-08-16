@@ -1220,3 +1220,21 @@ export interface EventQuery {
   sort_mode?: string
 }
 import type { components } from './openapi.generated'
+
+export type CountryOutageInvestigationCreateRequest = components['schemas']['CountryOutageInvestigationCreateRequest']
+export type CountryOutageInvestigationCasRequest = components['schemas']['CountryOutageInvestigationCasRequest']
+export type CountryOutageInvestigationAnchor = components['schemas']['CountryOutageInvestigationAnchor']
+export type CountryOutageInvestigationTurnRequest = components['schemas']['CountryOutageInvestigationTurnRequest']
+export type CountryOutageInvestigationExportRequest = components['schemas']['CountryOutageInvestigationExportRequest']
+export type CountryOutageInvestigationIdentity = components['schemas']['CountryOutageInvestigationIdentity']
+export type CountryOutageInvestigationPlanNode = components['schemas']['CountryOutageInvestigationPlanNode']
+export type CountryOutageInvestigationPlan = components['schemas']['CountryOutageInvestigationPlan']
+export type CountryOutageInvestigationNode = components['schemas']['CountryOutageInvestigationNode']
+export type CountryOutageInvestigation = components['schemas']['CountryOutageInvestigation']
+export type CountryOutageInvestigationEnvelope = components['schemas']['CountryOutageInvestigationEnvelope']
+export type CountryOutageInvestigationActionResponse = components['schemas']['CountryOutageInvestigationActionResponse']
+export type CountryOutageInvestigationResultSet = components['schemas']['CountryOutageInvestigationResultSet']
+export type CountryOutageInvestigationEvidenceGraph = components['schemas']['CountryOutageInvestigationEvidenceGraph']
+export type CountryOutageInvestigationReceiptPage = components['schemas']['CountryOutageInvestigationReceiptPage']
+export type CountryOutageInvestigationExport = components['schemas']['CountryOutageInvestigationExport']
+export type CountryOutageInvestigationExportEnvelope = components['schemas']['CountryOutageInvestigationExportEnvelope']
