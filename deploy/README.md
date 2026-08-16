@@ -164,19 +164,34 @@ release_dir="/home/bgpdata/Domeye-Core-artifacts/releases/${release_id}"
 
 定稿脚本不会覆盖不一致的内容：若上次只生成了 `manifest.json`，会保留原 `created_at`、重建期望清单并逐字段比对，一致时只续做 `SHA256SUMS`；若两者都已存在，则直接完整复验。校验器强制八个发布文件恰好各出现一次，验证 64 位十六进制 SHA256，并交叉核对总清单和两个组件清单。`SHA256SUMS` 缺行、重复行、多余文件名或内嵌哈希不一致都会失败。
 
-## 5. 一次完成独立部署验收
+## 5. 分离候选准备与生产激活
 
-完整验收命令：
+先在发布机准备候选，不切生产流量：
 
 ```bash
 cd /home/bgpdata/Domeye-Core
-./deploy/acceptance/full-acceptance.sh \
-  "/home/bgpdata/Domeye-Core-artifacts/releases/${release_id}" \
-  /home/bgpdata/Domeye \
-  /home/bgpdata/Domeye-Core-data/config/database.env
+release_host="$(hostname -f)"
+make release-prepare \
+  RELEASE_DIR="/home/bgpdata/Domeye-Core-artifacts/releases/${release_id}" \
+  HIDDEN_PATH=/home/bgpdata/Domeye \
+  DATABASE_ENV_FILE=/home/bgpdata/Domeye-Core-data/config/database.env \
+  RELEASE_HOST="${release_host}"
 ```
 
-执行顺序固定为：
+准备状态与所有输入指纹一致后，才显式激活：
+
+```bash
+make release-activate \
+  RELEASE_DIR="/home/bgpdata/Domeye-Core-artifacts/releases/${release_id}" \
+  HIDDEN_PATH=/home/bgpdata/Domeye \
+  DATABASE_ENV_FILE=/home/bgpdata/Domeye-Core-data/config/database.env \
+  RELEASE_HOST="${release_host}" \
+  CONFIRM_RELEASE_ID="${release_id}"
+```
+
+禁止直接执行 `deploy/acceptance/full-acceptance.sh`。该脚本只接受 `release-activate` 写入的 `activating` 状态、一次性随机令牌和父进程全局锁。
+
+完整顺序固定为：
 
 1. 校验发布；四文件信息制品先解包到候选临时目录，不触碰生产 `backend/info`。
 2. 加载冻结镜像，将数据库恢复到版本目录并复验 inventory、版本和只读查询。
@@ -185,10 +200,10 @@ cd /home/bgpdata/Domeye-Core
 5. 用三个随机高位端口启动候选 PostgreSQL、候选 Flask 和临时 Nginx。
 6. 在候选栈运行核心接口、六类详情、五类中断时序、仪表盘、移除接口 404 和 SPA 直达刷新。
 7. 在挂载命名空间中遮蔽固定旧目录，重新冷启动后端并执行真实 ASN 特征查询；检查进程环境、文件描述符和日志不存在带路径边界的旧目录引用。
-8. 候选全部通过后先备份生产 Nginx 配置，再短暂停止 Domeye Core Screen，依次原子安装正式信息目录、切换活动数据库软链接与 `.env`，并启动、检查新后端。
+8. `release-activate` 再次核对所有输入、候选哈希、发布机身份和明确 release ID；通过后备份生产 Nginx 配置，短暂停止 Domeye Core Screen，依次原子安装正式信息目录、切换活动数据库软链接与 `.env`，并启动、检查新后端。
 9. 新后端健康后才原子安装候选前端构建，随后安装并校验生产 Nginx 配置；最后运行生产状态、完整冒烟和隔离测试。
 
-候选验收不会修改生产信息目录、在线前端制品、Nginx 或活动数据库链接。生产切换前会从实际 Screen 进程树安全捕获其 `INFO_DIR`，不读取或打印其他环境密钥。前端构建采用同文件系统 staging 和目录重命名，并以 `frontend-current`、一次性回滚日志及持久安装状态覆盖子进程中断窗口。切换期间如完整冒烟失败，脚本会先停止新后端，再恢复原前端、信息目录、`.env`、活动链接、Nginx 和原运行状态；只有各项恢复全部成功才重启旧后端。首次安装前不存在 `.env`、前端构建、信息目录或活动数据库链接时，也会恢复为“不存在”而不是制造占位状态。
+候选准备不会修改生产信息目录、在线前端制品、Nginx 或活动数据库链接。准备状态记录输入指纹与每个完成门禁，普通后置错误可从安全检查点继续。生产切换前会从实际 Screen 进程树安全捕获其 `INFO_DIR`，不读取或打印其他环境密钥。前端构建采用持久候选目录和确定性目录哈希，并以 `frontend-current`、一次性回滚日志及持久安装状态覆盖子进程中断窗口。切换期间如完整冒烟失败，脚本会先停止新后端，再恢复原前端、信息目录、`.env`、活动链接、Nginx 和原运行状态；只有各项恢复全部成功才重启旧后端。首次安装前不存在 `.env`、前端构建、信息目录或活动数据库链接时，也会恢复为“不存在”而不是制造占位状态。
 
 ## 6. 分步恢复和候选排障
 
@@ -206,7 +221,7 @@ cd /home/bgpdata/Domeye-Core
 
 `restore-database.sh` 在完整 `pg_restore` 成功后立即原子写入 `restore-checkpoint.json`，阶段为 `restored_unverified`。后续 inventory、JQ、schema 或只读查询门禁失败时保留 PGDATA；再次执行会校验 release-id、dump SHA256、镜像 ID 和 PostgreSQL system identifier，然后只重跑后置门禁。全部通过后才生成阶段为 `verified` 的 `restore-state.json`。脚本不会仅凭 `PG_VERSION` 提前返回，也不会因后置脚本错误重做昂贵恢复。
 
-生产信息目录、数据库链接和 `.env` 必须作为同一次切换处理。不要在仍运行旧 Screen 时单独执行 `install-info-artifact.sh`，也不要把 `activate-database.sh` 当作日常入口；候选排障通过后，仍应重新运行第 5 节的 `full-acceptance.sh` 完成受事务保护的最终切换。
+生产信息目录、数据库链接和 `.env` 必须作为同一次切换处理。不要在仍运行旧 Screen 时单独执行 `install-info-artifact.sh`，也不要把 `activate-database.sh` 当作日常入口；候选排障通过后，应重新运行第 5 节的 `make release-prepare` 收敛完整状态，再通过 `make release-activate` 完成受保护的最终切换。
 
 ## 7. 人工刷新数据
 
@@ -249,14 +264,33 @@ cd /home/bgpdata/Domeye-Core
 ./deploy/database/dbctl.sh status
 ```
 
-显式回滚最近一次生产切换时，先停止新后端并恢复前端和信息目录，再消费数据库回滚日志；`rollback-database.sh` 会按日志恢复原 `.env`、活动链接和原 Screen 运行状态：
+显式回滚最近一次生产切换时，使用活动 release ID、发布机主机名和相同确认值：
 
 ```bash
-./deploy/stop-backend.sh
-./deploy/artifacts/rollback-frontend-build.sh
-./deploy/artifacts/rollback-info-artifact.sh
-./deploy/database/rollback-database.sh \
-  /home/bgpdata/Domeye-Core-data/config/database.env
+make release-rollback \
+  RELEASE_ID="${release_id}" \
+  DATABASE_ENV_FILE=/home/bgpdata/Domeye-Core-data/config/database.env \
+  RELEASE_HOST="$(hostname -f)" \
+  CONFIRM_RELEASE_ID="${release_id}"
+```
+
+该入口会先验证数据库、信息和前端三个 current 状态及未消费回滚日志都指向同一版本，再依次恢复组件、数据库配置和切换前 Nginx 配置。任一步失败都会把状态标记为 `rollback_failed` 并保留现场。
+
+候选清理默认只预览：
+
+```bash
+make release-gc GC_OLDER_THAN_DAYS=14
+```
+
+确认单个候选无活动引用、回滚引用、锁、挂载或 Overlay 使用后，才允许显式删除：
+
+```bash
+make release-gc \
+  GC_EXECUTE=1 \
+  GC_RELEASE_ID="${release_id}" \
+  GC_OLDER_THAN_DAYS=14 \
+  RELEASE_HOST="$(hostname -f)" \
+  CONFIRM_RELEASE_ID="${release_id}"
 ```
 
 完整验收过程中的失败会自动执行同一顺序，并额外恢复切换前 Nginx 配置及其原运行状态；每个回滚步骤都会记录结果，任一步失败都会汇总为明确的回滚失败。回到旧源库配置时会原子写入 `source-rollback-active.json`，绑定整份 `.env` 的 SHA256、数据库地址和实际 `INFO_DIR`；普通启停只有验证该标记后才允许持久回滚态，不能仅凭活动链接缺失绕过独立库门禁。回滚只操作 Domeye Core 的 Screen、`.env`、独立数据库容器、前端构建、信息目录和活动软链接；不会删除新 release 数据，也不会操作原项目。上一数据库目录、前端构建、信息目录、切换前后端配置及一次性回滚日志保存在已忽略的 `/home/bgpdata/Domeye-Core/var/releases`。成功回滚会把日志标记为已消费，重复调用会被拒绝。

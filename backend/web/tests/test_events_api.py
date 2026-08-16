@@ -60,6 +60,30 @@ EVENT_ROW = {
     'notify_time': '2026-02-01 00:06:00',
 }
 
+EVIDENCE_HIJACK_ROW = {
+    'hijacked_as': '64512',
+    'hijacked_as_name': '受影响网络',
+    'hijacked_as_org': '受影响机构',
+    'hijacked_as_country': '中国',
+    'hijacked_as_descr': None,
+    'hijacked_as_admin': None,
+    'hijacker_as': '64513',
+    'hijacker_as_name': '异常来源',
+    'hijacker_as_org': '来源机构',
+    'hijacker_as_country': '美国',
+    'hijacker_as_descr': None,
+    'hijacker_as_admin': None,
+    'hijack_level': 'high',
+    'hijack_level_info': '高风险',
+    'event_info': '检测到源 AS 变化',
+    'pre_vp_paths': {'2026-02-01 00:00:00': ['64500 64512']},
+    'eve_vp_paths': {'2026-02-01 00:01:00': []},
+    'next_vp_paths': {'2026-02-01 00:03:00': ['64500 64512']},
+    's_time': '2026-02-01 00:00:00',
+    'e_time': '2026-02-01 00:03:00',
+    'duration': '0:03:00',
+}
+
 COMMON_DETAIL_SCHEMA = {
     'start_time': str,
     'end_time': str,
@@ -359,8 +383,8 @@ def test_event_list_contract_and_query_params(client, assert_contract):
     assert payload['data'][0]['event_type'] == '前缀劫持'
     assert query.call_args.kwargs['page_num'] == 1
     assert query.call_args.kwargs['page_size'] == 50
-    assert query.call_args.kwargs['start_time'] == '2026-02-01'
-    assert query.call_args.kwargs['end_time'] == '2026-02-02'
+    assert query.call_args.kwargs['start_time'] == '2026-02-01 00:00:00'
+    assert query.call_args.kwargs['end_time'] == '2026-02-02 23:59:59'
     assert query.call_args.kwargs['state'] is None
 
 
@@ -467,3 +491,64 @@ def test_event_list_service_keeps_invalid_paging_defaults():
     assert result == {'total_page': 0, 'record_count': '0', 'data': []}
     assert query.call_args.kwargs['page_num'] == 1
     assert query.call_args.kwargs['page_size'] == 10
+
+
+def test_event_evidence_bundle_has_stable_ids_phase_semantics_and_quality_limits(client):
+    start_time = quote('2026-02-01 00:00:00', safe='')
+    path = f'/api/v1/events/evidence-bundle/hijack/{start_time}/1.2.3.0-24/7/r'
+
+    with patch('services.events_service.get_hijack_de', return_value=[EVIDENCE_HIJACK_ROW]):
+        first = client.get(path)
+        second = client.get(path)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    payload = first.get_json()
+    repeated = second.get_json()
+
+    assert payload['bundle_version'] == 'evidence_bundle_v1'
+    assert payload['incident_id'].startswith('inc_v1_')
+    assert repeated['incident_id'] == payload['incident_id']
+    assert payload['event']['event_time_local'] == '2026-02-01T00:00:00+08:00'
+    assert payload['event']['event_time_utc'] == '2026-01-31T16:00:00Z'
+    assert payload['event']['end_time_utc'] == '2026-01-31T16:03:00Z'
+    assert payload['event']['source_timezone'] == 'Asia/Shanghai'
+
+    coverage = payload['phase_coverage']
+    assert coverage['before']['status'] == 'observed_paths'
+    assert coverage['during']['status'] == 'observed_no_path'
+    assert coverage['after']['status'] == 'observed_paths'
+    assert payload['data_quality']['observed_phase_count'] == 3
+    assert payload['data_quality']['expected_phase_count'] == 3
+    assert payload['data_quality']['vantage_point_identity_available'] is False
+    assert payload['data_quality']['raw_bgp_message_available'] is False
+    assert payload['assessment']['classification'] == 'observation_only'
+    assert payload['assessment']['causal_conclusion'] is None
+    assert payload['assessment']['counterevidence']
+    assert any('不证明全网恢复' in item for item in payload['assessment']['counterevidence'])
+
+    evidence_ids = [item['evidence_id'] for item in payload['evidence_items']]
+    repeated_ids = [item['evidence_id'] for item in repeated['evidence_items']]
+    assert evidence_ids == repeated_ids
+    assert len(evidence_ids) == len(set(evidence_ids))
+    assert all(item_id.startswith('ev_v1_') for item_id in evidence_ids)
+    route_items = [
+        item for item in payload['evidence_items']
+        if item['kind'] == 'route_observation'
+    ]
+    assert route_items
+    assert all(item['semantics'] == 'route_observation_not_causal_trace' for item in route_items)
+
+
+def test_event_evidence_bundle_returns_404_when_fact_record_is_missing(client):
+    start_time = quote('2026-02-01 00:00:00', safe='')
+    path = f'/api/v1/events/evidence-bundle/hijack/{start_time}/1.2.3.0-24/7/r'
+
+    with patch('services.events_service.get_hijack_de', return_value=[]):
+        response = client.get(path)
+
+    assert response.status_code == 404
+    assert response.get_json() == {
+        'status': False,
+        'msg': '业务事实表中未找到该事件记录',
+    }

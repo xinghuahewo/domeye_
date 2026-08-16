@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "feb-mar-2026",
+  "mode": "fixed",
+  "timezone": "Asia/Shanghai",
+  "window_start": "2026-02-01T00:00:00+08:00",
+  "window_end_exclusive": "2026-04-01T00:00:00+08:00",
+  "snapshot_time": "2026-03-31T23:59:59+08:00",
+  "api_profile": "core"
+}

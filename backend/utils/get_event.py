@@ -15,10 +15,17 @@ import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.config import BIG_COUNTRY, FEATURE_COUNTRY_TABLE, FEATURE_OTHER_TABLE, SOURCE
+from config.data_window import resolve_query_now
+from config.logger import database_logger
 from database.as_outage import select_as_outage_asn_db, get_as_outage_de, select_as_outage_by_interval
 from database.feature_asn import get_as_feature_db, select_as_list_feature_db
 from database.feature_country import select_country_feature_db
-from database.event import get_top_event_db, get_event_db_multi_month, get_event_count_multi_month
+from database.event import (
+    DEFAULT_EVENT_SORT_KEY,
+    get_top_event_db,
+    get_event_db_multi_month,
+    get_event_count_multi_month,
+)
 from database.login import get_user_list_db, get_user_total_page_db
 from database.utils import if_table_exist, get_tables_by_time
 from database.hijack import get_hijack_de
@@ -1072,10 +1079,154 @@ def deal_security_screen_event(top_event_rows, country_info):
 
 ####################################################################################
 
-def get_event(conn, page_num, page_size, source, level, event_type, 
-              country, attacker_as, attacked_as, attacker_org, attacked_org, attacker_country, attacked_country, 
-              event_info, start_time, end_time, sort_mode, state, judge_reason, 
-              judge_userid, judge_username, judge_time, notify_userid, notify_username, 
+EVENT_SOURCES = ('r', 'c')
+EVENT_LEVELS = ('high', 'middle', 'low')
+EVENT_STATES = ('judge', 'notify', 'misreport', 'suspected', 'notified')
+QUERYABLE_EVENT_TYPES = (
+    '前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断',
+    'AS中断', '国家中断', '边界中断', 'RPKI证书异常',
+)
+BOUNDARY_EVENT_TYPE = '边界中断'
+DEFAULT_QUERY_DAYS = 20
+
+# 前端排序值 -> database.event.EVENT_SORT_EXPRESSIONS 的键
+SORT_MODE_KEYS = {
+    'levelA': 'level_asc', 'levelB': 'level_desc',
+    'start_timeA': 's_time_asc', 'start_timeB': 's_time_desc',
+    'end_timeA': 'e_time_asc', 'end_timeB': 'e_time_desc',
+    'event_typeA': 'event_type_asc', 'event_typeB': 'event_type_desc',
+    'event_infoA': 'event_info_asc', 'event_infoB': 'event_info_desc',
+    'attacker_orgA': 'attacker_org_asc', 'attacker_orgB': 'attacker_org_desc',
+    'attacked_orgA': 'attacked_org_asc', 'attacked_orgB': 'attacked_org_desc',
+}
+DATE_RANGE_PATTERN = re.compile(r'^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$')
+
+
+def resolve_sort_key(sort_mode):
+    """把前端排序值映射到白名单键；未知值回落到默认排序。"""
+    return SORT_MODE_KEYS.get(sort_mode, DEFAULT_EVENT_SORT_KEY)
+
+
+def like_pattern(value):
+    """构造安全的 LIKE 模式。
+
+    用户输入中的 % _ \\ 都是 LIKE 的元字符，必须转义，
+    否则搜索 "50%" 会退化成通配匹配。返回 None 表示该条件不参与过滤。
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    escaped = text.replace('\\', '\\\\').replace('%', r'\%').replace('_', r'\_')
+    return f'%{escaped}%'
+
+
+def _coerce_timestamp(value, fallback):
+    """把边界值解析成 datetime；无法解析时回落到给定默认值。"""
+    if isinstance(value, datetime.datetime):
+        return value
+    if value:
+        text = str(value).strip().replace('T', ' ')
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+            try:
+                return datetime.datetime.strptime(text, fmt)
+            except ValueError:
+                continue
+    return fallback
+
+
+def _build_event_filters(*, source, level, event_type, country,
+                         attacker_as, attacked_as, attacker_org, attacked_org,
+                         attacker_country, attacked_country, event_info,
+                         start_time, end_time, state, judge_reason, judge_userid,
+                         judge_username, judge_time, notify_userid,
+                         notify_username, notify_time):
+    """构建事件查询的 WHERE 片段与绑定参数。
+
+    所有用户可控的值都以 %s 占位符下发给 psycopg2，绝不拼进 SQL 文本。
+    未提供的过滤条件直接不产生子句——旧实现用 `col = col` 表示“不过滤”，
+    那会把该列为 NULL 的事件一并排除掉。
+    """
+    conditions = []
+    params = []
+
+    def equals(column, value, allowed):
+        if value in allowed:
+            conditions.append(f'{column} = %s')
+            params.append(value)
+
+    def contains(column, value):
+        pattern = like_pattern(value)
+        if pattern is not None:
+            conditions.append(f"COALESCE({column}, '') LIKE %s ESCAPE '\\'")
+            params.append(pattern)
+
+    equals('source', source, EVENT_SOURCES)
+    equals('level', level, EVENT_LEVELS)
+    equals('state', state, EVENT_STATES)
+
+    if event_type in QUERYABLE_EVENT_TYPES:
+        conditions.append('event_type = %s')
+        params.append(event_type)
+    else:
+        # 六类核心事件列表默认不展示边界中断。
+        conditions.append("COALESCE(event_type, '') <> %s")
+        params.append(BOUNDARY_EVENT_TYPE)
+
+    if country == 'foreign':
+        conditions.append('is_domestic = %s')
+        params.append(False)
+    elif country not in (None, '', 'all'):
+        conditions.append('is_domestic = %s')
+        params.append(True)
+
+    contains('attacker_as', attacker_as)
+    contains('attacked_as', attacked_as)
+    contains('attacker_org', attacker_org)
+    contains('attacked_org', attacked_org)
+    contains('attacker_country', attacker_country)
+    contains('attacked_country', attacked_country)
+    contains('event_info', event_info)
+    contains('judge_reason', judge_reason)
+    contains('judge_userid', judge_userid)
+    contains('judge_username', judge_username)
+    contains('notify_userid', notify_userid)
+    contains('notify_username', notify_username)
+
+    now = resolve_query_now()
+    range_start = _coerce_timestamp(
+        start_time, now - datetime.timedelta(days=DEFAULT_QUERY_DAYS)
+    )
+    range_end = _coerce_timestamp(end_time, now)
+    if range_start > range_end:
+        range_start, range_end = range_end, range_start
+    conditions.append('s_time >= %s')
+    params.append(range_start)
+    conditions.append('s_time <= %s')
+    params.append(range_end)
+
+    for column, raw_range in (('judge_time', judge_time), ('notify_time', notify_time)):
+        matched = DATE_RANGE_PATTERN.match(raw_range.strip()) if raw_range else None
+        if not matched:
+            continue
+        try:
+            day_start = datetime.datetime.strptime(matched.group(1), '%Y-%m-%d')
+            day_end = datetime.datetime.strptime(matched.group(2), '%Y-%m-%d')
+        except ValueError:
+            continue
+        conditions.append(f"COALESCE({column}, DATE '0001-01-01') >= %s")
+        params.append(day_start)
+        conditions.append(f"COALESCE({column}, DATE '0001-01-01') <= %s")
+        params.append(day_end.replace(hour=23, minute=59, second=59))
+
+    return ' AND '.join(conditions), tuple(params), range_start, range_end
+
+
+def get_event(conn, page_num, page_size, source, level, event_type,
+              country, attacker_as, attacked_as, attacker_org, attacked_org, attacker_country, attacked_country,
+              event_info, start_time, end_time, sort_mode, state, judge_reason,
+              judge_userid, judge_username, judge_time, notify_userid, notify_username,
               notify_time):
     """
     得到符合要求的一页事件列表数据。
@@ -1103,149 +1254,27 @@ def get_event(conn, page_num, page_size, source, level, event_type,
     :param notify_time: 通报时间
     :return: event_rows 事件列表
     """    
-    # 获取当前的UTC时间
-    bj_now = datetime.datetime.now()
-    # 近20内的数据
-    bj_month_age = bj_now - datetime.timedelta(days=20)
-
-    # 筛选条件
     offset = (page_num - 1) * page_size
-    source = "'{}'".format(source) if source in ['r', 'c'] else 'source'
-    level = "'{}'".format(level) if level in ['high', 'middle', 'low'] else 'level'
+    where_sql, where_params, range_start, range_end = _build_event_filters(
+        source=source, level=level, event_type=event_type, country=country,
+        attacker_as=attacker_as, attacked_as=attacked_as,
+        attacker_org=attacker_org, attacked_org=attacked_org,
+        attacker_country=attacker_country, attacked_country=attacked_country,
+        event_info=event_info, start_time=start_time, end_time=end_time,
+        state=state, judge_reason=judge_reason, judge_userid=judge_userid,
+        judge_username=judge_username, judge_time=judge_time,
+        notify_userid=notify_userid, notify_username=notify_username,
+        notify_time=notify_time,
+    )
+    sort_key = resolve_sort_key(sort_mode)
 
-    if event_type in ['前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断', '边界中断', 'RPKI证书异常']:
-        event_type = "'{}'".format(event_type)      
-    else:
-        event_type = 'event_type'
-    if country == 'all':
-        is_domestic = 'is_domestic'
-    elif country == 'foreign':
-        is_domestic = False
-    else:
-        is_domestic = True
-    attacker_as = "'%{}%'".format(attacker_as) if attacker_as else "'%%'"
-    attacked_as = "'%{}%'".format(attacked_as) if attacked_as else "'%%'"
-    attacker_org = "'%{}%'".format(attacker_org) if attacker_org else "'%%'"
-    attacked_org = "'%{}%'".format(attacked_org) if attacked_org else "'%%'"
-    attacker_country = "'%{}%'".format(attacker_country) if attacker_country else "'%%'"
-    attacked_country = "'%{}%'".format(attacked_country) if attacked_country else "'%%'"
-    event_info = "'%%'" if event_info == None else "'%{}%'".format(event_info)
-
-
-    print(f"查询时间范围: {start_time} - {end_time}")
-
-    pattern = re.compile('^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}')
-    if start_time == None:
-        # 查询近一个月的数据
-        s_time_start = "'{} 00:00:00'".format(bj_month_age.strftime('%Y-%m-%d'))
-        s_time_end = "'{} 23:59:59'".format(bj_now.strftime('%Y-%m-%d'))
-    else:
-        s_time_start = "'" + start_time + "'"
-        if end_time == None:
-            s_time_end = "'{}'".format(bj_now.strftime('%Y-%m-%d %H:%M:%S'))
-        else:
-            s_time_end = "'" + end_time + "'"
-    # else:
-    #     s_time_start = "'{} 00:00:00'".format(bj_month_age.strftime('%Y-%m-%d'))
-    #     s_time_end = "'{} 23:59:59'".format(bj_now.strftime('%Y-%m-%d'))
-
-
-    if judge_time == None:
-        judge_time_start = judge_time_end = "COALESCE(judge_time, DATE '0001-01-01')"
-    elif pattern.match(judge_time):
-        judge_time_start = "'{}'".format(judge_time.split('_')[0] + ' 00:00:00')
-        judge_time_end = "'{}'".format(judge_time.split('_')[1] + ' 23:59:59')
-    else:
-        judge_time_start = judge_time_end = "COALESCE(judge_time, DATE '0001-01-01')"
-    if notify_time == None:
-        notify_time_start = notify_time_end = "COALESCE(notify_time, DATE '0001-01-01')"
-    elif pattern.match(notify_time):
-        notify_time_start = "'{}'".format(notify_time.split('_')[0] + ' 00:00:00')
-        notify_time_end = "'{}'".format(notify_time.split('_')[1] + ' 23:59:59')
-    else:
-        notify_time_start = notify_time_end = "COALESCE(notify_time, DATE '0001-01-01')"
-
-    judge_reason = "'%{}%'".format(judge_reason) if judge_reason else "'%%'"
-    judge_userid = "'%{}%'".format(judge_userid) if judge_userid else "'%%'"
-    judge_username = "'%{}%'".format(judge_username) if judge_username else "'%%'"
-    notify_userid = "'%{}%'".format(notify_userid) if notify_userid else "'%%'"
-    notify_username = "'%{}%'".format(notify_username) if notify_username else "'%%'"
-    state = "'{}'".format(state) if state in ['judge', 'notify', 'misreport', 'suspected', 'notified'] else 'state'
-
-    if sort_mode in ['event_typeA', 'event_typeB', 'event_infoA', 'event_infoB',
-    'judge_reasonA', 'judge_reasonA', 'judge_useridA', 'judge_useridB', 'judge_usernameA',
-    'judge_usernameB', 'judge_timeA', 'judge_timeB', 'notify_useridA', 'notify_useridB', 
-    'notify_usernameA', 'notify_usernameB', 'notify_timeA', 'notify_timeB']:
-        sort_mode = sort_mode.replace('A', ' asc, detail_url desc').replace('B', ' desc, detail_url desc')
-    elif sort_mode == 'levelB':
-        sort_mode = "case level when 'high' then 1 when 'middle' then 2 when 'low' then 3 end, detail_url"
-    elif sort_mode == 'levelA':
-        sort_mode = "case level when 'low' then 1 when 'middle' then 2 when 'high' then 3 end, detail_url"
-    elif sort_mode in ['start_timeA', 'start_timeB']:
-        sort_mode = sort_mode.replace('tart', '').replace('A', ' asc, detail_url desc').replace('B', ' desc, detail_url desc')
-    elif sort_mode in ['end_timeA', 'end_timeB']:
-        sort_mode = sort_mode.replace('nd', '').replace('A', ' asc, detail_url desc').replace('B', ' desc, detail_url desc')
-    elif sort_mode in ['attacker_orgA', 'attacker_orgB']:
-        sort_mode = sort_mode.replace('A', ' asc, detail_url desc').replace('B', ' desc, detail_url desc')
-    elif sort_mode in ['attacked_orgA', 'attacked_orgB']:
-        sort_mode = sort_mode.replace('A', ' asc, detail_url desc').replace('B', ' desc, detail_url desc')
-    else:
-        sort_mode = "case level when 'high' then 1 when 'middle' then 2 when 'low' then 3 end, s_time desc, detail_url"
-    if event_type == "'边界中断'":
-        is_boundary_outage = '='
-    else:
-        is_boundary_outage = '<>'
-    
-    # if event_type == "'RPKI证书异常'":
-    #     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    #     date = str(datetime.datetime.now())[0:7].replace('-', '')
-    #     event_table = 'event_table_' + date
-    #     event_rows = list()
-    #     if if_table_exist(conn, event_table):
-    #         sql_event = """
-    #                 select event_type, level, s_time, e_time, attacker_as, attacked_as, 
-    #                 event_info, detail_url, affected_prefix, attacker_org, attacked_org, 
-    #                 attacker_country, attacked_country, state, judge_reason,
-    #                 judge_userid, judge_username, judge_time, notify_userid, notify_username, notify_time
-    #                 from {}
-    #                 where source = {} and level={} and event_type={} and COALESCE(is_domestic, True)={} 
-    #                 and COALESCE(attacker_as, '') like {} and COALESCE(attacked_as, '') like {}
-    #                 and COALESCE(attacker_org, '') like {} and COALESCE(attacked_org, '') like {}
-    #                 and COALESCE(attacker_country, '') like {} and COALESCE(attacked_country, '') like {}
-    #                 and s_time >= {} and s_time <= {} and COALESCE(judge_reason, '') like {}
-    #                 and COALESCE(judge_userid, '') like {} and COALESCE(judge_username, '') like {}
-    #                 and COALESCE(notify_userid, '') like {} and COALESCE(notify_username, '') like {}
-    #                 and COALESCE(state, 'judge') = {} and COALESCE(judge_time, DATE '0001-01-01') >= {} and COALESCE(judge_time, DATE '0001-01-01') <= {}
-    #                 and COALESCE(notify_time, DATE '0001-01-01') >= {} and COALESCE(notify_time, DATE '0001-01-01') <= {}
-    #                 order by {} 
-    #                 limit {} offset {};
-    #             """.format(event_table, source, level, event_type, is_domestic, 
-    #                     attacker_as, attacked_as, attacker_org, attacked_org, attacker_country, attacked_country,
-    #                     s_time_start, s_time_end, judge_reason, judge_userid, judge_username, 
-    #                     notify_userid, notify_username, state,
-    #                     judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-    #                     sort_mode, page_size, offset)
-    #         print(sql_event)
-    #         try:
-    #             cursor.execute(sql_event)
-    #             event_rows = cursor.fetchall()
-    #         except:
-    #             traceback.print_exc()
-    #             conn.rollback()
-    #             event_rows = []
-    #         finally:
-    #             cursor.close()
-    #     return event_rows
-    
     start = time.time()
-    event_rows = get_event_db_multi_month(conn, source, level, event_type, is_domestic, 
-                attacker_as, attacked_as, attacker_org, attacked_org, attacker_country, attacked_country, event_info, 
-                s_time_start, s_time_end, judge_reason, judge_userid, judge_username, 
-                notify_userid, notify_username, state,  
-                judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-                is_boundary_outage, sort_mode, page_size, offset)
+    event_rows = get_event_db_multi_month(
+        conn, where_sql, where_params, range_start, range_end,
+        sort_key, page_size, offset,
+    )
     end = time.time()
-    print(f"get_event_db_multi_month耗时: {end - start:.2f}秒")
+    database_logger.info(f"get_event_db_multi_month耗时: {end - start:.2f}秒")
     return event_rows
 
 
@@ -1279,80 +1308,18 @@ def get_total_page(conn, page_size, source, level, event_type, country, attacker
     :param notify_time: _description_
     :return: _description_
     """    
-    # 获取当前的UTC时间
-    bj_now = datetime.datetime.now()
+    where_sql, where_params, range_start, range_end = _build_event_filters(
+        source=source, level=level, event_type=event_type, country=country,
+        attacker_as=attacker_as, attacked_as=attacked_as,
+        attacker_org=attacker_org, attacked_org=attacked_org,
+        attacker_country=attacker_country, attacked_country=attacked_country,
+        event_info=event_info, start_time=start_time, end_time=end_time,
+        state=state, judge_reason=judge_reason, judge_userid=judge_userid,
+        judge_username=judge_username, judge_time=judge_time,
+        notify_userid=notify_userid, notify_username=notify_username,
+        notify_time=notify_time,
+    )
 
-    # 默认是近7天的数据
-    bj_month_age = bj_now - datetime.timedelta(days=20)
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    # 筛选条件
-    source = "'{}'".format(source) if source in ['r', 'c'] else 'source'
-    level = "'{}'".format(level) if level in ['high', 'middle', 'low'] else 'level'
-    if event_type in ['前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断', '边界中断', 'RPKI证书异常']:
-        event_type = "'{}'".format(event_type)      
-    else:
-        event_type = 'event_type'
-    if country == 'all':
-        is_domestic = 'is_domestic'
-    elif country == 'foreign':
-        is_domestic = False
-    else:
-        is_domestic = True
-    
-
-    attacked_as = "'%%'" if attacked_as == None else "'%{}%'".format(attacked_as)
-    attacker_as = "'%%'" if attacker_as == None else "'%{}%'".format(attacker_as)
-    attacker_org = "'%%'" if attacker_org == None else "'%{}%'".format(attacker_org)
-    attacked_org = "'%%'" if attacked_org == None else "'%{}%'".format(attacked_org)
-    attacker_country = "'%%'" if attacker_country == None else "'%{}%'".format(attacker_country)
-    attacked_country = "'%%'" if attacked_country == None else "'%{}%'".format(attacked_country)
-    event_info = "'%%'" if event_info == None else "'%{}%'".format(event_info)
-
-    pattern = re.compile('^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}')
-    if start_time == None:
-        # 查询近7天的数据
-        s_time_start = "'{} 00:00:00'".format(bj_month_age.strftime('%Y-%m-%d'))
-        s_time_end = "'{} 23:59:59'".format(bj_now.strftime('%Y-%m-%d'))
-    else:
-        s_time_start = "'" + start_time + "'"
-        if end_time == None:
-            s_time_end = "'{}'".format(bj_now.strftime('%Y-%m-%d %H:%M:%S'))
-        else:
-            s_time_end = "'" + end_time + "'"
-
-
-    if judge_time == None:
-        judge_time_start = judge_time_end = "COALESCE(judge_time, DATE '0001-01-01')"
-    elif pattern.match(judge_time):
-        judge_time_start = "'{}'".format(judge_time.split('_')[0] + ' 00:00:00')
-        judge_time_end = "'{}'".format(judge_time.split('_')[1] + ' 23:59:59')
-    else:
-        judge_time_start = judge_time_end = "COALESCE(judge_time, DATE '0001-01-01')"
-    if notify_time == None:
-        notify_time_start = notify_time_end = "COALESCE(notify_time, DATE '0001-01-01')"
-    elif pattern.match(notify_time):
-        notify_time_start = "'{}'".format(notify_time.split('_')[0] + ' 00:00:00')
-        notify_time_end = "'{}'".format(notify_time.split('_')[1] + ' 23:59:59')
-    else:
-        notify_time_start = notify_time_end = "COALESCE(notify_time, DATE '0001-01-01')"
-    
-    judge_reason = "'%%'" if judge_reason == None else "'%{}%'".format(judge_reason)
-    judge_userid = "'%%'" if judge_userid == None else "'%{}%'".format(judge_userid)
-    judge_username = "'%%'" if judge_username == None else "'%{}%'".format(judge_username)
-    notify_userid = "'%%'" if notify_userid == None else "'%{}%'".format(notify_userid)
-    notify_username = "'%%'" if notify_username == None else "'%{}%'".format(notify_username)
-
-    if state in ['judge', 'notify', 'misreport', 'suspected', 'notified']:
-        state = "'{}'".format(state) 
-    else:
-        state = 'state'
-    
-    if event_type == "'边界中断'":
-        is_boundary_outage = '='
-    else:
-        is_boundary_outage = '<>'
-    
     # if event_type == "'RPKI证书异常'":
     #     date = str(datetime.datetime.now())[0:7].replace('-', '')
     #     event_table = 'event_table_' + date
@@ -1386,16 +1353,12 @@ def get_total_page(conn, page_size, source, level, event_type, country, attacker
     #     return total_page, record_count
 
     start = time.time()
-    record_count = get_event_count_multi_month(conn, source, level, event_type, is_domestic,
-                            attacker_as, attacked_as, attacker_org, attacked_org,
-                            attacker_country, attacked_country, event_info,
-                            s_time_start, s_time_end, judge_reason, judge_userid, judge_username,
-                            notify_userid, notify_username, state,
-                            judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-                            is_boundary_outage)
+    record_count = get_event_count_multi_month(
+        conn, where_sql, where_params, range_start, range_end,
+    )
 
     end = time.time()
-    print(f"get_event_count_multi_month耗时: {end - start:.2f}秒")
+    database_logger.info(f"get_event_count_multi_month耗时: {end - start:.2f}秒")
     total_page = math.ceil(record_count / page_size)
     return total_page, record_count
 
@@ -1643,14 +1606,14 @@ def get_event_count(conn, last_month_table, event_table, country, now=None):
             sql_event_lm = """
                     select count(*), to_date(cast(s_time as TEXT), 'yyyy-MM-dd') as days 
                     from {}
-                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', 'AS中断', '边界中断') 
+                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断')
                     and is_domestic={} and s_time > '{}'
                     and cast(split_part(detail_url, '/', 4) as INTEGER ) < 10
                     group by days
                     UNION ALL
                     select count(*), to_date(cast(s_time as TEXT), 'yyyy-MM-dd') as days 
                     from {}
-                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', 'AS中断', '边界中断') 
+                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断')
                     and is_domestic={} and s_time > '{}'
                     and cast(split_part(detail_url, '/', 4) as INTEGER ) < 10
                     and (duration >= '00:03:00' or duration is null)
@@ -1666,7 +1629,7 @@ def get_event_count(conn, last_month_table, event_table, country, now=None):
         sql_event = """
                     select count(*), to_date(cast(s_time as TEXT), 'yyyy-MM-dd') as days 
                     from {}
-                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', 'AS中断', '边界中断') 
+                    where event_type in('前缀劫持', '子前缀劫持', '路由泄漏', '前缀中断', 'AS中断', '国家中断')
                     and is_domestic={} and s_time > '{}'
                     and cast(split_part(detail_url, '/', 4) as INTEGER ) < 10
                     and (duration >= '00:03:00' or duration is null)

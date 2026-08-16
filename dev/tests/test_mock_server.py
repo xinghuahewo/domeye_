@@ -88,6 +88,51 @@ class MockFilteringTest(unittest.TestCase):
         self.assertEqual(ases["data"][0]["asn"], "4134")
         self.assertEqual(ases["data"][0]["org_name"], "中国电信集团")
 
+    def test_country_workbench_and_event_country_filter_share_target(self):
+        query = {
+            "country": ["中国"],
+            "start_time": ["2026-03-30 23:59:59"],
+            "end_time": ["2026-03-31 23:59:59"],
+        }
+        overview = MOCK_SERVER.payload_for(
+            "/api/v1/features/countries/overview",
+            query,
+            self.fixture,
+        )
+        self.assertEqual(overview["selected_country"]["country"], "中国")
+        self.assertGreater(overview["selected_country"]["update_total"], 0)
+        self.assertTrue(overview["update_rankings"])
+
+        events = MOCK_SERVER.payload_for(
+            "/api/v1/events",
+            {"date": ["2026-03-31_2026-03-31"], "attacked_country": ["中国"]},
+            self.fixture,
+        )
+        self.assertTrue(events["data"])
+        self.assertTrue(all(row["attacked_country"] == "中国" for row in events["data"]))
+
+    def test_asn_workbench_and_event_asn_filter_share_target(self):
+        overview = MOCK_SERVER.payload_for(
+            "/api/v1/features/ases/overview",
+            {
+                "asn": ["AS4134"],
+                "start_time": ["2026-03-30 23:59:59"],
+                "end_time": ["2026-03-31 23:59:59"],
+            },
+            self.fixture,
+        )
+        self.assertEqual(overview["scope_kind"], "operational_asn_cohort")
+        self.assertEqual(overview["candidate_pool_size"], 1000)
+        self.assertEqual(overview["selected_asn"]["asn"], "4134")
+
+        events = MOCK_SERVER.payload_for(
+            "/api/v1/events",
+            {"date": ["2026-03-31_2026-03-31"], "attacked_as": ["AS64512"]},
+            self.fixture,
+        )
+        self.assertTrue(events["data"])
+        self.assertTrue(all(row["attacked_as"] == "64512" for row in events["data"]))
+
     def test_each_event_kind_returns_its_own_detail_shape(self):
         expected_fields = {
             "hijack": "hijacked_prefix",
@@ -111,6 +156,28 @@ class MockFilteringTest(unittest.TestCase):
             dict,
         )
         self.assertIsInstance(self.fixture["event_details"]["leak"]["as_path"], str)
+
+    def test_event_evidence_bundle_preserves_phase_and_non_causal_semantics(self):
+        event = next(row for row in self.fixture["events"]["data"] if row["event_type"] == "前缀劫持")
+        path = "/api/v1/events/evidence-bundle/{}".format(event["detail_url"])
+
+        first = MOCK_SERVER.payload_for(path, {}, self.fixture)
+        second = MOCK_SERVER.payload_for(path, {}, self.fixture)
+
+        self.assertEqual(first["bundle_version"], "evidence_bundle_v1")
+        self.assertEqual(first["incident_id"], second["incident_id"])
+        self.assertEqual(first["incident_id_schema"], "incident_id_v1")
+        self.assertIn(first["phase_coverage"]["before"]["status"], ("observed_paths", "not_available"))
+        self.assertEqual(first["assessment"]["classification"], "observation_only")
+        self.assertIsNone(first["assessment"]["causal_conclusion"])
+        route_items = [item for item in first["evidence_items"] if item["kind"] == "route_observation"]
+        self.assertTrue(route_items)
+        self.assertTrue(all(
+            item["semantics"] == "route_observation_not_causal_trace"
+            for item in route_items
+        ))
+        self.assertFalse(first["data_quality"]["vantage_point_identity_available"])
+        self.assertFalse(first["data_quality"]["raw_bgp_message_available"])
 
     def test_query_after_development_window_is_empty(self):
         payload = MOCK_SERVER.payload_for(

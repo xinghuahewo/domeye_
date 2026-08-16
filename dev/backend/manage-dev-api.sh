@@ -47,6 +47,7 @@ readonly SCREEN_NAME API_INSTANCE API_PORT
 readonly API_HOST='127.0.0.1'
 readonly HEALTH_URL="http://${API_HOST}:${API_PORT}/api/v1/healthz"
 readonly DATABASE_SMOKE_URL="http://${API_HOST}:${API_PORT}/api/v1/events?datetime=2026-03-31%2000%3A00%3A00_2026-03-31%2023%3A59%3A59&page_num=1&page_size=10"
+readonly STATIC_AS_WARMUP_URL="http://${API_HOST}:${API_PORT}/api/v1/features/ases?start_time=2026-03-31%2000%3A00%3A00&end_time=2026-03-31%2023%3A59%3A59&page_num=1&page_size=5"
 readonly DATA_START='2026-02-01 00:00:00'
 readonly DATA_END_EXCLUSIVE='2026-04-01 00:00:00'
 readonly SNAPSHOT_TIME='2026-03-31 23:59:59'
@@ -526,6 +527,20 @@ api_database_smoke_request() {
     ' <<<"${payload}" >/dev/null
 }
 
+api_static_as_warmup_request() {
+    if [[ "${API_PROFILE}" != 'remote' ]]; then
+        return 0
+    fi
+
+    local http_code
+    if ! http_code="$(curl --silent --show-error --max-time 45 \
+        --output /dev/null --write-out '%{http_code}' \
+        "${STATIC_AS_WARMUP_URL}" 2>/dev/null)"; then
+        return 1
+    fi
+    [[ "${http_code}" == '200' ]]
+}
+
 tail_log() {
     if [[ -f "${LOG_FILE}" && ! -L "${LOG_FILE}" ]]; then
         printf '\n最近的开发 API 日志：\n' >&2
@@ -711,11 +726,19 @@ start_action() {
                     tail_log
                     return 1
                 fi
+                if ! api_static_as_warmup_request; then
+                    error '开发 API 静态 ASN 数据预热失败'
+                    tail_log
+                    return 1
+                fi
                 START_COMPLETE=true
                 trap - EXIT
                 printf '开发 API 启动成功：%s\n' "${started_session}"
                 printf '健康检查：%s\n' "${HEALTH_URL}"
                 printf '数据库冒烟：%s\n' "${DATABASE_SMOKE_URL}"
+                if [[ "${API_PROFILE}" == 'remote' ]]; then
+                    printf '静态 ASN 预热：%s\n' "${STATIC_AS_WARMUP_URL}"
+                fi
                 return 0
             fi
         elif (( ${#sessions[@]} > 1 )); then

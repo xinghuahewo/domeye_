@@ -363,211 +363,168 @@ def get_top_event_db(conn, event_table, country, bj_week_ago, event_type, page_s
             _cleanup_implicit_read_transaction(conn, started_idle)
     return event_rows
 
-def get_event_db_multi_month(conn, source, level, event_type, is_domestic, 
-                            attacker_as, attacked_as, attacker_org, attacked_org, attacker_country, attacked_country, event_info, 
-                            s_time_start, s_time_end, judge_reason, judge_userid, judge_username, 
-                            notify_userid, notify_username, state,
-                            judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-                            is_boundary_outage, sort_mode, page_size, offset):
+MAX_EVENT_QUERY_MONTHS = 6
+
+# 事件列表允许的排序片段白名单：键由上层解析用户输入后给出，
+# 值是最终拼入 ORDER BY 的固定 SQL，用户输入永远不会直接进入这里。
+EVENT_SORT_EXPRESSIONS = {
+    'level_desc': "case level when 'high' then 1 when 'middle' then 2 when 'low' then 3 end, s_time desc, detail_url",
+    'level_asc': "case level when 'low' then 1 when 'middle' then 2 when 'high' then 3 end, detail_url",
+    's_time_asc': 's_time asc, detail_url desc',
+    's_time_desc': 's_time desc, detail_url desc',
+    'e_time_asc': 'e_time asc, detail_url desc',
+    'e_time_desc': 'e_time desc, detail_url desc',
+    'event_type_asc': 'event_type asc, detail_url desc',
+    'event_type_desc': 'event_type desc, detail_url desc',
+    'event_info_asc': 'event_info asc, detail_url desc',
+    'event_info_desc': 'event_info desc, detail_url desc',
+    'attacker_org_asc': 'attacker_org asc, detail_url desc',
+    'attacker_org_desc': 'attacker_org desc, detail_url desc',
+    'attacked_org_asc': 'attacked_org asc, detail_url desc',
+    'attacked_org_desc': 'attacked_org desc, detail_url desc',
+}
+DEFAULT_EVENT_SORT_KEY = 'level_desc'
+
+EVENT_SELECT_COLUMNS = """
+        SELECT event_type, level, s_time, e_time, attacker_as, attacked_as,
+               event_info, detail_url, affected_prefix, attacker_org, attacked_org,
+               attacker_country, attacked_country, state, judge_reason,
+               judge_userid, judge_username, judge_time, notify_userid, notify_username, notify_time
+"""
+
+# 与用户输入无关的固定业务过滤：忽略过短事件，且每个对象只保留前若干条记录。
+EVENT_FIXED_PREDICATES = """
+              AND (duration >= '00:03:00' OR duration IS NULL)
+              AND CAST(split_part(detail_url, '/', 4) AS INTEGER) < 10
+"""
+
+
+def _resolve_event_tables(conn, start_time, end_time):
+    """按月定位事件表，只返回真实存在的表。"""
+    tables = get_tables_by_time("event_table", start_time, end_time)
+    if len(tables) > MAX_EVENT_QUERY_MONTHS:
+        dropped = tables[:-MAX_EVENT_QUERY_MONTHS]
+        database_logger.warning(
+            f"查询跨度超过{MAX_EVENT_QUERY_MONTHS}个月，忽略较早月份: {dropped}"
+        )
+        tables = tables[-MAX_EVENT_QUERY_MONTHS:]
+
+    valid_tables = []
+    for table_name in tables:
+        if if_table_exist(conn, table_name):
+            valid_tables.append(table_name)
+        else:
+            database_logger.warning(f"表 {table_name} 不存在，跳过查询")
+    return valid_tables
+
+
+def _sort_expression(sort_key):
+    return EVENT_SORT_EXPRESSIONS.get(
+        sort_key, EVENT_SORT_EXPRESSIONS[DEFAULT_EVENT_SORT_KEY]
+    )
+
+
+def get_event_db_multi_month(conn, where_sql, where_params, start_time, end_time,
+                             sort_key, page_size, offset):
     """
-    支持最多6个月的跨月查询事件
+    支持最多6个月的跨月查询事件。
+
     Args:
         conn: 数据库连接
+        where_sql: 由上层构建的过滤片段，占位符必须是 %s
+        where_params: 与 where_sql 一一对应的绑定参数
+        start_time/end_time: datetime，用于定位月度表
+        sort_key: EVENT_SORT_EXPRESSIONS 的键
+        page_size/offset: 分页参数，作为绑定值下发
     """
     started_idle = _read_transaction_started_idle(conn)
     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     event_rows = []
 
     try:
-        # 解析时间范围
-        start_time = datetime.strptime(s_time_start.strip("'"), '%Y-%m-%d %H:%M:%S')
-        end_time = datetime.strptime(s_time_end.strip("'"), '%Y-%m-%d %H:%M:%S')
-        
-        # 计算需要查询的月份列表
-        print(f"查询时间范围: {start_time} - {end_time}")
-        tables = get_tables_by_time("event_table", start_time, end_time)
-
-        if len(tables) > 6:
-            database_logger.warning(f"查询跨度超过6个月，仅查询最近6个月: {tables[-6:]}")
-            tables = tables[-6:]
-
-        # 生成表名列表并检查表是否存在
-        valid_tables = []
-        for table_name in tables:
-            if if_table_exist(conn, table_name):
-                valid_tables.append(table_name)
-            else:
-                database_logger.warning(f"表 {table_name} 不存在，跳过查询")
-        
+        database_logger.info(f"查询时间范围: {start_time} - {end_time}")
+        valid_tables = _resolve_event_tables(conn, start_time, end_time)
         if not valid_tables:
-            database_logger.error("没有找到任何有效的事件表")
+            database_logger.warning("没有找到任何有效的事件表")
             return []
-        
-        # 构建UNION ALL查询
+
         sql_parts = []
+        params = []
         for table_name in valid_tables:
-            sql_part = _build_single_table_query(
-                table_name, source, level, event_type, is_domestic,
-                attacker_as, attacked_as, attacker_org, attacked_org, 
-                attacker_country, attacked_country, event_info,
-                s_time_start, s_time_end, judge_reason, judge_userid, judge_username,
-                notify_userid, notify_username, state,
-                judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-                is_boundary_outage
+            sql_parts.append(
+                f"{EVENT_SELECT_COLUMNS}\n        FROM {table_name}\n"
+                f"        WHERE {where_sql}{EVENT_FIXED_PREDICATES}"
             )
-            sql_parts.append(sql_part)
-        
-        # 组合最终SQL
+            params.extend(where_params)
+
         final_sql = f"""
             SELECT * FROM (
                 {' UNION ALL '.join(sql_parts)}
             ) t
-            ORDER BY {sort_mode}
-            LIMIT {page_size} OFFSET {offset};
+            ORDER BY {_sort_expression(sort_key)}
+            LIMIT %s OFFSET %s;
         """
-        
-        print(f"执行跨月查询，涉及表: {valid_tables}")
-        print(final_sql)
-        
-        
-        cursor.execute(final_sql)
+        params.extend([page_size, offset])
+
+        cursor.execute(final_sql, params)
         event_rows = cursor.fetchall()
-        print(f"查询到 {len(event_rows)} 条记录")
-        
+        database_logger.info(
+            f"跨月查询涉及表 {valid_tables}，返回 {len(event_rows)} 条记录"
+        )
+
     except Exception as e:
-        print(f'跨月查询事件失败: {e}')
-        print(traceback.format_exc())
+        database_logger.error(f'跨月查询事件失败: {e}')
+        database_logger.error(traceback.format_exc())
         conn.rollback()
         event_rows = []
     finally:
         cursor.close()
         _cleanup_implicit_read_transaction(conn, started_idle)
-    
+
     return event_rows
 
-def _build_single_table_query(table_name, source, level, event_type, is_domestic,
-                             attacker_as, attacked_as, attacker_org, attacked_org,
-                             attacker_country, attacked_country, event_info,
-                             s_time_start, s_time_end, judge_reason, judge_userid, judge_username,
-                             notify_userid, notify_username, state,
-                             judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-                             is_boundary_outage):
+def get_event_count_multi_month(conn, where_sql, where_params, start_time, end_time):
     """
-    构建单个表的查询SQL
-    """
-    return f"""
-        SELECT event_type, level, s_time, e_time, attacker_as, attacked_as, 
-               event_info, detail_url, affected_prefix, attacker_org, attacked_org, 
-               attacker_country, attacked_country, state, judge_reason,
-               judge_userid, judge_username, judge_time, notify_userid, notify_username, notify_time
-        FROM {table_name}
-        WHERE source={source} AND level={level} AND event_type={event_type} AND is_domestic={is_domestic} 
-              AND COALESCE(attacker_as, '') LIKE {attacker_as} 
-              AND COALESCE(attacked_as, '') LIKE {attacked_as}
-              AND COALESCE(attacker_org, '') LIKE {attacker_org} 
-              AND COALESCE(attacked_org, '') LIKE {attacked_org}
-              AND COALESCE(attacker_country, '') LIKE {attacker_country} 
-              AND COALESCE(attacked_country, '') LIKE {attacked_country}
-              AND event_info LIKE {event_info} 
-              AND s_time >= {s_time_start} AND s_time <= {s_time_end}
-              AND COALESCE(judge_reason, '') LIKE {judge_reason}
-              AND COALESCE(judge_userid, '') LIKE {judge_userid} 
-              AND COALESCE(judge_username, '') LIKE {judge_username}
-              AND COALESCE(notify_userid, '') LIKE {notify_userid} 
-              AND COALESCE(notify_username, '') LIKE {notify_username}
-              AND state = {state} 
-              AND COALESCE(judge_time, DATE '0001-01-01') >= {judge_time_start} 
-              AND COALESCE(judge_time, DATE '0001-01-01') <= {judge_time_end}
-              AND COALESCE(notify_time, DATE '0001-01-01') >= {notify_time_start} 
-              AND COALESCE(notify_time, DATE '0001-01-01') <= {notify_time_end}
-              AND event_type {is_boundary_outage} '边界中断'
-              AND (duration >= '00:03:00' OR duration IS NULL)
-              AND CAST(split_part(detail_url, '/', 4) AS INTEGER) < 10
-    """
-
-def get_event_count_multi_month(conn, source, level, event_type, is_domestic,
-                               attacker_as, attacked_as, attacker_org, attacked_org,
-                               attacker_country, attacked_country, event_info,
-                               s_time_start, s_time_end, judge_reason, judge_userid, judge_username,
-                               notify_userid, notify_username, state,
-                               judge_time_start, judge_time_end, notify_time_start, notify_time_end,
-                               is_boundary_outage):
-    """
-    获取跨月查询的总记录数，用于分页
+    获取跨月查询的总记录数，用于分页。过滤条件与列表查询共用同一片段和绑定参数。
     """
     started_idle = _read_transaction_started_idle(conn)
     cursor = conn.cursor()
     total_count = 0
 
     try:
-        # 解析时间范围
-        start_time = datetime.strptime(s_time_start.strip("'"), '%Y-%m-%d %H:%M:%S')
-        end_time = datetime.strptime(s_time_end.strip("'"), '%Y-%m-%d %H:%M:%S')
-        
-        # 计算需要查询的月份列表
-        tables = get_tables_by_time("event_table", start_time, end_time)
-
-        if len(tables) > 6:
-            tables = tables[-6:]
-
-        # 生成表名列表并检查表是否存在
-        valid_tables = []
-        for table_name in tables:
-            if if_table_exist(conn, table_name):
-                valid_tables.append(table_name)
-        
+        valid_tables = _resolve_event_tables(conn, start_time, end_time)
         if not valid_tables:
             return 0
-        
-        # 构建计数查询
+
         count_parts = []
+        params = []
         for table_name in valid_tables:
-            count_part = f"""
+            count_parts.append(
+                f"""
                 SELECT COUNT(*) as cnt
                 FROM {table_name}
-                WHERE source = {source} AND level={level} AND event_type={event_type} AND is_domestic={is_domestic} 
-                      AND COALESCE(attacker_as, '') LIKE {attacker_as} 
-                      AND COALESCE(attacked_as, '') LIKE {attacked_as}
-                      AND COALESCE(attacker_org, '') LIKE {attacker_org} 
-                      AND COALESCE(attacked_org, '') LIKE {attacked_org}
-                      AND COALESCE(attacker_country, '') LIKE {attacker_country} 
-                      AND COALESCE(attacked_country, '') LIKE {attacked_country}
-                      AND event_info LIKE {event_info} 
-                      AND s_time >= {s_time_start} AND s_time <= {s_time_end}
-                      AND COALESCE(judge_reason, '') LIKE {judge_reason}
-                      AND COALESCE(judge_userid, '') LIKE {judge_userid} 
-                      AND COALESCE(judge_username, '') LIKE {judge_username}
-                      AND COALESCE(notify_userid, '') LIKE {notify_userid} 
-                      AND COALESCE(notify_username, '') LIKE {notify_username}
-                      AND state = {state} 
-                      AND COALESCE(judge_time, DATE '0001-01-01') >= {judge_time_start} 
-                      AND COALESCE(judge_time, DATE '0001-01-01') <= {judge_time_end}
-                      AND COALESCE(notify_time, DATE '0001-01-01') >= {notify_time_start} 
-                      AND COALESCE(notify_time, DATE '0001-01-01') <= {notify_time_end}
-                      AND event_type {is_boundary_outage} '边界中断'
-                      AND (duration >= '00:03:00' OR duration IS NULL)
-                      AND CAST(split_part(detail_url, '/', 4) AS INTEGER) < 10
+                WHERE {where_sql}{EVENT_FIXED_PREDICATES}
             """
-            count_parts.append(count_part)
-        
-        # 组合计数SQL
+            )
+            params.extend(where_params)
+
         count_sql = f"""
             SELECT SUM(cnt) as total_count FROM (
                 {' UNION ALL '.join(count_parts)}
             ) t;
         """
-        
-        cursor.execute(count_sql)
+
+        cursor.execute(count_sql, params)
         result = cursor.fetchone()
         total_count = result[0] if result and result[0] else 0
-        
+
     except Exception as e:
-        print(f'获取跨月查询总数失败: {e}')
-        print(traceback.format_exc())
+        database_logger.error(f'获取跨月查询总数失败: {e}')
+        database_logger.error(traceback.format_exc())
         conn.rollback()
         total_count = 0
     finally:
         cursor.close()
         _cleanup_implicit_read_transaction(conn, started_idle)
-    
+
     return total_count

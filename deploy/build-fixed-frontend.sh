@@ -44,8 +44,8 @@ trap cleanup EXIT
 (
     cd -- "${FRONTEND_DIR}"
     export PATH="${NODE_BIN_DIR}:/home/bgpdata/.local/bin:/usr/local/bin:/usr/bin:/bin"
-    export VITE_DATA_WINDOW_START='2026-02-01T00:00:00'
-    export VITE_DATA_WINDOW_END='2026-03-31T23:59:59'
+    export VITE_DATA_WINDOW_START="${DOMEYE_CORE_FIXED_DATA_START/ /T}"
+    export VITE_DATA_WINDOW_END="${DOMEYE_CORE_FIXED_SNAPSHOT_TIME/ /T}"
     [[ "$(node --version)" == 'v22.23.1' ]]
     npm ci
     npm test

@@ -2,7 +2,6 @@
 """启动可自动清理的本地开发栈。"""
 
 import argparse
-import datetime
 import json
 import math
 import os
@@ -18,33 +17,81 @@ from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from dev.data_profile import load_data_profile  # noqa: E402
+
+
 FRONTEND_DIR = ROOT / "frontend"
 BACKEND_DIR = ROOT / "backend"
 FIXTURE_PATH = ROOT / "dev" / "fixtures" / "api-snapshot.json"
 MOCK_TIMEOUT_MS = 250
 MINIMUM_TIMEOUT_DELAY_SECONDS = 0.5
+SENSITIVE_CHILD_ENV_NAMES = {
+    "AUTO_INIT_DB",
+    "BASE_DATA_PATH",
+    "DATABASE_URL",
+    "DB_HOST",
+    "DB_NAME",
+    "DB_PASSWORD",
+    "DB_PORT",
+    "DB_USER",
+    "DEBUG",
+    "FLASK_CONFIG",
+    "HOST",
+    "INFO_DIR",
+    "LOAD_CORE_DATA_ON_STARTUP",
+    "PGDATABASE",
+    "PGHOST",
+    "PGPASSWORD",
+    "PGPORT",
+    "PGUSER",
+    "PORT",
+    "RIB_HISTORY_FILE",
+    "SECRET_KEY",
+    "SOURCE",
+    "SSH_HOST",
+    "SSH_HOST2",
+    "SSH_PWD",
+    "SSH_PWD2",
+    "SSH_USER",
+    "SSH_USER2",
+}
+SENSITIVE_CHILD_ENV_PREFIXES = ("DOMEYE_CORE_DB_", "MAIL_", "SMTP_", "SOURCE_DB_")
 
 
 def load_data_window():
+    profile = load_data_profile()
     with FIXTURE_PATH.open("r", encoding="utf-8") as fixture_file:
         window = json.load(fixture_file)["data_window"]
-    try:
-        start = datetime.datetime.strptime(window["start_time"], "%Y-%m-%d %H:%M:%S")
-        end = datetime.datetime.strptime(window["end_time"], "%Y-%m-%d %H:%M:%S")
-    except (KeyError, TypeError, ValueError) as error:
-        raise RuntimeError("开发数据窗口必须使用 YYYY-MM-DD HH:MM:SS 格式") from error
-    if start >= end:
-        raise RuntimeError("开发数据窗口起点必须早于终点")
+    expected_window = {
+        "start_time": profile["local"]["start"],
+        "end_time": profile["local"]["snapshot"],
+        "timezone": profile["timezone"],
+    }
+    if window != expected_window:
+        raise RuntimeError("开发快照窗口与 config/data-profile.json 不一致")
 
     return {
-        "start": start.strftime("%Y-%m-%dT%H:%M:%S"),
-        "end": end.strftime("%Y-%m-%dT%H:%M:%S"),
-        "snapshot": end.strftime("%Y-%m-%d %H:%M:%S"),
-        "backend_start": start.strftime("%Y-%m-%d %H:%M:%S"),
-        "backend_end_exclusive": (end + datetime.timedelta(seconds=1)).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
+        "id": profile["id"],
+        "timezone": profile["timezone"],
+        "start": profile["local"]["frontend_start"],
+        "end": profile["local"]["frontend_end"],
+        "snapshot": profile["local"]["snapshot"],
+        "backend_start": profile["local"]["start"],
+        "backend_end_exclusive": profile["local"]["end_exclusive"],
     }
+
+
+def sanitized_environment(source=None):
+    """清除开发子进程不应继承的数据库、生产和旧采集配置。"""
+
+    env = dict(os.environ if source is None else source)
+    for name in tuple(env):
+        if name in SENSITIVE_CHILD_ENV_NAMES or name.startswith(SENSITIVE_CHILD_ENV_PREFIXES):
+            env.pop(name, None)
+    return env
 
 
 def configure_mock_scenario(env):
@@ -76,8 +123,8 @@ def remote_tunnel_command(local_port, remote_host, remote_port):
     return [
         "ssh",
         "-N",
+        "-F", "/dev/null",
         "-o", "BatchMode=yes",
-        "-o", "ClearAllForwardings=yes",
         "-o", "ExitOnForwardFailure=yes",
         "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=3",
@@ -112,15 +159,16 @@ def _read_json_url(url, expected_status=200):
         return json.loads(response.read().decode("utf-8"))
 
 
-def wait_for_remote_api(port, process, timeout=10):
+def wait_for_remote_api(port, process, data_window, timeout=10):
     """同时核对服务身份与固定窗口守卫，避免隧道连到错误 API。"""
 
     deadline = time.time() + timeout
     health_url = "http://127.0.0.1:{}/api/v1/healthz".format(port)
+    rejected_date = data_window["backend_end_exclusive"].split(" ", 1)[0]
     guard_url = (
-        "http://127.0.0.1:{}/api/v1/events"
-        "?date=2026-04-01_2026-04-01&page_num=1&page_size=10"
-    ).format(port)
+        "http://127.0.0.1:{port}/api/v1/events"
+        "?date={date}_{date}&page_num=1&page_size=10"
+    ).format(port=port, date=rejected_date)
     while time.time() < deadline:
         if process.poll() is not None:
             raise RuntimeError("SSH 开发 API 隧道提前退出，退出码 {}".format(process.returncode))
@@ -134,8 +182,8 @@ def wait_for_remote_api(port, process, timeout=10):
                 and health.get("service") == "domeye-core"
                 and isinstance(rejected, dict)
                 and rejected.get("status") is False
-                and "2026-02-01 00:00:00" in message
-                and "2026-03-31 23:59:59" in message
+                and data_window["backend_start"] in message
+                and data_window["snapshot"] in message
             ):
                 return
         except (OSError, RuntimeError, ValueError, json.JSONDecodeError):
@@ -203,7 +251,7 @@ def start_development_processes(args, common_env, data_window, api_port, fronten
         )
         processes.append(tunnel)
         wait_for_port(api_port, tunnel)
-        wait_for_remote_api(api_port, tunnel)
+        wait_for_remote_api(api_port, tunnel, data_window)
         api_label = "服务器两个月开发库（经 SSH 隧道）"
 
     if args.mode == "preview":
@@ -228,7 +276,7 @@ def run(args):
     while frontend_port == api_port:
         frontend_port = available_port()
 
-    common_env = os.environ.copy()
+    common_env = sanitized_environment()
     common_env["VITE_API_PROXY_TARGET"] = "http://127.0.0.1:{}".format(api_port)
     common_env["VITE_PORT"] = str(frontend_port)
     common_env["VITE_COMPONENT_PREVIEW"] = "true"

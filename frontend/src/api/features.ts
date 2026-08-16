@@ -1,5 +1,11 @@
 import { apiGet } from './client'
-import { normalizeFeaturePoints, normalizeOutagePoints } from '@/utils/normalize'
+import {
+  normalizeAsOverview,
+  normalizeCountryOverview,
+  normalizeEventPage,
+  normalizeFeaturePoints,
+  normalizeOutagePoints,
+} from '@/utils/normalize'
 
 export interface FeatureRange {
   start_time: string
@@ -11,6 +17,24 @@ export async function getTopFeatures(target: string, range: FeatureRange) {
     params: { target, ...range },
   })
   return normalizeFeaturePoints(payload)
+}
+
+export async function getCountryOverview(range: FeatureRange, country?: string, limit = 6) {
+  return normalizeCountryOverview(await apiGet<unknown>('features/countries/overview', {
+    params: { ...range, country: country || undefined, limit },
+  }))
+}
+
+export async function getAsOverview(range: FeatureRange, asn?: string, limit = 6) {
+  return normalizeAsOverview(await apiGet<unknown>('features/ases/overview', {
+    params: { ...range, asn: asn || undefined, limit },
+  }))
+}
+
+export async function getAsRecentEvents(asn: string, range: FeatureRange, pageSize = 10) {
+  return normalizeEventPage(await apiGet<unknown>('features/ases/events', {
+    params: { ...range, asn, page_size: pageSize },
+  }))
 }
 
 export async function getGlobalASOutages(range: FeatureRange) {

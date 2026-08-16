@@ -2,29 +2,36 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
-import { getEventCounts } from '@/api/dashboard'
+import { getDashboardOverview } from '@/api/dashboard'
 import { getTopEvents } from '@/api/events'
 import { getTopFeatures } from '@/api/features'
 import EventTable from '@/components/EventTable.vue'
-import LineChart, { type ChartSeries } from '@/components/LineChart.vue'
+import EventTrendChart from '@/components/EventTrendChart.vue'
+import LineChart, { type ChartMarker, type ChartSeries } from '@/components/LineChart.vue'
 import PageState from '@/components/PageState.vue'
-import type { CountPoint, EventRow, FeaturePoint } from '@/types/api'
+import {
+  CORE_EVENT_TYPES,
+  type DashboardOverview,
+  type EventLabel,
+  type EventRow,
+  type FeaturePoint,
+} from '@/types/api'
 import { summarizeFeatureWindow } from '@/utils/featureSummary'
 import { errorMessage } from '@/utils/normalize'
-import { recentRange, toBackendTime } from '@/utils/time'
+import { parseInputTime, recentRange, toBackendTime } from '@/utils/time'
 
 const router = useRouter()
 const events = ref<EventRow[]>([])
-const counts = ref<CountPoint[]>([])
 const features = ref<FeaturePoint[]>([])
+const previousFeatures = ref<FeaturePoint[]>([])
+const overview = ref<DashboardOverview | null>(null)
 const loading = ref(true)
 const eventError = ref('')
 const chartError = ref('')
+const overviewError = ref('')
 
-const totalEvents = computed(() => counts.value.reduce((sum, point) => sum + point.count, 0))
-const latestCount = computed(() => counts.value.at(-1)?.count ?? 0)
-const latestObservation = computed(() => features.value.at(-1)?.time || '等待特征数据')
 const windowSummary = computed(() => summarizeFeatureWindow(features.value))
+const previousSummary = computed(() => summarizeFeatureWindow(previousFeatures.value))
 const announceShare = computed(() => {
   if (windowSummary.value.updateTotal === 0) return 0
   return windowSummary.value.announceTotal / windowSummary.value.updateTotal * 100
@@ -37,11 +44,33 @@ const withdrawRateLabel = computed(() => {
   const rate = windowSummary.value.withdrawRate
   return rate === null ? '—' : `${(rate * 100).toFixed(1)}%`
 })
-
-function formatFeatureCount(value: number | null) {
-  if (value === null || windowSummary.value.observedPoints === 0) return '—'
-  return value.toLocaleString('zh-CN')
-}
+const updateChange = computed(() => {
+  if (previousSummary.value.observedPoints === 0 || previousSummary.value.updateTotal === 0) return null
+  return (windowSummary.value.updateTotal - previousSummary.value.updateTotal)
+    / previousSummary.value.updateTotal * 100
+})
+const withdrawRateChange = computed(() => {
+  const current = windowSummary.value.withdrawRate
+  const previous = previousSummary.value.withdrawRate
+  if (current === null || previous === null) return null
+  return (current - previous) * 100
+})
+const eventChangeLabel = computed(() => comparisonLabel(overview.value?.eventChangeRate ?? null))
+const updateChangeLabel = computed(() => comparisonLabel(updateChange.value))
+const withdrawChangeLabel = computed(() => pointChangeLabel(withdrawRateChange.value))
+const latestObservation = computed(() => overview.value?.latestObservation || features.value.at(-1)?.time || null)
+const freshnessLabel = computed(() => {
+  const observed = latestObservation.value ? parseInputTime(latestObservation.value.replace(' ', 'T')) : null
+  const end = overview.value?.endTime ? parseInputTime(overview.value.endTime.replace(' ', 'T')) : null
+  if (!observed || !end) return '等待观测'
+  const minutes = Math.max(0, Math.round((end.getTime() - observed.getTime()) / 60_000))
+  if (minutes <= 10) return '数据新鲜'
+  return `延迟 ${minutes} 分钟`
+})
+const scopeLabel = computed(() => {
+  if (!overview.value) return '—'
+  return `${overview.value.affectedCountryCount} / ${overview.value.affectedAsnCount}`
+})
 
 const messageSeries = computed<ChartSeries[]>(() => [
   {
@@ -56,34 +85,81 @@ const messageSeries = computed<ChartSeries[]>(() => [
   },
 ])
 
+const eventMarkers = computed<ChartMarker[]>(() => (overview.value?.eventSeries ?? [])
+  .filter((point) => point.total > 0)
+  .map((point) => ({ time: point.time, label: `${point.total} 起异常` })))
+
+const typeTotals = computed(() => CORE_EVENT_TYPES.map((eventType) => ({
+  eventType,
+  count: (overview.value?.eventSeries ?? []).reduce(
+    (sum, point) => sum + point.counts[eventType],
+    0,
+  ),
+})))
+const maxTypeTotal = computed(() => Math.max(1, ...typeTotals.value.map((item) => item.count)))
+
+function formatFeatureCount(value: number | null) {
+  if (value === null || windowSummary.value.observedPoints === 0) return '—'
+  return value.toLocaleString('zh-CN')
+}
+
+function comparisonLabel(value: number | null) {
+  if (value === null) return '上一窗口无有效基线'
+  if (value === 0) return '→ 与上一窗口持平'
+  return `${value > 0 ? '↑' : '↓'} ${Math.abs(value).toFixed(1)}% 较上一窗口`
+}
+
+function pointChangeLabel(value: number | null) {
+  if (value === null) return '上一窗口无有效基线'
+  if (value === 0) return '→ 与上一窗口持平'
+  return `${value > 0 ? '↑' : '↓'} ${Math.abs(value).toFixed(1)} 个百分点`
+}
+
 async function load() {
   loading.value = true
   eventError.value = ''
   chartError.value = ''
+  overviewError.value = ''
   const range = recentRange(24)
-  const [eventResult, countResult, featureResult] = await Promise.allSettled([
+  const comparisonRange = recentRange(48)
+  const params = {
+    start_time: toBackendTime(range.start),
+    end_time: toBackendTime(range.end),
+  }
+  const previousTask = comparisonRange.start === range.start
+    ? Promise.resolve([])
+    : getTopFeatures('collector', {
+        start_time: toBackendTime(comparisonRange.start),
+        end_time: toBackendTime(range.start),
+      })
+  const [eventResult, featureResult, previousResult, overviewResult] = await Promise.allSettled([
     getTopEvents(),
-    getEventCounts(),
-    getTopFeatures('collector', {
-      start_time: toBackendTime(range.start),
-      end_time: toBackendTime(range.end),
-    }),
+    getTopFeatures('collector', params),
+    previousTask,
+    getDashboardOverview(params),
   ])
 
   if (eventResult.status === 'fulfilled') events.value = eventResult.value
   else eventError.value = errorMessage(eventResult.reason)
 
-  if (countResult.status === 'fulfilled') counts.value = countResult.value
-  else eventError.value ||= errorMessage(countResult.reason)
-
   if (featureResult.status === 'fulfilled') features.value = featureResult.value
   else chartError.value = errorMessage(featureResult.reason)
+
+  if (previousResult.status === 'fulfilled') previousFeatures.value = previousResult.value
+  else chartError.value ||= errorMessage(previousResult.reason)
+
+  if (overviewResult.status === 'fulfilled') overview.value = overviewResult.value
+  else overviewError.value = errorMessage(overviewResult.reason)
   loading.value = false
 }
 
 function openEvent(event: EventRow) {
   if (!event.detailUrl) return
   void router.push({ name: 'event-detail', query: { ref: event.detailUrl } })
+}
+
+function openEventType(eventType: EventLabel) {
+  void router.push({ name: 'events', query: { event_type: eventType } })
 }
 
 onMounted(load)
@@ -97,37 +173,44 @@ onMounted(load)
         <h1>路由异常监测概览</h1>
       </div>
       <p class="page-heading-copy">
-        汇总 BGP 报文变化、六类核心异常和最新事件，数据范围固定保留自 2026 年 2 月 1 日以来的发布快照。
+        以 24 小时观测窗口汇总 BGP 报文、六类核心异常和影响范围，所有时间均按 Asia/Shanghai 展示。
       </p>
     </header>
 
-    <section class="metric-ledger" aria-label="核心指标">
+    <section class="metric-ledger" aria-label="24 小时核心指标">
       <div>
-        <span>近 30 日事件</span>
-        <strong>{{ totalEvents.toLocaleString('zh-CN') }}</strong>
-        <small>EVENT RECORDS</small>
+        <span>24H BGP 更新总量</span>
+        <strong>{{ formatFeatureCount(windowSummary.updateTotal) }}</strong>
+        <small :class="{ 'is-rise': (updateChange ?? 0) > 0 }">{{ updateChangeLabel }}</small>
       </div>
       <div>
-        <span>最近统计日</span>
-        <strong>{{ latestCount.toLocaleString('zh-CN') }}</strong>
-        <small>{{ counts.at(-1)?.time || 'NO SAMPLE' }}</small>
+        <span>撤回率</span>
+        <strong>{{ withdrawRateLabel }}</strong>
+        <small :class="{ 'is-rise': (withdrawRateChange ?? 0) > 0 }">{{ withdrawChangeLabel }}</small>
       </div>
       <div>
-        <span>核心异常类型</span>
-        <strong>06</strong>
-        <small>HIJACK / LEAK / OUTAGE</small>
+        <span>24H 异常事件</span>
+        <strong>{{ overview ? overview.eventCount.toLocaleString('zh-CN') : '—' }}</strong>
+        <small :class="{ 'is-rise': (overview?.eventChangeRate ?? 0) > 0 }">
+          {{ overviewError ? '聚合暂不可用' : eventChangeLabel }}
+        </small>
       </div>
       <div>
-        <span>最后观测</span>
-        <strong class="metric-time">{{ latestObservation }}</strong>
-        <small>COLLECTOR FEATURE</small>
+        <span>影响范围</span>
+        <strong>{{ scopeLabel }}</strong>
+        <small>
+          {{ overview ? `${overview.affectedCountryCount} COUNTRIES · ${overview.affectedAsnCount} ASN` : 'COUNTRY / ASN' }}
+        </small>
       </div>
     </section>
 
     <section class="home-grid">
       <div class="home-chart dashboard-card">
         <div class="section-heading">
-          <h2>采集点报文脉冲</h2>
+          <div>
+            <h2>采集点报文脉冲</h2>
+            <p>虚线标注同小时发生的核心异常</p>
+          </div>
           <RouterLink to="/features">进入特征分析 →</RouterLink>
         </div>
         <PageState
@@ -143,7 +226,7 @@ onMounted(load)
           :detail="chartError"
           @retry="load"
         />
-        <LineChart v-else :series="messageSeries" unit="条" :height="330" />
+        <LineChart v-else :series="messageSeries" :markers="eventMarkers" unit="条" :height="340" />
       </div>
 
       <aside class="window-summary dashboard-card" aria-label="24 小时报文窗口摘要">
@@ -155,18 +238,13 @@ onMounted(load)
           <PageState kind="loading" title="正在计算窗口摘要" />
         </div>
         <div v-else-if="chartError" class="summary-state">
-          <PageState
-            kind="error"
-            title="窗口摘要暂不可用"
-            :detail="chartError"
-            @retry="load"
-          />
+          <PageState kind="error" title="窗口摘要暂不可用" :detail="chartError" @retry="load" />
         </div>
         <div v-else class="window-summary-body">
-          <div class="window-total">
-            <span>报文更新总量</span>
-            <strong>{{ formatFeatureCount(windowSummary.updateTotal) }}</strong>
-            <small>ANNOUNCE + WITHDRAW</small>
+          <div class="observation-reading">
+            <span>观测状态</span>
+            <strong>{{ freshnessLabel }}</strong>
+            <time :datetime="latestObservation || undefined">{{ latestObservation || '暂无有效观测' }}</time>
           </div>
 
           <dl class="traffic-split">
@@ -182,8 +260,8 @@ onMounted(load)
 
           <div class="message-mix">
             <div>
-              <span>撤回率</span>
-              <strong>{{ withdrawRateLabel }}</strong>
+              <span>报文构成</span>
+              <strong>{{ announceShare.toFixed(1) }} / {{ withdrawShare.toFixed(1) }}</strong>
             </div>
             <div
               class="message-mix-track"
@@ -208,24 +286,100 @@ onMounted(load)
       </aside>
     </section>
 
+    <section class="event-analysis-grid">
+      <div class="event-trend dashboard-card">
+        <div class="section-heading">
+          <div>
+            <h2>六类异常趋势</h2>
+            <p>按小时聚合 · 点击类别进入事件检索</p>
+          </div>
+          <span>{{ overview?.eventCount ?? 0 }} EVENTS / 24H</span>
+        </div>
+        <PageState v-if="loading" kind="loading" title="正在聚合六类异常" />
+        <PageState
+          v-else-if="overviewError"
+          kind="error"
+          title="异常趋势暂不可用"
+          :detail="overviewError"
+          @retry="load"
+        />
+        <EventTrendChart
+          v-else
+          :points="overview?.eventSeries ?? []"
+          :height="300"
+          @select="openEventType"
+        />
+      </div>
+
+      <aside class="type-distribution dashboard-card" aria-label="异常类型占比">
+        <div class="section-heading">
+          <h2>类型与风险</h2>
+          <span>CORE 06</span>
+        </div>
+        <div class="risk-strip">
+          <div>
+            <span>高风险</span>
+            <strong>{{ overview?.highRiskCount ?? 0 }}</strong>
+          </div>
+          <div>
+            <span>进行中</span>
+            <strong>{{ overview?.activeEventCount ?? 0 }}</strong>
+          </div>
+        </div>
+        <ol class="type-list">
+          <li v-for="item in typeTotals" :key="item.eventType">
+            <button type="button" @click="openEventType(item.eventType)">
+              <span>{{ item.eventType }}</span>
+              <b>{{ item.count }}</b>
+              <i><em :style="{ width: `${item.count / maxTypeTotal * 100}%` }"></em></i>
+            </button>
+          </li>
+        </ol>
+      </aside>
+    </section>
+
+    <section class="ranking-grid" aria-label="影响对象排行">
+      <article class="ranking-panel dashboard-card">
+        <div class="section-heading">
+          <h2>受影响国家</h2>
+          <span>BY EVENTS</span>
+        </div>
+        <PageState v-if="!loading && !overviewError && !overview?.countryRankings.length" title="当前窗口没有国家影响记录" />
+        <ol v-else class="ranking-list">
+          <li v-for="(item, index) in overview?.countryRankings ?? []" :key="item.name">
+            <b>{{ String(index + 1).padStart(2, '0') }}</b>
+            <RouterLink :to="{ name: 'country-detail', params: { country: item.name } }">{{ item.name }}</RouterLink>
+            <span>{{ item.eventCount }} 起<small v-if="item.highRiskCount"> · {{ item.highRiskCount }} 高风险</small></span>
+          </li>
+        </ol>
+      </article>
+
+      <article class="ranking-panel dashboard-card">
+        <div class="section-heading">
+          <h2>受影响 ASN</h2>
+          <span>BY EVENTS</span>
+        </div>
+        <PageState v-if="!loading && !overviewError && !overview?.asnRankings.length" title="当前窗口没有 ASN 影响记录" />
+        <ol v-else class="ranking-list">
+          <li v-for="(item, index) in overview?.asnRankings ?? []" :key="item.asn || item.name">
+            <b>{{ String(index + 1).padStart(2, '0') }}</b>
+            <RouterLink :to="{ name: 'features', query: { target: item.name } }">{{ item.name }}</RouterLink>
+            <span>{{ item.eventCount }} 起<small v-if="item.highRiskCount"> · {{ item.highRiskCount }} 高风险</small></span>
+          </li>
+        </ol>
+      </article>
+    </section>
+
     <section class="events-card dashboard-card">
       <div class="section-heading">
-        <h2>最新核心事件</h2>
+        <div>
+          <h2>最新核心事件</h2>
+          <p>按六类异常各取最近观测</p>
+        </div>
         <RouterLink to="/events">查看全部事件 →</RouterLink>
       </div>
-      <PageState
-        v-if="loading"
-        kind="loading"
-        title="正在读取事件总表"
-        detail="只查询六类核心异常"
-      />
-      <PageState
-        v-else-if="eventError"
-        kind="error"
-        title="事件数据暂不可用"
-        :detail="eventError"
-        @retry="load"
-      />
+      <PageState v-if="loading" kind="loading" title="正在读取事件总表" detail="只查询六类核心异常" />
+      <PageState v-else-if="eventError" kind="error" title="事件数据暂不可用" :detail="eventError" @retry="load" />
       <PageState v-else-if="events.length === 0" title="当前范围没有核心异常事件" />
       <EventTable v-else :events="events" compact @select="openEvent" />
     </section>
@@ -236,59 +390,91 @@ onMounted(load)
 .metric-ledger {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metric-ledger > div {
-  min-height: 112px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 15px 16px;
-  background: var(--paper);
+  gap: 1px;
+  overflow: hidden;
+  background: var(--line);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
 }
 
+.metric-ledger > div {
+  min-width: 0;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px 18px;
+  background: var(--paper);
+}
+
 .metric-ledger span,
 .metric-ledger small {
+  overflow: hidden;
   color: var(--muted);
   font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 0.035em;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metric-ledger strong {
+  overflow: hidden;
   color: #17212b;
-  font-size: 34px;
-  font-weight: 720;
-  line-height: 1;
-  letter-spacing: -0.035em;
+  font: 720 32px/1 var(--mono);
+  letter-spacing: -0.045em;
+  text-overflow: ellipsis;
 }
 
-.metric-ledger .metric-time {
-  font: 650 13px/1.35 var(--mono);
-  letter-spacing: -0.02em;
+.metric-ledger small.is-rise {
+  color: var(--warning);
 }
 
-.home-grid {
+.home-grid,
+.event-analysis-grid,
+.ranking-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.72fr);
   gap: 16px;
 }
 
+.home-grid {
+  grid-template-columns: minmax(0, 1.72fr) minmax(280px, 0.68fr);
+}
+
+.event-analysis-grid {
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.55fr);
+}
+
+.ranking-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .home-chart,
-.window-summary {
+.window-summary,
+.event-trend,
+.type-distribution,
+.ranking-panel {
+  min-width: 0;
   display: grid;
   align-content: start;
   gap: 14px;
   padding: 18px;
 }
 
+.section-heading > div {
+  min-width: 0;
+}
+
+.section-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
 .summary-state,
 .window-summary-body {
-  min-height: 330px;
+  min-height: 340px;
   border: 1px solid var(--line);
   border-radius: 6px;
 }
@@ -301,20 +487,17 @@ onMounted(load)
 
 .window-summary-body {
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(11, 87, 183, 0.035), transparent 45%),
-    var(--paper);
+  background: linear-gradient(135deg, rgba(11, 87, 183, 0.035), transparent 45%), var(--paper);
 }
 
-.window-total {
+.observation-reading {
   display: grid;
   gap: 8px;
   padding: 19px 16px 17px;
   border-bottom: 1px solid var(--line);
 }
 
-.window-total span,
-.window-total small,
+.observation-reading span,
 .traffic-split dt,
 .message-mix span,
 .peak-reading span {
@@ -324,10 +507,15 @@ onMounted(load)
   letter-spacing: 0.055em;
 }
 
-.window-total strong {
+.observation-reading strong {
   color: #17212b;
-  font: 720 32px/1 var(--mono);
-  letter-spacing: -0.045em;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.observation-reading time {
+  color: var(--muted);
+  font: 600 9px/1.4 var(--mono);
 }
 
 .traffic-split {
@@ -369,7 +557,7 @@ onMounted(load)
   overflow: hidden;
   margin: 0;
   color: #344054;
-  font: 700 15px/1.2 var(--mono);
+  font: 700 14px/1.2 var(--mono);
   text-overflow: ellipsis;
 }
 
@@ -389,7 +577,7 @@ onMounted(load)
 
 .message-mix strong {
   color: #17212b;
-  font: 750 15px/1 var(--mono);
+  font: 750 13px/1 var(--mono);
 }
 
 .message-mix-track {
@@ -405,13 +593,8 @@ onMounted(load)
   display: block;
 }
 
-.announce-share {
-  background: #0b57b7;
-}
-
-.withdraw-share {
-  background: #35b6d4;
-}
+.announce-share { background: #0b57b7; }
+.withdraw-share { background: #35b6d4; }
 
 .peak-reading {
   display: grid;
@@ -442,6 +625,134 @@ onMounted(load)
   text-align: right;
 }
 
+.risk-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.risk-strip div {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.risk-strip span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.risk-strip strong {
+  color: #17212b;
+  font: 720 20px/1 var(--mono);
+}
+
+.type-list,
+.ranking-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.type-list {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.type-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
+  padding: 11px 12px;
+  cursor: pointer;
+  color: #344054;
+  background: var(--paper);
+  border: 0;
+  text-align: left;
+}
+
+.type-list button:hover {
+  background: #f8fafc;
+}
+
+.type-list span,
+.type-list b {
+  font-size: 10px;
+}
+
+.type-list i {
+  grid-column: 1 / -1;
+  height: 3px;
+  overflow: hidden;
+  background: #edf1f5;
+}
+
+.type-list em {
+  height: 100%;
+  display: block;
+  background: var(--signal);
+}
+
+.ranking-list {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ranking-list li {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--paper);
+}
+
+.ranking-list li > b {
+  color: var(--signal);
+  font: 700 9px/1 var(--mono);
+}
+
+.ranking-list a {
+  overflow: hidden;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-list a:hover {
+  color: var(--primary);
+}
+
+.ranking-list li > span {
+  color: #344054;
+  font: 650 10px/1 var(--mono);
+  white-space: nowrap;
+}
+
+.ranking-list small {
+  color: var(--warning);
+  font: inherit;
+}
+
 .events-card {
   overflow: hidden;
   padding-top: 18px;
@@ -460,7 +771,14 @@ onMounted(load)
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .home-grid {
+  .home-grid,
+  .event-analysis-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .ranking-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -475,12 +793,23 @@ onMounted(load)
   }
 
   .metric-ledger strong {
-    font-size: 30px;
+    font-size: 28px;
   }
 
   .home-chart,
-  .window-summary {
+  .window-summary,
+  .event-trend,
+  .type-distribution,
+  .ranking-panel {
     padding: 14px;
+  }
+
+  .ranking-list li {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .ranking-list li > span {
+    grid-column: 2;
   }
 }
 </style>

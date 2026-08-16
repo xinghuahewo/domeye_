@@ -6,7 +6,10 @@
 
 import ast
 import datetime
+import hashlib
 import json
+import re
+from zoneinfo import ZoneInfo
 
 from dateutil.relativedelta import relativedelta
 
@@ -36,6 +39,27 @@ CORE_EVENT_TYPES = (
     '路由泄漏',
 )
 
+EVENT_KIND_LABELS = {
+    'hijack': '前缀劫持',
+    'sub_hijack': '子前缀劫持',
+    'prefix_outage': '前缀中断',
+    'as_outage': 'AS中断',
+    'country_outage': '国家中断',
+    'leak': '路由泄漏',
+}
+
+EVENT_FACT_TABLES = {
+    'hijack': 'hijack',
+    'sub_hijack': 'sub_hijack',
+    'prefix_outage': 'prefix_outage',
+    'as_outage': 'as_outage',
+    'country_outage': 'country_outage',
+    'leak': 'leak_event',
+}
+
+BUSINESS_TIMEZONE = ZoneInfo('Asia/Shanghai')
+UTC = datetime.timezone.utc
+
 
 def _parse_page_size(raw_value):
     return int(raw_value) if raw_value in ['10', '50', '100', '200'] else 10
@@ -47,11 +71,47 @@ def _parse_page_num(raw_value):
     return int(raw_value) if str(raw_value).isdigit() else 1
 
 
+class EventQueryError(ValueError):
+    """请求参数无法构成有效查询；由资源层转换为 400。"""
+
+
+def _parse_date_boundary(value, end_of_day=False):
+    """接受 `YYYY-MM-DD` 或秒级时间戳，返回标准化的秒级字符串。"""
+    if value is None:
+        return None
+    text = value.strip().replace('T', ' ')
+    if not text:
+        return None
+    try:
+        parsed = datetime.datetime.strptime(text, '%Y-%m-%d')
+    except ValueError:
+        try:
+            return datetime.datetime.strptime(
+                text, '%Y-%m-%d %H:%M:%S'
+            ).strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            raise EventQueryError(
+                '时间范围只接受 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS 格式'
+            ) from None
+    if end_of_day:
+        parsed = parsed.replace(hour=23, minute=59, second=59)
+    return parsed.strftime('%Y-%m-%d %H:%M:%S')
+
+
 def _parse_date_range(raw_value):
+    """解析 `start_end` 范围。
+
+    旧实现在无法解析时原样返回用户输入，最终在底层 strptime 抛错并被吞掉，
+    页面只看到空结果。这里改为显式报错，让调用方返回 400。
+    """
     if not raw_value:
         return None, None
     parts = raw_value.split('_', 1)
-    return parts[0], parts[1] if len(parts) > 1 else None
+    start = _parse_date_boundary(parts[0])
+    end = _parse_date_boundary(parts[1], end_of_day=True) if len(parts) > 1 else None
+    if start and end and start > end:
+        raise EventQueryError('时间范围的开始时间不能晚于结束时间')
+    return start, end
 
 
 def _event_table_names(now=None):
@@ -307,6 +367,334 @@ def _get_leak_detail(start_time, problem, event_id, source):
         'start_time': str(row['s_time']),
         'end_time': '',
         'duration': '',
+    }
+
+
+def _structured_value(value):
+    if value in [None, '']:
+        return None
+    if isinstance(value, (dict, list, tuple, set)):
+        return value
+    if isinstance(value, str):
+        for loader in (json.loads, ast.literal_eval):
+            try:
+                return loader(value)
+            except (TypeError, ValueError, SyntaxError, json.JSONDecodeError):
+                continue
+    return value
+
+
+def _canonical_json(value):
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(',', ':'),
+        default=str,
+    )
+
+
+def _stable_id(prefix, value):
+    digest = hashlib.sha256(_canonical_json(value).encode('utf-8')).hexdigest()
+    return '{}{}'.format(prefix, digest[:24])
+
+
+def _business_timestamp(value):
+    if value in [None, '']:
+        return None, None
+    text = re.sub(r'\s+', ' ', str(value)).strip()
+    parsed = None
+    for candidate in (text, text.replace('Z', '+00:00')):
+        try:
+            parsed = datetime.datetime.fromisoformat(candidate)
+            break
+        except ValueError:
+            continue
+    if parsed is None:
+        return text, None
+    if parsed.tzinfo is None:
+        local = parsed.replace(tzinfo=BUSINESS_TIMEZONE)
+    else:
+        local = parsed.astimezone(BUSINESS_TIMEZONE)
+    utc = local.astimezone(UTC)
+    return local.isoformat(timespec='seconds'), utc.isoformat(timespec='seconds').replace('+00:00', 'Z')
+
+
+def _path_text(value):
+    if isinstance(value, (list, tuple)):
+        return ' '.join(str(item).strip() for item in value if str(item).strip())
+    if isinstance(value, dict):
+        candidate = value.get('path', value.get('as_path', value.get('route')))
+        return _path_text(candidate) if candidate is not None else _canonical_json(value)
+    return re.sub(r'\s+', ' ', str(value)).strip()
+
+
+def _path_values(value):
+    if value in [None, '']:
+        return []
+    values = value if isinstance(value, (list, tuple, set)) else [value]
+    paths = []
+    for item in values:
+        text = _path_text(item)
+        if text:
+            paths.append(text)
+    return paths
+
+
+def _route_observations(value, phase, label, source_field, fallback_time):
+    structured = _structured_value(value)
+    if structured in [None, '', []]:
+        return []
+
+    snapshots = []
+    if isinstance(structured, dict):
+        entries = sorted(structured.items(), key=lambda item: str(item[0]))
+    else:
+        entries = [(fallback_time, structured)]
+
+    for observed_at, paths_value in entries:
+        paths = _path_values(paths_value)
+        local_time, utc_time = _business_timestamp(observed_at or fallback_time)
+        identity = {
+            'phase': phase,
+            'source_field': source_field,
+            'observed_at': local_time,
+            'paths': paths,
+        }
+        snapshots.append({
+            'evidence_id': _stable_id('ev_v1_', identity),
+            'phase': phase,
+            'kind': 'route_observation',
+            'label': label,
+            'source_field': source_field,
+            'observed_at_local': local_time,
+            'observed_at_utc': utc_time,
+            'observation_state': 'paths_observed' if paths else 'no_path_in_snapshot',
+            'path_count': len(paths),
+            'paths': paths,
+            'observer_identity': 'not_retained',
+            'semantics': 'route_observation_not_causal_trace',
+        })
+    return snapshots
+
+
+def _affected_object_evidence(detail, incident_id):
+    candidates = (
+        ('outage_prefixes', '受影响前缀集合'),
+        ('outage_ases', '受影响 AS 集合'),
+        ('attacked_ases', '受影响 AS 集合'),
+    )
+    items = []
+    seen = set()
+    for field, label in candidates:
+        values = [str(item) for item in _safe_list(detail.get(field)) if str(item).strip()]
+        if not values:
+            continue
+        identity = {'incident_id': incident_id, 'field': field, 'objects': values}
+        evidence_id = _stable_id('ev_v1_', identity)
+        if evidence_id in seen:
+            continue
+        seen.add(evidence_id)
+        items.append({
+            'evidence_id': evidence_id,
+            'phase': 'context',
+            'kind': 'affected_object_set',
+            'label': label,
+            'source_field': field,
+            'object_count': len(values),
+            'objects': values,
+            'semantics': 'fact_table_affected_object_set',
+        })
+    return items
+
+
+def _phase_coverage(route_items, phase):
+    items = [item for item in route_items if item['phase'] == phase]
+    path_count = sum(item['path_count'] for item in items)
+    if not items:
+        status = 'not_available'
+    elif path_count:
+        status = 'observed_paths'
+    else:
+        status = 'observed_no_path'
+    return {
+        'status': status,
+        'snapshot_count': len(items),
+        'path_count': path_count,
+        'evidence_ids': [item['evidence_id'] for item in items],
+    }
+
+
+def _event_object(detail, fallback):
+    for key in (
+        'hijacker_prefix', 'hijacked_prefix', 'outage_prefix', 'leak_prefix',
+        'outage_as', 'outage_country', 'attacked_as', 'attacked_country',
+    ):
+        value = detail.get(key)
+        if value not in [None, '']:
+            return str(value)
+    return fallback.replace('-', '/')
+
+
+def get_event_evidence_bundle_data(event_type, start_time, problem, event_id, source):
+    """基于六类业务事实表返回确定性的只读证据包。"""
+
+    if event_type not in EVENT_KIND_LABELS:
+        return None
+    detail = get_event_detail_data(
+        event_type=event_type,
+        start_time=start_time,
+        problem=problem,
+        event_id=event_id,
+        source=source,
+    )
+    if not detail:
+        return None
+
+    canonical_reference = '{}/{}/{}/{}/{}'.format(
+        event_type, start_time, problem, event_id, source,
+    )
+    incident_identity = {
+        'schema': 'incident_id_v1',
+        'event_type': event_type,
+        'start_time': start_time,
+        'problem': problem,
+        'event_id': int(event_id),
+        'source': source,
+    }
+    incident_id = _stable_id('inc_v1_', incident_identity)
+
+    event_start_local, event_start_utc = _business_timestamp(detail.get('start_time') or start_time)
+    event_end_local, event_end_utc = _business_timestamp(detail.get('end_time'))
+    snapshot_local, snapshot_utc = _business_timestamp(resolve_query_now())
+
+    fact_table = '{}_{}{}'.format(EVENT_FACT_TABLES[event_type], start_time[0:4], start_time[5:7])
+    source_record = {
+        'source_system': 'Domeye business fact table',
+        'source_table': fact_table,
+        'source_code': source,
+        'record_locator': {
+            'problem': problem,
+            'event_id': int(event_id),
+            'start_time': start_time,
+        },
+        'detail_reference': canonical_reference,
+    }
+    fact_identity = {
+        'incident_id': incident_id,
+        'source_record': source_record,
+        'fact_record': detail,
+    }
+    evidence_items = [{
+        'evidence_id': _stable_id('ev_v1_', fact_identity),
+        'phase': 'context',
+        'kind': 'fact_record',
+        'label': '业务事实表原始记录',
+        'source_field': 'fact_record',
+        'observed_at_local': event_start_local,
+        'observed_at_utc': event_start_utc,
+        'field_count': len(detail),
+        'semantics': 'detector_fact_record',
+    }]
+
+    route_items = []
+    route_items.extend(_route_observations(
+        detail.get('pre_vp_paths'), 'before', '异常前可见路径快照',
+        'pre_vp_paths', detail.get('start_time') or start_time,
+    ))
+    route_items.extend(_route_observations(
+        detail.get('eve_vp_paths'), 'during', '异常期间路径快照',
+        'eve_vp_paths', detail.get('start_time') or start_time,
+    ))
+    route_items.extend(_route_observations(
+        detail.get('next_vp_paths'), 'after', '异常后路径快照',
+        'next_vp_paths', detail.get('end_time') or detail.get('start_time') or start_time,
+    ))
+    if detail.get('as_path') not in [None, '']:
+        route_items.extend(_route_observations(
+            detail.get('as_path'), 'during', '事件记录 AS_PATH 快照',
+            'as_path', detail.get('start_time') or start_time,
+        ))
+    evidence_items.extend(route_items)
+    evidence_items.extend(_affected_object_evidence(detail, incident_id))
+
+    phase_coverage = {
+        phase: _phase_coverage(route_items, phase)
+        for phase in ('before', 'during', 'after')
+    }
+    observed_phase_count = sum(
+        item['status'] != 'not_available' for item in phase_coverage.values()
+    )
+
+    supports = []
+    counterevidence = []
+    if (
+        phase_coverage['before']['path_count'] > 0
+        and phase_coverage['during']['status'] == 'observed_no_path'
+    ):
+        supports.append('异常前存在可见路径、异常期间快照未保留可见路径，支持“观测可见性下降”的描述。')
+    if phase_coverage['after']['path_count'] > 0:
+        counterevidence.append('异常后重新观测到可见路径，是“持续不可见”假设的反证，但不证明全网恢复。')
+
+    gaps = [
+        '当前事实字段未保留观测点身份，无法量化或复核 VP 覆盖范围。',
+        '当前证据包未附原始 BGP 报文，无法进行逐报文重放。',
+        '路径快照只能说明被观测到的路径状态，不能单独证明异常根因。',
+    ]
+    for phase, label in (('before', '异常前'), ('during', '异常期间'), ('after', '异常后')):
+        if phase_coverage[phase]['status'] == 'not_available':
+            gaps.append('{}路径快照缺失；这表示证据不可用，不表示该阶段没有路径。'.format(label))
+
+    limitations = [
+        'Route Observation / Path Snapshot 不是因果链路或根因证据。',
+        '无时区业务时间按数据画像 Asia/Shanghai 解释，并派生 UTC 时间。',
+        '异常后路径快照仅表示后续可见性观测，不等同于全网恢复确认。',
+        '阶段字段缺失表示当前事实记录未保留该证据，不能解释为网络状态缺失。',
+    ]
+
+    return {
+        'bundle_version': 'evidence_bundle_v1',
+        'incident_id': incident_id,
+        'incident_id_schema': 'incident_id_v1',
+        'event': {
+            'kind': event_type,
+            'label': EVENT_KIND_LABELS[event_type],
+            'object': _event_object(detail, problem),
+            'level': str(detail.get('event_level') or ''),
+            'summary': str(detail.get('event_info') or detail.get('event_descr') or ''),
+            'duration': str(detail.get('duration') or ''),
+            'event_time_local': event_start_local,
+            'event_time_utc': event_start_utc,
+            'end_time_local': event_end_local,
+            'end_time_utc': event_end_utc,
+            'source_timezone': 'Asia/Shanghai',
+        },
+        'data_snapshot': {
+            'snapshot_time_local': snapshot_local,
+            'snapshot_time_utc': snapshot_utc,
+            'timezone': 'Asia/Shanghai',
+        },
+        'source_record': source_record,
+        'phase_coverage': phase_coverage,
+        'evidence_items': evidence_items,
+        'assessment': {
+            'classification': 'observation_only',
+            'supports': supports,
+            'counterevidence': counterevidence,
+            'gaps': gaps,
+            'causal_conclusion': None,
+        },
+        'data_quality': {
+            'observed_phase_count': observed_phase_count,
+            'expected_phase_count': 3,
+            'route_observation_count': len(route_items),
+            'evidence_item_count': len(evidence_items),
+            'vantage_point_identity_available': False,
+            'raw_bgp_message_available': False,
+            'timezone_semantics': 'timestamp_without_time_zone interpreted as Asia/Shanghai',
+            'limitations': limitations,
+        },
+        'fact_record': detail,
     }
 
 

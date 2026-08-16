@@ -1,5 +1,7 @@
 from flask import request
 from flask_restful import Resource
+from services.asn_service import get_asn_recent_events, get_asn_workbench
+from services.country_service import get_country_workbench
 
 from services.features_service import (
     get_as_feature_series,
@@ -39,6 +41,18 @@ class CountryFeatureListResource(Resource):
         )
 
 
+class CountryWorkbenchResource(Resource):
+    """获取国家级报文、资源与异常聚合。"""
+
+    def get(self):
+        return get_country_workbench(
+            start_time=request.args.get('start_time'),
+            end_time=request.args.get('end_time'),
+            country=request.args.get('country', ''),
+            limit=request.args.get('limit'),
+        )
+
+
 class ASFeatureListResource(Resource):
     """
     获取AS时序特征列表
@@ -53,6 +67,30 @@ class ASFeatureListResource(Resource):
             country=request.args.get('country', ''),
             page_num=request.args.get('page_num'),
             page_size=request.args.get('page_size', 5),
+        )
+
+
+class ASWorkbenchResource(Resource):
+    """获取优先监测 ASN 的报文、资源、静态信息与异常聚合。"""
+
+    def get(self):
+        return get_asn_workbench(
+            start_time=request.args.get('start_time'),
+            end_time=request.args.get('end_time'),
+            asn=request.args.get('asn', ''),
+            limit=request.args.get('limit'),
+        )
+
+
+class ASRecentEventsResource(Resource):
+    """获取数字边界精确匹配的 ASN 最近事件。"""
+
+    def get(self):
+        return get_asn_recent_events(
+            start_time=request.args.get('start_time'),
+            end_time=request.args.get('end_time'),
+            asn=request.args.get('asn', ''),
+            page_size=request.args.get('page_size'),
         )
 
 

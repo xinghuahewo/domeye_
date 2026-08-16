@@ -8,13 +8,21 @@ export interface ChartSeries {
   data: Array<[string, number | null]>
 }
 
+export interface ChartMarker {
+  time: string
+  label: string
+  color?: string
+}
+
 const props = withDefaults(defineProps<{
   series: ChartSeries[]
+  markers?: ChartMarker[]
   unit?: string
   height?: number
 }>(), {
   unit: '',
   height: 300,
+  markers: () => [],
 })
 
 const chartElement = ref<HTMLDivElement | null>(null)
@@ -64,7 +72,7 @@ function renderChart() {
       axisLabel: { color: '#667085', fontSize: 9 },
       splitLine: { lineStyle: { color: '#e8edf2', type: 'dashed' } },
     },
-    series: props.series.map((item) => ({
+    series: props.series.map((item, index) => ({
       name: item.name,
       type: 'line',
       data: item.data,
@@ -73,11 +81,31 @@ function renderChart() {
       smooth: 0.12,
       lineStyle: { width: 2.2 },
       emphasis: { focus: 'series' },
+      ...(index === 0 && props.markers.length > 0 ? {
+        markLine: {
+          silent: true,
+          symbol: ['none', 'none'],
+          animation: false,
+          lineStyle: { color: '#f48120', width: 1, type: 'dashed', opacity: 0.7 },
+          label: {
+            show: true,
+            position: 'insideEndTop',
+            color: '#b54708',
+            fontSize: 8,
+            formatter: (params: { data?: { name?: string } }) => params.data?.name || '',
+          },
+          data: props.markers.map((marker) => ({
+            name: marker.label,
+            xAxis: marker.time,
+            lineStyle: { color: marker.color || '#f48120' },
+          })),
+        },
+      } : {}),
     })),
   }, true)
 }
 
-watch(() => [props.series, props.unit], renderChart, { deep: true })
+watch(() => [props.series, props.markers, props.unit], renderChart, { deep: true })
 
 onMounted(() => {
   renderChart()

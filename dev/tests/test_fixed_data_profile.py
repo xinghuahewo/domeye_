@@ -1,8 +1,12 @@
 from pathlib import Path
 import unittest
+import json
 
 
 ROOT = Path(__file__).resolve().parents[2]
+DATA_PROFILE = json.loads(
+    (ROOT / "config" / "data-profile.json").read_text(encoding="utf-8")
+)
 PROFILE = (ROOT / "deploy" / "lib" / "data-profile.sh").read_text(encoding="utf-8")
 API_MANAGER = (ROOT / "dev" / "backend" / "manage-dev-api.sh").read_text(
     encoding="utf-8"
@@ -26,17 +30,24 @@ FULL_ACCEPTANCE = (ROOT / "deploy" / "acceptance" / "full-acceptance.sh").read_t
 FIXED_FRONTEND = (ROOT / "deploy" / "build-fixed-frontend.sh").read_text(
     encoding="utf-8"
 )
+RELEASE_COMMANDS = [
+    (ROOT / "deploy" / "release" / name).read_text(encoding="utf-8")
+    for name in ("prepare.sh", "activate.sh", "rollback.sh")
+]
+RELEASE_GC = (ROOT / "deploy" / "release" / "gc.sh").read_text(encoding="utf-8")
 
 
 class FixedDataProfileContractTest(unittest.TestCase):
     def test_profile_is_pinned_to_february_and_march(self):
-        self.assertIn("DOMEYE_CORE_ACTIVE_DATA_PROFILE='feb-mar-2026'", PROFILE)
-        self.assertIn("DOMEYE_CORE_FIXED_DATA_START='2026-02-01 00:00:00'", PROFILE)
-        self.assertIn(
-            "DOMEYE_CORE_FIXED_DATA_END_EXCLUSIVE='2026-04-01 00:00:00'",
-            PROFILE,
+        self.assertEqual(DATA_PROFILE["id"], "feb-mar-2026")
+        self.assertEqual(DATA_PROFILE["timezone"], "Asia/Shanghai")
+        self.assertEqual(DATA_PROFILE["window_start"], "2026-02-01T00:00:00+08:00")
+        self.assertEqual(
+            DATA_PROFILE["window_end_exclusive"],
+            "2026-04-01T00:00:00+08:00",
         )
-        self.assertIn("DOMEYE_CORE_FIXED_DATABASE_PORT='31627'", PROFILE)
+        self.assertEqual(DATA_PROFILE["snapshot_time"], "2026-03-31T23:59:59+08:00")
+        self.assertIn("config/data-profile.json", PROFILE)
 
     def test_core_profile_reuses_verified_manager_on_existing_api_port(self):
         self.assertIn("SCREEN_NAME='domeye_core_app'", API_MANAGER)
@@ -65,9 +76,18 @@ class FixedDataProfileContractTest(unittest.TestCase):
         self.assertLess(gate, first_restore)
 
     def test_production_frontend_is_built_with_fixed_window(self):
-        self.assertIn("VITE_DATA_WINDOW_START='2026-02-01T00:00:00'", FIXED_FRONTEND)
-        self.assertIn("VITE_DATA_WINDOW_END='2026-03-31T23:59:59'", FIXED_FRONTEND)
+        self.assertIn('VITE_DATA_WINDOW_START="${DOMEYE_CORE_FIXED_DATA_START/ /T}"', FIXED_FRONTEND)
+        self.assertIn('VITE_DATA_WINDOW_END="${DOMEYE_CORE_FIXED_SNAPSHOT_TIME/ /T}"', FIXED_FRONTEND)
         self.assertIn("install-frontend-build.sh", FIXED_FRONTEND)
+
+    def test_stateful_release_commands_are_blocked_by_fixed_profile(self):
+        for command in RELEASE_COMMANDS:
+            self.assertIn("domeye_core_require_realtime_profile || exit 1", command)
+        execute_gate = RELEASE_GC.index('if [[ "${execute_gc}" == true ]]')
+        realtime_gate = RELEASE_GC.index("domeye_core_require_realtime_profile || exit 1")
+        delete_command = RELEASE_GC.index('rm -rf -- "${candidate_path}"')
+        self.assertLess(execute_gate, realtime_gate)
+        self.assertLess(realtime_gate, delete_command)
 
 
 if __name__ == "__main__":

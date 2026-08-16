@@ -25,6 +25,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/FeaturesPage.vue'),
     meta: { title: '综合特征', section: '时序特征' },
   },
+  {
+    path: '/countries',
+    name: 'countries',
+    component: () => import('@/pages/CountryPage.vue'),
+    meta: { title: '国家态势', section: '时序特征' },
+  },
+  {
+    path: '/countries/:country',
+    name: 'country-detail',
+    component: () => import('@/pages/CountryPage.vue'),
+    meta: { title: '国家档案', section: '时序特征' },
+  },
+  {
+    path: '/ases',
+    name: 'ases',
+    component: () => import('@/pages/AsnPage.vue'),
+    meta: { title: 'ASN 态势', section: '时序特征' },
+  },
+  {
+    path: '/ases/:asn',
+    name: 'asn-detail',
+    component: () => import('@/pages/AsnPage.vue'),
+    meta: { title: 'ASN 档案', section: '时序特征' },
+  },
 ]
 
 if (import.meta.env.DEV || import.meta.env.VITE_COMPONENT_PREVIEW === 'true') {

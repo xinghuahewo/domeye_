@@ -14,8 +14,15 @@ source "${DEPLOY_DIR}/lib/database-common.sh"
 source "${DEPLOY_DIR}/lib/frontend-common.sh"
 # shellcheck source=../lib/data-profile.sh
 source "${DEPLOY_DIR}/lib/data-profile.sh"
+# shellcheck source=../lib/release-common.sh
+source "${DEPLOY_DIR}/lib/release-common.sh"
 
 domeye_core_require_realtime_profile || exit 1
+if [[ "${DOMEYE_CORE_RELEASE_ACTIVATION:-}" != '1' ]]; then
+    domeye_artifact_error \
+        '禁止直接执行 full-acceptance.sh；必须通过 release-activate 的已验证状态机调用'
+    exit 2
+fi
 
 if (( $# < 2 || $# > 3 )); then
     printf '用法：%s <发布目录> <待隐藏旧目录> [数据库配置]\n' "${0##*/}" >&2
@@ -36,16 +43,88 @@ readonly DATABASE_ROLLBACK_JOURNAL="${DOMEYE_CORE_RELEASE_STATE_DIR}/database-ro
 readonly FRONTEND_CURRENT_STATE="${DOMEYE_CORE_FRONTEND_CURRENT_STATE}"
 readonly FRONTEND_ROLLBACK_JOURNAL="${DOMEYE_CORE_FRONTEND_ROLLBACK_JOURNAL}"
 readonly FRONTEND_INSTALL_STATUS="${DOMEYE_CORE_FRONTEND_INSTALL_STATUS}"
+readonly PREPARE_STATE="${DOMEYE_CORE_RELEASE_PREPARE_STATE:-}"
+readonly ACTIVATION_NONCE="${DOMEYE_CORE_RELEASE_ACTIVATION_NONCE:-}"
+readonly CANDIDATE_FRONTEND_DIST_INPUT="${DOMEYE_CORE_CANDIDATE_FRONTEND_DIST:-}"
 
-for command_name in awk chmod find jq mktemp nginx ps readlink screen sha256sum sort systemctl tr; do
+for command_name in awk chmod find jq nginx ps readlink screen sha256sum sort stat systemctl tr; do
     domeye_artifact_require_command "${command_name}"
 done
-if [[ ! -x "${DOMEYE_CORE_NODE_BIN_DIR}/node" || ! -x "${DOMEYE_CORE_NODE_BIN_DIR}/npm" ]]; then
-    domeye_artifact_error "缺少项目隔离的 Node.js 22.23.1：${DOMEYE_CORE_NODE_BIN_DIR}"
+if [[ ! "${ACTIVATION_NONCE}" =~ ^[0-9a-f]{64}$ ]]; then
+    domeye_artifact_error 'release-activate 未提供有效的一次性激活令牌'
     exit 1
 fi
-if [[ "$("${DOMEYE_CORE_NODE_BIN_DIR}/node" --version)" != 'v22.23.1' ]]; then
-    domeye_artifact_error '前端验收必须使用固定 Node.js v22.23.1'
+"${DEPLOY_DIR}/artifacts/verify-release.sh" "${RELEASE_DIR}"
+release_id="$(jq -er '.release_id' "${MANIFEST_PATH}")"
+domeye_artifact_validate_release_id "${release_id}"
+domeye_release_require_mode "${PREPARE_STATE}" 600
+if [[ ! -d "${CANDIDATE_FRONTEND_DIST_INPUT}" \
+    || -L "${CANDIDATE_FRONTEND_DIST_INPUT}" ]]; then
+    domeye_artifact_error 'release-activate 未提供有效的持久前端候选目录'
+    exit 1
+fi
+candidate_frontend_real="$(readlink -f -- "${CANDIDATE_FRONTEND_DIST_INPUT}")"
+readonly CANDIDATE_FRONTEND_DIST="${candidate_frontend_real}"
+unset candidate_frontend_real
+if ! jq -e \
+    --arg release_id "${release_id}" \
+    --arg nonce "${ACTIVATION_NONCE}" \
+    --arg release_dir "$(readlink -f -- "${RELEASE_DIR}")" \
+    --arg hidden_path "$(readlink -f -- "${HIDDEN_PATH}")" \
+    --arg database_env_file "$(readlink -f -- "${DATABASE_ENV_FILE}")" \
+    --arg frontend_dist "${CANDIDATE_FRONTEND_DIST}" \
+    '.schema_version == 1
+     and .release_id == $release_id
+     and .stage == "activating"
+     and .activation.nonce == $nonce
+     and .inputs.release_dir == $release_dir
+     and .inputs.hidden_path == $hidden_path
+     and .inputs.database_env_file == $database_env_file
+     and .frontend.dist == $frontend_dist
+     and (.frontend.tree_sha256 | test("^[0-9a-f]{64}$"))
+     and (.frontend.checkpoint | type) == "string"
+     and (.frontend.checkpoint_sha256 | test("^[0-9a-f]{64}$"))' \
+    "${PREPARE_STATE}" >/dev/null; then
+    domeye_artifact_error '激活状态、发布参数或候选目录不一致'
+    exit 1
+fi
+frontend_checkpoint="$(jq -r '.frontend.checkpoint' "${PREPARE_STATE}")"
+expected_checkpoint_sha="$(jq -r '.frontend.checkpoint_sha256' "${PREPARE_STATE}")"
+if [[ "${frontend_checkpoint}" != "${CANDIDATE_FRONTEND_DIST%/*}/frontend-build.json" ]]; then
+    domeye_artifact_error '激活状态中的前端构建检查点路径越界'
+    exit 1
+fi
+domeye_release_require_mode "${frontend_checkpoint}" 600
+if [[ "$(domeye_artifact_sha256 "${frontend_checkpoint}")" != "${expected_checkpoint_sha}" ]] \
+    || ! jq -e \
+        --arg release_id "${release_id}" \
+        --arg fingerprint "$(jq -r '.input_fingerprint' "${PREPARE_STATE}")" \
+        --arg dist "${CANDIDATE_FRONTEND_DIST}" \
+        --arg tree_sha256 "$(jq -r '.frontend.tree_sha256' "${PREPARE_STATE}")" \
+        '.schema_version == 1
+         and .release_id == $release_id
+         and .input_fingerprint == $fingerprint
+         and .dist == $dist
+         and .tree_sha256 == $tree_sha256' \
+        "${frontend_checkpoint}" >/dev/null; then
+    domeye_artifact_error '前端构建检查点与 activating 状态不一致'
+    exit 1
+fi
+unset frontend_checkpoint expected_checkpoint_sha
+if [[ ! -f "${DOMEYE_CORE_RELEASE_COMMAND_LOCK}/owner.json" \
+    || -L "${DOMEYE_CORE_RELEASE_COMMAND_LOCK}/owner.json" ]] \
+    || ! jq -e \
+        --arg release_id "${release_id}" \
+        --argjson parent_pid "${PPID}" \
+        '.operation == "activate" and .release_id == $release_id and .pid == $parent_pid' \
+        "${DOMEYE_CORE_RELEASE_COMMAND_LOCK}/owner.json" >/dev/null; then
+    domeye_artifact_error '未检测到与父进程绑定的 release-activate 全局锁'
+    exit 1
+fi
+domeye_frontend_validate_tree "${CANDIDATE_FRONTEND_DIST}"
+if [[ "$(domeye_frontend_tree_sha256 "${CANDIDATE_FRONTEND_DIST}")" \
+    != "$(jq -r '.frontend.tree_sha256' "${PREPARE_STATE}")" ]]; then
+    domeye_artifact_error '激活前候选前端目录哈希与 prepared 状态不一致'
     exit 1
 fi
 
@@ -64,7 +143,6 @@ previous_runtime_info_dir=''
 acceptance_complete=false
 rollback_failed=false
 declare -a rollback_failures=()
-release_id=''
 nginx_was_active=false
 nginx_target_existed=false
 if systemctl is-active --quiet nginx; then
@@ -259,9 +337,6 @@ if [[ ! -e "${DOMEYE_CORE_RELEASE_STATE_DIR}/database-current" \
             'full-acceptance-preflight'
     fi
 fi
-readonly ACCEPTANCE_WORK_DIR="$(mktemp -d /tmp/domeye-core-full-acceptance.XXXXXX)"
-readonly CANDIDATE_FRONTEND_DIST="${ACCEPTANCE_WORK_DIR}/frontend-dist"
-chmod 0755 "${ACCEPTANCE_WORK_DIR}"
 rollback_full_acceptance() {
     local original_exit_code=$?
     local final_exit_code="${original_exit_code}"
@@ -459,16 +534,6 @@ rollback_full_acceptance() {
                 "${DEPLOY_DIR}/stop-backend.sh"
         fi
     fi
-    if [[ "${ACCEPTANCE_WORK_DIR}" == /tmp/domeye-core-full-acceptance.* && -d "${ACCEPTANCE_WORK_DIR}" ]]; then
-        if [[ "${acceptance_complete}" == true ]]; then
-            if ! rm -rf -- "${ACCEPTANCE_WORK_DIR}"; then
-                domeye_artifact_error \
-                    "独立部署已通过，但验收临时目录清理失败，请人工删除：${ACCEPTANCE_WORK_DIR}"
-            fi
-        else
-            run_rollback_step '清理完整验收临时目录' rm -rf -- "${ACCEPTANCE_WORK_DIR}"
-        fi
-    fi
     if [[ "${rollback_failed}" == true ]]; then
         final_exit_code=1
         domeye_artifact_error \
@@ -480,9 +545,6 @@ rollback_full_acceptance() {
 }
 trap rollback_full_acceptance EXIT
 
-"${DEPLOY_DIR}/artifacts/verify-release.sh" "${RELEASE_DIR}"
-release_id="$(jq -er '.release_id' "${MANIFEST_PATH}")"
-domeye_artifact_validate_release_id "${release_id}"
 if frontend_release_committed; then
     domeye_artifact_error \
         "前端 release-id 已处于活动状态，拒绝把旧提交误认成本次安装：${release_id}"
@@ -494,22 +556,6 @@ if frontend_release_partially_visible; then
     exit 1
 fi
 "${DEPLOY_DIR}/database/restore-database.sh" "${RELEASE_DIR}" "${DATABASE_ENV_FILE}"
-
-(
-    cd -- "${PROJECT_ROOT}/backend"
-    /home/bgpdata/.local/bin/uv sync --frozen
-    /home/bgpdata/.local/bin/uv run --frozen pytest
-    sha256sum -c core.sha256
-)
-(
-    cd -- "${PROJECT_ROOT}/frontend"
-    export PATH="${DOMEYE_CORE_RUNTIME_PATH}"
-    [[ "$(node --version)" == 'v22.23.1' ]]
-    npm ci
-    npm test
-    npm run build -- --outDir "${CANDIDATE_FRONTEND_DIST}" --emptyOutDir
-)
-chmod -R u=rwX,go=rX "${CANDIDATE_FRONTEND_DIST}"
 
 DOMEYE_CORE_CANDIDATE_FRONTEND_DIST="${CANDIDATE_FRONTEND_DIST}" \
     "${SCRIPT_DIR}/candidate-stack.sh" "${RELEASE_DIR}" "${DATABASE_ENV_FILE}" "${HIDDEN_PATH}"

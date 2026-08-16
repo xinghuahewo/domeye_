@@ -19,9 +19,34 @@ class RemoteTunnelTest(unittest.TestCase):
             remote_port=31629,
         )
         self.assertEqual(command[0:2], ["ssh", "-N"])
+        self.assertEqual(command[command.index("-F") + 1], "/dev/null")
+        self.assertNotIn("ClearAllForwardings=yes", command)
         self.assertIn("ExitOnForwardFailure=yes", command)
         self.assertIn("127.0.0.1:51234:127.0.0.1:31629", command)
         self.assertEqual(command[-1], "root@10.99.8.16")
+
+    def test_remote_api_probe_uses_exclusive_window_date_twice(self):
+        process = SimpleNamespace(poll=lambda: None)
+        window = RUN_LOCAL.load_data_window()
+        responses = [
+            {"status": "ok", "service": "domeye-core"},
+            {
+                "status": False,
+                "msg": "开发数据仅支持 {} 至 {}：事件日期超出窗口".format(
+                    window["backend_start"],
+                    window["snapshot"],
+                ),
+            },
+        ]
+        with patch.object(RUN_LOCAL, "_read_json_url", side_effect=responses) as read_json:
+            RUN_LOCAL.wait_for_remote_api(51234, process, window, timeout=0.1)
+
+        self.assertEqual(
+            read_json.call_args_list[1].args[0],
+            "http://127.0.0.1:51234/api/v1/events"
+            "?date=2026-04-01_2026-04-01&page_num=1&page_size=10",
+        )
+        self.assertEqual(read_json.call_args_list[1].kwargs, {"expected_status": 400})
 
 
 class DevelopmentWindowTest(unittest.TestCase):
@@ -32,6 +57,31 @@ class DevelopmentWindowTest(unittest.TestCase):
         self.assertEqual(window["snapshot"], "2026-03-31 23:59:59")
         self.assertEqual(window["backend_start"], "2026-02-01 00:00:00")
         self.assertEqual(window["backend_end_exclusive"], "2026-04-01 00:00:00")
+
+    def test_child_environment_drops_database_and_production_values(self):
+        sanitized = RUN_LOCAL.sanitized_environment({
+            "PATH": "/usr/bin",
+            "SSH_AUTH_SOCK": "/tmp/agent.sock",
+            "DOMEYE_DEV_REMOTE_HOST": "dev@example.invalid",
+            "DB_HOST": "production-db",
+            "PGPASSWORD": "secret",
+            "SOURCE_DB_PASSWORD": "source-secret",
+            "DOMEYE_CORE_DB_READER_PASSWORD": "reader-secret",
+            "INFO_DIR": "/old/project/info",
+            "MAIL_PASSWORD": "mail-secret",
+        })
+        self.assertEqual(sanitized["PATH"], "/usr/bin")
+        self.assertEqual(sanitized["SSH_AUTH_SOCK"], "/tmp/agent.sock")
+        self.assertEqual(sanitized["DOMEYE_DEV_REMOTE_HOST"], "dev@example.invalid")
+        for name in (
+            "DB_HOST",
+            "PGPASSWORD",
+            "SOURCE_DB_PASSWORD",
+            "DOMEYE_CORE_DB_READER_PASSWORD",
+            "INFO_DIR",
+            "MAIL_PASSWORD",
+        ):
+            self.assertNotIn(name, sanitized)
 
     def test_timeout_scenario_deadline_is_shorter_than_mock_delay(self):
         env = {
