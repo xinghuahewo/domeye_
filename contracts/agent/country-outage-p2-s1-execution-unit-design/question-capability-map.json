@@ -698,6 +698,39 @@
       "source_population": "two_typed_facts_temporal_receipt_and_consistency_profile",
       "output_semantic": "evidence_consistency_class",
       "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-062",
+      "display_name_zh": "计算两个异常区间集合的时间交集",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-38"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "对两个完整、同身份且同时间网格的半开状态区间集合执行一次时间交集变换",
+      "source_population": "two_complete_state_interval_sets",
+      "output_semantic": "state_interval_overlap_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-063",
+      "display_name_zh": "投影固定cohort前缀集合",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-39"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整固定cohort member人口投影唯一prefix_key集合",
+      "source_population": "complete_fixed_cohort_member_result_set",
+      "output_semantic": "fixed_cohort_prefix_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-064",
+      "display_name_zh": "按完整成员集合展开原子子计划",
+      "owner_kind": "host_plan_capability",
+      "unit_ids": ["PLAN-CAP-02"],
+      "disposition": "deferred_p2_1_not_in_p2_v1_plan_schema",
+      "atomic_action": "未来只把上一已提交Plan修订的完整ResultSet按冻结模板确定性展开为下一Plan修订草案；P2 v1不得执行",
+      "source_population": "one_complete_typed_member_set_and_one_frozen_template_group",
+      "output_semantic": "expanded_plan_revision_candidate",
+      "evidence_level": "plan"
     }
   ],
   "questions": [
@@ -768,9 +801,9 @@
     {
       "question_id": "Q09",
       "user_goal": "比较两个ASN的异常时间、固定前缀和观测下游集合",
-      "required_capability_ids": ["CAP-P2-011", "CAP-P2-013", "CAP-P2-016", "CAP-P2-020", "CAP-P2-032", "CAP-P2-038", "CAP-P2-039", "CAP-P2-040", "CAP-P2-041", "CAP-P2-042"],
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-013", "CAP-P2-016", "CAP-P2-020", "CAP-P2-032", "CAP-P2-038", "CAP-P2-039", "CAP-P2-040", "CAP-P2-041", "CAP-P2-062", "CAP-P2-063"],
       "answerability": "new_tools_required",
-      "completion_rule": "三个关系分别报告交集人口、覆盖率和时间可比性",
+      "completion_rule": "两个ASN的固定前缀、观测下游集合和完整异常区间分别报告集合关系与半开时间交集",
       "forbidden_claims": ["shared_origin_means_direct_edge", "overlap_means_cause"]
     },
     {
@@ -792,7 +825,7 @@
     {
       "question_id": "Q14",
       "user_goal": "查看前缀观察方向数量和状态变化",
-      "required_capability_ids": ["CAP-P2-012", "CAP-P2-015", "CAP-P2-019", "CAP-P2-020", "CAP-P2-021", "CAP-P2-043", "CAP-P2-044", "CAP-P2-045"],
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-012", "CAP-P2-015", "CAP-P2-019", "CAP-P2-020", "CAP-P2-021", "CAP-P2-043", "CAP-P2-044", "CAP-P2-045"],
       "answerability": "new_tools_required",
       "completion_rule": "逐槽方向计数与按需RouteState证据可追溯",
       "forbidden_claims": ["direction_count_is_users", "no_observation_is_withdraw"]
@@ -831,10 +864,10 @@
     },
     {
       "question_id": "Q20",
-      "user_goal": "完整列出包含指定ASN的路径、前缀、origin和方向",
-      "required_capability_ids": ["CAP-P2-016", "CAP-P2-028", "CAP-P2-033", "CAP-P2-034", "CAP-P2-035", "CAP-P2-036", "CAP-P2-037", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "user_goal": "在绑定publication的affected-anchor窗口association人口内，完整列出包含指定ASN的路径关联行、前缀、origin和方向",
+      "required_capability_ids": ["CAP-P2-016", "CAP-P2-031", "CAP-P2-033", "CAP-P2-034", "CAP-P2-035", "CAP-P2-036", "CAP-P2-037", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
       "answerability": "new_path_tool_required",
-      "completion_rule": "完整分页、总体计数、规范化与导出摘要闭合",
+      "completion_rule": "TOOL-12 contains_asn原生过滤在ever_affected_asns_registered_by_bound_publication anchor域及window_path_association_evidence_rows人口内完成分页、总体计数和规范化闭合；不代表RRC25原始全部路径人口；完整导出仅针对冻结TOOL-12原始ResultSet",
       "forbidden_claims": ["limited_samples_are_all_paths", "contains_means_affected"]
     },
     {
@@ -856,7 +889,7 @@
     {
       "question_id": "Q23",
       "user_goal": "查询指定峰值时点实际活动路径是否包含ASN",
-      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-015", "CAP-P2-028", "CAP-P2-048"],
+      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-015", "CAP-P2-048"],
       "answerability": "new_route_state_tool_required",
       "completion_rule": "每项包含time/prefix/VP/peer/origin/path/checkpoint/provenance",
       "forbidden_claims": ["concurrent_is_path_at_time", "future_state_read"]
@@ -872,9 +905,9 @@
     {
       "question_id": "Q26",
       "user_goal": "列出指定ASN的RRC25观测下游origin集合",
-      "required_capability_ids": ["CAP-P2-005", "CAP-P2-016", "CAP-P2-032", "CAP-P2-035", "CAP-P2-036", "CAP-P2-037", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "required_capability_ids": ["CAP-P2-016", "CAP-P2-031", "CAP-P2-032", "CAP-P2-033", "CAP-P2-034", "CAP-P2-035", "CAP-P2-036", "CAP-P2-037", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
       "answerability": "new_path_tool_required",
-      "completion_rule": "完整路径人口投影、去重、总数和导出回执闭合",
+      "completion_rule": "仅当可信回执确认ASN属于ever_affected_asns_registered_by_bound_publication eligible anchor域时，TOOL-12才在window_path_association_evidence_rows人口内一次完整读取anchor-before-origin关系并由OP-19形成origin集合；该完整性不代表RRC25原始全部路径人口；eligible anchor匹配0行为合法完整空集，noneligible anchor为unsupported而非空集；同一总体可投影全人口path/prefix/direction集合及计数用于回答和预览；完整导出仅针对冻结TOOL-12原始ResultSet；不得声称逐origin统计，逐origin自动下钻降为P2.1",
       "forbidden_claims": ["observed_downstream_is_customer_cone", "origin_is_customer"]
     },
     {
@@ -926,6 +959,20 @@
       "answerability": "bounded_control_plane_only",
       "completion_rule": "发布有边界RRC25控制面结论并逐项列出unsupported",
       "forbidden_claims": ["cause", "responsibility", "national_outage", "real_user_impact", "recovery", "network_rca"]
+    }
+  ],
+  "deferred_p2_1_capabilities": [
+    {
+      "capability_id": "CAP-P2-064",
+      "unit_id": "PLAN-CAP-02",
+      "affected_question_ids": ["Q20", "Q23", "Q26"],
+      "p2_v1_grounding_allowed": false,
+      "hidden_fan_out_replacement_forbidden": true,
+      "deferred_outputs": [
+        "Q20逐路径位置与邻接批量处理",
+        "Q23逐活动路径位置与跨并列峰值自动展开",
+        "Q26按完整origin集合逐origin再次查询并分别统计"
+      ]
     }
   ],
   "global_forbidden_claims": [

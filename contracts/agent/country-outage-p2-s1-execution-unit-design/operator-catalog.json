@@ -119,6 +119,8 @@
     "typed_numeric_point": "operator-contract.schema.json#/$defs/typedNumericPoint",
     "half_open_interval": "operator-contract.schema.json#/$defs/halfOpenInterval",
     "half_open_state_interval": "operator-contract.schema.json#/$defs/halfOpenStateInterval",
+    "state_interval_overlap": "operator-contract.schema.json#/$defs/stateIntervalOverlap",
+    "fixed_cohort_member": "operator-contract.schema.json#/$defs/fixedCohortMember",
     "tie_group": "operator-contract.schema.json#/$defs/tieGroup",
     "asn_crossing_rank": "operator-contract.schema.json#/$defs/asnCrossingRank",
     "asn_duration_rank": "operator-contract.schema.json#/$defs/asnDurationRank",
@@ -134,6 +136,8 @@
     "position_pair": "operator-contract.schema.json#/$defs/positionPair",
     "path_evidence": "operator-contract.schema.json#/$defs/pathEvidence",
     "verified_anchor_before_known_origin_association": "operator-contract.schema.json#/$defs/verifiedAnchorBeforeKnownOriginAssociation",
+    "frozen_complete_tool12_result_set_ref": "operator-contract.schema.json#/$defs/op19SourceResultSetRef",
+    "origin_contribution_receipt": "operator-contract.schema.json#/$defs/op19OriginContribution",
     "route_observation_key": "operator-contract.schema.json#/$defs/routeObservationKey",
     "prefix_key": "operator-contract.schema.json#/$defs/prefixKey",
     "peer_asn_direction_id": "operator-contract.schema.json#/$defs/peerDirectionId",
@@ -157,6 +161,7 @@
     "complete_typed_set": "operator-contract.schema.json#/$defs/completeTypedSet",
     "typed_set": "operator-contract.schema.json#/$defs/typedSet",
     "typed_array": "operator-contract.schema.json#/$defs/typedArray",
+    "severity_ranked_member": "operator-contract.schema.json#/$defs/severityRankedMember",
     "typed_severity_state_point": "operator-contract.schema.json#/$defs/typedSeverityStatePoint",
     "first_crossing_profile_instance": "operator-contract.schema.json#/$defs/firstCrossingProfileInstance"
   },
@@ -493,11 +498,13 @@
         "required_fields": [
           "identity",
           "members",
-          "set_completeness"
+          "set_completeness",
+          "population_evidence_ref"
         ],
         "field_types": {
           "members": "array<as_summary>",
-          "set_completeness": "const:complete"
+          "set_completeness": "const:complete",
+          "population_evidence_ref": "evidence_ref"
         },
         "complete_input_required": true,
         "identity_equality_required": true,
@@ -508,6 +515,7 @@
       "output_contract": {
         "required_fields": [
           "ordered_asns",
+          "ranked_members",
           "rank_groups",
           "sort_profile_id",
           "input_digest",
@@ -515,6 +523,7 @@
         ],
         "field_types": {
           "ordered_asns": "array<asn>",
+          "ranked_members": "array<severity_ranked_member>",
           "rank_groups": "array<tie_group>",
           "sort_profile_id": "string"
         }
@@ -522,7 +531,7 @@
       "algorithm_contract": {
         "operation": "stable_lexicographic_sort",
         "rule": "peak_invisible_direction_count DESC, then peak_complete_prefix_count DESC, then asn ASC",
-        "tie_rule": "前两项相同属于同一严重性并列组；asn仅提供组内稳定顺序，不改变并列语义"
+        "tie_rule": "前两项相同属于同一严重性并列组；asn仅提供组内稳定顺序，不改变并列语义；severity_rank_global采用competition rank（1,1,3），result_position为全序1..n"
       },
       "default_sort": [
         "peak_invisible_direction_count DESC",
@@ -675,13 +684,26 @@
         "required_fields": [
           "intervals",
           "interval_count",
+          "target_state",
+          "grid_step_seconds",
+          "window",
+          "series_digest",
           "input_digest",
           "evidence_refs"
         ],
         "field_types": {
           "intervals": "array<half_open_state_interval>",
-          "interval_count": "nonnegative_integer"
-        }
+          "interval_count": "nonnegative_integer",
+          "target_state": "typed_state",
+          "grid_step_seconds": "positive_integer",
+          "window": "half_open_interval"
+        },
+        "invariants": [
+          "result.target_state == inputs.target_state",
+          "result.grid_step_seconds == inputs.grid_step_seconds",
+          "result.window == inputs.window",
+          "result.series_digest == inputs.series_digest"
+        ]
       },
       "algorithm_contract": {
         "operation": "segment_contiguous_target_state",
@@ -1341,9 +1363,7 @@
       "question_refs": [
         "Q05",
         "Q19",
-        "Q20",
         "Q21",
-        "Q23",
         "Q30"
       ],
       "composition_location": "investigation_plan",
@@ -1583,7 +1603,9 @@
         "space": "O(k)"
       },
       "question_refs": [
-        "Q22"
+        "Q20",
+        "Q22",
+        "Q26"
       ],
       "composition_location": "investigation_plan",
       "embedded_capabilities": [],
@@ -1611,25 +1633,41 @@
         "required_fields": [
           "identity",
           "anchor_asn",
+          "source_result_set_ref",
           "association_members",
           "set_completeness",
-          "population_filter_receipt_digest"
+          "source_result_set_query_receipt_digest",
+          "population_filter_receipt_digest",
+          "host_projection_receipt_digest",
+          "population_evidence_ref"
         ],
         "field_types": {
           "anchor_asn": "asn",
+          "source_result_set_ref": "frozen_complete_tool12_result_set_ref",
           "association_members": "array<verified_anchor_before_known_origin_association>",
-          "set_completeness": "const:complete"
+          "set_completeness": "const:complete",
+          "source_result_set_query_receipt_digest": "sha256",
+          "population_filter_receipt_digest": "sha256",
+          "host_projection_receipt_digest": "sha256",
+          "population_evidence_ref": "evidence_ref"
         },
         "complete_input_required": true,
         "identity_equality_required": true,
         "ordered_input_required": false,
-        "parameter_profile_id": null
+        "parameter_profile_id": null,
+        "invariants": [
+          "population_filter_receipt_digest == source_result_set_query_receipt_digest",
+          "source_result_set_ref.query_receipt_digest == population_filter_receipt_digest",
+          "association_members are a one-to-one Host-attested structural projection of every frozen source ResultSet member"
+          ,"each association preserves origin_status=known and observed_origin_asn=known_origin_asn from the Tool-12 member whose typed ordered path tail equals that origin"
+        ]
       },
       "output_semantic": "observed_downstream_origin_set",
       "output_contract": {
         "required_fields": [
           "anchor_asn",
           "members",
+          "member_contributions",
           "member_count",
           "set_digest",
           "input_digest",
@@ -1637,13 +1675,15 @@
         ],
         "field_types": {
           "members": "set<asn>",
+          "member_contributions": "array<origin_contribution_receipt>",
           "member_count": "nonnegative_integer"
         }
       },
       "algorithm_contract": {
         "operation": "project_unique_known_origin_asns",
         "rule": "仅投影输入人口已验证的known_origin_asn；不在Operator内判断contains/order或关系类型",
-        "tie_rule": "asn ASC"
+        "tie_rule": "asn ASC",
+        "output_closure": "members按asn ASC唯一排序；member_contributions对每origin精确列出源member key/digest/Evidence；count和摘要可重算"
       },
       "result_state_contract": {
         "empty": "complete空集合",
@@ -1651,7 +1691,7 @@
         "unknown": "unknown origin不进入集合且应已被上游人口排除",
         "not_computable": "not_used"
       },
-      "evidence_inheritance": "逐origin聚合贡献association Evidence及人口过滤回执",
+      "evidence_inheritance": "逐origin聚合贡献association Evidence及与源ResultSet query receipt精确相等的人口过滤回执",
       "forbidden_conclusions": [
         "customer_cone",
         "customer_set",
@@ -1740,7 +1780,8 @@
         "space": "O(k)"
       },
       "question_refs": [
-        "Q20"
+        "Q20",
+        "Q26"
       ],
       "composition_location": "investigation_plan",
       "embedded_capabilities": [],
@@ -1815,7 +1856,8 @@
         "space": "O(k)"
       },
       "question_refs": [
-        "Q20"
+        "Q20",
+        "Q26"
       ],
       "composition_location": "investigation_plan",
       "embedded_capabilities": [],
@@ -2460,7 +2502,6 @@
       },
       "question_refs": [
         "Q03",
-        "Q09",
         "Q31",
         "Q32"
       ],
@@ -3137,6 +3178,198 @@
       },
       "input_schema_ref": "operator-contract.schema.json#/$defs/op37InputEnvelope",
       "output_schema_ref": "operator-contract.schema.json#/$defs/op37OutputEnvelope"
+    },
+    {
+      "unit_id": "OP-38",
+      "name": "intersect_state_interval_sets",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1",
+      "atomic_capability_id": "time.intersect_state_interval_sets",
+      "single_responsibility": "计算两个完整、同身份且同网格半开状态区间集合的时间交集",
+      "input_semantic": "two_complete_state_interval_sets",
+      "input_contract": {
+        "required_fields": [
+          "identity",
+          "left_intervals",
+          "right_intervals",
+          "left_target_state",
+          "right_target_state",
+          "window",
+          "grid_step_seconds",
+          "left_interval_set_digest",
+          "right_interval_set_digest"
+        ],
+        "field_types": {
+          "left_intervals": "array<half_open_state_interval>",
+          "right_intervals": "array<half_open_state_interval>",
+          "left_target_state": "typed_state",
+          "right_target_state": "typed_state",
+          "window": "half_open_interval",
+          "grid_step_seconds": "positive_integer",
+          "left_interval_set_digest": "sha256",
+          "right_interval_set_digest": "sha256"
+        },
+        "complete_input_required": true,
+        "identity_equality_required": true,
+        "ordered_input_required": true,
+        "parameter_profile_id": null,
+        "invariants": [
+          "两侧OP-07回执的identity、window与grid_step_seconds逐字节一致",
+          "每侧区间按start_utc ASC且内部互不重叠",
+          "每个区间满足window.start_utc <= start_utc < end_utc <= window.end_utc"
+        ]
+      },
+      "output_semantic": "state_interval_overlap_set",
+      "output_contract": {
+        "required_fields": [
+          "outcome",
+          "overlap_intervals",
+          "overlap_count",
+          "left_target_state",
+          "right_target_state",
+          "window",
+          "grid_step_seconds",
+          "left_digest",
+          "right_digest",
+          "set_digest",
+          "evidence_refs"
+        ],
+        "field_types": {
+          "outcome": "enum:overlap|disjoint|empty_left|empty_right|empty_both",
+          "overlap_intervals": "array<state_interval_overlap>",
+          "overlap_count": "nonnegative_integer",
+          "left_target_state": "typed_state",
+          "right_target_state": "typed_state",
+          "window": "half_open_interval",
+          "grid_step_seconds": "positive_integer"
+        },
+        "invariants": [
+          "result.left_target_state == inputs.left_target_state",
+          "result.right_target_state == inputs.right_target_state",
+          "result.window == inputs.window",
+          "result.grid_step_seconds == inputs.grid_step_seconds",
+          "result.left_digest == inputs.left_interval_set_digest",
+          "result.right_digest == inputs.right_interval_set_digest",
+          "result.overlap_count == len(result.overlap_intervals)"
+        ]
+      },
+      "algorithm_contract": {
+        "operation": "intersect_two_sorted_half_open_interval_sets",
+        "rule": "用双指针计算[max(left.start,right.start),min(left.end,right.end))；只有start<end才输出，端点相接不算重叠；每个输出保留左右贡献区间摘要，不计算因果、持续排名或点时间先后",
+        "tie_rule": "按start_utc、end_utc、left_interval_digest、right_interval_digest稳定输出"
+      },
+      "result_state_contract": {
+        "empty": "按empty_left、empty_right、empty_both或非空双侧但disjoint精确表达",
+        "missing": "任一输入集合不完整或缺少回执时whole-call失败",
+        "unknown": "OP-07不得输出unknown区间；发现未知或无证据区间时whole-call失败",
+        "not_computable": "身份、window、grid、摘要或区间规范不一致时拒绝"
+      },
+      "evidence_inheritance": "每个overlap继承构成它的左右OP-07区间Evidence及两侧集合摘要",
+      "forbidden_conclusions": [
+        "causality",
+        "outage_propagation",
+        "real_world_continuity_outside_window"
+      ],
+      "complexity_contract": {
+        "time": "O(n+m)",
+        "space": "O(k)"
+      },
+      "question_refs": [
+        "Q09"
+      ],
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "runtime_ready_claim": false,
+      "split_test": {
+        "business_transform_count": 1,
+        "primary_output_semantic_count": 1,
+        "mode_changes_semantic": false,
+        "independently_publishable_subtransforms": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      },
+      "input_schema_ref": "operator-contract.schema.json#/$defs/op38InputEnvelope",
+      "output_schema_ref": "operator-contract.schema.json#/$defs/op38OutputEnvelope"
+    },
+    {
+      "unit_id": "OP-39",
+      "name": "project_fixed_cohort_prefix_set",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1",
+      "atomic_capability_id": "project.fixed_cohort_prefix_set",
+      "single_responsibility": "从一个完整固定cohort member结果集投影唯一prefix_key集合",
+      "input_semantic": "complete_fixed_cohort_member_result_set",
+      "input_contract": {
+        "required_fields": [
+          "identity",
+          "fixed_cohort_members",
+          "set_completeness",
+          "input_digest"
+        ],
+        "field_types": {
+          "fixed_cohort_members": "array<fixed_cohort_member>",
+          "set_completeness": "const:complete"
+        },
+        "complete_input_required": true,
+        "identity_equality_required": true,
+        "ordered_input_required": false,
+        "parameter_profile_id": null
+      },
+      "output_semantic": "fixed_cohort_prefix_set",
+      "output_contract": {
+        "required_fields": [
+          "members",
+          "member_count",
+          "set_digest",
+          "input_digest",
+          "evidence_refs"
+        ],
+        "field_types": {
+          "members": "set<prefix_key>",
+          "member_count": "nonnegative_integer"
+        },
+        "invariants": [
+          "result.member_count == len(result.members)",
+          "result.input_digest == inputs.input_digest"
+        ]
+      },
+      "algorithm_contract": {
+        "operation": "project_unique_fixed_cohort_prefix_keys",
+        "rule": "只按(afi,canonical_prefix)投影去重；MOAS member在两个ASN过滤结果中保持相同cohort_member_id且每个结果集内只计一个prefix_key；不读取状态或路径",
+        "tie_rule": "按afi、network address、prefix length稳定输出"
+      },
+      "result_state_contract": {
+        "empty": "complete空输入产生complete空集合",
+        "missing": "不完整或缺页输入whole-call失败",
+        "unknown": "prefix或afi未知、非法时whole-call失败",
+        "not_computable": "身份、成员Schema或摘要不一致时拒绝"
+      },
+      "evidence_inheritance": "每个prefix_key聚合贡献它的fixed cohort member Evidence，集合绑定输入ResultSet摘要",
+      "forbidden_conclusions": [
+        "prefix_affected_at_time",
+        "prefix_globally_reachable",
+        "asn_owns_prefix_exclusively"
+      ],
+      "complexity_contract": {
+        "time": "O(n log n)",
+        "space": "O(k)"
+      },
+      "question_refs": [
+        "Q09"
+      ],
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "runtime_ready_claim": false,
+      "split_test": {
+        "business_transform_count": 1,
+        "primary_output_semantic_count": 1,
+        "mode_changes_semantic": false,
+        "independently_publishable_subtransforms": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      },
+      "input_schema_ref": "operator-contract.schema.json#/$defs/op39InputEnvelope",
+      "output_schema_ref": "operator-contract.schema.json#/$defs/op39OutputEnvelope"
     }
   ]
 }

@@ -55,6 +55,19 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         for stage in ("S1D-1", "S1D-2", "S1D-3", "S1D-4"):
             self._copy_stage_artifacts(stage)
 
+    def _copy_through_s1d6(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3", "S1D-4", "S1D-5", "S1D-6"):
+            self._copy_stage_artifacts(stage)
+        task_source = REPO_ROOT / ".codex/TASK.json"
+        task_target = self.root / ".codex/TASK.json"
+        task_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(task_source, task_target)
+        for stage in HOOK.STAGES[:6]:
+            relative = HOOK.RECEIPT_ROOT / f"{stage}.json"
+            target = self.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPO_ROOT / relative, target)
+
     def _mutate_json(self, relative: Path, mutate) -> None:
         path = self.root / relative
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -702,6 +715,897 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         }
         return payload, members
 
+    def _valid_tool11_contains_asn_result_set_instance(
+        self,
+    ) -> tuple[dict, list[dict]]:
+        self.result_schema = self._schema("result-set.schema.json")
+        entry = self._registry_entry("TOOL-11")
+        member_schema_ref = (
+            "https://domeye.example/facts/materialized-route-state-member.schema.json"
+        )
+        member_schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": member_schema_ref,
+            "type": "object",
+            "required": [
+                "route_observation_key",
+                "state_point_utc",
+                "visibility",
+                "common_path_status",
+                "path_segments",
+            ],
+            "properties": {
+                "route_observation_key": {"type": "string", "minLength": 1},
+                "state_point_utc": {"type": "string", "format": "date-time"},
+                "visibility": {"enum": ["visible", "invisible", "unknown", "missing"]},
+                "common_path_status": {
+                    "enum": [
+                        "ordered",
+                        "unordered",
+                        "ambiguous",
+                        "invalid",
+                        "unknown",
+                        "not_applicable",
+                    ]
+                },
+                "path_segments": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["segment_type", "asns"],
+                        "properties": {
+                            "segment_type": {
+                                "enum": [
+                                    "as_sequence",
+                                    "as_set",
+                                    "confederation_sequence",
+                                    "confederation_set",
+                                ]
+                            },
+                            "asns": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {"type": "integer", "minimum": 0},
+                            },
+                        },
+                    },
+                },
+            },
+            "additionalProperties": False,
+        }
+        entry["output_populations"] = [
+            {
+                "population_id": "materialized_route_state_rows_at_exact_time",
+                "member_schema_ref": member_schema_ref,
+                "member_schema": member_schema,
+            }
+        ]
+        entry["output_schema_refs"] = [
+            "https://domeye.example/facts/materialized-route-state.json"
+        ]
+        self.result_registry_view = self._registry_view({"TOOL-11": entry})
+        self.result_registry = self._registry_store(self.result_registry_view)
+        identity = self._identity(self.result_registry_view)
+        identity["registry_snapshot_digest"] = self.result_registry_view[
+            "registry_snapshot_data_digest"
+        ]
+        identity["identity_digest"] = identity.pop("binding_digest")
+        identity["identity_digest"] = self._digest(identity, "identity_digest")
+        source_tool = {
+            "tool_id": "TOOL-11",
+            "tool_version": entry["unit_version"],
+            "contract_digest": entry["contract_digest"].removeprefix("sha256:"),
+            "tool_run_id": "TOOL-11-RUN-1",
+        }
+        query = {
+            "state_point_utc": "2026-02-27T23:15:00Z",
+            "contains_asn": 49666,
+        }
+        stable_sort = [
+            {
+                "field": "route_observation_key",
+                "direction": "ASC",
+                "nulls": "FORBIDDEN",
+            }
+        ]
+        members = [
+            {
+                "route_observation_key": "rrc25|vp1|peer1|109.74.224.0/20|4",
+                "state_point_utc": query["state_point_utc"],
+                "visibility": "visible",
+                "common_path_status": "ordered",
+                "path_segments": [
+                    {
+                        "segment_type": "as_sequence",
+                        "asns": [33874, 6758, 1273, 3257, 49666, 48159, 58224],
+                    }
+                ],
+            }
+        ]
+        population_schema_digest = self._digest(member_schema)
+        query_digest = self._digest({"normalized_query": query})
+        sort_digest = self._digest({"stable_sort": stable_sort})
+        query_receipt = self._receipt(
+            receipt_kind="query",
+            query_digest=query_digest,
+            identity_digest=identity["identity_digest"],
+            tool_run_id=source_tool["tool_run_id"],
+            state_point_utc=query["state_point_utc"],
+            source_population_id="materialized_route_state_rows_at_exact_time",
+            source_population_schema_digest=population_schema_digest,
+            source_dataset_digest=self._hex("a"),
+            contains_asn=49666,
+            path_asn_membership_profile_digest=(
+                HOOK.TOOL11_PATH_ASN_MEMBERSHIP_PROFILE_DIGEST
+            ),
+            path_asn_membership_index_digest=self._hex("b"),
+            path_asn_membership_materialization_receipt_digest=self._hex("c"),
+            eligible_row_predicate=HOOK.TOOL11_PATH_ASN_ELIGIBLE_ROW_PREDICATE,
+            matched_member_keys_digest=self._digest(
+                {"member_keys": [members[0]["route_observation_key"]]}
+            ),
+            total_count=1,
+            disposition="passed",
+        )
+        segment = {
+            "segment_ref": "TOOL11-SEGMENT-0",
+            "page_index": 0,
+            "member_count": 1,
+            "segment_digest": self._digest({"members": members}),
+        }
+        page_content_digest = self._digest(
+            {
+                "page_index": 0,
+                "member_segment_ref": segment["segment_ref"],
+                "members": members,
+            }
+        )
+        page_receipt = self._receipt(
+            receipt_kind="page",
+            page_index=0,
+            page_content_digest=page_content_digest,
+            identity_digest=identity["identity_digest"],
+            source_population_id="materialized_route_state_rows_at_exact_time",
+            source_population_schema_digest=population_schema_digest,
+            source_dataset_digest=self._hex("a"),
+            disposition="passed",
+        )
+        page = {
+            "page_index": 0,
+            "token_in": None,
+            "token_out": None,
+            "identity_digest": identity["identity_digest"],
+            "query_digest": query_digest,
+            "stable_sort_digest": sort_digest,
+            "source_population_id": "materialized_route_state_rows_at_exact_time",
+            "source_population_schema_digest": population_schema_digest,
+            "source_dataset_digest": self._hex("a"),
+            "first_sort_key": [members[0]["route_observation_key"]],
+            "last_sort_key": [members[0]["route_observation_key"]],
+            "member_count": 1,
+            "member_segment_ref": segment["segment_ref"],
+            "page_content_digest": page_content_digest,
+            "page_receipt_digest": page_receipt["receipt_digest"],
+            "evidence_refs": ["EV-TOOL11"],
+        }
+        result_id = "result-set-sha256:" + self._digest(
+            {
+                "source_identity": identity,
+                "source_tool": source_tool,
+                "normalized_query": query,
+                "stable_sort": stable_sort,
+                "source_population_id": "materialized_route_state_rows_at_exact_time",
+                "source_population_schema_ref": member_schema_ref,
+                "source_population_schema_digest": population_schema_digest,
+                "source_dataset_digest": self._hex("a"),
+            }
+        )
+        manifest_digest = self._digest(
+            {"page_manifest": [page], "member_segments": [segment]}
+        )
+        content_digest = self._digest({"members": members})
+        freeze_receipt = self._receipt(
+            receipt_kind="freeze",
+            result_set_id=result_id,
+            manifest_digest=manifest_digest,
+            content_digest=content_digest,
+            returned_count=1,
+            total_count=1,
+            set_completeness="complete",
+            source_population_id="materialized_route_state_rows_at_exact_time",
+            source_population_schema_digest=population_schema_digest,
+            source_dataset_digest=self._hex("a"),
+            disposition="passed",
+        )
+        self.result_receipts = {
+            item["receipt_digest"]: item
+            for item in (query_receipt, page_receipt, freeze_receipt)
+        }
+        payload = {
+            "schema_version": "country_outage_p2_result_set_v1",
+            "result_set_id": result_id,
+            "result_set_revision": 1,
+            "parent_result_set_revision": None,
+            "state": "frozen",
+            "source_identity": identity,
+            "source_tool": source_tool,
+            "normalized_query": query,
+            "query_digest": query_digest,
+            "stable_sort": stable_sort,
+            "stable_sort_digest": sort_digest,
+            "source_population_id": "materialized_route_state_rows_at_exact_time",
+            "source_population_schema_ref": member_schema_ref,
+            "source_population_schema_digest": population_schema_digest,
+            "source_dataset_digest": self._hex("a"),
+            "member_identity": "route_observation_key",
+            "dedupe_key": ["route_observation_key"],
+            "page_manifest": [page],
+            "returned_count": 1,
+            "total_count": 1,
+            "set_completeness": "complete",
+            "resume_page_token": None,
+            "member_segments": [segment],
+            "query_receipt_digest": query_receipt["receipt_digest"],
+            "source_completeness_receipt_digest": None,
+            "evidence_refs": ["EV-TOOL11"],
+            "limitations": [],
+            "manifest_digest": manifest_digest,
+            "content_digest": content_digest,
+            "freeze_receipt_digest": freeze_receipt["receipt_digest"],
+            "preview_views": [],
+            "generation_origin": "tool_pagination_without_llm_member_generation",
+            "design_boundary": self._design_boundary(),
+        }
+        return payload, members
+
+    def _valid_tool12_native_filter_result_set_instance(
+        self,
+    ) -> tuple[dict, list[dict]]:
+        self.result_schema = self._schema("result-set.schema.json")
+        entry = self._registry_entry("TOOL-12")
+        member_schema_ref = (
+            "https://domeye.example/facts/window-path-association-member.schema.json"
+        )
+        path_segment_schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["segment_type", "asns"],
+            "properties": {
+                "segment_type": {
+                    "enum": [
+                        "as_sequence",
+                        "as_set",
+                        "confederation_sequence",
+                        "confederation_set",
+                    ]
+                },
+                "asns": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"type": "integer", "minimum": 0},
+                },
+            },
+        }
+        member_schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": member_schema_ref,
+            "type": "object",
+            "required": [
+                "path_association_id",
+                "anchor_asn",
+                "known_origin_asn",
+                "origin_status",
+                "observed_origin_asn",
+                "ordered_sequence_eligible",
+                "path_digest",
+                "path_canonicalization_profile_id",
+                "path_canonicalization_profile_digest",
+                "evidence_ref",
+                "path_segments",
+            ],
+            "properties": {
+                "path_association_id": {"type": "string", "minLength": 1},
+                "anchor_asn": {"type": "integer", "minimum": 0},
+                "known_origin_asn": {"type": "integer", "minimum": 0},
+                "origin_status": {"const": "known"},
+                "observed_origin_asn": {"type": "integer", "minimum": 0},
+                "ordered_sequence_eligible": {"type": "boolean"},
+                "path_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "path_canonicalization_profile_id": {
+                    "const": "AS-PATH-CANONICALIZATION-1.0.0"
+                },
+                "path_canonicalization_profile_digest": {
+                    "const": HOOK.AS_PATH_CANONICALIZATION_PROFILE_DIGEST
+                },
+                "evidence_ref": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["evidence_id", "source_digest", "member_key"],
+                    "properties": {
+                        "evidence_id": {"type": "string"},
+                        "source_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                        "member_key": {"type": "string"},
+                    },
+                },
+                "path_segments": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": path_segment_schema,
+                },
+            },
+            "additionalProperties": False,
+        }
+        entry["output_populations"] = [
+            {
+                "population_id": "window_path_association_evidence_rows",
+                "member_schema_ref": member_schema_ref,
+                "member_schema": member_schema,
+            }
+        ]
+        entry["output_schema_refs"] = [
+            "https://domeye.example/facts/window-path-association.json"
+        ]
+        self.result_registry_view = self._registry_view({"TOOL-12": entry})
+        self.result_registry = self._registry_store(self.result_registry_view)
+        identity = self._identity(self.result_registry_view)
+        identity["registry_snapshot_digest"] = self.result_registry_view[
+            "registry_snapshot_data_digest"
+        ]
+        identity["identity_digest"] = identity.pop("binding_digest")
+        identity["identity_digest"] = self._digest(identity, "identity_digest")
+        source_tool = {
+            "tool_id": "TOOL-12",
+            "tool_version": entry["unit_version"],
+            "contract_digest": entry["contract_digest"].removeprefix("sha256:"),
+            "tool_run_id": "TOOL-12-RUN-1",
+        }
+        query = {
+            "anchor_asn": 49666,
+            "anchor_before_known_origin": True,
+            "contains_asn": 49666,
+        }
+        stable_sort = [
+            {
+                "field": "path_association_id",
+                "direction": "ASC",
+                "nulls": "FORBIDDEN",
+            }
+        ]
+        members = [
+            {
+                "path_association_id": "ASSOC-1",
+                "anchor_asn": 49666,
+                "known_origin_asn": 58224,
+                "origin_status": "known",
+                "observed_origin_asn": 58224,
+                "ordered_sequence_eligible": True,
+                "path_digest": self._hex("e"),
+                "path_canonicalization_profile_id": (
+                    "AS-PATH-CANONICALIZATION-1.0.0"
+                ),
+                "path_canonicalization_profile_digest": (
+                    HOOK.AS_PATH_CANONICALIZATION_PROFILE_DIGEST
+                ),
+                "evidence_ref": {
+                    "evidence_id": "EV-TOOL12-MEMBER-1",
+                    "source_digest": self._hex("f"),
+                    "member_key": "ASSOC-1",
+                },
+                "path_segments": [
+                    {
+                        "segment_type": "as_sequence",
+                        "asns": [33874, 3257, 49666, 48159, 58224],
+                    }
+                ],
+            }
+        ]
+        population_schema_digest = self._digest(member_schema)
+        query_digest = self._digest({"normalized_query": query})
+        sort_digest = self._digest({"stable_sort": stable_sort})
+        anchor_population_source_ref = {
+            "tool_id": "TOOL-04",
+            "result_set_id": "RESULT-EVER-AFFECTED-AS-1",
+            "result_set_revision": 1,
+            "manifest_digest": self._hex("1"),
+            "content_digest": self._hex("2"),
+            "freeze_receipt_digest": self._hex("3"),
+            "publication_id": identity["publication_id"],
+            "source_population_id": "ever_affected_asn_summary_rows",
+        }
+        eligible_anchor_asns = [49666, 58224]
+        eligible_anchor_asns_digest = self._digest(
+            {"members": eligible_anchor_asns}
+        )
+        materialization_receipt = self._receipt(
+            receipt_kind="tool12_filter_materialization",
+            materializer_id=HOOK.TOOL12_FILTER_MATERIALIZER_ID,
+            materializer_version=HOOK.TOOL12_FILTER_MATERIALIZER_VERSION,
+            materializer_contract_digest=(
+                HOOK.TOOL12_FILTER_MATERIALIZER_CONTRACT_DIGEST
+            ),
+            materializer_implementation_digest=(
+                HOOK.TOOL12_FILTER_MATERIALIZER_IMPLEMENTATION_DIGEST
+            ),
+            publication_id=identity["publication_id"],
+            source_dataset_digest=self._hex("a"),
+            filter_profile_id=HOOK.TOOL12_NATIVE_FILTER_PROFILE_ID,
+            filter_profile_digest=HOOK.TOOL12_NATIVE_FILTER_PROFILE_DIGEST,
+            path_asn_membership_index_id="INDEX-PATH-ASN-1",
+            anchor_before_known_origin_index_id="INDEX-ANCHOR-BEFORE-1",
+            path_association_index_digest=self._hex("b"),
+            indexed_member_keys_digest=self._digest(
+                {"member_keys": [members[0]["path_association_id"]]}
+            ),
+            anchor_population_source_ref=anchor_population_source_ref,
+            eligible_anchor_asns=eligible_anchor_asns,
+            eligible_anchor_asns_digest=eligible_anchor_asns_digest,
+            eligible_anchor_asn_count=len(eligible_anchor_asns),
+            disposition="passed",
+        )
+        self.tool12_filter_receipt_store = {
+            "store_contract_id": "country_outage_p2_tool12_filter_receipt_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": (
+                "country_outage_p2_tool12_filter_receipt_store_host"
+            ),
+            "attestation_contract_digest": (
+                HOOK.TOOL12_FILTER_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST
+            ),
+            "receipts": {
+                materialization_receipt["receipt_digest"]: materialization_receipt
+            },
+        }
+        query_receipt = self._receipt(
+            receipt_kind="query",
+            tool_id="TOOL-12",
+            tool_run_id=source_tool["tool_run_id"],
+            identity_digest=identity["identity_digest"],
+            publication_id=identity["publication_id"],
+            query_digest=query_digest,
+            source_population_id="window_path_association_evidence_rows",
+            source_population_schema_digest=population_schema_digest,
+            source_dataset_digest=self._hex("a"),
+            filter_profile_id=HOOK.TOOL12_NATIVE_FILTER_PROFILE_ID,
+            filter_profile_digest=HOOK.TOOL12_NATIVE_FILTER_PROFILE_DIGEST,
+            path_asn_membership_index_id="INDEX-PATH-ASN-1",
+            anchor_before_known_origin_index_id="INDEX-ANCHOR-BEFORE-1",
+            path_association_index_digest=self._hex("b"),
+            path_association_materialization_receipt_digest=(
+                materialization_receipt["receipt_digest"]
+            ),
+            anchor_population_source_ref=anchor_population_source_ref,
+            eligible_anchor_asns_digest=eligible_anchor_asns_digest,
+            eligible_anchor_asn_count=len(eligible_anchor_asns),
+            target_contains_asn=49666,
+            target_anchor_asn=49666,
+            anchor_before_known_origin=True,
+            anchor_population_eligible=True,
+            matched_member_keys_digest=self._digest(
+                {"member_keys": [members[0]["path_association_id"]]}
+            ),
+            matched_total_count=1,
+            disposition="passed",
+        )
+        segment = {
+            "segment_ref": "TOOL12-SEGMENT-0",
+            "page_index": 0,
+            "member_count": 1,
+            "segment_digest": self._digest({"members": members}),
+        }
+        page_content_digest = self._digest(
+            {
+                "page_index": 0,
+                "member_segment_ref": segment["segment_ref"],
+                "members": members,
+            }
+        )
+        page_receipt = self._receipt(
+            receipt_kind="page",
+            page_index=0,
+            page_content_digest=page_content_digest,
+            identity_digest=identity["identity_digest"],
+            source_population_id="window_path_association_evidence_rows",
+            source_population_schema_digest=population_schema_digest,
+            source_dataset_digest=self._hex("a"),
+            disposition="passed",
+        )
+        page = {
+            "page_index": 0,
+            "token_in": None,
+            "token_out": None,
+            "identity_digest": identity["identity_digest"],
+            "query_digest": query_digest,
+            "stable_sort_digest": sort_digest,
+            "source_population_id": "window_path_association_evidence_rows",
+            "source_population_schema_digest": population_schema_digest,
+            "source_dataset_digest": self._hex("a"),
+            "first_sort_key": [members[0]["path_association_id"]],
+            "last_sort_key": [members[0]["path_association_id"]],
+            "member_count": 1,
+            "member_segment_ref": segment["segment_ref"],
+            "page_content_digest": page_content_digest,
+            "page_receipt_digest": page_receipt["receipt_digest"],
+            "evidence_refs": ["EV-TOOL12"],
+        }
+        result_id = "result-set-sha256:" + self._digest(
+            {
+                "source_identity": identity,
+                "source_tool": source_tool,
+                "normalized_query": query,
+                "stable_sort": stable_sort,
+                "source_population_id": "window_path_association_evidence_rows",
+                "source_population_schema_ref": member_schema_ref,
+                "source_population_schema_digest": population_schema_digest,
+                "source_dataset_digest": self._hex("a"),
+            }
+        )
+        manifest_digest = self._digest(
+            {"page_manifest": [page], "member_segments": [segment]}
+        )
+        content_digest = self._digest({"members": members})
+        freeze_receipt = self._receipt(
+            receipt_kind="freeze",
+            result_set_id=result_id,
+            manifest_digest=manifest_digest,
+            content_digest=content_digest,
+            returned_count=1,
+            total_count=1,
+            set_completeness="complete",
+            source_population_id="window_path_association_evidence_rows",
+            source_population_schema_digest=population_schema_digest,
+            source_dataset_digest=self._hex("a"),
+            disposition="passed",
+        )
+        self.result_receipts = {
+            item["receipt_digest"]: item
+            for item in (query_receipt, page_receipt, freeze_receipt)
+        }
+        payload = {
+            "schema_version": "country_outage_p2_result_set_v1",
+            "result_set_id": result_id,
+            "result_set_revision": 1,
+            "parent_result_set_revision": None,
+            "state": "frozen",
+            "source_identity": identity,
+            "source_tool": source_tool,
+            "normalized_query": query,
+            "query_digest": query_digest,
+            "stable_sort": stable_sort,
+            "stable_sort_digest": sort_digest,
+            "source_population_id": "window_path_association_evidence_rows",
+            "source_population_schema_ref": member_schema_ref,
+            "source_population_schema_digest": population_schema_digest,
+            "source_dataset_digest": self._hex("a"),
+            "member_identity": "path_association_id",
+            "dedupe_key": ["path_association_id"],
+            "page_manifest": [page],
+            "returned_count": 1,
+            "total_count": 1,
+            "set_completeness": "complete",
+            "resume_page_token": None,
+            "member_segments": [segment],
+            "query_receipt_digest": query_receipt["receipt_digest"],
+            "source_completeness_receipt_digest": None,
+            "evidence_refs": ["EV-TOOL12"],
+            "limitations": [],
+            "manifest_digest": manifest_digest,
+            "content_digest": content_digest,
+            "freeze_receipt_digest": freeze_receipt["receipt_digest"],
+            "preview_views": [],
+            "generation_origin": "tool_pagination_without_llm_member_generation",
+            "design_boundary": self._design_boundary(),
+        }
+        return payload, members
+
+    def _valid_op05_ranking_instance(self) -> tuple[dict, dict]:
+        source_result_set, _ = self._valid_tool12_native_filter_result_set_instance()
+        source_identity = source_result_set["source_identity"]
+        identity = {
+            field: source_identity[field]
+            for field in (
+                "incident_id",
+                "publication_id",
+                "publication_revision",
+                "publication_digest",
+                "collector_id",
+                "cohort_id",
+                "cohort_digest",
+                "window_start_utc",
+                "window_end_utc",
+                "data_through_utc",
+                "registry_snapshot_id",
+                "registry_snapshot_digest",
+                "binding_generation",
+            )
+        }
+        population_evidence = {
+            "evidence_id": "EV-AS-POPULATION",
+            "source_digest": self._hex("7"),
+            "member_key": "population",
+        }
+        members = [
+            {
+                "asn": 20,
+                "peak_invisible_direction_count": 5,
+                "peak_complete_prefix_count": 2,
+                "fixed_prefix_count": 8,
+                "evidence_ref": {
+                    "evidence_id": "EV-AS-20",
+                    "source_digest": self._hex("2"),
+                    "member_key": "20",
+                },
+            },
+            {
+                "asn": 10,
+                "peak_invisible_direction_count": 5,
+                "peak_complete_prefix_count": 2,
+                "fixed_prefix_count": 7,
+                "evidence_ref": {
+                    "evidence_id": "EV-AS-10",
+                    "source_digest": self._hex("1"),
+                    "member_key": "10",
+                },
+            },
+            {
+                "asn": 30,
+                "peak_invisible_direction_count": 4,
+                "peak_complete_prefix_count": 9,
+                "fixed_prefix_count": 9,
+                "evidence_ref": {
+                    "evidence_id": "EV-AS-30",
+                    "source_digest": self._hex("3"),
+                    "member_key": "30",
+                },
+            },
+        ]
+        inputs = {
+            "identity": identity,
+            "members": members,
+            "set_completeness": "complete",
+            "population_evidence_ref": population_evidence,
+        }
+        input_digest = self._digest(inputs)
+        profile_digest = (
+            "012bf52458d4115c97c52716635345d9a64b79bf964aac8f7cbe4c433af103b2"
+        )
+        input_envelope = {
+            "identity": identity,
+            "operator_id": "OP-05",
+            "operator_version": "1.0.0-design",
+            "parameter_profile_id": "PROFILE-AS-SEVERITY-RANK-1.0.0",
+            "parameter_profile_digest": profile_digest,
+            "input_completeness": "complete",
+            "inputs": inputs,
+            "input_digests": [input_digest],
+        }
+        evidence_refs = [
+            population_evidence,
+            members[1]["evidence_ref"],
+            members[0]["evidence_ref"],
+            members[2]["evidence_ref"],
+        ]
+        result = {
+            "ordered_asns": [10, 20, 30],
+            "ranked_members": [
+                {
+                    "asn": 10,
+                    "severity_rank_global": 1,
+                    "result_position": 1,
+                    "severity_key": [5, 2],
+                },
+                {
+                    "asn": 20,
+                    "severity_rank_global": 1,
+                    "result_position": 2,
+                    "severity_key": [5, 2],
+                },
+                {
+                    "asn": 30,
+                    "severity_rank_global": 3,
+                    "result_position": 3,
+                    "severity_key": [4, 9],
+                },
+            ],
+            "rank_groups": [
+                {"rank": 1, "member_asns": [10, 20], "severity_key": [5, 2]},
+                {"rank": 3, "member_asns": [30], "severity_key": [4, 9]},
+            ],
+            "sort_profile_id": "PROFILE-AS-SEVERITY-RANK-1.0.0",
+            "input_digest": input_digest,
+            "evidence_refs": evidence_refs,
+        }
+        output_envelope = {
+            "identity": identity,
+            "operator_id": "OP-05",
+            "operator_version": "1.0.0-design",
+            "parameter_profile_id": "PROFILE-AS-SEVERITY-RANK-1.0.0",
+            "parameter_profile_digest": profile_digest,
+            "input_digests": [input_digest],
+            "input_completeness": "complete",
+            "result_state": "computed",
+            "completeness": "complete",
+            "result": result,
+            "evidence_refs": evidence_refs,
+            "fact_lineage": [input_digest],
+            "output_digest": self._hex("0"),
+        }
+        output_envelope["output_digest"] = self._digest(
+            output_envelope, "output_digest"
+        )
+        return input_envelope, output_envelope
+
+    def _valid_op19_projection_instance(self) -> tuple[dict, dict, dict, list[dict]]:
+        source_result_set, source_members = (
+            self._valid_tool12_native_filter_result_set_instance()
+        )
+        operator_schema = self._operator_contract_schema()
+        source_identity = source_result_set["source_identity"]
+        identity_fields = (
+            "incident_id",
+            "publication_id",
+            "publication_revision",
+            "publication_digest",
+            "collector_id",
+            "cohort_id",
+            "cohort_digest",
+            "window_start_utc",
+            "window_end_utc",
+            "data_through_utc",
+            "registry_snapshot_id",
+            "registry_snapshot_digest",
+            "binding_generation",
+        )
+        identity = {field: source_identity[field] for field in identity_fields}
+        associations = []
+        source_manifest = []
+        for member in source_members:
+            member_digest = self._digest(member)
+            source_manifest.append(
+                {
+                    "source_member_key": member["path_association_id"],
+                    "source_member_digest": member_digest,
+                }
+            )
+            associations.append(
+                {
+                    "source_member_key": member["path_association_id"],
+                    "source_member_digest": member_digest,
+                    "anchor_asn": member["anchor_asn"],
+                    "known_origin_asn": member["known_origin_asn"],
+                    "origin_status": member["origin_status"],
+                    "observed_origin_asn": member["observed_origin_asn"],
+                    "path_digest": member["path_digest"],
+                    "path_canonicalization_profile_id": member[
+                        "path_canonicalization_profile_id"
+                    ],
+                    "path_canonicalization_profile_digest": member[
+                        "path_canonicalization_profile_digest"
+                    ],
+                    "evidence_ref": member["evidence_ref"],
+                }
+            )
+        projection_receipt = self._receipt(
+            receipt_kind="op19_source_projection",
+            projector_id=HOOK.OP19_SOURCE_PROJECTOR_ID,
+            projector_version=HOOK.OP19_SOURCE_PROJECTOR_VERSION,
+            projector_contract_digest=HOOK.OP19_SOURCE_PROJECTOR_CONTRACT_DIGEST,
+            projector_implementation_digest=(
+                HOOK.OP19_SOURCE_PROJECTOR_IMPLEMENTATION_DIGEST
+            ),
+            source_result_set_id=source_result_set["result_set_id"],
+            source_result_set_revision=source_result_set["result_set_revision"],
+            source_content_digest=source_result_set["content_digest"],
+            source_query_receipt_digest=source_result_set["query_receipt_digest"],
+            source_member_manifest_digest=self._digest({"members": source_manifest}),
+            projected_members_digest=self._digest(
+                {"association_members": associations}
+            ),
+            projected_member_count=len(associations),
+            disposition="passed",
+        )
+        self.op19_projection_receipt_store = {
+            "store_contract_id": "country_outage_p2_op19_projection_receipt_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": (
+                "country_outage_p2_op19_projection_receipt_store_host"
+            ),
+            "attestation_contract_digest": (
+                HOOK.OP19_PROJECTION_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST
+            ),
+            "receipts": {
+                projection_receipt["receipt_digest"]: projection_receipt
+            },
+        }
+        population_evidence_ref = {
+            "evidence_id": "EV-TOOL12-QUERY",
+            "source_digest": source_result_set["query_receipt_digest"],
+            "member_key": "population",
+        }
+        inputs = {
+            "identity": identity,
+            "anchor_asn": 49666,
+            "source_result_set_ref": {
+                "result_set_id": source_result_set["result_set_id"],
+                "result_set_revision": source_result_set["result_set_revision"],
+                "manifest_digest": source_result_set["manifest_digest"],
+                "content_digest": source_result_set["content_digest"],
+                "freeze_receipt_digest": source_result_set[
+                    "freeze_receipt_digest"
+                ],
+                "query_receipt_digest": source_result_set["query_receipt_digest"],
+                "source_population_id": source_result_set["source_population_id"],
+                "source_dataset_digest": source_result_set["source_dataset_digest"],
+                "member_identity": source_result_set["member_identity"],
+            },
+            "association_members": associations,
+            "set_completeness": "complete",
+            "source_result_set_query_receipt_digest": source_result_set[
+                "query_receipt_digest"
+            ],
+            "population_filter_receipt_digest": source_result_set[
+                "query_receipt_digest"
+            ],
+            "host_projection_receipt_digest": projection_receipt[
+                "receipt_digest"
+            ],
+            "population_evidence_ref": population_evidence_ref,
+        }
+        input_digests = [
+            source_result_set["content_digest"],
+            projection_receipt["receipt_digest"],
+        ]
+        input_envelope = {
+            "identity": identity,
+            "operator_id": "OP-19",
+            "operator_version": "1.0.0-design",
+            "parameter_profile_id": None,
+            "parameter_profile_digest": None,
+            "input_completeness": "complete",
+            "inputs": inputs,
+            "input_digests": input_digests,
+        }
+        contribution = {
+            "origin_asn": 58224,
+            "source_member_keys": ["ASSOC-1"],
+            "source_member_digests": [associations[0]["source_member_digest"]],
+            "evidence_refs": [source_members[0]["evidence_ref"]],
+        }
+        contribution["contribution_digest"] = self._digest(contribution)
+        evidence_refs = [population_evidence_ref, source_members[0]["evidence_ref"]]
+        result = {
+            "anchor_asn": 49666,
+            "members": [58224],
+            "member_contributions": [contribution],
+            "member_count": 1,
+            "set_digest": self._digest({"members": [58224]}),
+            "input_digest": self._digest(inputs),
+            "evidence_refs": evidence_refs,
+        }
+        output_envelope = {
+            "identity": identity,
+            "operator_id": "OP-19",
+            "operator_version": "1.0.0-design",
+            "parameter_profile_id": None,
+            "parameter_profile_digest": None,
+            "input_digests": input_digests,
+            "input_completeness": "complete",
+            "result_state": "computed",
+            "completeness": "complete",
+            "result": result,
+            "evidence_refs": evidence_refs,
+            "fact_lineage": input_digests,
+            "output_digest": self._hex("0"),
+        }
+        output_envelope["output_digest"] = self._digest(
+            output_envelope, "output_digest"
+        )
+        self.op19_operator_schema = operator_schema
+        return input_envelope, output_envelope, source_result_set, source_members
+
     def _attach_source_incomplete_receipt(self, payload: dict) -> None:
         receipt = self._receipt(
             receipt_kind="source_completeness",
@@ -876,6 +1780,22 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "retry_count": 0,
         }
 
+    def _validate_dual_model_flow_instance(self, payload: dict, **kwargs) -> None:
+        """为实例攻击测试注入Host受信依赖，避免把调用方对象当作信任根。"""
+
+        kwargs.setdefault(
+            "trusted_oracle_store", getattr(self, "dual_oracle_store", None)
+        )
+        kwargs.setdefault(
+            "trusted_student_answer_artifact_store",
+            getattr(self, "dual_student_answer_artifact_store", None),
+        )
+        kwargs.setdefault(
+            "trusted_alignment_receipt_store",
+            getattr(self, "dual_alignment_receipt_store", None),
+        )
+        HOOK.validate_dual_model_flow_instance(payload, **kwargs)
+
     def _valid_dual_model_instance(self) -> dict:
         self.dual_schema = self._schema("dual-model-answer-flow.schema.json")
         evidence = self._valid_evidence_graph_instance()
@@ -931,6 +1851,17 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             },
         }
         evidence_identity = self.evidence_plan["plan_definition"]["identity"]
+        teacher_semantic_plan_digest = self._hex("4")
+        teacher_plan_grounding = {
+            "receipt_id": "TEACHER-PLAN-GROUNDING-1",
+            "teacher_semantic_plan_digest": teacher_semantic_plan_digest,
+            "grounding_plan_digest": self._hex("5"),
+            "registry_snapshot_digest": evidence["registry_snapshot_digest"],
+            "disposition": "passed",
+        }
+        teacher_plan_grounding["receipt_digest"] = self._digest(
+            teacher_plan_grounding
+        )
         binding = {
             "question_id": "Q05",
             "question_digest": self._hex("1"),
@@ -947,6 +1878,10 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "data_through_utc": "2026-03-11T00:00:00Z",
             "finality": "event_end_unknown",
             "binding_generation": 1,
+            "teacher_semantic_plan_digest": teacher_semantic_plan_digest,
+            "teacher_plan_grounding_receipt_digest": teacher_plan_grounding[
+                "receipt_digest"
+            ],
             "grounding_plan_digest": self._hex("5"),
             "plan_id": evidence["plan_id"],
             "plan_revision": 1,
@@ -967,7 +1902,18 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         binding_digest = self._digest(binding)
         teacher_identity = self._model_identity("openai", "gpt-5.6-sol", "2026-08-12")
         student_identity = self._model_identity(
-            "deepseek", "deepseek-v4-flash", "deepseek-v4-flash"
+            "deepseek", "deepseek-v4-flash", "deepseek-v4-flash-pi-0.84.1-v1"
+        )
+        student_identity.update(
+            {
+                "expected_response_model": "deepseek-v4-flash",
+                "pi_version": "0.84.1",
+                "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+                "profile_registry_sha256": "e8881aa2b79f495da3ea551bb3b2423af45c118f5e622ac1877852bf0087bf4f",
+            }
+        )
+        student_identity["identity_digest"] = self._digest(
+            student_identity, "identity_digest"
         )
         teacher_reference = {
             "teacher_reference_id": "TEACHER-REFERENCE-1",
@@ -981,25 +1927,134 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "private_chain_of_thought_persisted": False,
         }
         teacher_reference["output_digest"] = self._digest(teacher_reference)
+        oracle_record = {
+            "question_id": "Q05",
+            "required_fact_ids": ["FACT-1"],
+            "required_boundary_assertion_ids": ["rrc25_control_plane_only"],
+            "allowed_boundary_assertion_ids": [
+                "rrc25_control_plane_only",
+                "event_finality_unknown",
+            ],
+            "required_unknown_ids": ["event_end_unknown"],
+            "prohibited_assertion_ids": ["customer_relation_claimed", "recovery_claimed"],
+        }
+        oracle_record["oracle_digest"] = self._digest(oracle_record)
+        self.dual_oracle_store = {
+            "store_contract_id": "country_outage_p2_trusted_oracle_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": "country_outage_p2_oracle_store_host",
+            "attestation_contract_digest": (
+                HOOK.ORACLE_STORE_ATTESTATION_CONTRACT_DIGEST
+            ),
+            "oracles": {oracle_record["oracle_digest"]: oracle_record},
+        }
         teacher_validation = self._gate_receipt(
             subject_digest=teacher_reference["output_digest"],
             binding_digest=binding_digest,
             validation_id="TEACHER-VALIDATION-1",
         )
-        teacher_run = {
-            "run_id": "TEACHER-RUN-1",
+        teacher_coverage = {
+            "coverage_run_id": "TEACHER-ORACLE-COVERAGE-1",
+            "question_id": "Q05",
+            "shared_answer_binding_digest": binding_digest,
+            "oracle_digest": oracle_record["oracle_digest"],
+            "teacher_reference_digest": teacher_reference["output_digest"],
+            "required_fact_ids_complete": True,
+            "required_boundary_assertions_complete": True,
+            "required_unknowns_complete": True,
+            "prohibited_assertion_count": 0,
+            "disposition": "passed",
+        }
+        teacher_coverage["receipt_digest"] = self._digest(teacher_coverage)
+        teacher_plan_run = {
+            "run_id": "TEACHER-PLAN-RUN-1",
             "role": "teacher",
+            "run_phase": "sol_planning",
             "exact_model_identity": teacher_identity,
             "shared_answer_binding_digest": binding_digest,
             "role_specific_input_digest": self._digest(
-                {"role": "teacher", "shared_answer_binding_digest": binding_digest}
+                {
+                    "role": "teacher",
+                    "run_phase": "sol_planning",
+                    "question_digest": binding["question_digest"],
+                    "goal_digest": binding["goal_digest"],
+                    "incident_id": binding["incident_id"],
+                    "publication_id": binding["publication_id"],
+                    "publication_revision": binding["publication_revision"],
+                    "collector_id": binding["collector_id"],
+                    "prompt_digest": binding["prompt_digest"],
+                    "policy_digest": binding["policy_digest"],
+                }
+            ),
+            "output_digest": binding["teacher_semantic_plan_digest"],
+            "validation_receipt_digest": teacher_plan_grounding["receipt_digest"],
+            "cost": self._run_cost(),
+            "disposition": "completed",
+        }
+        teacher_run = {
+            "run_id": "TEACHER-RUN-1",
+            "role": "teacher",
+            "run_phase": "sol_reference",
+            "exact_model_identity": teacher_identity,
+            "shared_answer_binding_digest": binding_digest,
+            "role_specific_input_digest": self._digest(
+                {
+                    "role": "teacher",
+                    "run_phase": "sol_reference",
+                    "shared_answer_binding_digest": binding_digest,
+                }
             ),
             "output_digest": teacher_reference["output_digest"],
             "validation_receipt_digest": teacher_validation["receipt_digest"],
             "cost": self._run_cost(),
             "disposition": "completed",
         }
-        student_answer_digest = self._hex("a")
+        typed_claim = {
+            "claim_id": "CLAIM-1",
+            "claim_kind": "observed_fact",
+            "claim_relation": "states_observed_fact",
+            "text": "仅陈述绑定RRC25 publication内的控制面事实。",
+            "fact_ids": ["FACT-1"],
+            "source_node_ids": ["F1"],
+            "source_value_digests": [evidence["nodes"][0]["payload"]["fact_value_digest"]],
+            "evidence_refs": ["EV1"],
+            "boundary_assertion_ids": ["rrc25_control_plane_only"],
+            "verification_requirements": [],
+        }
+        limitation_claim = {
+            "claim_id": "CLAIM-LIMITATION-1",
+            "claim_kind": "limitation",
+            "claim_relation": "states_limitation",
+            "text": "single_rrc25_collector",
+            "fact_ids": [],
+            "source_node_ids": [],
+            "source_value_digests": [],
+            "evidence_refs": [],
+            "boundary_assertion_ids": ["rrc25_control_plane_only"],
+            "verification_requirements": ["additional_collectors_required"],
+        }
+        unknown_claim = {
+            "claim_id": "CLAIM-UNKNOWN-1",
+            "claim_kind": "unknown",
+            "claim_relation": "states_unknown",
+            "text": "event_end_unknown",
+            "fact_ids": [],
+            "source_node_ids": [],
+            "source_value_digests": [],
+            "evidence_refs": [],
+            "boundary_assertion_ids": ["event_finality_unknown"],
+            "verification_requirements": ["event_end_evidence_required"],
+        }
+        typed_claims = [typed_claim, limitation_claim, unknown_claim]
+        student_answer_payload = {
+            "claims": json.loads(json.dumps(typed_claims)),
+            "evidence_refs": ["EV1"],
+            "limitations": ["single_rrc25_collector"],
+            "unknowns": ["event_end_unknown"],
+            "answer_text": "仅陈述绑定RRC25 publication内的控制面事实。",
+        }
+        student_answer_digest = self._digest(student_answer_payload)
         student_validation = self._gate_receipt(
             subject_digest=student_answer_digest,
             binding_digest=binding_digest,
@@ -1008,15 +2063,20 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         student_run_receipt = {
             "run_id": "STUDENT-RUN-1",
             "role": "student",
+            "run_phase": "ds_first_answer",
             "exact_model_identity": student_identity,
             "shared_answer_binding_digest": binding_digest,
             "role_specific_input_digest": self._digest(
                 {
                     "role": "student",
+                    "run_phase": "ds_first_answer",
                     "revision_ordinal": 0,
                     "shared_answer_binding_digest": binding_digest,
                     "teacher_reference_digest": teacher_reference["output_digest"],
                     "teacher_validation_receipt_digest": teacher_validation[
+                        "receipt_digest"
+                    ],
+                    "teacher_oracle_coverage_receipt_digest": teacher_coverage[
                         "receipt_digest"
                     ],
                     "structured_feedback_digest": None,
@@ -1032,16 +2092,60 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "run_receipt": student_run_receipt,
             "teacher_reference_digest": teacher_reference["output_digest"],
             "teacher_validation_receipt_digest": teacher_validation["receipt_digest"],
+            "teacher_oracle_coverage_receipt_digest": teacher_coverage[
+                "receipt_digest"
+            ],
             "student_answer_digest": student_answer_digest,
+            "student_answer_artifact": {
+                "artifact_ref": f"artifact:student-answer:{student_answer_digest}",
+                "artifact_schema_ref": "https://domeye.example/contracts/agent/country-outage-p2-s1/student-answer.schema.json",
+                "answer_payload": student_answer_payload,
+                "answer_digest": student_answer_digest,
+                "artifact_receipt_digest": self._hex("f"),
+            },
             "validation_receipt": student_validation,
             "may_call_tools": False,
             "may_add_event_facts": False,
+        }
+        student_run["student_answer_artifact"]["artifact_receipt_digest"] = self._digest(
+            student_run["student_answer_artifact"], "artifact_receipt_digest"
+        )
+        artifact = student_run["student_answer_artifact"]
+        self.dual_student_answer_artifact_store = {
+            "store_contract_id": "country_outage_p2_trusted_student_answer_artifact_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": "country_outage_p2_student_answer_artifact_store_host",
+            "attestation_contract_digest": (
+                HOOK.STUDENT_ANSWER_ARTIFACT_STORE_ATTESTATION_CONTRACT_DIGEST
+            ),
+            "artifacts": {artifact["artifact_ref"]: json.loads(json.dumps(artifact))},
+        }
+        alignment_metric_inputs = {
+            "question_id": binding["question_id"],
+            "oracle_digest": teacher_coverage["oracle_digest"],
+            "evidence_graph_digest": binding["evidence_graph_digest"],
+            "teacher_reference_digest": teacher_reference["output_digest"],
+            "teacher_oracle_coverage_receipt_digest": teacher_coverage[
+                "receipt_digest"
+            ],
+            "student_answer_digest": student_answer_digest,
         }
         alignment = {
             "alignment_run_id": "ALIGNMENT-1",
             "shared_answer_binding_digest": binding_digest,
             "teacher_reference_digest": teacher_reference["output_digest"],
             "student_answer_digest": student_answer_digest,
+            "oracle_digest": teacher_coverage["oracle_digest"],
+            "evidence_graph_digest": binding["evidence_graph_digest"],
+            "teacher_oracle_coverage_receipt_digest": teacher_coverage[
+                "receipt_digest"
+            ],
+            "evaluator_id": "country_outage_p2_alignment_evaluator",
+            "evaluator_version": "1.0.0",
+            "evaluator_contract_digest": "2a7b9dc73194dc78fc797b9be30676ccdfde38599466e47305e50ef963e53b3b",
+            "evaluator_implementation_digest": "d193bee50269c2e464ed3b98ef0deb293dcaee1b55ea12aebbbd2e11ed4947cc",
+            "metric_inputs_digest": self._digest(alignment_metric_inputs),
             "hard_gate_metrics": {
                 "fact_precision": 1,
                 "evidence_ref_precision": 1,
@@ -1052,9 +2156,22 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "disposition": "passed",
         }
         alignment["receipt_digest"] = self._digest(alignment)
+        self.dual_alignment_receipt_store = {
+            "store_contract_id": "country_outage_p2_trusted_alignment_receipt_store_v1",
+            "trust_origin": "host_authenticated_runtime_store",
+            "caller_mutable": False,
+            "attestation_provider_id": "country_outage_p2_alignment_receipt_store_host",
+            "attestation_contract_digest": (
+                HOOK.ALIGNMENT_RECEIPT_STORE_ATTESTATION_CONTRACT_DIGEST
+            ),
+            "receipts": {
+                alignment["receipt_digest"]: json.loads(json.dumps(alignment))
+            },
+        }
         published = {
             "shared_answer_binding_digest": binding_digest,
-            "claims_digest": self._hex("b"),
+            "claims": json.loads(json.dumps(typed_claims)),
+            "claims_digest": self._digest({"claims": typed_claims}),
             "evidence_refs": ["EV1"],
             "limitations": ["single_rrc25_collector"],
             "unknowns": ["event_end_unknown"],
@@ -1090,14 +2207,18 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "shared_answer_binding": binding,
             "teacher_model_identity": teacher_identity,
             "student_model_identity": student_identity,
+            "teacher_plan_run_receipt": teacher_plan_run,
+            "teacher_plan_grounding_receipt": teacher_plan_grounding,
             "teacher_run_receipt": teacher_run,
             "teacher_reference": teacher_reference,
             "teacher_validation_receipt": teacher_validation,
+            "teacher_oracle_coverage_receipt": teacher_coverage,
             "student_runs": [student_run],
             "structured_feedback": None,
             "student_validation_receipt": student_validation,
             "alignment_run_receipt": alignment,
             "degraded_authorization": None,
+            "teacher_unavailable_phase": "none",
             "published_answer": published,
             "publish_receipt_digest": self.dual_publish_receipt["receipt_digest"],
             "final_disposition": "aligned_published",
@@ -1306,9 +2427,12 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload["flow_state"] = "degraded_published"
         payload["effective_teacher_required"] = False
         payload["final_disposition"] = "ds_unaligned_degraded"
+        payload["teacher_plan_run_receipt"] = None
+        payload["teacher_plan_grounding_receipt"] = None
         payload["teacher_run_receipt"] = None
         payload["teacher_reference"] = None
         payload["teacher_validation_receipt"] = None
+        payload["teacher_oracle_coverage_receipt"] = None
         payload["alignment_run_receipt"] = None
         payload["structured_feedback"] = None
         payload["degraded_authorization"] = authorization
@@ -1316,15 +2440,18 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         student = payload["student_runs"][0]
         student["teacher_reference_digest"] = None
         student["teacher_validation_receipt_digest"] = None
+        student["teacher_oracle_coverage_receipt_digest"] = None
         student_run = student["run_receipt"]
         student_run["shared_answer_binding_digest"] = root_digest
         student_run["role_specific_input_digest"] = self._digest(
             {
                 "role": "student",
+                "run_phase": "ds_first_answer",
                 "revision_ordinal": 0,
                 "shared_answer_binding_digest": root_digest,
                 "teacher_reference_digest": None,
                 "teacher_validation_receipt_digest": None,
+                "teacher_oracle_coverage_receipt_digest": None,
                 "structured_feedback_digest": None,
             }
         )
@@ -1971,6 +3098,24 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
 
         self._mutate_json(relative, mutate)
         self._assert_error("path_digest_null_binding_missing", stage="S1D-2")
+
+    def test_s1d2_rejects_tool12_filter_profile_body_drift_with_stale_digest(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        self._copy_stage_artifacts("S1D-2")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate(payload) -> None:
+            source = next(
+                item
+                for item in payload["source_view_requirements"]
+                if item["source_population_id"]
+                == "window_path_association_evidence_rows"
+            )
+            source["filter_profile"]["query_time_path_parsing_forbidden"] = False
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("tool12_native_filter_contract_open", stage="S1D-2")
+
     def test_s1d3_passes_with_closed_atomic_operator_contracts(self) -> None:
         for stage in ("S1D-1", "S1D-2", "S1D-3"):
             self._copy_stage_artifacts(stage)
@@ -2292,12 +3437,13 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             receipt_store=self.evidence_receipts,
         )
         dual = self._valid_dual_model_instance()
-        HOOK.validate_dual_model_flow_instance(
+        self._validate_dual_model_flow_instance(
             dual,
             schema=self.dual_schema,
-                evidence_graph=self.dual_evidence_graph,
-                trusted_committed_graph_store=self.dual_graph_store,
-                publish_receipt=self.dual_publish_receipt,
+            evidence_graph=self.dual_evidence_graph,
+            trusted_committed_graph_store=self.dual_graph_store,
+            trusted_oracle_store=self.dual_oracle_store,
+            publish_receipt=self.dual_publish_receipt,
         )
         transaction = self._valid_transaction_instance()
         HOOK.validate_transaction_record_instance(
@@ -2311,6 +3457,496 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             commit_receipt=self.transaction_commit_receipt,
             recovery_receipt=self.transaction_recovery_receipt,
         )
+
+    def test_s1d5_tool11_contains_asn_result_set_accepts_index_bound_rows(self) -> None:
+        payload, members = self._valid_tool11_contains_asn_result_set_instance()
+        HOOK.validate_result_set_instance(
+            payload,
+            schema=self.result_schema,
+            resolved_members=members,
+            trusted_registry_store=self.result_registry,
+            receipt_store=self.result_receipts,
+        )
+
+    def test_s1d5_tool11_contains_asn_rejects_missing_index_receipt_binding(self) -> None:
+        payload, members = self._valid_tool11_contains_asn_result_set_instance()
+        old_digest = payload["query_receipt_digest"]
+        receipt = self.result_receipts.pop(old_digest)
+        receipt.pop("path_asn_membership_index_digest")
+        receipt["receipt_digest"] = self._digest(receipt, "receipt_digest")
+        payload["query_receipt_digest"] = receipt["receipt_digest"]
+        self.result_receipts[receipt["receipt_digest"]] = receipt
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+            )
+        self.assertEqual(
+            "tool11_contains_asn_receipt_invalid", captured.exception.code
+        )
+
+    def test_s1d5_tool11_contains_asn_rejects_row_without_target_asn(self) -> None:
+        payload, members = self._valid_tool11_contains_asn_result_set_instance()
+        members[0]["path_segments"][0]["asns"].remove(49666)
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+            )
+        self.assertEqual(
+            "tool11_contains_asn_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_tool11_contains_asn_rejects_complete_member_key_drift(self) -> None:
+        payload, members = self._valid_tool11_contains_asn_result_set_instance()
+        old_digest = payload["query_receipt_digest"]
+        receipt = self.result_receipts.pop(old_digest)
+        receipt["matched_member_keys_digest"] = self._hex("d")
+        receipt["receipt_digest"] = self._digest(receipt, "receipt_digest")
+        payload["query_receipt_digest"] = receipt["receipt_digest"]
+        self.result_receipts[receipt["receipt_digest"]] = receipt
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+            )
+        self.assertEqual(
+            "tool11_contains_asn_receipt_invalid", captured.exception.code
+        )
+
+    def test_s1d5_tool12_native_filters_accept_index_bound_rows(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        HOOK.validate_result_set_instance(
+            payload,
+            schema=self.result_schema,
+            resolved_members=members,
+            trusted_registry_store=self.result_registry,
+            receipt_store=self.result_receipts,
+            trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+        )
+
+    def test_s1d5_tool12_native_filters_reject_missing_index_receipt(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        old_digest = payload["query_receipt_digest"]
+        receipt = self.result_receipts.pop(old_digest)
+        receipt.pop("path_association_index_digest")
+        receipt["receipt_digest"] = self._digest(receipt, "receipt_digest")
+        payload["query_receipt_digest"] = receipt["receipt_digest"]
+        self.result_receipts[receipt["receipt_digest"]] = receipt
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_receipt_invalid", captured.exception.code
+        )
+
+    def test_s1d5_tool12_contains_asn_rejects_nonmember_path(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        members[0]["path_segments"][0]["asns"].remove(49666)
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_tool12_anchor_before_rejects_reversed_path_order(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        members[0]["path_segments"][0]["asns"] = [33874, 58224, 48159, 49666]
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_tool12_anchor_before_rejects_intermediate_as_as_origin(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        members[0]["path_segments"][0]["asns"] = [
+            33874,
+            3257,
+            49666,
+            58224,
+            48159,
+        ]
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_tool12_rejects_unresolved_materialization_receipt(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        self.tool12_filter_receipt_store["receipts"].clear()
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_filter_materialization_receipt_unresolved",
+            captured.exception.code,
+        )
+
+    def test_s1d5_tool12_rejects_empty_index_identity(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        old_digest = payload["query_receipt_digest"]
+        receipt = self.result_receipts.pop(old_digest)
+        receipt["path_asn_membership_index_id"] = ""
+        receipt["receipt_digest"] = self._digest(receipt, "receipt_digest")
+        payload["query_receipt_digest"] = receipt["receipt_digest"]
+        self.result_receipts[receipt["receipt_digest"]] = receipt
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_receipt_invalid", captured.exception.code
+        )
+
+    def test_s1d5_tool12_rejects_anchor_population_source_drift(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        materialization_receipt = next(
+            iter(self.tool12_filter_receipt_store["receipts"].values())
+        )
+        materialization_receipt["anchor_population_source_ref"][
+            "publication_id"
+        ] = "publication:ghost"
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "result_set_receipt_unresolved",
+            captured.exception.code,
+        )
+
+    def test_s1d5_tool12_rejects_missing_anchor_for_anchor_before_query(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        payload["normalized_query"].pop("anchor_asn")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual("instance_schema_validation_failed", captured.exception.code)
+
+    def test_s1d5_tool12_rejects_noneligible_anchor_population(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        old_digest = payload["query_receipt_digest"]
+        receipt = self.result_receipts.pop(old_digest)
+        receipt["anchor_population_eligible"] = False
+        receipt["receipt_digest"] = self._digest(receipt, "receipt_digest")
+        payload["query_receipt_digest"] = receipt["receipt_digest"]
+        self.result_receipts[receipt["receipt_digest"]] = receipt
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_anchor_population_binding_invalid", captured.exception.code
+        )
+
+    def test_s1d5_tool12_rejects_empty_anchor_before_index_identity(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        old_digest = payload["query_receipt_digest"]
+        receipt = self.result_receipts.pop(old_digest)
+        receipt["anchor_before_known_origin_index_id"] = ""
+        receipt["receipt_digest"] = self._digest(receipt, "receipt_digest")
+        payload["query_receipt_digest"] = receipt["receipt_digest"]
+        self.result_receipts[receipt["receipt_digest"]] = receipt
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_receipt_invalid", captured.exception.code
+        )
+
+    def test_s1d5_tool12_anchor_before_rejects_missing_origin_in_path(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        members[0]["path_segments"][0]["asns"].remove(58224)
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_tool12_anchor_before_rejects_unordered_segment(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        members[0]["path_segments"][0]["segment_type"] = "as_set"
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_tool12_rejects_materialization_dataset_drift(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        materialization_receipt = next(
+            iter(self.tool12_filter_receipt_store["receipts"].values())
+        )
+        materialization_receipt["source_dataset_digest"] = self._hex("9")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_filter_materialization_receipt_unresolved",
+            captured.exception.code,
+        )
+
+    def test_s1d5_tool12_anchor_before_rejects_wrong_anchor_row(self) -> None:
+        payload, members = self._valid_tool12_native_filter_result_set_instance()
+        members[0]["anchor_asn"] = 48159
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_result_set_instance(
+                payload,
+                schema=self.result_schema,
+                resolved_members=members,
+                trusted_registry_store=self.result_registry,
+                receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            )
+        self.assertEqual(
+            "tool12_native_filter_member_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_op05_accepts_competition_rank_and_result_position(self) -> None:
+        input_envelope, output_envelope = self._valid_op05_ranking_instance()
+        HOOK.validate_op05_ranking_instance(
+            input_envelope,
+            output_envelope,
+            operator_schema=self._operator_contract_schema(),
+        )
+
+    def test_s1d5_op05_rejects_dense_rank_or_position_drift(self) -> None:
+        input_envelope, output_envelope = self._valid_op05_ranking_instance()
+        output_envelope["result"]["ranked_members"][2][
+            "severity_rank_global"
+        ] = 2
+        output_envelope["output_digest"] = self._digest(
+            output_envelope, "output_digest"
+        )
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_op05_ranking_instance(
+                input_envelope,
+                output_envelope,
+                operator_schema=self._operator_contract_schema(),
+            )
+        self.assertEqual("op05_ranking_output_mismatch", captured.exception.code)
+
+    def test_s1d5_op19_accepts_complete_result_set_projection(self) -> None:
+        input_envelope, output_envelope, result_set, members = (
+            self._valid_op19_projection_instance()
+        )
+        HOOK.validate_op19_projection_instance(
+            input_envelope,
+            output_envelope,
+            operator_schema=self.op19_operator_schema,
+            source_result_set=result_set,
+            source_members=members,
+            result_set_schema=self.result_schema,
+            trusted_registry_store=self.result_registry,
+            result_receipt_store=self.result_receipts,
+            trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+            trusted_projection_receipt_store=self.op19_projection_receipt_store,
+        )
+
+    def test_s1d5_op19_rejects_source_member_projection_omission(self) -> None:
+        input_envelope, output_envelope, result_set, members = (
+            self._valid_op19_projection_instance()
+        )
+        input_envelope["inputs"]["association_members"] = []
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_op19_projection_instance(
+                input_envelope,
+                output_envelope,
+                operator_schema=self.op19_operator_schema,
+                source_result_set=result_set,
+                source_members=members,
+                result_set_schema=self.result_schema,
+                trusted_registry_store=self.result_registry,
+                result_receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+                trusted_projection_receipt_store=self.op19_projection_receipt_store,
+            )
+        self.assertEqual(
+            "op19_source_member_projection_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_op19_rejects_query_receipt_drift(self) -> None:
+        input_envelope, output_envelope, result_set, members = (
+            self._valid_op19_projection_instance()
+        )
+        input_envelope["inputs"]["population_filter_receipt_digest"] = self._hex("9")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_op19_projection_instance(
+                input_envelope,
+                output_envelope,
+                operator_schema=self.op19_operator_schema,
+                source_result_set=result_set,
+                source_members=members,
+                result_set_schema=self.result_schema,
+                trusted_registry_store=self.result_registry,
+                result_receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+                trusted_projection_receipt_store=self.op19_projection_receipt_store,
+            )
+        self.assertEqual(
+            "op19_source_result_set_binding_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_op19_rejects_non_anchor_before_source_query(self) -> None:
+        input_envelope, output_envelope, result_set, members = (
+            self._valid_op19_projection_instance()
+        )
+        result_set["normalized_query"]["anchor_before_known_origin"] = False
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_op19_projection_instance(
+                input_envelope,
+                output_envelope,
+                operator_schema=self.op19_operator_schema,
+                source_result_set=result_set,
+                source_members=members,
+                result_set_schema=self.result_schema,
+                trusted_registry_store=self.result_registry,
+                result_receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+                trusted_projection_receipt_store=self.op19_projection_receipt_store,
+            )
+        self.assertEqual(
+            "op19_source_result_set_binding_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_op19_rejects_population_evidence_receipt_drift(self) -> None:
+        input_envelope, output_envelope, result_set, members = (
+            self._valid_op19_projection_instance()
+        )
+        input_envelope["inputs"]["population_evidence_ref"]["source_digest"] = (
+            self._hex("8")
+        )
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_op19_projection_instance(
+                input_envelope,
+                output_envelope,
+                operator_schema=self.op19_operator_schema,
+                source_result_set=result_set,
+                source_members=members,
+                result_set_schema=self.result_schema,
+                trusted_registry_store=self.result_registry,
+                result_receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+                trusted_projection_receipt_store=self.op19_projection_receipt_store,
+            )
+        self.assertEqual(
+            "op19_population_evidence_binding_mismatch", captured.exception.code
+        )
+
+    def test_s1d5_op19_rejects_output_origin_or_count_drift(self) -> None:
+        input_envelope, output_envelope, result_set, members = (
+            self._valid_op19_projection_instance()
+        )
+        output_envelope["result"]["members"].append(48159)
+        output_envelope["result"]["member_count"] = 2
+        output_envelope["output_digest"] = self._digest(
+            output_envelope, "output_digest"
+        )
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            HOOK.validate_op19_projection_instance(
+                input_envelope,
+                output_envelope,
+                operator_schema=self.op19_operator_schema,
+                source_result_set=result_set,
+                source_members=members,
+                result_set_schema=self.result_schema,
+                trusted_registry_store=self.result_registry,
+                result_receipt_store=self.result_receipts,
+                trusted_filter_receipt_store=self.tool12_filter_receipt_store,
+                trusted_projection_receipt_store=self.op19_projection_receipt_store,
+            )
+        self.assertEqual("op19_output_closure_mismatch", captured.exception.code)
 
     def test_s1d4_plan_instance_rejects_cross_plan_snapshot(self) -> None:
         payload = self._valid_plan_instance()
@@ -2608,11 +4244,12 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["teacher_run_receipt"]["role"] = "student"
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
                 trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
                 publish_receipt=self.dual_publish_receipt,
             )
         self.assertEqual("instance_schema_validation_failed", captured.exception.code)
@@ -2621,7 +4258,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["student_validation_receipt"]["gate_results"][1]["gate_id"] = "GATE-01"
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2634,7 +4271,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["student_runs"][0]["run_receipt"]["shared_answer_binding_digest"] = self._hex("f")
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2647,7 +4284,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["student_runs"][0]["revision_ordinal"] = 1
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2660,7 +4297,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["alignment_run_receipt"]["hard_gate_metrics"]["fact_precision"] = 0
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2680,19 +4317,25 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         )
         payload["student_runs"][0]["teacher_reference_digest"] = None
         payload["student_runs"][0]["teacher_validation_receipt_digest"] = None
+        payload["student_runs"][0]["teacher_oracle_coverage_receipt_digest"] = None
         payload["student_runs"][0]["run_receipt"]["role_specific_input_digest"] = self._digest(
             {
                 "role": "student",
+                "run_phase": "ds_first_answer",
                 "revision_ordinal": 0,
                 "shared_answer_binding_digest": payload["shared_answer_binding_digest"],
                 "teacher_reference_digest": None,
                 "teacher_validation_receipt_digest": None,
+                "teacher_oracle_coverage_receipt_digest": None,
                 "structured_feedback_digest": None,
             }
         )
+        payload["teacher_plan_run_receipt"] = None
+        payload["teacher_plan_grounding_receipt"] = None
         payload["teacher_run_receipt"] = None
         payload["teacher_reference"] = None
         payload["teacher_validation_receipt"] = None
+        payload["teacher_oracle_coverage_receipt"] = None
         payload["alignment_run_receipt"] = None
         payload["shared_answer_binding"]["plan_revision"] = 1
         payload["degraded_authorization"] = {
@@ -2708,7 +4351,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             payload["degraded_authorization"], "authorization_digest"
         )
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2719,7 +4362,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
 
     def test_s1d4_dual_accepts_explicit_degrade_with_trusted_plan_and_graph(self) -> None:
         payload = self._valid_degraded_dual_model_instance()
-        HOOK.validate_dual_model_flow_instance(
+        self._validate_dual_model_flow_instance(
             payload,
             schema=self.dual_schema,
             evidence_graph=self.dual_evidence_graph,
@@ -2733,7 +4376,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_degraded_dual_model_instance()
         payload["degraded_authorization"]["authorization_id"] = "AUTH-TAMPERED"
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2751,7 +4394,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             "teacher_required"
         ] = True
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -2773,7 +4416,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         self.dual_graph_store["trust_origin"] = "caller_supplied"
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -3037,7 +4680,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["teacher_run_receipt"]["output_digest"] = self._hex("f")
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -3066,14 +4709,119 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         ]["receipt_digest"]
         with self.assertRaises(HOOK.AlignmentError) as captured:
             HOOK.validate_dual_model_flow_instance(payload, schema=self.dual_schema)
-        self.assertEqual("validation_gate_summary_mismatch", captured.exception.code)
+        self.assertEqual("instance_schema_validation_failed", captured.exception.code)
+
+    def test_s1d5_dual_accepts_teacher_gate_rejected_terminal(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["flow_state"] = "teacher_rejected"
+        payload["final_disposition"] = "teacher_rejected"
+        validation = payload["teacher_validation_receipt"]
+        validation["gate_results"][0]["passed"] = False
+        validation["gate_results"][0]["receipt_digest"] = self._digest(
+            validation["gate_results"][0], "receipt_digest"
+        )
+        validation["all_gates_passed"] = False
+        validation["receipt_digest"] = self._digest(validation, "receipt_digest")
+        payload["teacher_run_receipt"]["validation_receipt_digest"] = validation[
+            "receipt_digest"
+        ]
+        payload["teacher_oracle_coverage_receipt"] = None
+        payload["student_runs"] = []
+        payload["structured_feedback"] = None
+        payload["student_validation_receipt"] = None
+        payload["alignment_run_receipt"] = None
+        payload["degraded_authorization"] = None
+        payload["published_answer"] = None
+        payload["publish_receipt_digest"] = None
+        self._validate_dual_model_flow_instance(
+            payload,
+            schema=self.dual_schema,
+            evidence_graph=self.dual_evidence_graph,
+        )
+
+    def test_s1d5_dual_accepts_teacher_oracle_coverage_rejected_terminal(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["flow_state"] = "teacher_rejected"
+        payload["final_disposition"] = "teacher_rejected"
+        reference = payload["teacher_reference"]
+        reference["unknowns"] = []
+        reference["output_digest"] = self._digest(reference, "output_digest")
+        validation = payload["teacher_validation_receipt"]
+        validation["subject_digest"] = reference["output_digest"]
+        validation["receipt_digest"] = self._digest(validation, "receipt_digest")
+        payload["teacher_run_receipt"]["output_digest"] = reference["output_digest"]
+        payload["teacher_run_receipt"]["validation_receipt_digest"] = validation[
+            "receipt_digest"
+        ]
+        coverage = payload["teacher_oracle_coverage_receipt"]
+        coverage["teacher_reference_digest"] = reference["output_digest"]
+        coverage["required_unknowns_complete"] = False
+        coverage["disposition"] = "rejected"
+        coverage["receipt_digest"] = self._digest(coverage, "receipt_digest")
+        payload["student_runs"] = []
+        payload["structured_feedback"] = None
+        payload["student_validation_receipt"] = None
+        payload["alignment_run_receipt"] = None
+        payload["degraded_authorization"] = None
+        payload["published_answer"] = None
+        payload["publish_receipt_digest"] = None
+        self._validate_dual_model_flow_instance(
+            payload,
+            schema=self.dual_schema,
+            evidence_graph=self.dual_evidence_graph,
+        )
+
+    def test_s1d5_dual_accepts_student_rejected_terminal(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["flow_state"] = "failed"
+        payload["final_disposition"] = "student_rejected"
+        student = payload["student_runs"][0]
+        validation = student["validation_receipt"]
+        validation["gate_results"][0]["passed"] = False
+        validation["gate_results"][0]["receipt_digest"] = self._digest(
+            validation["gate_results"][0], "receipt_digest"
+        )
+        validation["all_gates_passed"] = False
+        validation["receipt_digest"] = self._digest(validation, "receipt_digest")
+        student["run_receipt"]["validation_receipt_digest"] = validation[
+            "receipt_digest"
+        ]
+        payload["student_validation_receipt"] = validation
+        payload["alignment_run_receipt"] = None
+        payload["published_answer"] = None
+        payload["publish_receipt_digest"] = None
+        self._validate_dual_model_flow_instance(
+            payload,
+            schema=self.dual_schema,
+            evidence_graph=self.dual_evidence_graph,
+        )
+
+    def test_s1d5_dual_accepts_alignment_rejected_terminal(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["flow_state"] = "alignment_failed"
+        payload["final_disposition"] = "alignment_rejected"
+        alignment = payload["alignment_run_receipt"]
+        alignment["hard_gate_metrics"]["fact_precision"] = 0.5
+        alignment["hard_gates_passed"] = False
+        alignment["disposition"] = "rejected"
+        alignment["receipt_digest"] = self._digest(alignment, "receipt_digest")
+        self.dual_alignment_receipt_store["receipts"] = {
+            alignment["receipt_digest"]: json.loads(json.dumps(alignment))
+        }
+        payload["published_answer"] = None
+        payload["publish_receipt_digest"] = None
+        self._validate_dual_model_flow_instance(
+            payload,
+            schema=self.dual_schema,
+            evidence_graph=self.dual_evidence_graph,
+        )
 
     def test_s1d4_dual_instance_rejects_nonterminal_publish(self) -> None:
         payload = self._valid_dual_model_instance()
         payload["flow_state"] = "awaiting_teacher"
         payload["final_disposition"] = "none"
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -3086,7 +4834,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         payload["flow_state"] = "failed"
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -3099,6 +4847,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload = self._valid_dual_model_instance()
         feedback = {
             "feedback_round": 1,
+            "producer_kind": "host_deterministic_alignment_evaluator",
             "source_student_answer_digest": payload["student_runs"][0][
                 "student_answer_digest"
             ],
@@ -3115,7 +4864,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         feedback["feedback_digest"] = self._digest(feedback)
         payload["structured_feedback"] = feedback
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -3980,7 +5729,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             payload["shared_answer_binding"]
         )
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -3996,7 +5745,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             payload["shared_answer_binding"]
         )
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -4043,6 +5792,45 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
             HOOK.validate_dual_model_flow_instance(payload, schema=self.dual_schema)
         self.assertEqual("instance_schema_validation_failed", captured.exception.code)
 
+    def test_s1d5_dual_accepts_reference_unavailable_after_grounding(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["flow_state"] = "stopped_waiting_teacher"
+        payload["final_disposition"] = "teacher_unavailable"
+        payload["teacher_unavailable_phase"] = "sol_reference"
+        payload["teacher_run_receipt"]["disposition"] = "unavailable"
+        payload["teacher_run_receipt"]["output_digest"] = None
+        payload["teacher_run_receipt"]["validation_receipt_digest"] = None
+        payload["teacher_reference"] = None
+        payload["teacher_validation_receipt"] = None
+        payload["teacher_oracle_coverage_receipt"] = None
+        payload["student_runs"] = []
+        payload["structured_feedback"] = None
+        payload["student_validation_receipt"] = None
+        payload["alignment_run_receipt"] = None
+        payload["degraded_authorization"] = None
+        payload["published_answer"] = None
+        payload["publish_receipt_digest"] = None
+        self._validate_dual_model_flow_instance(payload, schema=self.dual_schema)
+
+    def test_s1d5_dual_rejects_unavailable_with_oracle_coverage(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["flow_state"] = "stopped_waiting_teacher"
+        payload["final_disposition"] = "teacher_unavailable"
+        payload["teacher_unavailable_phase"] = "sol_reference"
+        payload["teacher_run_receipt"]["disposition"] = "unavailable"
+        payload["teacher_run_receipt"]["output_digest"] = None
+        payload["teacher_run_receipt"]["validation_receipt_digest"] = None
+        payload["teacher_reference"] = None
+        payload["teacher_validation_receipt"] = None
+        payload["student_runs"] = []
+        payload["student_validation_receipt"] = None
+        payload["alignment_run_receipt"] = None
+        payload["published_answer"] = None
+        payload["publish_receipt_digest"] = None
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(payload, schema=self.dual_schema)
+        self.assertEqual("instance_schema_validation_failed", captured.exception.code)
+
     def test_s1d4_dual_rejects_teacher_reference_evidence_outside_graph(self) -> None:
         payload = self._valid_dual_model_instance()
         teacher_reference = payload["teacher_reference"]
@@ -4060,20 +5848,34 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         teacher_run["validation_receipt_digest"] = teacher_validation[
             "receipt_digest"
         ]
+        teacher_coverage = payload["teacher_oracle_coverage_receipt"]
+        teacher_coverage["teacher_reference_digest"] = teacher_reference[
+            "output_digest"
+        ]
+        teacher_coverage["receipt_digest"] = self._digest(
+            teacher_coverage, "receipt_digest"
+        )
         student = payload["student_runs"][0]
         student["teacher_reference_digest"] = teacher_reference["output_digest"]
         student["teacher_validation_receipt_digest"] = teacher_validation[
             "receipt_digest"
         ]
+        student["teacher_oracle_coverage_receipt_digest"] = teacher_coverage[
+            "receipt_digest"
+        ]
         student["run_receipt"]["role_specific_input_digest"] = self._digest(
             {
                 "role": "student",
+                "run_phase": "ds_first_answer",
                 "revision_ordinal": 0,
                 "shared_answer_binding_digest": payload[
                     "shared_answer_binding_digest"
                 ],
                 "teacher_reference_digest": teacher_reference["output_digest"],
                 "teacher_validation_receipt_digest": teacher_validation[
+                    "receipt_digest"
+                ],
+                "teacher_oracle_coverage_receipt_digest": teacher_coverage[
                     "receipt_digest"
                 ],
                 "structured_feedback_digest": None,
@@ -4083,14 +5885,192 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         alignment["teacher_reference_digest"] = teacher_reference["output_digest"]
         alignment["receipt_digest"] = self._digest(alignment, "receipt_digest")
         with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("teacher_reference_evidence_unclosed", captured.exception.code)
+
+    def test_s1d5_dual_rejects_untrusted_oracle_store_attestation(self) -> None:
+        payload = self._valid_dual_model_instance()
+        self.dual_oracle_store["attestation_contract_digest"] = "sha256:" + self._hex("f")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("teacher_oracle_unresolved", captured.exception.code)
+
+    def test_s1d5_dual_rejects_oracle_record_content_drift(self) -> None:
+        payload = self._valid_dual_model_instance()
+        oracle = next(iter(self.dual_oracle_store["oracles"].values()))
+        oracle["required_fact_ids"].append("FACT-GHOST")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("teacher_oracle_unresolved", captured.exception.code)
+
+    def test_s1d5_dual_rejects_ghost_student_answer_artifact(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["student_runs"][0]["student_answer_artifact"][
+            "artifact_ref"
+        ] = "artifact:student-answer:ghost"
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("student_answer_artifact_unresolved", captured.exception.code)
+
+    def test_s1d5_dual_rejects_event_fact_disguised_as_world_knowledge(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["student_runs"][0]["student_answer_artifact"]["answer_payload"][
+            "claims"
+        ][0]["claim_kind"] = "knowledge_explanation"
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("instance_schema_validation_failed", captured.exception.code)
+
+    def test_s1d5_dual_rejects_caller_only_student_artifact(self) -> None:
+        payload = self._valid_dual_model_instance()
+        with self.assertRaises(HOOK.AlignmentError) as captured:
             HOOK.validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
                 trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                trusted_alignment_receipt_store=self.dual_alignment_receipt_store,
                 publish_receipt=self.dual_publish_receipt,
             )
-        self.assertEqual("teacher_reference_evidence_unclosed", captured.exception.code)
+        self.assertEqual("student_answer_artifact_unresolved", captured.exception.code)
+
+    def test_s1d5_dual_rejects_student_artifact_store_attestation_drift(self) -> None:
+        payload = self._valid_dual_model_instance()
+        self.dual_student_answer_artifact_store["attestation_contract_digest"] = (
+            "sha256:" + self._hex("e")
+        )
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("student_answer_artifact_unresolved", captured.exception.code)
+
+    def test_s1d5_dual_rejects_ds_version_alias_drift(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["student_model_identity"]["version"] = "deepseek-v4-flash"
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                trusted_oracle_store=self.dual_oracle_store,
+            )
+        self.assertEqual("instance_schema_validation_failed", captured.exception.code)
+
+    def test_s1d5_dual_rejects_teacher_plan_grounding_conflation(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["teacher_plan_run_receipt"]["output_digest"] = payload[
+            "shared_answer_binding"
+        ]["grounding_plan_digest"]
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("teacher_plan_run_invalid", captured.exception.code)
+
+    def test_s1d5_dual_rejects_model_retry(self) -> None:
+        payload = self._valid_dual_model_instance()
+        payload["student_runs"][0]["run_receipt"]["cost"]["retry_count"] = 1
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                trusted_oracle_store=self.dual_oracle_store,
+            )
+        self.assertEqual("instance_schema_validation_failed", captured.exception.code)
+
+    def test_s1d5_dual_rejects_alignment_oracle_binding_drift(self) -> None:
+        payload = self._valid_dual_model_instance()
+        alignment = payload["alignment_run_receipt"]
+        alignment["oracle_digest"] = self._hex("e")
+        alignment["receipt_digest"] = self._digest(alignment, "receipt_digest")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("alignment_digest_binding_mismatch", captured.exception.code)
+
+    def test_s1d5_dual_rejects_resigned_alignment_not_in_host_store(self) -> None:
+        payload = self._valid_dual_model_instance()
+        alignment = payload["alignment_run_receipt"]
+        alignment["advisory_text_similarity"] = 0.99
+        alignment["receipt_digest"] = self._digest(alignment, "receipt_digest")
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("alignment_receipt_untrusted", captured.exception.code)
+
+    def test_s1d5_dual_rejects_alignment_store_attestation_drift(self) -> None:
+        payload = self._valid_dual_model_instance()
+        self.dual_alignment_receipt_store["attestation_contract_digest"] = (
+            "sha256:" + self._hex("e")
+        )
+        with self.assertRaises(HOOK.AlignmentError) as captured:
+            self._validate_dual_model_flow_instance(
+                payload,
+                schema=self.dual_schema,
+                evidence_graph=self.dual_evidence_graph,
+                trusted_committed_graph_store=self.dual_graph_store,
+                trusted_oracle_store=self.dual_oracle_store,
+                publish_receipt=self.dual_publish_receipt,
+            )
+        self.assertEqual("alignment_receipt_untrusted", captured.exception.code)
 
     def test_s1d4_dual_rejects_parent_from_other_flow(self) -> None:
         payload = self._valid_dual_model_instance()
@@ -4099,7 +6079,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         payload["flow_revision"] = 2
         payload["parent_flow_revision"] = 1
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 previous_flow=previous,
@@ -4469,6 +6449,31 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self._mutate_json(relative, mutate)
         self._assert_error("incomplete_input_policy_open", stage="S1D-4")
 
+    def test_s1d5_rejects_tool11_membership_profile_same_version_rebind(self) -> None:
+        self._copy_through_s1d4()
+        tool_relative = HOOK.ARTIFACTS_BY_STAGE["S1D-2"][0]
+
+        def mutate_tool(payload) -> None:
+            route_view = next(
+                item
+                for item in payload["source_view_requirements"]
+                if item["source_population_id"]
+                == "materialized_route_state_rows_at_exact_time"
+            )
+            profile = route_view["path_asn_membership_profile"]
+            profile["membership_rule"] = "只取AS_SEQUENCE中的ASN"
+            profile_digest = self._digest(profile, "profile_digest")
+            profile["profile_digest"] = profile_digest
+            tool11 = next(
+                item for item in payload["tools"] if item["unit_id"] == "TOOL-11"
+            )
+            tool11["contains_asn_filter_contract"]["profile_digest"] = profile_digest
+
+        self._mutate_json(tool_relative, mutate_tool)
+        self._assert_error(
+            "route_state_contains_asn_index_contract_open", stage="S1D-4"
+        )
+
     def test_s1d4_rejects_world_knowledge_fact_node_type(self) -> None:
         self._copy_through_s1d4()
         relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][2]
@@ -4655,6 +6660,116 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self._mutate_json(relative, mutate)
         self._assert_error("silent_degrade_open", stage="S1D-4")
 
+    def test_s1d5_rejects_oracle_store_attestation_contract_drift(self) -> None:
+        self._copy_through_s1d4()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][3]
+
+        def mutate(payload) -> None:
+            payload["x-trusted-runtime-store-contracts"]["oracle_store"][
+                "attestation_contract_digest"
+            ] = "sha256:" + self._hex("f")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("dual_model_trusted_store_contract_open", stage="S1D-4")
+
+    def test_s1d5_rejects_oracle_store_without_allowed_boundary_fields(self) -> None:
+        self._copy_through_s1d4()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][3]
+
+        def mutate(payload) -> None:
+            payload["x-trusted-runtime-store-contracts"]["oracle_store"][
+                "record_fields"
+            ].remove("allowed_boundary_assertion_ids")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("dual_model_trusted_store_contract_open", stage="S1D-4")
+
+    def test_s1d5_accepts_frozen_independent_design_reviews(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3", "S1D-4", "S1D-5"):
+            self._copy_stage_artifacts(stage)
+        receipt = HOOK.run_alignment(
+            self.root, "S1D-5", require_prior_receipts=False
+        )
+        self.assertEqual("alignment_passed", receipt["status"])
+        self.assertIn("independent_product_semantic_review", receipt["checks"])
+        self.assertIn("independent_bgp_review", receipt["checks"])
+        self.assertIn(
+            "design_acceptance_runtime_promotion_separation", receipt["checks"]
+        )
+
+    def test_s1d5_rejects_review_input_digest_drift(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3", "S1D-4", "S1D-5"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-5"][3]
+
+        def mutate(payload) -> None:
+            payload["review_input_binding"]["input_sha256"][
+                "tool-catalog.json"
+            ] = self._hex("f")
+            payload["content_digest"] = self._digest(payload, "content_digest")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("review_input_binding_stale", stage="S1D-5")
+
+    def test_s1d5_rejects_pending_independent_reviewer(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3", "S1D-4", "S1D-5"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-5"][3]
+
+        def mutate(payload) -> None:
+            payload["independent_bgp_review"][
+                "reviewer_id"
+            ] = "pending-independent-bgp-reviewer"
+            payload["content_digest"] = self._digest(payload, "content_digest")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("independent_review_incomplete", stage="S1D-5")
+
+    def test_s1d5_rejects_runtime_promotion_overclaim(self) -> None:
+        for stage in ("S1D-1", "S1D-2", "S1D-3", "S1D-4", "S1D-5"):
+            self._copy_stage_artifacts(stage)
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-5"][3]
+
+        def mutate(payload) -> None:
+            payload["stage_review_disposition"]["runtime_model_promotion"] = True
+            payload["content_digest"] = self._digest(payload, "content_digest")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("review_disposition_overclaim", stage="S1D-5")
+
+    def test_s1d5_rejects_teacher_unavailable_phase_contract_drift(self) -> None:
+        self._copy_through_s1d4()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][3]
+
+        def mutate(payload) -> None:
+            branch = next(
+                item
+                for item in payload["allOf"]
+                if item.get("if", {})
+                .get("properties", {})
+                .get("final_disposition", {})
+                .get("const")
+                == "teacher_unavailable"
+            )
+            branch["then"]["properties"]["teacher_unavailable_phase"][
+                "const"
+            ] = "sol_planning"
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("dual_model_terminal_state_matrix_open", stage="S1D-4")
+
+    def test_s1d5_rejects_ds_candidate_resource_identity_drift(self) -> None:
+        self._copy_through_s1d4()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][3]
+
+        def mutate(payload) -> None:
+            payload["$defs"]["studentModelIdentity"]["allOf"][1]["properties"][
+                "candidate_resource_sha256"
+            ]["const"] = self._hex("f")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("ds_model_identity_mismatch", stage="S1D-4")
+
     def test_s1d4_rejects_missing_commit_consistency_kind(self) -> None:
         self._copy_through_s1d4()
         relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][4]
@@ -4766,6 +6881,58 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
 
         self._mutate_json(relative, mutate)
         self._assert_error("runtime_claim_forbidden", stage="S1D-4")
+
+    def test_s1d5_rejects_p2_v1_question_fan_out_dependency(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-1"][0]
+
+        def mutate(payload) -> None:
+            question = next(
+                item for item in payload["questions"] if item["question_id"] == "Q20"
+            )
+            question["required_capability_ids"].append("CAP-P2-064")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("p2_v1_fan_out_dependency_forbidden", stage="S1D-1")
+
+    def test_s1d5_rejects_fan_out_reintroduced_into_p2_v1_plan_schema(self) -> None:
+        self._copy_through_s1d4()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-4"][0]
+
+        def mutate(payload) -> None:
+            payload["$defs"]["planDefinition"]["properties"]["fan_out_groups"] = {
+                "type": "array"
+            }
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("p2_v1_fan_out_schema_forbidden", stage="S1D-4")
+
+    def test_s1d5_rejects_plan_cap_02_runtime_ready_claim(self) -> None:
+        self._copy_stage_artifacts("S1D-1")
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-1"][2]
+
+        def mutate(payload) -> None:
+            payload["host_plan_capability_contracts"]["PLAN-CAP-02"][
+                "runtime_ready_claim"
+            ] = True
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("p2_v1_fan_out_dependency_forbidden", stage="S1D-1")
+
+    def test_s1d5_rejects_op19_filter_receipt_binding_drift(self) -> None:
+        self._copy_through_s1d4()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-3"][0]
+
+        def mutate(payload) -> None:
+            operator = next(
+                item for item in payload["operators"] if item["unit_id"] == "OP-19"
+            )
+            operator["input_contract"]["invariants"].remove(
+                "population_filter_receipt_digest == source_result_set_query_receipt_digest"
+            )
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("downstream_projection_composite", stage="S1D-3")
 
     def test_s1d4_plan_rejects_missing_parameter_binding_coverage(self) -> None:
         payload = self._valid_plan_instance()
@@ -4991,7 +7158,7 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         record = self.dual_graph_store["graphs"][graph_digest]
         record["graph"]["nodes"][0]["evidence_refs"].append("EV-TAMPER")
         with self.assertRaises(HOOK.AlignmentError) as captured:
-            HOOK.validate_dual_model_flow_instance(
+            self._validate_dual_model_flow_instance(
                 payload,
                 schema=self.dual_schema,
                 evidence_graph=self.dual_evidence_graph,
@@ -5070,6 +7237,150 @@ class CountryOutageP2S1DesignAlignmentHookTest(unittest.TestCase):
         self.assertEqual(stored["receipt_digest"], HOOK._canonical_digest(stored))
         leftovers = list(target.parent.glob(f".{target.name}.*.tmp"))
         self.assertEqual([], leftovers)
+
+    def test_s1d6_current_final_candidate_closes_exact_manifest(self) -> None:
+        self._copy_through_s1d6()
+        receipt = HOOK.run_alignment(
+            self.root,
+            "S1D-6",
+            require_prior_receipts=True,
+        )
+        candidate = json.loads(
+            (self.root / HOOK.ARTIFACTS_BY_STAGE["S1D-6"][0]).read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(candidate["design_candidate_id"], receipt["design_candidate_id"])
+        self.assertEqual(candidate["design_candidate_id"], receipt["final_design_candidate_id"])
+        self.assertFalse(candidate["acceptance_layers"]["model_alignment_passed"])
+        self.assertFalse(candidate["acceptance_layers"]["performance_acceptance"])
+        HOOK.write_receipt(
+            self.root,
+            HOOK.RECEIPT_ROOT / "S1D-6.json",
+            receipt,
+        )
+        final_receipt = HOOK.run_alignment(
+            self.root,
+            "final",
+            require_prior_receipts=True,
+        )
+        self.assertEqual(candidate["design_candidate_id"], final_receipt["design_candidate_id"])
+        self.assertEqual(candidate["design_candidate_id"], final_receipt["final_design_candidate_id"])
+
+    def test_s1d6_rejects_forged_candidate_identity(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][0]
+
+        def mutate(payload) -> None:
+            payload["design_candidate_id"] = "country-outage-p2-s1-s1d-6-forged"
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("candidate_identity_mismatch", stage="S1D-6")
+
+    def test_s1d6_rejects_candidate_runtime_promotion_overclaim(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][0]
+
+        def mutate(payload) -> None:
+            payload["acceptance_layers"]["runtime_model_promotion"] = True
+            payload["candidate_semantic_digest"] = self._digest(
+                payload,
+                "design_candidate_id",
+                "candidate_semantic_digest",
+                "content_digest",
+            )
+            payload["design_candidate_id"] = (
+                "country-outage-p2-s1-s1d-6-"
+                + payload["candidate_semantic_digest"][:24]
+            )
+            payload["content_digest"] = self._digest(payload, "content_digest")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("candidate_acceptance_layer_overclaim", stage="S1D-6")
+
+    def test_s1d6_rejects_deferred_unit_smuggling(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][0]
+
+        def mutate(payload) -> None:
+            payload["execution_unit_scope"]["p2_v1_tool_ids"].append("TOOL-13")
+            payload["candidate_semantic_digest"] = self._digest(
+                payload,
+                "design_candidate_id",
+                "candidate_semantic_digest",
+                "content_digest",
+            )
+            payload["design_candidate_id"] = (
+                "country-outage-p2-s1-s1d-6-"
+                + payload["candidate_semantic_digest"][:24]
+            )
+            payload["content_digest"] = self._digest(payload, "content_digest")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("candidate_execution_unit_population_mismatch", stage="S1D-6")
+
+    def test_s1d6_rejects_manifest_duplicate_path_even_last_digest_is_correct(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][1]
+
+        def mutate(payload) -> None:
+            duplicate = dict(payload["artifacts"][0])
+            duplicate["sha256"] = "0" * 64
+            payload["artifacts"].insert(0, duplicate)
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("manifest_duplicate_path", stage="S1D-6")
+
+    def test_s1d6_rejects_manifest_missing_task_contract(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][1]
+
+        def mutate(payload) -> None:
+            payload["artifacts"] = [
+                item for item in payload["artifacts"] if item["path"] != ".codex/TASK.json"
+            ]
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("manifest_artifact_population_mismatch", stage="S1D-6")
+
+    def test_s1d6_rejects_manifest_path_escape(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][1]
+
+        def mutate(payload) -> None:
+            payload["artifacts"][0]["path"] = "../escape.json"
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("manifest_path_invalid", stage="S1D-6")
+
+    def test_s1d6_rejects_manifest_self_digest_tamper(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][1]
+
+        def mutate(payload) -> None:
+            payload["content_digest"] = "0" * 64
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("manifest_content_digest_mismatch", stage="S1D-6")
+
+    def test_s1d6_rejects_stale_stage_receipt(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.RECEIPT_ROOT / "S1D-4.json"
+
+        def mutate(payload) -> None:
+            payload["receipt_digest"] = self._hex("0")
+
+        self._mutate_json(relative, mutate)
+        self._assert_error("candidate_source_digest_mismatch", stage="S1D-6")
+
+    def test_s1d6_rejects_nonstandard_nan_json(self) -> None:
+        self._copy_through_s1d6()
+        relative = HOOK.ARTIFACTS_BY_STAGE["S1D-6"][0]
+        path = self.root / relative
+        text = path.read_text(encoding="utf-8")
+        text = text.replace('"source_artifact_count": 30', '"source_artifact_count": NaN')
+        path.write_text(text, encoding="utf-8")
+        self._assert_error("artifact_json_nonstandard_number", stage="S1D-6")
 
 
 if __name__ == "__main__":
