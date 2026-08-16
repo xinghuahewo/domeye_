@@ -43,28 +43,35 @@
     "world_knowledge_outside_event_fact_graph",
     "sol_teacher_validator_ds_student_shared_binding",
     "single_feedback_single_student_revision",
-    "runtime_five_commit_consistency_boundaries"
+    "runtime_five_commit_consistency_boundaries",
+    "oracle_scenario_closure",
+    "budget_contract",
+    "sol_ds_alignment_contract",
+    "frozen_review_input_digest_closure",
+    "independent_product_semantic_review",
+    "independent_bgp_review",
+    "design_acceptance_runtime_promotion_separation"
   ],
-  "design_candidate_id": "country-outage-p2-s1-s1d-4-789edd466883e90454704be6",
+  "design_candidate_id": "country-outage-p2-s1-s1d-5-89b670ff875f3df0d9dea52b",
   "design_only": true,
   "phase_plan_sha256": "f86955257b93e7ddc18553242f4b2f2fe7a78401f6237e855341e1147a63574d",
   "prior_receipts": {
     "S1D-0": "5c08d202863459dd697030f2e0386a0e28ce45018f2ecf3f1e609a64c80915e6",
     "S1D-1": "8a2c327b5e6947480e7c61fdf2aa1ef76aeedea5577b261b4e68dbb5155d2385",
     "S1D-2": "0beef3e0db3b18f1518050783be02f6d9ac6efd8f38fae040d979c876f6456f7",
-    "S1D-3": "5a643532ba5672d4b5a582fd7b0aa099f6af423f17be80f7ab7ce7921d426a9f"
+    "S1D-3": "5a643532ba5672d4b5a582fd7b0aa099f6af423f17be80f7ab7ce7921d426a9f",
+    "S1D-4": "807c4c8db8ce7543c4d38b04f395521fa75ee71fb14708223e6be3c326961b12"
   },
   "production_deployed": false,
-  "receipt_digest": "807c4c8db8ce7543c4d38b04f395521fa75ee71fb14708223e6be3c326961b12",
+  "receipt_digest": "d8d8b1506b69418a918a4407cdf0f57dd944b1337a492afbc427a8911dea80eb",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
-  "stage": "S1D-4",
+  "stage": "S1D-5",
   "stage_artifact_sha256": {
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/dual-model-answer-flow.schema.json": "8284a95d142d5c28d02fa8e1426f0021f98ebfd2740a16c4591a9b56d3f07d83",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/evidence-graph.schema.json": "fa2b627f0f45661bfc5c140d38f80e2cacb5fe6ce8ae5626b87315b063404f17",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/investigation-plan.schema.json": "949b8dcb10a4c95ea6060789d174ca6c37277720724a67cf228f15be58ed5b07",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/result-set.schema.json": "c6eaf755433eaea9694b3a0e5e084c4a4387033be74ffd0c8d580e7c7faa4986",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/runtime-commit-consistency-contract.json": "485e9c2499d9695d14c177669bae6a8c102384652c0a8f06b7fbe5164853070f"
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/cost-performance-budget.json": "6fc033f177cef84c61cc9b20d1b7619b738d99efb30dab298918cdd8cb1e8665",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/model-alignment-evaluation.json": "35ca360a31f48f80a2ab93c9baa71270d5216e08afaf7e82e5c32ad1cfeed070",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/oracle.json": "92cc8248497d1f545b9104092cd8aab0c3c063a536312ee049cfd7ad8b826d1b",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/product-semantic-review.json": "527f4a967b50d5cc128aea77813c5cbf368a5e5cd46020a545136f70c2159040"
   },
   "status": "alignment_passed",
   "task_spec_sha256": "dbe1232d51064037716f321c5614042418dbcc9a66cfc908dc51fc1a7f8b6e61"

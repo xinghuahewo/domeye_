@@ -105,9 +105,9 @@
     {
       "question_id": "Q09",
       "answerability": "new_tools_required",
-      "required_assertions": ["两个ASN异常区间", "固定前缀集合关系", "downstream集合关系", "时间关系"],
+      "required_assertions": ["两个ASN完整异常区间", "OP-38半开区间交集", "OP-39固定前缀集合关系", "downstream集合关系"],
       "prohibited_assertions": ["共享origin等于直接连接", "时间重叠等于因果"],
-      "scenario_expectations": {"normal":"四种集合算子独立且OP-29只比较时间", "empty":"任一空集合按数学合同处理", "missing":"不完整集合禁止总体关系", "wrong_identity":"跨publication集合拒绝", "boundary":"不推断依赖传播", "large_result":"先限定两个ASN并预览交集"}
+      "scenario_expectations": {"normal":"两个TOOL-07结果分别经OP-39投影，两个TOOL-09状态轨分别经OP-07形成区间，再由OP-38只求半开时间交集；前缀和downstream集合仍由OP-25..28独立计算", "empty":"OP-38区分empty_left、empty_right、empty_both和disjoint；集合算子按数学合同处理", "missing":"任一状态区间或集合不完整均禁止总体关系", "wrong_identity":"跨publication、window或grid的区间与集合均拒绝", "boundary":"区间重叠只称观测时间交集，不推断因果或依赖传播", "large_result":"先限定两个ASN，区间和集合交集分别预览并保留完整导出"}
     },
     {
       "question_id": "Q10",
@@ -126,9 +126,9 @@
     {
       "question_id": "Q14",
       "answerability": "new_tools_required",
-      "required_assertions": ["观察方向计数", "状态首次/区间/截止", "按需VP RouteState"],
+      "required_assertions": ["TOOL-07固定cohort预期方向", "观察方向计数", "状态首次/区间/截止", "按需VP RouteState"],
       "prohibited_assertions": ["方向数等于用户数", "无观测等于撤路"],
-      "scenario_expectations": {"normal":"状态Operator与三种VP一致性按需组合", "empty":"无RouteState与不可见分开", "missing":"VP缺测标记missing", "wrong_identity":"prefix state与RouteState身份冲突拒绝", "boundary":"不称传播", "large_result":"仅指定prefix按需下钻"}
+      "scenario_expectations": {"normal":"TOOL-07提供固定cohort expected directions，TOOL-08提供逐槽计数，TOOL-11提供实际VP行，状态Operator与三种VP一致性按需组合", "empty":"无expected directions、无RouteState与不可见三者分开", "missing":"VP缺测标记missing且不从实际行反推预期人口", "wrong_identity":"cohort member、prefix state与RouteState任一身份冲突拒绝", "boundary":"方向数不是用户数且不称传播", "large_result":"仅指定prefix按需下钻"}
     },
     {
       "question_id": "Q16",
@@ -161,9 +161,9 @@
     {
       "question_id": "Q20",
       "answerability": "new_path_tool_required",
-      "required_assertions": ["包含ASN的完整路径行", "唯一path/prefix/direction集合和独立计数", "完整导出"],
+      "required_assertions": ["绑定publication且限affected-anchor窗口association人口的完整路径关联行", "唯一path/prefix/direction集合和独立计数", "完整导出只针对冻结TOOL-12原始ResultSet"],
       "prohibited_assertions": ["样本即总体", "行数即唯一路径数", "包含即受影响"],
-      "scenario_expectations": {"normal":"四种投影和三种计数分别回执", "empty":"合法空路径集合", "missing":"分页缺页使所有总体计数失败关闭", "wrong_identity":"游标身份漂移拒绝", "boundary":"仅称观测路径包含", "large_result":"5条预览并提供三种格式"}
+      "scenario_expectations": {"normal":"TOOL-12以contains_asn原生过滤，在绑定publication、ever_affected_asns_registered_by_bound_publication anchor域和window_path_association_evidence_rows人口内返回完整关联ResultSet；OP-18/20/21分别投影总体prefix/path/direction集合并由OP-23/22/24独立计数", "empty":"在该限定人口内合法完整空路径关联集合", "missing":"分页缺页、过滤索引或可信query receipt缺失使总体计数失败关闭", "wrong_identity":"游标、过滤目标、索引或publication身份漂移拒绝", "boundary":"完整性不代表RRC25原始全部路径人口；仅称观测路径包含；逐路径位置和邻接自动展开降为P2.1", "large_result":"5条预览并提供冻结TOOL-12原始ResultSet完整导出"}
     },
     {
       "question_id": "Q21",
@@ -182,9 +182,9 @@
     {
       "question_id": "Q23",
       "answerability": "new_route_state_tool_required",
-      "required_assertions": ["精确时点announced RouteState", "prefix/VP/peer/origin/path/checkpoint", "ASN位置"],
+      "required_assertions": ["精确时点announced RouteState", "prefix/VP/peer/origin/path/checkpoint", "contains_asn过滤与返回行包含关系可验证"],
       "prohibited_assertions": ["concurrent等于path-at-time", "读取未来状态", "withdrawn/missing算活动"],
-      "scenario_expectations": {"normal":"TOOL-03/OP-01峰值经PLAN-CAP-01绑定到TOOL-11 contains_asn过滤，再由OP-15定位", "empty":"无活动路径合法为空", "missing":"预物化时点视图或投影回执缺失使查询不可验证", "wrong_identity":"时点超窗或publication冲突拒绝", "boundary":"只称该collector时点观察", "large_result":"按时间点分页"}
+      "scenario_expectations": {"normal":"TOOL-03/OP-01峰值经PLAN-CAP-01绑定到TOOL-11；contains_asn由预物化membership index和可信过滤回执闭合并直接返回完整活动RouteState ResultSet", "empty":"无活动路径为合法完整空集", "missing":"预物化时点视图、membership index、materialization receipt或filter receipt任一缺失均不可验证", "wrong_identity":"时点超窗、publication冲突、target ASN或index digest与过滤回执不一致均拒绝", "boundary":"只称该collector时点观察；逐路径位置、邻接和跨并列峰值动态展开降为P2.1", "large_result":"按时间点稳定分页并可导出完整冻结ResultSet"}
     },
     {
       "question_id": "Q24",
@@ -196,9 +196,9 @@
     {
       "question_id": "Q26",
       "answerability": "new_path_tool_required",
-      "required_assertions": ["observed downstream origin集合", "冻结ASN名称来源", "每origin path/prefix/direction独立计数"],
+      "required_assertions": ["observed downstream origin集合", "缺少名称时只显示ASN", "跨全部origin的总体path/prefix/direction独立集合与计数"],
       "prohibited_assertions": ["downstream等于customer cone", "LLM补ASN名称"],
-      "scenario_expectations": {"normal":"优先复用完整TOOL-05关系人口或TOOL-12+OP-19", "empty":"空观测集合", "missing":"名称人口缺失时只返回ASN", "wrong_identity":"profile与路径快照身份不兼容则不连接", "boundary":"固定中性命名", "large_result":"10条origin预览并导出"}
+      "scenario_expectations": {"normal":"可信回执先确认ASN属于ever_affected_asns_registered_by_bound_publication eligible anchor域；TOOL-12再以anchor_asn且anchor_before_known_origin=true在window_path_association_evidence_rows人口内一次读取完整关联总体；OP-19形成完整origin集合，同一总体由OP-18/20/21和OP-23/22/24形成跨全部origin的总体集合与计数", "empty":"仅eligible anchor经可信回执确认且匹配数为0时，完整空origin集合和空总体集合才合法", "missing":"路径人口、原生过滤索引或可信query receipt不完整时origin集合和总体计数失败关闭", "wrong_identity":"anchor ASN、filter profile、index、source或publication身份不兼容则拒绝；noneligible anchor返回unsupported/not_answerable而不是空集", "boundary":"完整性不代表RRC25原始全部路径人口；observed downstream不得称customer cone；总体计数不得冒充逐origin计数，逐origin自动下钻降为P2.1", "large_result":"10条去重origin预览；当前只允许完整导出TOOL-12原始关联ResultSet，不得把OP-19派生集合冒充可导出ResultSet"}
     },
     {
       "question_id": "Q27",

@@ -1,6 +1,6 @@
 {
-  "alignment_hook_sha256": "66f4935c96f29d50fec9a5e8b8e2b4459181036b338e08aa235a2ed8a772af91",
-  "alignment_hook_tests_sha256": "be7c01460251d27e7784b0ca30deedf48080edd1dd30ff6bd30a5b6f4e41e84d",
+  "alignment_hook_sha256": "27d650767094cff9be6e3206f4bd7e4add44c0adc814b6f57a7674e24aaa6cd1",
+  "alignment_hook_tests_sha256": "900031ddc85a64cb41cb8acb803c7559461e8dad0c5e1e4c46b2f27c582d28a0",
   "checks": [
     "task_spec_version",
     "question_population_28_of_28",
@@ -29,22 +29,23 @@
     "route_state_materialized_view_boundary",
     "window_path_association_semantics"
   ],
+  "design_candidate_id": "country-outage-p2-s1-s1d-2-0ffbf9b11a6b0f300197dfae",
   "design_only": true,
-  "phase_plan_sha256": "ea1c7990b6701b9676b4e527a3c7085185cdd543c9d1558c89927246c660c753",
+  "phase_plan_sha256": "f86955257b93e7ddc18553242f4b2f2fe7a78401f6237e855341e1147a63574d",
   "prior_receipts": {
-    "S1D-0": "7816ec31c226254e797fafa0d3b3c3faa927fb0dfd913fa685cd69dcb0fb7fc5",
-    "S1D-1": "fd0b7aaa2ac708444ba2140bcbca91e833bd83984df4a76a73e51ed6a6f5581e"
+    "S1D-0": "5c08d202863459dd697030f2e0386a0e28ce45018f2ecf3f1e609a64c80915e6",
+    "S1D-1": "8a2c327b5e6947480e7c61fdf2aa1ef76aeedea5577b261b4e68dbb5155d2385"
   },
   "production_deployed": false,
-  "receipt_digest": "41d742e623fe8c2eb078fdf4dee308f000c3efae21e3d6e44b90f8496ad690e3",
+  "receipt_digest": "0beef3e0db3b18f1518050783be02f6d9ac6efd8f38fae040d979c876f6456f7",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
   "stage": "S1D-2",
   "stage_artifact_sha256": {
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-atomicity-review.json": "42dd1d20bd23a775789624b24a594a508cb6725a21a7051fd0c8d6ba322574dd",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-catalog.json": "8935f19bd8c82e2fe91af1e5bd14d26cf053d807725254dc0ebc6ccef67607d2",
-    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-contract.schema.json": "1567e2ca2194fbed4fa3c967a07bdc4b3137af8b91bf7dac995a60430762bd45"
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-atomicity-review.json": "78e0fd6083b009e96fb1d831c9f900c46933fe7fe303788caa05aafa187217f2",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-catalog.json": "6b6ff25fa6e98d5e8aa897ee08d3fae51db899671aa6f2f0d5a46b91652bf8b3",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/tool-contract.schema.json": "28e2efdcd89cb019971a7f4d52c9c06b26ed4fef0a682d36c4a3f61477219cbd"
   },
   "status": "alignment_passed",
-  "task_spec_sha256": "18a8d44528be0ba78bbb97e845aaf78bf0cbd903e86b88f1ea00ffacd930c2b1"
+  "task_spec_sha256": "dbe1232d51064037716f321c5614042418dbcc9a66cfc908dc51fc1a7f8b6e61"
 }

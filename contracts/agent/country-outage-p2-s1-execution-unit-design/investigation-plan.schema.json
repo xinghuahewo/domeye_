@@ -507,7 +507,7 @@
     "embedded_execution_units_forbidden": true,
     "fallback_units_forbidden": true,
     "internal_dag_forbidden": true,
-    "p2_v1_deferred_units": ["TOOL-13", "OP-34"],
+    "p2_v1_deferred_units": ["TOOL-13", "OP-34", "PLAN-CAP-02"],
     "p2_v1_deferred_units_admission_forbidden": true,
     "hard_dependency_failure_propagates_only_to_dependents": true,
     "independent_branch_may_continue": true,

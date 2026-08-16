@@ -401,6 +401,29 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "source_tool": {
+            "properties": {"tool_id": {"const": "TOOL-12"}},
+            "required": ["tool_id"]
+          },
+          "normalized_query": {
+            "properties": {"anchor_before_known_origin": {"const": true}},
+            "required": ["anchor_before_known_origin"]
+          }
+        },
+        "required": ["source_tool", "normalized_query"]
+      },
+      "then": {
+        "properties": {
+          "normalized_query": {
+            "required": ["anchor_asn"],
+            "properties": {"anchor_asn": {"type": "integer", "minimum": 0}}
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -844,6 +867,42 @@
     "default_disposition": "fail_closed",
     "population_jaccard_coverage_and_total_relation_forbidden": true,
     "lower_bound_requires_registered_monotonicity_contract": true
+  },
+  "x-tool11-contains-asn-query-contract": {
+    "applies_when": "source_tool.tool_id=TOOL-11 AND normalized_query.contains_asn is present",
+    "source_population_unchanged": "materialized_route_state_rows_at_exact_time",
+    "profile_id": "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0",
+    "profile_digest": "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2",
+    "eligible_row_predicate": "visibility=visible AND common_path_status IN (ordered,unordered)",
+    "complete_matched_member_keys_digest_recipe": "sha256(canonical({member_keys: resolved_members[].member_identity in frozen result order}))",
+    "trusted_query_receipt_required": true,
+    "pre_materialized_membership_index_required": true,
+    "query_time_path_parsing_forbidden": true,
+    "llm_filtering_forbidden": true,
+    "returned_member_must_be_visible_and_have_common_path_status_ordered_or_unordered": true,
+    "returned_typed_path_segments_must_contain_target_asn": true,
+    "query_receipt_must_bind_profile_index_materialization_query_source_target_matched_keys_and_total": true,
+    "missing_or_mismatched_receipt_disposition": "reject_result_set_freeze"
+  },
+  "x-tool12-native-filter-query-contract": {
+    "applies_when": "source_tool.tool_id=TOOL-12 AND (normalized_query.contains_asn is present OR normalized_query.anchor_before_known_origin=true)",
+    "source_population_unchanged": "window_path_association_evidence_rows",
+    "profile_id": "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0",
+    "profile_digest": "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7",
+    "complete_matched_member_keys_digest_recipe": "sha256(canonical({member_keys: resolved_members[].member_identity in frozen result order}))",
+    "trusted_query_receipt_required": true,
+    "pre_materialized_filter_indexes_required": true,
+    "query_time_path_parsing_forbidden": true,
+    "llm_filtering_forbidden": true,
+    "contains_asn_returned_path_segments_must_contain_target_asn": true,
+    "anchor_before_returned_row_must_match_anchor_and_verified_strict_path_order": true,
+    "anchor_before_requires_anchor_asn_and_eligible_anchor_population": true,
+    "anchor_population_eligibility_must_resolve_complete_same_publication_ever_affected_as_result_set": true,
+    "known_origin_must_equal_observed_origin_and_collapsed_ordered_path_tail": true,
+    "trusted_materialization_receipt_must_resolve_and_bind_profile_source_indexes_and_indexed_population": true,
+    "query_receipt_must_bind_profile_indexes_materialization_query_source_targets_matched_keys_and_total": true,
+    "op19_population_filter_receipt_digest_must_equal_result_set_query_receipt_digest": true,
+    "missing_or_mismatched_receipt_disposition": "reject_result_set_freeze"
   },
   "x-runtime-validator-contract": {
     "validators": [
