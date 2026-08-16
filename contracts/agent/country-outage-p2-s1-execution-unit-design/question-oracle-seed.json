@@ -1,0 +1,270 @@
+{
+  "schema_version": "country_outage_p2_s1_question_oracle_seed_v1",
+  "artifact_id": "country-outage-p2-s1-question-oracle-seed-20260812",
+  "stage": "S1D-1",
+  "status": "oracle_seed_not_executable_oracle",
+  "question_population": {
+    "count": 28,
+    "ids": [
+      "Q01", "Q02", "Q03", "Q04", "Q05", "Q06", "Q07", "Q08", "Q09", "Q10",
+      "Q13", "Q14", "Q16", "Q17", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23",
+      "Q24", "Q26", "Q27", "Q29", "Q30", "Q31", "Q32", "Q33"
+    ]
+  },
+  "scenario_classes": [
+    "normal",
+    "empty",
+    "missing",
+    "wrong_identity",
+    "boundary",
+    "large_result"
+  ],
+  "universal_hard_gates": {
+    "single_publication_identity": true,
+    "registered_tool_operator_evidence_only": true,
+    "evidence_truth_precedes_teacher": true,
+    "sol_before_ds": true,
+    "same_grounding_plan_digest": true,
+    "same_evidence_bundle_digest": true,
+    "teacher_reference_validation_required": true,
+    "student_answer_validation_required": true,
+    "text_similarity_is_sufficient": false,
+    "forbidden_claims": [
+      "cause",
+      "responsibility",
+      "national_outage",
+      "real_user_impact",
+      "recovery_when_event_end_unknown",
+      "customer_relationship_without_external_evidence"
+    ]
+  },
+  "common_scenario_semantics": {
+    "empty": "合法查询返回零成员；必须与missing和unavailable区分",
+    "missing": "必需字段、页面、状态槽或Evidence缺失；不得填零或猜测",
+    "wrong_identity": "incident/publication/revision/collector/cohort/window任一冲突时失败关闭",
+    "boundary": "存在可回答的控制面部分时回答该部分，并用BOUNDARY-01发布其余边界",
+    "large_result": "返回有界预览、returned/total、is_complete=false和显式导出选择；不得冒充完整"
+  },
+  "questions": [
+    {
+      "question_id": "Q01",
+      "answerability": "supported",
+      "required_assertions": ["事件身份字段同源", "data_through与event_end分离", "event_end_unknown保持未知"],
+      "prohibited_assertions": ["数据截至即事件结束", "已经恢复"],
+      "scenario_expectations": {"normal":"返回完整身份和finality", "empty":"event_not_found或publication_not_found", "missing":"identity字段缺失即invalid_data", "wrong_identity":"binding_conflict且零事实", "boundary":"拒绝原因和恢复扩写", "large_result":"not_applicable"}
+    },
+    {
+      "question_id": "Q02",
+      "answerability": "partial_until_full_path_tool",
+      "required_assertions": ["聚合完整性与实体完整性分开", "样本和总体分开", "audit-only明确"],
+      "prohibited_assertions": ["三条样本就是全部路径", "窗口完整等于所有实体已公开"],
+      "scenario_expectations": {"normal":"逐人口返回complete/sample/audit_only", "empty":"空总体与未发布接口分开", "missing":"缺少完整性元数据即invalid_data", "wrong_identity":"跨publication审计摘要拒绝", "boundary":"不外推全球拓扑完整性", "large_result":"仅返回元数据和导出入口"}
+    },
+    {
+      "question_id": "Q03",
+      "answerability": "supported",
+      "required_assertions": ["前缀极值", "ASN极值", "IPv4极值", "IPv6极值", "单位分离"],
+      "prohibited_assertions": ["遗漏IPv6", "合成严重度总分", "IPv4与IPv6直接相加"],
+      "scenario_expectations": {"normal":"四类指标及并列时点完整", "empty":"空时序返回invalid_data", "missing":"缺轨即partial并列明", "wrong_identity":"不同publication轨禁止比较", "boundary":"时间关系不升级因果", "large_result":"极值节点有界无需导出"}
+    },
+    {
+      "question_id": "Q04",
+      "answerability": "new_operator_required",
+      "required_assertions": ["peak_invisible_direction_count降序", "peak_complete_prefix_count降序", "asn升序", "global rank与result position分开"],
+      "prohibited_assertions": ["排名即关键性", "TOOL-04分页顺序即严重性排序"],
+      "scenario_expectations": {"normal":"三键排序和tie fixture通过", "empty":"空ASN集合返回空排名", "missing":"任一排序字段缺失即不可排名", "wrong_identity":"跨publication行拒绝", "boundary":"拒绝骨干或单点故障称谓", "large_result":"默认10行并询问Markdown/CSV/JSON导出"}
+    },
+    {
+      "question_id": "Q05",
+      "answerability": "new_tools_required",
+      "required_assertions": ["ASN自身固定前缀人口", "状态证据", "路径证据", "各结果人口分别命名"],
+      "prohibited_assertions": ["关系关联前缀等于ASN自身前缀", "路径包含等于影响"],
+      "scenario_expectations": {"normal":"原子分支组合且成员可追溯", "empty":"无固定成员和无路径分别报告", "missing":"缺状态不抹掉membership事实", "wrong_identity":"任一分支身份冲突则该分支拒绝", "boundary":"不推断客户或用户影响", "large_result":"各人口独立预览和导出"}
+    },
+    {
+      "question_id": "Q06",
+      "answerability": "new_tools_required",
+      "required_assertions": ["异常前缀完整成员", "首次异常状态", "连续区间", "峰值状态", "最后一次异常状态"],
+      "prohibited_assertions": ["缺失当正常", "把一个复合状态算子当原子"],
+      "scenario_expectations": {"normal":"OP-06/07/09/35四个独立状态Operator结果闭合", "empty":"无异常成员返回空集合", "missing":"序列缺槽导致区间中断且last occurrence不外推", "wrong_identity":"membership与state身份不一致拒绝", "boundary":"只称RRC25状态", "large_result":"前缀20条预览并导出"}
+    },
+    {
+      "question_id": "Q07",
+      "answerability": "new_tools_required",
+      "required_assertions": ["Plan参数绑定", "normal/partial/complete/unknown成员互斥", "成员总数对账"],
+      "prohibited_assertions": ["通用entity join", "unknown等于0", "错用邻近时间槽"],
+      "scenario_expectations": {"normal":"上游成员通过PLAN-CAP-01绑定给TOOL-08", "empty":"合法空成员集合", "missing":"缺状态成员进入unknown而非丢弃", "wrong_identity":"Plan binding摘要冲突拒绝", "boundary":"不称全球可达性", "large_result":"分类分别预览和完整导出"}
+    },
+    {
+      "question_id": "Q08",
+      "answerability": "new_tool_operator_required",
+      "required_assertions": ["首次越阈定义", "ASN异常区间", "最长区间", "complete峰值比例", "三种独立排名"],
+      "prohibited_assertions": ["最早观测即最早发生", "高比例等于大范围", "动态mode排名"],
+      "scenario_expectations": {"normal":"OP-36检测越阈，OP-07/10/11/12/13/14逐项回执", "empty":"无越阈ASN返回空排名", "missing":"状态缺槽断开区间，左删失ASN不混入精确排名", "wrong_identity":"ASN序列跨publication拒绝", "boundary":"排名不解释为关键性", "large_result":"三份排名分别预览"}
+    },
+    {
+      "question_id": "Q09",
+      "answerability": "new_tools_required",
+      "required_assertions": ["两个ASN完整异常区间", "OP-38半开区间交集", "OP-39固定前缀集合关系", "downstream集合关系"],
+      "prohibited_assertions": ["共享origin等于直接连接", "时间重叠等于因果"],
+      "scenario_expectations": {"normal":"两个TOOL-07结果分别经OP-39投影，两个TOOL-09状态轨分别经OP-07形成区间，再由OP-38只求半开时间交集；前缀和downstream集合仍由OP-25..28独立计算", "empty":"OP-38区分empty_left、empty_right、empty_both和disjoint；集合算子按数学合同处理", "missing":"任一状态区间或集合不完整均禁止总体关系", "wrong_identity":"跨publication、window或grid的区间与集合均拒绝", "boundary":"区间重叠只称观测时间交集，不推断因果或依赖传播", "large_result":"先限定两个ASN，区间和集合交集分别预览并保留完整导出"}
+    },
+    {
+      "question_id": "Q10",
+      "answerability": "new_operator_required",
+      "required_assertions": ["公开三键排序合同", "排名非拓扑或业务关键性"],
+      "prohibited_assertions": ["核心骨干", "最关键ASN", "单点故障"],
+      "scenario_expectations": {"normal":"排名回执加BOUNDARY-01", "empty":"空集合无排名", "missing":"排序字段缺失不可排名", "wrong_identity":"排序输入身份冲突拒绝", "boundary":"固定发布非关键性说明", "large_result":"同Q04"}
+    },
+    {
+      "question_id": "Q13",
+      "answerability": "new_tool_required",
+      "required_assertions": ["峰值时间来自OP-01", "PLAN-CAP-01传参", "partial/complete成员", "聚合数量对账"],
+      "prohibited_assertions": ["额外entity join", "用聚合数替代成员", "全球不可达"],
+      "scenario_expectations": {"normal":"峰值时点直接查询prefix state", "empty":"合法空峰值成员需与聚合0对账", "missing":"缺成员导致对账失败", "wrong_identity":"峰值与state不同publication拒绝", "boundary":"限定RRC25 expected directions", "large_result":"前缀20条预览并导出"}
+    },
+    {
+      "question_id": "Q14",
+      "answerability": "new_tools_required",
+      "required_assertions": ["TOOL-07固定cohort预期方向", "观察方向计数", "状态首次/区间/截止", "按需VP RouteState"],
+      "prohibited_assertions": ["方向数等于用户数", "无观测等于撤路"],
+      "scenario_expectations": {"normal":"TOOL-07提供固定cohort expected directions，TOOL-08提供逐槽计数，TOOL-11提供实际VP行，状态Operator与三种VP一致性按需组合", "empty":"无expected directions、无RouteState与不可见三者分开", "missing":"VP缺测标记missing且不从实际行反推预期人口", "wrong_identity":"cohort member、prefix state与RouteState任一身份冲突拒绝", "boundary":"方向数不是用户数且不称传播", "large_result":"仅指定prefix按需下钻"}
+    },
+    {
+      "question_id": "Q16",
+      "answerability": "new_tools_required",
+      "required_assertions": ["new-prefix成员", "首次观察槽", "RouteState origin/path", "截止状态"],
+      "prohibited_assertions": ["全球首次宣告", "新分配", "TOOL-10内嵌RouteState join"],
+      "scenario_expectations": {"normal":"首次槽经PLAN-CAP-01绑定TOOL-11，OP-33 exact join并由OP-08选择截止状态", "empty":"无新prefix返回空集合", "missing":"RouteState预物化视图缺失时保留new-prefix事实", "wrong_identity":"typed join身份冲突拒绝", "boundary":"只称cohort冻结后首次观察", "large_result":"20条预览并导出"}
+    },
+    {
+      "question_id": "Q17",
+      "answerability": "boundary_supported",
+      "required_assertions": ["RRC25首次观察定义", "外部RIR/多源证据需求", "可发布边界回答"],
+      "prohibited_assertions": ["新分配", "全球首次", "业务启用"],
+      "scenario_expectations": {"normal":"BOUNDARY-01返回定义和缺口", "empty":"无成员仍可解释语义", "missing":"定义缺失时拒绝猜测", "wrong_identity":"其他事件定义不可复用", "boundary":"本题主路径", "large_result":"not_applicable"}
+    },
+    {
+      "question_id": "Q18",
+      "answerability": "new_tool_operator_required",
+      "required_assertions": ["固定cohort expected directions", "VP可见性一致性", "VP origin一致性", "VP path一致性"],
+      "prohibited_assertions": ["用时间算子判断内容一致性", "VP差异等于传播", "单collector等于全球"],
+      "scenario_expectations": {"normal":"TOOL-07提供预期方向，TOOL-11提供实际方向，OP-30/31/32独立回执", "empty":"无预期方向与无实际行分别处理", "missing":"部分预期VP缺测分别报告", "wrong_identity":"不同时间槽或publication拒绝", "boundary":"不推断故障传播", "large_result":"按prefix和time限制"}
+    },
+    {
+      "question_id": "Q19",
+      "answerability": "new_path_tool_required",
+      "required_assertions": ["至少5条Renderer预览", "ASN位置", "直接邻接", "双ASN有序关系"],
+      "prohibited_assertions": ["Tool负责预览", "包含等于相邻", "路径顺序等于商业关系"],
+      "scenario_expectations": {"normal":"TOOL-05给关系总体，TOOL-12读取窗口级关联行后OP-15/16/17独立派生", "empty":"无路径关联返回空总体", "missing":"unordered path不强制线性化", "wrong_identity":"路径证据跨publication拒绝", "boundary":"不推断客户关系且不称时点活动路径", "large_result":"Renderer默认5条"}
+    },
+    {
+      "question_id": "Q20",
+      "answerability": "new_path_tool_required",
+      "required_assertions": ["绑定publication且限affected-anchor窗口association人口的完整路径关联行", "唯一path/prefix/direction集合和独立计数", "完整导出只针对冻结TOOL-12原始ResultSet"],
+      "prohibited_assertions": ["样本即总体", "行数即唯一路径数", "包含即受影响"],
+      "scenario_expectations": {"normal":"TOOL-12以contains_asn原生过滤，在绑定publication、ever_affected_asns_registered_by_bound_publication anchor域和window_path_association_evidence_rows人口内返回完整关联ResultSet；OP-18/20/21分别投影总体prefix/path/direction集合并由OP-23/22/24独立计数", "empty":"在该限定人口内合法完整空路径关联集合", "missing":"分页缺页、过滤索引或可信query receipt缺失使总体计数失败关闭", "wrong_identity":"游标、过滤目标、索引或publication身份漂移拒绝", "boundary":"完整性不代表RRC25原始全部路径人口；仅称观测路径包含；逐路径位置和邻接自动展开降为P2.1", "large_result":"5条预览并提供冻结TOOL-12原始ResultSet完整导出"}
+    },
+    {
+      "question_id": "Q21",
+      "answerability": "new_path_tool_operator_required",
+      "required_assertions": ["OP-15位置回执", "逐路径直接邻接", "连接路径图后置"],
+      "prohibited_assertions": ["关系汇总行等于直接邻接", "邻接等于provider/customer"],
+      "scenario_expectations": {"normal":"Plan先运行OP-15再将同path digest位置回执交给OP-16", "empty":"无邻接返回空集合", "missing":"AS_SET/confed标记不可比较", "wrong_identity":"路径与位置回执摘要冲突拒绝", "boundary":"v1逐路径表格不声称完整拓扑图", "large_result":"邻接预览受限并可导出"}
+    },
+    {
+      "question_id": "Q22",
+      "answerability": "new_path_tool_required",
+      "required_assertions": ["关系过滤后的prefix集合", "唯一prefix总数", "与关系汇总总量对账"],
+      "prohibited_assertions": ["关系prefix等于ASN自身prefix", "样本投影即全集"],
+      "scenario_expectations": {"normal":"TOOL-05关系总量与TOOL-12关联行经OP-18/23派生后对账", "empty":"无关联prefix返回空集合", "missing":"路径关联分页不完整禁止总数", "wrong_identity":"关系与路径证据身份冲突拒绝", "boundary":"不称拥有或影响前缀", "large_result":"20条prefix预览并导出"}
+    },
+    {
+      "question_id": "Q23",
+      "answerability": "new_route_state_tool_required",
+      "required_assertions": ["精确时点announced RouteState", "prefix/VP/peer/origin/path/checkpoint", "contains_asn过滤与返回行包含关系可验证"],
+      "prohibited_assertions": ["concurrent等于path-at-time", "读取未来状态", "withdrawn/missing算活动"],
+      "scenario_expectations": {"normal":"TOOL-03/OP-01峰值经PLAN-CAP-01绑定到TOOL-11；contains_asn由预物化membership index和可信过滤回执闭合并直接返回完整活动RouteState ResultSet", "empty":"无活动路径为合法完整空集", "missing":"预物化时点视图、membership index、materialization receipt或filter receipt任一缺失均不可验证", "wrong_identity":"时点超窗、publication冲突、target ASN或index digest与过滤回执不一致均拒绝", "boundary":"只称该collector时点观察；逐路径位置、邻接和跨并列峰值动态展开降为P2.1", "large_result":"按时间点稳定分页并可导出完整冻结ResultSet"}
+    },
+    {
+      "question_id": "Q24",
+      "answerability": "deferred_p2_1",
+      "required_assertions": ["design_covered=true", "p2_v1_executable=false", "所需TOOL-13/OP-34"],
+      "prohibited_assertions": ["P2 v1已可执行", "所有不可见都是WITHDRAW", "路径变化等于流量切换"],
+      "scenario_expectations": {"normal":"返回deferred设计边界", "empty":"not_executed", "missing":"RouteEvent能力未发布", "wrong_identity":"not_executed", "boundary":"说明控制面变化仍非原因", "large_result":"not_applicable"}
+    },
+    {
+      "question_id": "Q26",
+      "answerability": "new_path_tool_required",
+      "required_assertions": ["observed downstream origin集合", "缺少名称时只显示ASN", "跨全部origin的总体path/prefix/direction独立集合与计数"],
+      "prohibited_assertions": ["downstream等于customer cone", "LLM补ASN名称"],
+      "scenario_expectations": {"normal":"可信回执先确认ASN属于ever_affected_asns_registered_by_bound_publication eligible anchor域；TOOL-12再以anchor_asn且anchor_before_known_origin=true在window_path_association_evidence_rows人口内一次读取完整关联总体；OP-19形成完整origin集合，同一总体由OP-18/20/21和OP-23/22/24形成跨全部origin的总体集合与计数", "empty":"仅eligible anchor经可信回执确认且匹配数为0时，完整空origin集合和空总体集合才合法", "missing":"路径人口、原生过滤索引或可信query receipt不完整时origin集合和总体计数失败关闭", "wrong_identity":"anchor ASN、filter profile、index、source或publication身份不兼容则拒绝；noneligible anchor返回unsupported/not_answerable而不是空集", "boundary":"完整性不代表RRC25原始全部路径人口；observed downstream不得称customer cone；总体计数不得冒充逐origin计数，逐origin自动下钻降为P2.1", "large_result":"10条去重origin预览；当前只允许完整导出TOOL-12原始关联ResultSet，不得把OP-19派生集合冒充可导出ResultSet"}
+    },
+    {
+      "question_id": "Q27",
+      "answerability": "new_path_tool_operator_required",
+      "required_assertions": ["限定ASN范围", "独立intersection/difference/coverage/Jaccard", "完整输入"],
+      "prohibited_assertions": ["一个set_relation复合算子", "集合相似等于业务角色或依赖链"],
+      "scenario_expectations": {"normal":"OP-25..28独立回执", "empty":"按数学合同处理空集合并防除零", "missing":"任一集合不完整则总体值禁止", "wrong_identity":"跨publication集合拒绝", "boundary":"不解释商业关系", "large_result":"未限定AS范围先clarify或预算确认"}
+    },
+    {
+      "question_id": "Q29",
+      "answerability": "external_evidence_required",
+      "required_assertions": ["customer cone需要外部关系数据", "可选观测下游集合", "二者名称分离"],
+      "prohibited_assertions": ["path顺序证明customer cone", "observed downstream改名customer zone"],
+      "scenario_expectations": {"normal":"BOUNDARY-01发布证据需求", "empty":"无观测下游不改变customer cone未知", "missing":"外部关系数据缺失为预期", "wrong_identity":"外部快照未绑定不得连接", "boundary":"本题主路径", "large_result":"可选downstream集合遵循预览"}
+    },
+    {
+      "question_id": "Q30",
+      "answerability": "external_evidence_required",
+      "required_assertions": ["只报告路径位置/邻接事实", "商业关系证据缺失", "不得回答是或不是"],
+      "prohibited_assertions": ["邻接证明客户", "组织名称证明关系"],
+      "scenario_expectations": {"normal":"事实部分加BOUNDARY-01", "empty":"无路径不证明无商业关系", "missing":"外部关系数据缺失", "wrong_identity":"未版本化外部关系拒绝", "boundary":"本题主路径", "large_result":"not_applicable"}
+    },
+    {
+      "question_id": "Q31",
+      "answerability": "new_temporal_operator_required",
+      "required_assertions": ["单位和人口可比性", "同槽/先后/错位/不可比", "IPv4与IPv6不对称可描述"],
+      "prohibited_assertions": ["时间关系等于因果", "不同单位相加"],
+      "scenario_expectations": {"normal":"OP-29只计算时间关系，OP-37基于其回执分类一致性", "empty":"无可比时点返回not_comparable", "missing":"缺轨返回missing", "wrong_identity":"跨publication比较拒绝", "boundary":"不判断传播", "large_result":"关系节点有界"}
+    },
+    {
+      "question_id": "Q32",
+      "answerability": "new_temporal_operator_required",
+      "required_assertions": ["峰值错位与事实冲突分开", "相同定义人口的互斥断言才是conflict"],
+      "prohibited_assertions": ["晚于等于被导致", "峰值不同自动冲突"],
+      "scenario_expectations": {"normal":"OP-29只给时间关系，OP-37区分错位与冲突，GATE-04守边界", "empty":"无可比关系返回not_comparable", "missing":"定义或人口缺失返回missing", "wrong_identity":"跨publication拒绝", "boundary":"不输出cause", "large_result":"not_applicable"}
+    },
+    {
+      "question_id": "Q33",
+      "answerability": "bounded_control_plane_only",
+      "required_assertions": ["有边界RRC25控制面结论", "逐项unsupported", "可发布边界回答"],
+      "prohibited_assertions": ["传播已证明", "全国中断", "真实用户影响", "原因责任", "已经恢复", "RCA"],
+      "scenario_expectations": {"normal":"GATE-01..05全部通过后BOUNDARY-01发布", "empty":"无事实时只报告证据不足", "missing":"缺证据逐项unknown", "wrong_identity":"零事件事实", "boundary":"本题主路径", "large_result":"not_applicable"}
+    }
+  ],
+  "sol_ds_oracle_seed": {
+    "teacher_model": "gpt-5.6-sol",
+    "student_model_identity": "must_freeze_by_s1d5",
+    "per_question_checks": [
+      "teacher_run_precedes_student_run",
+      "teacher_reference_validated_before_student_input",
+      "shared_grounding_plan_digest_equal",
+      "shared_evidence_bundle_digest_equal",
+      "shared_registry_snapshot_digest_equal",
+      "teacher_injected_bad_fact_rejected",
+      "student_fact_precision_hard_gate",
+      "student_evidence_ref_precision_hard_gate",
+      "student_boundary_compliance_hard_gate",
+      "text_similarity_advisory_only"
+    ],
+    "revision_limit": 1,
+    "online_model_prompt_policy_mutation_forbidden": true
+  },
+  "design_boundary": {
+    "executable_oracle_built": false,
+    "model_replay_executed": false,
+    "runtime_implemented": false,
+    "production_deployed": false
+  }
+}

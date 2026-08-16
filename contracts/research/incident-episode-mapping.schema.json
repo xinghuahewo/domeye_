@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/incident-episode-mapping.schema.json",
+  "title": "Incident 到 Research Episode 的显式映射合同",
+  "description": "表达一个旧 Incident 到零、一个或多个研究 Episode 的非因果映射；链接样本必须由目标 Episode 支持。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mapping_id",
+    "run_id",
+    "incident_id",
+    "incident_ref",
+    "source_fact_state",
+    "mapping_state",
+    "causal",
+    "episode_links",
+    "missing_reason_zh"
+  ],
+  "properties": {
+    "schema_version": {"const": "incident-episode-mapping/v1"},
+    "mapping_id": {"type": "string", "pattern": "^incident_episode_map_v1_[0-9a-f]{24}$"},
+    "run_id": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "incident_id": {"type": "string", "pattern": "^inc_v1_[0-9a-f]{24}$"},
+    "incident_ref": {"type": "string", "minLength": 1},
+    "source_fact_state": {"enum": ["matched", "legacy_collision", "unresolved"]},
+    "mapping_state": {"enum": ["no_research_episode", "single_research_episode", "multiple_research_episodes"]},
+    "causal": {"const": false},
+    "episode_links": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/episodeLink"}
+    },
+    "missing_reason_zh": {"type": ["string", "null"], "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"mapping_state": {"const": "no_research_episode"}}, "required": ["mapping_state"]},
+      "then": {
+        "properties": {
+          "episode_links": {"type": "array", "maxItems": 0},
+          "missing_reason_zh": {"type": "string", "pattern": "[\\u3400-\\u4dbf\\u4e00-\\u9fff]"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"mapping_state": {"const": "single_research_episode"}}, "required": ["mapping_state"]},
+      "then": {
+        "properties": {
+          "episode_links": {"type": "array", "minItems": 1, "maxItems": 1},
+          "missing_reason_zh": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"mapping_state": {"const": "multiple_research_episodes"}}, "required": ["mapping_state"]},
+      "then": {
+        "properties": {
+          "episode_links": {"type": "array", "minItems": 2},
+          "missing_reason_zh": {"type": "null"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "episodeLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_id", "relation", "causal", "evidence_sample_ids"],
+      "properties": {
+        "episode_id": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+        "relation": {"enum": ["temporal_overlap", "legacy_reconciliation", "possible_correspondence"]},
+        "causal": {"const": false},
+        "evidence_sample_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"}
+        }
+      }
+    }
+  }
+}

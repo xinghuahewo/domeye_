@@ -1,0 +1,147 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_same_candidate_manifest_v1",
+  "artifact_kind": "same_candidate_manifest",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "status": "PASS",
+  "component_identities": {
+    "frontend": {
+      "identity": "frontend-source:e4a48c41445ce126bd923f4de2e2116b23cc3b450b887e8789ec21a267bc6a6b",
+      "evidence_kind": "component_frontend",
+      "sha256": "3305e2a7257e87091021556cc1d2bec1325a70bbc23fc2bb1f7d64e3866d741b"
+    },
+    "backend": {
+      "identity": "backend-proxy-source:10453abcc8de3f167f86974712520d138f13364e9fcf6af8d1e2596a86febab5",
+      "evidence_kind": "component_backend",
+      "sha256": "ce1723f20b0883808b299aae6a5d51cd52d44d4aebdbbd7c7d4c1024820ea711"
+    },
+    "runtime": {
+      "identity": "runtime-source:d5e43184b414cb7ab5fb6d06b3e361ebb62065508e0afb5e15119f0ca258d3a5",
+      "evidence_kind": "component_runtime",
+      "sha256": "e913ef329d54016b94714af74b988cfbcdc4c7b2e5608f144c5c3a925a1ce91e"
+    },
+    "semantic_planner": {
+      "identity": "semantic-planner-source:f19ea5861ca0572c529ad69e6545e4e29eb663c9f4072efa1454e5206e74f211",
+      "evidence_kind": "component_semantic_planner",
+      "sha256": "9add978d151bd39556c8dfad1093cca33c630d90c5fe3361e56330a29eb95707"
+    },
+    "prompt": {
+      "identity": "prompt-source:199131c3b483c60a55cfa7d2003f658890d94d38a8932b19bd2241e0d4ca0adb",
+      "evidence_kind": "component_prompt",
+      "sha256": "ec479372808cc0208f7e66d5de9f0e3132de8dc0be950ce5a3610a1d429a9a82"
+    },
+    "schema": {
+      "identity": "semantic-schema:1de0eb0a1e746a0d195dd207317d3f8cb5ddc47539cb869d5a446e30a4764c66",
+      "evidence_kind": "component_schema",
+      "sha256": "c67a81463cf6747fa20bc66d4d80b3ad37b2e61e4b63b5ebbcff8b8b0ac65697"
+    },
+    "capability_catalog": {
+      "identity": "capability-catalog:35189a0c6635c36c55600eae5738f9f0be8aceab6c6de78fd9eb868b49e1c7d0",
+      "evidence_kind": "component_capability_catalog",
+      "sha256": "e502c0f20a5ab8245b99a71717747e1495d8c6d67b5e15a9d723892918bafc66"
+    },
+    "policy": {
+      "identity": "grounding-policy:ad677516425d1b4bb7c0b6899417f1cb4797bdf45b837cf5ddb1e6df6c723905",
+      "evidence_kind": "component_policy",
+      "sha256": "ca0827689a8d422e6d597db541168aedec23eaebc88b601d1cb4115856734375"
+    },
+    "tool_contracts": {
+      "identity": "tool-contracts:7cd411f4816677f4d04ecd03d00df7373db9848d7abd63041a1b97c8dc24b13e",
+      "evidence_kind": "component_tool_contracts",
+      "sha256": "2273488f6d3317a1c2141dd4770f85cc32898a64fd1a90106c64e38dc46bf60b"
+    },
+    "operator_contracts": {
+      "identity": "operator-contracts:21187cd37e669ff13b63da982375b67730ba5dee5c76e395342a5908be64f652",
+      "evidence_kind": "component_operator_contracts",
+      "sha256": "b10deb661dd55cbf6bbc1474660be648860996ff27077f49d731c3ac5c87eaae"
+    },
+    "oracle": {
+      "identity": "oracle:a6c1249cb12e6eb8819e3e3e58363eaf57d3283bd259a014ba09448bb7bc656c",
+      "evidence_kind": "component_oracle",
+      "sha256": "b7f0d4def59a5a4b524a55de9788913b249bb30f168f777a76d9d6615c34db01"
+    },
+    "model": {
+      "identity": "codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+      "evidence_kind": "component_model",
+      "sha256": "370f244644bb6bda34ea1596db51e34e5b12a5db52bcc10ecd338d1c323f4938"
+    },
+    "data_publication": {
+      "identity": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f:revision-1:rrc25:2026-03-11T00:00:00Z",
+      "evidence_kind": "component_data_publication",
+      "sha256": "f7807cb0903bfdfe3da36d35cf6ccbc8117631882cb5bfc54b424238edd849fa"
+    }
+  },
+  "candidate_identity_sha256": "3317fbf78cf69b6a132bd17e2b10352b854e213579612dbb174050bdd491717f",
+  "evidence_refs": [
+    {
+      "kind": "component_backend",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_backend.json",
+      "sha256": "ce1723f20b0883808b299aae6a5d51cd52d44d4aebdbbd7c7d4c1024820ea711"
+    },
+    {
+      "kind": "component_capability_catalog",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_capability_catalog.json",
+      "sha256": "e502c0f20a5ab8245b99a71717747e1495d8c6d67b5e15a9d723892918bafc66"
+    },
+    {
+      "kind": "component_data_publication",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_data_publication.json",
+      "sha256": "f7807cb0903bfdfe3da36d35cf6ccbc8117631882cb5bfc54b424238edd849fa"
+    },
+    {
+      "kind": "component_frontend",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_frontend.json",
+      "sha256": "3305e2a7257e87091021556cc1d2bec1325a70bbc23fc2bb1f7d64e3866d741b"
+    },
+    {
+      "kind": "component_model",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_model.json",
+      "sha256": "370f244644bb6bda34ea1596db51e34e5b12a5db52bcc10ecd338d1c323f4938"
+    },
+    {
+      "kind": "component_operator_contracts",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_operator_contracts.json",
+      "sha256": "b10deb661dd55cbf6bbc1474660be648860996ff27077f49d731c3ac5c87eaae"
+    },
+    {
+      "kind": "component_oracle",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_oracle.json",
+      "sha256": "b7f0d4def59a5a4b524a55de9788913b249bb30f168f777a76d9d6615c34db01"
+    },
+    {
+      "kind": "component_policy",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_policy.json",
+      "sha256": "ca0827689a8d422e6d597db541168aedec23eaebc88b601d1cb4115856734375"
+    },
+    {
+      "kind": "component_prompt",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_prompt.json",
+      "sha256": "ec479372808cc0208f7e66d5de9f0e3132de8dc0be950ce5a3610a1d429a9a82"
+    },
+    {
+      "kind": "component_runtime",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_runtime.json",
+      "sha256": "e913ef329d54016b94714af74b988cfbcdc4c7b2e5608f144c5c3a925a1ce91e"
+    },
+    {
+      "kind": "component_schema",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_schema.json",
+      "sha256": "c67a81463cf6747fa20bc66d4d80b3ad37b2e61e4b63b5ebbcff8b8b0ac65697"
+    },
+    {
+      "kind": "component_semantic_planner",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_semantic_planner.json",
+      "sha256": "9add978d151bd39556c8dfad1093cca33c630d90c5fe3361e56330a29eb95707"
+    },
+    {
+      "kind": "component_tool_contracts",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component_tool_contracts.json",
+      "sha256": "2273488f6d3317a1c2141dd4770f85cc32898a64fd1a90106c64e38dc46bf60b"
+    },
+    {
+      "kind": "component_manifest",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/component-manifest.json",
+      "sha256": "7bd75de266321905760861784ec00822d3b6721f6717579077d19e1015e32b1f"
+    }
+  ]
+}

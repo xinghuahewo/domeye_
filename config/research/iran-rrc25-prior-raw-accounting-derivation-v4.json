@@ -1,0 +1,58 @@
+{
+  "schema_version": "rrc25-prior-raw-accounting-derivation/v1",
+  "observed_lower_bound": {
+    "operation": "sum_source_json_integer_terms",
+    "terms": [
+      {
+        "label": "v3_full_seed_exact_compressed_read",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared-v3/probe-ledger/seed-outcomes/seed-outcome-000001-seed_v1_6c6d3fe94d904d42999ac7c4132e92cc.json",
+        "source_sha256": "8f3fdf579c6a441f9f3660c81c07ec9df45284d0293382700d57706ca6e6038c",
+        "json_pointer": "/observed_compressed_bytes",
+        "multiplier": 1
+      }
+    ]
+  },
+  "reserved_upper_bound": {
+    "operation": "sum_source_json_integer_terms",
+    "conservative_attempt_count": 3,
+    "terms": [
+      {
+        "label": "v3_cumulative_probe_and_seed_reservation",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared-v3/probe-ledger/seed-attempts/seed-attempt-000001-seed_v1_6c6d3fe94d904d42999ac7c4132e92cc.json",
+        "source_sha256": "304176e1adf0879f010580c016fa271ce27ce34e6534cb993519c8f8a0743f02",
+        "json_pointer": "/cumulative_reserved_new_raw_bytes",
+        "multiplier": 1,
+        "attempt_id": "full_p0_v3_cumulative_probe_and_seed",
+        "artifact_id_json_pointer": "/seed_artifact/artifact_id",
+        "artifact_file_sha256_json_pointer": "/seed_artifact/file_sha256",
+        "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared-v3/probe-ledger/seed-attempts/seed-attempt-000001-seed_v1_6c6d3fe94d904d42999ac7c4132e92cc.json",
+        "provenance_sha256": "304176e1adf0879f010580c016fa271ce27ce34e6534cb993519c8f8a0743f02"
+      },
+      {
+        "label": "prepared_v1_failed_probe_reservation",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared/probe-ledger/attempts/attempt-000001-probe_v1_2cd01ab3f17596e0f1353d5b3dde5f03.json",
+        "source_sha256": "d4279d8c6895ad4adcea5ff04392ccb2e7a4c5058bd916bc6112f38a9bd8ea7a",
+        "json_pointer": "/reserved_new_raw_bytes",
+        "multiplier": 1,
+        "attempt_id": "full_p0_prepared_v1_failed_probe",
+        "artifact_id_json_pointer": "/artifacts/0/artifact_id",
+        "artifact_file_sha256_json_pointer": "/artifacts/0/file_sha256",
+        "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared/probe-ledger/attempts/attempt-000001-probe_v1_2cd01ab3f17596e0f1353d5b3dde5f03.json",
+        "provenance_sha256": "d4279d8c6895ad4adcea5ff04392ccb2e7a4c5058bd916bc6112f38a9bd8ea7a"
+      },
+      {
+        "label": "prepared_v2_failed_probe_reservation",
+        "source_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared-v2/probe-ledger/attempts/attempt-000001-probe_v1_3e55ba56e604dff21979911cda076ad8.json",
+        "source_sha256": "01ff00c8ce7ad62a0fd36002e300e683e5f283c1cd6c30b2f4429ba53259224e",
+        "json_pointer": "/reserved_new_raw_bytes",
+        "multiplier": 1,
+        "attempt_id": "full_p0_prepared_v2_failed_probe",
+        "artifact_id_json_pointer": "/artifacts/0/artifact_id",
+        "artifact_file_sha256_json_pointer": "/artifacts/0/file_sha256",
+        "provenance_path": "/home/bgpdata/Domeye-Core-dev-data/research-runs/iran-rrc25-full-p0/20260723T094940Z-full-p0/prepared-v2/probe-ledger/attempts/attempt-000001-probe_v1_3e55ba56e604dff21979911cda076ad8.json",
+        "provenance_sha256": "01ff00c8ce7ad62a0fd36002e300e683e5f283c1cd6c30b2f4429ba53259224e"
+      }
+    ]
+  },
+  "upper_bound_semantics": "conservative_no_refund_pre_goal_reads"
+}

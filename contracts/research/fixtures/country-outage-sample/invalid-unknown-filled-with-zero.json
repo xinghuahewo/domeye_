@@ -1,0 +1,32 @@
+{
+  "schema_version": "country-outage-sample/v1",
+  "sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb",
+  "collector_id": "rrc25",
+  "country_code": "IR",
+  "cohort_view": "compatible",
+  "slot": {"start": "2026-02-27T16:00:00Z", "end": "2026-02-27T16:05:00Z", "boundary": "[start,end)", "granularity_seconds": 300},
+  "continuity_state": "unknown_after_gap",
+  "metrics": {
+    "visible_asn_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 0, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "damaged_asn_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "baseline_asn_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "visible_ipv4_prefix_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "visible_ipv6_prefix_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "visible_ipv4_address_union": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "visible_ipv4_24_equivalent": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "visible_ipv6_48_equivalent": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "announce_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "withdraw_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "vp_expected_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "vp_observed_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "damaged_asn_ratio": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "numerator": null, "denominator": null, "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"}
+  },
+  "asn_sets": {
+    "visible": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "damaged": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"},
+    "baseline": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": null, "value_state": "unknown_source_gap", "missing_reason": "source_slot_missing"}
+  },
+  "source_refs": [{"ref_type": "input_artifact", "ref_id": "updates.20260227.1600.gz", "sha256": "1111111111111111111111111111111111111111111111111111111111111111"}]
+}

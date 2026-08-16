@@ -1,0 +1,117 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "925c27ebf98f95e11a087c5ced02a8e991155b87dc25460cf99024ff8f27edbf",
+      "size_bytes": 37784
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_trusted_store.py",
+      "sha256": "322852eeb4a22a84ccad1f0f3cd3e30f407223a8780538748f87a4e2dc0fa4bd",
+      "size_bytes": 20782
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_investigation_runtime.py",
+      "sha256": "6c1a38eb84fe10f9a74c8603349122481218208cddeffd4b9115e1babaa237fa",
+      "size_bytes": 170093
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_result_set.py",
+      "sha256": "8a6f2b138c0921c5aaf81bc61920eb6784d9e6f023e546ddf419ff6e839869b3",
+      "size_bytes": 30579
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_evidence_graph.py",
+      "sha256": "5639f0a203ae076423418294af25b45df77f86b4e52d4d89584ee5e88c502a22",
+      "size_bytes": 22350
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_runtime.py",
+      "sha256": "61e6065d2c838fcb1ba888c63cae04ee6d1a810eac05c6c7018311956b58f45c",
+      "size_bytes": 83241
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_w6_certification.py",
+      "sha256": "fb2280a8a065e294a82f0a4648084d218ddf7e7d99897fa8659f9476af1e3988",
+      "size_bytes": 95995
+    }
+  ],
+  "category": "cas_recovery_cancel_idempotency_and_residue",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_running_revision_is_visible_and_cancel_wins_worker_cas",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_store_tamper_symlink_and_registry_ghost_are_rejected",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_cas_journal_recovers_pointer_before_idempotency_crash",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan"
+  ],
+  "completed_at_utc": "2026-08-14T04:46:02Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n[stderr]\ntest_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue (backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest) ... ok\ntest_running_revision_is_visible_and_cancel_wins_worker_cas (backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest) ... ok\ntest_store_tamper_symlink_and_registry_ghost_are_rejected (backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest) ... ok\ntest_cas_journal_recovers_pointer_before_idempotency_crash (backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest) ... ok\ntest_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref (backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest) ... ok\ntest_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan (backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in <ELAPSED>\n\nOK\n",
+  "normalized_output_sha256": "e5beb40dac3187a27606b123fbff3b214bb2f408285dc6b3fbf03e2d86ac2cc0",
+  "passed": true,
+  "receipt_digest": "a04f5c1333d3cb9fcd73c89e725a6226ff47a3840c36af1308c8ff891e1ce67f",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.3.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_running_revision_is_visible_and_cancel_wins_worker_cas",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_store_tamper_symlink_and_registry_ghost_are_rejected",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_cas_journal_recovers_pointer_before_idempotency_crash",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref",
+    "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan"
+  ],
+  "skipped_count": 0,
+  "stage": "W6",
+  "started_at_utc": "2026-08-14T04:45:45Z",
+  "suite_id": "w6-recovery-attack",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_running_revision_is_visible_and_cancel_wins_worker_cas",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_store_tamper_symlink_and_registry_ghost_are_rejected",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_cas_journal_recovers_pointer_before_idempotency_crash",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref",
+      "unit_ids": []
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan",
+      "unit_ids": []
+    }
+  ],
+  "tested_execution_unit_ids": [],
+  "tested_unit_ids": [],
+  "tests_run": 6,
+  "working_directory": "."
+}

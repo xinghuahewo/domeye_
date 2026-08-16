@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/rrc25-event-cohort-store.schema.json",
+  "title": "Domeye RRC25 224-310 国家中断事件前固定 cohort 合同",
+  "description": "每个 cohort 都是既有唯一 RouteState 在首次检测前最后完整五分钟状态点的确定性视图。前缀按地址族唯一，独立观察方向按 peer ASN 去重；本合同不建立第二套 RouteState，也不生成 S2 指标。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "run_id",
+    "dataset_id",
+    "collector_id",
+    "window_start_utc",
+    "window_end_exclusive_utc",
+    "implementation_id",
+    "projector_name",
+    "projector_version",
+    "source_route_event_dataset_id",
+    "source_route_event_content_sha256",
+    "source_route_state_dataset_id",
+    "source_route_state_content_sha256",
+    "source_route_state_manifest_sha256",
+    "source_peer_session_dataset_id",
+    "source_peer_session_content_sha256",
+    "lifecycle_snapshot_id",
+    "lifecycle_snapshot_content_sha256",
+    "lifecycle_snapshot_file_sha256",
+    "mapping_version",
+    "mapping_compatible_sha256",
+    "mapping_revised_sha256",
+    "route_state_authority",
+    "direction_definition",
+    "new_population_policy",
+    "session_route_boundary",
+    "event_count",
+    "unique_cohort_count",
+    "cohort_member_count",
+    "expected_direction_relation_count",
+    "route_observation_count",
+    "events",
+    "cohorts",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "rrc25-event-cohort-store/v1" },
+    "status": { "const": "complete" },
+    "run_id": { "pattern": "^event_cohort_run_v1_[0-9a-f]{32}$" },
+    "dataset_id": { "pattern": "^event_cohort_dataset_v1_[0-9a-f]{32}$" },
+    "collector_id": { "const": "rrc25" },
+    "window_start_utc": { "const": "2026-02-24T00:00:00Z" },
+    "window_end_exclusive_utc": { "const": "2026-03-11T00:00:00Z" },
+    "implementation_id": { "$ref": "#/$defs/implementationId" },
+    "projector_name": { "const": "domeye_country_outage_event_cohort_projector" },
+    "projector_version": { "const": "1.0.0" },
+    "source_route_event_dataset_id": {
+      "pattern": "^route_event_dataset_v1_[0-9a-f]{32}$"
+    },
+    "source_route_event_content_sha256": { "$ref": "#/$defs/sha256" },
+    "source_route_state_dataset_id": {
+      "pattern": "^route_state_dataset_v1_[0-9a-f]{32}$"
+    },
+    "source_route_state_content_sha256": { "$ref": "#/$defs/sha256" },
+    "source_route_state_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "source_peer_session_dataset_id": {
+      "pattern": "^peer_session_dataset_v1_[0-9a-f]{32}$"
+    },
+    "source_peer_session_content_sha256": { "$ref": "#/$defs/sha256" },
+    "lifecycle_snapshot_id": {
+      "pattern": "^event_lifecycle_snapshot_v1_[0-9a-f]{32}$"
+    },
+    "lifecycle_snapshot_content_sha256": { "$ref": "#/$defs/sha256" },
+    "lifecycle_snapshot_file_sha256": { "$ref": "#/$defs/sha256" },
+    "mapping_version": { "$ref": "#/$defs/sha256" },
+    "mapping_compatible_sha256": { "$ref": "#/$defs/sha256" },
+    "mapping_revised_sha256": { "$ref": "#/$defs/sha256" },
+    "route_state_authority": {
+      "const": "the_existing_route_state_dataset_is_the_only_route_state_fact"
+    },
+    "direction_definition": {
+      "const": "one_independent_direction_is_one_rrc25_peer_asn_and_multiple_bgp_sessions_do_not_expand_the_denominator"
+    },
+    "new_population_policy": {
+      "const": "new_prefixes_or_directions_after_detection_do_not_change_the_frozen_cohort_denominator"
+    },
+    "session_route_boundary": {
+      "const": "peer_session_down_never_materializes_or_implies_a_route_withdrawal"
+    },
+    "event_count": { "const": 81 },
+    "unique_cohort_count": { "type": "integer", "minimum": 1, "maximum": 81 },
+    "cohort_member_count": { "type": "integer", "minimum": 1 },
+    "expected_direction_relation_count": { "type": "integer", "minimum": 1 },
+    "route_observation_count": { "type": "integer", "minimum": 1 },
+    "events": { "$ref": "#/$defs/eventFile" },
+    "cohorts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 81,
+      "items": { "$ref": "#/$defs/cohort" }
+    },
+    "content_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "implementationId": {
+      "type": "string",
+      "pattern": "^git:[0-9a-f]{40}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?Z$"
+    },
+    "eventFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "row_count", "size_bytes", "sha256"],
+      "properties": {
+        "path": { "const": "events.jsonl.gz" },
+        "row_count": { "const": 81 },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "memberFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "row_count", "size_bytes", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^cohorts/[A-Z]{2}/slot-[0-9]{4}/members\\.jsonl\\.gz$"
+        },
+        "row_count": { "type": "integer", "minimum": 1 },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "cohort_id",
+        "country_code",
+        "cohort_state_point_utc",
+        "cohort_state_slot",
+        "source_route_state_dataset_id",
+        "source_route_state_slot_sha256",
+        "source_route_state_digest",
+        "replay_start_checkpoint_id",
+        "replay_start_checkpoint_slot",
+        "replayed_update_slot_count",
+        "population_semantics",
+        "direction_semantics",
+        "member_count",
+        "ipv4_member_count",
+        "ipv6_member_count",
+        "country_origin_asn_count",
+        "observed_origin_asn_count",
+        "unknown_origin_observation_count",
+        "expected_direction_relation_count",
+        "route_observation_count",
+        "members",
+        "content_sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": "rrc25-event-cohort/v1" },
+        "status": { "const": "complete" },
+        "cohort_id": { "pattern": "^country_event_cohort_v1_[0-9a-f]{32}$" },
+        "country_code": { "pattern": "^[A-Z]{2}$" },
+        "cohort_state_point_utc": { "$ref": "#/$defs/utcTimestamp" },
+        "cohort_state_slot": { "type": "integer", "minimum": 0, "maximum": 4319 },
+        "source_route_state_dataset_id": {
+          "pattern": "^route_state_dataset_v1_[0-9a-f]{32}$"
+        },
+        "source_route_state_slot_sha256": { "$ref": "#/$defs/sha256" },
+        "source_route_state_digest": { "$ref": "#/$defs/sha256" },
+        "replay_start_checkpoint_id": {
+          "pattern": "^route_state_checkpoint_v1_[0-9a-f]{32}$"
+        },
+        "replay_start_checkpoint_slot": { "enum": [0, 2160] },
+        "replayed_update_slot_count": { "type": "integer", "minimum": 0, "maximum": 2159 },
+        "population_semantics": {
+          "const": "one_member_per_unique_prefix_and_address_family_selected_by_at_least_one_country_origin_route_then_frozen_with_all_visible_rrc25_directions"
+        },
+        "direction_semantics": {
+          "const": "one_expected_direction_per_unique_rrc25_peer_asn_that_sees_the_selected_prefix_regardless_of_observed_origin"
+        },
+        "member_count": { "type": "integer", "minimum": 1 },
+        "ipv4_member_count": { "type": "integer", "minimum": 0 },
+        "ipv6_member_count": { "type": "integer", "minimum": 0 },
+        "country_origin_asn_count": { "type": "integer", "minimum": 1 },
+        "observed_origin_asn_count": { "type": "integer", "minimum": 1 },
+        "unknown_origin_observation_count": { "type": "integer", "minimum": 0 },
+        "expected_direction_relation_count": { "type": "integer", "minimum": 1 },
+        "route_observation_count": { "type": "integer", "minimum": 1 },
+        "members": { "$ref": "#/$defs/memberFile" },
+        "content_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "cohort_id",
+        "cohort_member_id",
+        "country_code",
+        "prefix",
+        "address_family",
+        "country_origin_asns",
+        "observed_origin_asns",
+        "unknown_origin_route_observation_count",
+        "expected_direction_count",
+        "expected_directions"
+      ],
+      "properties": {
+        "schema_version": { "const": "rrc25-event-cohort-member/v1" },
+        "cohort_id": { "pattern": "^country_event_cohort_v1_[0-9a-f]{32}$" },
+        "cohort_member_id": { "pattern": "^event_cohort_member_v1_[0-9a-f]{32}$" },
+        "country_code": { "pattern": "^[A-Z]{2}$" },
+        "prefix": { "type": "string", "minLength": 3 },
+        "address_family": { "enum": ["ipv4", "ipv6"] },
+        "country_origin_asns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+        },
+        "observed_origin_asns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+        },
+        "unknown_origin_route_observation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_direction_count": { "type": "integer", "minimum": 1 },
+        "expected_directions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/direction" }
+        }
+      }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["peer_asn", "route_observation_count", "route_observations"],
+      "properties": {
+        "peer_asn": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "route_observation_count": { "type": "integer", "minimum": 1 },
+        "route_observations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/routeObservation" }
+        }
+      }
+    },
+    "routeObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vp_id",
+        "peer_ip",
+        "origin_status",
+        "as_path_status",
+        "route_quality_status",
+        "last_route_event_id",
+        "last_updated_utc"
+      ],
+      "properties": {
+        "vp_id": { "pattern": "^vp_v1_[0-9a-f]{32}$" },
+        "peer_ip": { "type": "string", "minLength": 2 },
+        "origin_status": { "enum": ["known", "unknown"] },
+        "origin_asn": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "as_path_status": { "enum": ["known", "unknown"] },
+        "as_path_id": { "pattern": "^asp_v1_[0-9a-f]{64}$" },
+        "route_quality_status": {
+          "enum": ["clean", "qualified", "degraded", "orphan_withdraw"]
+        },
+        "last_route_event_id": { "pattern": "^rte_v1_[0-9a-f]{32}$" },
+        "last_updated_utc": { "$ref": "#/$defs/utcTimestamp" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "origin_status": { "const": "known" } } },
+          "then": { "required": ["origin_asn"] },
+          "else": { "not": { "required": ["origin_asn"] } }
+        }
+      ]
+    }
+  }
+}

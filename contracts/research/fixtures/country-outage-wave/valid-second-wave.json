@@ -1,0 +1,23 @@
+{
+  "schema_version": "country-outage-wave/v1",
+  "wave_id": "wave_v1_222222222222222222222222",
+  "episode_id": "episode_v1_111111111111111111111111",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "ordinal": 2,
+  "onset_at": "2026-02-28T14:30:00Z",
+  "detected_at": "2026-02-28T14:35:00Z",
+  "trough_at": "2026-02-28T14:40:00Z",
+  "rebound_at": null,
+  "relation_to_previous_wave": "same_episode_after_partial_rebound",
+  "causal_relation": "unknown",
+  "split_evidence": {
+    "previous_trough_sample_id": "sample_v1_111111111111111111111111",
+    "rebound_sample_id": "sample_v1_222222222222222222222222",
+    "new_decline_sample_id": "sample_v1_333333333333333333333333",
+    "rebound_amplitude": {"value": 80000, "unit": "ipv4_equivalent_address", "sample_id": "sample_v1_222222222222222222222222"},
+    "new_decline_amplitude": {"value": 100000, "unit": "ipv4_equivalent_address", "sample_id": "sample_v1_333333333333333333333333"},
+    "significance_threshold": {"value": 50700, "unit": "ipv4_equivalent_address", "sample_id": "sample_v1_111111111111111111111111"},
+    "full_recovery_between_waves": false
+  },
+  "supporting_sample_ids": ["sample_v1_222222222222222222222222", "sample_v1_333333333333333333333333"]
+}

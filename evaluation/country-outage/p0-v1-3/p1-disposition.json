@@ -1,0 +1,46 @@
+{
+  "schema_version": "country_outage_p0_to_p1_disposition_v1",
+  "revision": "p0-v1.3-20260809-ir-r1",
+  "decision_rule": "P0 只给出候选处置；P1 必须重新冻结 Capability Catalog、Typed Tool Contract、权限、状态和完整 Oracle。",
+  "adopt": [
+    {"capability_id": "CAP-001", "p1_candidate": "resolve_event", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-002", "p1_candidate": "read_event_identity", "minimum_answer_mode": "answerable_or_partial"},
+    {"capability_id": "CAP-003", "p1_candidate": "read_overview", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-004", "p1_candidate": "read_prefix_peaks", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-005", "p1_candidate": "read_asn_peaks", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-006", "p1_candidate": "read_ipv4_series", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-007", "p1_candidate": "read_ipv6_series", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-008", "p1_candidate": "read_new_prefix_series", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-009", "p1_candidate": "read_metric_definitions", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-010", "p1_candidate": "query_affected_asns", "minimum_answer_mode": "answerable_or_clarify"},
+    {"capability_id": "CAP-011", "p1_candidate": "query_asn_detail", "minimum_answer_mode": "answerable_or_clarify"},
+    {"capability_id": "CAP-012", "p1_candidate": "query_path_associations", "minimum_answer_mode": "answerable_with_boundary"},
+    {"capability_id": "CAP-013", "p1_candidate": "read_path_sample", "minimum_answer_mode": "answerable_with_boundary"},
+    {"capability_id": "CAP-014", "p1_candidate": "read_audit_identity", "minimum_answer_mode": "answerable"},
+    {"capability_id": "CAP-016", "p1_candidate": "series_extrema", "minimum_answer_mode": "answerable_or_unavailable"},
+    {"capability_id": "CAP-017", "p1_candidate": "compare_address_families", "minimum_answer_mode": "answerable_or_partial"},
+    {"capability_id": "CAP-018", "p1_candidate": "compose_fact_timeline", "minimum_answer_mode": "answerable_or_partial"}
+  ],
+  "defer": [
+    {"capability_id": "CAP-015", "reason": "当前 publication 不可读；需先闭合趋势 publication 兼容 Oracle"},
+    {"capability_id": "CAP-019", "reason": "当前 general page 不呈现，且本轮未做授权写旅程"},
+    {"capability_id": "CAP-020", "reason": "现有追问未证明满足 P1 开放目标与受控计划合同"},
+    {"capability_id": "CAP-025", "reason": "跨事件组合调查属于 P2"},
+    {"capability_id": "CAP-026", "reason": "当前 publication 没有 Update/Withdraw 轨道；缺失不能解释为 0"}
+  ],
+  "reject": [
+    {"capability_id": "CAP-021", "reason": "运行态 not_configured，且 P1 为 RRC25-only"},
+    {"capability_id": "CAP-022", "reason": "原因与责任不受 RRC25 单源证据支持"},
+    {"capability_id": "CAP-023", "reason": "真实用户、流量与全国影响不受当前证据支持"},
+    {"capability_id": "CAP-024", "reason": "DNS/HTTP/流量属于后续多源工程"}
+  ],
+  "p1_must_fail_closed": [
+    "publication 或事件身份冲突",
+    "未知指标或未登记算子",
+    "null、unknown、unavailable 被要求解释为 0",
+    "路径关联被要求解释为依赖、传播或原因",
+    "用户影响、全国中断、责任、DNS、HTTP、流量或外部证据请求",
+    "未验证的报告/追问能力被当成当前 general page 能力"
+  ],
+  "counts": {"adopt": 17, "defer": 5, "reject": 4, "total": 26}
+}

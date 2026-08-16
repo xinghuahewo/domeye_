@@ -1,0 +1,31 @@
+{
+  "acceptance_meaning": "冻结W5实现候选、离线确定性能力与28题可执行性分类已按同候选证据验收，可进入实际provider认证及独立发布准备；不表示问题回答、provider模型、provider性能、runtime promotion或生产通过。",
+  "actual_provider_cost_acceptance": false,
+  "actual_provider_model_alignment": false,
+  "actual_provider_performance_acceptance": false,
+  "candidate_binding_digest": "sha256:71787dfdaba1ec1c62b2897c1c7df08af85c7f7157108bf58c33234fca7283df",
+  "certification_semantics_version": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2",
+  "classification_population": {
+    "blocked_case_count": 162,
+    "blocked_question_count": 27,
+    "case_count": 168,
+    "deferred_case_count": 6,
+    "deferred_question_count": 1,
+    "question_count": 28,
+    "scenario_count_per_question": 6
+  },
+  "content_digest": "sha256:f391d40183261452782ff2566744b473b68978f24a7dcdc1e2c097fc50cdba06",
+  "external_provider_call_count": 0,
+  "full_question_answer_certification_passed": false,
+  "implementation_candidate_digest": "sha256:49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c",
+  "implementation_candidate_id": "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6",
+  "offline_runtime_performance_thresholds": {
+    "w5_runtime_and_api_suite_max_seconds": 300,
+    "w5_sidecar_suite_max_seconds": 180,
+    "w6_recovery_attack_suite_max_seconds": 180
+  },
+  "production_deployed": false,
+  "runtime_promotion": false,
+  "schema_version": "country_outage_p2_s1_w6_certification_semantics_v2",
+  "status_if_all_gates_pass": "implementation_accepted_for_release_preparation"
+}

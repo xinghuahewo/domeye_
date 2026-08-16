@@ -1,0 +1,21 @@
+{
+  "schema_version": "metric-series/v1",
+  "metric_name": "bgp_withdraw_ratio",
+  "subject": {"subject_type": "asn", "subject_id": "4134", "display_name": null},
+  "collector_scope": {"scope_kind": "collector_set", "collector_ids": ["rrc25"], "limitation_reason": null},
+  "window": {"start": "2026-02-28T16:00:00Z", "end": "2026-02-28T16:05:00Z", "boundary": "[start,end)", "timezone": "Asia/Shanghai"},
+  "granularity_seconds": 300,
+  "unit": "ratio_0_1",
+  "aggregation": "ratio_of_sums",
+  "formula": "sum(feature_country.withdraw_num) / (sum(feature_country.announ_num) + sum(feature_country.withdraw_num))",
+  "formula_version": "withdraw_ratio_v1",
+  "expected_sample_count": 1,
+  "source_observed_sample_count": 1,
+  "metric_observed_sample_count": 1,
+  "subject_active_sample_count": 0,
+  "coverage": {"source_coverage_ratio": 1, "metric_coverage_ratio": 1, "subject_activity_density": 0, "source_gap_sample_count": 0, "processing_gap_sample_count": 0, "classification_complete": true},
+  "points": [{"time": "2026-02-28T16:00:00Z", "value": 0, "value_state": "observed_zero", "missing_reason": null, "formula_inputs": {"numerator_withdraw_count": 0, "denominator_update_total": 0}}],
+  "source_refs": [{"source_layer": "derived_metric", "ref_id": "table:feature_202603_4", "locator": "feature_202603_4/source=r/asn=4134", "sha256": null}],
+  "generated_at": "2026-07-20T12:30:00Z",
+  "ranking_scope": {"scope_kind": "operational_asn_cohort", "candidate_count": 11, "filter_rules": ["当前运营对象"]}
+}

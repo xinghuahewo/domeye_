@@ -1,0 +1,84 @@
+{
+  "schema_version": "country_outage_p2_s1_authoritative_source_bundle_v1",
+  "identity": {
+    "incident_id": "incident_fixture_ir_1",
+    "publication_id": "publication_fixture_ir_1",
+    "publication_revision": 1,
+    "publication_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "collector_id": "rrc25",
+    "cohort_id": "cohort_fixture_ir_1",
+    "cohort_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "window_start_utc": "2026-02-27T00:00:00Z",
+    "window_end_utc": "2026-02-27T00:05:00Z",
+    "data_through_utc": "2026-02-27T00:05:00Z",
+    "finality": "event_end_unknown",
+    "grid_seconds": 300
+  },
+  "source_refs": [
+    {"source_kind": "event_cohort", "dataset_id": "cohort_fixture", "manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111", "content_sha256": "2222222222222222222222222222222222222222222222222222222222222222", "publication_id": "publication_fixture_ir_1", "authority": "rrc25_authoritative_artifact"},
+    {"source_kind": "event_metric", "dataset_id": "metric_fixture", "manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333", "content_sha256": "4444444444444444444444444444444444444444444444444444444444444444", "publication_id": "publication_fixture_ir_1", "authority": "rrc25_authoritative_artifact"},
+    {"source_kind": "exact_route_state_projection", "dataset_id": "route_state_fixture", "manifest_sha256": "5555555555555555555555555555555555555555555555555555555555555555", "content_sha256": "6666666666666666666666666666666666666666666666666666666666666666", "publication_id": "publication_fixture_ir_1", "authority": "rrc25_authoritative_offline_projection"},
+    {"source_kind": "window_path_association", "dataset_id": "path_fixture", "manifest_sha256": "7777777777777777777777777777777777777777777777777777777777777777", "content_sha256": "8888888888888888888888888888888888888888888888888888888888888888", "publication_id": "publication_fixture_ir_1", "authority": "rrc25_authoritative_offline_projection"},
+    {"source_kind": "affected_as_result_set", "dataset_id": "affected-as-result-set-fixture", "manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "publication_id": "publication_fixture_ir_1", "authority": "rrc25_authoritative_offline_projection"}
+  ],
+  "fixed_cohort_population": {
+    "source_ref": "cohort_fixture", "manifest_digest": "1111111111111111111111111111111111111111111111111111111111111111", "content_digest": "2222222222222222222222222222222222222222222222222222222222222222", "freeze_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "complete": true, "row_count": 1, "rows_digest": "79a4473d0c2c713dc6acf55a567e64ca9b122b90aeaa5d5f667e96f1c3d2e7eb", "source_record_refs": ["cohort_fixture#manifest"],
+    "rows": [
+    {"cohort_member_id": "member_fixture_1", "prefix": "109.74.224.0/20", "afi": "ipv4", "country_origin_asns": [58224], "expected_peer_asn_direction_ids": ["rrc25:64500", "rrc25:64501"], "expected_route_observation_keys": ["rrc25:vp-a:peer-a:109.74.224.0/20:ipv4", "rrc25:vp-b:peer-b:109.74.224.0/20:ipv4"], "membership_basis": "country_origin_known", "source_record_refs": ["cohort_fixture#member_fixture_1"]}
+    ]
+  },
+  "prefix_state_population": {
+    "source_ref": "metric_fixture", "manifest_digest": "3333333333333333333333333333333333333333333333333333333333333333", "content_digest": "4444444444444444444444444444444444444444444444444444444444444444", "freeze_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "complete": true, "row_count": 2, "rows_digest": "82915ec0959995b57aa4bb196f7afb3cd9bf9193c6cab7c094648cfb88bdaf4d", "source_record_refs": ["metric_fixture#prefix-manifest"],
+    "rows": [
+    {"state_point_utc": "2026-02-27T00:00:00Z", "prefix": "109.74.224.0/20", "afi": "ipv4", "classification": "normal", "expected_direction_count": 2, "visible_direction_count": 2, "invisible_direction_count": 0, "unknown_direction_count": 0, "source_record_refs": ["metric_fixture#prefix:0"]},
+    {"state_point_utc": "2026-02-27T00:05:00Z", "prefix": "109.74.224.0/20", "afi": "ipv4", "classification": "partial", "expected_direction_count": 2, "visible_direction_count": 1, "invisible_direction_count": 1, "unknown_direction_count": 0, "source_record_refs": ["metric_fixture#prefix:1"]}
+    ]
+  },
+  "asn_state_population": {
+    "source_ref": "metric_fixture", "manifest_digest": "3333333333333333333333333333333333333333333333333333333333333333", "content_digest": "4444444444444444444444444444444444444444444444444444444444444444", "freeze_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "complete": true, "row_count": 2, "rows_digest": "4d6aef50a6cf999979458148a90cca1ec70463634cc0838be91118493bb56508", "source_record_refs": ["metric_fixture#asn-manifest"],
+    "rows": [
+    {"state_point_utc": "2026-02-27T00:00:00Z", "asn": 58224, "classification": "normal", "fixed_prefix_count": 1, "partial_prefix_count": 0, "complete_prefix_count": 0, "unknown_prefix_count": 0, "invisible_direction_count": 0, "source_record_refs": ["metric_fixture#asn:0"]},
+    {"state_point_utc": "2026-02-27T00:05:00Z", "asn": 58224, "classification": "affected", "fixed_prefix_count": 1, "partial_prefix_count": 1, "complete_prefix_count": 0, "unknown_prefix_count": 0, "invisible_direction_count": 1, "source_record_refs": ["metric_fixture#asn:1"]}
+    ]
+  },
+  "new_prefix_projection_population": {
+    "source_ref": "metric_fixture", "manifest_digest": "3333333333333333333333333333333333333333333333333333333333333333", "content_digest": "4444444444444444444444444444444444444444444444444444444444444444", "freeze_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "complete": true, "row_count": 1, "rows_digest": "3660824893a2d23e448e062d6f32d4d69ee5cc43839c8cf97ca2dca2b8e3229e", "source_record_refs": ["metric_fixture#new-prefix-manifest"],
+    "rows": [
+    {
+      "prefix": "185.10.70.0/24", "afi": "ipv4", "first_observed_at_utc": "2026-02-27T00:00:00Z", "first_observed_view_complete": true,
+      "expected_peer_asn_direction_ids": ["rrc25:64500", "rrc25:64501"],
+      "state_points": [
+        {"state_point_utc": "2026-02-27T00:00:00Z", "source_complete": true, "direction_states": {"rrc25:64500": "visible", "rrc25:64501": "visible"}, "source_record_refs": ["route_state_fixture#new:0"]},
+        {"state_point_utc": "2026-02-27T00:05:00Z", "source_complete": true, "direction_states": {"rrc25:64500": "visible", "rrc25:64501": "invisible"}, "source_record_refs": ["route_state_fixture#new:1"]}
+      ],
+      "source_record_refs": ["metric_fixture#new-prefix:185.10.70.0/24"]
+    }
+    ]
+  },
+  "exact_route_state_population": {
+    "source_ref": "route_state_fixture", "manifest_digest": "5555555555555555555555555555555555555555555555555555555555555555", "content_digest": "6666666666666666666666666666666666666666666666666666666666666666", "freeze_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "complete": true, "row_count": 2, "rows_digest": "2b5c937b1ef1eef0b3601febe48bf062c536e4e6c0e0284ec6492e4f96e024b6", "source_record_refs": ["route_state_fixture#manifest"],
+    "rows": [
+    {
+      "state_point_utc": "2026-02-27T00:00:00Z", "source_dataset_digest": "6666666666666666666666666666666666666666666666666666666666666666", "checkpoint_id": "checkpoint_fixture_0", "projection_receipt_digest": "9999999999999999999999999999999999999999999999999999999999999999", "projection_receipt_publication_id": "publication_fixture_ir_1", "projection_receipt_state_point_utc": "2026-02-27T00:00:00Z", "no_future_read_verified": true, "source_complete": true,
+      "rows": [
+        {"prefix": "109.74.224.0/20", "afi": "ipv4", "peer_asn_direction_id": "rrc25:64500", "route_observation_key": "rrc25:vp-a:peer-a:109.74.224.0/20:ipv4", "vp_id": "vp-a", "peer_id": "peer-a", "visibility": "visible", "origin_status": "known", "origin_asns": [58224], "path_status": "known", "common_path_status": "ordered", "path_id": "path-fixture", "path_digest": "5cc5db6726602f6a63d754a000180f6b4e935c610e995e5caa2411fde23622cc", "path_canonicalization_profile_id": "AS-PATH-CANONICALIZATION-1.0.0", "path_canonicalization_profile_digest": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966", "path_segments": [{"segment_type": "as_sequence", "asns": [3257, 49666, 48159, 58224]}], "last_event_id": "event-fixture-0", "last_update_utc": "2026-02-27T00:00:00Z", "quality_flags": [], "source_record_refs": ["route_state_fixture#row:0"]}
+      ],
+      "source_record_refs": ["route_state_fixture#view:0"]
+    },
+    {
+      "state_point_utc": "2026-02-27T00:05:00Z", "source_dataset_digest": "6666666666666666666666666666666666666666666666666666666666666666", "checkpoint_id": "checkpoint_fixture_1", "projection_receipt_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "projection_receipt_publication_id": "publication_fixture_ir_1", "projection_receipt_state_point_utc": "2026-02-27T00:05:00Z", "no_future_read_verified": true, "source_complete": true,
+      "rows": [
+        {"prefix": "109.74.224.0/20", "afi": "ipv4", "peer_asn_direction_id": "rrc25:64500", "route_observation_key": "rrc25:vp-a:peer-a:109.74.224.0/20:ipv4", "vp_id": "vp-a", "peer_id": "peer-a", "visibility": "visible", "origin_status": "known", "origin_asns": [58224], "path_status": "known", "common_path_status": "ordered", "path_id": "path-fixture", "path_digest": "5cc5db6726602f6a63d754a000180f6b4e935c610e995e5caa2411fde23622cc", "path_canonicalization_profile_id": "AS-PATH-CANONICALIZATION-1.0.0", "path_canonicalization_profile_digest": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966", "path_segments": [{"segment_type": "as_sequence", "asns": [3257, 49666, 48159, 58224]}], "last_event_id": "event-fixture-1", "last_update_utc": "2026-02-27T00:05:00Z", "quality_flags": [], "source_record_refs": ["route_state_fixture#row:1"]}
+      ],
+      "source_record_refs": ["route_state_fixture#view:1"]
+    }
+    ]
+  },
+  "eligible_anchor_population": {"source_ref": "affected-as-result-set-fixture", "result_set_id": "result-set-fixture", "manifest_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "content_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "freeze_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "complete": true, "eligible_anchor_asns": [49666], "eligible_anchor_asns_digest": "040c36157f13199fb011d84faa7ca6c2805c10ebabc3a0e61be01d3adb645fe2", "source_record_refs": ["affected-as-result-set-fixture#manifest"]},
+  "window_path_association_population": {
+    "source_ref": "path_fixture", "manifest_digest": "7777777777777777777777777777777777777777777777777777777777777777", "content_digest": "8888888888888888888888888888888888888888888888888888888888888888", "freeze_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "complete": true, "row_count": 1, "rows_digest": "1b0f188edb64c9360691051c9548c5fa8341d72ff2aadf3a10d7cfdea4bf549a", "source_record_refs": ["path_fixture#manifest"],
+    "rows": [
+    {"anchor_asn": 49666, "known_origin_asn": 58224, "observed_origin_asn": 58224, "prefix": "109.74.224.0/20", "afi": "ipv4", "path_id": "path-fixture", "path_digest": "5cc5db6726602f6a63d754a000180f6b4e935c610e995e5caa2411fde23622cc", "path_canonicalization_profile_id": "AS-PATH-CANONICALIZATION-1.0.0", "path_canonicalization_profile_digest": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966", "path_segments": [{"segment_type": "as_sequence", "asns": [3257, 49666, 48159, 58224]}], "peer_asn_direction_ids": ["rrc25:64500"], "route_observation_count": 2, "source_record_refs": ["path_fixture#association:0"]}
+    ]
+  }
+}

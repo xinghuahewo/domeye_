@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/country-outage-sample.schema.json",
+  "title": "国家中断五分钟不可变样本合同",
+  "description": "冻结同一状态快照中的国家级双栈指标、成员集合、覆盖状态和来源引用。未知值必须显式为 null，禁止补零。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sample_id",
+    "run_id",
+    "snapshot_id",
+    "collector_id",
+    "country_code",
+    "cohort_view",
+    "slot",
+    "continuity_state",
+    "metrics",
+    "asn_sets",
+    "source_refs"
+  ],
+  "properties": {
+    "schema_version": {"const": "country-outage-sample/v1"},
+    "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+    "run_id": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+    "collector_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
+    "cohort_view": {"enum": ["compatible", "revised"]},
+    "slot": {"$ref": "#/$defs/slot"},
+    "continuity_state": {
+      "enum": ["continuous", "unknown_after_gap"],
+      "description": "输入连续时为 continuous；一旦关键槽缺失或解析失败，从缺口开始必须为 unknown_after_gap。"
+    },
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "asn_sets": {"$ref": "#/$defs/asnSets"},
+    "source_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sourceRef"}
+    }
+  },
+  "$defs": {
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "boundary", "granularity_seconds"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time"},
+        "end": {"type": "string", "format": "date-time"},
+        "boundary": {"const": "[start,end)"},
+        "granularity_seconds": {"const": 300}
+      }
+    },
+    "missingState": {
+      "enum": ["unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"]
+    },
+    "missingReason": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9._:-]*$"
+    },
+    "countMeasure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "integer", "minimum": 1},
+            "value_state": {"const": "observed"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"const": 0},
+            "value_state": {"const": "observed_zero"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "null"},
+            "value_state": {"$ref": "#/$defs/missingState"},
+            "missing_reason": {"$ref": "#/$defs/missingReason"}
+          }
+        }
+      ]
+    },
+    "decimalMeasure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "number", "exclusiveMinimum": 0},
+            "value_state": {"const": "observed"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"const": 0},
+            "value_state": {"const": "observed_zero"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "null"},
+            "value_state": {"$ref": "#/$defs/missingState"},
+            "missing_reason": {"$ref": "#/$defs/missingReason"}
+          }
+        }
+      ]
+    },
+    "ratioComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sample_id", "snapshot_id", "value"],
+      "properties": {
+        "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+        "value": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ratioMeasure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "numerator", "denominator", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "numerator": {"$ref": "#/$defs/ratioComponent"},
+            "denominator": {
+              "allOf": [
+                {"$ref": "#/$defs/ratioComponent"},
+                {"type": "object", "properties": {"value": {"type": "integer", "minimum": 1}}}
+              ]
+            },
+            "value": {"type": "number", "minimum": 0, "maximum": 1},
+            "value_state": {"enum": ["observed", "observed_zero"]},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "numerator", "denominator", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "numerator": {"type": "null"},
+            "denominator": {"type": "null"},
+            "value": {"type": "null"},
+            "value_state": {"$ref": "#/$defs/missingState"},
+            "missing_reason": {"$ref": "#/$defs/missingReason"}
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visible_asn_count",
+        "damaged_asn_count",
+        "baseline_asn_count",
+        "visible_ipv4_prefix_count",
+        "visible_ipv6_prefix_count",
+        "visible_ipv4_address_union",
+        "visible_ipv4_24_equivalent",
+        "visible_ipv6_48_equivalent",
+        "announce_count",
+        "withdraw_count",
+        "vp_expected_count",
+        "vp_observed_count",
+        "damaged_asn_ratio"
+      ],
+      "properties": {
+        "visible_asn_count": {"$ref": "#/$defs/countMeasure"},
+        "damaged_asn_count": {"$ref": "#/$defs/countMeasure"},
+        "baseline_asn_count": {"$ref": "#/$defs/countMeasure"},
+        "visible_ipv4_prefix_count": {"$ref": "#/$defs/countMeasure"},
+        "visible_ipv6_prefix_count": {"$ref": "#/$defs/countMeasure"},
+        "visible_ipv4_address_union": {"$ref": "#/$defs/countMeasure"},
+        "visible_ipv4_24_equivalent": {"$ref": "#/$defs/decimalMeasure"},
+        "visible_ipv6_48_equivalent": {"$ref": "#/$defs/decimalMeasure"},
+        "announce_count": {"$ref": "#/$defs/countMeasure"},
+        "withdraw_count": {"$ref": "#/$defs/countMeasure"},
+        "vp_expected_count": {"$ref": "#/$defs/countMeasure"},
+        "vp_observed_count": {"$ref": "#/$defs/countMeasure"},
+        "damaged_asn_ratio": {"$ref": "#/$defs/ratioMeasure"}
+      }
+    },
+    "asnSet": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "integer", "minimum": 1, "maximum": 4294967295}},
+            "value_state": {"const": "observed"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "array", "maxItems": 0},
+            "value_state": {"const": "observed_empty"},
+            "missing_reason": {"type": "null"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sample_id", "snapshot_id", "value", "value_state", "missing_reason"],
+          "properties": {
+            "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+            "snapshot_id": {"type": "string", "pattern": "^snapshot_v1_[0-9a-f]{24}$"},
+            "value": {"type": "null"},
+            "value_state": {"$ref": "#/$defs/missingState"},
+            "missing_reason": {"$ref": "#/$defs/missingReason"}
+          }
+        }
+      ]
+    },
+    "asnSets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visible", "damaged", "baseline"],
+      "properties": {
+        "visible": {"$ref": "#/$defs/asnSet"},
+        "damaged": {"$ref": "#/$defs/asnSet"},
+        "baseline": {"$ref": "#/$defs/asnSet"}
+      }
+    },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_type", "ref_id", "sha256"],
+      "properties": {
+        "ref_type": {"enum": ["state_shard", "route_event_shard", "input_artifact", "mapping_snapshot"]},
+        "ref_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "rrc25-seed-spool-attestation/v1",
+  "artifact_binding": {
+    "artifact_id": "art_v1_8b897950ad83cc7239aa8638948791f9",
+    "file_sha256": "9b2d5652913b7d50e05a9b1735322bafb2154ff9034667254336425f8dd9b48e",
+    "compressed_size_bytes": 426797681
+  },
+  "decompressed": {
+    "size_bytes": 4338012465,
+    "sha256": "e8b72bbe5799128f197e94f2908dc50474e7ef07f05275020329be57d5f20dfb"
+  },
+  "measurement": {
+    "method": "full_streaming_gzip_decompression_sha256_v1",
+    "measured_at_utc": "2026-07-22T10:11:14Z",
+    "raw_read_pass_count": 1
+  },
+  "semantic_fingerprint_sha256": "ad32a6e2b0751be9aedc7923b015954d2aad0b4b0c82fbd80868b5920e8aff91"
+}

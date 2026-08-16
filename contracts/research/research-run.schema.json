@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/research-run.schema.json",
+  "title": "国家中断研究运行合同",
+  "description": "记录可恢复研究运行的冻结输入、只读资源边界、质量门和内容寻址输出；运行时间不进入语义指纹。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "incident_ref",
+    "profile_ref",
+    "input_manifest_ref",
+    "mapping_refs",
+    "code_identity",
+    "run_state",
+    "acceptance_state",
+    "execution",
+    "quality_gates",
+    "outputs",
+    "semantic_fingerprint_sha256",
+    "runtime_metadata_excluded_from_semantic_fingerprint"
+  ],
+  "properties": {
+    "schema_version": {"const": "research-run/v1"},
+    "run_id": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "incident_ref": {"type": "string", "minLength": 1},
+    "profile_ref": {"$ref": "#/$defs/contentRef"},
+    "input_manifest_ref": {"$ref": "#/$defs/contentRef"},
+    "mapping_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/mappingRef"}
+    },
+    "code_identity": {"$ref": "#/$defs/codeIdentity"},
+    "run_state": {"enum": ["planned", "running", "incomplete", "completed"]},
+    "acceptance_state": {"enum": ["pending", "accepted", "not_accepted"]},
+    "execution": {"$ref": "#/$defs/execution"},
+    "quality_gates": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/qualityGate"}
+    },
+    "outputs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/outputRef"}
+    },
+    "semantic_fingerprint_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "runtime_metadata_excluded_from_semantic_fingerprint": {"const": true}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"acceptance_state": {"const": "accepted"}}, "required": ["acceptance_state"]},
+      "then": {
+        "properties": {
+          "run_state": {"const": "completed"},
+          "semantic_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "outputs": {"type": "array", "minItems": 6}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"run_state": {"enum": ["planned", "running", "incomplete"]}}, "required": ["run_state"]},
+      "then": {"properties": {"acceptance_state": {"enum": ["pending", "not_accepted"]}}}
+    }
+  ],
+  "$defs": {
+    "contentRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "mappingRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["view", "path", "sha256"],
+      "properties": {
+        "view": {"enum": ["compatible", "revised"]},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "codeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_sha", "dirty", "source_sha256"],
+      "properties": {
+        "git_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "dirty": {"type": "boolean"},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["database_write_operations", "new_raw_bytes_read", "peak_temporary_bytes", "max_worker_seconds", "started_at", "finished_at"],
+      "properties": {
+        "database_write_operations": {"const": 0},
+        "new_raw_bytes_read": {"type": "integer", "minimum": 0, "exclusiveMaximum": 50000000000},
+        "peak_temporary_bytes": {"type": "integer", "minimum": 0, "exclusiveMaximum": 5000000000},
+        "max_worker_seconds": {"type": "number", "minimum": 0, "exclusiveMaximum": 600},
+        "started_at": {"type": "string", "format": "date-time"},
+        "finished_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "qualityGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "blocking", "status", "evidence_ref"],
+      "properties": {
+        "gate_id": {"enum": ["input_integrity", "parse_integrity", "state_continuity", "vp_coverage", "mapping_coverage", "stable_identity", "reference_closure", "unknown_missingness", "resource_usage", "reproducibility"]},
+        "blocking": {"type": "boolean"},
+        "status": {"enum": ["pass", "fail", "pending"]},
+        "evidence_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "outputRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256", "record_count"],
+      "properties": {
+        "kind": {"enum": ["samples", "episodes", "waves", "episode_as", "route_events", "raw_refs", "reconciliation", "quality_report", "report_zh", "manifest"]},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "record_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

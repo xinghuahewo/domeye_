@@ -1,0 +1,473 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/agent/country-outage-trend-profile-v1.schema.json",
+  "title": "RRC25 国家中断 TrendProfile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "input_digest",
+    "algorithm_version",
+    "profile_state",
+    "snapshot",
+    "metric",
+    "time_grid",
+    "quality",
+    "baseline",
+    "slots",
+    "analysis"
+  ],
+  "properties": {
+    "schema_version": {"const": "country_outage_trend_profile_v1"},
+    "profile_id": {"type": "string", "pattern": "^trend_profile_v1_[0-9a-f]{32}$"},
+    "input_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "algorithm_version": {"const": "country_outage_trend_foundation_s1_v1"},
+    "profile_state": {
+      "enum": [
+        "identity_quality_baseline_complete",
+        "analysis_complete",
+        "analysis_insufficient_data"
+      ]
+    },
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "metric": {"$ref": "#/$defs/metric"},
+    "time_grid": {"$ref": "#/$defs/timeGrid"},
+    "quality": {"$ref": "#/$defs/quality"},
+    "baseline": {"$ref": "#/$defs/baseline"},
+    "slots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/slot"}
+    },
+    "analysis": {
+      "oneOf": [
+        {"$ref": "#/$defs/analysisPending"},
+        {"$ref": "#/$defs/analysisResult"}
+      ]
+    }
+  },
+  "$defs": {
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_type",
+        "event_reference",
+        "incident_id",
+        "country_code",
+        "collector_id",
+        "collector_count",
+        "publication_id",
+        "revision",
+        "data_through",
+        "is_final",
+        "window_start_utc",
+        "window_end_utc",
+        "timezone"
+      ],
+      "properties": {
+        "event_type": {"const": "country_outage"},
+        "event_reference": {"type": "string", "minLength": 1},
+        "incident_id": {"type": "string", "minLength": 1},
+        "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
+        "collector_id": {"const": "rrc25"},
+        "collector_count": {"const": 1},
+        "publication_id": {"type": "string", "minLength": 1},
+        "revision": {"type": "integer", "minimum": 1},
+        "data_through": {"type": "string", "format": "date-time"},
+        "is_final": {"type": "boolean"},
+        "window_start_utc": {"type": "string", "format": "date-time"},
+        "window_end_utc": {"type": "string", "format": "date-time"},
+        "timezone": {"type": "string", "minLength": 1}
+      }
+    },
+    "denominator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "statistical_population"],
+      "properties": {
+        "value": {"type": "integer", "minimum": 1},
+        "unit": {"const": "count"},
+        "statistical_population": {"type": "string", "minLength": 1}
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric_id", "label", "unit", "statistical_population", "denominator"],
+      "properties": {
+        "metric_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "unit": {
+          "enum": ["count", "ratio", "percentage_point"]
+        },
+        "statistical_population": {"type": "string", "minLength": 1},
+        "denominator": {"$ref": "#/$defs/denominator"}
+      }
+    },
+    "timeGrid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_seconds", "expected_slot_count", "window_start_utc", "window_end_utc"],
+      "properties": {
+        "slot_seconds": {"type": "integer", "minimum": 1},
+        "expected_slot_count": {"type": "integer", "minimum": 1},
+        "window_start_utc": {"type": "string", "format": "date-time"},
+        "window_end_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "observed_at_utc", "state", "value", "source_ref"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "state": {
+          "enum": [
+            "observed",
+            "missing",
+            "unknown",
+            "source_unavailable",
+            "processing_gap",
+            "parse_failed",
+            "not_observed"
+          ]
+        },
+        "value": {"type": ["number", "null"], "minimum": 0},
+        "source_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "stateCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed",
+        "missing",
+        "unknown",
+        "source_unavailable",
+        "processing_gap",
+        "parse_failed",
+        "not_observed"
+      ],
+      "properties": {
+        "observed": {"type": "integer", "minimum": 0},
+        "missing": {"type": "integer", "minimum": 0},
+        "unknown": {"type": "integer", "minimum": 0},
+        "source_unavailable": {"type": "integer", "minimum": 0},
+        "processing_gap": {"type": "integer", "minimum": 0},
+        "parse_failed": {"type": "integer", "minimum": 0},
+        "not_observed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "nonObservedSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "state"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0},
+        "state": {
+          "enum": ["missing", "unknown", "source_unavailable", "processing_gap", "parse_failed", "not_observed"]
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "expected_slot_count",
+        "observed_slot_count",
+        "non_observed_slot_count",
+        "slot_state_counts",
+        "non_observed_slots",
+        "window_start_observed",
+        "window_end_observed",
+        "limitations"
+      ],
+      "properties": {
+        "status": {"enum": ["complete", "degraded", "unavailable"]},
+        "expected_slot_count": {"type": "integer", "minimum": 1},
+        "observed_slot_count": {"type": "integer", "minimum": 0},
+        "non_observed_slot_count": {"type": "integer", "minimum": 0},
+        "slot_state_counts": {"$ref": "#/$defs/stateCounts"},
+        "non_observed_slots": {"type": "array", "items": {"$ref": "#/$defs/nonObservedSlot"}},
+        "window_start_observed": {"type": "boolean"},
+        "window_end_observed": {"type": "boolean"},
+        "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value",
+        "unit",
+        "statistical_population",
+        "source",
+        "reference_id",
+        "interpretation",
+        "limitations"
+      ],
+      "properties": {
+        "type": {"enum": ["fixed_cohort", "window_start", "contemporaneous_reference", "unavailable"]},
+        "value": {"type": ["number", "null"]},
+        "unit": {"enum": ["count", "ratio", "percentage_point"]},
+        "statistical_population": {"type": "string", "minLength": 1},
+        "source": {"type": ["string", "null"]},
+        "reference_id": {"type": ["string", "null"]},
+        "interpretation": {"const": "observation_reference_not_normal_baseline"},
+        "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "analysisPending": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "key_points", "atomic_states", "phases", "derived_facts", "evidence_refs"],
+      "properties": {
+        "status": {"const": "not_computed_in_s1"},
+        "key_points": {"type": "array", "maxItems": 0},
+        "atomic_states": {"type": "array", "maxItems": 0},
+        "phases": {"type": "array", "maxItems": 0},
+        "derived_facts": {"type": "array", "maxItems": 0},
+        "evidence_refs": {"type": "array", "maxItems": 0}
+      }
+    },
+    "keyPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "point_id",
+        "kind",
+        "slot_index",
+        "observed_at_utc",
+        "value",
+        "unit",
+        "statistical_population",
+        "source_ref",
+        "change_from_previous"
+      ],
+      "properties": {
+        "point_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "start",
+            "end",
+            "extreme_minimum",
+            "largest_single_slot_drop_end",
+            "largest_single_slot_recovery_end"
+          ]
+        },
+        "slot_index": {"type": "integer", "minimum": 0},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "value": {"type": "number"},
+        "unit": {"enum": ["count", "ratio", "percentage_point"]},
+        "statistical_population": {"type": "string", "minLength": 1},
+        "source_ref": {"type": "string", "minLength": 1},
+        "change_from_previous": {"type": ["number", "null"]}
+      }
+    },
+    "atomicState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "atomic_id",
+        "slot_index",
+        "observed_at_utc",
+        "state",
+        "tags",
+        "delta",
+        "delta_percentage_points",
+        "source_refs"
+      ],
+      "properties": {
+        "atomic_id": {"type": "string", "minLength": 1},
+        "slot_index": {"type": "integer", "minimum": 0},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "state": {
+          "enum": [
+            "stable",
+            "rise",
+            "decline",
+            "abrupt_drop",
+            "abrupt_rise",
+            "low_plateau",
+            "missing",
+            "unknown",
+            "source_unavailable",
+            "processing_gap",
+            "parse_failed",
+            "not_observed"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["high_volatility"]}
+        },
+        "delta": {"type": ["number", "null"]},
+        "delta_percentage_points": {"type": ["number", "null"]},
+        "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase_id",
+        "ordinal",
+        "kind",
+        "tags",
+        "start_slot_index",
+        "end_slot_index",
+        "start_at_utc",
+        "end_at_utc",
+        "start_value",
+        "end_value",
+        "unit",
+        "atomic_ids",
+        "source_refs"
+      ],
+      "properties": {
+        "phase_id": {"type": "string", "minLength": 1},
+        "ordinal": {"type": "integer", "minimum": 0},
+        "kind": {"type": "string", "minLength": 1},
+        "tags": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "start_slot_index": {"type": "integer", "minimum": 0},
+        "end_slot_index": {"type": "integer", "minimum": 0},
+        "start_at_utc": {"type": "string", "format": "date-time"},
+        "end_at_utc": {"type": "string", "format": "date-time"},
+        "start_value": {"type": "number"},
+        "end_value": {"type": "number"},
+        "unit": {"enum": ["count", "ratio", "percentage_point"]},
+        "atomic_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "operand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value", "unit"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "value": {"type": "number"},
+        "unit": {"type": "string", "minLength": 1}
+      }
+    },
+    "numericFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact_id",
+        "metric",
+        "value",
+        "unit",
+        "direction",
+        "formula",
+        "operands",
+        "rounding",
+        "baseline_type",
+        "statistical_population",
+        "source_refs"
+      ],
+      "properties": {
+        "fact_id": {"type": "string", "minLength": 1},
+        "metric": {"type": "string", "minLength": 1},
+        "value": {"type": ["number", "null"]},
+        "unit": {"type": "string", "minLength": 1},
+        "direction": {"type": "string", "minLength": 1},
+        "formula": {"type": "string", "minLength": 1},
+        "operands": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/operand"}},
+        "rounding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decimal_places", "mode"],
+          "properties": {
+            "decimal_places": {"const": 6},
+            "mode": {"const": "half_even"}
+          }
+        },
+        "baseline_type": {"enum": ["fixed_cohort", "window_start", "contemporaneous_reference", "unavailable"]},
+        "statistical_population": {"type": "string", "minLength": 1},
+        "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "thresholdSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "threshold_id",
+        "threshold_visible_ratio",
+        "observed_slot_count",
+        "slot_indices",
+        "unit",
+        "slot_seconds",
+        "continuous_duration_claimed"
+      ],
+      "properties": {
+        "threshold_id": {"type": "string", "minLength": 1},
+        "threshold_visible_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "observed_slot_count": {"type": "integer", "minimum": 0},
+        "slot_indices": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "unit": {"const": "observed_slot"},
+        "slot_seconds": {"type": "integer", "minimum": 1},
+        "continuous_duration_claimed": {"const": false}
+      }
+    },
+    "windowLedger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "facts", "threshold_slots"],
+      "properties": {
+        "status": {"enum": ["complete", "unavailable"]},
+        "reason": {"type": ["string", "null"]},
+        "facts": {"type": "array", "items": {"$ref": "#/$defs/numericFact"}},
+        "threshold_slots": {"type": "array", "items": {"$ref": "#/$defs/thresholdSlot"}}
+      }
+    },
+    "analysisResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "analysis_id",
+        "status",
+        "algorithm_version",
+        "rule",
+        "pattern",
+        "key_points",
+        "atomic_states",
+        "phases",
+        "derived_facts",
+        "window_ledger",
+        "evidence_refs",
+        "limitations"
+      ],
+      "properties": {
+        "analysis_id": {"type": "string", "pattern": "^trend_analysis_s2_[0-9a-f]{32}$"},
+        "status": {"enum": ["complete", "insufficient_data"]},
+        "algorithm_version": {"const": "country_outage_trend_analysis_s2_v1"},
+        "rule": {"type": "object"},
+        "pattern": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "label", "features", "warnings"],
+          "properties": {
+            "status": {"enum": ["matched", "mixed", "unmatched", "insufficient_data"]},
+            "label": {"type": ["string", "null"]},
+            "features": {"type": ["object", "null"]},
+            "warnings": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+          }
+        },
+        "key_points": {"type": "array", "items": {"$ref": "#/$defs/keyPoint"}},
+        "atomic_states": {"type": "array", "items": {"$ref": "#/$defs/atomicState"}},
+        "phases": {"type": "array", "items": {"$ref": "#/$defs/phase"}},
+        "derived_facts": {"type": "array", "items": {"$ref": "#/$defs/numericFact"}},
+        "window_ledger": {"$ref": "#/$defs/windowLedger"},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

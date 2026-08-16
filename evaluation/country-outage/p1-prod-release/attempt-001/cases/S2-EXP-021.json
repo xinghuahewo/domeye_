@@ -1,0 +1,166 @@
+{
+  "schema_version": "country_outage_p1_semantic_certification_case_v1",
+  "case_id": "S2-EXP-021",
+  "question": "没找到路径样本，是不是说明这些 AS 没关系？",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-v1",
+  "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+  "expected_receipt_path": "evaluation/country-outage/p1-page-coverage/s2/raw/agent-receipts/S2-EXP-021.json",
+  "expected_receipt_sha256": "70f17f22fc52921b1f1c5de254e395abea7b14d78344237a7a83094e45975f4b",
+  "expected_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "没找到路径样本，是不是说明这些 AS 没关系？",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "没找到路径样本，是不是说明这些 AS 没关系？",
+        "normalized_kind": "missing_path_sample_interpretation",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "confidence": 0.95
+  },
+  "actual_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "没找到路径样本，是不是说明这些 AS 没关系？",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "没找到路径样本，是不是说明这些 AS 没关系？",
+        "normalized_kind": "missing_path_sample_interpretation",
+        "entities": {},
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:pi-sdk:0.84.1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash:p1-user-goal-plan-v1",
+    "confidence": 0.95
+  },
+  "grounding_plan": {
+    "plan_revision": "grounding-plan-v2",
+    "identity": {
+      "binding_phase": "bound",
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "decisions": [
+      {
+        "goal_id": "goal-1",
+        "answerability": "unsupported",
+        "node_ids": [],
+        "reason_codes": [
+          "missing_path_sample_is_not_no_relationship"
+        ]
+      }
+    ],
+    "nodes": [],
+    "authorization_scope": [
+      "country_outage:read"
+    ],
+    "validation": {
+      "status": "passed",
+      "errors": []
+    }
+  },
+  "grounding_errors": [],
+  "goal_comparison": [
+    {
+      "goal_id": "goal-1",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"missing_path_sample_interpretation\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{},\"normalized_kind\":\"missing_path_sample_interpretation\",\"references\":[]}",
+      "matched": true
+    }
+  ],
+  "grounding_passed": true,
+  "model_audit": {
+    "schemaVersion": "country_outage_p1_pi_semantic_run_audit_v1",
+    "recordedAt": "2026-08-11T01:43:23.457Z",
+    "runtimeIdentity": "candidate",
+    "registryVersion": null,
+    "certificationEvidenceId": null,
+    "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "candidateResourceSha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+    "profileId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "modelVersion": "deepseek-v4-flash",
+    "expectedResponseModel": "deepseek-v4-flash",
+    "piVersion": "0.84.1",
+    "input": {
+      "promptSha256": "4fd24a9bf0dbbdee4085503a9cc67787a05ba5c0f53d092949df30a5fff528f5",
+      "promptBytes": 10343
+    },
+    "outcome": "completed",
+    "output": {
+      "outputSha256": "7ee2581062cdd4b44bd2f494aa5096696745f1d680ee526712e7c0c766376bab",
+      "outputBytes": 485
+    },
+    "runtimeSecurity": {
+      "resourceLoaderId": "country-outage-static-resource-loader-v1",
+      "systemPromptSha256": "8b3618b406e934222a1b14e5e6797e54f9343f8cba977a38ac1059be44f46a63",
+      "packageManagerResolutionEnabled": false,
+      "modelResolverEnabled": false,
+      "modelsJsonEnabled": false,
+      "modelCatalogNetworkRefreshEnabled": false,
+      "providerRetryAttempts": 0,
+      "forwardedProviderRequestCount": 1,
+      "maximumProviderRequestCount": 1,
+      "toolExecutionCount": 0,
+      "unauthorizedToolAttemptCount": 0,
+      "structuredOutputPayloadPreparedCount": 1
+    },
+    "usage": {
+      "assistantMessages": 1,
+      "toolCalls": 0,
+      "toolResults": 0,
+      "totalMessages": 2,
+      "tokens": {
+        "input": 234,
+        "output": 127,
+        "cacheRead": 2176,
+        "cacheWrite": 0,
+        "total": 2537
+      },
+      "estimatedCostUsd": 0.00007441280000000001
+    },
+    "billing": {
+      "currency": "USD",
+      "estimatedCost": 0.00007441280000000001,
+      "source": "pi_session_stats"
+    }
+  }
+}

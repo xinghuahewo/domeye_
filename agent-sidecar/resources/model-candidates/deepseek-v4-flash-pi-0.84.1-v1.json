@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "country_outage_pi_model_candidate_v1",
+  "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
+  "status": "candidate",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "modelVersion": "deepseek-v4-flash",
+  "expectedResponseModel": "deepseek-v4-flash",
+  "thinkingLevel": "off",
+  "piVersion": "0.84.1",
+  "catalog": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.deepseek.com",
+    "input": ["text"],
+    "reasoning": true,
+    "contextWindowTokens": 1000000,
+    "catalogMaximumOutputTokens": 384000,
+    "priceUsdPerMillionTokens": {
+      "input": 0.14,
+      "output": 0.28,
+      "cacheRead": 0.0028,
+      "cacheWrite": 0
+    }
+  },
+  "execution": {
+    "maximumInputTokens": 64000,
+    "maximumOutputTokens": 16384,
+    "maximumProviderRequestCount": 2,
+    "providerRetryAttempts": 0
+  },
+  "adapterRequirement": {
+    "api": "openai-completions",
+    "sameNameResponseModelRequired": true,
+    "pinnedUnpatchedSourceSha256": "727d744f20985f667151e8ecee3ad30af388d9d66d91a92d0fb9ad3261da4363",
+    "approvedSameNameSourceSha256": [
+      "9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504"
+    ]
+  },
+  "certification": {
+    "maximumIndependentReportRuns": 2,
+    "budgetLimitCny": 20,
+    "conservativeCnyPerUsd": 8
+  }
+}

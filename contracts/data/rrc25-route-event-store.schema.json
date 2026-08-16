@@ -1,0 +1,609 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/rrc25-route-event-store.schema.json",
+  "title": "Domeye RRC25 224-310 RouteEvent 制品库合同",
+  "description": "S1 的不可变 RouteEvent 制品库清单。每个原始 artifact 对应 raw record sidecar、RouteEvent 分区和内容寻址 AS_PATH 字典。本层不产生 RouteState、Prefix×VP Evidence、国家/ASN 指标或 Publication。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "import_run_id",
+    "dataset_id",
+    "collector_id",
+    "source",
+    "source_dataset_uri",
+    "window_start_utc",
+    "window_end_exclusive_utc",
+    "selection_sha256",
+    "selection_path",
+    "source_manifest_sha256",
+    "repair_artifact_count",
+    "repair_provenance_sha256",
+    "repair_artifacts",
+    "implementation_id",
+    "parser_name",
+    "parser_version",
+    "importer_name",
+    "importer_version",
+    "artifact_count",
+    "physical_record_count",
+    "route_event_count",
+    "announce_count",
+    "withdraw_count",
+    "rib_snapshot_count",
+    "partitions",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rrc25-route-event-store/v1"
+    },
+    "status": {
+      "const": "complete"
+    },
+    "import_run_id": {
+      "$ref": "#/$defs/importRunId"
+    },
+    "dataset_id": {
+      "$ref": "#/$defs/datasetId"
+    },
+    "collector_id": {
+      "const": "rrc25"
+    },
+    "source": {
+      "const": "ripe_ris"
+    },
+    "source_dataset_uri": {
+      "const": "domeye://raw/rrc25-global-20260224-20260310-v1"
+    },
+    "window_start_utc": {
+      "const": "2026-02-24T00:00:00Z"
+    },
+    "window_end_exclusive_utc": {
+      "const": "2026-03-11T00:00:00Z"
+    },
+    "selection_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "selection_path": {
+      "const": "input-selection.json"
+    },
+    "source_manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "repair_artifact_count": {
+      "const": 2
+    },
+    "repair_provenance_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "repair_artifacts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repairArtifact"
+      }
+    },
+    "implementation_id": {
+      "type": "string",
+      "pattern": "^git:[0-9a-f]{40}$"
+    },
+    "parser_name": {
+      "const": "domeye_mrt_native"
+    },
+    "parser_version": {
+      "const": "1.0.0"
+    },
+    "importer_name": {
+      "const": "domeye_route_event_store"
+    },
+    "importer_version": {
+      "const": "1.0.0"
+    },
+    "artifact_count": {
+      "const": 4321
+    },
+    "physical_record_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "route_event_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "announce_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "withdraw_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rib_snapshot_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "partitions": {
+      "type": "array",
+      "minItems": 4321,
+      "maxItems": 4321,
+      "items": {
+        "$ref": "#/$defs/partition"
+      }
+    },
+    "content_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "importRunId": {
+      "type": "string",
+      "pattern": "^run_v1_[0-9a-f]{32}$"
+    },
+    "datasetId": {
+      "type": "string",
+      "pattern": "^route_event_dataset_v1_[0-9a-f]{32}$"
+    },
+    "artifactId": {
+      "type": "string",
+      "pattern": "^art_v1_[0-9a-f]{32}$"
+    },
+    "routeEventId": {
+      "type": "string",
+      "pattern": "^rte_v1_[0-9a-f]{32}$"
+    },
+    "vpId": {
+      "type": "string",
+      "pattern": "^vp_v1_[0-9a-f]{32}$"
+    },
+    "asPathId": {
+      "type": "string",
+      "pattern": "^asp_v1_[0-9a-f]{64}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?Z$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "artifact_time_utc",
+        "artifact_type",
+        "collector_id",
+        "compression",
+        "file_sha256",
+        "relative_path",
+        "size_bytes"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/artifactId"
+        },
+        "artifact_time_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "artifact_type": {
+          "enum": [
+            "rib",
+            "update"
+          ]
+        },
+        "collector_id": {
+          "const": "rrc25"
+        },
+        "compression": {
+          "const": "gz"
+        },
+        "file_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "relative_path": {
+          "type": "string",
+          "pattern": "^rrc25/"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "repairArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relative_path",
+        "original_file_sha256",
+        "original_size_bytes",
+        "original_integrity_status",
+        "replacement_artifact",
+        "replacement_integrity_status",
+        "relationship"
+      ],
+      "properties": {
+        "relative_path": {
+          "enum": [
+            "rrc25/2026.02/updates.20260224.0840.gz",
+            "rrc25/2026.02/updates.20260226.0635.gz"
+          ]
+        },
+        "original_file_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "original_size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "original_integrity_status": {
+          "const": "gzip_failed_preserved_read_only"
+        },
+        "replacement_artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "replacement_integrity_status": {
+          "const": "gzip_passed_and_stream_verified"
+        },
+        "relationship": {
+          "const": "isolated_replacement_without_overwrite"
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "row_count",
+        "size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^partitions/[0-9]{4}/(?:records|events|paths)\\.jsonl\\.gz$"
+        },
+        "row_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 20
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "partition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "import_run_id",
+        "dataset_id",
+        "artifact_index",
+        "artifact",
+        "role",
+        "input_integrity_status",
+        "ingest_time_utc",
+        "parse_time_utc",
+        "physical_record_count",
+        "route_event_count",
+        "announce_count",
+        "withdraw_count",
+        "rib_snapshot_count",
+        "path_count",
+        "parser_warning_count",
+        "raw_records",
+        "route_events",
+        "as_paths",
+        "content_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "rrc25-route-event-partition/v1"
+        },
+        "import_run_id": {
+          "$ref": "#/$defs/importRunId"
+        },
+        "dataset_id": {
+          "$ref": "#/$defs/datasetId"
+        },
+        "artifact_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4320
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "role": {
+          "enum": [
+            "rib",
+            "update"
+          ]
+        },
+        "input_integrity_status": {
+          "const": "gzip_passed_and_stream_sha256_verified"
+        },
+        "ingest_time_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "parse_time_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "physical_record_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "route_event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "announce_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "withdraw_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rib_snapshot_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "path_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parser_warning_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "raw_records": {
+          "$ref": "#/$defs/file"
+        },
+        "route_events": {
+          "$ref": "#/$defs/file"
+        },
+        "as_paths": {
+          "$ref": "#/$defs/file"
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "rawMRTRecordRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_ordinal",
+        "mrt_time_utc",
+        "mrt_type",
+        "mrt_subtype",
+        "uncompressed_offset",
+        "record_length",
+        "record_sha256"
+      ],
+      "properties": {
+        "record_ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mrt_time_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "mrt_type": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "mrt_subtype": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "uncompressed_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "record_length": {
+          "type": "integer",
+          "minimum": 12
+        },
+        "record_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "routeEventRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_event_id",
+        "event_time_utc",
+        "vp_id",
+        "vp_peer_ip",
+        "vp_asn",
+        "action",
+        "afi_safi",
+        "prefix",
+        "as_path_id",
+        "origin_asn",
+        "attribute_sha256",
+        "record_ordinal",
+        "element_ordinal",
+        "quality_flags",
+        "missing_reasons"
+      ],
+      "properties": {
+        "route_event_id": {
+          "$ref": "#/$defs/routeEventId"
+        },
+        "event_time_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "route_originated_time_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "vp_id": {
+          "$ref": "#/$defs/vpId"
+        },
+        "vp_peer_ip": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 45
+        },
+        "vp_asn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "action": {
+          "enum": [
+            "announce",
+            "withdraw",
+            "rib_snapshot"
+          ]
+        },
+        "afi_safi": {
+          "enum": [
+            "ipv4_unicast",
+            "ipv6_unicast"
+          ]
+        },
+        "prefix": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "as_path_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/asPathId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin_asn": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attribute_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "element_ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quality_flags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "as_set_present",
+              "confederation_segment_present",
+              "origin_ambiguous",
+              "empty_as_path",
+              "parser_warning"
+            ]
+          }
+        },
+        "parser_warnings": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "missing_reasons": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "as_path": {
+              "enum": [
+                "not_applicable",
+                "not_observed"
+              ]
+            },
+            "origin_asn": {
+              "enum": [
+                "not_applicable",
+                "not_observed"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "asPathRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "as_path_id",
+        "as_path",
+        "quality_flags"
+      ],
+      "properties": {
+        "as_path_id": {
+          "$ref": "#/$defs/asPathId"
+        },
+        "as_path": {
+          "$ref": "route-event.schema.json#/$defs/asPathSnapshot"
+        },
+        "quality_flags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "as_set_present",
+              "confederation_segment_present",
+              "origin_ambiguous",
+              "empty_as_path",
+              "parser_warning"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "x-domeye-boundaries": {
+    "authoritative_fact": "RouteEvent",
+    "route_state": "S2 由 RouteEvent 投影，不在本制品库内双写",
+    "prefix_vp": "Prefix×VP 只是后续 RouteState 的主键维度",
+    "prefix_vp_evidence": "S5 从指定 RouteState/Publication 派生，不是本层事实",
+    "metrics": "国家/ASN 五分钟指标只能由 S2 RouteState 确定性投影"
+  }
+}

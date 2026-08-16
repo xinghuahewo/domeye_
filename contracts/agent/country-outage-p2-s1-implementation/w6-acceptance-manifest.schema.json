@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/country-outage-p2-s1/w6-acceptance-manifest.schema.json",
+  "title": "P2-S1 W6 离线确定性实现验收清单",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "certification_semantics_version", "status",
+    "implementation_accepted_for_release_preparation", "acceptance_meaning",
+    "implementation_candidate", "artifact_refs", "question_summary", "review_refs",
+    "same_candidate_28_question_classification_completed", "fixture_protocol_certified",
+    "deterministic_runtime_performance_characterized", "offline_recovery_acceptance_passed",
+    "full_question_answer_certification_passed", "actual_provider_model_alignment",
+    "actual_provider_performance_acceptance", "actual_provider_cost_acceptance",
+    "runtime_promotion", "production_deployed", "external_provider_call_count",
+    "content_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s1_w6_acceptance_manifest_v2"},
+    "certification_semantics_version": {"const": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2"},
+    "status": {"const": "implementation_accepted_for_release_preparation"},
+    "implementation_accepted_for_release_preparation": {"const": true},
+    "acceptance_meaning": {"const": "冻结W5实现候选、离线确定性能力与28题可执行性分类已按同候选证据验收，可进入实际provider认证及独立发布准备；不表示问题回答、provider模型、provider性能、runtime promotion或生产通过。"},
+    "implementation_candidate": {"$ref": "#/$defs/candidateRef"},
+    "artifact_refs": {
+      "type": "object", "minProperties": 10,
+      "additionalProperties": {"$ref": "#/$defs/artifactRef"}
+    },
+    "question_summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["question_count", "case_count", "blocked_question_count", "deferred_question_count", "executed_supported_question_count", "correctly_bounded_question_count", "blocked_case_count", "deferred_case_count", "p2_1_deferred_subgoal_question_ids"],
+      "properties": {
+        "question_count": {"const": 28},
+        "case_count": {"const": 168},
+        "blocked_question_count": {"const": 27},
+        "deferred_question_count": {"const": 1},
+        "executed_supported_question_count": {"const": 0},
+        "correctly_bounded_question_count": {"const": 0},
+        "blocked_case_count": {"const": 162},
+        "deferred_case_count": {"const": 6},
+        "p2_1_deferred_subgoal_question_ids": {"const": ["Q20", "Q23", "Q26"]}
+      }
+    },
+    "review_refs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["product_semantic", "bgp_semantic"],
+      "properties": {
+        "product_semantic": {"$ref": "#/$defs/artifactRef"},
+        "bgp_semantic": {"$ref": "#/$defs/artifactRef"}
+      }
+    },
+    "same_candidate_28_question_classification_completed": {"const": true},
+    "fixture_protocol_certified": {"const": true},
+    "deterministic_runtime_performance_characterized": {"const": true},
+    "offline_recovery_acceptance_passed": {"const": true},
+    "full_question_answer_certification_passed": {"const": false},
+    "actual_provider_model_alignment": {"const": false},
+    "actual_provider_performance_acceptance": {"const": false},
+    "actual_provider_cost_acceptance": {"const": false},
+    "runtime_promotion": {"const": false},
+    "production_deployed": {"const": false},
+    "external_provider_call_count": {"const": 0},
+    "content_digest": {"$ref": "#/$defs/sha"}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "candidateRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["implementation_candidate_id", "implementation_candidate_digest", "w5_commit"],
+      "properties": {
+        "implementation_candidate_id": {"type": "string", "minLength": 1},
+        "implementation_candidate_digest": {"$ref": "#/$defs/sha"},
+        "w5_commit": {"pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256", "content_digest"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"pattern": "^[0-9a-f]{64}$"},
+        "content_digest": {"$ref": "#/$defs/sha"}
+      }
+    }
+  }
+}

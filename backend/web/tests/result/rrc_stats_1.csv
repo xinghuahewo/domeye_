@@ -1,0 +1,24 @@
+rrc_name,location,ipv4_full_tables,ipv6_full_tables,total_peerings,data_source_time,所属洲,所在国家
+RRC00,"RIPE-NCC Multihop, Amsterdam, Netherlands",44,44,112,2025-07-30T03:00:13,欧洲,荷兰
+RRC01,"LINX / LONAP, London, United Kingdom",34,36,152,2025-07-30T03:00:13,欧洲,英国
+RRC03,"AMS-IX / NL-IX, Amsterdam, Netherlands",30,39,166,2025-07-30T03:00:13,欧洲,荷兰
+RRC04,"CIXP, Geneva, Switzerland",7,7,22,2025-07-30T03:00:13,欧洲,瑞士
+RRC05,"VIX, Vienna, Austria",11,12,68,2025-07-30T03:00:13,欧洲,奥地利
+RRC06,"DIX-IE / JPIX, Tokyo, Japan",5,5,23,2025-07-30T03:00:13,亚洲,日本
+RRC07,"Netnod, Stockholm, Sweden",8,10,39,2025-07-30T03:00:13,欧洲,瑞典
+RRC10,"MIX, Milan, Italy",14,16,61,2025-07-30T03:00:13,欧洲,意大利
+RRC11,"NYIIX, New York City, New York, US",8,10,47,2025-07-30T03:00:13,北美洲,美国
+RRC12,"DE-CIX, Frankfurt, Germany",34,37,159,2025-07-30T03:00:13,欧洲,德国
+RRC13,"MSK-IX, Moscow, Russian Federation",5,6,28,2025-07-30T03:00:13,欧洲,俄罗斯
+RRC14,"PAIX, Palo Alto, California, US",6,7,25,2025-07-30T03:00:13,北美洲,美国
+RRC15,"PTTMetro, Sao Paulo, Brazil",15,16,61,2025-07-30T03:00:13,南美洲,巴西
+RRC16,"NOTA, Miami, Florida, US",3,4,29,2025-07-30T03:00:13,北美洲,美国
+RRC18,"Catnix, Barcelona, Spain",1,1,26,2025-07-30T03:00:13,欧洲,西班牙
+RRC19,"NAP Africa JB, Johannesburg, South Africa",10,9,70,2025-07-30T03:00:13,非洲,南非
+RRC20,"SwissIX, Zurich, Switzerland",23,31,69,2025-07-30T03:00:13,欧洲,瑞士
+RRC21,"France-IX, Paris, France",23,27,80,2025-07-30T03:00:13,欧洲,法国
+RRC22,"InterLAN, Bucharest, Romania",2,4,31,2025-07-30T03:00:13,欧洲,罗马尼亚
+RRC23,"Equinix SG, Singapore, Singapore",8,8,65,2025-07-30T03:00:13,亚洲,新加坡
+RRC24,"LACNIC Multihop, Montevideo, Uruguay",12,15,35,2025-07-30T03:00:13,南美洲,乌拉圭
+RRC25,"RIPE-NCC Multihop, Amsterdam, Netherlands",44,46,120,2025-07-30T03:00:13,欧洲,荷兰
+RRC26,"UAE-IX, Dubai, UAE",3,3,34,2025-07-30T03:00:13,亚洲,阿联酋

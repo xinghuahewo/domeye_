@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-08-11T11:30:00Z",
+  "candidate_id": "not-created",
+  "checks": [
+    "task_spec_contract",
+    "plan_stage_map",
+    "non_deployment_boundary",
+    "runtime_interfaces",
+    "runtime_mode_isolation",
+    "handler_allowlist",
+    "shadow_oracle_14_categories",
+    "admission_schema"
+  ],
+  "hook_limit": "只检查合同、结构、身份、摘要和阶段依赖；不单独证明生产部署或用户价值",
+  "plan_digest": "sha256:22e79d3a57a134a80974a294e265eebcc618969c51fe043e67c803ebd551eee4",
+  "plan_version": "country-outage-agent-p2-s0b-execution-plan-v1",
+  "prod32_switched": false,
+  "production_deployed": false,
+  "receipt_digest": "sha256:fb6388a6af1530db54d5a0cdbff71cd19287cc3f6b98c6c5e48d88f513d89ed0",
+  "runtime_integration": "implemented_not_deployed",
+  "schema_version": "country_outage_p2_s0b_alignment_receipt_v1",
+  "stage": "S0B-0",
+  "status": "alignment_passed",
+  "task_spec_digest": "sha256:62c131ecec613d93de03cfa2dbdd39a8942a289391d0e8c160007ce9131200cf",
+  "task_spec_version": "country-outage-agent-p2-s0b-governed-auto-invocation-v1"
+}

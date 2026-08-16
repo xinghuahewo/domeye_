@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/country-outage-p2-s0a-plan-admission-v1.schema.json",
+  "title": "P2-S0A Registry 快照计划准入合同",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "plan_kind", "registry_snapshot_id", "registry_revision", "event_identity", "nodes"],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s0a_plan_admission_v1"},
+    "plan_id": {"type": "string", "minLength": 1},
+    "plan_kind": {"enum": ["GroundingPlan", "InvestigationPlan"]},
+    "registry_snapshot_id": {"type": "string", "pattern": "^registry-snapshot-sha256:[a-f0-9]{64}$"},
+    "registry_revision": {"type": "integer", "minimum": 1},
+    "event_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "incident_id", "publication_id", "revision", "collector_id", "cohort_id", "window_start_utc", "window_end_utc", "data_through", "is_final_in_data_range", "lifecycle_state"],
+      "properties": {
+        "event_type": {"const": "country_outage"},
+        "incident_id": {"type": "string", "minLength": 1},
+        "publication_id": {"type": "string", "minLength": 1},
+        "revision": {"type": "integer", "minimum": 1},
+        "collector_id": {"const": "rrc25"},
+        "cohort_id": {"type": "string", "minLength": 1},
+        "window_start_utc": {"type": "string", "format": "date-time"},
+        "window_end_utc": {"type": "string", "format": "date-time"},
+        "data_through": {"type": ["string", "null"], "format": "date-time"},
+        "is_final_in_data_range": {"type": "boolean"},
+        "lifecycle_state": {"type": "string", "minLength": 1}
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id", "capability_id", "capability_version", "capability_contract_digest", "execution_unit_id", "execution_unit_version", "unit_contract_digest", "unit_implementation_digest", "unit_semantic_digest"],
+        "properties": {
+          "node_id": {"type": "string", "minLength": 1},
+          "capability_id": {"type": "string", "minLength": 1},
+          "capability_version": {"type": "string", "minLength": 1},
+          "capability_contract_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "execution_unit_id": {"type": "string", "minLength": 1},
+          "execution_unit_version": {"type": "string", "minLength": 1},
+          "unit_contract_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "unit_implementation_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "unit_semantic_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        }
+      }
+    }
+  }
+}

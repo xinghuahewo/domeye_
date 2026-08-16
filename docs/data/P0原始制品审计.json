@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "audit_kind": "p0_raw_artifact_inventory",
+  "audited_at": "2026-07-20T19:40:00+08:00",
+  "audited_host": "10.99.8.16",
+  "data_profile": {
+    "id": "feb-mar-2026",
+    "profile_sha256": "44efcf2b5f3c3aee0a9f3966b6eef4e9855fbfd6ea244dcf15231865f38e0b46",
+    "timezone": "Asia/Shanghai",
+    "window_start": "2026-02-01T00:00:00+08:00",
+    "window_end_exclusive": "2026-04-01T00:00:00+08:00",
+    "snapshot_time": "2026-03-31T23:59:59+08:00"
+  },
+  "status": "partial",
+  "coverage": {
+    "collector_count": 1,
+    "collectors": [
+      "rrc25"
+    ],
+    "update_expected_slot_count": 16992,
+    "update_available_slot_count": 10272,
+    "update_coverage_ratio": 0.6045,
+    "rib_expected_slot_count": 177,
+    "rib_available_slot_count": 107,
+    "rib_coverage_ratio": 0.6045,
+    "available_size_bytes": 98465635006,
+    "missing_local_range": {
+      "start": "2026-02-01T00:00:00+08:00",
+      "end_exclusive": "2026-02-24T08:00:00+08:00",
+      "missing_update_slot_count": 6720,
+      "missing_rib_slot_count": 70
+    }
+  },
+  "artifacts": [
+    {
+      "artifact_id": "ripe-rrc25-2026-02-partial",
+      "collector_id": "rrc25",
+      "path": "/home/bgpdata/data/ripe/rrc25/2026.02",
+      "update_file_count_on_disk": 1440,
+      "rib_file_count_on_disk": 15,
+      "size_bytes": 14215237975,
+      "window_semantics": "仅覆盖UTC 2026-02-24至2026-02-28；按Asia/Shanghai窗口裁切"
+    },
+    {
+      "artifact_id": "ripe-rrc25-2026-03",
+      "collector_id": "rrc25",
+      "path": "/home/bgpdata/data/ripe/rrc25/2026.03",
+      "update_file_count_on_disk": 8928,
+      "rib_file_count_on_disk": 93,
+      "size_bytes": 85166474687,
+      "window_semantics": "目录UTC 3月完整；Asia/Shanghai窗口外的3月31日16:00 UTC及之后文件必须排除"
+    }
+  ],
+  "boundary_hash_samples": [
+    {
+      "kind": "update",
+      "file_time_utc": "2026-02-24T00:00:00Z",
+      "in_profile_window": true,
+      "sha256": "468dcc83ac03fca610cbb51024acae8bac7663f52c91d77e4464972a64b70254"
+    },
+    {
+      "kind": "update",
+      "file_time_utc": "2026-02-28T23:55:00Z",
+      "in_profile_window": true,
+      "sha256": "e0da77698b2eafa44409df96ba1073b7a447bd68503d5fff01519c18e821d685"
+    },
+    {
+      "kind": "update",
+      "file_time_utc": "2026-03-01T00:00:00Z",
+      "in_profile_window": true,
+      "sha256": "5fd3e98ceed2ff640635927d37fb8fe60c8c0b88fff94797865b8294c01e4175"
+    },
+    {
+      "kind": "update",
+      "file_time_utc": "2026-03-31T23:55:00Z",
+      "in_profile_window": false,
+      "sha256": "102a6c2224959d98b8dfb64372b8ff59752a81cacb3b39d1cf9f35988a8680a9"
+    },
+    {
+      "kind": "rib",
+      "file_time_utc": "2026-02-24T00:00:00Z",
+      "in_profile_window": true,
+      "sha256": "800d224173376766725acb0be3cc64b92d31f1ba0fd48beda857711120944248"
+    },
+    {
+      "kind": "rib",
+      "file_time_utc": "2026-03-31T16:00:00Z",
+      "in_profile_window": false,
+      "sha256": "252e2cec2d4c81ca7a7864d9f16bcde5c0859bb6495c3ddec6b9db1080b35bae"
+    }
+  ],
+  "vp_identity_available": false,
+  "vp_recoverable_from_raw_mrt": true,
+  "vp_recovery_semantics": "原始MRT可恢复peer IP与peer ASN；历史事实表未保留peer IP和原始record ID",
+  "legacy_leak_vp_field": {
+    "row_count": 63281,
+    "nonnull_count": 63281,
+    "distinct_count": 47,
+    "value_format": "纯数字ASN",
+    "stable_vp_identity": false,
+    "reason": "只保留peer ASN，未保留peer IP或原始record ID；同一ASN可能对应多个观测会话"
+  },
+  "record_level_reference_available": false,
+  "full_file_manifest_available": false,
+  "full_file_checksum_available": false,
+  "processing_lineage_available": false,
+  "parser_observation": {
+    "name": "bgpdump",
+    "reported_package_version": "1.6.2-2",
+    "binary_path": "/usr/bin/bgpdump",
+    "binary_sha256": "d73b00a79ae0d284b2c47010c1e2f26d28c5a4ce449b36ff021a41502dcca1ee",
+    "bound_to_each_input_file": false
+  },
+  "source_release_conflict": {
+    "release_id": "20260717T124354Z",
+    "database_manifest_sha256": "fa9a291528419d08c96be3559d68923d09164d6340873904ec26fb8feb9a6943",
+    "database_manifest_snapshot_time": "2026-07-17T12:50:03Z",
+    "profile_snapshot_time": "2026-03-31T23:59:59+08:00",
+    "compatible_as_final_p0_inventory": false,
+    "reason": "基础发布inventory覆盖至7月，只能作为裁剪来源制品，不能代替当前二三月Overlay实时基线"
+  },
+  "limitations": [
+    "仅在可见普通文件范围内发现rrc25，不能证明外部或未挂载存储不存在其他Collector数据。",
+    "二月前23天原始文件缺失，无法达到全窗口raw_traceable。",
+    "原始目录没有全量manifest、全量checksum、处理日志和逐文件parser/import版本。",
+    "边界SHA仅用于证明抽样文件当前可重复读取，不能替代全量文件清单。",
+    "历史事实表没有原始record ID，不能从现有Incident直接精确回链到MRT元素。"
+  ]
+}

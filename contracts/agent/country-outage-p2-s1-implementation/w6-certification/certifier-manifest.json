@@ -1,0 +1,64 @@
+{
+  "artifacts": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_w6_certification.py",
+      "role": "w6_certifier",
+      "sha256": "fb2280a8a065e294a82f0a4648084d218ddf7e7d99897fa8659f9476af1e3988",
+      "size_bytes": 95995
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "role": "stage_test_runner",
+      "sha256": "925c27ebf98f95e11a087c5ced02a8e991155b87dc25460cf99024ff8f27edbf",
+      "size_bytes": 37784
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_w6_certification.py",
+      "role": "w6_certification_test",
+      "sha256": "9e34d36b81347060c52cae4f33eaebe40300dc5d6bcd06a97af97f2b68e4116d",
+      "size_bytes": 12229
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-case-receipt.schema.json",
+      "role": "case_receipt_schema",
+      "sha256": "ad1d146f23cb0e714b3ae52e443da3d09deca73a7368416dfeffca2d86c8d7dd",
+      "size_bytes": 8608
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-independent-review.schema.json",
+      "role": "independent_review_schema",
+      "sha256": "a47600fc9044cc7b01c40a1980506cce0ba154b108b77698dd148b6810847df4",
+      "size_bytes": 3529
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-acceptance-manifest.schema.json",
+      "role": "acceptance_manifest_schema",
+      "sha256": "6428b1cdc952ef771a6918e3829f884ed3220b08bb6a43dcc523d293edc7bb29",
+      "size_bytes": 4469
+    },
+    {
+      "path": ".codex/hooks/country_outage_agent_p2_s1_implementation_alignment.py",
+      "role": "implementation_alignment_hook",
+      "sha256": "e69cb5d3eb51c7cb86cc624e33de876d368befb9bbf7381ad19efce2ed45f1c0",
+      "size_bytes": 276910
+    },
+    {
+      "path": "dev/tests/test_country_outage_p2_s1_implementation_alignment_hook.py",
+      "role": "implementation_alignment_hook_test",
+      "sha256": "39b42606c2367db16e76049e4ef11da56794f610630118d83f8ef2e9830b4ed8",
+      "size_bytes": 140679
+    },
+    {
+      "path": "docs/agent/P2-组合式调查/实体调查实现工程/W6-离线确定性实现验收说明.md",
+      "role": "w6_chinese_acceptance_explanation",
+      "sha256": "1493e69208569f29a791b0a3e9064b7e35f3bf14f3beb47a8625a40ca4831563",
+      "size_bytes": 5472
+    }
+  ],
+  "certification_semantics_version": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2",
+  "certifier_id": "country_outage_p2_s1_w6_offline_certifier",
+  "certifier_version": "2.0.0",
+  "content_digest": "sha256:f22267203e287dfaaaafa7f9a5f2dd3b4a50cfcdad97dc4f444ad6f835457792",
+  "generated_result_paths_excluded": true,
+  "schema_version": "country_outage_p2_s1_w6_certifier_manifest_v2"
+}

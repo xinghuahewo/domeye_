@@ -1,0 +1,259 @@
+{
+  "schema_version": "country_outage_p2_s1_tool_atomicity_review_v1",
+  "artifact_id": "country-outage-p2-s1-tool-atomicity-review-20260812-r14",
+  "stage": "S1D-2",
+  "status": "independent_review_passed",
+  "builder_id": "codex-root-s1d2-builder",
+  "reviewer_id": "/root/s1d2_tool_contract_review",
+  "review_model": "gpt-5.6-sol",
+  "review_scope": [
+    "tool-catalog.json",
+    "tool-contract.schema.json",
+    "TOOL-07..TOOL-13"
+  ],
+  "review_rounds": [
+    {
+      "round": 1,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "TOOL-11内嵌回放风险",
+        "Q18缺expected direction人口",
+        "TOOL-12路径人口名称过强",
+        "state source row schema未冻结"
+      ]
+    },
+    {
+      "round": 2,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "RouteState VP/peer事实键",
+        "方向身份",
+        "严格分页全序",
+        "RouteEvent adapter",
+        "开放meta-schema",
+        "page_token与ResultSet失败语义"
+      ]
+    },
+    {
+      "round": 3,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "类型化AS_PATH segment",
+        "跨字段状态联动",
+        "RouteEvent source人口",
+        "ordered空路径"
+      ]
+    },
+    {
+      "round": 4,
+      "disposition": "passed",
+      "remaining_blockers": []
+    },
+    {
+      "round": 5,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "TOOL-11与TOOL-12路径状态枚举需要原生统一字段",
+        "活动路径规则引用不存在的path_status=known"
+      ]
+    },
+    {
+      "round": 6,
+      "disposition": "passed",
+      "remaining_blockers": []
+    },
+    {
+      "round": 7,
+      "disposition": "passed",
+      "resolved_findings": [
+        "TOOL-12每条窗口路径关联至少包含一个peer ASN观察方向"
+      ],
+      "remaining_blockers": []
+    },
+    {
+      "round": 8,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "Profile digest仅校验格式，未冻结具体内容",
+        "Hook未覆盖path_digest类型、格式及known/unknown/null联动",
+        "路径摘要反例测试不足"
+      ]
+    },
+    {
+      "round": 9,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "同一Profile ID允许修改规范化规则并重新绑定摘要"
+      ]
+    },
+    {
+      "round": 10,
+      "disposition": "passed",
+      "resolved_findings": [
+        "固定AS-PATH-CANONICALIZATION-1.0.0完整正文及摘要",
+        "TOOL-11与TOOL-12原生路径摘要身份闭合",
+        "TOOL-11 known与unknown/not_applicable摘要条件闭合",
+        "Hook可拒绝规则、版本、输入schema及摘要合同漂移"
+      ],
+      "remaining_blockers": []
+    },
+    {
+      "round": 11,
+      "disposition": "revision_required",
+      "resolved_findings": [
+        "TOOL-11声明contains_asn过滤但未冻结预物化membership index身份",
+        "通用query_receipt未绑定contains_asn、索引摘要与匹配成员摘要",
+        "Q14未显式消费TOOL-07固定cohort expected directions"
+      ]
+    },
+    {
+      "round": 12,
+      "disposition": "passed",
+      "resolved_findings": [
+        "TOOL-11仍只读取materialized_route_state_rows_at_exact_time单一事实人口",
+        "contains_asn由同人口预物化索引过滤且由可信materialization/query receipt闭合",
+        "查询时路径解析、LLM过滤与内部回放均被禁止",
+        "TOOL-07为Q14发布固定cohort expected directions"
+      ],
+      "remaining_blockers": []
+    },
+    {
+      "round": 13,
+      "disposition": "passed",
+      "resolved_findings": [
+        "TOOL-12保持单一window_path_association_evidence_rows事实人口",
+        "contains_asn与anchor-before只使用同人口预物化索引",
+        "Host受信物化回执闭合publication、dataset、Profile、index与成员摘要",
+        "typed path严格顺序及eligible anchor失败关闭",
+        "Q20/Q26完整性声明限定到affected-anchor窗口association人口",
+        "Q26区分eligible zero-match与noneligible unsupported",
+        "关键过滤、物化、路径顺序和Profile漂移攻击已固化"
+      ],
+      "remaining_blockers": []
+    },
+    {
+      "round": 14,
+      "disposition": "passed",
+      "resolved_findings": [
+        "anchor_population_eligible不再是查询回执自报布尔值，必须绑定同publication冻结ever-affected-AS ResultSet身份、manifest/content/freeze摘要及完整成员摘要",
+        "known_origin_asn必须等于observed_origin_asn，且去除连续prepend后为有序AS_PATH末尾ASN",
+        "TOOL-12仍只读window_path_association_evidence_rows一种事实人口；AS人口引用仅用于准入与完整性provenance，不产生第二业务读取",
+        "中间ASN冒充origin、跨publication anchor人口和自报noneligible等攻击均失败关闭"
+      ],
+      "remaining_blockers": []
+    }
+  ],
+  "reviews": [
+    {
+      "unit_id": "TOOL-07",
+      "reviewer_id": "/root/s1d2_tool_contract_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "fixed_cohort_member_rows",
+      "source_readiness": "schema_projection_required_before_implementation",
+      "runtime_ready": false,
+      "notes": [
+        "ASN过滤只匹配country_origin_asns",
+        "MOAS成员可出现在多个ASN查询",
+        "expected peer-ASN方向与VP/peer观察键分离"
+      ]
+    },
+    {
+      "unit_id": "TOOL-08",
+      "reviewer_id": "/root/s1d2_tool_contract_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "prefix_state_rows",
+      "source_readiness": "row_schema_required_before_implementation",
+      "runtime_ready": false,
+      "notes": [
+        "只读prefix-state",
+        "首峰末与区间均由Operator完成"
+      ]
+    },
+    {
+      "unit_id": "TOOL-09",
+      "reviewer_id": "/root/s1d2_tool_contract_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "asn_state_rows",
+      "source_readiness": "row_schema_required_before_implementation",
+      "runtime_ready": false,
+      "notes": [
+        "只读ASN-state",
+        "阈值、比例与排名不在Tool内"
+      ]
+    },
+    {
+      "unit_id": "TOOL-10",
+      "reviewer_id": "/root/s1d2_tool_contract_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "new_prefix_state_rows",
+      "source_readiness": "homogeneous_row_schema_required_before_implementation",
+      "runtime_ready": false,
+      "notes": [
+        "成员键含state point",
+        "稳定排序为严格全序",
+        "不内嵌RouteState join"
+      ]
+    },
+    {
+      "unit_id": "TOOL-11",
+      "reviewer_id": "/root/s1d2_tool_contract_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "materialized_route_state_rows_at_exact_time",
+      "source_readiness": "materialized_view_and_projection_receipt_required_before_implementation",
+      "runtime_ready": false,
+      "notes": [
+        "只读预物化精确时点视图",
+        "禁止checkpoint选择、事件回放和状态投影",
+        "VP/peer事实键闭合",
+        "类型化AS_PATH和状态联动闭合",
+        "source view原生提供common_path_status且活动路径规则只接受ordered或unordered",
+        "known路径原生发布固定Profile绑定的path_digest；unknown或not_applicable保持null",
+        "contains_asn只使用同一RouteState人口的预物化membership index",
+        "filter receipt绑定target、index、materialization、matched members与total count，不增加第二事实人口"
+      ]
+    },
+    {
+      "unit_id": "TOOL-12",
+      "reviewer_id": "/root/s1d5_tool12_atomic_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "window_path_association_evidence_rows",
+      "source_readiness": "association_row_and_path_quality_schema_required_before_implementation",
+      "runtime_ready": false,
+      "notes": [
+        "完整性只在affected-anchor窗口关联人口内成立",
+        "不证明path-at-time",
+        "路径segment保留类型且ordered路径非空",
+        "每行原生发布固定AS-PATH-CANONICALIZATION-1.0.0绑定的非空path_digest",
+        "预览属于Renderer",
+        "source人口原生提供common_path_status并保留原始path_parse_status",
+        "peer_asn_direction_ids非空，可直接供方向集合投影",
+        "contains_asn和anchor-before均由同人口预物化索引及Host受信物化回执闭合",
+        "eligible anchor必须由同publication完整ever-affected-AS ResultSet成员摘要证明，匹配0行才是完整空集，noneligible anchor为unsupported",
+        "known origin等于观测origin且是去除连续prepend后AS_PATH末尾ASN，不接受中间ASN冒充origin"
+      ]
+    },
+    {
+      "unit_id": "TOOL-13",
+      "reviewer_id": "/root/s1d2_tool_contract_review",
+      "disposition": "atomic_as_designed",
+      "single_fact_population": "route_event_rows",
+      "source_readiness": "deferred_registry_and_manifest_binding_required",
+      "runtime_ready": false,
+      "notes": [
+        "P2.1 deferred",
+        "只接纳record_kind=route_event和announce/withdraw",
+        "直接复用event_time_utc与vp_id",
+        "不分类变化"
+      ]
+    }
+  ],
+  "overall_disposition": "passed",
+  "remaining_blockers": [],
+  "boundary": {
+    "functional_atomicity_passed": true,
+    "implementation_readiness_passed": false,
+    "runtime_implemented": false,
+    "production_deployed": false,
+    "tool_13_p2_v1_executable": false
+  }
+}

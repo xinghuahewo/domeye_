@@ -1,0 +1,2733 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1/dual-model-answer-flow.schema.json",
+  "title": "gpt-5.6-sol Teacher 到 DS Student 的受控回答链",
+  "description": "Evidence 真值先于 Teacher；TeacherReference 必须验证后才能进入 DS。默认必须先 Sol 后 DS，最多一次结构化反馈和一次 DS 修订。",
+  "x-contract-metadata": {
+    "artifact_id": "country-outage-p2-s1d4-dual-model-flow-20260812",
+    "stage": "S1D-4",
+    "status": "design_contract_only"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "flow_id",
+    "flow_revision",
+    "parent_flow_revision",
+    "flow_state",
+    "execution_order",
+    "default_teacher_required",
+    "effective_teacher_required",
+    "shared_answer_binding",
+    "shared_answer_binding_digest",
+    "teacher_model_identity",
+    "student_model_identity",
+    "teacher_plan_run_receipt",
+    "teacher_plan_grounding_receipt",
+    "teacher_run_receipt",
+    "teacher_reference",
+    "teacher_validation_receipt",
+    "teacher_oracle_coverage_receipt",
+    "student_runs",
+    "structured_feedback",
+    "student_validation_receipt",
+    "alignment_run_receipt",
+    "degraded_authorization",
+    "teacher_unavailable_phase",
+    "final_disposition",
+    "published_answer",
+    "publish_receipt_digest",
+    "design_boundary"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "country_outage_p2_dual_model_answer_flow_v1"
+    },
+    "flow_id": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "flow_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parent_flow_revision": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "flow_state": {
+      "enum": [
+        "awaiting_teacher",
+        "teacher_running",
+        "teacher_rejected",
+        "teacher_validated",
+        "student_running",
+        "student_revising",
+        "alignment_failed",
+        "published",
+        "stopped_waiting_teacher",
+        "degraded_authorized",
+        "degraded_published",
+        "failed"
+      ]
+    },
+    "execution_order": {
+      "const": [
+        "gpt-5.6-sol",
+        "teacher_reference_validator",
+        "ds_student",
+        "student_answer_validator",
+        "alignment_evaluator"
+      ]
+    },
+    "default_teacher_required": {
+      "const": true
+    },
+    "effective_teacher_required": {
+      "type": "boolean"
+    },
+    "shared_answer_binding": {
+      "$ref": "#/$defs/sharedAnswerBinding"
+    },
+    "shared_answer_binding_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "teacher_model_identity": {
+      "$ref": "#/$defs/teacherModelIdentity"
+    },
+    "student_model_identity": {
+      "$ref": "#/$defs/studentModelIdentity"
+    },
+    "teacher_plan_run_receipt": {
+      "oneOf": [
+        {"$ref": "#/$defs/teacherPlanRunReceipt"},
+        {"type": "null"}
+      ]
+    },
+    "teacher_plan_grounding_receipt": {
+      "oneOf": [
+        {"$ref": "#/$defs/teacherPlanGroundingReceipt"},
+        {"type": "null"}
+      ]
+    },
+    "teacher_run_receipt": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/teacherRunReceipt"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "teacher_reference": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/teacherReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "teacher_validation_receipt": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/validationReceipt"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "teacher_oracle_coverage_receipt": {
+      "oneOf": [
+        {"$ref": "#/$defs/teacherOracleCoverageReceipt"},
+        {"type": "null"}
+      ]
+    },
+    "student_runs": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/studentRun"
+      }
+    },
+    "structured_feedback": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/structuredFeedback"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "student_validation_receipt": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/validationReceipt"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "alignment_run_receipt": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/alignmentRunReceipt"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "degraded_authorization": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/degradedAuthorization"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "teacher_unavailable_phase": {
+      "enum": ["none", "sol_reference"]
+    },
+    "final_disposition": {
+      "enum": [
+        "none",
+        "aligned_published",
+        "ds_unaligned_degraded",
+        "teacher_unavailable",
+        "teacher_rejected",
+        "student_rejected",
+        "alignment_rejected"
+      ]
+    },
+    "published_answer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/publishedAnswer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "publish_receipt_digest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "design_boundary": {
+      "$ref": "#/$defs/designBoundary"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "flow_revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "flow_revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "parent_flow_revision": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "parent_flow_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "flow_state": {
+            "const": "teacher_rejected"
+          }
+        },
+        "required": [
+          "flow_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "student_runs": {
+            "maxItems": 0
+          },
+          "final_disposition": {
+            "const": "teacher_rejected"
+          },
+          "effective_teacher_required": {
+            "const": true
+          },
+          "teacher_plan_run_receipt": {
+            "$ref": "#/$defs/completedTeacherPlanRunReceipt"
+          },
+          "teacher_plan_grounding_receipt": {
+            "$ref": "#/$defs/teacherPlanGroundingReceipt"
+          },
+          "teacher_run_receipt": {
+            "$ref": "#/$defs/completedTeacherRunReceipt"
+          },
+          "teacher_reference": {
+            "$ref": "#/$defs/teacherReference"
+          },
+          "teacher_validation_receipt": {
+            "$ref": "#/$defs/validationReceipt"
+          },
+          "structured_feedback": {
+            "type": "null"
+          },
+          "student_validation_receipt": {
+            "type": "null"
+          },
+          "alignment_run_receipt": {
+            "type": "null"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          },
+          "published_answer": {
+            "type": "null"
+          },
+          "publish_receipt_digest": {
+            "type": "null"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "teacher_validation_receipt": {"$ref": "#/$defs/rejectedValidationReceipt"},
+              "teacher_oracle_coverage_receipt": {"type": "null"}
+            }
+          },
+          {
+            "properties": {
+              "teacher_validation_receipt": {"$ref": "#/$defs/passedValidationReceipt"},
+              "teacher_oracle_coverage_receipt": {"$ref": "#/$defs/rejectedTeacherOracleCoverageReceipt"}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "student_runs": {
+            "minItems": 2
+          }
+        },
+        "required": [
+          "student_runs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "structured_feedback": {
+            "$ref": "#/$defs/structuredFeedback"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "aligned_published"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "const": "published"
+          },
+        "effective_teacher_required": {
+          "const": true
+        },
+        "teacher_plan_run_receipt": {
+          "$ref": "#/$defs/completedTeacherPlanRunReceipt"
+        },
+        "teacher_plan_grounding_receipt": {
+          "$ref": "#/$defs/teacherPlanGroundingReceipt"
+        },
+        "teacher_run_receipt": {
+          "$ref": "#/$defs/completedTeacherRunReceipt"
+        },
+          "teacher_reference": {
+            "$ref": "#/$defs/teacherReference"
+          },
+        "teacher_validation_receipt": {
+          "$ref": "#/$defs/passedValidationReceipt"
+        },
+        "teacher_oracle_coverage_receipt": {
+          "$ref": "#/$defs/passedTeacherOracleCoverageReceipt"
+        },
+          "student_runs": {
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/completedStudentRun"
+            }
+          },
+          "student_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "alignment_run_receipt": {
+            "$ref": "#/$defs/passedAlignmentRunReceipt"
+          },
+          "published_answer": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/publishedAnswer"
+              },
+              {
+                "properties": {
+                  "aligned_claim": {
+                    "const": true
+                  }
+                }
+              }
+            ]
+          },
+          "publish_receipt_digest": {
+            "$ref": "#/$defs/sha256"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "ds_unaligned_degraded"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "const": "degraded_published"
+          },
+        "effective_teacher_required": {
+          "const": false
+        },
+        "teacher_plan_run_receipt": {
+          "type": "null"
+        },
+        "teacher_plan_grounding_receipt": {
+          "type": "null"
+        },
+        "teacher_run_receipt": {
+          "type": "null"
+        },
+          "teacher_reference": {
+            "type": "null"
+          },
+        "teacher_validation_receipt": {
+          "type": "null"
+        },
+        "teacher_oracle_coverage_receipt": {
+          "type": "null"
+        },
+          "degraded_authorization": {
+            "$ref": "#/$defs/degradedAuthorization"
+          },
+          "student_runs": {
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/degradedStudentRun"
+            }
+          },
+          "student_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "published_answer": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/publishedAnswer"
+              },
+              {
+                "properties": {
+                  "aligned_claim": {
+                    "const": false
+                  }
+                }
+              }
+            ]
+          },
+          "publish_receipt_digest": {
+            "$ref": "#/$defs/sha256"
+          },
+          "alignment_run_receipt": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "student_rejected"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "const": "failed"
+          },
+          "effective_teacher_required": {
+            "const": true
+          },
+          "teacher_plan_run_receipt": {
+            "$ref": "#/$defs/completedTeacherPlanRunReceipt"
+          },
+          "teacher_plan_grounding_receipt": {
+            "$ref": "#/$defs/teacherPlanGroundingReceipt"
+          },
+          "teacher_run_receipt": {
+            "$ref": "#/$defs/completedTeacherRunReceipt"
+          },
+          "teacher_reference": {
+            "$ref": "#/$defs/teacherReference"
+          },
+          "teacher_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "teacher_oracle_coverage_receipt": {
+            "$ref": "#/$defs/passedTeacherOracleCoverageReceipt"
+          },
+          "student_runs": {
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/completedStudentRun"
+            }
+          },
+          "student_validation_receipt": {
+            "$ref": "#/$defs/rejectedValidationReceipt"
+          },
+          "alignment_run_receipt": {
+            "type": "null"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          },
+          "published_answer": {
+            "type": "null"
+          },
+          "publish_receipt_digest": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "alignment_rejected"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "const": "alignment_failed"
+          },
+          "effective_teacher_required": {
+            "const": true
+          },
+          "teacher_plan_run_receipt": {
+            "$ref": "#/$defs/completedTeacherPlanRunReceipt"
+          },
+          "teacher_plan_grounding_receipt": {
+            "$ref": "#/$defs/teacherPlanGroundingReceipt"
+          },
+          "teacher_run_receipt": {
+            "$ref": "#/$defs/completedTeacherRunReceipt"
+          },
+          "teacher_reference": {
+            "$ref": "#/$defs/teacherReference"
+          },
+          "teacher_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "teacher_oracle_coverage_receipt": {
+            "$ref": "#/$defs/passedTeacherOracleCoverageReceipt"
+          },
+          "student_runs": {
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/completedStudentRun"
+            }
+          },
+          "student_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "alignment_run_receipt": {
+            "$ref": "#/$defs/rejectedAlignmentRunReceipt"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          },
+          "published_answer": {
+            "type": "null"
+          },
+          "publish_receipt_digest": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "teacher_unavailable"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "const": "stopped_waiting_teacher"
+          },
+          "effective_teacher_required": {
+            "const": true
+          },
+          "teacher_unavailable_phase": {
+            "const": "sol_reference"
+          },
+          "teacher_plan_run_receipt": {"$ref": "#/$defs/completedTeacherPlanRunReceipt"},
+          "teacher_plan_grounding_receipt": {"$ref": "#/$defs/teacherPlanGroundingReceipt"},
+          "teacher_run_receipt": {"$ref": "#/$defs/unavailableTeacherRunReceipt"},
+          "teacher_reference": {
+            "type": "null"
+          },
+          "teacher_validation_receipt": {
+            "type": "null"
+          },
+          "teacher_oracle_coverage_receipt": {
+            "type": "null"
+          },
+          "student_runs": {
+            "maxItems": 0
+          },
+          "structured_feedback": {
+            "type": "null"
+          },
+          "student_validation_receipt": {
+            "type": "null"
+          },
+          "alignment_run_receipt": {
+            "type": "null"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          },
+          "published_answer": {
+            "type": "null"
+          },
+          "publish_receipt_digest": {
+            "type": "null"
+          }
+        },
+        "required": ["teacher_unavailable_phase"]
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "final_disposition": {"const": "teacher_unavailable"}
+          },
+          "required": ["final_disposition"]
+        }
+      },
+      "then": {
+        "properties": {
+          "teacher_unavailable_phase": {"const": "none"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "teacher_rejected"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "const": "teacher_rejected"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "final_disposition": {
+            "const": "none"
+          }
+        },
+        "required": [
+          "final_disposition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "flow_state": {
+            "enum": [
+              "awaiting_teacher",
+              "teacher_running",
+              "teacher_validated",
+              "student_running",
+              "degraded_authorized"
+            ]
+          },
+          "student_runs": {
+            "maxItems": 0
+          },
+          "student_validation_receipt": {
+            "type": "null"
+          },
+          "alignment_run_receipt": {
+            "type": "null"
+          },
+          "published_answer": {
+            "type": "null"
+          },
+          "publish_receipt_digest": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "flow_state": {
+            "enum": [
+              "awaiting_teacher",
+              "teacher_running"
+            ]
+          }
+        },
+        "required": [
+          "flow_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "teacher_run_receipt": {
+            "type": "null"
+          },
+          "teacher_reference": {
+            "type": "null"
+          },
+          "teacher_validation_receipt": {
+            "type": "null"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "flow_state": {
+            "enum": [
+              "teacher_validated",
+              "student_running"
+            ]
+          }
+        },
+        "required": [
+          "flow_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "teacher_run_receipt": {
+            "$ref": "#/$defs/completedTeacherRunReceipt"
+          },
+          "teacher_reference": {
+            "$ref": "#/$defs/teacherReference"
+          },
+          "teacher_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "degraded_authorization": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "flow_state": {
+            "const": "degraded_authorized"
+          }
+        },
+        "required": [
+          "flow_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "effective_teacher_required": {
+            "const": false
+          },
+          "teacher_run_receipt": {
+            "type": "null"
+          },
+          "teacher_reference": {
+            "type": "null"
+          },
+          "teacher_validation_receipt": {
+            "type": "null"
+          },
+          "degraded_authorization": {
+            "$ref": "#/$defs/degradedAuthorization"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "effective_teacher_required": {
+            "const": true
+          }
+        },
+        "required": [
+          "effective_teacher_required"
+        ]
+      },
+      "then": {
+        "properties": {
+          "teacher_plan_run_receipt": {
+            "$ref": "#/$defs/completedTeacherPlanRunReceipt"
+          },
+          "teacher_plan_grounding_receipt": {
+            "$ref": "#/$defs/teacherPlanGroundingReceipt"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "effective_teacher_required": {
+            "const": false
+          }
+        },
+        "required": [
+          "effective_teacher_required"
+        ]
+      },
+      "then": {
+        "properties": {
+          "teacher_plan_run_receipt": {
+            "type": "null"
+          },
+          "teacher_plan_grounding_receipt": {
+            "type": "null"
+          },
+          "teacher_run_receipt": {
+            "type": "null"
+          },
+          "teacher_reference": {
+            "type": "null"
+          },
+          "teacher_validation_receipt": {
+            "type": "null"
+          },
+          "teacher_oracle_coverage_receipt": {
+            "type": "null"
+          },
+          "degraded_authorization": {
+            "$ref": "#/$defs/degradedAuthorization"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "student_runs": {
+            "minItems": 1,
+            "maxItems": 1
+          }
+        },
+        "required": [
+          "student_runs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "student_runs": {
+            "prefixItems": [
+              {
+                "properties": {
+                  "revision_ordinal": {
+                    "const": 0
+                  }
+                },
+                "required": [
+                  "revision_ordinal"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "student_runs": {
+            "minItems": 2
+          }
+        },
+        "required": [
+          "student_runs"
+        ]
+      },
+      "then": {
+        "properties": {
+          "student_runs": {
+            "prefixItems": [
+              {
+                "properties": {
+                  "revision_ordinal": {
+                    "const": 0
+                  }
+                },
+                "required": [
+                  "revision_ordinal"
+                ]
+              },
+              {
+                "properties": {
+                  "revision_ordinal": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "revision_ordinal"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "flow_state": {
+            "enum": [
+              "teacher_validated",
+              "student_running",
+              "student_revising",
+              "alignment_failed",
+              "published"
+            ]
+          }
+        },
+        "required": [
+          "flow_state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "effective_teacher_required": {
+            "const": true
+          },
+          "teacher_run_receipt": {
+            "$ref": "#/$defs/completedTeacherRunReceipt"
+          },
+          "teacher_reference": {
+            "$ref": "#/$defs/teacherReference"
+          },
+          "teacher_validation_receipt": {
+            "$ref": "#/$defs/passedValidationReceipt"
+          },
+          "teacher_oracle_coverage_receipt": {
+            "$ref": "#/$defs/passedTeacherOracleCoverageReceipt"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exactModelIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model",
+        "version",
+        "identity_digest"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!.*[Ll][Aa][Tt][Ee][Ss][Tt]).+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!.*[Ll][Aa][Tt][Ee][Ss][Tt]).+$"
+        },
+        "expected_response_model": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "pi_version": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "candidate_resource_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "profile_registry_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "identity_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "teacherModelIdentity": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/exactModelIdentity"
+        },
+        {
+          "properties": {
+            "provider": {
+              "const": "openai"
+            },
+            "model": {
+              "const": "gpt-5.6-sol"
+            }
+          }
+        }
+      ]
+    },
+    "studentModelIdentity": {
+      "allOf": [
+        {"$ref": "#/$defs/exactModelIdentity"},
+        {
+          "properties": {
+            "provider": {"const": "deepseek"},
+            "model": {"const": "deepseek-v4-flash"},
+            "version": {"const": "deepseek-v4-flash-pi-0.84.1-v1"},
+            "expected_response_model": {"const": "deepseek-v4-flash"},
+            "pi_version": {"const": "0.84.1"},
+            "candidate_resource_sha256": {"const": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5"},
+            "profile_registry_sha256": {"const": "e8881aa2b79f495da3ea551bb3b2423af45c118f5e622ac1877852bf0087bf4f"}
+          },
+          "required": ["provider", "model", "version", "expected_response_model", "pi_version", "candidate_resource_sha256", "profile_registry_sha256"]
+        }
+      ]
+    },
+    "sharedAnswerBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question_id",
+        "question_digest",
+        "goal_digest",
+        "incident_id",
+        "publication_id",
+        "publication_revision",
+        "publication_digest",
+        "collector_id",
+        "cohort_id",
+        "cohort_digest",
+        "window_start_utc",
+        "window_end_utc",
+        "data_through_utc",
+        "finality",
+        "binding_generation",
+        "teacher_semantic_plan_digest",
+        "teacher_plan_grounding_receipt_digest",
+        "grounding_plan_digest",
+        "plan_id",
+        "plan_revision",
+        "investigation_plan_digest",
+        "evidence_bundle_digest",
+        "evidence_graph_revision",
+        "evidence_graph_digest",
+        "registry_snapshot_id",
+        "registry_snapshot_digest",
+        "boundary_policy_digest",
+        "world_knowledge_bundle_digest",
+        "world_knowledge_policy",
+        "prompt_version",
+        "prompt_digest",
+        "policy_version",
+        "policy_digest"
+      ],
+      "properties": {
+        "question_id": {
+          "type": "string",
+          "pattern": "^Q[0-9]{2}$"
+        },
+        "question_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "goal_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "incident_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "publication_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "publication_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "publication_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "collector_id": {
+          "const": "rrc25"
+        },
+        "cohort_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "cohort_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "window_start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "window_end_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data_through_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finality": {
+          "enum": [
+            "event_end_unknown",
+            "event_end_known"
+          ]
+        },
+        "binding_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "teacher_semantic_plan_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "teacher_plan_grounding_receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "grounding_plan_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "plan_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "plan_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "investigation_plan_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evidence_bundle_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evidence_graph_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence_graph_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "registry_snapshot_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "registry_snapshot_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "boundary_policy_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "world_knowledge_bundle_digest": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "world_knowledge_policy": {
+          "const": "explanation_and_hypothesis_only_not_event_evidence"
+        },
+        "prompt_version": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "prompt_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "policy_version": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "policy_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "runCost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latency_ms",
+        "input_tokens",
+        "output_tokens",
+        "cost_amount",
+        "cost_currency",
+        "retry_count"
+      ],
+      "properties": {
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_amount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cost_currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "retry_count": {
+          "const": 0
+        }
+      }
+    },
+    "modelRunReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "role",
+        "run_phase",
+        "exact_model_identity",
+        "shared_answer_binding_digest",
+        "role_specific_input_digest",
+        "output_digest",
+        "validation_receipt_digest",
+        "cost",
+        "disposition"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "role": {
+          "enum": [
+            "teacher",
+            "student"
+          ]
+        },
+        "run_phase": {
+          "enum": [
+            "sol_planning",
+            "sol_reference",
+            "ds_first_answer",
+            "ds_revision"
+          ]
+        },
+        "exact_model_identity": {
+          "$ref": "#/$defs/exactModelIdentity"
+        },
+        "shared_answer_binding_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "role_specific_input_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "output_digest": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "validation_receipt_digest": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost": {
+          "$ref": "#/$defs/runCost"
+        },
+        "disposition": {
+          "enum": [
+            "completed",
+            "failed",
+            "unavailable",
+            "cancelled",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "teacherRunReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/modelRunReceipt"
+        },
+        {
+          "properties": {
+            "role": {
+              "const": "teacher"
+            },
+            "run_phase": {
+              "const": "sol_reference"
+            },
+            "exact_model_identity": {
+              "$ref": "#/$defs/teacherModelIdentity"
+            }
+          },
+          "required": [
+            "role",
+            "run_phase",
+            "exact_model_identity"
+          ]
+        }
+      ]
+    },
+    "teacherPlanRunReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/modelRunReceipt"},
+        {
+          "properties": {
+            "role": {"const": "teacher"},
+            "run_phase": {"const": "sol_planning"},
+            "exact_model_identity": {"$ref": "#/$defs/teacherModelIdentity"}
+          },
+          "required": ["role", "run_phase", "exact_model_identity"]
+        }
+      ]
+    },
+    "completedTeacherPlanRunReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/teacherPlanRunReceipt"},
+        {
+          "properties": {
+            "output_digest": {"$ref": "#/$defs/sha256"},
+            "disposition": {"const": "completed"}
+          },
+          "required": ["output_digest", "disposition"]
+        }
+      ]
+    },
+    "teacherPlanGroundingReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receipt_id",
+        "teacher_semantic_plan_digest",
+        "grounding_plan_digest",
+        "registry_snapshot_digest",
+        "disposition",
+        "receipt_digest"
+      ],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/nonEmptyString"},
+        "teacher_semantic_plan_digest": {"$ref": "#/$defs/sha256"},
+        "grounding_plan_digest": {"$ref": "#/$defs/sha256"},
+        "registry_snapshot_digest": {"$ref": "#/$defs/sha256"},
+        "disposition": {"const": "passed"},
+        "receipt_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "completedTeacherRunReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/teacherRunReceipt"
+        },
+        {
+          "properties": {
+            "disposition": {
+              "const": "completed"
+            },
+            "output_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "output_digest",
+            "disposition"
+          ]
+        }
+      ]
+    },
+    "unavailableTeacherRunReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/teacherRunReceipt"
+        },
+        {
+          "properties": {
+            "disposition": {
+              "const": "unavailable"
+            },
+            "output_digest": {
+              "type": "null"
+            },
+            "validation_receipt_digest": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "disposition",
+            "output_digest",
+            "validation_receipt_digest"
+          ]
+        }
+      ]
+    },
+    "studentModelRunReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/modelRunReceipt"
+        },
+        {
+          "properties": {
+            "role": {
+              "const": "student"
+            },
+            "run_phase": {
+              "enum": ["ds_first_answer", "ds_revision"]
+            },
+            "exact_model_identity": {
+              "$ref": "#/$defs/studentModelIdentity"
+            }
+          },
+          "required": [
+            "role",
+            "run_phase",
+            "exact_model_identity"
+          ]
+        }
+      ]
+    },
+    "teacherReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "teacher_reference_id",
+        "shared_answer_binding_digest",
+        "required_fact_ids",
+        "evidence_refs",
+        "boundary_assertions",
+        "unknowns",
+        "answer_outline",
+        "teacher_reference_is_ground_truth",
+        "private_chain_of_thought_persisted",
+        "output_digest"
+      ],
+      "properties": {
+        "teacher_reference_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "shared_answer_binding_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "required_fact_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "boundary_assertions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "answer_outline": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "teacher_reference_is_ground_truth": {
+          "const": false
+        },
+        "private_chain_of_thought_persisted": {
+          "const": false
+        },
+        "output_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "teacherOracleCoverageReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_run_id",
+        "question_id",
+        "shared_answer_binding_digest",
+        "oracle_digest",
+        "teacher_reference_digest",
+        "required_fact_ids_complete",
+        "required_boundary_assertions_complete",
+        "required_unknowns_complete",
+        "prohibited_assertion_count",
+        "disposition",
+        "receipt_digest"
+      ],
+      "properties": {
+        "coverage_run_id": {"$ref": "#/$defs/nonEmptyString"},
+        "question_id": {"$ref": "#/$defs/nonEmptyString"},
+        "shared_answer_binding_digest": {"$ref": "#/$defs/sha256"},
+        "oracle_digest": {"$ref": "#/$defs/sha256"},
+        "teacher_reference_digest": {"$ref": "#/$defs/sha256"},
+        "required_fact_ids_complete": {"type": "boolean"},
+        "required_boundary_assertions_complete": {"type": "boolean"},
+        "required_unknowns_complete": {"type": "boolean"},
+        "prohibited_assertion_count": {"type": "integer", "minimum": 0},
+        "disposition": {"enum": ["passed", "rejected"]},
+        "receipt_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "passedTeacherOracleCoverageReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/teacherOracleCoverageReceipt"},
+        {
+          "properties": {
+            "required_fact_ids_complete": {"const": true},
+            "required_boundary_assertions_complete": {"const": true},
+            "required_unknowns_complete": {"const": true},
+            "prohibited_assertion_count": {"const": 0},
+            "disposition": {"const": "passed"}
+          },
+          "required": ["required_fact_ids_complete", "required_boundary_assertions_complete", "required_unknowns_complete", "prohibited_assertion_count", "disposition"]
+        }
+      ]
+    },
+    "rejectedTeacherOracleCoverageReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/teacherOracleCoverageReceipt"},
+        {
+          "not": {"$ref": "#/$defs/passedTeacherOracleCoverageReceipt"},
+          "properties": {"disposition": {"const": "rejected"}},
+          "required": ["disposition"]
+        }
+      ]
+    },
+    "validationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "validation_id",
+        "subject_digest",
+        "shared_answer_binding_digest",
+        "gate_results",
+        "all_gates_passed",
+        "receipt_digest"
+      ],
+      "properties": {
+        "validation_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "subject_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "shared_answer_binding_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "gate_results": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/gateResult"
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "gate_id": {
+                    "const": "GATE-01"
+                  }
+                },
+                "required": [
+                  "gate_id"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "gate_id": {
+                    "const": "GATE-02"
+                  }
+                },
+                "required": [
+                  "gate_id"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "gate_id": {
+                    "const": "GATE-03"
+                  }
+                },
+                "required": [
+                  "gate_id"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "gate_id": {
+                    "const": "GATE-04"
+                  }
+                },
+                "required": [
+                  "gate_id"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "gate_id": {
+                    "const": "GATE-05"
+                  }
+                },
+                "required": [
+                  "gate_id"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ]
+        },
+        "all_gates_passed": {
+          "type": "boolean"
+        },
+        "receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "passedValidationReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/validationReceipt"
+        },
+        {
+          "properties": {
+            "all_gates_passed": {
+              "const": true
+            },
+            "gate_results": {
+              "items": {
+                "$ref": "#/$defs/passedGateResult"
+              }
+            }
+          },
+          "required": [
+            "all_gates_passed",
+            "gate_results"
+          ]
+        }
+      ]
+    },
+    "rejectedValidationReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/validationReceipt"
+        },
+        {
+          "properties": {
+            "all_gates_passed": {
+              "const": false
+            }
+          },
+          "required": [
+            "all_gates_passed"
+          ]
+        }
+      ]
+    },
+    "gateResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gate_id",
+        "passed",
+        "receipt_digest"
+      ],
+      "properties": {
+        "gate_id": {
+          "enum": [
+            "GATE-01",
+            "GATE-02",
+            "GATE-03",
+            "GATE-04",
+            "GATE-05"
+          ]
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "passedGateResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/gateResult"
+        },
+        {
+          "properties": {
+            "passed": {
+              "const": true
+            }
+          },
+          "required": [
+            "passed"
+          ]
+        }
+      ]
+    },
+    "studentRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision_ordinal",
+        "run_receipt",
+        "teacher_reference_digest",
+        "teacher_validation_receipt_digest",
+        "teacher_oracle_coverage_receipt_digest",
+        "student_answer_digest",
+        "student_answer_artifact",
+        "validation_receipt",
+        "may_call_tools",
+        "may_add_event_facts"
+      ],
+      "properties": {
+        "revision_ordinal": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "run_receipt": {
+          "$ref": "#/$defs/studentModelRunReceipt"
+        },
+        "teacher_reference_digest": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "teacher_validation_receipt_digest": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "teacher_oracle_coverage_receipt_digest": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        },
+        "student_answer_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "student_answer_artifact": {
+          "$ref": "#/$defs/studentAnswerArtifactReference"
+        },
+        "validation_receipt": {
+          "$ref": "#/$defs/validationReceipt"
+        },
+        "may_call_tools": {
+          "const": false
+        },
+        "may_add_event_facts": {
+          "const": false
+        }
+      }
+    },
+    "studentAnswerArtifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_ref", "artifact_schema_ref", "answer_payload", "answer_digest", "artifact_receipt_digest"],
+      "properties": {
+        "artifact_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "artifact_schema_ref": {"type": "string", "format": "uri-reference"},
+        "answer_payload": {"$ref": "#/$defs/studentAnswerPayload"},
+        "answer_digest": {"$ref": "#/$defs/sha256"},
+        "artifact_receipt_digest": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "studentAnswerPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claims", "evidence_refs", "limitations", "unknowns", "answer_text"],
+      "properties": {
+        "claims": {"type": "array", "items": {"$ref": "#/$defs/answerClaim"}},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "limitations": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "unknowns": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "answer_text": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "answerClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "claim_kind",
+        "claim_relation",
+        "text",
+        "fact_ids",
+        "source_node_ids",
+        "source_value_digests",
+        "evidence_refs",
+        "boundary_assertion_ids",
+        "verification_requirements"
+      ],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/nonEmptyString"},
+        "claim_kind": {
+          "enum": [
+            "observed_fact",
+            "derived_fact",
+            "knowledge_explanation",
+            "testable_hypothesis",
+            "limitation",
+            "unknown"
+          ]
+        },
+        "claim_relation": {
+          "enum": [
+            "states_observed_fact",
+            "states_derived_fact",
+            "explains_knowledge",
+            "proposes_testable_hypothesis",
+            "states_limitation",
+            "states_unknown"
+          ]
+        },
+        "text": {"$ref": "#/$defs/nonEmptyString"},
+        "fact_ids": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "source_node_ids": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "source_value_digests": {"type": "array", "items": {"$ref": "#/$defs/sha256"}, "uniqueItems": true},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "boundary_assertion_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "verification_requirements": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"claim_kind": {"const": "observed_fact"}}, "required": ["claim_kind"]},
+          "then": {
+            "properties": {
+              "claim_relation": {"const": "states_observed_fact"},
+              "fact_ids": {"minItems": 1},
+              "source_node_ids": {"minItems": 1},
+              "source_value_digests": {"minItems": 1},
+              "evidence_refs": {"minItems": 1},
+              "verification_requirements": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"claim_kind": {"const": "derived_fact"}}, "required": ["claim_kind"]},
+          "then": {
+            "properties": {
+              "claim_relation": {"const": "states_derived_fact"},
+              "fact_ids": {"minItems": 1},
+              "source_node_ids": {"minItems": 1},
+              "source_value_digests": {"minItems": 1},
+              "evidence_refs": {"minItems": 1},
+              "verification_requirements": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"claim_kind": {"const": "knowledge_explanation"}}, "required": ["claim_kind"]},
+          "then": {
+            "properties": {
+              "claim_relation": {"const": "explains_knowledge"},
+              "fact_ids": {"maxItems": 0},
+              "source_node_ids": {"maxItems": 0},
+              "source_value_digests": {"maxItems": 0},
+              "evidence_refs": {"maxItems": 0},
+              "verification_requirements": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"claim_kind": {"const": "testable_hypothesis"}}, "required": ["claim_kind"]},
+          "then": {
+            "properties": {
+              "claim_relation": {"const": "proposes_testable_hypothesis"},
+              "fact_ids": {"maxItems": 0},
+              "source_node_ids": {"maxItems": 0},
+              "source_value_digests": {"maxItems": 0},
+              "evidence_refs": {"maxItems": 0},
+              "verification_requirements": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"claim_kind": {"const": "limitation"}}, "required": ["claim_kind"]},
+          "then": {"properties": {"claim_relation": {"const": "states_limitation"}, "fact_ids": {"maxItems": 0}, "evidence_refs": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"claim_kind": {"const": "unknown"}}, "required": ["claim_kind"]},
+          "then": {"properties": {"claim_relation": {"const": "states_unknown"}, "fact_ids": {"maxItems": 0}, "evidence_refs": {"maxItems": 0}}}
+        }
+      ]
+    },
+    "completedStudentRun": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/studentRun"
+        },
+        {
+          "properties": {
+            "run_receipt": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/studentModelRunReceipt"
+                },
+                {
+                  "properties": {
+                    "disposition": {
+                      "const": "completed"
+                    },
+                    "output_digest": {
+                      "$ref": "#/$defs/sha256"
+                    }
+                  },
+                  "required": [
+                    "output_digest",
+                    "disposition"
+                  ]
+                }
+              ]
+            },
+            "teacher_reference_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "teacher_validation_receipt_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "teacher_oracle_coverage_receipt_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "run_receipt",
+            "teacher_reference_digest",
+            "teacher_validation_receipt_digest"
+            ,"teacher_oracle_coverage_receipt_digest"
+          ]
+        }
+      ]
+    },
+    "degradedStudentRun": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/studentRun"
+        },
+        {
+          "properties": {
+            "run_receipt": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/studentModelRunReceipt"
+                },
+                {
+                  "properties": {
+                    "disposition": {
+                      "const": "completed"
+                    },
+                    "output_digest": {
+                      "$ref": "#/$defs/sha256"
+                    }
+                  },
+                  "required": [
+                    "output_digest",
+                    "disposition"
+                  ]
+                }
+              ]
+            },
+            "teacher_reference_digest": {
+              "type": "null"
+            },
+            "teacher_validation_receipt_digest": {
+              "type": "null"
+            },
+            "teacher_oracle_coverage_receipt_digest": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "run_receipt",
+            "teacher_reference_digest",
+            "teacher_validation_receipt_digest"
+            ,"teacher_oracle_coverage_receipt_digest"
+          ]
+        }
+      ]
+    },
+    "structuredFeedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feedback_round",
+        "producer_kind",
+        "source_student_answer_digest",
+        "source_validation_receipt_digest",
+        "difference_items",
+        "may_add_event_facts",
+        "may_change_evidence",
+        "may_change_prompt_or_policy",
+        "feedback_digest"
+      ],
+      "properties": {
+        "feedback_round": {
+          "const": 1
+        },
+        "producer_kind": {
+          "const": "host_deterministic_alignment_evaluator"
+        },
+        "source_student_answer_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_validation_receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "difference_items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/differenceItem"
+          }
+        },
+        "may_add_event_facts": {
+          "const": false
+        },
+        "may_change_evidence": {
+          "const": false
+        },
+        "may_change_prompt_or_policy": {
+          "const": false
+        },
+        "feedback_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "differenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reference_id"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "missing_required_fact_id",
+            "incorrect_evidence_ref",
+            "missing_boundary_assertion",
+            "missing_unknown",
+            "structure_gap"
+          ]
+        },
+        "reference_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "alignmentRunReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alignment_run_id",
+        "shared_answer_binding_digest",
+        "teacher_reference_digest",
+        "student_answer_digest",
+        "oracle_digest",
+        "evidence_graph_digest",
+        "teacher_oracle_coverage_receipt_digest",
+        "evaluator_id",
+        "evaluator_version",
+        "evaluator_contract_digest",
+        "evaluator_implementation_digest",
+        "metric_inputs_digest",
+        "hard_gate_metrics",
+        "advisory_text_similarity",
+        "hard_gates_passed",
+        "disposition",
+        "receipt_digest"
+      ],
+      "properties": {
+        "alignment_run_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "shared_answer_binding_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "teacher_reference_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "student_answer_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "oracle_digest": {"$ref": "#/$defs/sha256"},
+        "evidence_graph_digest": {"$ref": "#/$defs/sha256"},
+        "teacher_oracle_coverage_receipt_digest": {"$ref": "#/$defs/sha256"},
+        "evaluator_id": {"const": "country_outage_p2_alignment_evaluator"},
+        "evaluator_version": {"const": "1.0.0"},
+        "evaluator_contract_digest": {"const": "2a7b9dc73194dc78fc797b9be30676ccdfde38599466e47305e50ef963e53b3b"},
+        "evaluator_implementation_digest": {"const": "d193bee50269c2e464ed3b98ef0deb293dcaee1b55ea12aebbbd2e11ed4947cc"},
+        "metric_inputs_digest": {"$ref": "#/$defs/sha256"},
+        "hard_gate_metrics": {
+          "$ref": "#/$defs/hardGateMetrics"
+        },
+        "advisory_text_similarity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "hard_gates_passed": {
+          "type": "boolean"
+        },
+        "disposition": {
+          "enum": [
+            "passed",
+            "rejected"
+          ]
+        },
+        "receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "passedAlignmentRunReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/alignmentRunReceipt"
+        },
+        {
+          "properties": {
+            "hard_gates_passed": {
+              "const": true
+            },
+            "disposition": {
+              "const": "passed"
+            },
+            "hard_gate_metrics": {
+              "$ref": "#/$defs/passedHardGateMetrics"
+            }
+          },
+          "required": [
+            "hard_gates_passed",
+            "disposition",
+            "hard_gate_metrics"
+          ]
+        }
+      ]
+    },
+    "rejectedAlignmentRunReceipt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/alignmentRunReceipt"
+        },
+        {
+          "not": {
+            "$ref": "#/$defs/passedAlignmentRunReceipt"
+          },
+          "properties": {
+            "hard_gates_passed": {
+              "const": false
+            },
+            "disposition": {
+              "const": "rejected"
+            }
+          },
+          "required": [
+            "hard_gates_passed",
+            "disposition"
+          ]
+        }
+      ]
+    },
+    "hardGateMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact_precision",
+        "evidence_ref_precision",
+        "boundary_compliance"
+      ],
+      "properties": {
+        "fact_precision": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_ref_precision": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "boundary_compliance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "passedHardGateMetrics": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/hardGateMetrics"
+        },
+        {
+          "properties": {
+            "fact_precision": {
+              "const": 1
+            },
+            "evidence_ref_precision": {
+              "const": 1
+            },
+            "boundary_compliance": {
+              "const": 1
+            }
+          },
+          "required": [
+            "fact_precision",
+            "evidence_ref_precision",
+            "boundary_compliance"
+          ]
+        }
+      ]
+    },
+    "degradedAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id",
+        "user_confirmed",
+        "mode",
+        "parent_plan_revision",
+        "new_plan_revision",
+        "may_claim_sol_ds_alignment",
+        "authorization_digest"
+      ],
+      "properties": {
+        "authorization_id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "user_confirmed": {
+          "const": true
+        },
+        "mode": {
+          "const": "ds_unaligned_degraded"
+        },
+        "parent_plan_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "new_plan_revision": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "may_claim_sol_ds_alignment": {
+          "const": false
+        },
+        "authorization_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "publishedAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_digest",
+        "shared_answer_binding_digest",
+        "claims",
+        "claims_digest",
+        "evidence_refs",
+        "limitations",
+        "unknowns",
+        "aligned_claim",
+        "event_causality_claimed",
+        "recovery_claimed"
+      ],
+      "properties": {
+        "answer_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "shared_answer_binding_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "claims_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "claims": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/answerClaim"}
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "aligned_claim": {
+          "type": "boolean"
+        },
+        "event_causality_claimed": {
+          "const": false
+        },
+        "recovery_claimed": {
+          "const": false
+        }
+      }
+    },
+    "designBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "design_only",
+        "model_calls_implemented",
+        "runtime_integrated",
+        "production_deployed"
+      ],
+      "properties": {
+        "design_only": {
+          "const": true
+        },
+        "model_calls_implemented": {
+          "const": false
+        },
+        "runtime_integrated": {
+          "const": false
+        },
+        "production_deployed": {
+          "const": false
+        }
+      }
+    }
+  },
+  "x-shared-binding-equality-contract": {
+    "teacher_reference_student_runs_alignment_and_published_answer_must_equal_root_shared_binding_digest": true,
+    "teacher_and_student_must_share_grounding_plan_evidence_bundle_evidence_graph_registry_and_boundary_policy": true,
+    "student_only_additional_inputs": [
+      "validated_teacher_reference",
+      "teacher_reference_validation_receipt",
+      "teacher_oracle_coverage_receipt"
+    ],
+    "student_additional_inputs_may_change_shared_binding": false,
+    "world_knowledge_bundle_if_present_must_be_shared_and_explanation_only": true
+  },
+  "x-digest-recomputation-contract": {
+    "canonical_json": "UTF-8 JSON, object keys sorted, separators comma and colon, ensure_ascii=false",
+    "shared_answer_binding_digest": "sha256(canonical(shared_answer_binding))",
+    "model_identity_digest": "sha256(canonical(model_identity excluding identity_digest))",
+    "teacher_reference_output_digest": "sha256(canonical(teacher_reference excluding output_digest))",
+    "teacher_plan_grounding_receipt_digest": "sha256(canonical(teacher_plan_grounding_receipt excluding receipt_digest))",
+    "teacher_oracle_coverage_receipt_digest": "sha256(canonical(teacher_oracle_coverage_receipt excluding receipt_digest))",
+    "validation_receipt_digest": "sha256(canonical(validation_receipt excluding receipt_digest))",
+    "alignment_receipt_digest": "sha256(canonical(alignment_run_receipt excluding receipt_digest))",
+    "alignment_metric_inputs_digest": "sha256(canonical({question_id,oracle_digest,evidence_graph_digest,teacher_reference_digest,teacher_oracle_coverage_receipt_digest,student_answer_digest}))",
+    "structured_feedback_digest": "sha256(canonical(structured_feedback excluding feedback_digest))",
+    "published_answer_digest": "sha256(canonical(published_answer excluding answer_digest))",
+    "teacher_plan_role_specific_input_digest": "sha256(canonical({role=teacher,run_phase=sol_planning,question_digest,goal_digest,incident_id,publication_id,publication_revision,collector_id,prompt_digest,policy_digest}))",
+    "teacher_reference_role_specific_input_digest": "sha256(canonical({role=teacher,run_phase=sol_reference,shared_answer_binding_digest}))",
+    "student_role_specific_input_digest": "sha256(canonical({role=student,run_phase=ds_first_answer|ds_revision,revision_ordinal,shared_answer_binding_digest,teacher_reference_digest,teacher_validation_receipt_digest,teacher_oracle_coverage_receipt_digest,structured_feedback_digest}))",
+    "student_answer_digest": "sha256(canonical(student_answer_artifact.answer_payload))",
+    "student_answer_artifact_receipt_digest": "sha256(canonical(student_answer_artifact excluding artifact_receipt_digest))",
+    "publish_receipt_digest": "sha256(canonical(publish_receipt excluding receipt_digest))"
+  },
+  "x-teacher-validation-contract": {
+    "evidence_truth_precedes_teacher": true,
+    "teacher_reference_not_ground_truth": true,
+    "invalid_teacher_reference_forwarded_to_student": false,
+    "teacher_reference_requires_passed_oracle_coverage_receipt_before_student": true,
+    "missing_evidence_invalid_reference_causality_customer_relation_and_recovery_claims_fail_closed": true,
+    "private_chain_of_thought_required_or_persisted": false
+  },
+  "x-feedback-contract": {
+    "structured_feedback_max": 1,
+    "feedback_owner": "host_deterministic_alignment_evaluator",
+    "additional_sol_feedback_call_allowed": false,
+    "sol_call_budget": {"planning": 1, "reference": 1, "feedback": 0, "maximum_total": 2},
+    "student_revision_max": 1,
+    "revision_requires_all_five_gates": true,
+    "online_weight_prompt_or_policy_mutation_forbidden": true
+  },
+  "x-alignment-contract": {
+    "teacher_is_truth_oracle": false,
+    "hard_gate_metrics": [
+      "fact_precision",
+      "evidence_ref_precision",
+      "boundary_compliance"
+    ],
+    "text_similarity_is_advisory_only": true,
+    "text_similarity_may_override_hard_gate": false
+  },
+  "x-degraded-contract": {
+    "silent_degrade_forbidden": true,
+    "teacher_unavailable_default": "stopped_waiting_teacher",
+    "explicit_user_authorization_required": true,
+    "new_plan_revision_required": true,
+    "degraded_teacher_artifacts_must_be_null": true,
+    "degraded_authorization_digest_must_recompute": true,
+    "degraded_plan_must_be_full_schema_valid_and_host_store_validated": true,
+    "degraded_plan_policy_must_bind_authorization_digest_and_teacher_required_false": true,
+    "new_plan_revision_and_digest_must_equal_committed_evidence_graph": true,
+    "degraded_answer_may_claim_sol_ds_alignment": false
+  },
+  "x-runtime-context-contract": {
+    "shared_binding_identity_projection_must_equal_evidence_graph_identity_digest": true,
+    "shared_binding_plan_graph_revision_digest_and_registry_must_equal_evidence_graph": true,
+    "shared_binding_time_order": "window_start_utc <= window_end_utc <= data_through_utc",
+    "teacher_reference_fact_ids_and_evidence_refs_must_be_closed_by_graph": true,
+    "flow_revision_parent_must_share_flow_id": true,
+    "final_disposition_and_flow_state_are_bidirectionally_closed": true,
+    "published_answer_requires_host_trusted_validated_committed_evidence_graph": true,
+    "published_evidence_refs_must_be_closed_by_graph": true,
+    "publish_receipt_must_recompute_and_bind_answer_student_and_shared_binding": true,
+    "degraded_plan_resolves_from_host_trusted_validated_plan_store": true,
+    "caller_supplied_plan_or_graph_attestation_forbidden": true,
+    "teacher_oracle_resolves_from_host_trusted_content_addressed_store": true,
+    "caller_supplied_or_mutated_oracle_record_forbidden": true,
+    "nonterminal_or_rejected_dispositions_cannot_publish": true,
+    "trusted_plan_record_must_pass_full_investigation_plan_instance_validator_with_bound_context": true,
+    "trusted_graph_record_must_pass_full_evidence_graph_instance_validator_with_bound_context": true
+  },
+  "x-trusted-runtime-store-contracts": {
+    "validated_plan_store": {
+      "store_contract_id": "country_outage_p2_trusted_validated_plan_store_v1",
+      "trust_origin": "host_authenticated_runtime_store",
+      "caller_mutable": false,
+      "attestation_provider_id": "country_outage_p2_validated_plan_store_host",
+      "attestation_contract_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "record_fields": [
+        "plan",
+        "validation_receipt",
+        "validation_context"
+      ],
+      "validation_context_fields": [
+        "trusted_registry_store",
+        "trusted_admission_receipt_store",
+        "trusted_node_result_receipt_store",
+        "parameter_bindings",
+        "previous_plan_definition",
+        "previous_investigation_snapshot"
+      ],
+      "receipt_validator_id": "country_outage_p2_validated_plan_instance_validator",
+      "receipt_validator_version": "1.0.0",
+      "receipt_validator_contract_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "receipt_validator_implementation_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "committed_graph_store": {
+      "store_contract_id": "country_outage_p2_trusted_committed_graph_store_v1",
+      "trust_origin": "host_authenticated_runtime_store",
+      "caller_mutable": false,
+      "attestation_provider_id": "country_outage_p2_committed_graph_store_host",
+      "attestation_contract_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "record_fields": [
+        "graph",
+        "validation_receipt",
+        "validation_context"
+      ],
+      "validation_context_fields": [
+        "schema",
+        "plan_definition",
+        "investigation_snapshot",
+        "trusted_registry_store",
+        "result_set_records",
+        "result_set_member_records",
+        "receipt_store",
+        "operator_contract_schema",
+        "previous_graph"
+      ],
+      "receipt_validator_id": "country_outage_p2_committed_evidence_graph_validator",
+      "receipt_validator_version": "1.0.0",
+      "receipt_validator_contract_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "receipt_validator_implementation_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "oracle_store": {
+      "store_contract_id": "country_outage_p2_trusted_oracle_store_v1",
+      "trust_origin": "host_authenticated_runtime_store",
+      "caller_mutable": false,
+      "attestation_provider_id": "country_outage_p2_oracle_store_host",
+      "attestation_contract_digest": "sha256:e9319c71900cfb5022d98c772ae2830ac1dd98a75c2826af92a34e1580f30e38",
+      "record_fields": [
+        "question_id",
+        "required_fact_ids",
+        "required_boundary_assertion_ids",
+        "allowed_boundary_assertion_ids",
+        "required_unknown_ids",
+        "prohibited_assertion_ids",
+        "oracle_digest"
+      ],
+      "record_digest_recipe": "sha256(canonical(record excluding oracle_digest))",
+      "store_resolution_key": "oracle_digest",
+      "question_binding_required": true,
+      "request_payload_may_not_supply_or_mutate_records": true,
+      "host_attestation_required": true
+    },
+    "student_answer_artifact_store": {
+      "store_contract_id": "country_outage_p2_trusted_student_answer_artifact_store_v1",
+      "trust_origin": "host_authenticated_runtime_store",
+      "caller_mutable": false,
+      "attestation_provider_id": "country_outage_p2_student_answer_artifact_store_host",
+      "attestation_contract_digest": "sha256:40ed52847561a6937a7796d86c402a86bf97f99cbc3b841110c44c101be45eb2",
+      "record_fields": [
+        "artifact_ref",
+        "artifact_schema_ref",
+        "answer_payload",
+        "answer_digest",
+        "artifact_receipt_digest"
+      ],
+      "record_digest_recipe": "answer_digest=sha256(canonical(answer_payload)); artifact_receipt_digest=sha256(canonical(record excluding artifact_receipt_digest))",
+      "store_resolution_key": "artifact_ref",
+      "request_payload_record_must_equal_host_record": true,
+      "host_attestation_required": true
+    },
+    "alignment_receipt_store": {
+      "store_contract_id": "country_outage_p2_trusted_alignment_receipt_store_v1",
+      "trust_origin": "host_authenticated_runtime_store",
+      "caller_mutable": false,
+      "attestation_provider_id": "country_outage_p2_alignment_receipt_store_host",
+      "attestation_contract_digest": "sha256:06aa4faee43588b08b3d21a418a81c75f748b976e35e4ee82934a84f058aa48a",
+      "record_schema_ref": "#/$defs/alignmentRunReceipt",
+      "store_resolution_key": "receipt_digest",
+      "request_payload_record_must_equal_host_record": true,
+      "host_attestation_required": true
+    }
+  },
+  "x-runtime-validator-contract": {
+    "validators": [
+      {
+        "validator_id": "dual_model_shared_binding_equality",
+        "checks": [
+          "root_shared_answer_binding_digest_recomputes",
+          "teacher_run_reference_validation_student_runs_student_validation_alignment_and_published_answer_binding_digests_equal_root",
+          "teacher_and_student_evidence_bundle_graph_registry_grounding_plan_identity_prompt_and_policy_equal",
+          "shared_binding_identity_projection_equals_committed_evidence_graph_identity",
+          "shared_binding_time_order_valid",
+          "world_knowledge_bundle_if_present_equal_and_explanation_only"
+        ],
+        "failure_disposition": "reject_flow_or_answer_publish"
+      },
+      {
+        "validator_id": "dual_model_role_output_and_validation_binding",
+        "checks": [
+          "teacher_run_exact_identity_equals_root_teacher_identity",
+          "student_run_exact_identity_equals_root_student_identity",
+          "student_identity_binds_expected_response_model_candidate_resource_and_profile_registry",
+          "teacher_planning_output_is_semantic_plan_and_host_grounding_receipt_binds_executable_grounding_plan",
+          "teacher_run_output_digest_equals_teacher_reference_output_digest",
+          "teacher_validation_subject_digest_equals_teacher_reference_output_digest",
+          "student_validation_subject_digest_equals_selected_student_answer_digest",
+          "student_answer_artifact_resolves_from_host_trusted_content_addressed_store_and_replays_answer_payload",
+          "each_student_run_validation_receipt_subject_and_digest_bind_its_answer",
+          "root_student_validation_receipt_equals_selected_last_run_validation_receipt",
+          "alignment_teacher_and_student_digests_equal_validated_subjects",
+          "alignment_metric_inputs_recompute_and_receipt_resolves_from_host_deterministic_evaluator_store",
+          "teacher_reference_fact_ids_and_evidence_refs_are_graph_closed"
+        ],
+        "failure_disposition": "reject_flow_or_answer_publish"
+      },
+      {
+        "validator_id": "dual_model_state_and_revision_closure",
+        "checks": [
+          "student_revision_ordinals_are_exactly_zero_or_zero_then_one",
+          "second_student_run_requires_exactly_one_structured_feedback",
+          "structured_feedback_binds_first_student_answer_and_failed_validation_receipt",
+          "revised_student_answer_repasses_gate_01_through_gate_05",
+          "teacher_rejection_forbids_student_run",
+          "teacher_gate_rejection_has_null_oracle_coverage_and_oracle_coverage_rejection_has_passed_teacher_gates",
+          "teacher_unavailable_is_only_sol_reference_after_completed_planning_and_host_grounding",
+          "final_disposition_and_flow_state_are_bidirectionally_closed",
+          "every_terminal_disposition_exhaustively_closes_required_and_forbidden_artifacts",
+          "flow_revision_parent_shares_flow_id",
+          "aligned_publish_requires_completed_teacher_completed_student_passed_validations_and_passed_alignment"
+        ],
+        "failure_disposition": "reject_flow_or_answer_publish"
+      },
+      {
+        "validator_id": "degraded_authorization_plan_binding",
+        "checks": [
+          "user_confirmed_is_true",
+          "new_plan_revision_greater_than_parent_plan_revision",
+          "new_plan_revision_equals_shared_answer_binding_plan_revision",
+          "new_plan_revision_is_admitted_with_effective_teacher_required_false",
+          "teacher_run_reference_and_validation_are_null",
+          "new_plan_revision_and_digest_equal_committed_evidence_graph",
+          "degraded_student_has_no_teacher_reference_inputs",
+          "degraded_published_answer_aligned_claim_is_false"
+        ],
+        "failure_disposition": "reject_degrade_or_publish"
+      }
+    ]
+  }
+}

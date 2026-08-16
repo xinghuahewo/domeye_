@@ -1,0 +1,47 @@
+{
+  "schema_version": "country-outage-episode-as/v1",
+  "episode_as_id": "episode_as_v1_111111111111111111111111",
+  "episode_id": "episode_v1_111111111111111111111111",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "asn": 9147,
+  "country_code": "IR",
+  "cohort_view": "compatible",
+  "mapping_evidence": {"mapping_state": "mapped", "mapping_view": "compatible", "mapping_sha256": "1111111111111111111111111111111111111111111111111111111111111111", "source_ref": "mapping/as-country.json#AS9147"},
+  "first_damaged_at": "2026-02-28T14:30:00Z",
+  "last_damaged_at": "2026-03-06T08:35:00Z",
+  "recovered_at": null,
+  "trigger_member": true,
+  "peak_member": true,
+  "cumulative_member": true,
+  "observation_end_member": true,
+  "address_families": {
+    "ipv4": {
+      "afi": "ipv4",
+      "baseline_prefix_count": {"value": 1, "value_state": "observed", "missing_reason": null},
+      "lost_prefix_count_at_peak": {"value": 1, "value_state": "observed", "missing_reason": null},
+      "lost_equivalent_at_peak": {"value": 256, "value_state": "observed", "missing_reason": null},
+      "equivalent_unit": "ipv4_equivalent_address",
+      "visibility": {"fully_invisible": true, "visibility_state": "observed", "missing_reason": null},
+      "trigger_prefixes": {"value": ["192.0.2.0/24"], "value_state": "observed", "missing_reason": null},
+      "peak_prefixes": {"value": ["192.0.2.0/24"], "value_state": "observed", "missing_reason": null},
+      "cumulative_prefixes": {"value": ["192.0.2.0/24"], "value_state": "observed", "missing_reason": null},
+      "observation_end_prefixes": {"value": ["192.0.2.0/24"], "value_state": "observed", "missing_reason": null},
+      "moas_semantics": "origin_relationship_retained_not_additive"
+    },
+    "ipv6": {
+      "afi": "ipv6",
+      "baseline_prefix_count": {"value": 1, "value_state": "observed", "missing_reason": null},
+      "lost_prefix_count_at_peak": {"value": 0, "value_state": "observed_zero", "missing_reason": null},
+      "lost_equivalent_at_peak": {"value": 0, "value_state": "observed_zero", "missing_reason": null},
+      "equivalent_unit": "ipv6_48_equivalent",
+      "visibility": {"fully_invisible": false, "visibility_state": "observed", "missing_reason": null},
+      "trigger_prefixes": {"value": [], "value_state": "observed_empty", "missing_reason": null},
+      "peak_prefixes": {"value": [], "value_state": "observed_empty", "missing_reason": null},
+      "cumulative_prefixes": {"value": [], "value_state": "observed_empty", "missing_reason": null},
+      "observation_end_prefixes": {"value": [], "value_state": "observed_empty", "missing_reason": null},
+      "moas_semantics": "origin_relationship_retained_not_additive"
+    }
+  },
+  "overall_classification": "ipv4_only_fully_invisible",
+  "evidence_links": [{"route_event_id": "rte_v1_11111111111111111111111111111111", "raw_record_ref_id": "raw_v1_22222222222222222222222222222222", "artifact_id": "art_v1_33333333333333333333333333333333", "artifact_sha256": "4444444444444444444444444444444444444444444444444444444444444444", "record_ordinal": 10, "element_ordinal": 0}]
+}

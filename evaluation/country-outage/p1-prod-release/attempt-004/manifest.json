@@ -1,0 +1,388 @@
+{
+  "schema_version": "country_outage_p1_semantic_model_certification_v1",
+  "status": "certified",
+  "certified_at": "2026-08-11T01:51:34.179Z",
+  "valid_until": "2026-08-18T01:51:34.179Z",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-v1",
+  "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "model_version": "deepseek-v4-flash",
+  "expected_response_model": "deepseek-v4-flash",
+  "thinking_level": "off",
+  "pi_version": "0.84.1",
+  "scenario_set_id": "country-outage-p1-page-coverage-s2-v1",
+  "input_scope": "country_outage_p1_rrc25_event_bound_chat_v1",
+  "source_identity": {
+    "algorithm": "sha256-file-bytes-v1",
+    "files": [
+      {
+        "path": "agent-sidecar/package-lock.json",
+        "sha256": "eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6"
+      },
+      {
+        "path": "agent-sidecar/src/chat/pi-semantic-model.ts",
+        "sha256": "31b6d64b835b1e9984a5ea7d60fa5eb44286f717f6dbc91bdb7644d327617c04"
+      },
+      {
+        "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
+        "sha256": "24b6a52f9bc3b27b53b04ab4a3206b34a3135d646c24b12d14471aabaab13f90"
+      },
+      {
+        "path": "agent-sidecar/src/pi/formal-run-audit.ts",
+        "sha256": "e6fd9074864051c6d24ecd05873d3b13f55cec91d07942d84a6a4708fd3fd36e"
+      },
+      {
+        "path": "agent-sidecar/src/pi/formal-model-runtime.ts",
+        "sha256": "d5d0e69b0067456d8acf3a83d719d213a4a51575babadbcff5b26f1c6633997b"
+      },
+      {
+        "path": "agent-sidecar/src/pi/pi-report-narrator.ts",
+        "sha256": "ecb49da1bb4e854496c9b18f10da42ac111a9228f95bcf75eb2c95d823c8a8ef"
+      },
+      {
+        "path": "agent-sidecar/src/pi/static-resource-loader.ts",
+        "sha256": "29d7eac426df88442ae1c0c4fc55b3ab8038e88dd920cd4c4595e50c37b6c2f5"
+      },
+      {
+        "path": "agent-sidecar/resources/model-candidates/deepseek-v4-flash-pi-0.84.1-v1.json",
+        "sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5"
+      },
+      {
+        "path": "agent-sidecar/resources/vendor-patches/pi-ai-openai-completions-response-model-v1.json",
+        "sha256": "ba5f5bceae09c868285926d0b63c562f88168211284c52036aa62d8346bab1ad"
+      },
+      {
+        "path": "agent-sidecar/vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch",
+        "sha256": "a7e89d8dae4ddb8a3aa2548153c2e0e68f57fd7b8102bdde10ecc8d297836c28"
+      },
+      {
+        "path": "contracts/agent/country-outage-p1-page-coverage/s2/semantic-plan.schema.json",
+        "sha256": "73041b0a00e33729ce53550510368ac13bdafe6f53867b7578f6703bae6781ac"
+      },
+      {
+        "path": "contracts/agent/country-outage-p1-page-coverage/s2/capability-catalog.json",
+        "sha256": "6492fbcb1552797c4fdc6780597e8a35f1ca8c6c52fdfe69438524c24a960a99"
+      },
+      {
+        "path": "contracts/agent/country-outage-p1-page-coverage/s2/tool-contracts.json",
+        "sha256": "4afa574723c19abd7697db696f22b314113592195539d609aa8cc813afac8c8d"
+      },
+      {
+        "path": "contracts/agent/country-outage-p1-page-coverage/s2/oracle.json",
+        "sha256": "11854ee5be1e376944a849eceb117aa3548a29776328295c1569441c418fb309"
+      },
+      {
+        "path": "contracts/agent/country-outage-p1-page-coverage/s2/policy.json",
+        "sha256": "807267fc5b04cc0300fcee7d9523d30b2a2b70b5b1955618379d16e1cd82665e"
+      }
+    ]
+  },
+  "cases_source_path": "evaluation/country-outage/p1-page-coverage/s2/raw/agent-receipts/question-explorer-results.raw.json",
+  "cases_sha256": "a1984558f77b619b17de3a338193b8a01e0d4d742cf1701201f05e787ad80644",
+  "case_count": 28,
+  "metrics": {
+    "expected_goal_count": 52,
+    "matched_goal_count": 50,
+    "extra_goal_count": 0,
+    "user_goal_fidelity": 0.9615384615384616,
+    "required_user_goal_fidelity": 0.95,
+    "grounding_case_pass_count": 28,
+    "grounding_case_total": 28,
+    "grounding_legality_rate": 1,
+    "required_grounding_legality_rate": 1
+  },
+  "usage_and_cost": {
+    "input": 9695,
+    "output": 5541,
+    "cache_read": 91776,
+    "cache_write": 0,
+    "total": 107012,
+    "estimated_cost_usd": 0.0031657528
+  },
+  "model_call_count": 28,
+  "per_call_cost_recorded": true,
+  "case_receipts": [
+    {
+      "case_id": "S2-EXP-001",
+      "path": "cases/S2-EXP-001.json",
+      "sha256": "397efc8553f7ad819c9ed2a8b882b8e4f033810f954aaa4878ee83e264fd8d70",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.00025417280000000005
+    },
+    {
+      "case_id": "S2-EXP-002",
+      "path": "cases/S2-EXP-002.json",
+      "sha256": "40d2a948bb1c0c93572437839f40ceed3f77f69efcba0a20f08f258a902d30fb",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001466416
+    },
+    {
+      "case_id": "S2-EXP-003",
+      "path": "cases/S2-EXP-003.json",
+      "sha256": "51a5312fe520fd495bf335c1c03277e5402d6302a6379a82ef8b8caa480e26a5",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.00009653839999999999
+    },
+    {
+      "case_id": "S2-EXP-004",
+      "path": "cases/S2-EXP-004.json",
+      "sha256": "7eced863ce84fde29c00513a49e751a2c77aa1b76e8e230682462c10e7f0d9bc",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000944384
+    },
+    {
+      "case_id": "S2-EXP-005",
+      "path": "cases/S2-EXP-005.json",
+      "sha256": "8784d955bb2b04ef3e6e4f48f0f8f08895ac0b7f8f3e8cb31be036715becae7d",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000833784
+    },
+    {
+      "case_id": "S2-EXP-006",
+      "path": "cases/S2-EXP-006.json",
+      "sha256": "12216907e01d6ae2ce0e2cbae0910df484a49e31e7089673a632ce80cce60467",
+      "goal_match_count": 3,
+      "expected_goal_count": 3,
+      "actual_goal_count": 3,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001087184
+    },
+    {
+      "case_id": "S2-EXP-007",
+      "path": "cases/S2-EXP-007.json",
+      "sha256": "ee6dd01aa6040512ec5e341406681ce658b943f83811e4644921ec517753037d",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000842184
+    },
+    {
+      "case_id": "S2-EXP-008",
+      "path": "cases/S2-EXP-008.json",
+      "sha256": "d012f294b8af179a338fe59769e16ad8003023422ec70a3909d3da10ba67368f",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001102584
+    },
+    {
+      "case_id": "S2-EXP-009",
+      "path": "cases/S2-EXP-009.json",
+      "sha256": "28a0c1e715674c6f66ae376b048558be1c4956a792ce33f78ddb9af21df80630",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.00011529840000000001
+    },
+    {
+      "case_id": "S2-EXP-010",
+      "path": "cases/S2-EXP-010.json",
+      "sha256": "030aaa6ff22cc21c8f237c7daa6a0e0d1239005e51819fb1a83be1a08ee61636",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001098384
+    },
+    {
+      "case_id": "S2-EXP-011",
+      "path": "cases/S2-EXP-011.json",
+      "sha256": "ad755395a5dfb69e3665828fb514c06df8c6c6d79428a3c6d196c165a1e180f5",
+      "goal_match_count": 0,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000921984
+    },
+    {
+      "case_id": "S2-EXP-012",
+      "path": "cases/S2-EXP-012.json",
+      "sha256": "c06bc85662800566b3f1b27f70207becb9ba72050ef2405b85fb621ff8a4478a",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000888384
+    },
+    {
+      "case_id": "S2-EXP-013",
+      "path": "cases/S2-EXP-013.json",
+      "sha256": "357e78135bb4f19f55b27ca3a7a85d08f223d9c5dca19e2805a04d38d7407d20",
+      "goal_match_count": 1,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001017184
+    },
+    {
+      "case_id": "S2-EXP-014",
+      "path": "cases/S2-EXP-014.json",
+      "sha256": "94a2ab5ae28741f9e95651669134e9c710a18e336feacac4c728dda466c0333b",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001105384
+    },
+    {
+      "case_id": "S2-EXP-015",
+      "path": "cases/S2-EXP-015.json",
+      "sha256": "a878389fbe2dc34cf6b24e4ab25a13a663b2bc85ca02d92ca92fb9ee0e18e754",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000893984
+    },
+    {
+      "case_id": "S2-EXP-016",
+      "path": "cases/S2-EXP-016.json",
+      "sha256": "2d1b55b25ba7533df53568fa43ab1f6458571258c8e1c50a4dc7ffdb7400845c",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001143184
+    },
+    {
+      "case_id": "S2-EXP-017",
+      "path": "cases/S2-EXP-017.json",
+      "sha256": "77cdb0da4bd3849938faabe3fde2790b22fa122fad4948afd86e8a1583d9126b",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001169784
+    },
+    {
+      "case_id": "S2-EXP-018",
+      "path": "cases/S2-EXP-018.json",
+      "sha256": "2d0d651be8545c5a6168d39e2bd6444fc6e9d1739435b03969b66dd70c41c079",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.00011235840000000001
+    },
+    {
+      "case_id": "S2-EXP-020",
+      "path": "cases/S2-EXP-020.json",
+      "sha256": "cf440327be3e62693cabdbd4115025f405a25862b61cabc59b9edba78a18d495",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001234184
+    },
+    {
+      "case_id": "S2-EXP-021",
+      "path": "cases/S2-EXP-021.json",
+      "sha256": "8f200d7b54e850e68c1ae3378e54c13b9ac6782d84321ebfdadcc58825eaa259",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000864584
+    },
+    {
+      "case_id": "S2-EXP-022",
+      "path": "cases/S2-EXP-022.json",
+      "sha256": "41201e6e7b5afaeb784f2f08f09af9d689a2af7504946691b90261e92839254b",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001096984
+    },
+    {
+      "case_id": "S2-EXP-024",
+      "path": "cases/S2-EXP-024.json",
+      "sha256": "f053e23f3d08340e821da21edf5b1bda0ca3715224de646f840fe97d5ea44434",
+      "goal_match_count": 3,
+      "expected_goal_count": 3,
+      "actual_goal_count": 3,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001308384
+    },
+    {
+      "case_id": "S2-EXP-025",
+      "path": "cases/S2-EXP-025.json",
+      "sha256": "37f25a8ec614f292bba17394b957bdf62d9412008e5a66a5aa8261b92dc99505",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000854784
+    },
+    {
+      "case_id": "S2-EXP-026",
+      "path": "cases/S2-EXP-026.json",
+      "sha256": "ef08608cd6aa38092ab9772e21d8582fd7164143e9a273a09cdd5c4f08310247",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000958384
+    },
+    {
+      "case_id": "S2-EXP-027",
+      "path": "cases/S2-EXP-027.json",
+      "sha256": "eecc392f4491de43d41fb6171320d95b7bd35efebbcea16fcd67b116f174f7b6",
+      "goal_match_count": 1,
+      "expected_goal_count": 1,
+      "actual_goal_count": 1,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0000825384
+    },
+    {
+      "case_id": "S2-EXP-028",
+      "path": "cases/S2-EXP-028.json",
+      "sha256": "2179c3961af09e9ee2d3b082b1ea90707ad3b4182f3d11e3286e50cc629503fc",
+      "goal_match_count": 3,
+      "expected_goal_count": 3,
+      "actual_goal_count": 3,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001218784
+    },
+    {
+      "case_id": "S2-EXP-029",
+      "path": "cases/S2-EXP-029.json",
+      "sha256": "f23bd3ef28947c508e98e186b5983d28fdfe48afb130d1baf14f4f1fce8dfa0e",
+      "goal_match_count": 2,
+      "expected_goal_count": 2,
+      "actual_goal_count": 2,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001074584
+    },
+    {
+      "case_id": "S2-EXP-030",
+      "path": "cases/S2-EXP-030.json",
+      "sha256": "b4251690227ced47a5e3a82b10220f1a971d6e023760a12fadc5eb1fbcdfd0d3",
+      "goal_match_count": 4,
+      "expected_goal_count": 4,
+      "actual_goal_count": 4,
+      "grounding_passed": true,
+      "estimated_cost_usd": 0.0001922984
+    }
+  ],
+  "evidence_id": "evidence:p1-semantic-certification:f42659f7fb804f54a4012faad0c01f695bdaee8734efb1c563713ae7cd44b187"
+}

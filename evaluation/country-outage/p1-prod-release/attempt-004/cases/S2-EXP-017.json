@@ -1,0 +1,269 @@
+{
+  "schema_version": "country_outage_p1_semantic_certification_case_v1",
+  "case_id": "S2-EXP-017",
+  "question": "AS48715 怎么了，是不是它导致的？",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-v1",
+  "candidate_resource_sha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+  "expected_receipt_path": "evaluation/country-outage/p1-page-coverage/s2/raw/agent-receipts/S2-EXP-017.json",
+  "expected_receipt_sha256": "073eaea0e0e49a8544683e55fe92a8146a685d82c5e824ad374b86b61bb0aa40",
+  "expected_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "AS48715 怎么了，是不是它导致的？",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "AS48715 怎么了",
+        "normalized_kind": "asn_detail",
+        "entities": {
+          "asn": 48715
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-2",
+        "requested_goal": "是不是 AS48715 导致的",
+        "normalized_kind": "cause_or_responsibility",
+        "entities": {
+          "asn": 48715
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+    "confidence": 0.95
+  },
+  "actual_user_goal_plan": {
+    "plan_revision": "user-goal-plan-v2",
+    "original_question": "AS48715 怎么了，是不是它导致的？",
+    "goals": [
+      {
+        "goal_id": "goal-1",
+        "requested_goal": "AS48715 怎么了",
+        "normalized_kind": "asn_detail",
+        "entities": {
+          "asn": 48715
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      },
+      {
+        "goal_id": "goal-2",
+        "requested_goal": "是不是它导致的",
+        "normalized_kind": "cause_or_responsibility",
+        "entities": {
+          "asn": 48715
+        },
+        "references": [],
+        "ambiguity": "none",
+        "context_dependencies": []
+      }
+    ],
+    "state_proposal": {
+      "inherit": [],
+      "set": {},
+      "clear": [],
+      "reason_codes": []
+    },
+    "planner_identity": "semantic-model:pi-sdk:0.84.1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash-pi-0.84.1-v1:deepseek-v4-flash:p1-user-goal-plan-v1",
+    "confidence": 0.95
+  },
+  "grounding_plan": {
+    "plan_revision": "grounding-plan-v2",
+    "identity": {
+      "binding_phase": "bound",
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "decisions": [
+      {
+        "goal_id": "goal-1",
+        "answerability": "supported",
+        "node_ids": [
+          "node-1",
+          "node-2"
+        ],
+        "reason_codes": [
+          "asn_detail_available"
+        ]
+      },
+      {
+        "goal_id": "goal-2",
+        "answerability": "unsupported",
+        "node_ids": [],
+        "reason_codes": [
+          "rrc25_cannot_establish_cause_or_responsibility"
+        ]
+      }
+    ],
+    "nodes": [
+      {
+        "node_id": "node-1",
+        "goal_id": "goal-1",
+        "execution_unit": "TOOL-01",
+        "capability_ids": [
+          "CAP-001"
+        ],
+        "inputs": {
+          "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "expected_revision": 1
+        },
+        "input_sources": {
+          "event_reference": "binding",
+          "expected_publication_id": "binding",
+          "expected_revision": "binding"
+        },
+        "depends_on": [],
+        "expected_evidence_sources": [
+          "resolution"
+        ]
+      },
+      {
+        "node_id": "node-2",
+        "goal_id": "goal-1",
+        "execution_unit": "TOOL-04",
+        "capability_ids": [
+          "CAP-010",
+          "CAP-011"
+        ],
+        "inputs": {
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "asn": 48715,
+          "query": "",
+          "classification": "all",
+          "sort": "default",
+          "page": 1,
+          "page_size": 20
+        },
+        "input_sources": {
+          "incident_id": "binding",
+          "publication_id": "binding",
+          "revision": "binding",
+          "asn": "user_goal",
+          "query": "policy_default",
+          "classification": "policy_default",
+          "sort": "policy_default",
+          "page": "policy_default",
+          "page_size": "policy_default"
+        },
+        "depends_on": [
+          "node-1"
+        ],
+        "expected_evidence_sources": [
+          "asns"
+        ]
+      }
+    ],
+    "authorization_scope": [
+      "country_outage:read"
+    ],
+    "validation": {
+      "status": "passed",
+      "errors": []
+    }
+  },
+  "grounding_errors": [],
+  "goal_comparison": [
+    {
+      "goal_id": "goal-1",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"asn\":48715},\"normalized_kind\":\"asn_detail\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"asn\":48715},\"normalized_kind\":\"asn_detail\",\"references\":[]}",
+      "matched": true
+    },
+    {
+      "goal_id": "goal-2",
+      "expected_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"asn\":48715},\"normalized_kind\":\"cause_or_responsibility\",\"references\":[]}",
+      "actual_signature": "{\"ambiguity\":\"none\",\"context_dependencies\":[],\"entities\":{\"asn\":48715},\"normalized_kind\":\"cause_or_responsibility\",\"references\":[]}",
+      "matched": true
+    }
+  ],
+  "grounding_passed": true,
+  "model_audit": {
+    "schemaVersion": "country_outage_p1_pi_semantic_run_audit_v1",
+    "recordedAt": "2026-08-11T01:51:11.072Z",
+    "runtimeIdentity": "candidate",
+    "registryVersion": null,
+    "certificationEvidenceId": null,
+    "candidateId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "candidateResourceSha256": "ac00eeb087bc9651fd27391066d9d16a416aad887cb552737696289ded3ce2b5",
+    "profileId": "deepseek-v4-flash-pi-0.84.1-v1",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "modelVersion": "deepseek-v4-flash",
+    "expectedResponseModel": "deepseek-v4-flash",
+    "piVersion": "0.84.1",
+    "input": {
+      "promptSha256": "679d7986911da6a6571e05a73ac6d630754f088c78d20805914c11b906196003",
+      "promptBytes": 15401
+    },
+    "outcome": "completed",
+    "output": {
+      "outputSha256": "8149ea99c3d688fd2216a6e2e58dcf853963d436c4978f5cf9fc8641c0581ffb",
+      "outputBytes": 792
+    },
+    "runtimeSecurity": {
+      "resourceLoaderId": "country-outage-static-resource-loader-v1",
+      "systemPromptSha256": "8b3618b406e934222a1b14e5e6797e54f9343f8cba977a38ac1059be44f46a63",
+      "packageManagerResolutionEnabled": false,
+      "modelResolverEnabled": false,
+      "modelsJsonEnabled": false,
+      "modelCatalogNetworkRefreshEnabled": false,
+      "providerRetryAttempts": 0,
+      "forwardedProviderRequestCount": 1,
+      "maximumProviderRequestCount": 1,
+      "toolExecutionCount": 0,
+      "unauthorizedToolAttemptCount": 0,
+      "structuredOutputPayloadPreparedCount": 1
+    },
+    "usage": {
+      "assistantMessages": 1,
+      "toolCalls": 0,
+      "toolResults": 0,
+      "totalMessages": 2,
+      "tokens": {
+        "input": 295,
+        "output": 237,
+        "cacheRead": 3328,
+        "cacheWrite": 0,
+        "total": 3860
+      },
+      "estimatedCostUsd": 0.0001169784
+    },
+    "billing": {
+      "currency": "USD",
+      "estimatedCost": 0.0001169784,
+      "source": "pi_session_stats"
+    }
+  }
+}

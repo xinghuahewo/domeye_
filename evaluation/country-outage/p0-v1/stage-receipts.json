@@ -1,0 +1,55 @@
+{
+  "schema_version": "country_outage_p0_stage_receipts_v1",
+  "revision": "p0-v1-20260808-ir-r1",
+  "created_at": "2026-08-08T19:23:58+08:00",
+  "tested_object": "evaluation_contract_and_reference_answers",
+  "execution_environment": {
+    "repository": "domeye",
+    "worktree": "country-outage-agent-p0-baseline-work",
+    "branch": "codex/country-outage-agent-p0-baseline",
+    "base_contract_commit": "558e28596d70f6610b7fcda9689f13ff84ca3d71",
+    "model_or_rule_identity": "stdlib deterministic validator; no LLM candidate"
+  },
+  "stages": {
+    "S0": {
+      "status": "passed",
+      "judgement": "一致",
+      "hook_command": "python3 .codex/hooks/country_outage_agent_program_review.py --project P0 --stage S0",
+      "evidence": [
+        "Hook 退出码为 0",
+        "20 类直接任务和四类 20/5/5/5 范围已冻结",
+        "事件、publication、revision、rrc25 和控制面证明边界已固定"
+      ]
+    },
+    "S1": {
+      "status": "passed",
+      "judgement": "一致",
+      "hook_command": "python3 .codex/hooks/country_outage_agent_program_review.py --project P0 --stage S1",
+      "evidence": [
+        "Hook 退出码为 0",
+        "案例 ID 严格为 P0-D-01—20、P0-M-01—05、P0-B-01—05、P0-X-01—05",
+        "6 个公开问题转述具有 URL、日期、语言和匿名化说明，正式制品个人信息字段为 0"
+      ]
+    },
+    "S2": {
+      "status": "passed",
+      "judgement": "一致",
+      "hook_command": "python3 .codex/hooks/country_outage_agent_program_review.py --project P0 --stage S2",
+      "evidence": [
+        "Hook 退出码为 0",
+        "所有参考事实逐路径解析并与同一 evidence snapshot 相等",
+        "多轮状态、越界限制、禁止断言及 5 个异常失败关闭真值完整"
+      ]
+    },
+    "S3": {
+      "status": "passed",
+      "judgement": "一致",
+      "hook_command": "python3 .codex/hooks/country_outage_agent_program_review.py --project P0 --stage S3",
+      "evidence": [
+        "Hook 退出码为 0",
+        "35 个案例及全部交付制品由 manifest SHA-256 固定并通过确定性校验",
+        "P1 入口回执已形成；被测对象是评测合同及参考答案，不是 Agent 候选"
+      ]
+    }
+  }
+}

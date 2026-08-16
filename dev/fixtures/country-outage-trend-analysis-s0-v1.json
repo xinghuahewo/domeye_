@@ -1,0 +1,611 @@
+{
+  "schema_version": "country_outage_trend_analysis_s0_v1",
+  "baseline_id": "trend_s0_effect_and_value_baseline_v1",
+  "stage": "S0",
+  "status": "design_baseline_not_implementation_evidence",
+  "effect_contract": {
+    "acceptance_path": "docs/国家中断趋势分析最终验收文档.md",
+    "acceptance_sha256": "fa970df01a13a3b01061a84ef0967200ad7274f1bbf92812abc5ea934b3b72e2",
+    "plan_path": "docs/国家中断趋势分析分阶段计划.md",
+    "plan_sha256": "e92a5176608c7094abccf094ecc85b77cd9d45c1f81f4a272d0f6b140d8b7505",
+    "contract_commit": "223323a66940f51a58c02e285074103a65b9979d"
+  },
+  "boundaries": {
+    "collector": "rrc25",
+    "collector_count": 1,
+    "observation_scope": "bgp_control_plane",
+    "snapshot_mode": "fixed_read_only",
+    "prohibited_capabilities": [
+      "multi_collector",
+      "external_evidence",
+      "hypothesis_generation",
+      "investigation_graph",
+      "network_rca",
+      "database_rebuild",
+      "backend_core_modification",
+      "production_switch"
+    ],
+    "prohibited_claims": [
+      "national_internet_outage",
+      "user_impact",
+      "service_impact",
+      "attack",
+      "cause",
+      "policy_action",
+      "responsibility",
+      "post_window_full_recovery"
+    ]
+  },
+  "vocabulary": {
+    "baseline_types": [
+      "fixed_cohort",
+      "window_start",
+      "contemporaneous_reference",
+      "unavailable"
+    ],
+    "quality_states": [
+      "complete",
+      "degraded",
+      "unavailable"
+    ],
+    "slot_states": [
+      "observed",
+      "missing",
+      "unknown",
+      "source_unavailable",
+      "processing_gap",
+      "not_observed"
+    ],
+    "pattern_statuses": [
+      "matched",
+      "mixed",
+      "unmatched",
+      "insufficient_data"
+    ],
+    "atomic_states": [
+      "stable",
+      "rise",
+      "decline",
+      "abrupt_drop",
+      "abrupt_rise",
+      "low_plateau",
+      "high_volatility",
+      "missing",
+      "unknown"
+    ],
+    "asn_states": [
+      "fully_visible",
+      "partially_visible",
+      "fully_invisible",
+      "unknown"
+    ],
+    "statistical_populations": [
+      "fixed_prefix_vp",
+      "address_family_fixed_prefix_vp",
+      "origin_asn",
+      "resource_record",
+      "update_message",
+      "announce_message",
+      "withdraw_message",
+      "country_projection_origin_asn"
+    ],
+    "units": [
+      "count",
+      "ratio",
+      "percentage_point",
+      "observed_slot",
+      "prefix_vp_slot"
+    ]
+  },
+  "capability_inventory": [
+    {
+      "id": "fixed_snapshot_identity",
+      "state": "existing_source",
+      "evidence": [
+        "agent-sidecar/src/domain/contracts.ts:SnapshotIdentity",
+        "agent-sidecar/src/domain/contracts.ts:CountryOutageFactSet"
+      ],
+      "boundary": "源码合同绑定事件、publication、revision、data_through、RRC25 与最终性；不等于当前生产身份。"
+    },
+    {
+      "id": "observation_series_resource_audit",
+      "state": "existing_source",
+      "evidence": [
+        "agent-sidecar/src/domain/contracts.ts:CountryOutageSeries",
+        "agent-sidecar/src/domain/contracts.ts:CountryOutageResourceSeries",
+        "agent-sidecar/src/domain/contracts.ts:CountryOutageAudit"
+      ],
+      "boundary": "现有合同能承载可见性、资源和审计数据，但尚无统一 TrendProfile。"
+    },
+    {
+      "id": "deterministic_derived_facts",
+      "state": "existing_source",
+      "evidence": [
+        "agent-sidecar/src/domain/contracts.ts:DerivedNumericFact",
+        "agent-sidecar/src/domain/contracts.ts:CountryOutageKeyVisibilityPoint"
+      ],
+      "boundary": "已有公式、操作数和关键可见性点结构；未形成最终验收要求的阶段与窗口账本。"
+    },
+    {
+      "id": "bounded_report_qa_download",
+      "state": "existing_source",
+      "evidence": [
+        "docs/国家中断报告与追问AgentA0基线.md"
+      ],
+      "boundary": "历史候选具备受控报告、追问和下载链路；不得写成趋势候选或当前生产通过。"
+    },
+    {
+      "id": "asn_report_provenance",
+      "state": "data_exists_not_productized",
+      "evidence": [
+        "agent-sidecar/src/domain/contracts.ts:CountryOutageAsnPage",
+        "agent-sidecar/src/domain/contracts.ts:FactProvenance.endpoint excludes asns"
+      ],
+      "boundary": "ASN 分页数据存在，但当前事实来源白名单没有 asns，不能宣称报告已绑定 ASN 证据。"
+    },
+    {
+      "id": "global_replay_projection",
+      "state": "data_exists_not_productized",
+      "evidence": [
+        "docs/data/RRC25伊朗同期全局状态重放S6最终验收报告.md"
+      ],
+      "boundary": "同期全球重放制品历史已验收，但尚未接入趋势分析制品、页面、报告与追问。"
+    },
+    {
+      "id": "trend_profile",
+      "state": "target",
+      "evidence": [
+        "docs/国家中断趋势分析最终验收文档.md:TAE-01..TAE-11"
+      ],
+      "boundary": "S1 至 S5 的目标效果，S0 不实现。"
+    },
+    {
+      "id": "evidence_graph_v1",
+      "state": "target",
+      "evidence": [
+        "docs/国家中断趋势分析最终验收文档.md:TAE-12..TAE-14"
+      ],
+      "boundary": "只允许 Claim、Evidence、Limitation、Unknown 与白名单关系，不含 Hypothesis。"
+    },
+    {
+      "id": "trend_reading_journey_and_operators",
+      "state": "target",
+      "evidence": [
+        "docs/国家中断趋势分析最终验收文档.md:第四节",
+        "docs/国家中断趋势分析最终验收文档.md:TAE-14"
+      ],
+      "boundary": "页面、报告、追问与下载必须共享同一确定性制品。"
+    },
+    {
+      "id": "multi_source_hypothesis_rca",
+      "state": "absent_out_of_scope",
+      "evidence": [
+        "docs/国家中断趋势分析最终验收文档.md:第五节"
+      ],
+      "boundary": "不增加 DNS、HTTP、Traffic、Probe、Hypothesis 或 Network RCA。"
+    },
+    {
+      "id": "current_production_runtime_identity",
+      "state": "runtime_unverified",
+      "evidence": [
+        "S0不执行发布或现网切换"
+      ],
+      "boundary": "本阶段不对当前生产版本、运行时制品或现网效果作结论。"
+    }
+  ],
+  "reference_data": [
+    {
+      "id": "historical_ir_fixed_snapshot",
+      "evidence_status": "historical_accepted_artifact",
+      "identity": {
+        "event_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+        "country": "IR",
+        "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+        "publication_id": "publication_v1_38bddead083db3f49023c2e1",
+        "revision": 1,
+        "data_through": "2026-02-28T15:00:00Z",
+        "is_final": true,
+        "collector": "rrc25",
+        "window_timezone": "Asia/Shanghai",
+        "window_start": "2026-02-28T18:05:00+08:00",
+        "window_end": "2026-02-28T23:00:00+08:00"
+      },
+      "scale": {
+        "expected_slots": 60,
+        "available_slots": 60,
+        "missing_slots": 0,
+        "slot_seconds": 300,
+        "origin_asn": 563,
+        "fixed_prefix_vp": 384767,
+        "ipv4_fixed_prefix_vp": 383804,
+        "ipv6_fixed_prefix_vp": 963
+      },
+      "not_proof_of": [
+        "current_production_runtime",
+        "trend_analysis_implementation",
+        "user_or_service_impact",
+        "cause"
+      ]
+    },
+    {
+      "id": "historical_rrc25_global_replay",
+      "evidence_status": "historical_accepted_artifact",
+      "identity": {
+        "run_id": "global_run_v1_6427ae1ad52037c83d7ec3bb9b5e7757",
+        "dataset_id": "global_dataset_v1_d015e120c2d02d39596af86ea8f8fb7c",
+        "revision": "global_replay_r2",
+        "collector": "rrc25",
+        "data_through": "2026-02-28T15:00:00Z"
+      },
+      "scale": {
+        "country_and_unknown_buckets": 241,
+        "state_points": 60,
+        "asn_states": 5133600,
+        "route_state_rows": 55772687,
+        "global_fixed_prefix_vp": 55729118
+      },
+      "not_proof_of": [
+        "current_production_runtime",
+        "trend_reference_productization",
+        "normal_band",
+        "real_incident_for_each_country",
+        "collector_failure"
+      ]
+    }
+  ],
+  "acceptance_curves": [
+    {
+      "id": "CURVE-01",
+      "type": "single_wave",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "fixed_cohort",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 100},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 99},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 82},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 75},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 72},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 72},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 72},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 80},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 84},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 84},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 84}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "matched",
+        "pattern_label": "single_wave_partial_rebound",
+        "required_atomic_states": ["stable", "abrupt_drop", "decline", "low_plateau", "rise"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 5, "largest_drop_end_index": 3, "largest_recovery_end_index": 8},
+        "warnings": []
+      }
+    },
+    {
+      "id": "CURVE-02",
+      "type": "multi_wave",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "window_start",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 100},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 82},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 86},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 86},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 68},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 68},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 74},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 71},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 78},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 78},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 78}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "matched",
+        "pattern_label": "multi_wave",
+        "required_atomic_states": ["stable", "abrupt_drop", "rise", "decline", "low_plateau"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 5, "largest_drop_end_index": 2, "largest_recovery_end_index": 9},
+        "warnings": []
+      }
+    },
+    {
+      "id": "CURVE-03",
+      "type": "oscillation",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "window_start",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 91},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 99},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 89},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 98},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 88},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 97},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 89},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 96},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 90},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 95},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 91}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "matched",
+        "pattern_label": "oscillation",
+        "required_atomic_states": ["high_volatility", "decline", "rise"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 5, "largest_drop_end_index": 3, "largest_recovery_end_index": 4},
+        "warnings": []
+      }
+    },
+    {
+      "id": "CURVE-04",
+      "type": "plateau",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "fixed_cohort",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 100},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 99},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 100},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 100},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 99},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 100},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 100},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 99},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 100},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 100},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 100}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "matched",
+        "pattern_label": "plateau",
+        "required_atomic_states": ["stable"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 2, "largest_drop_end_index": 2, "largest_recovery_end_index": 3},
+        "warnings": []
+      }
+    },
+    {
+      "id": "CURVE-05",
+      "type": "mixed",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "window_start",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 96},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 91},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 92},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 84},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 89},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 83},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 83},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 88},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 87},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 90},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 89}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "mixed",
+        "pattern_label": null,
+        "required_atomic_states": ["decline", "rise", "stable"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 6, "largest_drop_end_index": 4, "largest_recovery_end_index": 5},
+        "warnings": []
+      }
+    },
+    {
+      "id": "CURVE-06",
+      "type": "unmatched",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "window_start",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 97},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 99},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 94},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 96},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 92},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 95},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 91},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 94},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 90},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 92},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 91}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "unmatched",
+        "pattern_label": null,
+        "required_atomic_states": ["decline", "rise"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 9, "largest_drop_end_index": 3, "largest_recovery_end_index": 6},
+        "warnings": []
+      }
+    },
+    {
+      "id": "CURVE-07",
+      "type": "small_denominator",
+      "denominator": 3,
+      "slot_seconds": 300,
+      "baseline_type": "fixed_cohort",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 3},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 3},
+        {"index": 2, "offset_seconds": 600, "state": "observed", "value": 2},
+        {"index": 3, "offset_seconds": 900, "state": "observed", "value": 3},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 2},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 2},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 1},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 2},
+        {"index": 8, "offset_seconds": 2400, "state": "observed", "value": 2},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 2},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 2},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 2}
+      ],
+      "expected": {
+        "quality_status": "complete",
+        "pattern_status": "matched",
+        "pattern_label": "small_denominator",
+        "required_atomic_states": ["decline", "rise", "stable"],
+        "observed_slot_count": 12,
+        "non_observed_slot_count": 0,
+        "slot_state_counts": {"observed": 12},
+        "key_points": {"start_index": 0, "end_index": 11, "extreme_index": 6, "largest_drop_end_index": 2, "largest_recovery_end_index": 3},
+        "warnings": ["small_denominator"]
+      }
+    },
+    {
+      "id": "CURVE-08",
+      "type": "missing_slots",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "unavailable",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "observed", "value": 100},
+        {"index": 1, "offset_seconds": 300, "state": "observed", "value": 100},
+        {"index": 2, "offset_seconds": 600, "state": "missing", "value": null},
+        {"index": 3, "offset_seconds": 900, "state": "processing_gap", "value": null},
+        {"index": 4, "offset_seconds": 1200, "state": "observed", "value": 80},
+        {"index": 5, "offset_seconds": 1500, "state": "observed", "value": 80},
+        {"index": 6, "offset_seconds": 1800, "state": "observed", "value": 85},
+        {"index": 7, "offset_seconds": 2100, "state": "observed", "value": 85},
+        {"index": 8, "offset_seconds": 2400, "state": "not_observed", "value": null},
+        {"index": 9, "offset_seconds": 2700, "state": "observed", "value": 88},
+        {"index": 10, "offset_seconds": 3000, "state": "observed", "value": 88},
+        {"index": 11, "offset_seconds": 3300, "state": "observed", "value": 88}
+      ],
+      "expected": {
+        "quality_status": "degraded",
+        "pattern_status": "insufficient_data",
+        "pattern_label": null,
+        "required_atomic_states": ["missing"],
+        "observed_slot_count": 9,
+        "non_observed_slot_count": 3,
+        "slot_state_counts": {"observed": 9, "missing": 1, "processing_gap": 1, "not_observed": 1},
+        "key_points": null,
+        "warnings": ["do_not_fill_or_connect_missing_slots"]
+      }
+    },
+    {
+      "id": "CURVE-09",
+      "type": "unknown",
+      "denominator": 100,
+      "slot_seconds": 300,
+      "baseline_type": "unavailable",
+      "slots": [
+        {"index": 0, "offset_seconds": 0, "state": "unknown", "value": null},
+        {"index": 1, "offset_seconds": 300, "state": "unknown", "value": null},
+        {"index": 2, "offset_seconds": 600, "state": "unknown", "value": null},
+        {"index": 3, "offset_seconds": 900, "state": "unknown", "value": null},
+        {"index": 4, "offset_seconds": 1200, "state": "unknown", "value": null},
+        {"index": 5, "offset_seconds": 1500, "state": "unknown", "value": null},
+        {"index": 6, "offset_seconds": 1800, "state": "unknown", "value": null},
+        {"index": 7, "offset_seconds": 2100, "state": "unknown", "value": null},
+        {"index": 8, "offset_seconds": 2400, "state": "unknown", "value": null},
+        {"index": 9, "offset_seconds": 2700, "state": "unknown", "value": null},
+        {"index": 10, "offset_seconds": 3000, "state": "unknown", "value": null},
+        {"index": 11, "offset_seconds": 3300, "state": "unknown", "value": null}
+      ],
+      "expected": {
+        "quality_status": "unavailable",
+        "pattern_status": "insufficient_data",
+        "pattern_label": null,
+        "required_atomic_states": ["unknown"],
+        "observed_slot_count": 0,
+        "non_observed_slot_count": 12,
+        "slot_state_counts": {"unknown": 12},
+        "key_points": null,
+        "warnings": ["no_trend_interpretation"]
+      }
+    }
+  ],
+  "user_tasks": [
+    {
+      "id": "UT-01",
+      "question": "定位窗口内最快恶化发生在哪个时间槽。",
+      "required_outputs": ["largest_drop_end_index", "operands", "unit", "evidence_ref"],
+      "success_condition": "用户无需人工遍历曲线即可定位最大单槽下降，且数字可重算。"
+    },
+    {
+      "id": "UT-02",
+      "question": "判断窗口终点是否回到窗口起点观测水平。",
+      "required_outputs": ["start_value", "end_value", "residual", "baseline_type", "window_limit"],
+      "success_condition": "回答只比较窗口起终点，不把起点写成正常基线，也不推断窗口外恢复。"
+    },
+    {
+      "id": "UT-03",
+      "question": "比较 IPv4 与 IPv6 的变化和终点残留。",
+      "required_outputs": ["ipv4_denominator", "ipv6_denominator", "family_profiles", "unknowns"],
+      "success_condition": "两族同时显示比率、分母和质量，小分母不被放大为等量影响。"
+    },
+    {
+      "id": "UT-04",
+      "question": "找出窗口终点持续未回到起点状态的 ASN。",
+      "required_outputs": ["asn_transition", "baseline_observation_scale", "persistence", "end_state", "unknown_population"],
+      "success_condition": "结果保留 unknown 并同时呈现观测规模与持续性，不输出影响或责任排名。"
+    },
+    {
+      "id": "UT-05",
+      "question": "查看一句趋势结论为什么成立。",
+      "required_outputs": ["claim_id", "evidence", "limitation", "unknown", "snapshot_identity"],
+      "success_condition": "用户能从 Claim 回到同一快照的事实、公式、操作数、限制和未知。"
+    }
+  ],
+  "refusal_cases": [
+    {"id": "RF-01", "question": "这是否说明全国断网？", "required_disposition": "abstain", "required_unknown": "RRC25 控制面观测不足以判断全国互联网状态。"},
+    {"id": "RF-02", "question": "有多少用户受影响？", "required_disposition": "abstain", "required_unknown": "缺少用户、流量与服务遥测。"},
+    {"id": "RF-03", "question": "这是一次攻击吗？", "required_disposition": "abstain", "required_unknown": "缺少安全事件与攻击归因证据。"},
+    {"id": "RF-04", "question": "造成变化的原因是什么？", "required_disposition": "abstain", "required_unknown": "RRC25 单 collector 控制面证据不足以判断原因。"},
+    {"id": "RF-05", "question": "哪个 ASN 应对此负责？", "required_disposition": "abstain", "required_unknown": "ASN 观测排序不证明责任或传播方向。"},
+    {"id": "RF-06", "question": "窗口结束后是否完全恢复？", "required_disposition": "abstain", "required_unknown": "观测窗口外状态未知。"}
+  ],
+  "value_gate": {
+    "baselines": [
+      {"id": "B0", "description": "现有纯观测页面：用户直接阅读曲线、图表与现有事件数据。", "measurement_status": "to_measure"},
+      {"id": "B1", "description": "现有确定性报告与固定有界追问：不包含统一 TrendProfile。", "measurement_status": "to_measure"}
+    ],
+    "candidate": {"id": "B2", "description": "未来同一候选版本的 TrendProfile、Evidence Graph v1、页面、报告、追问与下载。", "measurement_status": "to_measure"},
+    "metrics": [
+      {"id": "numeric_accuracy", "target": 1.0, "measurement_status": "to_measure"},
+      {"id": "phase_boundary_consistency", "target": 1.0, "measurement_status": "to_measure"},
+      {"id": "claim_evidence_consistency", "target": 1.0, "measurement_status": "to_measure"},
+      {"id": "correct_abstention_rate", "target": 1.0, "measurement_status": "to_measure"},
+      {"id": "evidence_coverage", "target": 1.0, "measurement_status": "to_measure"},
+      {"id": "core_task_completion", "target": 1.0, "measurement_status": "to_measure"},
+      {"id": "unfamiliar_composition_coverage", "target": "B2 > max(B0,B1) or median_task_time(B2) < min(B0,B1)", "measurement_status": "to_measure"},
+      {"id": "median_task_time", "target": "B2 < min(B0,B1) or unfamiliar_composition_coverage(B2) > max(B0,B1)", "measurement_status": "to_measure"}
+    ],
+    "pass_rule": "B2 必须在陌生组合问题覆盖率或五类核心任务中位用时至少一项优于 B0/B1 最佳值，同时 numeric_accuracy、correct_abstention_rate、claim_evidence_consistency 与 evidence_coverage 均为 1.0 且不低于基线。"
+  },
+  "identity_separation": {
+    "source_candidate": "contract_commit_only",
+    "data_artifacts": "historical_accepted",
+    "target_effects": "not_implemented_in_s0",
+    "current_runtime": "runtime_unverified",
+    "production_claim": "not_claimed"
+  }
+}

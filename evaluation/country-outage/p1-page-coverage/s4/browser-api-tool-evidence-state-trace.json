@@ -1,0 +1,65 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_browser_trace_v1",
+  "artifact_kind": "browser_api_tool_evidence_state_trace",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "status": "PASS",
+  "journeys": [
+    {
+      "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+      "journey_id": "S4-LIVE-IP-001",
+      "run_id": "s4-browser-api-live-001",
+      "candidate_identity_sha256": "3317fbf78cf69b6a132bd17e2b10352b854e213579612dbb174050bdd491717f",
+      "browser_receipt_sha256": "f4b2d2780b073b6a31e67d2d2a0d3ef148f5ae9936e23e34d05be3da8af77c8d",
+      "api_receipt_sha256": "3076b5e3449d27ff5111f8930d7708caf1ac83f2b8ba385789aa70994d5cf18f",
+      "user_goal_plan_sha256": "72d617605e472ab8800654d34798ad26ab3eb92df0c3bb4f8079f3fcaaec76e7",
+      "grounding_plan_sha256": "f93d4e66e46600e7e559ddef4b4f922e197f5113049814c275417e7452be2d5b",
+      "tool_receipts_sha256": "785117dbc8b8df4b10b9625a4b3f97b619944aa4c2127f479b1ac1fd198f0332",
+      "evidence_state_sha256": "04b60d063aa2a6893ffe8cc311efd14f96f0adac3040b1d1212e561dd46bb03a",
+      "dialog_state_before_sha256": "ebe6737173995bba71b42f1bd1b112451c70f6f08ef7a6548af3be8d2a550242",
+      "dialog_state_after_sha256": "4d630429bf8385ebf717b5d27c855f195d784b3a83c1f26544c0325188f45dae"
+    }
+  ],
+  "evidence_refs": [
+    {
+      "kind": "browser_receipt",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/browser-receipt.json",
+      "sha256": "f4b2d2780b073b6a31e67d2d2a0d3ef148f5ae9936e23e34d05be3da8af77c8d"
+    },
+    {
+      "kind": "api_receipt",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/api-receipt.json",
+      "sha256": "3076b5e3449d27ff5111f8930d7708caf1ac83f2b8ba385789aa70994d5cf18f"
+    },
+    {
+      "kind": "user_goal_plan",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/user-goal-plan.json",
+      "sha256": "72d617605e472ab8800654d34798ad26ab3eb92df0c3bb4f8079f3fcaaec76e7"
+    },
+    {
+      "kind": "grounding_plan",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/grounding-plan.json",
+      "sha256": "f93d4e66e46600e7e559ddef4b4f922e197f5113049814c275417e7452be2d5b"
+    },
+    {
+      "kind": "tool_receipts",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/tool-receipts.json",
+      "sha256": "785117dbc8b8df4b10b9625a4b3f97b619944aa4c2127f479b1ac1fd198f0332"
+    },
+    {
+      "kind": "evidence_state",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/evidence-state.json",
+      "sha256": "04b60d063aa2a6893ffe8cc311efd14f96f0adac3040b1d1212e561dd46bb03a"
+    },
+    {
+      "kind": "dialog_state_before",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/dialog-state-before.json",
+      "sha256": "ebe6737173995bba71b42f1bd1b112451c70f6f08ef7a6548af3be8d2a550242"
+    },
+    {
+      "kind": "dialog_state_after",
+      "path": "evaluation/country-outage/p1-page-coverage/s4/raw/dialog-state-after.json",
+      "sha256": "4d630429bf8385ebf717b5d27c855f195d784b3a83c1f26544c0325188f45dae"
+    }
+  ]
+}

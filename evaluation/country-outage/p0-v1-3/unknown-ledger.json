@@ -1,0 +1,100 @@
+{
+  "schema_version": "country_outage_capability_unknown_ledger_v1",
+  "revision": "p0-v1.3-20260809-ir-r1",
+  "unknowns": [
+    {
+      "unknown_id": "UNK-001",
+      "subject": "当前 Web/API 服务的完整发布提交与 release manifest",
+      "known": ["health=200", "前端静态资产名已记录", "audit data implementation_id=d1f4d11..."],
+      "unknown": "health 未公开应用版本；数据制品 implementation_id 不能替代 Web 服务发布身份",
+      "risk": "可能把数据生成提交误当成当前服务提交",
+      "next_validation": "读取只读 release identity/manifest 或由 health 公开版本",
+      "owner": "release/governance",
+      "blocks": ["生产发布身份结论"],
+      "does_not_block": ["当前 publication 的只读事实问答候选"]
+    },
+    {
+      "unknown_id": "UNK-002",
+      "subject": "报告生成代理对当前 general-read-model publication 的运行可用性",
+      "known": ["仓库有前端组件、代理路由、正式 API 合同和测试", "当前 general page 不显示工作台"],
+      "unknown": "当前运行态是否配置 Sidecar、授权、模型和兼容的事实装配",
+      "risk": "源码存在被误写为当前页面可生成报告",
+      "next_validation": "在独立授权验收中使用同一候选执行报告端到端旅程",
+      "owner": "report-agent program",
+      "blocks": ["CAP-019 当前产品能力结论"],
+      "does_not_block": ["P1 重新建设受控事件问答"]
+    },
+    {
+      "unknown_id": "UNK-003",
+      "subject": "现有报告追问是否满足 P1 开放表达与受控语义计划",
+      "known": ["仓库存在问题接口和界面", "当前 general page 没有问题输入框"],
+      "unknown": "现有追问是否具备 P1 的开放 UserGoal、封闭 GroundingPlan、确定性算子和状态提交合同",
+      "risk": "把旧报告追问等同于新 P1 Semantic Planner",
+      "next_validation": "P1 从本账本 adopt 能力后单独验收自然语言到确定性执行链",
+      "owner": "P1",
+      "blocks": ["CAP-020 复用决定"],
+      "does_not_block": ["P0 capability discovery 完成"]
+    },
+    {
+      "unknown_id": "UNK-004",
+      "subject": "生产服务器上的读模型对象文件实物",
+      "known": ["audit 返回 manifest、对象路径、大小与 SHA-256", "API 已按这些身份返回一致数据"],
+      "unknown": "P0 未通过服务器文件系统独立读取和重新计算压缩文件摘要",
+      "risk": "API 内部自报身份缺少第二条服务器文件读取证据",
+      "next_validation": "如需 release 级验收，由数据发布流程提供只读 manifest/COMPLETE 验签回执",
+      "owner": "data publication",
+      "blocks": ["服务器文件实物独立验签结论"],
+      "does_not_block": ["API publication-bound P1 事实读取"]
+    },
+    {
+      "unknown_id": "UNK-005",
+      "subject": "趋势 API 与 general read model publication 的集成缺口",
+      "known": ["正式路由和源码存在", "当前 publication 返回 404 publication_not_found"],
+      "unknown": "缺口应由趋势产品读取新 publication、由发布管线生成趋势制品，还是维持不适用",
+      "risk": "P1 误调用不可用 route",
+      "next_validation": "由趋势产品负责人冻结 publication 兼容策略并提供同 publication Oracle",
+      "owner": "trend product",
+      "blocks": ["CAP-015 adopt"],
+      "does_not_block": ["overview/series 的基础事实问答"]
+    },
+    {
+      "unknown_id": "UNK-006",
+      "subject": "事件真实结束、闭环恢复与窗口外状态",
+      "known": ["lifecycle_state=event_end_unknown", "is_final_in_data_range=false", "数据截至 2026-03-11T00:00:00Z"],
+      "unknown": "真实事件结束时间和窗口外网络状态",
+      "risk": "把数据完整或末点残余下降写成已恢复/未恢复的事实结论",
+      "next_validation": "需要新的事件生命周期证据或后续 publication；不得由模型补齐",
+      "owner": "event lifecycle/data publication",
+      "blocks": ["事件已结束", "完全恢复"],
+      "does_not_block": ["窗口内控制面观测描述"]
+    },
+    {
+      "unknown_id": "UNK-007",
+      "subject": "运行态 OpenAPI JSON 的机器可发现入口",
+      "known": ["仓库 contracts/openapi.json 登记路由", "实际业务 GET 路由可访问"],
+      "unknown": "/openapi.json 与 /api/openapi.json 当前返回 SPA HTML，/api/v1/openapi.json 返回 404",
+      "risk": "Agent 或自动发现器无法从运行态直接获取正式 schema",
+      "next_validation": "决定是否发布只读 OpenAPI 入口或由部署 manifest 固定合同摘要",
+      "owner": "API platform",
+      "blocks": ["运行时自动工具发现"],
+      "does_not_block": ["P1 使用版本化本地 Typed Tool Contract"]
+    },
+    {
+      "unknown_id": "UNK-008",
+      "subject": "其他 country_outage 事件是否具备与当前 IR publication 相同的能力集合",
+      "known": ["本次页面、API 和 Oracle 只实测当前 IR publication", "resolver 会返回事件级 capabilities 和 observation_state"],
+      "unknown": "其他事件可能是 legacy_summary、能力部分可用或没有 general read model，不能继承当前 26 项结论",
+      "risk": "P1 把 IR 的 Capability Catalog 静默套到其他事件并生成错误计划",
+      "next_validation": "每次事件绑定后读取事件级 capabilities/observation_state，并在执行前逐能力协商；新增代表事件时形成独立证据 revision",
+      "owner": "P1 + data publication",
+      "blocks": ["把当前 IR 能力外推到其他事件"],
+      "does_not_block": ["当前 IR publication 的 P1 候选入口"]
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "has_owner": 8,
+    "has_next_validation": 8,
+    "silent_unknown_count": 0
+  }
+}

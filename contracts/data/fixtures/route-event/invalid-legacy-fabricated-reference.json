@@ -1,0 +1,51 @@
+{
+  "schema_version": "route_event_v1",
+  "record_kind": "legacy_observation_stub",
+  "route_event_id_schema": "route_event_id_v1",
+  "route_event_id": "rte_v1_14dd0ecd9df787fa5b42c4e8201dd473",
+  "source": "legacy_fact",
+  "collector_id": "rrc25",
+  "source_timezone": "Asia/Shanghai",
+  "event_time_utc": "2026-02-10T00:15:00Z",
+  "ingest_time_utc": null,
+  "parse_time_utc": null,
+  "vp_id": "vp_v1_b922edb0eb37b2fe314cac6bae099f9b",
+  "vp_peer_ip": "192.0.2.10",
+  "vp_asn": 64500,
+  "action": "announce",
+  "afi_safi": "ipv4_unicast",
+  "prefix": "203.0.113.0/24",
+  "as_path": null,
+  "origin_asn": null,
+  "raw_ref": {
+    "artifact_id": "art_v1_0857b453b87d49f9c584d2caf302aa24",
+    "file_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "record_ordinal": 42,
+    "element_ordinal": 0,
+    "record_offset": 4096,
+    "record_length": 128,
+    "record_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "parser_name": null,
+  "parser_version": null,
+  "importer_name": null,
+  "importer_version": null,
+  "import_run_id": null,
+  "lineage_status": "legacy_untraceable",
+  "quality_flags": [
+    "raw_reference_unavailable",
+    "legacy_vp_identity_unavailable",
+    "legacy_observation_only"
+  ],
+  "missing_reasons": {
+    "ingest_time_utc": "not_retained",
+    "parse_time_utc": "not_retained",
+    "as_path": "legacy_unknown",
+    "origin_asn": "legacy_unknown",
+    "parser_name": "not_retained",
+    "parser_version": "not_retained",
+    "importer_name": "not_retained",
+    "importer_version": "not_retained",
+    "import_run_id": "not_retained"
+  }
+}

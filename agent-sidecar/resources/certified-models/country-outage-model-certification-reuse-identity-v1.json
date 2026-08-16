@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "country_outage_model_certification_reuse_identity_v1",
+  "identityId": "deepseek-v4-flash-pi-0.82.1-zero-tools-certified-v2",
+  "status": "frozen",
+  "baseline": {
+    "manifestPath": "artifacts/country-outage-agent/a4-model-certification/evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e/manifest.json",
+    "manifestAlgorithm": "sha256(file bytes)",
+    "manifestCombinedSha256": "a728306c7f150b6d0968cb3fa883fc63c798950140773a37c7c6c61d9bbc9c6f"
+  },
+  "certifiedModel": {
+    "profileId": "deepseek-v4-flash-pi-0.82.1-v1",
+    "registryVersion": "deepseek-v4-flash-certified-v2",
+    "certificationEvidenceId": "evidence:model-certification:5ca8edcd007f55bb4e8f5878fa3b0cdfff3d318b02b1bae43846fe8669c4821e",
+    "candidateResourceSha256": "7bccc7ab52cd555fb77c615162d4ca3f3f6af0dee18b418adf7f5181ce330d1a",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "piVersion": "0.82.1"
+  },
+  "groups": [
+    {
+      "id": "deepseek_model_and_api_adapter",
+      "paths": [
+        "agent-sidecar/scripts/apply_pi_response_model_patch.mjs",
+        "agent-sidecar/src/pi/formal-model-runtime.ts",
+        "agent-sidecar/src/pi/pi-report-narrator.ts"
+      ]
+    },
+    {
+      "id": "pi_0_82_1_dependency_identity",
+      "paths": [
+        "agent-sidecar/package.json",
+        "agent-sidecar/package-lock.json"
+      ]
+    },
+    {
+      "id": "three_readonly_tools_and_schema",
+      "paths": [
+        "agent-sidecar/src/pi/country-outage-tools.ts",
+        "contracts/agent/country-outage-report-facts-v1.schema.json"
+      ]
+    },
+    {
+      "id": "skill_prompt_report_contract_and_validator",
+      "paths": [
+        "agent-sidecar/scripts/render_country_outage_report.py",
+        "agent-sidecar/src/pi/country-outage-skill-bundle.ts",
+        "agent-sidecar/src/pi/static-resource-loader.ts",
+        "agent-sidecar/src/report/contracts.ts",
+        "agent-sidecar/src/report/draft-validator.ts",
+        "agent-sidecar/src/report/model-language-plan.ts",
+        "agent-sidecar/src/report/report-compiler.ts",
+        "agent-sidecar/src/report/markdown-renderer.ts"
+      ]
+    },
+    {
+      "id": "rrc25_fact_contract_and_context_assembly",
+      "paths": [
+        "agent-sidecar/src/domain/contracts.ts",
+        "agent-sidecar/src/domain/domeye-client.ts",
+        "agent-sidecar/src/domain/observation-assembler.ts",
+        "agent-sidecar/src/pi/model-certification-scenarios.ts",
+        "agent-sidecar/src/runtime/services.ts"
+      ]
+    },
+    {
+      "id": "timeout_retry_and_token_limits",
+      "paths": [
+        "agent-sidecar/src/formal-runtime-limits.ts"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "agent-sidecar/package.json",
+      "a3BaselineSha256": "794b7a9de49f25b1ad26c065c05739d3e55b4f758bb8e7a2e8d2caab955454f4"
+    },
+    {
+      "path": "agent-sidecar/package-lock.json",
+      "a3BaselineSha256": "b366f406d807d20d25095e68f05ad043401fe392535fd3e454fa075193621686"
+    },
+    {
+      "path": "agent-sidecar/scripts/apply_pi_response_model_patch.mjs",
+      "a3BaselineSha256": "071743bbb1a7a13576c16f76a679985e684d38a731c8486265eefe80bd144565"
+    },
+    {
+      "path": "agent-sidecar/scripts/render_country_outage_report.py",
+      "a3BaselineSha256": "26c4a7c6770c575ab561694f7efa83aae172916b7586ab01e6b16c36dc2de5e6"
+    },
+    {
+      "path": "agent-sidecar/src/pi/model-certification-scenarios.ts",
+      "a3BaselineSha256": "41ab1f27c9d13f918101995626c530dac3c66f0accfec1f46269260c1e149ea4"
+    },
+    {
+      "path": "agent-sidecar/src/formal-runtime-limits.ts",
+      "a3BaselineSha256": "a01f49d4a9276b3eb13eb3b64e12951ea3707146c4a9ee382e55e15aa1a35007"
+    },
+    {
+      "path": "agent-sidecar/src/pi/country-outage-skill-bundle.ts",
+      "a3BaselineSha256": "924b57293005b123cbaaede68ea8ed75f973f56cd6a537a70a9865f1fde3a89a"
+    },
+    {
+      "path": "agent-sidecar/src/pi/country-outage-tools.ts",
+      "a3BaselineSha256": "33082cd29d5303ec69e8220dfa68e2508358f2ed802da56ecca34a5d7aedd6ef"
+    },
+    {
+      "path": "agent-sidecar/src/pi/formal-model-runtime.ts",
+      "a3BaselineSha256": "91f25da46b6bb2d6e00a70241b82e245c59c6d0355b8fa699da0dd1e0403f7c5"
+    },
+    {
+      "path": "agent-sidecar/src/pi/pi-report-narrator.ts",
+      "a3BaselineSha256": "84d553a4f64cbc6943d7af8b08309c9e0e70e3e7eae2cb0989434ee58a25d461"
+    },
+    {
+      "path": "agent-sidecar/src/pi/static-resource-loader.ts",
+      "a3BaselineSha256": "a640259910377edfd5220a208333e4e2cbb8fa8eaaf55a84207485701a5a1cc8"
+    },
+    {
+      "path": "agent-sidecar/src/domain/contracts.ts",
+      "a3BaselineSha256": "84a9b024b2d401d80766b4ae82e14d8f37d9d296fc1224c5d94b2e731e17103d"
+    },
+    {
+      "path": "agent-sidecar/src/domain/domeye-client.ts",
+      "a3BaselineSha256": "b34fe1c518cdd69feaff4281b204c914a539ffc47a22e29913a26abb97db445c"
+    },
+    {
+      "path": "agent-sidecar/src/domain/observation-assembler.ts",
+      "a3BaselineSha256": "d0408570c85c7827af3687f089295157c864eed452897efe175b45fc48f44cd7"
+    },
+    {
+      "path": "agent-sidecar/src/report/contracts.ts",
+      "a3BaselineSha256": "c00c8e1883ba2c39ad32f93eeba988b26e69108ca3d798cb00d3aad5966af370"
+    },
+    {
+      "path": "agent-sidecar/src/report/draft-validator.ts",
+      "a3BaselineSha256": "65ed8f8c768556c722adfe110b7f4a90786f38e76020ba803863f3255ad8202c"
+    },
+    {
+      "path": "agent-sidecar/src/report/markdown-renderer.ts",
+      "a3BaselineSha256": "a3ef16e1acc43385b84f498c63a598d203bec5735f278b69f768ea0e064d77b5"
+    },
+    {
+      "path": "agent-sidecar/src/report/model-language-plan.ts",
+      "a3BaselineSha256": "62a610af839ea4cad076af178419cef2f64c21c88362e49cea34b77c570a04ad"
+    },
+    {
+      "path": "agent-sidecar/src/report/report-compiler.ts",
+      "a3BaselineSha256": "68b76a214fd9abbf08d737b8d772d8caf9217678c6c2bdd25fdb878598878bfe"
+    },
+    {
+      "path": "agent-sidecar/src/runtime/services.ts",
+      "a3BaselineSha256": "98406583deb8a64fbe85bedee3684650fa69e75316a7d6a690285ab99ddcf513"
+    },
+    {
+      "path": "contracts/agent/country-outage-report-facts-v1.schema.json",
+      "a3BaselineSha256": "9aea901c040ab309f839d674a562c57cbbd51aec4510099858347a1a99972fb1"
+    }
+  ],
+  "skillBundle": {
+    "version": "country_outage_report_skill_v6",
+    "algorithm": "sha256(relativePath\\0utf8Content\\0, ordered)",
+    "basePath": "agent-sidecar/resources/skills/country-outage-report",
+    "files": [
+      "SKILL.md",
+      "references/metrics-and-boundaries.md",
+      "references/report-output-contract.md"
+    ],
+    "sha256": "5f108d26f39dea9ff5a2902b00cdb113e3a76a8afd1b6560dffd7e9453d3a88d"
+  },
+  "responseModelPatch": {
+    "patchId": "pi-ai-openai-completions-response-model-v1",
+    "targetPathFromSidecar": "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",
+    "patchedSha256": "5805cc08566c4d9437280f68d996ef0fb452c15e2becb67b94c967b7ace2023b"
+  }
+}

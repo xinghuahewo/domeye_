@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/country-outage-wave.schema.json",
+  "title": "国家中断研究 Wave 合同",
+  "description": "表达同一 episode 内的一次显著下降；波次之间的关系是观测划分，不预设前兆或其他因果关系。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "wave_id",
+    "episode_id",
+    "run_id",
+    "ordinal",
+    "onset_at",
+    "detected_at",
+    "trough_at",
+    "rebound_at",
+    "relation_to_previous_wave",
+    "causal_relation",
+    "split_evidence",
+    "supporting_sample_ids"
+  ],
+  "properties": {
+    "schema_version": {"const": "country-outage-wave/v1"},
+    "wave_id": {"type": "string", "pattern": "^wave_v1_[0-9a-f]{24}$"},
+    "episode_id": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+    "run_id": {"type": "string", "pattern": "^research_run_v1_[0-9a-f]{24}$"},
+    "ordinal": {"type": "integer", "minimum": 1},
+    "onset_at": {"type": "string", "format": "date-time"},
+    "detected_at": {"type": "string", "format": "date-time"},
+    "trough_at": {"type": "string", "format": "date-time"},
+    "rebound_at": {"type": ["string", "null"], "format": "date-time"},
+    "relation_to_previous_wave": {"enum": ["first_wave", "same_episode_after_partial_rebound"]},
+    "causal_relation": {"enum": ["not_assessed", "unknown"]},
+    "split_evidence": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/splitEvidence"}
+      ]
+    },
+    "supporting_sample_ids": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"ordinal": {"const": 1}}, "required": ["ordinal"]},
+      "then": {"properties": {"relation_to_previous_wave": {"const": "first_wave"}, "split_evidence": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"ordinal": {"type": "integer", "minimum": 2}}, "required": ["ordinal"]},
+      "then": {
+        "properties": {
+          "relation_to_previous_wave": {"const": "same_episode_after_partial_rebound"},
+          "split_evidence": {"$ref": "#/$defs/splitEvidence"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "amplitude": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "sample_id"],
+      "properties": {
+        "value": {"type": "number", "minimum": 0},
+        "unit": {"const": "ipv4_equivalent_address"},
+        "sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"}
+      }
+    },
+    "splitEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["previous_trough_sample_id", "rebound_sample_id", "new_decline_sample_id", "rebound_amplitude", "new_decline_amplitude", "significance_threshold", "full_recovery_between_waves"],
+      "properties": {
+        "previous_trough_sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "rebound_sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "new_decline_sample_id": {"type": "string", "pattern": "^sample_v1_[0-9a-f]{24}$"},
+        "rebound_amplitude": {"$ref": "#/$defs/amplitude"},
+        "new_decline_amplitude": {"$ref": "#/$defs/amplitude"},
+        "significance_threshold": {"$ref": "#/$defs/amplitude"},
+        "full_recovery_between_waves": {"const": false}
+      }
+    }
+  }
+}

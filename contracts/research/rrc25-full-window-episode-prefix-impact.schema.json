@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/rrc25-full-window-episode-prefix-impact.schema.json",
+  "title": "RRC25 完整窗口 Episode 前缀影响记录",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "episode_id", "episode_as_id", "asn", "afi", "prefix",
+    "membership", "value_state", "evidence_links", "withdraw_origin_attribution",
+    "measurement_semantics"
+  ],
+  "properties": {
+    "schema_version": {"const": "rrc25-full-window-episode-prefix-impact/v1"},
+    "episode_id": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+    "episode_as_id": {"type": "string", "pattern": "^episode_as_v1_[0-9a-f]{24}$"},
+    "asn": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "afi": {"enum": ["ipv4", "ipv6"]},
+    "prefix": {"type": "string", "minLength": 3},
+    "membership": {"enum": ["trigger_prefixes", "peak_prefixes", "cumulative_prefixes", "observation_end_prefixes"]},
+    "value_state": {
+      "enum": ["observed", "observed_empty", "unknown_source_gap", "unknown_parse_failure", "unknown_mapping", "unknown_state_gap"]
+    },
+    "evidence_links": {
+      "type": "array", "uniqueItems": true,
+      "items": {"$ref": "country-outage-episode-as.schema.json#/$defs/evidenceLink"}
+    },
+    "withdraw_origin_attribution": {"const": "not_inferred_without_origin"},
+    "measurement_semantics": {"$ref": "rrc25-full-window-episode-as-measurement-semantics.schema.json#/$defs/measurementSemantics"}
+  }
+}

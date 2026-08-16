@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "domeye_codex_task_contract_v1",
+  "taskId": "replace-with-task-id",
+  "targetVersion": "replace-with-version-or-release-line",
+  "worktreeRoot": "/absolute/path/to/this/worktree",
+  "targetBranch": "codex/replace-with-task-branch",
+  "baseCommit": "replace-with-40-character-commit-sha",
+  "allowedPaths": [
+    "path/to/allowed/file",
+    "path/to/allowed/directory/**"
+  ],
+  "forbiddenPaths": [
+    "backend/core/**",
+    "backend/core.sha256",
+    "path/to/legacy/**"
+  ],
+  "authoritativeReferences": [
+    "AGENTS.md",
+    "path/to/current/version/contract"
+  ],
+  "explicitNonGoals": [
+    "不修改旧版本实现",
+    "不改变生产部署配置"
+  ],
+  "forbiddenContentRules": [
+    {
+      "name": "禁止新版依赖旧版",
+      "includePaths": [
+        "path/to/current/version/**"
+      ],
+      "regex": "(?:from|import)\\s+legacy(?:\\.|\\s|$)",
+      "message": "当前版本不得直接导入 legacy；兼容逻辑必须经过显式适配器。"
+    }
+  ],
+  "requiredChecks": [
+    {
+      "name": "定向单元测试",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "replace.with.real.test"
+      ]
+    },
+    {
+      "name": "差异格式检查",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ]
+    }
+  ]
+}

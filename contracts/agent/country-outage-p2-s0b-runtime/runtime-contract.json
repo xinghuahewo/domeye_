@@ -1,0 +1,117 @@
+{
+  "schema_version": "country_outage_p2_s0b_runtime_contract_v1",
+  "contract_version": "country-outage-agent-p2-s0b-governed-auto-invocation-v1",
+  "goal": "通过不可变 Registry Snapshot 管住当前 Tool/Operator 的按需自动调用",
+  "runtime_modes": {
+    "shadow": {
+      "activation_scope": "runtime_candidate_shadow_only",
+      "runtime_integration": "implemented_not_deployed",
+      "production_deployed": false
+    },
+    "production": {
+      "activation_scope": "production_active",
+      "runtime_integration": "deployed",
+      "production_deployed": true,
+      "entry": "只接受由同候选验收清单和正式release身份派生的内容寻址promotion快照"
+    },
+    "cross_mode_fallback": "forbidden"
+  },
+  "interfaces": {
+    "snapshot_loader": {
+      "authority": "host_only",
+      "load_boundary": "once_per_semantic_turn_before_plan_admission",
+      "snapshot_digest_algorithm": "p2-s0b-canonical-json-v1+sha256",
+      "mutation": "forbidden",
+      "failure_policy": "fail_closed"
+    },
+    "capability_resolver": {
+      "input": "validated UserGoalPlan and deterministic GroundingPlan",
+      "output": "goal to capability and execution-unit resolution receipt",
+      "model_may_select_registry_identity": false
+    },
+    "plan_admission": {
+      "input": "GroundingPlan plus fixed Registry Snapshot",
+      "output": "node bindings and admission receipt",
+      "must_precede_executor": true
+    },
+    "executor": {
+      "input": "admitted nodes only",
+      "output": "versioned execution receipts and Evidence",
+      "unregistered_handler_behavior": "reject_before_execution"
+    }
+  },
+  "call_policy": {
+    "required": [
+      {
+        "capability_id": "CAP-001",
+        "when": "any supported or partial event-bound fact goal",
+        "reason": "每个事实节点必须继承同一事件及 publication 绑定"
+      }
+    ],
+    "conditional": "只有 GroundingPlan 对当前目标生成节点时才调用",
+    "forbidden": [
+      "cause_or_responsibility",
+      "real_user_or_national_impact",
+      "dns_http_traffic",
+      "cross_event_investigation",
+      "formal_historical_trend",
+      "cross_unit_absolute_total"
+    ]
+  },
+  "supported_handlers": [
+    {"unit_id": "TOOL-01", "handler": "binding_preflight", "kind": "read_tool"},
+    {"unit_id": "TOOL-02", "handler": "readOverview", "kind": "read_tool"},
+    {"unit_id": "TOOL-03", "handler": "readSeries", "kind": "read_tool"},
+    {"unit_id": "TOOL-04", "handler": "readAsns", "kind": "read_tool"},
+    {"unit_id": "TOOL-05", "handler": "readPaths", "kind": "read_tool"},
+    {"unit_id": "TOOL-06", "handler": "readAudit", "kind": "read_tool"},
+    {"unit_id": "OP-01", "handler": "series_extrema", "kind": "deterministic_operator"},
+    {"unit_id": "OP-02", "handler": "address_family_comparison", "kind": "deterministic_operator"},
+    {"unit_id": "OP-03", "handler": "fact_timeline", "kind": "deterministic_operator"},
+    {"unit_id": "OP-04", "handler": "event_window_trend", "kind": "deterministic_operator"}
+  ],
+  "turn_binding": {
+    "fields": [
+      "candidate_id",
+      "registry_snapshot_id",
+      "registry_revision",
+      "capability_id",
+      "capability_version",
+      "capability_contract_digest",
+      "execution_unit_id",
+      "execution_unit_version",
+      "unit_contract_digest",
+      "unit_implementation_digest",
+      "unit_semantic_digest"
+    ],
+    "mid_turn_reload": "forbidden",
+    "next_turn_may_load_new_snapshot": true
+  },
+  "error_codes": [
+    "registry_snapshot_missing",
+    "registry_snapshot_unsafe",
+    "registry_snapshot_invalid",
+    "registry_snapshot_digest_mismatch",
+    "registry_runtime_mode_invalid",
+    "registry_runtime_mode_mismatch",
+    "capability_not_active",
+    "execution_unit_not_active",
+    "execution_handler_missing",
+    "registry_permission_denied",
+    "registry_boundary_violation",
+    "capability_unit_digest_mismatch",
+    "execution_dependency_missing",
+    "required_call_missing",
+    "registry_plan_invalid",
+    "registry_admission_missing"
+  ],
+  "boundaries": {
+    "event_type": "country_outage",
+    "collector_id": "rrc25",
+    "permission": "country_outage:read",
+    "registry_write_from_runtime": false,
+    "production_deployed": "由显式运行模式决定，shadow=false，production=true",
+    "prod32_switched": false,
+    "network_rca": false
+  }
+}

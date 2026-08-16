@@ -1,0 +1,97 @@
+{
+  "schema_version": "data-quality-report/v1",
+  "report_id": "dqr-feb-mar-2026-current-not-accepted",
+  "data_profile": {
+    "profile_id": "feb-mar-2026",
+    "profile_sha256": "44efcf2b5f3c3aee0a9f3966b6eef4e9855fbfd6ea244dcf15231865f38e0b46",
+    "window": {"start": "2026-01-31T16:00:00Z", "end": "2026-03-31T16:00:00Z", "boundary": "[start,end)", "timezone": "Asia/Shanghai"},
+    "snapshot_time": "2026-03-31T15:59:59Z"
+  },
+  "source_release": {
+    "release_id": "20260717T124354Z",
+    "git_sha": "db230634a31a289d3d2ba6aa27a862117c04ade0",
+    "data_artifact_sha256": null,
+    "probe_fingerprint_sha256": "ec8d336b66a862f01e9917347dffd963cfa82a8c0f95577158fac8cdde8f74f4"
+  },
+  "generator": {"name": "domeye-p0-quality-report", "version": "1.0.0", "source_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "execution": {"mode": "read_only_repeatable_read", "database_write_operations": 0, "started_at": "2026-07-20T12:24:50Z", "finished_at": "2026-07-20T12:27:59Z"},
+  "dimensions": {
+    "completeness": {"dimension": "completeness", "status": "pass", "blocking": true, "check_ids": ["completeness-overlay-inventory"], "summary_zh": "固定 Overlay 的 37 张目标表均已盘点。"},
+    "uniqueness": {"dimension": "uniqueness", "status": "fail", "blocking": true, "check_ids": ["uniqueness-event-locator"], "summary_zh": "同一劫持事实 locator 被两个总表 Incident 复用。"},
+    "referential_integrity": {"dimension": "referential_integrity", "status": "fail", "blocking": true, "check_ids": ["references-reverse-orphan"], "summary_zh": "国家中断事实表仍有一条未规范化反向孤儿。"},
+    "temporal_consistency": {"dimension": "temporal_consistency", "status": "fail", "blocking": true, "check_ids": ["time-fact-event-mismatch"], "summary_zh": "劫持事实主键复用造成一组事件与事实时间不一致。"},
+    "raw_traceability": {"dimension": "raw_traceability", "status": "fail", "blocking": false, "check_ids": ["raw-full-window"], "summary_zh": "原始 MRT 仅覆盖 60.45%，不能声明 raw_traceable。"},
+    "sample_coverage": {"dimension": "sample_coverage", "status": "pass", "blocking": true, "check_ids": ["coverage-known-gaps"], "summary_zh": "6720 个源缺槽和 6 个处理缺槽均已识别。"},
+    "reproducibility": {"dimension": "reproducibility", "status": "pass", "blocking": true, "check_ids": ["reproducibility-live-probe"], "summary_zh": "live probe 固定输入与结果指纹已经记录。"},
+    "event_phase_coverage": {"dimension": "event_phase_coverage", "status": "pending", "blocking": true, "check_ids": ["phase-normalization-pending"], "summary_zh": "六类物理字段已盘点，D2 尚未生成逐记录阶段状态。"},
+    "fixed_window_bounds": {"dimension": "fixed_window_bounds", "status": "pass", "blocking": true, "check_ids": ["window-public-tables"], "summary_zh": "37 张固定 Overlay 表的窗口外记录为零。"},
+    "unknown_missingness": {"dimension": "unknown_missingness", "status": "pending", "blocking": true, "check_ids": ["missing-normalization-pending"], "summary_zh": "D2 尚未将历史空值全部映射为冻结状态和原因。"}
+  },
+  "checks": [
+    {
+      "check_id": "completeness-overlay-inventory", "dimension": "completeness", "rule_id": "P0-COMPLETE-001", "title_zh": "固定 Overlay 目标表完整", "status": "pass", "severity": "blocking", "scope_ref": "database:public:37-tables",
+      "observed": {"value": 37, "unit": "record_count"}, "expected": {"operator": "eq", "value": 37, "unit": "record_count"}, "unknown_count": 0, "failure_samples": [],
+      "evidence_refs": [{"ref_id": "baseline:tables", "locator": "p0-data-baseline.json#/tables", "sha256": "0c0f4aab573ecc16cea95807505c842d1c3caa53064fa3457ebada34f594f14e"}], "message_zh": "目标表集合精确为 37 张。", "remediation_stage": "none"
+    },
+    {
+      "check_id": "uniqueness-event-locator", "dimension": "uniqueness", "rule_id": "P0-UNIQUE-001", "title_zh": "事件 locator 唯一", "status": "fail", "severity": "blocking", "scope_ref": "event_table_202603:hijack-locator",
+      "observed": {"value": 1, "unit": "group_count"}, "expected": {"operator": "eq", "value": 0, "unit": "group_count"}, "unknown_count": 0,
+      "failure_samples": [{"source_ref": "event_table_202603", "primary_key": "hijack/80.244.11.0-24/1/r", "field": "detail_url", "event_time": "2026-03-04T11:35:43Z", "reason_codes": ["source_fact_collision"]}],
+      "evidence_refs": [{"ref_id": "probe:duplicate-locator", "locator": "p0-quality-probe.json#/reference_integrity/duplicate_event_locators", "sha256": "471fb0196480fbf2645ae2dc855099eee7ee1e30438919566f6e4f27b29cc10d"}], "message_zh": "发现一组复用 locator。", "remediation_stage": "D2"
+    },
+    {
+      "check_id": "references-reverse-orphan", "dimension": "referential_integrity", "rule_id": "P0-REF-001", "title_zh": "事实表反向孤儿为零", "status": "fail", "severity": "blocking", "scope_ref": "country_outage_202603",
+      "observed": {"value": 1, "unit": "record_count"}, "expected": {"operator": "eq", "value": 0, "unit": "record_count"}, "unknown_count": 0,
+      "failure_samples": [{"source_ref": "country_outage_202603", "primary_key": "source=r,country=,outage_id=1", "field": "country", "event_time": "2026-03-10T08:24:31Z", "reason_codes": ["invalid_identity", "legacy_window_contamination"]}],
+      "evidence_refs": [{"ref_id": "probe:reverse-orphan", "locator": "p0-quality-probe.json#/reference_integrity/reverse_orphans", "sha256": "471fb0196480fbf2645ae2dc855099eee7ee1e30438919566f6e4f27b29cc10d"}], "message_zh": "一条空国家事实尚待只读 quarantine。", "remediation_stage": "D2"
+    },
+    {
+      "check_id": "time-fact-event-mismatch", "dimension": "temporal_consistency", "rule_id": "P0-TIME-001", "title_zh": "事件与事实时间一致", "status": "fail", "severity": "blocking", "scope_ref": "hijack_202603:80.244.11.0/24",
+      "observed": {"value": 1, "unit": "record_count"}, "expected": {"operator": "eq", "value": 0, "unit": "record_count"}, "unknown_count": 0,
+      "failure_samples": [{"source_ref": "hijack_202603", "primary_key": "source=r,prefix=80.244.11.0/24,hijack_eventid=1", "field": "s_time,e_time,duration", "event_time": "2026-03-04T11:35:43Z", "reason_codes": ["source_fact_collision"]}],
+      "evidence_refs": [{"ref_id": "probe:time-mismatch", "locator": "p0-quality-probe.json#/reference_integrity/time_mismatches", "sha256": "471fb0196480fbf2645ae2dc855099eee7ee1e30438919566f6e4f27b29cc10d"}], "message_zh": "一组事实混合两个 Incident 的状态。", "remediation_stage": "D2"
+    },
+    {
+      "check_id": "raw-full-window", "dimension": "raw_traceability", "rule_id": "P0-RAW-001", "title_zh": "原始制品全窗口可追溯", "status": "fail", "severity": "warning", "scope_ref": "raw:rrc25:2026-02..2026-03",
+      "observed": {"value": 0.6045, "unit": "ratio_0_1"}, "expected": {"operator": "eq", "value": 1, "unit": "ratio_0_1"}, "unknown_count": 0,
+      "failure_samples": [{"source_ref": "raw:rrc25", "primary_key": null, "field": null, "event_time": "2026-01-31T16:00:00Z", "reason_codes": ["source_unavailable"]}],
+      "evidence_refs": [{"ref_id": "raw-audit:feb-mar-2026", "locator": "docs/data/P0原始制品审计.json", "sha256": null}], "message_zh": "缺少 6720 个 UPDATE 槽。", "remediation_stage": "external"
+    },
+    {
+      "check_id": "coverage-known-gaps", "dimension": "sample_coverage", "rule_id": "P0-COVERAGE-001", "title_zh": "覆盖缺口完成分类", "status": "pass", "severity": "blocking", "scope_ref": "feature_country:five-minute-slots",
+      "observed": {"value": true, "unit": "boolean"}, "expected": {"operator": "classified_only", "value": true, "unit": "boolean"}, "unknown_count": 0, "failure_samples": [],
+      "evidence_refs": [{"ref_id": "baseline:timeseries", "locator": "p0-data-baseline.json#/timeseries_coverage", "sha256": "0c0f4aab573ecc16cea95807505c842d1c3caa53064fa3457ebada34f594f14e"}], "message_zh": "源缺槽与处理缺槽分开记录。", "remediation_stage": "none"
+    },
+    {
+      "check_id": "reproducibility-live-probe", "dimension": "reproducibility", "rule_id": "P0-REPRO-001", "title_zh": "live probe 结果可复核", "status": "pass", "severity": "blocking", "scope_ref": "probe:canonical-output",
+      "observed": {"value": "ec8d336b66a862f01e9917347dffd963cfa82a8c0f95577158fac8cdde8f74f4", "unit": "sha256_digest"}, "expected": {"operator": "eq", "value": "ec8d336b66a862f01e9917347dffd963cfa82a8c0f95577158fac8cdde8f74f4", "unit": "sha256_digest"}, "unknown_count": 0, "failure_samples": [],
+      "evidence_refs": [{"ref_id": "probe:live", "locator": "p0-quality-probe.json#/result_fingerprint_sha256", "sha256": "471fb0196480fbf2645ae2dc855099eee7ee1e30438919566f6e4f27b29cc10d"}], "message_zh": "输入身份、查询时间和结果指纹已记录。", "remediation_stage": "none"
+    },
+    {
+      "check_id": "phase-normalization-pending", "dimension": "event_phase_coverage", "rule_id": "P0-PHASE-001", "title_zh": "六类事件阶段状态完整", "status": "pending", "severity": "blocking", "scope_ref": "normalized:six-event-types:phase-state",
+      "observed": {"value": null, "unit": "ratio_0_1"}, "expected": {"operator": "eq", "value": 1, "unit": "ratio_0_1"}, "unknown_count": 1171464, "failure_samples": [],
+      "evidence_refs": [{"ref_id": "coverage-matrix:six-events", "locator": "docs/data/P0六类事件字段覆盖矩阵.csv", "sha256": null}], "message_zh": "D0 只完成物理字段盘点，等待 D2 逐记录规范化。", "remediation_stage": "D2"
+    },
+    {
+      "check_id": "window-public-tables", "dimension": "fixed_window_bounds", "rule_id": "P0-WINDOW-001", "title_zh": "固定 Overlay 窗口外记录为零", "status": "pass", "severity": "blocking", "scope_ref": "database:public:37-tables",
+      "observed": {"value": 0, "unit": "record_count"}, "expected": {"operator": "eq", "value": 0, "unit": "record_count"}, "unknown_count": 0, "failure_samples": [],
+      "evidence_refs": [{"ref_id": "baseline:window", "locator": "p0-data-baseline.json#/tables", "sha256": "0c0f4aab573ecc16cea95807505c842d1c3caa53064fa3457ebada34f594f14e"}], "message_zh": "带时间字段的目标表没有固定窗口外记录。", "remediation_stage": "none"
+    },
+    {
+      "check_id": "missing-normalization-pending", "dimension": "unknown_missingness", "rule_id": "P0-MISSING-001", "title_zh": "派生空值原因完整", "status": "pending", "severity": "blocking", "scope_ref": "normalized:nullable-derived-fields",
+      "observed": {"value": null, "unit": "record_count"}, "expected": {"operator": "eq", "value": 0, "unit": "record_count"}, "unknown_count": 1, "failure_samples": [],
+      "evidence_refs": [{"ref_id": "audit:missing-risks", "locator": "docs/data/P0数据现状审计.md#当前指标实现中的缺失补零风险", "sha256": null}], "message_zh": "规范层尚未生成，未知派生缺失门禁保持待定。", "remediation_stage": "D2"
+    }
+  ],
+  "check_summary": {"total_check_count": 10, "passed_check_count": 4, "failed_check_count": 4, "pending_check_count": 2, "blocking_failed_check_count": 3, "blocking_pending_check_count": 2},
+  "gate": {
+    "status": "failed",
+    "admission_level": "not_accepted",
+    "blocking_failed_check_ids": ["uniqueness-event-locator", "references-reverse-orphan", "time-fact-event-mismatch"],
+    "blocking_pending_check_ids": ["phase-normalization-pending", "missing-normalization-pending"],
+    "warning_check_ids": ["raw-full-window"],
+    "decision_reasons_zh": ["D2 尚未关闭引用碰撞、反向孤儿和时间混合状态。", "D2 尚未完成逐记录阶段与缺失语义规范化。", "历史原始 MRT 覆盖不足，最终最高只能声明 legacy_compatible。"]
+  },
+  "generated_at": "2026-07-20T12:28:00Z",
+  "report_fingerprint_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+}

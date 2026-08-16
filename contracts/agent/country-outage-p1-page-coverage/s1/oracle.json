@@ -1,0 +1,121 @@
+{
+  "schema_version": "country_outage_p1_page_series_oracle_v2",
+  "candidate_stage": "S1",
+  "status": "candidate_implemented",
+  "identity": {
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "country_code": "IR",
+    "window_start_utc": "2026-02-27T00:10:00Z",
+    "window_end_utc": "2026-03-11T00:00:00Z",
+    "data_through": "2026-03-11T00:00:00Z",
+    "lifecycle_state": "event_end_unknown"
+  },
+  "positive_cases": [
+    {
+      "case_id": "S1-IP-CHANGE-BOTH",
+      "question": "IP地址变化情况",
+      "analysis_mode": "change_summary",
+      "address_family": "both",
+      "fixed_cohort": {
+        "ipv4": {
+          "first": 10156800,
+          "last": 10069760,
+          "minimum": 9577728,
+          "minimum_at_utc": "2026-02-28T14:35:00Z",
+          "maximum": 10156800,
+          "net_change": -87040,
+          "unit": "unique_ipv4_address"
+        },
+        "ipv6": {
+          "first": 267292,
+          "last": 267288,
+          "minimum": 267288,
+          "minimum_at_utc": "2026-03-04T08:55:00Z",
+          "maximum": 267292,
+          "net_change": -4,
+          "unit": "ipv6_slash48_equivalent"
+        },
+        "combined_absolute_total": "forbidden"
+      },
+      "new_prefix_supplement_at_data_through": {
+        "ipv4_cumulative_prefix_count": 700,
+        "ipv4_visible_prefix_count": 111,
+        "ipv4_visible_address_count": 19523,
+        "ipv6_cumulative_prefix_count": 1,
+        "ipv6_visible_prefix_count": 1,
+        "ipv6_visible_slash48_count": 524288
+      },
+      "answerability": "supported"
+    },
+    {
+      "case_id": "S1-IP-TREND-BOTH",
+      "question": "ip地址变化趋势",
+      "analysis_mode": "event_window_trend",
+      "uses_same_series_facts_as": "S1-IP-CHANGE-BOTH",
+      "formal_historical_trend": false,
+      "answerability": "supported"
+    }
+  ],
+  "matrix_cases": [
+    "ipv4",
+    "ipv6",
+    "both",
+    "generic_ip",
+    "exclude_new_prefixes",
+    "new_prefix_only",
+    "one_family_missing_partial",
+    "all_null_invalid_data",
+    "empty_timestamps_invalid_data",
+    "track_length_mismatch_invalid_data",
+    "unit_mismatch_invalid_data",
+    "identity_conflict_invalid_data",
+    "capability_not_negotiated_before_tool",
+    "metric_definition_mismatch_invalid_data",
+    "request_aborted_no_execution",
+    "post_tool_abort_no_publish",
+    "historical_scope_unsupported",
+    "formal_historical_trend_explicitly_unsupported",
+    "live_resolver_and_overview_verified_before_series",
+    "resolver_identity_conflict_before_series",
+    "resolver_capability_unavailable_before_series",
+    "overview_identity_conflict_before_series",
+    "source_receipt_or_evidence_hash_invalid",
+    "data_through_tail_null_unavailable_without_backfill",
+    "permission_denied_before_resolver",
+    "shared_deadline_timeout_no_publish",
+    "nonempty_evidence_state_partial_merge"
+    ,"default_verifier_missing_fail_closed"
+    ,"cross_publication_evidence_state_conflict_before_execution"
+  ],
+  "hard_gates": [
+    "null 和 unavailable 不得写成 0",
+    "单位错误或身份冲突时零事实、零证据、零状态提交",
+    "resolver、overview 和 series 的 endpoint、原始响应 SHA 与真实 JSON Pointer 可解析",
+    "resolver、overview、series 各自形成 EvidenceBinding，不允许只有 series 结构化绑定",
+    "所有派生事实具有 operator ID/version、输入 evidence ID 与输出回执",
+    "地址族 compare 的输入绑定两个 extrema operator receipt，而非直接绑定原始轨道",
+    "IPv4 与 IPv6 不合并总量或严重度",
+    "新前缀与固定 cohort 分层",
+    "累计新前缀不生成下降后回升语义",
+    "data_through 和极值后变化不等于恢复",
+    "事实只来自 RRC25 同 publication series 与确定性算子",
+    "权限由宿主授予，模型和用户文本不能放权",
+    "resolver、overview、series 共享 deadline，超时不发布半成品",
+    "data-through 当前值只取精确时间点，尾点 null 不向前回填",
+    "显式 formal_historical 实体在归一计划中保持 true 且零 CAP-015 执行"
+    ,"生产执行必须显式注入 live resolver+overview verifier，默认不允许 fixture verifier"
+    ,"既有 EvidenceState 与当前 publication 身份不同时整轮失败关闭且不得合并"
+  ],
+  "state_oracle": {
+    "supported": "proposal 与 after 一致且包含两个已验证地址族",
+    "partial": "address_family 保持用户请求，仅已验证轨道进入 EvidenceState，完整 goal 不进入 verifiedGoalIds；已有 EvidenceState 合并保留；缺失轨道进入 rejected_or_missing_metrics",
+    "invalid_or_cancelled": "proposal=null 且 after 与 before 相等"
+  },
+  "test": {
+    "path": "agent-sidecar/tests/p1-page-capability-series.test.ts",
+    "expected_tests": 36
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "schema_version": "country_outage_p1_ip_grounding_matrix_v1",
+  "candidate_stage": "S1",
+  "status": "candidate_implemented",
+  "user_goal_contract": "开放用户语言在 S2 处理；S1 输入为已审定的 ControlledIpUserGoal，不通过关键词枚举猜意图。",
+  "logical_nodes": [
+    "G0 OP-P1-IDENTITY-GATE: CAP-001/CAP-002",
+    "G1/G2 TOOL-P1-PAGE-SERIES-READ: CAP-006/CAP-007",
+    "G3/G4 OP-P1-SERIES-EXTREMA: CAP-016",
+    "G5 OP-P1-ADDRESS-FAMILY-COMPARE: CAP-017",
+    "G6 OP-P1-CURRENT-VALUE: CAP-008",
+    "G7 OP-P1-METRIC-DEFINITION-GATE: CAP-009"
+  ],
+  "rows": [
+    {
+      "input": "generic_ip",
+      "address_family": "both",
+      "reason_code": "generic_ip_defaults_to_ipv4_and_ipv6",
+      "fixed_tracks": ["fixed_visible_ipv4_address_count", "fixed_visible_ipv6_slash48_count"]
+    },
+    {
+      "input": "explicit_ipv4",
+      "address_family": "ipv4",
+      "reason_code": "explicit_address_family",
+      "fixed_tracks": ["fixed_visible_ipv4_address_count"]
+    },
+    {
+      "input": "explicit_ipv6",
+      "address_family": "ipv6",
+      "reason_code": "explicit_address_family",
+      "fixed_tracks": ["fixed_visible_ipv6_slash48_count"]
+    },
+    {
+      "input": "explicit_both",
+      "address_family": "both",
+      "reason_code": "explicit_address_family",
+      "fixed_tracks": ["fixed_visible_ipv4_address_count", "fixed_visible_ipv6_slash48_count"]
+    },
+    {
+      "input": "exclude_new_prefixes",
+      "include_fixed_cohort": true,
+      "include_new_prefixes": false,
+      "operators": ["OP-P1-SERIES-EXTREMA"]
+    },
+    {
+      "input": "new_prefix_only",
+      "include_fixed_cohort": false,
+      "include_new_prefixes": true,
+      "operators": ["OP-P1-CURRENT-VALUE"]
+    },
+    {
+      "input": "event_binding_missing",
+      "answerability": "clarify",
+      "nodes": [],
+      "state_commit": "none"
+    },
+    {
+      "input": "historical_or_cross_event",
+      "answerability": "unsupported",
+      "reason_code": "formal_or_cross_event_trend_not_in_s1",
+      "nodes": [],
+      "state_commit": "none"
+    },
+    {
+      "input": "formal_historical_trend_explicit",
+      "preserved_entity": "trendProduct=formal_historical",
+      "answerability": "unsupported",
+      "reason_code": "formal_or_cross_event_trend_not_in_s1",
+      "nodes": [],
+      "state_commit": "none"
+    }
+  ],
+  "hard_invariants": [
+    "不存在 address_family != ipv6 则按 ipv4 执行的分支",
+    "泛指 IP 的 both 是显式实体值，不是两个答案的文本拼接猜测",
+    "情况与趋势共享 Tool 和算子，只改变确定性回答装配方式",
+    "NormalizedIpUserGoal 显式记录 requested goal、both、人口、时间范围和分析方式",
+    "每次事件绑定都先真实读取 resolver 与 overview，保存两份原始响应 SHA 并完成事件能力到登记 CAP 的确定性映射",
+    "当前窗口趋势不调用正式历史趋势能力 CAP-015",
+    "显式 formal_historical 实体在 NormalizedIpUserGoal 与失败 GroundingPlan 中保持 true，不得改写为普通事件内趋势",
+    "失败 GroundingPlan 不包含执行节点"
+  ],
+  "state_transaction": {
+    "success": "在回答边界验证后提交完整 proposal",
+    "partial": "DialogState 保持用户请求的 both；EvidenceState 只写已验证轨道并记录缺失指标",
+    "failure": "proposal=null，after 与 before 逐字段相等",
+    "identity_conflict": "既有 EvidenceState.bindingIdentity 与当前 incident+publication+revision+rrc25+dataThrough 不同，必须在 verifier/Tool 前整轮失败关闭",
+    "verifier_policy": "生产默认没有 fixture verifier；宿主必须显式注入 HttpEventBindingVerifier"
+  },
+  "implementation": {
+    "source": "agent-sidecar/src/chat/page-capability-series.ts",
+    "export": "groundControlledIpGoal"
+  }
+}

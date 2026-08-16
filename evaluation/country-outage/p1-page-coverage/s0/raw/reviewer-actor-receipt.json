@@ -1,0 +1,21 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_actor_receipt_v1",
+  "artifact_kind": "product_semantic_truth",
+  "evidence_kind": "reviewer_actor_receipt",
+  "candidate_id": "p1-page-coverage-s0-aa8e16b63317",
+  "stage": "S0",
+  "run_id": "agent-root-s0-blind-semantic-reviewer-turn-001",
+  "captured_at": "2026-08-10T22:23:00+08:00",
+  "actor_id": "s0-blind-semantic-reviewer",
+  "role": "product_semantic_truth_reviewer",
+  "allowed_actions": [
+    "write_blind_truth",
+    "review_semantic_diff",
+    "block_stage"
+  ],
+  "denied_actions": [
+    "generate_probe_cases",
+    "modify_implementation"
+  ],
+  "orchestrator_receipt_id": "goal-019fe586-agent-root-s0-blind-semantic-reviewer-001"
+}

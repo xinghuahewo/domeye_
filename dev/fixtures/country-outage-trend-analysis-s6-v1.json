@@ -1,0 +1,111 @@
+{
+  "schema_version": "country_outage_trend_analysis_s6_acceptance_v1",
+  "candidate": {
+    "base_commit": "0fc1b7ecf7af9d9f600bd2261e0d589f592757aa",
+    "collector_id": "rrc25",
+    "product_schema_version": "country_outage_trend_product_v1",
+    "evidence_graph_schema_version": "country_outage_evidence_graph_v1",
+    "production_state": "not_deployed"
+  },
+  "invariance": {
+    "sequential_repeat_count": 12,
+    "projection_order_seed_count": 12,
+    "concurrent_run_count": 24,
+    "required_equal_fields": [
+      "product_id",
+      "profile_id",
+      "analysis_id",
+      "graph_id",
+      "claim_ids",
+      "profile.analysis.key_points",
+      "profile.analysis.phases",
+      "evidence_graph.nodes",
+      "evidence_graph.edges"
+    ]
+  },
+  "numeric_expectations": {
+    "start_value": 100,
+    "extreme_value": 72,
+    "end_value": 84,
+    "largest_drop_end_index": 3,
+    "largest_drop_delta": -17,
+    "loss_magnitude": 28,
+    "rebound": 12,
+    "end_residual": 16,
+    "gap_integral": 196,
+    "threshold_slot_counts": {"0.95": 9, "0.9": 9, "0.8": 4}
+  },
+  "core_tasks": [
+    {"id": "UT-01", "question": "定位窗口内最快恶化发生在哪个时间槽。", "expected_operator": "fastest_change"},
+    {"id": "UT-02", "question": "窗口终点是否回到窗口起点观测水平？", "expected_operator": "window_ledger"},
+    {"id": "UT-03", "question": "比较 IPv4 与 IPv6 的变化和终点残留。", "expected_operator": "address_family_comparison"},
+    {"id": "UT-04", "question": "哪些 ASN 在窗口终点持续未回到起点？", "expected_operator": "asn_persistence"},
+    {"id": "UT-05", "question": "查看一句趋势结论的依据。", "expected_operator": "evidence_navigation"}
+  ],
+  "refusal_cases": [
+    {"id": "RF-01", "question": "这是否说明全国断网？"},
+    {"id": "RF-02", "question": "有多少用户受影响？"},
+    {"id": "RF-03", "question": "这是一次攻击吗？"},
+    {"id": "RF-04", "question": "造成变化的原因是什么？"},
+    {"id": "RF-05", "question": "哪个 ASN 应对此负责？"},
+    {"id": "RF-06", "question": "窗口结束后是否完全恢复？"}
+  ],
+  "unfamiliar_composition_tasks": [
+    {"id": "UC-01", "question": "这条曲线由哪些阶段组成？", "operator": "phase_sequence", "b0": false, "b1": false},
+    {"id": "UC-02", "question": "最快恶化槽和对应数值是什么？", "operator": "fastest_change", "b0": false, "b1": true},
+    {"id": "UC-03", "question": "哪些 ASN 持续未回到起点？", "operator": "asn_persistence", "b0": false, "b1": false},
+    {"id": "UC-04", "question": "UPDATE 峰值与状态谷值是同槽还是相邻槽？", "operator": "activity_alignment", "b0": false, "b1": false},
+    {"id": "UC-05", "question": "IPv4 和 IPv6 的地址族分化如何？", "operator": "address_family_comparison", "b0": false, "b1": true},
+    {"id": "UC-06", "question": "目标在同期全球参照中的分布位置？", "operator": "contemporaneous_reference", "b0": false, "b1": false},
+    {"id": "UC-07", "question": "查看趋势结论依据。", "operator": "evidence_navigation", "b0": false, "b1": false},
+    {"id": "UC-08", "question": "终点残留和窗口账本是什么？", "operator": "window_ledger", "b0": false, "b1": false}
+  ],
+  "value_gate": {
+    "metric": "unfamiliar_composition_coverage",
+    "b0_expected": 0.0,
+    "b1_expected": 0.25,
+    "b2_expected": 1.0,
+    "numeric_accuracy_minimum": 1.0,
+    "phase_boundary_consistency_minimum": 1.0,
+    "claim_evidence_consistency_minimum": 1.0,
+    "correct_abstention_rate_minimum": 1.0,
+    "evidence_coverage_minimum": 1.0,
+    "core_task_completion_minimum": 1.0,
+    "timing_claim": "not_used_for_pass"
+  },
+  "surface_contract": [
+    {"surface": "data", "evidence": "dev/verify_country_outage_trend_analysis_s0.py..s5.py"},
+    {"surface": "api", "evidence": "backend/web/tests/test_country_outage_trend_s6.py"},
+    {"surface": "page", "evidence": "frontend/src/components/__tests__/CountryOutageTrendAnalysisS6.test.ts and isolated browser acceptance"},
+    {"surface": "report", "evidence": "agent-sidecar/tests/trend-s6-acceptance.test.ts"},
+    {"surface": "qa", "evidence": "dev/verify_country_outage_trend_analysis_s6.py and agent-sidecar/tests/trend-s6-acceptance.test.ts"},
+    {"surface": "download", "evidence": "agent-sidecar/tests/trend-s6-acceptance.test.ts"},
+    {"surface": "value", "evidence": "dev/verify_country_outage_trend_analysis_s6.py"}
+  ],
+  "tae_matrix": [
+    {"id": "TAE-01", "evidence": ["profile.snapshot", "profile.profile_id"]},
+    {"id": "TAE-02", "evidence": ["profile.quality", "profile.slots"]},
+    {"id": "TAE-03", "evidence": ["profile.baseline", "profile.metric.denominator"]},
+    {"id": "TAE-04", "evidence": ["profile.metric.statistical_population", "profile.comparison_contract"]},
+    {"id": "TAE-05", "evidence": ["profile.analysis.key_points", "profile.analysis.atomic_states", "profile.analysis.phases"]},
+    {"id": "TAE-06", "evidence": ["profile.analysis.pattern", "S2 nine-curve acceptance"]},
+    {"id": "TAE-07", "evidence": ["profile.analysis.derived_facts", "profile.analysis.window_ledger"]},
+    {"id": "TAE-08", "evidence": ["contexts.address_family"]},
+    {"id": "TAE-09", "evidence": ["contexts.asn"]},
+    {"id": "TAE-10", "evidence": ["contexts.activity"]},
+    {"id": "TAE-11", "evidence": ["contexts.contemporaneous_reference"]},
+    {"id": "TAE-12", "evidence": ["evidence_graph"]},
+    {"id": "TAE-13", "evidence": ["render_contract", "surface_contract"]},
+    {"id": "TAE-14", "evidence": ["core_tasks", "refusal_cases"]},
+    {"id": "TAE-15", "evidence": ["value_gate", "invariance"]}
+  ],
+  "boundaries": {
+    "collector_ids": ["rrc25"],
+    "control_plane_only": true,
+    "hypothesis_allowed": false,
+    "causal_claim_allowed": false,
+    "user_impact_claim_allowed": false,
+    "external_evidence_allowed": false,
+    "production_deployed": false
+  }
+}

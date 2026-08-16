@@ -1,0 +1,46 @@
+{
+  "schema_version": "country_outage_trend_analysis_s4_fixture_v1",
+  "profile_curve_id": "CURVE-01",
+  "expected": {
+    "claim_kinds": [
+      "quality",
+      "window_state",
+      "fastest_change",
+      "phase_sequence",
+      "address_family_comparison",
+      "asn_persistence",
+      "activity_alignment"
+    ],
+    "allowed_node_types": ["Claim", "Evidence", "Limitation", "Unknown"],
+    "allowed_relation_types": ["supported_by", "limited_by", "unknown_about"],
+    "required_surfaces": ["page", "report", "qa", "markdown", "pdf", "json_download"],
+    "answer_operators": [
+      "fastest_change",
+      "window_extreme",
+      "window_ledger",
+      "phase_sequence",
+      "address_family_comparison",
+      "asn_persistence",
+      "activity_alignment",
+      "evidence_navigation"
+    ],
+    "abstention_operators": ["evidence_boundary"],
+    "correct_abstention_count": 6
+  },
+  "questions": [
+    {"text": "最快恶化发生在哪个槽？", "status": "answered", "operator": "fastest_change"},
+    {"text": "谷值是多少？", "status": "answered", "operator": "window_extreme"},
+    {"text": "终点回到起点了吗，还有多少残留？", "status": "answered", "operator": "window_ledger"},
+    {"text": "曲线经历了哪些阶段？", "status": "answered", "operator": "phase_sequence"},
+    {"text": "IPv4 和 IPv6 的分母与分化如何？", "status": "answered", "operator": "address_family_comparison"},
+    {"text": "哪些 ASN 持续未回到起点？", "status": "answered", "operator": "asn_persistence"},
+    {"text": "UPDATE 峰值与谷值是同槽还是滞后槽？", "status": "answered", "operator": "activity_alignment"},
+    {"text": "为什么这么说，证据在哪里？", "status": "abstained", "operator": "evidence_boundary"},
+    {"text": "这次变化的原因是什么？", "status": "abstained", "operator": "evidence_boundary"},
+    {"text": "这是攻击吗？", "status": "abstained", "operator": "evidence_boundary"},
+    {"text": "是否造成全国断网和用户影响？", "status": "abstained", "operator": "evidence_boundary"},
+    {"text": "谁应该负责？", "status": "abstained", "operator": "evidence_boundary"},
+    {"text": "窗口后是否完全恢复？", "status": "abstained", "operator": "evidence_boundary"},
+    {"text": "给我推荐一个处置动作", "status": "unsupported", "operator": "none"}
+  ]
+}

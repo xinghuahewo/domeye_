@@ -1,0 +1,44 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_stage_receipt_v1",
+  "stage": "S1",
+  "task_spec_version": "p1-task-spec-v1.1-page-capability-coverage",
+  "plan_version": "p1-plan-v1.1-page-capability-coverage",
+  "candidate_id": "p1-page-coverage-s1-229b8de96d3c",
+  "status": "PASS",
+  "completed_at": "2026-08-10T23:30:07+08:00",
+  "requirement_ids": [
+    "P1-UX-01", "P1-UX-03", "P1-UX-04", "P1-UX-05", "P1-UX-10", "P1-UX-11", "P1-UX-12",
+    "P1-CTR-04", "P1-CTR-05", "P1-CTR-06", "P1-CTR-07", "P1-CTR-08", "P1-CTR-09", "P1-CTR-10", "P1-CTR-16", "P1-CTR-17", "P1-CTR-18", "P1-CTR-19", "P1-CTR-20", "P1-CTR-21", "P1-CTR-24",
+    "P1-SCE-01", "P1-SCE-03", "P1-SCE-10", "P1-SCE-13", "P1-SCE-14", "P1-SCE-15", "P1-SCE-17"
+  ],
+  "page_outcome_ids": ["PCO-03", "PCO-04"],
+  "artifacts": [
+    {
+      "kind": "deterministic_series_operator_oracle",
+      "path": "evaluation/country-outage/p1-page-coverage/s1/deterministic-series-operator-oracle.json",
+      "sha256": "a7763b1c63cb742b2051bf3a8652e294304018dfbe32964bfc5c99e70efd774f"
+    },
+    {
+      "kind": "ip_question_execution_trace",
+      "path": "evaluation/country-outage/p1-page-coverage/s1/ip-question-execution-trace.json",
+      "sha256": "c401fd7a3e7cb0d3ab621bce5f0c01f0064105e2625ea87eb8f513a2c8267a30"
+    },
+    {
+      "kind": "independent_semantic_review",
+      "path": "evaluation/country-outage/p1-page-coverage/s1/independent-semantic-review.json",
+      "sha256": "f00af4c39834beb836aeed9f41a224017c9f75850ddb46419250f30350d9576c"
+    }
+  ],
+  "semantic_review": {
+    "role_separated": true,
+    "verdict": "PASS",
+    "receipt_ref": "evaluation/country-outage/p1-page-coverage/s1/independent-semantic-review.json"
+  },
+  "unresolved_blockers": [],
+  "prohibited_claims": {
+    "p2_complete": false,
+    "rca_complete": false,
+    "deployed": false,
+    "production_verified": false
+  }
+}

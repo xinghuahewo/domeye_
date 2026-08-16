@@ -1,0 +1,10 @@
+{
+  "schema_version": "data-quality-report/v1",
+  "report_id": "dqr-invalid-database-write-execution",
+  "execution": {
+    "mode": "read_only_repeatable_read",
+    "database_write_operations": 1,
+    "started_at": "2026-07-20T12:24:50Z",
+    "finished_at": "2026-07-20T12:27:59Z"
+  }
+}

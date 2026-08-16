@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/research/rrc25-full-window-episode-as-measurement-semantics.schema.json",
+  "title": "RRC25 完整窗口 Episode-AS 部分观测语义旁路合同",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "episode_as_id", "episode_id", "asn", "measurement_semantics"],
+  "properties": {
+    "schema_version": {"const": "rrc25-full-window-episode-as-measurement-semantics/v1"},
+    "episode_as_id": {"type": "string", "pattern": "^episode_as_v1_[0-9a-f]{24}$"},
+    "episode_id": {"type": "string", "pattern": "^episode_v1_[0-9a-f]{24}$"},
+    "asn": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "measurement_semantics": {"$ref": "#/$defs/measurementSemantics"}
+  },
+  "$defs": {
+    "measurementSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "curve", "vp_coverage_state", "source_value_state",
+        "down_vp_route_semantics", "implicit_withdrawal_from_peer_state_change",
+        "withdraw_origin_inferred"
+      ],
+      "properties": {
+        "curve": {"const": "carried_route_state"},
+        "vp_coverage_state": {"enum": ["complete", "partial", "unknown"]},
+        "source_value_state": {
+          "enum": ["observed", "observed_route_state_partial_vp_coverage", "unknown"]
+        },
+        "down_vp_route_semantics": {"const": "carried_state_not_implicit_withdrawal"},
+        "implicit_withdrawal_from_peer_state_change": {"const": false},
+        "withdraw_origin_inferred": {"const": false}
+      }
+    }
+  }
+}

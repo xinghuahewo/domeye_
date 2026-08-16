@@ -1,0 +1,77 @@
+{
+  "schema_version": "rrc25-iran-bounded-state-replay-profile/v1",
+  "study_id": "iran-rrc25-1805-2300-state-replay-v1",
+  "legacy_incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r",
+  "collector_id": "rrc25",
+  "country_code": "IR",
+  "time_basis": "UTC",
+  "window": {
+    "start_utc": "2026-02-28T10:05:00Z",
+    "end_exclusive_utc": "2026-02-28T15:00:00Z",
+    "interval_semantics": "half_open",
+    "granularity_seconds": 300,
+    "update_slot_count": 59,
+    "state_observation_count": 60
+  },
+  "input": {
+    "state_seed_rib": {
+      "artifact_time_utc": "2026-02-28T08:00:00Z",
+      "relative_path": "rrc25/2026.02/bview.20260228.0800.gz",
+      "file_sha256": "036e1a5b4d1554eae083d8b4d9de648f0ed95bfcd0ea781c4d001df68a23159c",
+      "size_bytes": 426297361
+    },
+    "catch_up_updates": {
+      "start_utc": "2026-02-28T08:00:00Z",
+      "end_exclusive_utc": "2026-02-28T10:05:00Z",
+      "expected_count": 25
+    },
+    "window_updates": {
+      "start_utc": "2026-02-28T10:05:00Z",
+      "end_exclusive_utc": "2026-02-28T15:00:00Z",
+      "expected_count": 59
+    },
+    "expected_update_count": 84,
+    "expected_update_compressed_bytes": 401865192,
+    "expected_total_compressed_bytes": 828162553
+  },
+  "cohort": {
+    "source": "state_seed_rib",
+    "membership": "definite_ir_origin_only",
+    "dynamic_ir_origins": "report_separately_do_not_change_baseline_denominator",
+    "unknown_policy": "retain_in_quality_never_coerce_to_non_ir"
+  },
+  "algorithms": {
+    "observation_version": "country_outage_observation_v2",
+    "episode_version": "country_outage_episode_v2",
+    "milestone_version": "country_outage_milestone_v2",
+    "detection": {
+      "damaged_asn_ratio_above": 0.03,
+      "confirm_consecutive_slots": 2,
+      "onset_assignment": "first_slot_in_confirmed_sequence"
+    },
+    "partial_recovery": {
+      "visible_origin_asn_ratio_at_least": 0.99,
+      "visible_prefix_vp_ratio_at_least": 0.99,
+      "confirm_consecutive_slots": 6,
+      "assignment": "first_slot_in_confirmed_sequence"
+    },
+    "full_recovery": {
+      "normal_band_method": "catch_up_median_plus_minus_max_3mad_and_0.001",
+      "confirm_consecutive_slots": 6,
+      "assignment": "first_slot_in_confirmed_sequence",
+      "unstable_baseline_state": "unknown"
+    },
+    "wave": {
+      "significance_floor": 0.005,
+      "confirm_consecutive_slots": 2,
+      "new_episode_requires_full_recovery": true
+    }
+  },
+  "execution": {
+    "database_writes": "forbidden_during_replay",
+    "real_replay_count": 1,
+    "timeouts": "forbidden",
+    "output_policy": "create_only_atomic",
+    "production_deployment": "forbidden"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.example/contracts/data/country-outage-p2-s1/asn-state-row.schema.json",
+  "title": "ASN 状态原子事实行",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "publication_id", "cohort_id", "state_point_utc", "asn", "classification", "fixed_prefix_count", "partial_prefix_count", "complete_prefix_count", "unknown_prefix_count", "invisible_direction_count", "member_key", "row_digest", "source_record_refs"],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s1_asn_state_row_v1"}, "publication_id": {"type": "string", "minLength": 1}, "cohort_id": {"type": "string", "minLength": 1}, "state_point_utc": {"$ref": "common.schema.json#/$defs/utc"}, "asn": {"$ref": "common.schema.json#/$defs/asn"},
+    "classification": {"type": "string", "enum": ["normal", "affected", "route_interrupted", "unknown"]},
+    "fixed_prefix_count": {"type": "integer", "minimum": 0}, "partial_prefix_count": {"type": "integer", "minimum": 0}, "complete_prefix_count": {"type": "integer", "minimum": 0}, "unknown_prefix_count": {"type": "integer", "minimum": 0}, "invisible_direction_count": {"type": "integer", "minimum": 0},
+    "member_key": {"type": "string", "pattern": "^p2s1_member_v1_[0-9a-f]{64}$"}, "row_digest": {"$ref": "common.schema.json#/$defs/sha256"}, "source_record_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

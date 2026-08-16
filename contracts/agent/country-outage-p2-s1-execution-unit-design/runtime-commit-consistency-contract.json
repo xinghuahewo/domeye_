@@ -1,0 +1,4681 @@
+{
+  "schema_version": "country_outage_p2_runtime_commit_consistency_v1",
+  "artifact_id": "country-outage-p2-s1d4-runtime-commit-consistency-20260812",
+  "stage": "S1D-4",
+  "status": "design_contract_only",
+  "distinct_from_execution_unit_function_atomicity": true,
+  "transaction_envelope": {
+    "required_fields": [
+      "transaction_id",
+      "consistency_kind",
+      "idempotency_key",
+      "request_digest",
+      "parent_revision",
+      "parent_digest",
+      "expected_current_digest",
+      "prepared_artifact_refs",
+      "prepared_artifact_digests",
+      "validation_receipts",
+      "commit_point",
+      "commit_marker",
+      "commit_receipt_digest",
+      "committed_revision",
+      "committed_digest",
+      "recovery_action",
+      "recovery_receipt_digest",
+      "conflict_kind",
+      "outcome_digest",
+      "disposition"
+    ],
+    "closed_object_required": true,
+    "digest_algorithm": "sha256",
+    "current_pointer_update": "compare_and_swap_expected_current_digest",
+    "normal_commit_requires_expected_current_digest_equal_live_pointer": true,
+    "compare_and_swap_rejected_conflict_requires_attempted_expected_digest_different_from_live_pointer": true,
+    "compare_and_swap_conflict_recovery_receipt_preserves_live_pointer": true,
+    "same_idempotency_key_same_request_digest_same_outcome": true,
+    "same_idempotency_key_different_request_digest_disposition": "reject_conflict"
+  },
+  "transaction_record_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1/transaction-record.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "transaction_id",
+      "consistency_kind",
+      "idempotency_key",
+      "request_digest",
+      "transaction_state",
+      "parent_revision",
+      "parent_digest",
+      "expected_current_digest",
+      "prepared_artifact_refs",
+      "prepared_artifact_digests",
+      "validation_receipts",
+      "commit_point",
+      "commit_marker",
+      "commit_receipt_digest",
+      "committed_revision",
+      "committed_digest",
+      "recovery_action",
+      "recovery_receipt_digest",
+      "conflict_kind",
+      "outcome_digest",
+      "disposition"
+    ],
+    "properties": {
+      "transaction_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "consistency_kind": {
+        "enum": [
+          "node_result_commit_consistency",
+          "investigation_revision_commit_consistency",
+          "evidence_graph_commit_consistency",
+          "dialog_state_commit_consistency",
+          "export_commit_consistency"
+        ]
+      },
+      "idempotency_key": {
+        "type": "string",
+        "minLength": 1
+      },
+      "request_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "transaction_state": {
+        "enum": [
+          "prepared",
+          "committed",
+          "aborted"
+        ]
+      },
+      "parent_revision": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "parent_digest": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "expected_current_digest": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "prepared_artifact_refs": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "prepared_artifact_digests": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "validation_receipts": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "gate_version",
+            "gate_contract_digest",
+            "validator_id",
+            "implementation_digest",
+            "output_schema_ref",
+            "transaction_id",
+            "request_digest",
+            "binding_digest",
+            "subject_bindings",
+            "gate_output",
+            "output_digest",
+            "passed",
+            "failure_code",
+            "receipt_digest"
+          ],
+          "properties": {
+            "gate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "gate_version": {
+              "const": "1.0.0"
+            },
+            "gate_contract_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "validator_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "implementation_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "output_schema_ref": {
+              "type": "string",
+              "format": "uri-reference"
+            },
+            "transaction_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "request_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "binding_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "subject_bindings": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "artifact_role",
+                  "artifact_ref",
+                  "artifact_digest"
+                ],
+                "properties": {
+                  "artifact_role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "artifact_ref": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "artifact_digest": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  }
+                }
+              }
+            },
+            "gate_output": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "gate_id",
+                "subject_set_digest",
+                "passed",
+                "failure_code"
+              ],
+              "properties": {
+                "gate_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "subject_set_digest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "passed": {
+                  "type": "boolean"
+                },
+                "failure_code": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            },
+            "output_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "receipt_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          }
+        }
+      },
+      "commit_point": {
+        "type": "string",
+        "minLength": 1
+      },
+      "commit_marker": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "commit_receipt_digest": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "committed_revision": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "committed_digest": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "recovery_action": {
+        "enum": [
+          "none",
+          "resume_prepare",
+          "discard_prepare",
+          "retry_compare_and_swap",
+          "preserve_current_pointer",
+          "preserve_previous_final"
+        ]
+      },
+      "recovery_receipt_digest": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "conflict_kind": {
+        "enum": [
+          null,
+          "idempotency",
+          "compare_and_swap"
+        ]
+      },
+      "outcome_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "disposition": {
+        "enum": [
+          "prepared",
+          "committed",
+          "aborted",
+          "rejected_conflict",
+          "recovered"
+        ]
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "transaction_state": {
+              "const": "committed"
+            }
+          },
+          "required": [
+            "transaction_state"
+          ]
+        },
+        "then": {
+          "properties": {
+            "commit_marker": {
+              "type": "string",
+              "minLength": 1
+            },
+            "commit_receipt_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "committed_revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "committed_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "recovery_action": {
+              "const": "none"
+            },
+            "recovery_receipt_digest": {
+              "type": "null"
+            },
+            "conflict_kind": {
+              "type": "null"
+            },
+            "disposition": {
+              "const": "committed"
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "transaction_state": {
+              "enum": [
+                "prepared",
+                "aborted"
+              ]
+            }
+          },
+          "required": [
+            "transaction_state"
+          ]
+        },
+        "then": {
+          "properties": {
+            "commit_marker": {
+              "type": "null"
+            },
+            "commit_receipt_digest": {
+              "type": "null"
+            },
+            "committed_revision": {
+              "type": "null"
+            },
+            "committed_digest": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    ],
+    "x-runtime-validator-contract": {
+      "prepared_refs_and_digests_same_length": true,
+      "genesis_parent_revision_and_digest_both_null": true,
+      "non_genesis_parent_revision_and_digest_both_non_null": true,
+      "idempotency_key_request_digest_pair_unique": true,
+      "same_key_different_request_digest_rejected_conflict": true,
+      "committed_revision_is_parent_plus_one_or_genesis_one": true,
+      "expected_current_digest_equals_parent_digest": true,
+      "non_conflict_path_expected_current_digest_equals_live_pointer": true,
+      "compare_and_swap_conflict_expected_current_digest_differs_from_live_pointer": true,
+      "compare_and_swap_conflict_attempted_parent_digest_equals_expected_current_digest": true,
+      "consistency_kind_binds_atomic_write_set_validation_gates_commit_point_and_recovery": true
+    }
+  },
+  "transaction_request_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1/transaction-request.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "request_schema_version",
+      "consistency_kind",
+      "binding_digest",
+      "components",
+      "payload"
+    ],
+    "properties": {
+      "request_schema_version": {
+        "const": "country_outage_p2_transaction_request_v1"
+      },
+      "consistency_kind": {
+        "type": "string",
+        "minLength": 1
+      },
+      "binding_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "components": {
+        "type": "object",
+        "minProperties": 1
+      },
+      "payload": {
+        "type": "object",
+        "minProperties": 1
+      }
+    }
+  },
+  "prepared_artifact_envelope_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://domeye.example/contracts/agent/country-outage-p2-s1/prepared-artifact-envelope.schema.json",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "artifact_contract_id",
+      "artifact_role",
+      "artifact_ref",
+      "artifact_schema_ref",
+      "artifact_revision",
+      "binding_digest",
+      "request_digest",
+      "scope_digest",
+      "payload",
+      "payload_digest",
+      "prepare_receipt",
+      "visibility_state"
+    ],
+    "properties": {
+      "artifact_contract_id": {
+        "const": "country_outage_p2_prepared_artifact_v1"
+      },
+      "artifact_role": {
+        "type": "string",
+        "minLength": 1
+      },
+      "artifact_ref": {
+        "type": "string",
+        "minLength": 1
+      },
+      "artifact_schema_ref": {
+        "type": "string",
+        "format": "uri-reference"
+      },
+      "artifact_revision": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 1
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "binding_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "request_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "scope_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "payload": {
+        "type": "object",
+        "description": "必须由Host trusted prepared-artifact store解析artifact_role contract后，再按对应内联payload_schema二次校验；本通用Envelope不接受调用方自选Schema。"
+      },
+      "payload_digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "prepare_receipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "receipt_kind",
+          "artifact_ref",
+          "payload_digest",
+          "request_digest",
+          "scope_digest",
+          "disposition",
+          "receipt_digest"
+        ],
+        "properties": {
+          "receipt_kind": {
+            "const": "artifact_prepare"
+          },
+          "artifact_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "request_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "scope_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "disposition": {
+            "const": "staged"
+          },
+          "receipt_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      },
+      "visibility_state": {
+        "const": "staged"
+      }
+    }
+  },
+  "prepared_artifact_role_contracts": {
+    "contract_id": "HOST-PREPARED-ARTIFACT-ROLE-CONTRACTS-1.0.0",
+    "closed_consistency_kind_population": true,
+    "closed_role_population_per_kind": true,
+    "schema_ref_must_equal_payload_schema_id": true,
+    "by_consistency_kind": {
+      "node_result_commit_consistency": {
+        "typed_node_result_or_failure_receipt": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/typed_node_result_or_failure_receipt.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/typed_node_result_or_failure_receipt.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node_id",
+              "execution_revision",
+              "outcome",
+              "result_schema_ref",
+              "result_digest",
+              "failure_receipt_digest",
+              "publishable_fact_output"
+            ],
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "execution_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "outcome": {
+                "enum": [
+                  "succeeded",
+                  "failed",
+                  "cancelled",
+                  "skipped_dependency_failed",
+                  "unavailable"
+                ]
+              },
+              "result_schema_ref": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "uri-reference"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "result_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "failure_receipt_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "publishable_fact_output": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "node_evidence_fragment": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/node_evidence_fragment.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/node_evidence_fragment.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node_id",
+              "execution_revision",
+              "fragment_digest",
+              "evidence_refs",
+              "fact_node_ids"
+            ],
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "execution_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "fragment_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "evidence_refs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "fact_node_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "identity_digest": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/identity_digest.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/identity_digest.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "identity_digest",
+              "registry_snapshot_id",
+              "registry_snapshot_digest"
+            ],
+            "properties": {
+              "identity_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "registry_snapshot_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "registry_snapshot_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "input_and_output_digests": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/input_and_output_digests.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/input_and_output_digests.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node_id",
+              "execution_revision",
+              "unit_contract_digest",
+              "input_digests",
+              "output_digests"
+            ],
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "execution_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "unit_contract_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "input_digests": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                }
+              },
+              "output_digests": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        },
+        "execution_receipt": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/execution_receipt.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/execution_receipt.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node_id",
+              "execution_revision",
+              "unit_kind",
+              "unit_id",
+              "unit_version",
+              "unit_contract_digest",
+              "run_receipt_digest"
+            ],
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "execution_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "unit_kind": {
+                "enum": [
+                  "tool",
+                  "operator"
+                ]
+              },
+              "unit_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unit_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unit_contract_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "run_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "node_execution_state": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/node_execution_state.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/node_result_commit_consistency/node_execution_state.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node_id",
+              "execution_revision",
+              "parent_execution_revision",
+              "state",
+              "failure_code"
+            ],
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "execution_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "parent_execution_revision": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "enum": [
+                  "prepared",
+                  "completed",
+                  "failed",
+                  "cancelled",
+                  "skipped_dependency_failed",
+                  "committed"
+                ]
+              },
+              "failure_code": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "investigation_revision_commit_consistency": {
+        "investigation_revision_snapshot": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/investigation_revision_snapshot.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/investigation_revision_snapshot.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "investigation_id",
+              "investigation_revision",
+              "parent_investigation_revision",
+              "plan_id",
+              "plan_revision",
+              "status",
+              "node_revision_refs_digest",
+              "evidence_graph_revision",
+              "snapshot_digest"
+            ],
+            "properties": {
+              "investigation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "investigation_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "parent_investigation_revision": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "plan_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "plan_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "status": {
+                "enum": [
+                  "running",
+                  "completed",
+                  "partial",
+                  "failed",
+                  "cancelled"
+                ]
+              },
+              "node_revision_refs_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "evidence_graph_revision": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "snapshot_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "parent_revision_and_digest": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/parent_revision_and_digest.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/parent_revision_and_digest.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parent_revision",
+              "parent_digest",
+              "expected_current_digest"
+            ],
+            "properties": {
+              "parent_revision": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parent_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "expected_current_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "committed_node_revision_refs": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/committed_node_revision_refs.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/committed_node_revision_refs.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node_revision_refs",
+              "set_digest"
+            ],
+            "properties": {
+              "node_revision_refs": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "node_id",
+                    "execution_revision",
+                    "result_digest",
+                    "commit_receipt_digest"
+                  ],
+                  "properties": {
+                    "node_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "execution_revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "result_digest": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$"
+                    },
+                    "commit_receipt_digest": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              },
+              "set_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "investigation_status": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/investigation_status.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/investigation_status.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "investigation_id",
+              "investigation_revision",
+              "status",
+              "required_nodes_complete",
+              "failed_required_node_ids",
+              "failed_optional_node_ids"
+            ],
+            "properties": {
+              "investigation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "investigation_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "status": {
+                "enum": [
+                  "running",
+                  "completed",
+                  "partial",
+                  "failed",
+                  "cancelled"
+                ]
+              },
+              "required_nodes_complete": {
+                "type": "boolean"
+              },
+              "failed_required_node_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "failed_optional_node_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "evidence_graph_revision_ref": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/evidence_graph_revision_ref.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/evidence_graph_revision_ref.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "graph_digest",
+              "commit_receipt_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "graph_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "commit_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "current_pointer": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/current_pointer.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/investigation_revision_commit_consistency/current_pointer.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer_id",
+              "previous_revision",
+              "previous_digest",
+              "new_revision",
+              "new_digest",
+              "compare_and_swap_token_digest"
+            ],
+            "properties": {
+              "pointer_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "previous_revision": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "previous_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "new_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "new_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "compare_and_swap_token_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      },
+      "evidence_graph_commit_consistency": {
+        "graph_nodes": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_nodes.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_nodes.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "node_refs",
+              "nodes_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "node_refs": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "node_id",
+                    "node_type",
+                    "payload_digest"
+                  ],
+                  "properties": {
+                    "node_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "node_type": {
+                      "enum": [
+                        "observed_fact",
+                        "derived_fact",
+                        "result_set",
+                        "limitation",
+                        "unknown",
+                        "execution_failure"
+                      ]
+                    },
+                    "payload_digest": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              },
+              "nodes_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "graph_edges": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_edges.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_edges.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "edge_refs",
+              "edges_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "edge_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "edge_id",
+                    "edge_type",
+                    "from_node_id",
+                    "to_node_id",
+                    "edge_digest"
+                  ],
+                  "properties": {
+                    "edge_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "edge_type": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "from_node_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "to_node_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "edge_digest": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              },
+              "edges_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "root_node_ids": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/root_node_ids.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/root_node_ids.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "root_node_ids",
+              "root_set_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "root_node_ids": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "root_set_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "graph_digest": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_digest.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_digest.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "graph_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "graph_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "closure_receipt": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/closure_receipt.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/closure_receipt.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "graph_digest",
+              "closure_receipt_digest",
+              "disposition"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "graph_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "closure_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "disposition": {
+                "const": "passed"
+              }
+            }
+          }
+        },
+        "graph_commit_marker": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_commit_marker.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/evidence_graph_commit_consistency/graph_commit_marker.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "graph_digest",
+              "commit_point",
+              "marker_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "graph_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "commit_point": {
+                "const": "evidence_graph_revision_commit_marker"
+              },
+              "marker_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      },
+      "dialog_state_commit_consistency": {
+        "dialog_turn_record": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/dialog_turn_record.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/dialog_turn_record.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dialog_id",
+              "turn_id",
+              "parent_turn_id",
+              "user_message_digest",
+              "answer_binding_digest",
+              "turn_digest"
+            ],
+            "properties": {
+              "dialog_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "turn_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "parent_turn_id": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "user_message_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "answer_binding_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "turn_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "investigation_revision_ref": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/investigation_revision_ref.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/investigation_revision_ref.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "investigation_id",
+              "investigation_revision",
+              "snapshot_digest",
+              "commit_receipt_digest"
+            ],
+            "properties": {
+              "investigation_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "investigation_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "snapshot_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "commit_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "evidence_graph_revision_ref": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/evidence_graph_revision_ref.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/evidence_graph_revision_ref.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "graph_id",
+              "graph_revision",
+              "graph_digest",
+              "commit_receipt_digest"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graph_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "graph_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "commit_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "validated_answer_ref": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/validated_answer_ref.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/validated_answer_ref.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "flow_id",
+              "flow_revision",
+              "answer_digest",
+              "student_validation_receipt_digest",
+              "publish_receipt_digest",
+              "disposition"
+            ],
+            "properties": {
+              "flow_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "flow_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "answer_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "student_validation_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "publish_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "disposition": {
+                "enum": [
+                  "published",
+                  "degraded_published"
+                ]
+              }
+            }
+          }
+        },
+        "binding_generation": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/binding_generation.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/binding_generation.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dialog_id",
+              "binding_generation",
+              "prior_binding_generation",
+              "answer_binding_digest"
+            ],
+            "properties": {
+              "dialog_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "binding_generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "prior_binding_generation": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "answer_binding_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "dialog_current_pointer": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/dialog_current_pointer.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/dialog_state_commit_consistency/dialog_current_pointer.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dialog_id",
+              "previous_turn_id",
+              "previous_digest",
+              "new_turn_id",
+              "new_digest",
+              "compare_and_swap_token_digest"
+            ],
+            "properties": {
+              "dialog_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "previous_turn_id": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "previous_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "new_turn_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "new_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "compare_and_swap_token_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      },
+      "export_commit_consistency": {
+        "temporary_export_artifact": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/temporary_export_artifact.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/temporary_export_artifact.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "export_id",
+              "temporary_ref",
+              "format",
+              "byte_count",
+              "artifact_sha256",
+              "fsync_receipt_digest"
+            ],
+            "properties": {
+              "export_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "temporary_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "format": {
+                "enum": [
+                  "json",
+                  "csv",
+                  "markdown"
+                ]
+              },
+              "byte_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "artifact_sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "fsync_receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "export_manifest": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/export_manifest.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/export_manifest.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "export_id",
+              "authorization_id",
+              "result_set_id",
+              "result_set_revision",
+              "content_digest",
+              "format",
+              "member_count",
+              "manifest_digest"
+            ],
+            "properties": {
+              "export_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "authorization_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "result_set_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "result_set_revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "content_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "format": {
+                "enum": [
+                  "json",
+                  "csv",
+                  "markdown"
+                ]
+              },
+              "member_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "manifest_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "format_and_member_count_receipt": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/format_and_member_count_receipt.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/format_and_member_count_receipt.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "export_id",
+              "format",
+              "expected_member_count",
+              "actual_member_count",
+              "result_set_content_digest",
+              "disposition",
+              "receipt_digest"
+            ],
+            "properties": {
+              "export_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "format": {
+                "enum": [
+                  "json",
+                  "csv",
+                  "markdown"
+                ]
+              },
+              "expected_member_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "actual_member_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "result_set_content_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "disposition": {
+                "const": "passed"
+              },
+              "receipt_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "export_sha256": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/export_sha256.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/export_sha256.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "export_id",
+              "artifact_sha256",
+              "byte_count"
+            ],
+            "properties": {
+              "export_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "artifact_sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "byte_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "final_export_reference": {
+          "artifact_schema_ref": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/final_export_reference.schema.json",
+          "payload_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://domeye.example/contracts/runtime-artifacts/export_commit_consistency/final_export_reference.schema.json",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "export_id",
+              "previous_final_ref",
+              "previous_final_digest",
+              "new_final_ref",
+              "new_final_digest",
+              "replace_intent_digest"
+            ],
+            "properties": {
+              "export_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "previous_final_ref": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "previous_final_digest": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "new_final_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "new_final_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "replace_intent_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "trusted_gate_validator_registry": {
+    "contract_id": "HOST-TRANSACTION-GATE-VALIDATOR-REGISTRY-1.0.0",
+    "source": "host_trusted_static_contract",
+    "caller_supplied_validator_identity_forbidden": true,
+    "closed_gate_population_from_each_boundary_validation_gates": true,
+    "expected_gate_entry_count": 25,
+    "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+    "entries": [
+      {
+        "consistency_kind": "node_result_commit_consistency",
+        "gate_id": "schema_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::node_result_commit_consistency::schema_valid",
+        "gate_contract_digest": "sha256:b26c1cb3c104b61ab5906fb0fd8c9130414d01159923a6ddffa868fdc717c3bb",
+        "implementation_digest": "sha256:561c0fa8fca9a5ceddd8f33e355ec8a9cfeee71875926b401610e0608de1cf97",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/schema_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/schema_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "schema_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::node_result_commit_consistency::schema_valid",
+          "consistency_kind": "node_result_commit_consistency",
+          "gate_id": "schema_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/schema_valid.schema.json",
+          "deterministic_predicate_id": "node_result_commit_consistency.schema_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:schema_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "node_result_commit_consistency",
+        "gate_id": "identity_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::node_result_commit_consistency::identity_valid",
+        "gate_contract_digest": "sha256:12ce8d19259b42dd0dfbe99383107d0fc69193b01a22dbacced946ea15aa03b2",
+        "implementation_digest": "sha256:842224641da3f5eb7febc4587dbc52c85f955310d806cceb7d9f2b33c694fac0",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/identity_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/identity_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "identity_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::node_result_commit_consistency::identity_valid",
+          "consistency_kind": "node_result_commit_consistency",
+          "gate_id": "identity_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/identity_valid.schema.json",
+          "deterministic_predicate_id": "node_result_commit_consistency.identity_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:identity_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "node_result_commit_consistency",
+        "gate_id": "digest_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::node_result_commit_consistency::digest_valid",
+        "gate_contract_digest": "sha256:0daed739239b7a670c7de1c2db5a9cac550297839e3a2a4a81579b50f39b235a",
+        "implementation_digest": "sha256:b619717110cdc0f2a6a3b1ac6cf4d8d30c145daa04da021d86ce812f5f135f55",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/digest_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/digest_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "digest_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::node_result_commit_consistency::digest_valid",
+          "consistency_kind": "node_result_commit_consistency",
+          "gate_id": "digest_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/digest_valid.schema.json",
+          "deterministic_predicate_id": "node_result_commit_consistency.digest_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:digest_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "node_result_commit_consistency",
+        "gate_id": "evidence_refs_closed",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::node_result_commit_consistency::evidence_refs_closed",
+        "gate_contract_digest": "sha256:8689089429703379a820b138cb8e6ff9ed758270e63d06925c09e1178f13b9f3",
+        "implementation_digest": "sha256:0041aa8029d53635bdf9569165030a905b2f26afd6064d54bd6670bd519c4499",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/evidence_refs_closed.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/evidence_refs_closed.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "evidence_refs_closed"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::node_result_commit_consistency::evidence_refs_closed",
+          "consistency_kind": "node_result_commit_consistency",
+          "gate_id": "evidence_refs_closed",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/evidence_refs_closed.schema.json",
+          "deterministic_predicate_id": "node_result_commit_consistency.evidence_refs_closed",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:evidence_refs_closed",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "node_result_commit_consistency",
+        "gate_id": "result_completeness_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::node_result_commit_consistency::result_completeness_valid",
+        "gate_contract_digest": "sha256:dc1fbd825fd3b5633437216a65506c5feccad596e1e56eb435ffd0ff8750a5ba",
+        "implementation_digest": "sha256:038c87b914c7ab934328964d8689d78e5d834dc9fc08256d29b1967353bb0e44",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/result_completeness_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/result_completeness_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "result_completeness_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::node_result_commit_consistency::result_completeness_valid",
+          "consistency_kind": "node_result_commit_consistency",
+          "gate_id": "result_completeness_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/node_result_commit_consistency/result_completeness_valid.schema.json",
+          "deterministic_predicate_id": "node_result_commit_consistency.result_completeness_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:result_completeness_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "investigation_revision_commit_consistency",
+        "gate_id": "revision_transition_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::investigation_revision_commit_consistency::revision_transition_valid",
+        "gate_contract_digest": "sha256:9914076711f45d6df0612d2d91590113e75b160fd7adb635f4dc297db412f17e",
+        "implementation_digest": "sha256:6d931b5b6971f53f5ce0dfc4011e82571096f3f6372fc45208a65805218940d1",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/revision_transition_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/revision_transition_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "revision_transition_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::investigation_revision_commit_consistency::revision_transition_valid",
+          "consistency_kind": "investigation_revision_commit_consistency",
+          "gate_id": "revision_transition_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/revision_transition_valid.schema.json",
+          "deterministic_predicate_id": "investigation_revision_commit_consistency.revision_transition_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:revision_transition_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "investigation_revision_commit_consistency",
+        "gate_id": "required_coverage_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::investigation_revision_commit_consistency::required_coverage_valid",
+        "gate_contract_digest": "sha256:457b7cd49eee0dfdec131c0c34abbf3fa5b3232792950c180d3cc276b5a8659c",
+        "implementation_digest": "sha256:f256e3c3933eb42565df0a690d089364c8ab627a14e61137a6e4363c77968bc5",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/required_coverage_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/required_coverage_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "required_coverage_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::investigation_revision_commit_consistency::required_coverage_valid",
+          "consistency_kind": "investigation_revision_commit_consistency",
+          "gate_id": "required_coverage_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/required_coverage_valid.schema.json",
+          "deterministic_predicate_id": "investigation_revision_commit_consistency.required_coverage_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:required_coverage_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "investigation_revision_commit_consistency",
+        "gate_id": "partial_status_matches_failures",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::investigation_revision_commit_consistency::partial_status_matches_failures",
+        "gate_contract_digest": "sha256:95b68b6a41c32ee92ebf9b506c280bb04b359de803fea65a63bea87755f87400",
+        "implementation_digest": "sha256:b18bf41870c50227b5328d7a8dbcea121ebb5fcfd2d2d9fda7051e7d2092f3ae",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/partial_status_matches_failures.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/partial_status_matches_failures.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "partial_status_matches_failures"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::investigation_revision_commit_consistency::partial_status_matches_failures",
+          "consistency_kind": "investigation_revision_commit_consistency",
+          "gate_id": "partial_status_matches_failures",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/partial_status_matches_failures.schema.json",
+          "deterministic_predicate_id": "investigation_revision_commit_consistency.partial_status_matches_failures",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:partial_status_matches_failures",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "investigation_revision_commit_consistency",
+        "gate_id": "no_history_overwrite",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::investigation_revision_commit_consistency::no_history_overwrite",
+        "gate_contract_digest": "sha256:ac92eac63b78107bc290467181b7036b0873d5be2458f663293329d10b59cca1",
+        "implementation_digest": "sha256:3ec3646e96c3b39d0baaa93314c8e9594ec4d2c2bbceaba85d5f8d8445aecb49",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/no_history_overwrite.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/no_history_overwrite.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "no_history_overwrite"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::investigation_revision_commit_consistency::no_history_overwrite",
+          "consistency_kind": "investigation_revision_commit_consistency",
+          "gate_id": "no_history_overwrite",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/no_history_overwrite.schema.json",
+          "deterministic_predicate_id": "investigation_revision_commit_consistency.no_history_overwrite",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:no_history_overwrite",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "investigation_revision_commit_consistency",
+        "gate_id": "compare_and_swap_parent_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::investigation_revision_commit_consistency::compare_and_swap_parent_valid",
+        "gate_contract_digest": "sha256:ec5b95ba3f5b43a851f69c071fd67cb9ee361813873933110a99957befc84219",
+        "implementation_digest": "sha256:d38b7e9025e5f6bf41fa469173bd33388c36a28703c4c3adc1381054a349a190",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/compare_and_swap_parent_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/compare_and_swap_parent_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "compare_and_swap_parent_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::investigation_revision_commit_consistency::compare_and_swap_parent_valid",
+          "consistency_kind": "investigation_revision_commit_consistency",
+          "gate_id": "compare_and_swap_parent_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/investigation_revision_commit_consistency/compare_and_swap_parent_valid.schema.json",
+          "deterministic_predicate_id": "investigation_revision_commit_consistency.compare_and_swap_parent_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:compare_and_swap_parent_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "evidence_graph_commit_consistency",
+        "gate_id": "node_and_edge_ids_unique",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::evidence_graph_commit_consistency::node_and_edge_ids_unique",
+        "gate_contract_digest": "sha256:8a868a266b890aaaa93fe6279b0738a3b956246af5c74a62b9919e700d8b9647",
+        "implementation_digest": "sha256:b4d25834bcb0ea2aaf94f138e7d15ff2f8e6cfd93f727b2cb39e452f8e901310",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/node_and_edge_ids_unique.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/node_and_edge_ids_unique.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "node_and_edge_ids_unique"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::evidence_graph_commit_consistency::node_and_edge_ids_unique",
+          "consistency_kind": "evidence_graph_commit_consistency",
+          "gate_id": "node_and_edge_ids_unique",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/node_and_edge_ids_unique.schema.json",
+          "deterministic_predicate_id": "evidence_graph_commit_consistency.node_and_edge_ids_unique",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:node_and_edge_ids_unique",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "evidence_graph_commit_consistency",
+        "gate_id": "no_dangling_or_cross_identity_refs",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::evidence_graph_commit_consistency::no_dangling_or_cross_identity_refs",
+        "gate_contract_digest": "sha256:fbf7dfff8931ca1e0fa3161d0c8059427cbf2f4fa45336b096ba61ac610b996b",
+        "implementation_digest": "sha256:8126a86c54b00722b5916c54e40b8d388e881f7fbb668047ae5d7e5ac76ee779",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/no_dangling_or_cross_identity_refs.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/no_dangling_or_cross_identity_refs.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "no_dangling_or_cross_identity_refs"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::evidence_graph_commit_consistency::no_dangling_or_cross_identity_refs",
+          "consistency_kind": "evidence_graph_commit_consistency",
+          "gate_id": "no_dangling_or_cross_identity_refs",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/no_dangling_or_cross_identity_refs.schema.json",
+          "deterministic_predicate_id": "evidence_graph_commit_consistency.no_dangling_or_cross_identity_refs",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:no_dangling_or_cross_identity_refs",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "evidence_graph_commit_consistency",
+        "gate_id": "derived_from_acyclic",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::evidence_graph_commit_consistency::derived_from_acyclic",
+        "gate_contract_digest": "sha256:336d30cfcf689f834a4fc709a910e78eafd7d18eb2816c4eea289c99dde8371b",
+        "implementation_digest": "sha256:7dbb080821574c55de9cdb6de6cc0428a1b2874a56650077665ada3e3703f07d",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/derived_from_acyclic.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/derived_from_acyclic.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "derived_from_acyclic"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::evidence_graph_commit_consistency::derived_from_acyclic",
+          "consistency_kind": "evidence_graph_commit_consistency",
+          "gate_id": "derived_from_acyclic",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/derived_from_acyclic.schema.json",
+          "deterministic_predicate_id": "evidence_graph_commit_consistency.derived_from_acyclic",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:derived_from_acyclic",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "evidence_graph_commit_consistency",
+        "gate_id": "edge_type_semantics_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::evidence_graph_commit_consistency::edge_type_semantics_valid",
+        "gate_contract_digest": "sha256:66642cf7b4747d3049603e0756d021a76bab70b8fb9405d8de2c5da309ccfc4a",
+        "implementation_digest": "sha256:90c0e7681bfa7c5e8fbeefe1265f3e33c34e1cc371d2622771f7953a72f22e4d",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/edge_type_semantics_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/edge_type_semantics_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "edge_type_semantics_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::evidence_graph_commit_consistency::edge_type_semantics_valid",
+          "consistency_kind": "evidence_graph_commit_consistency",
+          "gate_id": "edge_type_semantics_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/edge_type_semantics_valid.schema.json",
+          "deterministic_predicate_id": "evidence_graph_commit_consistency.edge_type_semantics_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:edge_type_semantics_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "evidence_graph_commit_consistency",
+        "gate_id": "failure_unknown_and_preview_support_rules_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::evidence_graph_commit_consistency::failure_unknown_and_preview_support_rules_valid",
+        "gate_contract_digest": "sha256:b7922ab0c56951abdd06a68eec44def44966a2658f93f86ea460999761cbf735",
+        "implementation_digest": "sha256:4e530bbe84d23cdd5c5191df736ddc5657ea418d21175609ee51c6851178c490",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/failure_unknown_and_preview_support_rules_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/failure_unknown_and_preview_support_rules_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "failure_unknown_and_preview_support_rules_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::evidence_graph_commit_consistency::failure_unknown_and_preview_support_rules_valid",
+          "consistency_kind": "evidence_graph_commit_consistency",
+          "gate_id": "failure_unknown_and_preview_support_rules_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/evidence_graph_commit_consistency/failure_unknown_and_preview_support_rules_valid.schema.json",
+          "deterministic_predicate_id": "evidence_graph_commit_consistency.failure_unknown_and_preview_support_rules_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:failure_unknown_and_preview_support_rules_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "dialog_state_commit_consistency",
+        "gate_id": "answer_evidence_refs_closed",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::dialog_state_commit_consistency::answer_evidence_refs_closed",
+        "gate_contract_digest": "sha256:77cebb55b1ea0df7271128f33daa1a5b347883274c5065d8d15f66a843bd9c83",
+        "implementation_digest": "sha256:78f3897d1b929b6dabce690cf145d1f908177f12459e2118995b5debff6e2da9",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/answer_evidence_refs_closed.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/answer_evidence_refs_closed.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "answer_evidence_refs_closed"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::dialog_state_commit_consistency::answer_evidence_refs_closed",
+          "consistency_kind": "dialog_state_commit_consistency",
+          "gate_id": "answer_evidence_refs_closed",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/answer_evidence_refs_closed.schema.json",
+          "deterministic_predicate_id": "dialog_state_commit_consistency.answer_evidence_refs_closed",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:answer_evidence_refs_closed",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "dialog_state_commit_consistency",
+        "gate_id": "boundary_compliance_passed",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::dialog_state_commit_consistency::boundary_compliance_passed",
+        "gate_contract_digest": "sha256:2066d833545e9a0766e4f7e2f3d0d2e69d17194a9bee78fae61c20b4d7084ab7",
+        "implementation_digest": "sha256:c2ca6c2f2e779665e1fb73007a8f15cebc50fee011f0a961659ada64748c72c3",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/boundary_compliance_passed.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/boundary_compliance_passed.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "boundary_compliance_passed"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::dialog_state_commit_consistency::boundary_compliance_passed",
+          "consistency_kind": "dialog_state_commit_consistency",
+          "gate_id": "boundary_compliance_passed",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/boundary_compliance_passed.schema.json",
+          "deterministic_predicate_id": "dialog_state_commit_consistency.boundary_compliance_passed",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:boundary_compliance_passed",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "dialog_state_commit_consistency",
+        "gate_id": "teacher_student_flow_disposition_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::dialog_state_commit_consistency::teacher_student_flow_disposition_valid",
+        "gate_contract_digest": "sha256:b757ed9bc086763dd1787d6c5a95a3a96e751eb0960fb13e250cbcb6abd62d53",
+        "implementation_digest": "sha256:1d307ab00284e7b0e77a62d1133fde990dfececc9b51da2189a0c462ab3ddc74",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/teacher_student_flow_disposition_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/teacher_student_flow_disposition_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "teacher_student_flow_disposition_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::dialog_state_commit_consistency::teacher_student_flow_disposition_valid",
+          "consistency_kind": "dialog_state_commit_consistency",
+          "gate_id": "teacher_student_flow_disposition_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/teacher_student_flow_disposition_valid.schema.json",
+          "deterministic_predicate_id": "dialog_state_commit_consistency.teacher_student_flow_disposition_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:teacher_student_flow_disposition_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "dialog_state_commit_consistency",
+        "gate_id": "binding_generation_not_stale",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::dialog_state_commit_consistency::binding_generation_not_stale",
+        "gate_contract_digest": "sha256:ab2587957cbcc4cec0d3baa56ee6232e1960078e06a052b9479def75a09b0408",
+        "implementation_digest": "sha256:0ff7f93943b9677ecfc82b31a8c2305d0256bae20ae70b561baedcd7904f036e",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/binding_generation_not_stale.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/binding_generation_not_stale.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "binding_generation_not_stale"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::dialog_state_commit_consistency::binding_generation_not_stale",
+          "consistency_kind": "dialog_state_commit_consistency",
+          "gate_id": "binding_generation_not_stale",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/binding_generation_not_stale.schema.json",
+          "deterministic_predicate_id": "dialog_state_commit_consistency.binding_generation_not_stale",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:binding_generation_not_stale",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "dialog_state_commit_consistency",
+        "gate_id": "compare_and_swap_parent_valid",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::dialog_state_commit_consistency::compare_and_swap_parent_valid",
+        "gate_contract_digest": "sha256:25da030dfc262c83e6403b70c33f28fdf52efb9a16c01a1811165540b21ec804",
+        "implementation_digest": "sha256:b520a4502defb0fbbf0074d6faca2f699cd7e9495be55be1a567f09d92a478ed",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/compare_and_swap_parent_valid.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/compare_and_swap_parent_valid.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "compare_and_swap_parent_valid"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::dialog_state_commit_consistency::compare_and_swap_parent_valid",
+          "consistency_kind": "dialog_state_commit_consistency",
+          "gate_id": "compare_and_swap_parent_valid",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/dialog_state_commit_consistency/compare_and_swap_parent_valid.schema.json",
+          "deterministic_predicate_id": "dialog_state_commit_consistency.compare_and_swap_parent_valid",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:compare_and_swap_parent_valid",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "export_commit_consistency",
+        "gate_id": "source_result_set_digest_matches",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::export_commit_consistency::source_result_set_digest_matches",
+        "gate_contract_digest": "sha256:cc2e05ad3675fd3d02cb7672e2f004b56c2c85b84db776dac940516ec5360205",
+        "implementation_digest": "sha256:dd8957b0f8e3ff4f8ff42891b12ee261906c1514615d203936ef02e347a17b37",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/source_result_set_digest_matches.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/source_result_set_digest_matches.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "source_result_set_digest_matches"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::export_commit_consistency::source_result_set_digest_matches",
+          "consistency_kind": "export_commit_consistency",
+          "gate_id": "source_result_set_digest_matches",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/source_result_set_digest_matches.schema.json",
+          "deterministic_predicate_id": "export_commit_consistency.source_result_set_digest_matches",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:source_result_set_digest_matches",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "export_commit_consistency",
+        "gate_id": "no_llm_member_regeneration",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::export_commit_consistency::no_llm_member_regeneration",
+        "gate_contract_digest": "sha256:46365ee1b2693f8c1fc5692c1555ab8bb63b622c669a3187626885cefdfc6eb6",
+        "implementation_digest": "sha256:7065c12c02b47d6af6c38acf8aaeb907e1b0cd719fcbf6fd04db4c4378a69c05",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/no_llm_member_regeneration.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/no_llm_member_regeneration.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "no_llm_member_regeneration"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::export_commit_consistency::no_llm_member_regeneration",
+          "consistency_kind": "export_commit_consistency",
+          "gate_id": "no_llm_member_regeneration",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/no_llm_member_regeneration.schema.json",
+          "deterministic_predicate_id": "export_commit_consistency.no_llm_member_regeneration",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:no_llm_member_regeneration",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "export_commit_consistency",
+        "gate_id": "export_member_count_matches_result_set",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::export_commit_consistency::export_member_count_matches_result_set",
+        "gate_contract_digest": "sha256:d605c73cbf7934edbaa4ae727714bdcdf7417e7a76ceaf526417ea3057a41c85",
+        "implementation_digest": "sha256:da982699957d9a8157e14124c210b6767ffcaddfaee3651efc4e8525e63e0800",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/export_member_count_matches_result_set.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/export_member_count_matches_result_set.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "export_member_count_matches_result_set"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::export_commit_consistency::export_member_count_matches_result_set",
+          "consistency_kind": "export_commit_consistency",
+          "gate_id": "export_member_count_matches_result_set",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/export_member_count_matches_result_set.schema.json",
+          "deterministic_predicate_id": "export_commit_consistency.export_member_count_matches_result_set",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:export_member_count_matches_result_set",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "export_commit_consistency",
+        "gate_id": "export_sha256_matches",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::export_commit_consistency::export_sha256_matches",
+        "gate_contract_digest": "sha256:40d7b4fa5f513d0b9d47a5bc9dcacf3500a9d856ee84479c29c91f8e1ca4d924",
+        "implementation_digest": "sha256:bb5e00fac7e08fcdecc8ad0b1c60cf6d185837e8acdb269cf5e69d2ec6486d37",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/export_sha256_matches.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/export_sha256_matches.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "export_sha256_matches"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::export_commit_consistency::export_sha256_matches",
+          "consistency_kind": "export_commit_consistency",
+          "gate_id": "export_sha256_matches",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/export_sha256_matches.schema.json",
+          "deterministic_predicate_id": "export_commit_consistency.export_sha256_matches",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:export_sha256_matches",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      },
+      {
+        "consistency_kind": "export_commit_consistency",
+        "gate_id": "temporary_artifact_fsync_completed",
+        "gate_version": "1.0.0",
+        "validator_id": "HOST-GATE::export_commit_consistency::temporary_artifact_fsync_completed",
+        "gate_contract_digest": "sha256:fd8cc22fb3e5dde0443d6308ed9828063253269b5c0df4a65388b99364ea65d4",
+        "implementation_digest": "sha256:230db0770465078b7f69dd44a9e8ef14eee1df737797325b5a0e748ea56a4256",
+        "subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+        "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/temporary_artifact_fsync_completed.schema.json",
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/temporary_artifact_fsync_completed.schema.json",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gate_id",
+            "subject_set_digest",
+            "passed",
+            "failure_code"
+          ],
+          "properties": {
+            "gate_id": {
+              "const": "temporary_artifact_fsync_completed"
+            },
+            "subject_set_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "failure_code": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "passed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "passed"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "failure_code": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "failure_code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "implementation_artifact": {
+          "implementation_kind": "declarative_runtime_gate_validator_design",
+          "validator_id": "HOST-GATE::export_commit_consistency::temporary_artifact_fsync_completed",
+          "consistency_kind": "export_commit_consistency",
+          "gate_id": "temporary_artifact_fsync_completed",
+          "gate_version": "1.0.0",
+          "input_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+          "output_schema_ref": "https://domeye.example/contracts/runtime-gate-outputs/export_commit_consistency/temporary_artifact_fsync_completed.schema.json",
+          "deterministic_predicate_id": "export_commit_consistency.temporary_artifact_fsync_completed",
+          "algorithm_steps": [
+            "resolve_all_subject_bindings_in_boundary_order",
+            "evaluate_registered_predicate:temporary_artifact_fsync_completed",
+            "emit_typed_gate_output_without_llm"
+          ],
+          "design_only": true,
+          "runtime_implemented": false
+        }
+      }
+    ],
+    "registry_content_digest": "5811fdd58d6dbdce78d5ad4c89272c30a044d15cc8971d2b4dbe26ce166a23ec"
+  },
+  "trusted_runtime_resolution_contract": {
+    "transaction_request_source": "host_trusted_transaction_request_store",
+    "prepared_artifact_source": "host_trusted_prepared_artifact_store",
+    "gate_receipt_source": "host_trusted_gate_receipt_store",
+    "caller_supplied_request_artifact_or_gate_objects_forbidden": true,
+    "prepared_payload_schema_resolves_from_prepared_artifact_role_contracts": true,
+    "gate_identity_resolves_from_trusted_gate_validator_registry": true,
+    "gate_output_digest_and_subject_bindings_must_recompute": true,
+    "host_validates_schema_identity_digest_receipt_cas_and_visibility_only": true,
+    "host_recomputation_of_tool_or_operator_business_semantics_forbidden": true
+  },
+  "typed_receipt_contract": {
+    "artifact_schema_ref_recipe": "https://domeye.example/contracts/runtime-artifacts/{consistency_kind}/{artifact_role}.schema.json",
+    "gate_version": "1.0.0",
+    "gate_validator_id_recipe": "HOST-GATE::{consistency_kind}::{gate_id}",
+    "gate_contract_digest_recipe": "sha256(canonical({consistency_kind,gate_id,gate_version,validator_id,subject_contract}))",
+    "gate_subject_contract": "all_prepared_artifact_role_ref_digest_bindings_in_boundary_order",
+    "gate_implementation_digest_and_output_schema_ref_required": true,
+    "gate_output_digest_must_bind_typed_gate_output": true,
+    "commit_receipt_required_for_committed": true,
+    "recovery_receipt_required_for_recovered": true
+  },
+  "state_disposition_recovery_matrix": {
+    "committed": {
+      "dispositions": [
+        "committed"
+      ],
+      "actions": [
+        "none"
+      ],
+      "commit_receipt": "required",
+      "recovery_receipt": "forbidden"
+    },
+    "prepared": {
+      "dispositions": [
+        "prepared"
+      ],
+      "actions": [
+        "none",
+        "resume_prepare"
+      ],
+      "commit_receipt": "forbidden",
+      "recovery_receipt": "forbidden"
+    },
+    "aborted": {
+      "aborted": {
+        "actions": [
+          "discard_prepare"
+        ],
+        "recovery_receipt": "required"
+      },
+      "rejected_conflict": {
+        "actions": [
+          "retry_compare_and_swap"
+        ],
+        "recovery_receipt": "required"
+      },
+      "recovered": {
+        "actions": [
+          "discard_prepare",
+          "retry_compare_and_swap",
+          "preserve_current_pointer",
+          "preserve_previous_final"
+        ],
+        "recovery_receipt": "required"
+      }
+    }
+  },
+  "transaction_digest_recomputation_contract": {
+    "canonical_json": "UTF-8 JSON, object keys sorted, separators comma and colon, ensure_ascii=false",
+    "idempotency_key": "consistency_kind + colon + sha256(canonical({recipe,components}))",
+    "request_digest": "sha256: + sha256(canonical({request}))",
+    "scope_digest": "sha256: + sha256(canonical({consistency_kind,binding_digest,components}))",
+    "prepared_artifact_digest": "sha256: + sha256(canonical({artifact}))",
+    "validation_receipt_digest": "sha256: + sha256(canonical(receipt excluding receipt_digest))",
+    "committed_digest": "sha256: + sha256(canonical({prepared_artifact_refs,prepared_artifact_digests,validation_receipts}))",
+    "commit_marker": "commit_point + colon + transaction_id",
+    "outcome_digest": "sha256: + sha256(canonical({transaction_id,transaction_state,disposition,committed_revision,committed_digest,recovery_action,conflict_kind}))"
+  },
+  "global_commit_order": [
+    "prepare_node_result_and_evidence_fragment",
+    "validate_identity_schema_digest_and_evidence",
+    "commit_node_result",
+    "prepare_and_validate_evidence_graph_closure",
+    "commit_evidence_graph_revision",
+    "commit_investigation_revision_with_graph_ref",
+    "validate_final_student_answer",
+    "commit_dialog_state",
+    "optionally_commit_export_reference"
+  ],
+  "global_rules": {
+    "prepared_artifacts_are_not_public": true,
+    "commit_marker_is_single_visibility_point": true,
+    "history_is_immutable": true,
+    "parent_revision_and_digest_required": true,
+    "partial_failure_creates_new_revision": true,
+    "retry_or_recovery_must_be_idempotent": true,
+    "cross_publication_or_registry_mix_forbidden": true,
+    "cancel_during_prepare_may_abort_but_never_publish_half_state": true,
+    "runtime_transaction_may_not_hide_composite_execution_unit": true
+  },
+  "boundaries": [
+    {
+      "id": "node_result_commit_consistency",
+      "scope": "一个节点执行修订的结果、Evidence fragment、身份、摘要、回执和状态",
+      "preconditions": [
+        "plan_revision_is_admitted",
+        "node_references_exactly_one_registered_atomic_unit",
+        "input_digests_match_plan_bindings",
+        "identity_and_registry_snapshot_match_plan",
+        "execution_revision_parent_is_current"
+      ],
+      "atomic_write_set": [
+        "typed_node_result_or_failure_receipt",
+        "node_evidence_fragment",
+        "identity_digest",
+        "input_and_output_digests",
+        "execution_receipt",
+        "node_execution_state"
+      ],
+      "validation_gates": [
+        "schema_valid",
+        "identity_valid",
+        "digest_valid",
+        "evidence_refs_closed",
+        "result_completeness_valid"
+      ],
+      "commit_point": "node_execution_revision_commit_marker",
+      "postconditions": [
+        "committed_node_result_and_evidence_become_visible_together",
+        "failed_cancelled_or_skipped_node_has_no_publishable_fact_output",
+        "same_idempotency_key_does_not_duplicate_fact_or_revision"
+      ],
+      "idempotency_key_recipe": [
+        "investigation_id",
+        "plan_revision",
+        "node_id",
+        "execution_revision",
+        "input_digest",
+        "unit_contract_digest"
+      ],
+      "crash_recovery": "discard_or_resume_prepared_revision_then_compare_and_swap_commit_marker",
+      "allowed_recovery_actions": [
+        "none",
+        "resume_prepare",
+        "discard_prepare",
+        "retry_compare_and_swap"
+      ],
+      "forbidden_visibility": [
+        "result_without_evidence",
+        "evidence_without_result",
+        "committed_state_without_receipt",
+        "half_result_set",
+        "uncommitted_derived_fact"
+      ]
+    },
+    {
+      "id": "investigation_revision_commit_consistency",
+      "scope": "不可变调查快照、父修订、节点引用、partial状态与current pointer",
+      "preconditions": [
+        "all_referenced_node_revisions_are_committed_or_reused",
+        "hard_dependency_failure_propagation_is_closed",
+        "independent_branch_outcome_is_preserved",
+        "parent_revision_and_digest_match_current_pointer"
+      ],
+      "atomic_write_set": [
+        "investigation_revision_snapshot",
+        "parent_revision_and_digest",
+        "committed_node_revision_refs",
+        "investigation_status",
+        "evidence_graph_revision_ref",
+        "current_pointer"
+      ],
+      "validation_gates": [
+        "revision_transition_valid",
+        "required_coverage_valid",
+        "partial_status_matches_failures",
+        "no_history_overwrite",
+        "compare_and_swap_parent_valid"
+      ],
+      "commit_point": "investigation_current_pointer_compare_and_swap",
+      "postconditions": [
+        "old_revision_remains_replayable",
+        "same_parameter_rerun_keeps_plan_revision",
+        "parameter_permission_or_degrade_change_requires_new_admitted_plan_revision"
+      ],
+      "idempotency_key_recipe": [
+        "investigation_id",
+        "investigation_revision",
+        "parent_digest",
+        "snapshot_digest"
+      ],
+      "crash_recovery": "leave_old_current_pointer_and_retry_same_revision_idempotently",
+      "allowed_recovery_actions": [
+        "none",
+        "discard_prepare",
+        "retry_compare_and_swap",
+        "preserve_current_pointer"
+      ],
+      "forbidden_visibility": [
+        "current_pointer_to_uncommitted_snapshot",
+        "partial_snapshot_marked_completed",
+        "failed_optional_branch_cancels_independent_branch",
+        "history_overwrite",
+        "stale_parent_pointer_overwrite"
+      ]
+    },
+    {
+      "id": "evidence_graph_commit_consistency",
+      "scope": "Evidence Graph 节点、边、引用闭包、图摘要与闭包回执",
+      "preconditions": [
+        "all_fact_sources_are_committed",
+        "all_nodes_share_identity_and_registry_binding",
+        "derived_fact_inputs_match_operator_receipt",
+        "forbidden_fact_relations_absent"
+      ],
+      "atomic_write_set": [
+        "graph_nodes",
+        "graph_edges",
+        "root_node_ids",
+        "graph_digest",
+        "closure_receipt",
+        "graph_commit_marker"
+      ],
+      "validation_gates": [
+        "node_and_edge_ids_unique",
+        "no_dangling_or_cross_identity_refs",
+        "derived_from_acyclic",
+        "edge_type_semantics_valid",
+        "failure_unknown_and_preview_support_rules_valid"
+      ],
+      "commit_point": "evidence_graph_revision_commit_marker",
+      "postconditions": [
+        "nodes_edges_and_closure_receipt_visible_together",
+        "graph_revision_is_immutable",
+        "uncommitted_nodes_cannot_become_answer_evidence"
+      ],
+      "idempotency_key_recipe": [
+        "graph_id",
+        "graph_revision",
+        "parent_graph_digest",
+        "graph_digest"
+      ],
+      "crash_recovery": "discard_uncommitted_graph_staging_or_revalidate_and_commit_same_digest",
+      "allowed_recovery_actions": [
+        "none",
+        "resume_prepare",
+        "discard_prepare",
+        "retry_compare_and_swap",
+        "preserve_current_pointer"
+      ],
+      "forbidden_visibility": [
+        "nodes_without_edges",
+        "edges_without_nodes",
+        "graph_without_closure_receipt",
+        "dangling_edge",
+        "cross_publication_fact",
+        "execution_failure_supports_fact"
+      ]
+    },
+    {
+      "id": "dialog_state_commit_consistency",
+      "scope": "已提交调查图、最终验证通过的 DS 回答、绑定 generation 与对话指针",
+      "preconditions": [
+        "investigation_revision_is_committed",
+        "evidence_graph_revision_is_committed",
+        "student_answer_validation_passed",
+        "alignment_passed_or_explicit_degraded_authorization_exists",
+        "shared_answer_binding_digest_matches_graph_and_plan"
+      ],
+      "atomic_write_set": [
+        "dialog_turn_record",
+        "investigation_revision_ref",
+        "evidence_graph_revision_ref",
+        "validated_answer_ref",
+        "binding_generation",
+        "dialog_current_pointer"
+      ],
+      "validation_gates": [
+        "answer_evidence_refs_closed",
+        "boundary_compliance_passed",
+        "teacher_student_flow_disposition_valid",
+        "binding_generation_not_stale",
+        "compare_and_swap_parent_valid"
+      ],
+      "commit_point": "dialog_current_pointer_compare_and_swap",
+      "postconditions": [
+        "follow_up_inherits_only_committed_investigation_and_evidence_nodes",
+        "failed_answer_does_not_advance_dialog_state",
+        "old_dialog_turn_remains_replayable"
+      ],
+      "idempotency_key_recipe": [
+        "dialog_id",
+        "turn_id",
+        "binding_generation",
+        "validated_answer_digest"
+      ],
+      "crash_recovery": "preserve_previous_dialog_pointer_and_retry_same_turn_commit",
+      "allowed_recovery_actions": [
+        "none",
+        "discard_prepare",
+        "retry_compare_and_swap",
+        "preserve_current_pointer"
+      ],
+      "forbidden_visibility": [
+        "dialog_points_to_uncommitted_graph",
+        "dialog_advances_after_failed_student_validation",
+        "dialog_advances_after_invalid_teacher_reference",
+        "stale_binding_generation_commit"
+      ]
+    },
+    {
+      "id": "export_commit_consistency",
+      "scope": "用户授权、冻结完整ResultSet、临时制品校验与最终导出引用替换",
+      "preconditions": [
+        "explicit_export_authorization_exists",
+        "source_result_set_revision_is_frozen_and_complete",
+        "manifest_content_and_member_counts_validate",
+        "requested_format_is_registered"
+      ],
+      "atomic_write_set": [
+        "temporary_export_artifact",
+        "export_manifest",
+        "format_and_member_count_receipt",
+        "export_sha256",
+        "final_export_reference"
+      ],
+      "validation_gates": [
+        "source_result_set_digest_matches",
+        "no_llm_member_regeneration",
+        "export_member_count_matches_result_set",
+        "export_sha256_matches",
+        "temporary_artifact_fsync_completed"
+      ],
+      "commit_point": "atomic_replace_final_export_reference",
+      "postconditions": [
+        "successful_export_references_exact_result_set_revision",
+        "failed_export_preserves_previous_final_artifact",
+        "same_idempotency_key_does_not_duplicate_export"
+      ],
+      "idempotency_key_recipe": [
+        "authorization_id",
+        "result_set_id",
+        "result_set_revision",
+        "content_digest",
+        "format"
+      ],
+      "crash_recovery": "delete_or_reuse_valid_temporary_artifact_without_replacing_final_on_failure",
+      "allowed_recovery_actions": [
+        "none",
+        "resume_prepare",
+        "discard_prepare",
+        "preserve_previous_final"
+      ],
+      "forbidden_visibility": [
+        "preview_exported_as_complete",
+        "incomplete_result_set_exported_as_complete",
+        "temporary_artifact_replaces_final_before_validation",
+        "failed_export_removes_previous_final_artifact",
+        "llm_regenerated_members"
+      ]
+    }
+  ],
+  "required_failure_injections": [
+    "cancel_during_node_prepare",
+    "investigation_parent_compare_and_swap_conflict",
+    "graph_edge_write_failure",
+    "student_validation_failure_before_dialog_commit",
+    "export_validation_failure_before_final_replace",
+    "same_idempotency_key_retry"
+  ],
+  "design_boundary": {
+    "design_only": true,
+    "runtime_implemented": false,
+    "production_deployed": false
+  },
+  "contract_content_digest": "1da7186e69a1cbb1746d6933a8e793e44edf6d8df1064a8d32b5cde752b18573"
+}

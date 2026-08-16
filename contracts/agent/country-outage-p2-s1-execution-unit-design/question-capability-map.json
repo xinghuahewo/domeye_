@@ -1,0 +1,991 @@
+{
+  "schema_version": "country_outage_p2_s1_question_capability_map_v1",
+  "artifact_id": "country-outage-p2-s1-question-capability-map-20260812",
+  "stage": "S1D-1",
+  "status": "design_contract_only",
+  "question_population": {
+    "count": 28,
+    "ids": [
+      "Q01", "Q02", "Q03", "Q04", "Q05", "Q06", "Q07", "Q08", "Q09", "Q10",
+      "Q13", "Q14", "Q16", "Q17", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23",
+      "Q24", "Q26", "Q27", "Q29", "Q30", "Q31", "Q32", "Q33"
+    ]
+  },
+  "identity_constraints": {
+    "event_type": "country_outage",
+    "collector_id": "rrc25",
+    "binding": "single_incident_publication_revision_cohort_window",
+    "registry_snapshot": "single_immutable_snapshot_per_investigation",
+    "data_through_is_event_end": false,
+    "cross_publication_join": "forbidden"
+  },
+  "answer_pipeline": {
+    "execution_order": ["gpt-5.6-sol", "ds_student"],
+    "truth_source": "validated_evidence_bundle",
+    "same_grounding_plan_required": true,
+    "same_evidence_digest_required": true,
+    "teacher_reference_is_ground_truth": false
+  },
+  "capabilities": [
+    {
+      "capability_id": "CAP-P2-001",
+      "display_name_zh": "绑定事件与publication身份",
+      "owner_kind": "existing_read_tool",
+      "unit_ids": ["TOOL-01"],
+      "disposition": "existing",
+      "atomic_action": "读取并规范化一个事件绑定身份",
+      "source_population": "event_resolution",
+      "output_semantic": "event_binding",
+      "evidence_level": "A"
+    },
+    {
+      "capability_id": "CAP-P2-002",
+      "display_name_zh": "读取事件概览和finality",
+      "owner_kind": "existing_read_tool",
+      "unit_ids": ["TOOL-02"],
+      "disposition": "existing",
+      "atomic_action": "读取一个绑定publication的事件概览",
+      "source_population": "publication_overview",
+      "output_semantic": "event_overview",
+      "evidence_level": "A"
+    },
+    {
+      "capability_id": "CAP-P2-003",
+      "display_name_zh": "读取事件聚合时序",
+      "owner_kind": "existing_read_tool",
+      "unit_ids": ["TOOL-03"],
+      "disposition": "existing",
+      "atomic_action": "读取一个publication的登记聚合轨",
+      "source_population": "aggregate_series_points",
+      "output_semantic": "metric_series",
+      "evidence_level": "A"
+    },
+    {
+      "capability_id": "CAP-P2-004",
+      "display_name_zh": "读取ASN窗口汇总",
+      "owner_kind": "existing_read_tool",
+      "unit_ids": ["TOOL-04"],
+      "disposition": "existing",
+      "atomic_action": "读取受影响ASN窗口汇总行",
+      "source_population": "affected_as_summary_rows",
+      "output_semantic": "as_window_summary",
+      "evidence_level": "A"
+    },
+    {
+      "capability_id": "CAP-P2-005",
+      "display_name_zh": "读取有限路径关系样本",
+      "owner_kind": "existing_read_tool",
+      "unit_ids": ["TOOL-05"],
+      "disposition": "existing_limited",
+      "atomic_action": "读取受影响ASN到观测origin的关系汇总和有限样本",
+      "source_population": "bounded_path_relation_samples",
+      "output_semantic": "path_relation_sample",
+      "evidence_level": "A",
+      "completeness": "sample_not_complete"
+    },
+    {
+      "capability_id": "CAP-P2-006",
+      "display_name_zh": "读取审计身份",
+      "owner_kind": "existing_read_tool",
+      "unit_ids": ["TOOL-06"],
+      "disposition": "existing",
+      "atomic_action": "读取publication制品摘要和审计身份",
+      "source_population": "audit_identity_records",
+      "output_semantic": "audit_identity",
+      "evidence_level": "A"
+    },
+    {
+      "capability_id": "CAP-P2-007",
+      "display_name_zh": "计算聚合极值",
+      "owner_kind": "existing_operator",
+      "unit_ids": ["OP-01"],
+      "disposition": "existing",
+      "atomic_action": "对一条冻结时序计算登记极值",
+      "source_population": "one_metric_series",
+      "output_semantic": "metric_extrema",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-008",
+      "display_name_zh": "比较IPv4与IPv6",
+      "owner_kind": "existing_operator",
+      "unit_ids": ["OP-02"],
+      "disposition": "existing",
+      "atomic_action": "按各自单位比较双栈登记指标",
+      "source_population": "ipv4_ipv6_metric_pair",
+      "output_semantic": "dual_stack_comparison",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-009",
+      "display_name_zh": "排序事实时间线",
+      "owner_kind": "existing_operator",
+      "unit_ids": ["OP-03"],
+      "disposition": "existing",
+      "atomic_action": "按冻结时间和tie键排序事实节点",
+      "source_population": "fact_nodes",
+      "output_semantic": "ordered_fact_timeline",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-010",
+      "display_name_zh": "计算聚合趋势",
+      "owner_kind": "existing_operator",
+      "unit_ids": ["OP-04"],
+      "disposition": "existing",
+      "atomic_action": "对冻结聚合轨计算登记趋势形态",
+      "source_population": "aggregate_metric_series",
+      "output_semantic": "trend_profile",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-011",
+      "display_name_zh": "读取固定cohort member",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-07"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "读取固定cohort member事实人口并允许ASN或prefix同人口过滤",
+      "source_population": "fixed_cohort_member_rows",
+      "output_semantic": "fixed_cohort_member_with_expected_directions",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-012",
+      "display_name_zh": "读取前缀状态记录",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-08"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "读取prefix state事实人口",
+      "source_population": "prefix_state_rows",
+      "output_semantic": "prefix_state",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-013",
+      "display_name_zh": "读取ASN状态记录",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-09"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "读取ASN state事实人口",
+      "source_population": "asn_state_rows",
+      "output_semantic": "asn_state",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-014",
+      "display_name_zh": "读取新出现前缀状态",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-10"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "读取cohort冻结后首次观察的new-prefix state事实人口",
+      "source_population": "new_prefix_state_rows",
+      "output_semantic": "new_prefix_state",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-015",
+      "display_name_zh": "读取指定时点预物化RouteState",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-11"],
+      "disposition": "new_p2_v1_source_view_required",
+      "atomic_action": "读取一个精确时点的预物化RouteState事实人口且不内嵌回放",
+      "source_population": "materialized_route_state_rows_at_exact_time",
+      "output_semantic": "route_state_at_time",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-016",
+      "display_name_zh": "读取窗口级路径关联证据",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-12"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "读取绑定publication的窗口级path-association evidence事实人口",
+      "source_population": "window_path_association_evidence_rows",
+      "output_semantic": "window_path_association_evidence",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-017",
+      "display_name_zh": "读取RouteEvent",
+      "owner_kind": "new_read_tool",
+      "unit_ids": ["TOOL-13"],
+      "disposition": "deferred_p2_1",
+      "atomic_action": "读取prefix-peer的有序RouteEvent事实人口",
+      "source_population": "route_event_rows",
+      "output_semantic": "route_event",
+      "evidence_level": "C_to_A_after_publication"
+    },
+    {
+      "capability_id": "CAP-P2-018",
+      "display_name_zh": "按不可见程度排序ASN",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-05"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按冻结三键对ASN汇总行排序",
+      "source_population": "complete_as_summary_set",
+      "output_semantic": "as_severity_ranking",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-019",
+      "display_name_zh": "选择目标状态首次出现",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-06"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从一条状态序列选择一个目标状态的第一次出现",
+      "source_population": "one_typed_state_series",
+      "output_semantic": "first_state_occurrence",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-020",
+      "display_name_zh": "投影状态变化区间",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-07"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从一条实体状态序列投影一个目标状态集合的最大连续区间",
+      "source_population": "one_typed_entity_state_series",
+      "output_semantic": "state_transition_intervals",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-021",
+      "display_name_zh": "选择截止状态",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-08"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从一条状态序列选择截止时间的最后状态",
+      "source_population": "one_typed_state_series",
+      "output_semantic": "last_state_at_cutoff",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-022",
+      "display_name_zh": "选择窗口峰值状态",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-09"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按冻结严重性序和tie规则选择一个峰值状态观测",
+      "source_population": "one_typed_state_series",
+      "output_semantic": "peak_state_observation",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-023",
+      "display_name_zh": "计算ASN complete峰值比例",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-10"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算peak_complete_prefix_count除以fixed_prefix_count",
+      "source_population": "one_as_summary",
+      "output_semantic": "as_peak_complete_ratio",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-024",
+      "display_name_zh": "选择最长状态区间",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-11"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整区间集合按冻结tie规则选择最长区间",
+      "source_population": "complete_state_interval_set",
+      "output_semantic": "longest_state_interval",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-025",
+      "display_name_zh": "按首次越阈时间排名ASN",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-12"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按冻结阈值首次出现时间和ASN tie键排名",
+      "source_population": "complete_as_first_crossing_set",
+      "output_semantic": "as_first_crossing_ranking",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-026",
+      "display_name_zh": "按最长持续时间排名ASN",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-13"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按最长异常区间时长和ASN tie键排名",
+      "source_population": "complete_as_longest_interval_set",
+      "output_semantic": "as_longest_duration_ranking",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-027",
+      "display_name_zh": "按complete峰值比例排名ASN",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-14"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按complete峰值比例和ASN tie键排名",
+      "source_population": "complete_as_peak_ratio_set",
+      "output_semantic": "as_peak_complete_ratio_ranking",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-028",
+      "display_name_zh": "定位ASN路径位置",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-15"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "返回ASN在一条规范路径中的全部位置",
+      "source_population": "one_canonical_as_path",
+      "output_semantic": "asn_path_positions",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-029",
+      "display_name_zh": "投影路径直接邻接",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-16"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从OP-15位置回执投影指定ASN的左右直接邻接",
+      "source_population": "one_structured_path_and_op15_position_receipt",
+      "output_semantic": "direct_path_neighbors",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-030",
+      "display_name_zh": "判断双ASN路径先后",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-17"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从绑定同一path digest的两个OP-15位置回执判断ASN先后",
+      "source_population": "two_op15_position_receipts_with_same_path_digest",
+      "output_semantic": "ordered_asn_path_relation",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-031",
+      "display_name_zh": "投影路径前缀集合",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-18"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整path evidence投影唯一前缀集合",
+      "source_population": "complete_path_evidence_result_set",
+      "output_semantic": "path_prefix_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-032",
+      "display_name_zh": "投影观测下游origin集合",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-19"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从已验证anchor-before-known-origin完整人口投影唯一origin集合",
+      "source_population": "complete_anchor_before_known_origin_path_association_set",
+      "output_semantic": "observed_downstream_origin_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-033",
+      "display_name_zh": "投影规范路径集合",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-20"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整path evidence投影唯一canonical path集合",
+      "source_population": "complete_path_evidence_result_set",
+      "output_semantic": "canonical_path_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-034",
+      "display_name_zh": "投影观察方向集合",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-21"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整path evidence投影唯一peer direction集合",
+      "source_population": "complete_path_evidence_result_set",
+      "output_semantic": "peer_direction_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-035",
+      "display_name_zh": "计算唯一路径数",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-22"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算完整canonical path集合的成员数",
+      "source_population": "complete_canonical_path_set",
+      "output_semantic": "unique_path_count",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-036",
+      "display_name_zh": "计算唯一前缀数",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-23"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算完整prefix集合的成员数",
+      "source_population": "complete_prefix_set",
+      "output_semantic": "unique_prefix_count",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-037",
+      "display_name_zh": "计算唯一观察方向数",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-24"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算完整peer direction集合的成员数",
+      "source_population": "complete_peer_direction_set",
+      "output_semantic": "unique_peer_direction_count",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-038",
+      "display_name_zh": "计算集合交集",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-25"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算两个完整同identity集合的交集",
+      "source_population": "two_complete_same_identity_sets",
+      "output_semantic": "set_intersection",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-039",
+      "display_name_zh": "计算有向集合差",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-26"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算left minus right集合差",
+      "source_population": "two_complete_same_identity_sets",
+      "output_semantic": "set_difference",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-040",
+      "display_name_zh": "计算有向集合覆盖率",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-27"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算intersection除以指定基准集合成员数",
+      "source_population": "two_complete_same_identity_sets",
+      "output_semantic": "set_coverage_ratio",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-041",
+      "display_name_zh": "计算集合Jaccard",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-28"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "计算两个完整集合的intersection over union",
+      "source_population": "two_complete_same_identity_sets",
+      "output_semantic": "set_jaccard",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-042",
+      "display_name_zh": "比较两个时间证据",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-29"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按登记容差与可比性Profile计算两个类型化事实的时间关系",
+      "source_population": "two_typed_timed_facts_and_comparability_profile",
+      "output_semantic": "temporal_evidence_relation",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-043",
+      "display_name_zh": "分类VP可见性一致性",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-30"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只分类同槽VP visibility值的一致性",
+      "source_population": "same_slot_vp_visibility_rows",
+      "output_semantic": "vp_visibility_consistency",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-044",
+      "display_name_zh": "分类VP origin一致性",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-31"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只分类同槽VP origin值的一致性",
+      "source_population": "same_slot_vp_origin_rows",
+      "output_semantic": "vp_origin_consistency",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-045",
+      "display_name_zh": "分类VP path一致性",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-32"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只分类同槽VP canonical path值的一致性",
+      "source_population": "same_slot_vp_path_rows",
+      "output_semantic": "vp_path_consistency",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-046",
+      "display_name_zh": "连接new-prefix与RouteState",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-33"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只按prefix和time连接new-prefix state与RouteState",
+      "source_population": "new_prefix_state_and_route_state",
+      "output_semantic": "new_prefix_route_state_binding",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-047",
+      "display_name_zh": "分类路由变化",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-34"],
+      "disposition": "deferred_p2_1",
+      "atomic_action": "分类相邻RouteEvent和RouteState的单次变化类型",
+      "source_population": "adjacent_route_event_state_pair",
+      "output_semantic": "route_change_classification",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-048",
+      "display_name_zh": "绑定上游输出为Tool参数",
+      "owner_kind": "host_plan_capability",
+      "unit_ids": ["PLAN-CAP-01"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只把已验证上游值绑定为一个下游Tool参数",
+      "source_population": "validated_plan_output",
+      "output_semantic": "tool_argument_binding",
+      "evidence_level": "plan"
+    },
+    {
+      "capability_id": "CAP-P2-049",
+      "display_name_zh": "验证调查身份",
+      "owner_kind": "host_validator",
+      "unit_ids": ["GATE-01"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只验证incident/publication/revision/collector/cohort/window一致性",
+      "source_population": "candidate_investigation_revision",
+      "output_semantic": "identity_gate_receipt",
+      "evidence_level": "policy"
+    },
+    {
+      "capability_id": "CAP-P2-050",
+      "display_name_zh": "验证Evidence引用",
+      "owner_kind": "host_validator",
+      "unit_ids": ["GATE-02"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只验证Evidence引用存在性和摘要",
+      "source_population": "candidate_evidence_refs",
+      "output_semantic": "evidence_ref_gate_receipt",
+      "evidence_level": "policy"
+    },
+    {
+      "capability_id": "CAP-P2-051",
+      "display_name_zh": "验证结果完整性",
+      "owner_kind": "host_validator",
+      "unit_ids": ["GATE-03"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只验证complete/sample/truncated声明和分页闭包",
+      "source_population": "candidate_result_set",
+      "output_semantic": "result_completeness_gate_receipt",
+      "evidence_level": "policy"
+    },
+    {
+      "capability_id": "CAP-P2-052",
+      "display_name_zh": "验证控制面边界",
+      "owner_kind": "host_validator",
+      "unit_ids": ["GATE-04"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只验证候选断言是否超出RRC25控制面证据域",
+      "source_population": "candidate_claims",
+      "output_semantic": "control_plane_boundary_gate_receipt",
+      "evidence_level": "policy"
+    },
+    {
+      "capability_id": "CAP-P2-053",
+      "display_name_zh": "验证禁止结论",
+      "owner_kind": "host_validator",
+      "unit_ids": ["GATE-05"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只验证候选回答不含登记禁止结论",
+      "source_population": "candidate_answer",
+      "output_semantic": "prohibited_conclusion_gate_receipt",
+      "evidence_level": "policy"
+    },
+    {
+      "capability_id": "CAP-P2-054",
+      "display_name_zh": "生成边界回答结构",
+      "owner_kind": "host_response",
+      "unit_ids": ["BOUNDARY-01"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只把一个boundary disposition渲染为登记回答结构",
+      "source_population": "one_boundary_disposition",
+      "output_semantic": "boundary_response",
+      "evidence_level": "D_or_E"
+    },
+    {
+      "capability_id": "CAP-P2-055",
+      "display_name_zh": "渲染Markdown",
+      "owner_kind": "pure_renderer",
+      "unit_ids": ["RENDERER-01"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只把一个冻结ResultSet渲染为Markdown",
+      "source_population": "one_frozen_result_set",
+      "output_semantic": "markdown_artifact",
+      "evidence_level": "delivery"
+    },
+    {
+      "capability_id": "CAP-P2-056",
+      "display_name_zh": "渲染CSV",
+      "owner_kind": "pure_renderer",
+      "unit_ids": ["RENDERER-02"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只把一个冻结ResultSet渲染为CSV",
+      "source_population": "one_frozen_result_set",
+      "output_semantic": "csv_artifact",
+      "evidence_level": "delivery"
+    },
+    {
+      "capability_id": "CAP-P2-057",
+      "display_name_zh": "渲染JSON",
+      "owner_kind": "pure_renderer",
+      "unit_ids": ["RENDERER-03"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "只把一个冻结ResultSet渲染为JSON",
+      "source_population": "one_frozen_result_set",
+      "output_semantic": "json_artifact",
+      "evidence_level": "delivery"
+    },
+    {
+      "capability_id": "CAP-P2-058",
+      "display_name_zh": "提交导出制品",
+      "owner_kind": "host_delivery",
+      "unit_ids": ["DELIVERY-01"],
+      "disposition": "new_p2_v1_governance_pending",
+      "atomic_action": "只提交一个已验证渲染制品到Host分配路径",
+      "source_population": "one_validated_rendered_artifact",
+      "output_semantic": "committed_export_artifact",
+      "evidence_level": "delivery"
+    },
+    {
+      "capability_id": "CAP-P2-059",
+      "display_name_zh": "选择目标状态最后一次出现",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-35"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整状态序列选择一个目标状态最后一次出现",
+      "source_population": "one_complete_typed_state_series",
+      "output_semantic": "last_state_occurrence",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-060",
+      "display_name_zh": "检测首次阈值穿越",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-36"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "按冻结阈值检测首次穿越并显式标记左删失",
+      "source_population": "one_complete_typed_state_series_and_threshold_profile",
+      "output_semantic": "first_threshold_crossing",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-061",
+      "display_name_zh": "分类证据一致性",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-37"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "依据OP-29回执与冻结Profile分类一致、部分一致、冲突、缺失或不可比",
+      "source_population": "two_typed_facts_temporal_receipt_and_consistency_profile",
+      "output_semantic": "evidence_consistency_class",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-062",
+      "display_name_zh": "计算两个异常区间集合的时间交集",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-38"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "对两个完整、同身份且同时间网格的半开状态区间集合执行一次时间交集变换",
+      "source_population": "two_complete_state_interval_sets",
+      "output_semantic": "state_interval_overlap_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-063",
+      "display_name_zh": "投影固定cohort前缀集合",
+      "owner_kind": "new_operator",
+      "unit_ids": ["OP-39"],
+      "disposition": "new_p2_v1",
+      "atomic_action": "从完整固定cohort member人口投影唯一prefix_key集合",
+      "source_population": "complete_fixed_cohort_member_result_set",
+      "output_semantic": "fixed_cohort_prefix_set",
+      "evidence_level": "B"
+    },
+    {
+      "capability_id": "CAP-P2-064",
+      "display_name_zh": "按完整成员集合展开原子子计划",
+      "owner_kind": "host_plan_capability",
+      "unit_ids": ["PLAN-CAP-02"],
+      "disposition": "deferred_p2_1_not_in_p2_v1_plan_schema",
+      "atomic_action": "未来只把上一已提交Plan修订的完整ResultSet按冻结模板确定性展开为下一Plan修订草案；P2 v1不得执行",
+      "source_population": "one_complete_typed_member_set_and_one_frozen_template_group",
+      "output_semantic": "expanded_plan_revision_candidate",
+      "evidence_level": "plan"
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "Q01",
+      "user_goal": "核验事件与publication身份及结束状态",
+      "required_capability_ids": ["CAP-P2-001", "CAP-P2-002", "CAP-P2-006", "CAP-P2-049", "CAP-P2-050", "CAP-P2-053"],
+      "answerability": "supported",
+      "completion_rule": "全部身份字段同源且event_end_unknown不被改写",
+      "forbidden_claims": ["data_through_is_event_end", "recovered"]
+    },
+    {
+      "question_id": "Q02",
+      "user_goal": "区分聚合、分页、样本、完整路径和audit-only完整性",
+      "required_capability_ids": ["CAP-P2-002", "CAP-P2-005", "CAP-P2-006", "CAP-P2-051"],
+      "answerability": "partial_until_full_path_tool",
+      "completion_rule": "逐结果人口报告complete/sample/audit_only和截断原因",
+      "forbidden_claims": ["sample_is_population", "aggregate_complete_means_entity_complete"]
+    },
+    {
+      "question_id": "Q03",
+      "user_goal": "分别报告前缀、ASN、IPv4和IPv6极值及时间",
+      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-008", "CAP-P2-009", "CAP-P2-042"],
+      "answerability": "supported",
+      "completion_rule": "四类指标均出现且单位不合并",
+      "forbidden_claims": ["single_severity_score", "ipv4_ipv6_unit_sum"]
+    },
+    {
+      "question_id": "Q04",
+      "user_goal": "按冻结不可见程度规则排序ASN",
+      "required_capability_ids": ["CAP-P2-004", "CAP-P2-018", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_operator_required",
+      "completion_rule": "三键稳定排序并报告returned/total和导出选项",
+      "forbidden_claims": ["rank_means_critical_as", "rank_means_user_impact"]
+    },
+    {
+      "question_id": "Q05",
+      "user_goal": "展开指定ASN的固定前缀、状态和观测路径概况",
+      "required_capability_ids": ["CAP-P2-004", "CAP-P2-011", "CAP-P2-012", "CAP-P2-016", "CAP-P2-019", "CAP-P2-020", "CAP-P2-022", "CAP-P2-028", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_tools_required",
+      "completion_rule": "ASN自身前缀与关系关联前缀分开且所有成员可追溯",
+      "forbidden_claims": ["related_prefix_is_owned_prefix", "path_contains_means_impact"]
+    },
+    {
+      "question_id": "Q06",
+      "user_goal": "列出ASN异常前缀及首次、区间和最后状态",
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-012", "CAP-P2-019", "CAP-P2-020", "CAP-P2-022", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058", "CAP-P2-059"],
+      "answerability": "new_tools_required",
+      "completion_rule": "成员全集、状态区间和数量对账闭合",
+      "forbidden_claims": ["missing_means_normal", "sample_is_complete"]
+    },
+    {
+      "question_id": "Q07",
+      "user_goal": "指定时间点列出ASN固定前缀的各状态成员",
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-012", "CAP-P2-048", "CAP-P2-051"],
+      "answerability": "new_tools_required",
+      "completion_rule": "成员状态互斥且合计与固定人口对账",
+      "forbidden_claims": ["unknown_is_zero", "wrong_time_slot"]
+    },
+    {
+      "question_id": "Q08",
+      "user_goal": "比较ASN首次变化、最长持续和峰值比例",
+      "required_capability_ids": ["CAP-P2-004", "CAP-P2-013", "CAP-P2-020", "CAP-P2-023", "CAP-P2-024", "CAP-P2-025", "CAP-P2-026", "CAP-P2-027", "CAP-P2-060"],
+      "answerability": "new_tool_operator_required",
+      "completion_rule": "阈值、基线、区间断点和并列规则全部冻结",
+      "forbidden_claims": ["first_observed_is_first_happened", "high_ratio_is_large_scope"]
+    },
+    {
+      "question_id": "Q09",
+      "user_goal": "比较两个ASN的异常时间、固定前缀和观测下游集合",
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-013", "CAP-P2-016", "CAP-P2-020", "CAP-P2-032", "CAP-P2-038", "CAP-P2-039", "CAP-P2-040", "CAP-P2-041", "CAP-P2-062", "CAP-P2-063"],
+      "answerability": "new_tools_required",
+      "completion_rule": "两个ASN的固定前缀、观测下游集合和完整异常区间分别报告集合关系与半开时间交集",
+      "forbidden_claims": ["shared_origin_means_direct_edge", "overlap_means_cause"]
+    },
+    {
+      "question_id": "Q10",
+      "user_goal": "解释ASN排序和非关键性边界",
+      "required_capability_ids": ["CAP-P2-004", "CAP-P2-018", "CAP-P2-052", "CAP-P2-054"],
+      "answerability": "new_operator_required",
+      "completion_rule": "显示排序三键且明确不是拓扑或业务关键性",
+      "forbidden_claims": ["backbone", "single_point_of_failure", "most_important_as"]
+    },
+    {
+      "question_id": "Q13",
+      "user_goal": "在聚合峰值时点列出partial和complete前缀成员",
+      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-012", "CAP-P2-048", "CAP-P2-051", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_tool_required",
+      "completion_rule": "峰值槽成员与聚合数量、分类和去重键对账",
+      "forbidden_claims": ["aggregate_numbers_replace_members", "global_unreachable"]
+    },
+    {
+      "question_id": "Q14",
+      "user_goal": "查看前缀观察方向数量和状态变化",
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-012", "CAP-P2-015", "CAP-P2-019", "CAP-P2-020", "CAP-P2-021", "CAP-P2-043", "CAP-P2-044", "CAP-P2-045"],
+      "answerability": "new_tools_required",
+      "completion_rule": "逐槽方向计数与按需RouteState证据可追溯",
+      "forbidden_claims": ["direction_count_is_users", "no_observation_is_withdraw"]
+    },
+    {
+      "question_id": "Q16",
+      "user_goal": "列出新出现前缀、首次观察、origin、路径和截止状态",
+      "required_capability_ids": ["CAP-P2-014", "CAP-P2-015", "CAP-P2-021", "CAP-P2-046", "CAP-P2-048", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_tools_required",
+      "completion_rule": "new-prefix成员与首次槽、截止状态和RouteState身份闭合",
+      "forbidden_claims": ["first_observed_is_first_global_announcement", "newly_allocated"]
+    },
+    {
+      "question_id": "Q17",
+      "user_goal": "解释新出现前缀不等于全球新分配或新接入",
+      "required_capability_ids": ["CAP-P2-014", "CAP-P2-052", "CAP-P2-054"],
+      "answerability": "boundary_supported",
+      "completion_rule": "只说明RRC25 cohort冻结后首次观察并列出外部证据需求",
+      "forbidden_claims": ["newly_allocated", "globally_first_announced", "business_launch"]
+    },
+    {
+      "question_id": "Q18",
+      "user_goal": "比较同一前缀在不同VP方向的RouteState差异",
+      "required_capability_ids": ["CAP-P2-011", "CAP-P2-015", "CAP-P2-043", "CAP-P2-044", "CAP-P2-045"],
+      "answerability": "new_tool_operator_required",
+      "completion_rule": "每个VP/peer的状态、origin、path和可比性分别列出",
+      "forbidden_claims": ["vp_difference_is_propagation", "single_collector_is_global"]
+    },
+    {
+      "question_id": "Q19",
+      "user_goal": "给出两个ASN的有序路径关系和至少五条真实样本",
+      "required_capability_ids": ["CAP-P2-005", "CAP-P2-016", "CAP-P2-028", "CAP-P2-029", "CAP-P2-030", "CAP-P2-055"],
+      "answerability": "new_path_tool_required",
+      "completion_rule": "样本至少五条并显示总体、contains和adjacency分别判定",
+      "forbidden_claims": ["ordered_contains_is_adjacent", "path_order_is_customer_relation"]
+    },
+    {
+      "question_id": "Q20",
+      "user_goal": "在绑定publication的affected-anchor窗口association人口内，完整列出包含指定ASN的路径关联行、前缀、origin和方向",
+      "required_capability_ids": ["CAP-P2-016", "CAP-P2-031", "CAP-P2-033", "CAP-P2-034", "CAP-P2-035", "CAP-P2-036", "CAP-P2-037", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_path_tool_required",
+      "completion_rule": "TOOL-12 contains_asn原生过滤在ever_affected_asns_registered_by_bound_publication anchor域及window_path_association_evidence_rows人口内完成分页、总体计数和规范化闭合；不代表RRC25原始全部路径人口；完整导出仅针对冻结TOOL-12原始ResultSet",
+      "forbidden_claims": ["limited_samples_are_all_paths", "contains_means_affected"]
+    },
+    {
+      "question_id": "Q21",
+      "user_goal": "判断指定ASN在路径中的直接邻接",
+      "required_capability_ids": ["CAP-P2-016", "CAP-P2-028", "CAP-P2-029", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_path_tool_operator_required",
+      "completion_rule": "只对每条已验证规范路径输出左右邻接和位置",
+      "forbidden_claims": ["relation_row_is_adjacent", "adjacent_is_provider_customer"]
+    },
+    {
+      "question_id": "Q22",
+      "user_goal": "列出指定路径关系关联的固定前缀成员",
+      "required_capability_ids": ["CAP-P2-005", "CAP-P2-016", "CAP-P2-031", "CAP-P2-036", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_path_tool_required",
+      "completion_rule": "完整path evidence投影前缀集合并与关系总量对账",
+      "forbidden_claims": ["relation_prefix_is_as_owned_prefix", "sample_projection_is_complete"]
+    },
+    {
+      "question_id": "Q23",
+      "user_goal": "查询指定峰值时点实际活动路径是否包含ASN",
+      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-015", "CAP-P2-048"],
+      "answerability": "new_route_state_tool_required",
+      "completion_rule": "每项包含time/prefix/VP/peer/origin/path/checkpoint/provenance",
+      "forbidden_claims": ["concurrent_is_path_at_time", "future_state_read"]
+    },
+    {
+      "question_id": "Q24",
+      "user_goal": "查看prefix-peer的路径变化链",
+      "required_capability_ids": ["CAP-P2-017", "CAP-P2-047"],
+      "answerability": "deferred_p2_1",
+      "completion_rule": "P2 v1返回deferred及所需RouteEvent证据，不伪造变化链",
+      "forbidden_claims": ["all_invisible_is_withdraw", "path_change_is_traffic_shift"]
+    },
+    {
+      "question_id": "Q26",
+      "user_goal": "列出指定ASN的RRC25观测下游origin集合",
+      "required_capability_ids": ["CAP-P2-016", "CAP-P2-031", "CAP-P2-032", "CAP-P2-033", "CAP-P2-034", "CAP-P2-035", "CAP-P2-036", "CAP-P2-037", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_path_tool_required",
+      "completion_rule": "仅当可信回执确认ASN属于ever_affected_asns_registered_by_bound_publication eligible anchor域时，TOOL-12才在window_path_association_evidence_rows人口内一次完整读取anchor-before-origin关系并由OP-19形成origin集合；该完整性不代表RRC25原始全部路径人口；eligible anchor匹配0行为合法完整空集，noneligible anchor为unsupported而非空集；同一总体可投影全人口path/prefix/direction集合及计数用于回答和预览；完整导出仅针对冻结TOOL-12原始ResultSet；不得声称逐origin统计，逐origin自动下钻降为P2.1",
+      "forbidden_claims": ["observed_downstream_is_customer_cone", "origin_is_customer"]
+    },
+    {
+      "question_id": "Q27",
+      "user_goal": "比较多个ASN的观测下游集合",
+      "required_capability_ids": ["CAP-P2-016", "CAP-P2-032", "CAP-P2-038", "CAP-P2-039", "CAP-P2-040", "CAP-P2-041", "CAP-P2-055", "CAP-P2-056", "CAP-P2-057", "CAP-P2-058"],
+      "answerability": "new_path_tool_operator_required",
+      "completion_rule": "只有完整同身份集合才能发布交差覆盖和Jaccard",
+      "forbidden_claims": ["set_similarity_is_business_role", "cluster_is_dependency_chain"]
+    },
+    {
+      "question_id": "Q29",
+      "user_goal": "询问ASN customer cone或customer zone",
+      "required_capability_ids": ["CAP-P2-052", "CAP-P2-054"],
+      "optional_capability_ids": ["CAP-P2-016", "CAP-P2-032"],
+      "answerability": "external_evidence_required",
+      "completion_rule": "拒绝customer cone事件结论，可另列观测下游集合及概念差异",
+      "forbidden_claims": ["path_order_proves_customer_cone", "observed_downstream_renamed_customer_zone"]
+    },
+    {
+      "question_id": "Q30",
+      "user_goal": "判断两个ASN是否存在客户商业关系",
+      "required_capability_ids": ["CAP-P2-052", "CAP-P2-054"],
+      "optional_capability_ids": ["CAP-P2-016", "CAP-P2-028", "CAP-P2-029"],
+      "answerability": "external_evidence_required",
+      "completion_rule": "只报告观测路径事实并声明关系数据缺失",
+      "forbidden_claims": ["adjacency_proves_customer", "organization_name_proves_relationship"]
+    },
+    {
+      "question_id": "Q31",
+      "user_goal": "比较前缀、ASN、IPv4、IPv6和方向的时间一致性",
+      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-008", "CAP-P2-010", "CAP-P2-042", "CAP-P2-061"],
+      "answerability": "new_temporal_operator_required",
+      "completion_rule": "冻结人口、单位、方向和容差后输出同槽/先后/错位/不可比",
+      "forbidden_claims": ["temporal_alignment_is_cause", "different_units_are_additive"]
+    },
+    {
+      "question_id": "Q32",
+      "user_goal": "区分峰值时间错位和事实冲突",
+      "required_capability_ids": ["CAP-P2-003", "CAP-P2-007", "CAP-P2-042", "CAP-P2-052", "CAP-P2-061"],
+      "answerability": "new_temporal_operator_required",
+      "completion_rule": "只在相同定义和人口的互斥断言上标记conflict",
+      "forbidden_claims": ["later_means_caused_by", "peak_misalignment_is_conflict"]
+    },
+    {
+      "question_id": "Q33",
+      "user_goal": "判断当前证据能否证明传播、全国、用户、原因、责任或恢复",
+      "required_capability_ids": ["CAP-P2-002", "CAP-P2-006", "CAP-P2-049", "CAP-P2-050", "CAP-P2-051", "CAP-P2-052", "CAP-P2-053", "CAP-P2-054"],
+      "answerability": "bounded_control_plane_only",
+      "completion_rule": "发布有边界RRC25控制面结论并逐项列出unsupported",
+      "forbidden_claims": ["cause", "responsibility", "national_outage", "real_user_impact", "recovery", "network_rca"]
+    }
+  ],
+  "deferred_p2_1_capabilities": [
+    {
+      "capability_id": "CAP-P2-064",
+      "unit_id": "PLAN-CAP-02",
+      "affected_question_ids": ["Q20", "Q23", "Q26"],
+      "p2_v1_grounding_allowed": false,
+      "hidden_fan_out_replacement_forbidden": true,
+      "deferred_outputs": [
+        "Q20逐路径位置与邻接批量处理",
+        "Q23逐活动路径位置与跨并列峰值自动展开",
+        "Q26按完整origin集合逐origin再次查询并分别统计"
+      ]
+    }
+  ],
+  "global_forbidden_claims": [
+    "customer_cone_without_external_relationship_evidence",
+    "commercial_relationship_from_as_path_order",
+    "national_outage_from_single_collector",
+    "real_user_impact",
+    "cause_or_responsibility",
+    "recovery_when_event_end_unknown"
+  ],
+  "design_boundary": {
+    "runtime_implemented": false,
+    "production_deployed": false,
+    "registry_activated": false
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/data/rrc25-event-publication.schema.json",
+  "title": "Domeye RRC25 事件 Observation 与 Analysis Publication 快照",
+  "oneOf": [
+    {"$ref": "#/$defs/observation"},
+    {"$ref": "#/$defs/analysis"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "limitation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "metric": {
+      "type": "object",
+      "required": [
+        "state_point_utc", "country_code", "baseline_v4", "baseline_v6",
+        "cohort_visible_v4", "cohort_visible_v6", "current_visible_v4",
+        "current_visible_v6", "announcement_v4", "announcement_v6",
+        "withdrawal_v4", "withdrawal_v6", "slot",
+        "source_route_state_slot_sha256", "metric_snapshot_sha256",
+        "metric_slot_sha256", "quality_status", "gap_status"
+      ],
+      "properties": {
+        "state_point_utc": {"type": "string", "format": "date-time"},
+        "country_code": {"pattern": "^[A-Z]{2}$"},
+        "baseline_v4": {"type": "integer", "minimum": 0},
+        "baseline_v6": {"type": "integer", "minimum": 0},
+        "cohort_visible_v4": {"type": "integer", "minimum": 0},
+        "cohort_visible_v6": {"type": "integer", "minimum": 0},
+        "current_visible_v4": {"type": "integer", "minimum": 0},
+        "current_visible_v6": {"type": "integer", "minimum": 0},
+        "announcement_v4": {"type": "integer", "minimum": 0},
+        "announcement_v6": {"type": "integer", "minimum": 0},
+        "withdrawal_v4": {"type": "integer", "minimum": 0},
+        "withdrawal_v6": {"type": "integer", "minimum": 0},
+        "slot": {"type": "integer", "minimum": 1, "maximum": 4320},
+        "source_route_state_slot_sha256": {"$ref": "#/$defs/sha256"},
+        "metric_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+        "metric_slot_sha256": {"$ref": "#/$defs/sha256"},
+        "quality_status": {"const": "complete"},
+        "gap_status": {"const": "none"}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "schema_version", "candidate_id", "incident_id", "collector_id",
+        "event_type", "country_code", "legacy_reference", "source_window",
+        "state_point_semantics", "data_through", "event_stage", "event_fact_id",
+        "metric_dataset_id", "metric", "quality", "finality", "normal_band",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {"const": "rrc25-observation-publication/v1"},
+        "candidate_id": {"pattern": "^domeye_data_candidate_v1_[0-9a-f]{32}$"},
+        "incident_id": {"type": "string", "minLength": 1},
+        "collector_id": {"const": "rrc25"},
+        "event_type": {"const": "country_outage"},
+        "country_code": {"pattern": "^[A-Z]{2}$"},
+        "legacy_reference": {"type": "string", "minLength": 1},
+        "source_window": {
+          "type": "object",
+          "required": ["start", "end_exclusive"],
+          "properties": {
+            "start": {"const": "2026-02-24T00:00:00Z"},
+            "end_exclusive": {"const": "2026-03-11T00:00:00Z"}
+          }
+        },
+        "state_point_semantics": {"const": "five_minute_slot_end"},
+        "data_through": {"type": "string", "format": "date-time"},
+        "event_stage": {
+          "enum": ["detected", "ongoing", "recovery_candidate", "recovered_observation", "final"]
+        },
+        "event_fact_id": {"pattern": "^event_fact_v1_[0-9a-f]{32}$"},
+        "metric_dataset_id": {"pattern": "^route_metric_dataset_v1_[0-9a-f]{32}$"},
+        "metric": {"$ref": "#/$defs/metric"},
+        "quality": {
+          "type": "object",
+          "required": ["state", "gap"],
+          "properties": {"state": {"const": "complete"}, "gap": {"const": "none"}}
+        },
+        "finality": {"enum": ["progressing", "final"]},
+        "normal_band": {
+          "type": "object",
+          "required": ["state", "reason"],
+          "properties": {"state": {"const": "unknown"}, "reason": {"type": "string", "minLength": 1}}
+        },
+        "limitations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/limitation"}}
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": [
+        "schema_version", "candidate_id", "incident_id", "collector_id",
+        "country_code", "data_through", "derived_from_observation_publication_id",
+        "algorithm", "trend_profile", "analysis_claim", "limitations"
+      ],
+      "properties": {
+        "schema_version": {"const": "rrc25-analysis-publication/v1"},
+        "candidate_id": {"pattern": "^domeye_data_candidate_v1_[0-9a-f]{32}$"},
+        "incident_id": {"type": "string", "minLength": 1},
+        "collector_id": {"const": "rrc25"},
+        "country_code": {"pattern": "^[A-Z]{2}$"},
+        "data_through": {"type": "string", "format": "date-time"},
+        "derived_from_observation_publication_id": {
+          "pattern": "^observation_publication_v1_[0-9a-f]{32}$"
+        },
+        "algorithm": {
+          "type": "object",
+          "required": ["name", "cadence_slots"],
+          "properties": {
+            "name": {"const": "rrc25_country_trend_profile/v1"},
+            "cadence_slots": {"const": 12}
+          }
+        },
+        "trend_profile": {
+          "type": "object",
+          "required": ["metric", "start", "end", "change", "direction", "minimum", "maximum", "observation_sequence"],
+          "properties": {
+            "metric": {"const": "combined_fixed_cohort_visibility_ratio"},
+            "start": {"type": ["number", "null"]},
+            "end": {"type": ["number", "null"]},
+            "change": {"type": ["number", "null"]},
+            "direction": {"enum": ["up", "down", "stable", "not_applicable"]},
+            "minimum": {"type": ["object", "null"]},
+            "maximum": {"type": ["object", "null"]},
+            "observation_sequence": {"type": "integer", "minimum": 1}
+          }
+        },
+        "analysis_claim": {"const": "deterministic_description_only"},
+        "limitations": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/limitation"}}
+      }
+    }
+  }
+}

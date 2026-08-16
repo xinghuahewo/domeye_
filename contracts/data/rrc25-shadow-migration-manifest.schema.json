@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/data/rrc25-shadow-migration-manifest.schema.json",
+  "title": "RRC25 224-310 影子迁移候选清单",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_id",
+    "dataset_id",
+    "import_batch_id",
+    "collector_id",
+    "window_start_utc",
+    "window_end_exclusive_utc",
+    "state_point_count",
+    "country_bucket_count",
+    "legacy_table_count",
+    "legacy_country_outage_count",
+    "reconciled_country_outage_count",
+    "trace_only_country_outage_count",
+    "source_field_reconciliation_count",
+    "source_snapshot_set_sha256",
+    "content_sha256",
+    "files"
+  ],
+  "properties": {
+    "schema_version": {"const": "rrc25-shadow-migration/v1"},
+    "status": {"const": "complete"},
+    "candidate_id": {"pattern": "^domeye_data_candidate_v1_[0-9a-f]{32}$"},
+    "dataset_id": {"pattern": "^shadow_migration_dataset_v1_[0-9a-f]{32}$"},
+    "import_batch_id": {"pattern": "^shadow_import_batch_v1_[0-9a-f]{32}$"},
+    "collector_id": {"const": "rrc25"},
+    "window_start_utc": {"const": "2026-02-24T00:00:00Z"},
+    "window_end_exclusive_utc": {"const": "2026-03-11T00:00:00Z"},
+    "state_point_count": {"const": 4320},
+    "country_bucket_count": {"const": 241},
+    "legacy_table_count": {"const": 37},
+    "legacy_country_outage_count": {"const": 111},
+    "reconciled_country_outage_count": {"const": 81},
+    "trace_only_country_outage_count": {"const": 30},
+    "source_field_reconciliation_count": {"const": 534},
+    "source_snapshot_set_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "content_sha256": {"pattern": "^[0-9a-f]{64}$"},
+    "files": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["path", "row_count", "size_bytes", "sha256", "content_sha256"],
+        "properties": {
+          "path": {"type": "string"},
+          "row_count": {"type": "integer", "minimum": 0},
+          "size_bytes": {"type": "integer", "minimum": 1},
+          "sha256": {"pattern": "^[0-9a-f]{64}$"},
+          "content_sha256": {"pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}

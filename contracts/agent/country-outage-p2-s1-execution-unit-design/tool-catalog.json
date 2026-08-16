@@ -1,0 +1,2435 @@
+{
+  "schema_version": "country_outage_p2_s1_tool_catalog_v1",
+  "artifact_id": "country-outage-p2-s1-tool-catalog-20260812",
+  "stage": "S1D-2",
+  "status": "design_contract_only",
+  "scope": {
+    "collector_id": "rrc25",
+    "publication_cardinality": 1,
+    "read_only": true,
+    "external_data_forbidden": true,
+    "runtime_implemented": false,
+    "production_deployed": false
+  },
+  "path_canonicalization_profile": {
+    "profile_id": "AS-PATH-CANONICALIZATION-1.0.0",
+    "profile_version": "1.0.0",
+    "input_schema_id": "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment",
+    "segment_order_rule": "保留输入segment顺序",
+    "sequence_rule": "as_sequence与confederation_sequence内ASN顺序和prepend重复均原样保留",
+    "set_rule": "as_set与confederation_set内ASN按数值升序稳定排序且不去重",
+    "segment_type_rule": "segment_type进入摘要且不得拍平、合并或转换",
+    "encoding_rule": "对规范化segment数组执行RFC8785 canonical JSON UTF-8编码",
+    "path_digest_algorithm": "sha256_rfc8785_canonical_json",
+    "empty_path_forbidden": true,
+    "source_native_required": true,
+    "profile_digest": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+  },
+  "common_identity_contract": {
+    "required_fields": [
+      "incident_id",
+      "publication_id",
+      "publication_revision",
+      "publication_digest",
+      "collector_id",
+      "cohort_id",
+      "cohort_digest",
+      "window_start_utc",
+      "window_end_utc",
+      "data_through_utc",
+      "finality",
+      "registry_snapshot_id",
+      "registry_snapshot_digest",
+      "binding_generation"
+    ],
+    "collector_id_const": "rrc25",
+    "single_publication_required": true,
+    "page_token_binds_all_identity_fields": true,
+    "cross_publication_read_forbidden": true,
+    "data_through_is_event_end": false
+  },
+  "common_result_set_contract": {
+    "required_fields": [
+      "result_set_id",
+      "tool_run_id",
+      "tool_id",
+      "tool_version",
+      "query_digest",
+      "identity_digest",
+      "source_population_id",
+      "source_dataset_digest",
+      "members",
+      "returned_count",
+      "total_count",
+      "page_complete",
+      "set_completeness",
+      "next_page_token",
+      "evidence_refs",
+      "limitations",
+      "content_digest"
+    ],
+    "set_completeness_enum": [
+      "complete",
+      "partial_page",
+      "source_incomplete"
+    ],
+    "page_success_requires_full_page": true,
+    "cancelled_page_publishable": false,
+    "total_count_null_only_when": [
+      "source_incomplete"
+    ],
+    "preview_is_renderer_responsibility": true,
+    "partial_page_may_claim_complete_set": false
+  },
+  "common_page_token_contract": {
+    "first_page_token": null,
+    "binds": [
+      "identity_digest",
+      "query_digest",
+      "stable_sort_digest",
+      "source_dataset_digest",
+      "last_member_sort_key"
+    ],
+    "opaque_to_model": true,
+    "identity_mismatch_error": "page_token_identity_mismatch",
+    "query_or_sort_mismatch_error": "invalid_page_token",
+    "page_size_may_change_between_pages": false
+  },
+  "common_value_state_contract": {
+    "empty": "合法完整查询得到零成员；returned_count=0且total_count=0",
+    "unknown": "来源明确记录字段或状态未知，不能改写为零",
+    "missing": "预期人口中缺少记录，必须携带missing_reason",
+    "null": "只允许与field_state=not_applicable或unknown同时出现",
+    "unavailable": "来源或能力不可查询，只返回失败/能力回执，不得生成ResultSet",
+    "audit_only": "仅审计层存在且当前权限不可读取，只返回失败/能力回执",
+    "failed": "失败只返回ToolRunReceipt，不返回可发布ResultSet"
+  },
+  "common_execution_contract": {
+    "deadline_required": true,
+    "budget_required": true,
+    "cancel_token_required": true,
+    "permission_scope": "country_outage.p2.read",
+    "retry_policy": "host_controlled_idempotent_retry_only",
+    "failure_unit": "whole_tool_call",
+    "partial_success_publishable": false,
+    "error_enum": [
+      "invalid_input",
+      "unsupported_filter",
+      "identity_mismatch",
+      "stale_publication",
+      "source_unavailable",
+      "source_incomplete",
+      "source_schema_unready",
+      "source_view_unready",
+      "audit_only",
+      "invalid_page_token",
+      "page_token_identity_mismatch",
+      "evidence_unclosed",
+      "budget_exceeded",
+      "deadline_exceeded",
+      "cancelled",
+      "permission_denied",
+      "internal_error"
+    ]
+  },
+  "common_field_schemas": {
+    "identity": {
+      "type": "object",
+      "required": [
+        "incident_id",
+        "publication_id",
+        "publication_revision",
+        "publication_digest",
+        "collector_id",
+        "cohort_id",
+        "cohort_digest",
+        "window_start_utc",
+        "window_end_utc",
+        "data_through_utc",
+        "finality",
+        "registry_snapshot_id",
+        "registry_snapshot_digest",
+        "binding_generation"
+      ],
+      "properties": {
+        "incident_id": {
+          "type": "string"
+        },
+        "publication_id": {
+          "type": "string"
+        },
+        "publication_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "publication_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "collector_id": {
+          "const": "rrc25"
+        },
+        "cohort_id": {
+          "type": "string"
+        },
+        "cohort_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "window_start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "window_end_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data_through_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finality": {
+          "type": "string",
+          "enum": [
+            "event_end_unknown",
+            "event_end_known"
+          ]
+        },
+        "registry_snapshot_id": {
+          "type": "string"
+        },
+        "registry_snapshot_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "binding_generation": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "page_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "page_token": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "第一页必须为null；非空token绑定identity/query/sort/source digest"
+    },
+    "asn": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "prefix": {
+      "type": "string",
+      "format": "cidr"
+    },
+    "afi": {
+      "type": "integer",
+      "enum": [
+        4,
+        6
+      ]
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "half_open_time_range": {
+      "type": "object",
+      "required": [
+        "start_utc",
+        "end_utc"
+      ],
+      "properties": {
+        "start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence_ref": {
+      "type": "object",
+      "required": [
+        "evidence_id",
+        "source_digest",
+        "member_key"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string"
+        },
+        "source_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "member_key": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "source_view_requirements": [
+    {
+      "source_population_id": "fixed_cohort_member_rows",
+      "implementation_precondition": "freeze_content_addressed_member_row_schema",
+      "required_source_fields": [
+        "cohort_member_id",
+        "prefix",
+        "afi",
+        "country_origin_asns",
+        "expected_peer_asn_direction_ids",
+        "expected_route_observation_keys",
+        "membership_basis"
+      ]
+    },
+    {
+      "source_population_id": "prefix_state_rows",
+      "implementation_precondition": "freeze_content_addressed_prefix_state_row_schema",
+      "required_source_fields": [
+        "state_point_utc",
+        "prefix",
+        "afi",
+        "classification",
+        "expected_direction_count",
+        "visible_direction_count",
+        "invisible_direction_count",
+        "unknown_direction_count"
+      ]
+    },
+    {
+      "source_population_id": "asn_state_rows",
+      "implementation_precondition": "freeze_content_addressed_asn_state_row_schema",
+      "required_source_fields": [
+        "state_point_utc",
+        "asn",
+        "classification",
+        "fixed_prefix_count",
+        "partial_prefix_count",
+        "complete_prefix_count",
+        "unknown_prefix_count",
+        "invisible_direction_count"
+      ]
+    },
+    {
+      "source_population_id": "new_prefix_state_rows",
+      "implementation_precondition": "freeze_homogeneous_content_addressed_new_prefix_state_row_schema",
+      "required_source_fields": [
+        "new_prefix_state_id",
+        "prefix",
+        "afi",
+        "first_observed_at_utc",
+        "state_point_utc",
+        "classification"
+      ]
+    },
+    {
+      "source_population_id": "materialized_route_state_rows_at_exact_time",
+      "implementation_precondition": "materialize_exact_time_route_state_view_with_projection_receipt_and_path_asn_membership_index",
+      "required_source_metadata": [
+        "path_asn_membership_index_id",
+        "path_asn_membership_profile_digest",
+        "path_asn_membership_index_digest",
+        "path_asn_membership_materialization_receipt_digest"
+      ],
+      "path_asn_membership_profile": {
+        "profile_id": "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0",
+        "profile_digest": "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2",
+        "source_field": "path_segments",
+        "membership_rule": "对typed path_segments中全部segment的ASN token取成员集合；prepend重复只在索引成员集合内去重，不修改主路径",
+        "eligible_row_predicate": "visibility=visible AND common_path_status IN (ordered,unordered)",
+        "ambiguous_invalid_unknown_not_applicable_excluded": true,
+        "query_time_path_parsing_forbidden": true,
+        "materialization_receipt_must_bind": [
+          "publication_id",
+          "state_point_utc",
+          "source_dataset_digest",
+          "checkpoint_id",
+          "projection_receipt_digest",
+          "profile_digest",
+          "index_digest",
+          "indexed_member_keys_digest"
+        ]
+      },
+      "required_source_fields": [
+        "state_point_utc",
+        "prefix",
+        "afi",
+        "peer_asn_direction_id",
+        "route_observation_key",
+        "vp_id",
+        "peer_id",
+        "visibility",
+        "origin_status",
+        "origin_asns",
+        "path_status",
+        "common_path_status",
+        "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
+        "path_segments",
+        "last_event_id",
+        "last_update_utc",
+        "checkpoint_id",
+        "projection_receipt_digest",
+        "quality_flags"
+      ]
+    },
+    {
+      "source_population_id": "window_path_association_evidence_rows",
+      "implementation_precondition": "freeze_window_association_row_and_path_quality_schema_with_pre_materialized_filter_indexes",
+      "required_source_metadata": [
+        "path_asn_membership_index_id",
+        "anchor_before_known_origin_index_id",
+        "path_association_filter_profile_digest",
+        "path_association_index_digest",
+        "path_association_materialization_receipt_digest",
+        "anchor_population_source_ref",
+        "eligible_anchor_asns_digest",
+        "eligible_anchor_asn_count"
+      ],
+      "filter_profile": {
+        "profile_id": "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0",
+      "profile_digest": "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7",
+        "contains_asn_rule": "对source view已物化typed path_segments中全部ASN token建立成员索引；prepend重复只在索引成员集合内去重，不修改主路径",
+        "anchor_before_known_origin_rule": "仅索引ordered_sequence_eligible=true、origin_status=known、observed_origin_asn=known_origin_asn、且去除连续prepend后known origin是AS_PATH最后ASN并严格位于anchor之后的source row",
+        "anchor_population_rule": "anchor必须属于同publication已冻结完整ever-affected-AS ResultSet；物化回执原样绑定该ResultSet身份、manifest/content/freeze摘要及完整排序ASN成员摘要",
+        "query_time_path_parsing_forbidden": true,
+      "profile_digest_recipe": "sha256(canonical(filter_profile excluding profile_digest))",
+      "materialization_receipt_must_bind": [
+        "materializer_id",
+        "materializer_version",
+        "materializer_contract_digest",
+        "materializer_implementation_digest",
+        "publication_id",
+        "source_dataset_digest",
+        "profile_id",
+        "profile_digest",
+          "path_asn_membership_index_id",
+          "anchor_before_known_origin_index_id",
+          "index_digest",
+          "indexed_member_keys_digest",
+          "anchor_population_source_ref",
+          "eligible_anchor_asns",
+          "eligible_anchor_asns_digest",
+          "eligible_anchor_asn_count"
+        ]
+      },
+      "required_source_fields": [
+        "path_association_id",
+        "anchor_asn",
+        "known_origin_asn",
+        "origin_status",
+        "observed_origin_asn",
+        "prefix",
+        "afi",
+        "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
+        "path_segments",
+        "path_parse_status",
+        "common_path_status",
+        "ordered_sequence_eligible",
+        "peer_asn_direction_ids",
+        "route_observation_count"
+      ]
+    },
+    {
+      "source_population_id": "route_event_rows",
+      "implementation_precondition": "existing_route_event_schema_plus_publication_manifest_binding",
+      "required_source_fields": [
+        "record_kind",
+        "route_event_id",
+        "event_time_utc",
+        "prefix",
+        "afi_safi",
+        "vp_id",
+        "vp_peer_ip",
+        "vp_asn",
+        "action",
+        "origin_asn",
+        "as_path",
+        "raw_ref"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "unit_id": "TOOL-07",
+      "name": "query_fixed_cohort_members",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1_source_schema_required",
+      "atomic_capability_id": "read.fixed_cohort_members",
+      "single_responsibility": "读取绑定publication的一种固定cohort member事实人口",
+      "source_population": "fixed_cohort_member_rows",
+      "source_schema_ref": "tool-catalog.json#/source_view_requirements/0",
+      "source_readiness": "schema_projection_required_before_implementation",
+      "input_contract": {
+        "required": [
+          "identity",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "asn",
+          "prefix",
+          "afi"
+        ],
+        "mutually_exclusive": [],
+        "page_size_min": 1,
+        "page_size_max": 1000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        }
+      },
+      "output_population": "fixed_cohort_member_rows",
+      "member_identity": [
+        "cohort_id",
+        "cohort_member_id"
+      ],
+      "output_member_fields": [
+        "cohort_member_id",
+        "prefix",
+        "afi",
+        "country_origin_asns",
+        "expected_peer_asn_direction_ids",
+        "expected_route_observation_keys",
+        "membership_basis",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "cohort_member_id": {
+          "type": "string"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "country_origin_asns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/common_field_schemas/asn"
+          },
+          "uniqueItems": true
+        },
+        "expected_peer_asn_direction_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "expected_route_observation_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "membership_basis": {
+          "type": "string",
+          "enum": [
+            "country_origin_known",
+            "country_origin_moas",
+            "country_origin_ambiguous"
+          ]
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "asn_filter_semantics": "asn必须属于country_origin_asns；MOAS member可同时出现在多个ASN查询中但cohort_member_id保持不变",
+      "direction_identity_contract": {
+        "peer_asn_direction_id": "collector_id+peer_asn",
+        "route_observation_key": "collector_id+vp_id+peer_id+prefix+afi",
+        "join_to_tool_11": "expected_route_observation_keys equals TOOL-11 route_observation_key"
+      },
+      "time_semantics": "publication_fixed_cohort_membership",
+      "stable_sort": [
+        "afi ASC",
+        "network_address ASC",
+        "prefix_length ASC",
+        "cohort_member_id ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "cohort_member_id"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每个member引用cohort artifact、member row与source digest",
+      "forbidden_embedded_actions": [
+        "read_prefix_state",
+        "join",
+        "rank",
+        "aggregate",
+        "compare",
+        "explain",
+        "render",
+        "export"
+      ],
+      "forbidden_conclusions": [
+        "prefix_globally_reachable",
+        "asn_customer_cone",
+        "user_impact"
+      ],
+      "question_refs": [
+        "Q05",
+        "Q06",
+        "Q07",
+        "Q09",
+        "Q14",
+        "Q18"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    },
+    {
+      "unit_id": "TOOL-08",
+      "name": "query_prefix_states",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1_source_schema_required",
+      "atomic_capability_id": "read.prefix_states",
+      "single_responsibility": "读取绑定publication的一种prefix-state事实人口",
+      "source_population": "prefix_state_rows",
+      "source_schema_ref": "tool-catalog.json#/source_view_requirements/1",
+      "source_readiness": "row_schema_required_before_implementation",
+      "input_contract": {
+        "required": [
+          "identity",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "prefix",
+          "afi",
+          "state_point_utc",
+          "time_range_half_open",
+          "classification"
+        ],
+        "mutually_exclusive": [
+          [
+            "state_point_utc",
+            "time_range_half_open"
+          ]
+        ],
+        "time_grid": "publication_state_point_grid",
+        "silent_time_rounding": false,
+        "page_size_min": 1,
+        "page_size_max": 2000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "time_range_half_open": {
+          "$ref": "#/common_field_schemas/half_open_time_range"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "partial",
+            "complete",
+            "unknown"
+          ]
+        }
+      },
+      "output_population": "prefix_state_rows",
+      "member_identity": [
+        "event_metric_id",
+        "prefix",
+        "afi",
+        "state_point_utc"
+      ],
+      "output_member_fields": [
+        "state_point_utc",
+        "prefix",
+        "afi",
+        "classification",
+        "expected_direction_count",
+        "visible_direction_count",
+        "invisible_direction_count",
+        "unknown_direction_count",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "partial",
+            "complete",
+            "unknown"
+          ]
+        },
+        "expected_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "visible_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invisible_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "state_enum": [
+        "normal",
+        "partial",
+        "complete",
+        "unknown"
+      ],
+      "time_semantics": "state_at_exact_publication_grid_point",
+      "stable_sort": [
+        "state_point_utc ASC",
+        "afi ASC",
+        "network_address ASC",
+        "prefix_length ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "prefix",
+        "afi",
+        "state_point_utc"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每行引用prefix-state artifact row与manifest digest",
+      "forbidden_embedded_actions": [
+        "read_cohort_member",
+        "first",
+        "interval",
+        "last",
+        "peak",
+        "rank",
+        "join",
+        "compare",
+        "render"
+      ],
+      "forbidden_conclusions": [
+        "withdraw_received",
+        "global_unreachable",
+        "user_impact"
+      ],
+      "question_refs": [
+        "Q05",
+        "Q06",
+        "Q07",
+        "Q13",
+        "Q14"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    },
+    {
+      "unit_id": "TOOL-09",
+      "name": "query_as_states",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1_source_schema_required",
+      "atomic_capability_id": "read.as_states",
+      "single_responsibility": "读取绑定publication的一种ASN-state事实人口",
+      "source_population": "asn_state_rows",
+      "source_schema_ref": "tool-catalog.json#/source_view_requirements/2",
+      "source_readiness": "row_schema_required_before_implementation",
+      "input_contract": {
+        "required": [
+          "identity",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "asn",
+          "state_point_utc",
+          "time_range_half_open",
+          "classification"
+        ],
+        "mutually_exclusive": [
+          [
+            "state_point_utc",
+            "time_range_half_open"
+          ]
+        ],
+        "time_grid": "publication_state_point_grid",
+        "silent_time_rounding": false,
+        "page_size_min": 1,
+        "page_size_max": 2000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "time_range_half_open": {
+          "$ref": "#/common_field_schemas/half_open_time_range"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "affected",
+            "route_interrupted",
+            "unknown"
+          ]
+        }
+      },
+      "output_population": "asn_state_rows",
+      "member_identity": [
+        "event_metric_id",
+        "asn",
+        "state_point_utc"
+      ],
+      "output_member_fields": [
+        "state_point_utc",
+        "asn",
+        "classification",
+        "fixed_prefix_count",
+        "partial_prefix_count",
+        "complete_prefix_count",
+        "unknown_prefix_count",
+        "invisible_direction_count",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "affected",
+            "route_interrupted",
+            "unknown"
+          ]
+        },
+        "fixed_prefix_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partial_prefix_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete_prefix_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown_prefix_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invisible_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "state_enum": [
+        "normal",
+        "affected",
+        "route_interrupted",
+        "unknown"
+      ],
+      "time_semantics": "state_at_exact_publication_grid_point",
+      "stable_sort": [
+        "asn ASC",
+        "state_point_utc ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "asn",
+        "state_point_utc"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每行引用asn-state artifact row与manifest digest",
+      "forbidden_embedded_actions": [
+        "rank",
+        "threshold_crossing",
+        "interval",
+        "ratio",
+        "join",
+        "compare",
+        "render"
+      ],
+      "forbidden_conclusions": [
+        "asn_criticality",
+        "traffic_impact",
+        "cause"
+      ],
+      "question_refs": [
+        "Q08",
+        "Q09"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    },
+    {
+      "unit_id": "TOOL-10",
+      "name": "query_new_prefix_states",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1_homogeneous_source_schema_required",
+      "atomic_capability_id": "read.new_prefix_states",
+      "single_responsibility": "读取绑定publication的一种new-prefix-state事实人口",
+      "source_population": "new_prefix_state_rows",
+      "source_schema_ref": "tool-catalog.json#/source_view_requirements/3",
+      "source_readiness": "homogeneous_row_schema_required_before_implementation",
+      "input_contract": {
+        "required": [
+          "identity",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "prefix",
+          "afi",
+          "first_observed_range_half_open",
+          "state_point_utc",
+          "time_range_half_open",
+          "classification"
+        ],
+        "mutually_exclusive": [
+          [
+            "state_point_utc",
+            "time_range_half_open"
+          ]
+        ],
+        "page_size_min": 1,
+        "page_size_max": 2000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "first_observed_range_half_open": {
+          "$ref": "#/common_field_schemas/half_open_time_range"
+        },
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "time_range_half_open": {
+          "$ref": "#/common_field_schemas/half_open_time_range"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "partial",
+            "complete",
+            "unknown"
+          ]
+        }
+      },
+      "output_population": "new_prefix_state_rows",
+      "member_identity": [
+        "publication_id",
+        "new_prefix_state_id",
+        "state_point_utc"
+      ],
+      "output_member_fields": [
+        "new_prefix_state_id",
+        "prefix",
+        "afi",
+        "first_observed_at_utc",
+        "state_point_utc",
+        "classification",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "new_prefix_state_id": {
+          "type": "string"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "first_observed_at_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "partial",
+            "complete",
+            "unknown"
+          ]
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "time_semantics": "first_observed_means_first_in_rrc25_after_cohort_freeze",
+      "stable_sort": [
+        "first_observed_at_utc ASC",
+        "afi ASC",
+        "network_address ASC",
+        "prefix_length ASC",
+        "state_point_utc ASC",
+        "new_prefix_state_id ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "new_prefix_state_id",
+        "state_point_utc"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每行引用new-prefix-state artifact row与manifest digest",
+      "forbidden_embedded_actions": [
+        "read_route_state",
+        "join",
+        "select_cutoff",
+        "global_first_announce",
+        "render"
+      ],
+      "forbidden_conclusions": [
+        "new_allocation",
+        "global_first_announcement",
+        "business_activation"
+      ],
+      "question_refs": [
+        "Q16",
+        "Q17"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    },
+    {
+      "unit_id": "TOOL-11",
+      "name": "query_materialized_route_states_at_time",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1_source_view_required",
+      "atomic_capability_id": "read.materialized_route_states_at_time",
+      "single_responsibility": "读取绑定publication的一个精确时点预物化RouteState事实人口",
+      "source_population": "materialized_route_state_rows_at_exact_time",
+      "source_schema_ref": "tool-catalog.json#/source_view_requirements/4",
+      "source_readiness": "materialized_view_and_projection_receipt_required_before_implementation",
+      "input_contract": {
+        "required": [
+          "identity",
+          "state_point_utc",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "prefix",
+          "afi",
+          "peer_asn_direction_id",
+          "route_observation_key",
+          "vp_id",
+          "peer_id",
+          "visibility",
+          "origin_asn",
+          "contains_asn"
+        ],
+        "exact_grid_match_required": true,
+        "silent_time_rounding": false,
+        "future_state_read_forbidden": true,
+        "page_size_min": 1,
+        "page_size_max": 2000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "peer_asn_direction_id": {
+          "type": "string"
+        },
+        "route_observation_key": {
+          "type": "string"
+        },
+        "vp_id": {
+          "type": "string"
+        },
+        "peer_id": {
+          "type": "string"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "visible",
+            "invisible",
+            "unknown",
+            "missing"
+          ]
+        },
+        "origin_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "contains_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        }
+      },
+      "output_population": "materialized_route_state_rows_at_exact_time",
+      "member_identity": [
+        "publication_id",
+        "state_point_utc",
+        "collector_id",
+        "vp_id",
+        "peer_id",
+        "prefix",
+        "afi"
+      ],
+      "output_member_fields": [
+        "state_point_utc",
+        "prefix",
+        "afi",
+        "peer_asn_direction_id",
+        "route_observation_key",
+        "vp_id",
+        "peer_id",
+        "visibility",
+        "origin_status",
+        "origin_asns",
+        "path_status",
+        "common_path_status",
+        "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
+        "path_segments",
+        "last_event_id",
+        "last_update_utc",
+        "checkpoint_id",
+        "projection_receipt_digest",
+        "quality_flags",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "state_point_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "peer_asn_direction_id": {
+          "type": "string"
+        },
+        "route_observation_key": {
+          "type": "string"
+        },
+        "vp_id": {
+          "type": "string"
+        },
+        "peer_id": {
+          "type": "string"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "visible",
+            "invisible",
+            "unknown",
+            "missing"
+          ]
+        },
+        "origin_status": {
+          "type": "string",
+          "enum": [
+            "known_single",
+            "known_moas",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "origin_asns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/common_field_schemas/asn"
+          },
+          "uniqueItems": true
+        },
+        "path_status": {
+          "type": "string",
+          "enum": [
+            "known_ordered",
+            "known_unordered",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "common_path_status": {
+          "type": "string",
+          "enum": [
+            "ordered",
+            "unordered",
+            "ambiguous",
+            "invalid",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "path_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path_digest": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "path_canonicalization_profile_id": {
+          "const": "AS-PATH-CANONICALIZATION-1.0.0"
+        },
+        "path_canonicalization_profile_digest": {
+          "const": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+        },
+        "path_segments": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_event_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_update_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "checkpoint_id": {
+          "type": "string"
+        },
+        "projection_receipt_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "quality_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "output_row_constraints": {
+        "type": "object",
+        "required": [
+          "visibility",
+          "origin_status",
+          "origin_asns",
+          "path_status",
+          "common_path_status",
+          "path_id",
+          "path_digest",
+          "path_canonicalization_profile_id",
+          "path_canonicalization_profile_digest",
+          "path_segments"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": ["path_status", "common_path_status"],
+              "properties": {"path_status": {"const": "known_ordered"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "ordered"}}}
+          },
+          {
+            "if": {
+              "required": ["path_status", "common_path_status"],
+              "properties": {"path_status": {"const": "known_unordered"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "unordered"}}}
+          },
+          {
+            "if": {
+              "required": ["path_status", "common_path_status"],
+              "properties": {"path_status": {"const": "unknown"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "unknown"}}}
+          },
+          {
+            "if": {
+              "required": ["path_status", "common_path_status"],
+              "properties": {"path_status": {"const": "not_applicable"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "not_applicable"}}}
+          },
+          {
+            "if": {
+              "required": [
+                "origin_status"
+              ],
+              "properties": {
+                "origin_status": {
+                  "const": "known_single"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_asns": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "origin_status"
+              ],
+              "properties": {
+                "origin_status": {
+                  "const": "known_moas"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_asns": {
+                  "minItems": 2
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "origin_status"
+              ],
+              "properties": {
+                "origin_status": {
+                  "enum": [
+                    "unknown",
+                    "not_applicable"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_asns": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "path_status"
+              ],
+              "properties": {
+                "path_status": {
+                  "enum": [
+                    "known_ordered",
+                    "known_unordered"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path_id": {
+                  "type": "string"
+                },
+                "path_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "path_segments": {
+                  "type": "array",
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "path_status"
+              ],
+              "properties": {
+                "path_status": {
+                  "enum": [
+                    "unknown",
+                    "not_applicable"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path_id": {
+                  "type": "null"
+                },
+                "path_digest": {
+                  "type": "null"
+                },
+                "path_segments": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "visibility"
+              ],
+              "properties": {
+                "visibility": {
+                  "enum": [
+                    "invisible",
+                    "missing"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_status": {
+                  "const": "not_applicable"
+                },
+                "origin_asns": {
+                  "maxItems": 0
+                },
+                "path_status": {
+                  "const": "not_applicable"
+                },
+                "path_id": {
+                  "type": "null"
+                },
+                "path_digest": {
+                  "type": "null"
+                },
+                "path_segments": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "direction_identity_contract": {
+        "peer_asn_direction_id": "collector_id+peer_asn，仅用于聚合方向",
+        "route_observation_key": "collector_id+vp_id+peer_id+prefix+afi，连接TOOL-07 expected_route_observation_keys",
+        "route_state_member_key": "publication_id+state_point_utc+collector_id+vp_id+peer_id+prefix+afi"
+      },
+      "contains_asn_filter_contract": {
+        "source": "pre_materialized_path_asn_membership_index_on_same_route_state_population",
+        "profile_id": "PROFILE-PATH-ASN-MEMBERSHIP-1.0.0",
+        "profile_digest": "28acec6edd232fd9aa38885175bcd715b9ea72f240efca6b3c5b7080394655e2",
+        "eligible_row_predicate": "visibility=visible AND common_path_status IN (ordered,unordered)",
+        "query_time_path_parsing_forbidden": true,
+        "llm_filtering_forbidden": true,
+        "trusted_query_receipt_required_when_filter_present": true,
+        "query_receipt_must_bind": [
+          "receipt_kind",
+          "tool_run_id",
+          "identity_digest",
+          "state_point_utc",
+          "query_digest",
+          "source_population_id",
+          "source_dataset_digest",
+          "contains_asn",
+          "path_asn_membership_profile_digest",
+          "path_asn_membership_index_digest",
+          "path_asn_membership_materialization_receipt_digest",
+          "eligible_row_predicate",
+          "matched_member_keys_digest",
+          "total_count",
+          "disposition"
+        ],
+        "returned_member_validation": "每个返回行必须满足eligible predicate且typed path_segments确实包含target ASN；这只验证包含关系，不重算索引总体完整性",
+        "completeness_proof": "完整性仅由Host可信index/materialization/query receipt链证明"
+      },
+      "state_time_semantics": "after_all_legal_events_through_exact_state_point",
+      "active_path_rule": "只有visibility=visible且common_path_status属于ordered或unordered的path可称该时点活动观测路径",
+      "invisible_path_rule": "当前origin/path为not_applicable；历史最后路径若提供必须单独命名并带时间",
+      "stable_sort": [
+        "afi ASC",
+        "network_address ASC",
+        "prefix_length ASC",
+        "vp_id ASC",
+        "peer_id ASC",
+        "route_observation_key ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "state_point_utc",
+        "collector_id",
+        "vp_id",
+        "peer_id",
+        "prefix",
+        "afi"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每行引用materialized row、checkpoint、projection receipt和source manifest；contains_asn查询额外绑定可信membership index、materialization与query filter receipt",
+      "forbidden_embedded_actions": [
+        "select_checkpoint",
+        "replay_route_events",
+        "project_route_state",
+        "derive_path_membership_at_query_time",
+        "join_expected_directions",
+        "classify_vp_consistency",
+        "locate_asn",
+        "render"
+      ],
+      "forbidden_conclusions": [
+        "global_path_state",
+        "traffic_shift",
+        "cause",
+        "recovery"
+      ],
+      "question_refs": [
+        "Q14",
+        "Q16",
+        "Q18",
+        "Q23"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    },
+    {
+      "unit_id": "TOOL-12",
+      "name": "query_window_path_associations",
+      "version": "1.0.0-design",
+      "disposition": "new_p2_v1_source_schema_required",
+      "atomic_capability_id": "read.window_path_associations",
+      "single_responsibility": "读取绑定publication的一种窗口级path-association evidence事实人口",
+      "source_population": "window_path_association_evidence_rows",
+      "source_schema_ref": "tool-catalog.json#/source_view_requirements/5",
+      "source_readiness": "association_row_and_path_quality_schema_required_before_implementation",
+      "input_contract": {
+        "required": [
+          "identity",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "anchor_asn",
+          "known_origin_asn",
+          "anchor_before_known_origin",
+          "contains_asn",
+          "prefix",
+          "afi",
+          "path_id",
+          "peer_asn_direction_id",
+          "ordered_sequence_eligible"
+        ],
+        "filter_contract": "contains_asn与anchor_before_known_origin只读取source view预物化索引；query-time路径解析或LLM过滤禁止",
+        "page_size_min": 1,
+        "page_size_max": 1000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "anchor_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "known_origin_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "anchor_before_known_origin": {
+          "type": "boolean"
+        },
+        "contains_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "path_id": {
+          "type": "string"
+        },
+        "peer_asn_direction_id": {
+          "type": "string"
+        },
+        "ordered_sequence_eligible": {
+          "type": "boolean"
+        }
+      },
+      "output_population": "window_path_association_evidence_rows",
+      "member_identity": [
+        "publication_id",
+        "path_association_id"
+      ],
+      "output_member_fields": [
+        "path_association_id",
+        "anchor_asn",
+        "known_origin_asn",
+        "origin_status",
+        "observed_origin_asn",
+        "prefix",
+        "afi",
+        "path_id",
+        "path_digest",
+        "path_canonicalization_profile_id",
+        "path_canonicalization_profile_digest",
+        "path_segments",
+        "path_parse_status",
+        "common_path_status",
+        "ordered_sequence_eligible",
+        "peer_asn_direction_ids",
+        "route_observation_count",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "path_association_id": {
+          "type": "string"
+        },
+        "anchor_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "known_origin_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "origin_status": {
+          "const": "known"
+        },
+        "observed_origin_asn": {
+          "$ref": "#/common_field_schemas/asn"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "path_id": {
+          "type": "string"
+        },
+        "path_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "path_canonicalization_profile_id": {
+          "const": "AS-PATH-CANONICALIZATION-1.0.0"
+        },
+        "path_canonicalization_profile_digest": {
+          "const": "eb4d2081ee69ab0254b7af461122cf315b6bcdf24551c22de7e8dccc6d965966"
+        },
+        "path_segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment"
+          }
+        },
+        "path_parse_status": {
+          "type": "string",
+          "enum": [
+            "ordered",
+            "unordered",
+            "ambiguous",
+            "invalid"
+          ]
+        },
+        "common_path_status": {
+          "type": "string",
+          "enum": [
+            "ordered",
+            "unordered",
+            "ambiguous",
+            "invalid",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "ordered_sequence_eligible": {
+          "type": "boolean"
+        },
+        "peer_asn_direction_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "route_observation_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "output_row_constraints": {
+        "type": "object",
+        "required": [
+          "path_parse_status",
+          "common_path_status",
+          "ordered_sequence_eligible",
+          "origin_status",
+          "observed_origin_asn",
+          "known_origin_asn"
+        ],
+        "origin_invariants": [
+          "origin_status == known",
+          "observed_origin_asn == known_origin_asn",
+          "ordered_sequence_eligible=true时去除连续prepend后AS_PATH末尾ASN == known_origin_asn"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": ["path_parse_status", "common_path_status"],
+              "properties": {"path_parse_status": {"const": "ordered"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "ordered"}}}
+          },
+          {
+            "if": {
+              "required": ["path_parse_status", "common_path_status"],
+              "properties": {"path_parse_status": {"const": "unordered"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "unordered"}}}
+          },
+          {
+            "if": {
+              "required": ["path_parse_status", "common_path_status"],
+              "properties": {"path_parse_status": {"const": "ambiguous"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "ambiguous"}}}
+          },
+          {
+            "if": {
+              "required": ["path_parse_status", "common_path_status"],
+              "properties": {"path_parse_status": {"const": "invalid"}}
+            },
+            "then": {"properties": {"common_path_status": {"const": "invalid"}}}
+          },
+          {
+            "if": {
+              "required": [
+                "path_parse_status"
+              ],
+              "properties": {
+                "path_parse_status": {
+                  "const": "ordered"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ordered_sequence_eligible": {
+                  "const": true
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "path_parse_status"
+              ],
+              "properties": {
+                "path_parse_status": {
+                  "enum": [
+                    "unordered",
+                    "ambiguous",
+                    "invalid"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "ordered_sequence_eligible": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      },
+      "association_population_domain": {
+        "anchor_population": "ever_affected_asns_registered_by_bound_publication",
+        "row_generation_rule": "每个eligible anchor、known origin、cohort member prefix和canonical path association生成一行",
+        "contains_asn_completeness": "只保证在该窗口级association人口内完整，不保证RRC25原始全部路径人口",
+        "complete_claim_label": "complete_within_window_path_association_population",
+        "q20_required_wording": "完整列出绑定publication窗口级path-association人口中包含该ASN的记录"
+      },
+      "native_filter_contract": {
+        "source": "pre_materialized_indexes_on_same_window_path_association_population",
+        "profile_id": "PROFILE-WINDOW-PATH-ASSOCIATION-FILTER-1.0.0",
+      "profile_digest": "46ca0955b30a4d43088c214ec5bdf84fbf9b65987bd65047257e85e1d7778eb7",
+        "filters": ["contains_asn", "anchor_asn_plus_anchor_before_known_origin"],
+        "query_time_path_parsing_forbidden": true,
+        "llm_filtering_forbidden": true,
+        "trusted_query_receipt_required_when_filter_present": true,
+        "query_receipt_must_bind": [
+          "tool_id",
+          "publication_id",
+          "source_population_id",
+          "source_dataset_digest",
+          "query_digest",
+          "filter_profile_id",
+          "filter_profile_digest",
+          "path_asn_membership_index_id",
+          "anchor_before_known_origin_index_id",
+          "path_association_index_digest",
+        "path_association_materialization_receipt_digest",
+        "anchor_population_source_ref",
+        "eligible_anchor_asns_digest",
+        "eligible_anchor_asn_count",
+        "target_contains_asn",
+          "target_anchor_asn",
+          "anchor_before_known_origin",
+          "anchor_population_eligible",
+          "matched_member_keys_digest",
+          "matched_total_count",
+          "disposition",
+          "receipt_digest"
+        ],
+      "returned_member_validation": "contains_asn时typed path_segments必须包含target；anchor-before时row.anchor_asn等于target、ordered_sequence_eligible=true、origin_status=known、observed_origin_asn=known_origin_asn、path_segments全为as_sequence，去除连续prepend后known origin必须是末尾ASN且anchor严格早于该origin",
+        "completeness_proof": "complete ResultSet的稳定成员键摘要与可信索引匹配人口摘要逐项相等"
+      },
+      "direction_identity_contract": {
+        "peer_asn_direction_id": "collector_id+peer_asn",
+        "vp_peer_observation_available": false,
+        "must_not_join_tool_11_route_observation_key": true
+      },
+      "time_semantics": "window_level_association_not_path_at_time",
+      "stable_sort": [
+        "anchor_asn ASC",
+        "known_origin_asn ASC",
+        "afi ASC",
+        "network_address ASC",
+        "path_id ASC",
+        "path_association_id ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "path_association_id"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每行引用path association artifact、path identity与source manifest",
+      "forbidden_embedded_actions": [
+        "preview",
+        "project_set",
+        "count_unique",
+        "locate_asn",
+        "direct_neighbor",
+        "path_order",
+        "join_route_state",
+        "render",
+        "export"
+      ],
+      "forbidden_conclusions": [
+        "path_active_at_time",
+        "path_affected",
+        "customer_cone",
+        "provider_customer",
+        "traffic_dependency"
+      ],
+      "question_refs": [
+        "Q05",
+        "Q09",
+        "Q19",
+        "Q20",
+        "Q21",
+        "Q22",
+        "Q26",
+        "Q27"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    },
+    {
+      "unit_id": "TOOL-13",
+      "name": "query_route_events",
+      "version": "1.0.0-design",
+      "disposition": "deferred_p2_1",
+      "atomic_capability_id": "read.route_events",
+      "single_responsibility": "读取绑定publication的一种不可变有序RouteEvent事实人口",
+      "source_population": "route_event_rows",
+      "source_schema_ref": "contracts/data/route-event.schema.json",
+      "source_readiness": "deferred_registry_and_manifest_binding_required",
+      "input_contract": {
+        "required": [
+          "identity",
+          "prefix",
+          "afi",
+          "time_range_half_open",
+          "page_size"
+        ],
+        "optional": [
+          "page_token"
+        ],
+        "optional_filters": [
+          "vp_id",
+          "peer_id",
+          "event_kind"
+        ],
+        "unbounded_window_forbidden": true,
+        "page_size_min": 1,
+        "page_size_max": 2000
+      },
+      "input_field_schemas": {
+        "identity": {
+          "$ref": "#/common_field_schemas/identity"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "time_range_half_open": {
+          "$ref": "#/common_field_schemas/half_open_time_range"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "page_token": {
+          "$ref": "#/common_field_schemas/page_token"
+        },
+        "vp_id": {
+          "type": "string"
+        },
+        "peer_id": {
+          "type": "string"
+        },
+        "event_kind": {
+          "type": "string",
+          "enum": [
+            "announce",
+            "withdraw"
+          ]
+        }
+      },
+      "output_population": "route_event_rows",
+      "member_identity": [
+        "publication_id",
+        "route_event_id"
+      ],
+      "output_member_fields": [
+        "route_event_id",
+        "event_time_utc",
+        "prefix",
+        "afi",
+        "vp_id",
+        "peer_id",
+        "event_kind",
+        "origin_status",
+        "origin_asns",
+        "path_status",
+        "path_segments",
+        "raw_ref",
+        "quality_flags",
+        "evidence_ref"
+      ],
+      "output_field_schemas": {
+        "route_event_id": {
+          "type": "string"
+        },
+        "event_time_utc": {
+          "$ref": "#/common_field_schemas/utc_time"
+        },
+        "prefix": {
+          "$ref": "#/common_field_schemas/prefix"
+        },
+        "afi": {
+          "$ref": "#/common_field_schemas/afi"
+        },
+        "vp_id": {
+          "type": "string"
+        },
+        "peer_id": {
+          "type": "string"
+        },
+        "event_kind": {
+          "type": "string",
+          "enum": [
+            "announce",
+            "withdraw"
+          ]
+        },
+        "origin_status": {
+          "type": "string",
+          "enum": [
+            "known_single",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "origin_asns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/common_field_schemas/asn"
+          },
+          "maxItems": 1
+        },
+        "path_status": {
+          "type": "string",
+          "enum": [
+            "known_ordered",
+            "known_unordered",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "path_segments": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "https://domeye.example/contracts/data/route-event.schema.json#/$defs/asPathSegment"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_ref": {
+          "type": "object",
+          "required": [
+            "artifact_id",
+            "record_ordinal",
+            "element_ordinal"
+          ]
+        },
+        "quality_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "evidence_ref": {
+          "$ref": "#/common_field_schemas/evidence_ref"
+        }
+      },
+      "source_population_contract": {
+        "record_kind": "route_event",
+        "route_event_id": "non_null",
+        "raw_ref": "non_null",
+        "action_enum": [
+          "announce",
+          "withdraw"
+        ],
+        "excluded_actions": [
+          "rib_snapshot"
+        ],
+        "excluded_record_kinds": [
+          "legacy_observation_stub"
+        ]
+      },
+      "source_adapter_mapping": {
+        "event_time_utc": "event_time_utc",
+        "afi": "afi_safi normalized to AFI with SAFI validation",
+        "vp_id": "vp_id",
+        "peer_id": "collector_id+vp_peer_ip+vp_asn normalized peer identity",
+        "event_kind": "action",
+        "origin_asns": "origin_asn mapped to zero-or-one array",
+        "path_segments": "as_path.segments",
+        "sort_artifact_id": "raw_ref.artifact_id",
+        "sort_record_ordinal": "raw_ref.record_ordinal",
+        "sort_element_ordinal": "raw_ref.element_ordinal"
+      },
+      "output_row_constraints": {
+        "type": "object",
+        "required": [
+          "event_kind",
+          "origin_status",
+          "origin_asns",
+          "path_status",
+          "path_segments"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "event_kind"
+              ],
+              "properties": {
+                "event_kind": {
+                  "const": "withdraw"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_status": {
+                  "const": "not_applicable"
+                },
+                "origin_asns": {
+                  "maxItems": 0
+                },
+                "path_status": {
+                  "const": "not_applicable"
+                },
+                "path_segments": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "origin_status"
+              ],
+              "properties": {
+                "origin_status": {
+                  "const": "known_single"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_asns": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "origin_status"
+              ],
+              "properties": {
+                "origin_status": {
+                  "enum": [
+                    "unknown",
+                    "not_applicable"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "origin_asns": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "path_status"
+              ],
+              "properties": {
+                "path_status": {
+                  "enum": [
+                    "known_ordered",
+                    "known_unordered"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path_segments": {
+                  "type": "array",
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "path_status"
+              ],
+              "properties": {
+                "path_status": {
+                  "enum": [
+                    "unknown",
+                    "not_applicable"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path_segments": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "time_semantics": "immutable_event_time_order_with_left_boundary_unknown_explicit",
+      "withdraw_rule": "withdraw的当前origin/path为not_applicable；Tool不得回填上一条announce",
+      "stable_sort": [
+        "event_time_utc ASC",
+        "raw_ref.artifact_id ASC",
+        "raw_ref.record_ordinal ASC",
+        "raw_ref.element_ordinal ASC",
+        "route_event_id ASC"
+      ],
+      "dedupe_key": [
+        "publication_id",
+        "route_event_id"
+      ],
+      "pagination_contract_ref": "#/common_result_set_contract",
+      "evidence_contract": "每行引用raw_ref、artifact digest和publication manifest",
+      "forbidden_embedded_actions": [
+        "seed_state_lookup",
+        "classify_change",
+        "build_change_chain",
+        "replay_state",
+        "infer_cause",
+        "render"
+      ],
+      "forbidden_conclusions": [
+        "withdraw_caused_outage",
+        "path_change_caused_traffic_shift",
+        "root_cause"
+      ],
+      "question_refs": [
+        "Q24"
+      ],
+      "runtime_ready_claim": false,
+      "composition_location": "investigation_plan",
+      "embedded_capabilities": [],
+      "split_test": {
+        "business_read_count": 1,
+        "fact_population_count": 1,
+        "mode_changes_population": false,
+        "independently_publishable_subreads": false,
+        "internally_invokes_other_units": false,
+        "disposition": "atomic_as_designed"
+      }
+    }
+  ],
+  "catalog_assertions": {
+    "tool_count": 7,
+    "p2_v1_query_tools": [
+      "TOOL-07",
+      "TOOL-08",
+      "TOOL-09",
+      "TOOL-10",
+      "TOOL-11",
+      "TOOL-12"
+    ],
+    "p2_1_deferred_tools": [
+      "TOOL-13"
+    ],
+    "all_tools_single_fact_population": true,
+    "tool_internal_replay_forbidden": true,
+    "tool_preview_forbidden": true,
+    "runtime_ready": false
+  }
+}

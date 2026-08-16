@@ -1,0 +1,25 @@
+name: Codex 版本边界
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  version-boundary:
+    name: 检查冻结路径和版本依赖
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出完整提交历史
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 执行仓库级版本边界
+        run: >-
+          python3 dev/codex_task_guard.py policy
+          --base-ref "${{ github.event.pull_request.base.sha }}"
+
+      - name: 运行边界检查器单元测试
+        run: python3 -m unittest dev.tests.test_codex_task_guard

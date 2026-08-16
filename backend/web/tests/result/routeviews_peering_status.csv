@@ -1,0 +1,1458 @@
+ROUTEVIEWS COLLECTOR,AS NUMBER,PEERING ADDRESS,PREFIXES,CC,REGION,ASNAME
+amsix.ams.routeviews.org,AS29075,80.249.208.27,985251,FR,ripencc,"IELO IELO Main Network, FR"
+amsix.ams.routeviews.org,AS1103,80.249.208.34,990498,NL,ripencc,"SURFNET-NL SURFnet, The Netherlands, NL"
+amsix.ams.routeviews.org,AS1140,80.249.208.49,583027,NL,ripencc,"SIDN, NL"
+amsix.ams.routeviews.org,AS6830,80.249.208.106,982163,NL,ripencc,"LIBERTYGLOBAL Liberty Global formerly UPC Broadband Holding, aka AORTA, NL"
+amsix.ams.routeviews.org,AS6461,80.249.208.122,983200,US,arin,
+amsix.ams.routeviews.org,AS49544,80.249.208.162,998000,NL,ripencc,"I3DNET, NL"
+amsix.ams.routeviews.org,AS6777,80.249.208.255,98693,NL,ripencc,"AMS-IX-RS, NL"
+amsix.ams.routeviews.org,AS6777,80.249.209.0,98852,NL,ripencc,"AMS-IX-RS, NL"
+amsix.ams.routeviews.org,AS8075,80.249.209.20,981,US,arin,
+amsix.ams.routeviews.org,AS8075,80.249.209.21,849,US,arin,
+amsix.ams.routeviews.org,AS8218,80.249.209.53,984471,FR,ripencc,"NEO-ASN Zayo Europe, FR"
+amsix.ams.routeviews.org,AS32934,80.249.209.115,37,US,arin,
+amsix.ams.routeviews.org,AS32934,80.249.209.164,37,US,arin,
+amsix.ams.routeviews.org,AS2119,80.249.209.192,793,NO,ripencc,"TELENOR-NEXTEL Telenor Norge AS, NO"
+amsix.ams.routeviews.org,AS20940,80.249.209.208,0,NL,ripencc,"AKAMAI-ASN1, NL"
+amsix.ams.routeviews.org,AS3320,80.249.209.211,981725,DE,ripencc,"DTAG Internet service provider operations, DE"
+amsix.ams.routeviews.org,AS9002,80.249.209.216,982917,GB,ripencc,"RETN-AS, GB"
+amsix.ams.routeviews.org,AS39120,80.249.210.28,1003405,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+amsix.ams.routeviews.org,AS34177,80.249.210.38,984638,FR,ripencc,"CELESTE-AS CELESTE - Internet services provider, FR"
+amsix.ams.routeviews.org,AS271253,80.249.210.48,979668,BR,lacnic,
+amsix.ams.routeviews.org,AS31449,80.249.210.71,2,BE,ripencc,"AS31449 AS31449.net European Network, BE"
+amsix.ams.routeviews.org,AS16509,80.249.210.100,2537,US,arin,
+amsix.ams.routeviews.org,AS21320,80.249.210.137,984434,NL,ripencc,"GEANT_IAS_VRF, NL"
+amsix.ams.routeviews.org,AS199524,80.249.210.150,986014,LU,ripencc,"GCORE, LU"
+amsix.ams.routeviews.org,AS51185,80.249.210.163,985780,IT,ripencc,"MAINSTREAMING-AS, IT"
+amsix.ams.routeviews.org,AS136907,80.249.210.185,1,HK,apnic,
+amsix.ams.routeviews.org,AS16509,80.249.210.217,2537,US,arin,
+amsix.ams.routeviews.org,AS61049,80.249.210.252,986452,GB,ripencc,"EXASCALE, GB"
+amsix.ams.routeviews.org,AS30844,80.249.211.45,987565,GB,ripencc,"LIQUID-AS, GB"
+amsix.ams.routeviews.org,AS213241,80.249.211.162,879557,BE,ripencc,"TECHIT, BE"
+amsix.ams.routeviews.org,AS56987,80.249.211.234,986625,FR,ripencc,"AS-ABACLOUDA, FR"
+amsix.ams.routeviews.org,AS398465,80.249.212.41,982916,US,arin,
+amsix.ams.routeviews.org,AS42541,80.249.212.84,982972,DK,ripencc,"FIBERBY, DK"
+amsix.ams.routeviews.org,AS3399,80.249.212.156,983050,SE,ripencc,"OBE-NET, SE"
+amsix.ams.routeviews.org,AS32934,80.249.212.174,37,US,arin,
+amsix.ams.routeviews.org,AS32934,80.249.212.175,37,US,arin,
+amsix.ams.routeviews.org,AS293,80.249.213.7,1006674,US,arin,
+amsix.ams.routeviews.org,AS37271,80.249.213.52,987423,ZA,afrinic,"Workonline, ZA"
+amsix.ams.routeviews.org,AS37497,80.249.213.88,986458,ZA,afrinic,"Network-Platforms, ZA"
+amsix.ams.routeviews.org,AS64289,80.249.214.73,989460,US,arin,
+amsix.ams.routeviews.org,AS28283,80.249.214.120,1220,BR,lacnic,
+amsix.ams.routeviews.org,AS136907,80.249.215.171,1,HK,apnic,
+amsix.ams.routeviews.org,AS293,2001:7f8:1::a500:293:1,222471,US,arin,
+amsix.ams.routeviews.org,AS1103,2001:7f8:1::a500:1103:2,216939,NL,ripencc,"SURFNET-NL SURFnet, The Netherlands, NL"
+amsix.ams.routeviews.org,AS1140,2001:7f8:1::a500:1140:1,216471,NL,ripencc,"SIDN, NL"
+amsix.ams.routeviews.org,AS2119,2001:7f8:1::a500:2119:1,137,NO,ripencc,"TELENOR-NEXTEL Telenor Norge AS, NO"
+amsix.ams.routeviews.org,AS3320,2001:7f8:1::a500:3320:1,186864,DE,ripencc,"DTAG Internet service provider operations, DE"
+amsix.ams.routeviews.org,AS3399,2001:7f8:1::a500:3399:1,212451,SE,ripencc,"OBE-NET, SE"
+amsix.ams.routeviews.org,AS6461,2001:7f8:1::a500:6461:1,213381,US,arin,
+amsix.ams.routeviews.org,AS6777,2001:7f8:1::a500:6777:1,24631,NL,ripencc,"AMS-IX-RS, NL"
+amsix.ams.routeviews.org,AS6777,2001:7f8:1::a500:6777:2,24591,NL,ripencc,"AMS-IX-RS, NL"
+amsix.ams.routeviews.org,AS6830,2001:7f8:1::a500:6830:2,213374,NL,ripencc,"LIBERTYGLOBAL Liberty Global formerly UPC Broadband Holding, aka AORTA, NL"
+amsix.ams.routeviews.org,AS8075,2001:7f8:1::a500:8075:1,146,US,arin,
+amsix.ams.routeviews.org,AS8075,2001:7f8:1::a500:8075:2,146,US,arin,
+amsix.ams.routeviews.org,AS8218,2001:7f8:1::a500:8218:2,215079,FR,ripencc,"NEO-ASN Zayo Europe, FR"
+amsix.ams.routeviews.org,AS9002,2001:7f8:1::a500:9002:1,214372,GB,ripencc,"RETN-AS, GB"
+amsix.ams.routeviews.org,AS16509,2001:7f8:1::a501:6509:1,1317,US,arin,
+amsix.ams.routeviews.org,AS16509,2001:7f8:1::a501:6509:2,1317,US,arin,
+amsix.ams.routeviews.org,AS20940,2001:7f8:1::a502:940:2,0,NL,ripencc,"AKAMAI-ASN1, NL"
+amsix.ams.routeviews.org,AS21320,2001:7f8:1::a502:1320:1,214124,NL,ripencc,"GEANT_IAS_VRF, NL"
+amsix.ams.routeviews.org,AS6204,2001:7f8:1::a502:5198:1,216440,RO,ripencc,"ZET-NET ZET.NET IP Transit, RO"
+amsix.ams.routeviews.org,AS28283,2001:7f8:1::a502:8283:1,526,BR,lacnic,
+amsix.ams.routeviews.org,AS29075,2001:7f8:1::a502:9075:1,221911,FR,ripencc,"IELO IELO Main Network, FR"
+amsix.ams.routeviews.org,AS30844,2001:7f8:1::a503:844:1,215589,GB,ripencc,"LIQUID-AS, GB"
+amsix.ams.routeviews.org,AS32934,2001:7f8:1::a503:2934:1,19,US,arin,
+amsix.ams.routeviews.org,AS32934,2001:7f8:1::a503:2934:2,19,US,arin,
+amsix.ams.routeviews.org,AS32934,2001:7f8:1::a503:2934:3,19,US,arin,
+amsix.ams.routeviews.org,AS32934,2001:7f8:1::a503:2934:4,19,US,arin,
+amsix.ams.routeviews.org,AS34177,2001:7f8:1::a503:4177:1,223534,FR,ripencc,"CELESTE-AS CELESTE - Internet services provider, FR"
+amsix.ams.routeviews.org,AS37271,2001:7f8:1::a503:7271:1,215724,ZA,afrinic,"Workonline, ZA"
+amsix.ams.routeviews.org,AS39120,2001:7f8:1::a503:9120:1,222826,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+amsix.ams.routeviews.org,AS42541,2001:7f8:1::a504:2541:1,222265,DK,ripencc,"FIBERBY, DK"
+amsix.ams.routeviews.org,AS49544,2001:7f8:1::a504:9544:1,222536,NL,ripencc,"I3DNET, NL"
+amsix.ams.routeviews.org,AS51185,2001:7f8:1::a505:1185:1,15,IT,ripencc,"MAINSTREAMING-AS, IT"
+amsix.ams.routeviews.org,AS56987,2001:7f8:1::a505:6987:1,222129,FR,ripencc,"AS-ABACLOUDA, FR"
+amsix.ams.routeviews.org,AS61049,2001:7f8:1::a506:1049:1,222650,GB,ripencc,"EXASCALE, GB"
+amsix.ams.routeviews.org,AS64289,2001:7f8:1::a506:4289:2,218490,US,arin,
+amsix.ams.routeviews.org,AS136907,2001:7f8:1:0:a500:13:6907:1,1,HK,apnic,
+amsix.ams.routeviews.org,AS136907,2001:7f8:1:0:a500:13:6907:2,1,HK,apnic,
+amsix.ams.routeviews.org,AS199524,2001:7f8:1:0:a500:19:9524:1,223124,LU,ripencc,"GCORE, LU"
+amsix.ams.routeviews.org,AS213241,2001:7f8:1:0:a500:21:3241:1,205546,BE,ripencc,"TECHIT, BE"
+amsix.ams.routeviews.org,AS271253,2001:7f8:1:0:a500:27:1253:1,210306,BR,lacnic,
+amsix.ams.routeviews.org,AS37497,2001:7f8:1:0:a500:32:8832:1,214871,ZA,afrinic,"Network-Platforms, ZA"
+amsix.ams.routeviews.org,AS398465,2001:7f8:1:0:a500:39:8465:1,220976,US,arin,
+cix.atl.routeviews.org,AS63221,206.71.12.4,99397,US,arin,
+cix.atl.routeviews.org,AS63221,206.71.12.5,99396,US,arin,
+cix.atl.routeviews.org,AS20940,206.71.12.45,11,NL,ripencc,"AKAMAI-ASN1, NL"
+cix.atl.routeviews.org,AS8075,206.71.12.47,919,US,arin,
+cix.atl.routeviews.org,AS8075,206.71.12.48,919,US,arin,
+cix.atl.routeviews.org,AS13335,206.71.12.60,5791,US,arin,
+cix.atl.routeviews.org,AS16509,206.71.12.68,3648,US,arin,
+cix.atl.routeviews.org,AS16509,206.71.12.69,3648,US,arin,
+cix.atl.routeviews.org,AS20253,206.71.12.80,1,US,arin,
+cix.atl.routeviews.org,AS20253,206.71.12.96,982288,US,arin,
+cix.atl.routeviews.org,AS2734,206.71.12.99,1015827,US,arin,
+cix.atl.routeviews.org,AS63221,2001:504:40:12::1:4,46387,US,arin,
+cix.atl.routeviews.org,AS63221,2001:504:40:12::1:5,46387,US,arin,
+cix.atl.routeviews.org,AS20940,2001:504:40:12::1:45,2,NL,ripencc,"AKAMAI-ASN1, NL"
+cix.atl.routeviews.org,AS8075,2001:504:40:12::1:47,146,US,arin,
+cix.atl.routeviews.org,AS8075,2001:504:40:12::1:48,146,US,arin,
+cix.atl.routeviews.org,AS13335,2001:504:40:12::1:60,516,US,arin,
+cix.atl.routeviews.org,AS16509,2001:504:40:12::1:68,1224,US,arin,
+cix.atl.routeviews.org,AS16509,2001:504:40:12::1:69,1224,US,arin,
+cix.atl.routeviews.org,AS20253,2001:504:40:12::1:80,1,US,arin,
+cix.atl.routeviews.org,AS20253,2001:504:40:12::1:96,212232,US,arin,
+cix.atl.routeviews.org,AS2734,2001:504:40:12::1:99,226003,US,arin,
+decix.jhb.routeviews.org,AS38175,103.119.232.252,295,MY,apnic,
+decix.jhb.routeviews.org,AS38175,103.119.233.252,295,MY,apnic,
+decix.jhb.routeviews.org,AS20940,103.119.234.5,71,NL,ripencc,"AKAMAI-ASN1, NL"
+decix.jhb.routeviews.org,AS16509,103.119.234.6,1762,US,arin,
+decix.jhb.routeviews.org,AS16509,103.119.234.7,1762,US,arin,
+decix.jhb.routeviews.org,AS32934,103.119.234.10,10,US,arin,
+decix.jhb.routeviews.org,AS32934,103.119.234.11,10,US,arin,
+decix.jhb.routeviews.org,AS13335,103.119.234.13,5853,US,arin,
+decix.jhb.routeviews.org,AS56286,103.119.234.56,29,MY,apnic,
+decix.jhb.routeviews.org,AS56140,103.119.234.59,4,MY,apnic,
+decix.jhb.routeviews.org,AS38194,103.119.234.252,94496,MY,apnic,
+decix.jhb.routeviews.org,AS38194,103.119.234.253,94496,MY,apnic,
+decix.jhb.routeviews.org,AS16509,103.162.254.5,2378,US,arin,
+decix.jhb.routeviews.org,AS13335,103.162.254.7,2,US,arin,
+decix.jhb.routeviews.org,AS32934,103.162.254.11,45,US,arin,
+decix.jhb.routeviews.org,AS32934,103.162.254.12,45,US,arin,
+decix.jhb.routeviews.org,AS13335,103.162.254.13,5860,US,arin,
+decix.jhb.routeviews.org,AS56286,103.162.254.56,29,MY,apnic,
+decix.jhb.routeviews.org,AS20940,103.162.254.70,67,NL,ripencc,"AKAMAI-ASN1, NL"
+decix.jhb.routeviews.org,AS32934,103.162.254.71,45,US,arin,
+decix.jhb.routeviews.org,AS32934,103.162.254.72,45,US,arin,
+decix.jhb.routeviews.org,AS199524,103.162.254.114,992617,LU,ripencc,"GCORE, LU"
+decix.jhb.routeviews.org,AS151326,103.162.254.139,990875,SG,apnic,
+decix.jhb.routeviews.org,AS38137,103.162.254.252,110000,SG,apnic,
+decix.jhb.routeviews.org,AS38137,103.162.254.253,109937,SG,apnic,
+decix.jhb.routeviews.org,AS13335,2001:df6:480::3417:0:2,2,US,arin,
+decix.jhb.routeviews.org,AS13335,2001:df6:480::3417:0:3,648,US,arin,
+decix.jhb.routeviews.org,AS16509,2001:df6:480::407d:0:2,1041,US,arin,
+decix.jhb.routeviews.org,AS20940,2001:df6:480::51cc:0:1,25,NL,ripencc,"AKAMAI-ASN1, NL"
+decix.jhb.routeviews.org,AS32934,2001:df6:480::80a6:0:1,25,US,arin,
+decix.jhb.routeviews.org,AS32934,2001:df6:480::80a6:0:2,25,US,arin,
+decix.jhb.routeviews.org,AS32934,2001:df6:480::80a6:0:3,25,US,arin,
+decix.jhb.routeviews.org,AS32934,2001:df6:480::80a6:0:4,25,US,arin,
+decix.jhb.routeviews.org,AS38137,2001:df6:480::94f9:a:1,58692,SG,apnic,
+decix.jhb.routeviews.org,AS38137,2001:df6:480::94f9:a:2,58691,SG,apnic,
+decix.jhb.routeviews.org,AS56286,2001:df6:480::dbde:0:1,24,MY,apnic,
+decix.jhb.routeviews.org,AS151326,2001:df6:480:0:2:4f1e:0:1,226889,SG,apnic,
+decix.jhb.routeviews.org,AS199524,2001:df6:480:0:3:b64:0:1,223469,LU,ripencc,"GCORE, LU"
+decix.jhb.routeviews.org,AS38175,2403:4ac0::951f:a:1,94,MY,apnic,
+decix.jhb.routeviews.org,AS38175,2403:4ac0::951f:a:2,94,MY,apnic,
+decix.jhb.routeviews.org,AS13335,2403:4ac0:1::3417:0:1,524,US,arin,
+decix.jhb.routeviews.org,AS16509,2403:4ac0:1::407d:0:1,681,US,arin,
+decix.jhb.routeviews.org,AS16509,2403:4ac0:1::407d:0:2,681,US,arin,
+decix.jhb.routeviews.org,AS20940,2403:4ac0:1::51cc:0:1,32,NL,ripencc,"AKAMAI-ASN1, NL"
+decix.jhb.routeviews.org,AS32934,2403:4ac0:1::80a6:0:1,13,US,arin,
+decix.jhb.routeviews.org,AS32934,2403:4ac0:1::80a6:0:2,13,US,arin,
+decix.jhb.routeviews.org,AS38194,2403:4ac0:1::9532:a:1,58609,MY,apnic,
+decix.jhb.routeviews.org,AS38194,2403:4ac0:1::9532:a:2,58609,MY,apnic,
+decix.jhb.routeviews.org,AS56140,2403:4ac0:1::db4c:0:1,1,MY,apnic,
+decix.jhb.routeviews.org,AS56286,2403:4ac0:1::dbde:0:1,24,MY,apnic,
+getafix.mnl.routeviews.org,AS23942,103.125.245.1,163,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,103.125.245.2,163,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,116.89.244.1,170,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,116.89.244.2,170,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,2401:fdc0::2:3942:2,46573,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,2401:fdc0:0:1:0:2:3942:1,51,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,2401:fdc0:0:1:0:2:3942:2,51,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,2401:fdc0:0:2:0:2:3942:1,33,PH,apnic,
+getafix.mnl.routeviews.org,AS23942,2401:fdc0:0:2:0:2:3942:2,33,PH,apnic,
+interlan.otp.routeviews.org,AS39107,86.104.125.1,105989,RO,ripencc,"INTERLAN-AS InterLAN-IX Route Servers, RO"
+interlan.otp.routeviews.org,AS39107,86.104.125.2,105907,RO,ripencc,"INTERLAN-AS InterLAN-IX Route Servers, RO"
+interlan.otp.routeviews.org,AS60602,86.104.125.54,1004505,MD,ripencc,"INOVARE-AS str. Uzinelor 21 of. 37, MD"
+interlan.otp.routeviews.org,AS20722,86.104.125.73,21,RO,ripencc,"ALLNET-AS IALOMICIOAREI Nr.20, RO"
+interlan.otp.routeviews.org,AS33823,86.104.125.108,332028,RO,ripencc,"GEMENII-NETWORK PHOENIX TELECOM & MEDIA SERVICES, RO"
+interlan.otp.routeviews.org,AS36692,86.104.125.121,8,US,arin,
+interlan.otp.routeviews.org,AS39107,2001:7f8:64:225::1,27205,RO,ripencc,"INTERLAN-AS InterLAN-IX Route Servers, RO"
+interlan.otp.routeviews.org,AS39107,2001:7f8:64:225::2,27201,RO,ripencc,"INTERLAN-AS InterLAN-IX Route Servers, RO"
+interlan.otp.routeviews.org,AS33823,2001:7f8:64:225:0:3:3823:1,217091,RO,ripencc,"GEMENII-NETWORK PHOENIX TELECOM & MEDIA SERVICES, RO"
+interlan.otp.routeviews.org,AS36692,2001:7f8:64:225:0:3:6692:1,8,US,arin,
+interlan.otp.routeviews.org,AS60602,2001:7f8:64:225:0:6:602:1,218094,MD,ripencc,"INOVARE-AS str. Uzinelor 21 of. 37, MD"
+iraq-ixp.bgw.routeviews.org,AS212330,128.0.45.1,53,IQ,ripencc,"IRAQIXP, IQ"
+iraq-ixp.bgw.routeviews.org,AS57324,128.0.45.2,41,IQ,ripencc,"GCCIT, IQ"
+iraq-ixp.bgw.routeviews.org,AS63293,128.0.45.25,1,US,arin,
+iraq-ixp.bgw.routeviews.org,AS211100,128.0.45.252,255,IQ,ripencc,"IRAQ-IXP IRAQ-IXP Route Servers, IQ"
+iraq-ixp.bgw.routeviews.org,AS211100,128.0.45.253,254,IQ,ripencc,"IRAQ-IXP IRAQ-IXP Route Servers, IQ"
+iraq-ixp.bgw.routeviews.org,AS63293,2a10:fa42:0:6:0:80a6:0:1,1,US,arin,
+iraq-ixp.bgw.routeviews.org,AS57324,2a10:fa42:0:6:0:dfec:0:1,0,IQ,ripencc,"GCCIT, IQ"
+iraq-ixp.bgw.routeviews.org,AS211100,2a10:fa42:0:6:3:389c:a:1,62,IQ,ripencc,"IRAQ-IXP IRAQ-IXP Route Servers, IQ"
+iraq-ixp.bgw.routeviews.org,AS211100,2a10:fa42:0:6:3:389c:a:2,62,IQ,ripencc,"IRAQ-IXP IRAQ-IXP Route Servers, IQ"
+kinx.icn.routeviews.org,AS9957,139.150.100.3,25331,KR,apnic,
+kinx.icn.routeviews.org,AS9957,139.150.100.4,68,KR,apnic,
+kinx.icn.routeviews.org,AS9957,139.150.100.5,67,KR,apnic,
+kinx.icn.routeviews.org,AS16509,139.150.100.59,2287,US,arin,
+kinx.icn.routeviews.org,AS16509,139.150.100.60,2287,US,arin,
+kinx.icn.routeviews.org,AS20940,139.150.100.65,40,NL,ripencc,"AKAMAI-ASN1, NL"
+kinx.icn.routeviews.org,AS13335,139.150.100.68,5796,US,arin,
+kinx.icn.routeviews.org,AS13335,139.150.100.69,5796,US,arin,
+kinx.icn.routeviews.org,AS16509,139.150.100.159,2287,US,arin,
+kinx.icn.routeviews.org,AS16509,139.150.100.160,2287,US,arin,
+kinx.icn.routeviews.org,AS9957,2001:7fa:8::2,4158,KR,apnic,
+kinx.icn.routeviews.org,AS9957,2001:7fa:8::3,790,KR,apnic,
+kinx.icn.routeviews.org,AS13335,2001:7fa:8::1e,504,US,arin,
+kinx.icn.routeviews.org,AS20940,2001:7fa:8::2a,17,NL,ripencc,"AKAMAI-ASN1, NL"
+kinx.icn.routeviews.org,AS16509,2001:7fa:8::3c,966,US,arin,
+kinx.icn.routeviews.org,AS16509,2001:7fa:8::3d,966,US,arin,
+kinx.icn.routeviews.org,AS16509,2001:7fa:8::53,966,US,arin,
+kinx.icn.routeviews.org,AS16509,2001:7fa:8::54,966,US,arin,
+kinx.icn.routeviews.org,AS13335,2001:7fa:8::69,504,US,arin,
+namex.fco.routeviews.org,AS39120,193.201.28.14,1003044,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+namex.fco.routeviews.org,AS12874,193.201.28.16,956,IT,ripencc,"FASTWEB, IT"
+namex.fco.routeviews.org,AS20912,193.201.28.31,983393,IT,ripencc,"ASN-PANSERVICE, IT"
+namex.fco.routeviews.org,AS13335,193.201.28.33,5614,US,arin,
+namex.fco.routeviews.org,AS20940,193.201.28.38,112,NL,ripencc,"AKAMAI-ASN1, NL"
+namex.fco.routeviews.org,AS196959,193.201.28.60,52735,IT,ripencc,"NAMEX-ROME-RS, IT"
+namex.fco.routeviews.org,AS32934,193.201.28.87,7,US,arin,
+namex.fco.routeviews.org,AS39120,193.201.28.90,1003410,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+namex.fco.routeviews.org,AS32934,193.201.28.97,7,US,arin,
+namex.fco.routeviews.org,AS41327,193.201.28.98,759,IT,ripencc,"FIBERTELECOM-AS Fiber Telecom S.p.A., IT"
+namex.fco.routeviews.org,AS196959,193.201.28.102,7325,IT,ripencc,"NAMEX-ROME-RS, IT"
+namex.fco.routeviews.org,AS8075,193.201.28.116,920,US,arin,
+namex.fco.routeviews.org,AS196959,193.201.28.122,4999,IT,ripencc,"NAMEX-ROME-RS, IT"
+namex.fco.routeviews.org,AS3303,193.201.28.128,1006799,CH,ripencc,"SWISSCOM Swisscom Switzerland Ltd, CH"
+namex.fco.routeviews.org,AS8075,193.201.28.129,920,US,arin,
+namex.fco.routeviews.org,AS34428,193.201.28.198,984018,IT,ripencc,"EIGHTROUTE 8ROUTE-GLPR, IT"
+namex.fco.routeviews.org,AS214443,193.201.28.235,988279,IT,ripencc,"BEBYTE Be Byte Srl, IT"
+namex.fco.routeviews.org,AS20940,193.201.29.1,43,NL,ripencc,"AKAMAI-ASN1, NL"
+namex.fco.routeviews.org,AS3303,2001:7f8:10::3303,220719,CH,ripencc,"SWISSCOM Swisscom Switzerland Ltd, CH"
+namex.fco.routeviews.org,AS8075,2001:7f8:10::8075,145,US,arin,
+namex.fco.routeviews.org,AS12874,2001:7f8:10::1:2874,73,IT,ripencc,"FASTWEB, IT"
+namex.fco.routeviews.org,AS13335,2001:7f8:10::1:3335,539,US,arin,
+namex.fco.routeviews.org,AS20912,2001:7f8:10::2:912,221284,IT,ripencc,"ASN-PANSERVICE, IT"
+namex.fco.routeviews.org,AS20940,2001:7f8:10::2:940,98,NL,ripencc,"AKAMAI-ASN1, NL"
+namex.fco.routeviews.org,AS32934,2001:7f8:10::3:2934,9,US,arin,
+namex.fco.routeviews.org,AS34428,2001:7f8:10::3:4428,222588,IT,ripencc,"EIGHTROUTE 8ROUTE-GLPR, IT"
+namex.fco.routeviews.org,AS39120,2001:7f8:10::3:9120,64,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+namex.fco.routeviews.org,AS41327,2001:7f8:10::4:1327,103,IT,ripencc,"FIBERTELECOM-AS Fiber Telecom S.p.A., IT"
+namex.fco.routeviews.org,AS8075,2001:7f8:10::b:8075,145,US,arin,
+namex.fco.routeviews.org,AS196959,2001:7f8:10::19:6959,15192,IT,ripencc,"NAMEX-ROME-RS, IT"
+namex.fco.routeviews.org,AS214443,2001:7f8:10::21:4443,223251,IT,ripencc,"BEBYTE Be Byte Srl, IT"
+namex.fco.routeviews.org,AS20940,2001:7f8:10::b2:940,17,NL,ripencc,"AKAMAI-ASN1, NL"
+namex.fco.routeviews.org,AS32934,2001:7f8:10::b3:2934,9,US,arin,
+namex.fco.routeviews.org,AS39120,2001:7f8:10::b3:9120,64,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+namex.fco.routeviews.org,AS196959,2001:7f8:10::b19:6959,547,IT,ripencc,"NAMEX-ROME-RS, IT"
+pacwave.lax.routeviews.org,AS2153,207.231.240.129,20609,US,arin,
+pacwave.lax.routeviews.org,AS7539,207.231.240.133,56,TW,apnic,
+pacwave.lax.routeviews.org,AS101,207.231.241.1,20584,US,arin,
+pacwave.lax.routeviews.org,AS101,207.231.243.1,20584,US,arin,
+pacwave.lax.routeviews.org,AS2153,207.231.246.1,20610,US,arin,
+pacwave.lax.routeviews.org,AS2153,2001:504:b:20::129,33406,US,arin,
+pacwave.lax.routeviews.org,AS7539,2001:504:b:20::133,5,TW,apnic,
+pacwave.lax.routeviews.org,AS101,2001:504:b:80::1,4031,US,arin,
+pacwave.lax.routeviews.org,AS101,2001:504:b:81::1,4031,US,arin,
+pacwave.lax.routeviews.org,AS2153,2001:504:b:90::1,33406,US,arin,
+pit.scl.routeviews.org,AS61522,45.68.16.1,115846,CL,lacnic,
+pit.scl.routeviews.org,AS61522,45.68.16.2,115846,CL,lacnic,
+pit.scl.routeviews.org,AS64112,45.68.16.3,982590,CL,lacnic,
+pit.scl.routeviews.org,AS269956,45.68.16.19,30580,CL,lacnic,
+pit.scl.routeviews.org,AS51185,45.68.16.148,279520,IT,ripencc,"MAINSTREAMING-AS, IT"
+pit.scl.routeviews.org,AS32934,45.68.16.205,7,US,arin,
+pit.scl.routeviews.org,AS32934,45.68.16.209,7,US,arin,
+pit.scl.routeviews.org,AS13335,45.68.16.227,5112,US,arin,
+pit.scl.routeviews.org,AS136907,45.68.16.233,17,HK,apnic,
+pit.scl.routeviews.org,AS136907,45.68.16.234,17,HK,apnic,
+pit.scl.routeviews.org,AS20940,45.68.16.235,139,NL,ripencc,"AKAMAI-ASN1, NL"
+pit.scl.routeviews.org,AS16509,45.68.16.236,628,US,arin,
+pit.scl.routeviews.org,AS16509,45.68.16.237,628,US,arin,
+pit.scl.routeviews.org,AS28283,45.68.17.30,1220,BR,lacnic,
+pit.scl.routeviews.org,AS61522,2801:14:9000::1,63988,CL,lacnic,
+pit.scl.routeviews.org,AS61522,2801:14:9000::2,63988,CL,lacnic,
+pit.scl.routeviews.org,AS13335,2801:14:9000::1:3335:1,224,US,arin,
+pit.scl.routeviews.org,AS16509,2801:14:9000::1:6509:1,158,US,arin,
+pit.scl.routeviews.org,AS16509,2801:14:9000::1:6509:2,158,US,arin,
+pit.scl.routeviews.org,AS20940,2801:14:9000::2:940:1,115,NL,ripencc,"AKAMAI-ASN1, NL"
+pit.scl.routeviews.org,AS28283,2801:14:9000::2:8283:1,526,BR,lacnic,
+pit.scl.routeviews.org,AS32934,2801:14:9000::3:2934:1,8,US,arin,
+pit.scl.routeviews.org,AS32934,2801:14:9000::3:2934:2,8,US,arin,
+pit.scl.routeviews.org,AS51185,2801:14:9000::5:1185:1,83999,IT,ripencc,"MAINSTREAMING-AS, IT"
+pit.scl.routeviews.org,AS64112,2801:14:9000::6:4112:1,208334,CL,lacnic,
+pit.scl.routeviews.org,AS136907,2801:14:9000::13:6907:1,2,HK,apnic,
+pit.scl.routeviews.org,AS136907,2801:14:9000::13:6907:2,2,HK,apnic,
+pit.scl.routeviews.org,AS269956,2801:14:9000::26:9956:1,71524,CL,lacnic,
+pitmx.qro.routeviews.org,AS61525,200.23.206.1,13596,CL,lacnic,
+pitmx.qro.routeviews.org,AS61525,200.23.206.2,13596,CL,lacnic,
+pitmx.qro.routeviews.org,AS64112,200.23.206.3,23695,CL,lacnic,
+pitmx.qro.routeviews.org,AS28398,200.23.206.59,1018080,MX,lacnic,
+pitmx.qro.routeviews.org,AS20940,200.23.206.201,92,NL,ripencc,"AKAMAI-ASN1, NL"
+pitmx.qro.routeviews.org,AS32934,200.23.206.202,12,US,arin,
+pitmx.qro.routeviews.org,AS32934,200.23.206.203,12,US,arin,
+pitmx.qro.routeviews.org,AS13335,200.23.206.206,5098,US,arin,
+pitmx.qro.routeviews.org,AS16509,200.23.206.209,593,US,arin,
+pitmx.qro.routeviews.org,AS16509,200.23.206.210,593,US,arin,
+pitmx.qro.routeviews.org,AS61525,2803:3440:9025::1,1542,CL,lacnic,
+pitmx.qro.routeviews.org,AS61525,2803:3440:9025::2,1542,CL,lacnic,
+pitmx.qro.routeviews.org,AS13335,2803:3440:9025::1:3335:1,211,US,arin,
+pitmx.qro.routeviews.org,AS16509,2803:3440:9025::1:6509:1,199,US,arin,
+pitmx.qro.routeviews.org,AS16509,2803:3440:9025::1:6509:2,199,US,arin,
+pitmx.qro.routeviews.org,AS20940,2803:3440:9025::2:940:2,89,NL,ripencc,"AKAMAI-ASN1, NL"
+pitmx.qro.routeviews.org,AS28398,2803:3440:9025::2:8398:1,229165,MX,lacnic,
+pitmx.qro.routeviews.org,AS32934,2803:3440:9025::3:2934:1,12,US,arin,
+pitmx.qro.routeviews.org,AS32934,2803:3440:9025::3:2934:2,12,US,arin,
+pitmx.qro.routeviews.org,AS64112,2803:3440:9025::6:4112:1,200754,CL,lacnic,
+route-views.amsix.routeviews.org,AS8821,80.249.208.12,25,CH,ripencc,"TELEZUG WWZ Telekom AG TELEZUG, CH"
+route-views.amsix.routeviews.org,AS12859,80.249.208.35,983134,NL,ripencc,"NL-BIT BIT BV, NL"
+route-views.amsix.routeviews.org,AS1103,80.249.208.50,990497,NL,ripencc,"SURFNET-NL SURFnet, The Netherlands, NL"
+route-views.amsix.routeviews.org,AS24875,80.249.208.126,369,NL,ripencc,"NOVOSERVE-AS, NL"
+route-views.amsix.routeviews.org,AS6667,80.249.208.127,512,FI,ripencc,"EUNET-FINLAND, FI"
+route-views.amsix.routeviews.org,AS39591,80.249.208.152,982672,NL,ripencc,"GLOBAL-E, NL"
+route-views.amsix.routeviews.org,AS12414,80.249.208.165,20,NL,ripencc,"NL-SOLCON SOLCON, NL"
+route-views.amsix.routeviews.org,AS16298,80.249.208.183,2,NL,ripencc,"INTERBOX-AS InterBox Internet, NL"
+route-views.amsix.routeviews.org,AS51088,80.249.208.209,982843,NL,ripencc,"A2B, NL"
+route-views.amsix.routeviews.org,AS12779,80.249.209.17,981847,IT,ripencc,"ITGATE, IT"
+route-views.amsix.routeviews.org,AS34968,80.249.209.81,20,NL,ripencc,"IUNXI, NL"
+route-views.amsix.routeviews.org,AS12414,80.249.209.165,20,NL,ripencc,"NL-SOLCON SOLCON, NL"
+route-views.amsix.routeviews.org,AS42184,80.249.210.6,32,DE,ripencc,"AS-TKRZ, DE"
+route-views.amsix.routeviews.org,AS5394,80.249.210.29,22,IT,ripencc,"UNIDATA Unidata S.p.A. NOC - Italy, IT"
+route-views.amsix.routeviews.org,AS50763,80.249.210.99,339988,IM,ripencc,"MCKAYCOM, IM"
+route-views.amsix.routeviews.org,AS16509,80.249.210.100,2537,US,arin,
+route-views.amsix.routeviews.org,AS8859,80.249.210.122,7,DE,ripencc,"OSN OSN Online Service Nuernberg GmbH, DE"
+route-views.amsix.routeviews.org,AS25091,80.249.210.135,405,CH,ripencc,"IP-MAX IP-Max SA, CH"
+route-views.amsix.routeviews.org,AS16509,80.249.210.217,2537,US,arin,
+route-views.amsix.routeviews.org,AS47957,80.249.210.248,424589,FR,ripencc,"ING-AS, FR"
+route-views.amsix.routeviews.org,AS6762,80.249.211.42,213415,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.amsix.routeviews.org,AS30844,80.249.211.45,987576,GB,ripencc,"LIQUID-AS, GB"
+route-views.amsix.routeviews.org,AS714,80.249.211.160,1225,US,arin,
+route-views.amsix.routeviews.org,AS15943,80.249.211.221,984361,DE,ripencc,"WTNET-AS wilhelm.tel GmbH, DE"
+route-views.amsix.routeviews.org,AS38880,80.249.212.75,1020965,AU,apnic,
+route-views.amsix.routeviews.org,AS58511,80.249.212.104,991959,AU,apnic,
+route-views.amsix.routeviews.org,AS54113,80.249.212.183,52,US,arin,
+route-views.amsix.routeviews.org,AS39351,80.249.213.131,72,SE,ripencc,"ESAB-AS, SE"
+route-views.amsix.routeviews.org,AS267613,80.249.213.223,994852,BR,lacnic,
+route-views.amsix.routeviews.org,AS16552,80.249.214.44,982976,US,arin,
+route-views.amsix.routeviews.org,AS38195,80.249.214.119,2766,AU,apnic,
+route-views.amsix.routeviews.org,AS202409,185.1.166.100,87886,DE,ripencc,"LOCIX-INTERNET-EXCHANGE LOCIX INTERNET EXCHANGE, DE"
+route-views.amsix.routeviews.org,AS197477,185.1.166.104,7,DE,ripencc,"NERDSCAVE, DE"
+route-views.amsix.routeviews.org,AS202409,185.1.166.200,87875,DE,ripencc,"LOCIX-INTERNET-EXCHANGE LOCIX INTERNET EXCHANGE, DE"
+route-views.amsix.routeviews.org,AS213151,185.1.166.237,1008499,DE,ripencc,"CHRISELSEN, DE"
+route-views.amsix.routeviews.org,AS202409,185.1.166.254,111622,DE,ripencc,"LOCIX-INTERNET-EXCHANGE LOCIX INTERNET EXCHANGE, DE"
+route-views.amsix.routeviews.org,AS3214,185.1.167.24,457740,DE,ripencc,"XTOM xTom GmbH, DE"
+route-views.amsix.routeviews.org,AS60144,185.1.167.49,215574,NL,ripencc,"THREE-W-INFRA-AS, NL"
+route-views.amsix.routeviews.org,AS51019,185.1.167.88,987209,IS,ripencc,"LJOSNET-VPC Ljosnet, Inc. VPC, IS"
+route-views.amsix.routeviews.org,AS8888,185.1.167.118,988713,AU,ripencc,"XTOM xTom Pty Ltd, AU"
+route-views.amsix.routeviews.org,AS200242,185.1.167.149,987697,DE,ripencc,"DE-THEIRS open-source & non-profit modern transitcontent network, DE"
+route-views.amsix.routeviews.org,AS60150,185.1.167.195,987296,DE,ripencc,"AREA-7 IP-Routing by area-7 IT-Services GmbH, DE"
+route-views.amsix.routeviews.org,AS60150,185.1.167.251,723631,DE,ripencc,"AREA-7 IP-Routing by area-7 IT-Services GmbH, DE"
+route-views.amsix.routeviews.org,AS714,2001:7f8:1::a500:714:1,354,US,arin,
+route-views.amsix.routeviews.org,AS1103,2001:7f8:1::a500:1103:1,216950,NL,ripencc,"SURFNET-NL SURFnet, The Netherlands, NL"
+route-views.amsix.routeviews.org,AS6667,2001:7f8:1::a500:6667:1,101,FI,ripencc,"EUNET-FINLAND, FI"
+route-views.amsix.routeviews.org,AS6762,2001:7f8:1::a500:6762:1,42161,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.amsix.routeviews.org,AS8821,2001:7f8:1::a500:8821:1,8,CH,ripencc,"TELEZUG WWZ Telekom AG TELEZUG, CH"
+route-views.amsix.routeviews.org,AS12414,2001:7f8:1::a501:2414:1,5,NL,ripencc,"NL-SOLCON SOLCON, NL"
+route-views.amsix.routeviews.org,AS12414,2001:7f8:1::a501:2414:2,5,NL,ripencc,"NL-SOLCON SOLCON, NL"
+route-views.amsix.routeviews.org,AS12779,2001:7f8:1::a501:2779:1,212741,IT,ripencc,"ITGATE, IT"
+route-views.amsix.routeviews.org,AS12859,2001:7f8:1::a501:2859:1,214632,NL,ripencc,"NL-BIT BIT BV, NL"
+route-views.amsix.routeviews.org,AS15943,2001:7f8:1::a501:5943:1,216119,DE,ripencc,"WTNET-AS wilhelm.tel GmbH, DE"
+route-views.amsix.routeviews.org,AS16298,2001:7f8:1::a501:6298:1,1,NL,ripencc,"INTERBOX-AS InterBox Internet, NL"
+route-views.amsix.routeviews.org,AS16509,2001:7f8:1::a501:6509:1,1317,US,arin,
+route-views.amsix.routeviews.org,AS16509,2001:7f8:1::a501:6509:2,1317,US,arin,
+route-views.amsix.routeviews.org,AS16552,2001:7f8:1::a501:6552:1,212210,US,arin,
+route-views.amsix.routeviews.org,AS24875,2001:7f8:1::a502:4875:1,16,NL,ripencc,"NOVOSERVE-AS, NL"
+route-views.amsix.routeviews.org,AS25091,2001:7f8:1::a502:5091:1,171,CH,ripencc,"IP-MAX IP-Max SA, CH"
+route-views.amsix.routeviews.org,AS30844,2001:7f8:1::a503:844:1,215589,GB,ripencc,"LIQUID-AS, GB"
+route-views.amsix.routeviews.org,AS34968,2001:7f8:1::a503:4968:1,10,NL,ripencc,"IUNXI, NL"
+route-views.amsix.routeviews.org,AS38195,2001:7f8:1::a503:8195:1,289,AU,apnic,
+route-views.amsix.routeviews.org,AS38880,2001:7f8:1::a503:8880:1,228812,AU,apnic,
+route-views.amsix.routeviews.org,AS39351,2001:7f8:1::a503:9351:1,158,SE,ripencc,"ESAB-AS, SE"
+route-views.amsix.routeviews.org,AS39591,2001:7f8:1::a503:9591:1,71691,NL,ripencc,"GLOBAL-E, NL"
+route-views.amsix.routeviews.org,AS42184,2001:7f8:1::a504:2184:3,12,DE,ripencc,"AS-TKRZ, DE"
+route-views.amsix.routeviews.org,AS47957,2001:7f8:1::a504:7957:1,216853,FR,ripencc,"ING-AS, FR"
+route-views.amsix.routeviews.org,AS51088,2001:7f8:1::a505:1088:1,212210,NL,ripencc,"A2B, NL"
+route-views.amsix.routeviews.org,AS54113,2001:7f8:1::a505:4113:2,52,US,arin,
+route-views.amsix.routeviews.org,AS58511,2001:7f8:1::a505:8511:1,224941,AU,apnic,
+route-views.amsix.routeviews.org,AS267613,2001:7f8:1:0:a500:26:7613:1,220380,BR,lacnic,
+route-views.amsix.routeviews.org,AS202409,2001:7f8:f2:e1::be5a,59794,DE,ripencc,"LOCIX-INTERNET-EXCHANGE LOCIX INTERNET EXCHANGE, DE"
+route-views.amsix.routeviews.org,AS3214,2001:7f8:f2:e1::3214:2,184224,DE,ripencc,"XTOM xTom GmbH, DE"
+route-views.amsix.routeviews.org,AS8888,2001:7f8:f2:e1::8888:1,222329,AU,ripencc,"XTOM xTom Pty Ltd, AU"
+route-views.amsix.routeviews.org,AS202409,2001:7f8:f2:e1::babe:1,59900,DE,ripencc,"LOCIX-INTERNET-EXCHANGE LOCIX INTERNET EXCHANGE, DE"
+route-views.amsix.routeviews.org,AS202409,2001:7f8:f2:e1::dead:1,59895,DE,ripencc,"LOCIX-INTERNET-EXCHANGE LOCIX INTERNET EXCHANGE, DE"
+route-views.amsix.routeviews.org,AS51019,2001:7f8:f2:e1:0:5:1019:1,222347,IS,ripencc,"LJOSNET-VPC Ljosnet, Inc. VPC, IS"
+route-views.amsix.routeviews.org,AS60144,2001:7f8:f2:e1:0:6:144:1,217064,NL,ripencc,"THREE-W-INFRA-AS, NL"
+route-views.amsix.routeviews.org,AS60150,2001:7f8:f2:e1:0:6:150:1,154426,DE,ripencc,"AREA-7 IP-Routing by area-7 IT-Services GmbH, DE"
+route-views.amsix.routeviews.org,AS60150,2001:7f8:f2:e1:0:6:150:2,217128,DE,ripencc,"AREA-7 IP-Routing by area-7 IT-Services GmbH, DE"
+route-views.amsix.routeviews.org,AS197477,2001:7f8:f2:e1:0:19:7477:1,12,DE,ripencc,"NERDSCAVE, DE"
+route-views.amsix.routeviews.org,AS200242,2001:7f8:f2:e1:0:20:242:1,223465,DE,ripencc,"DE-THEIRS open-source & non-profit modern transitcontent network, DE"
+route-views.amsix.routeviews.org,AS213151,2001:7f8:f2:e1:0:21:3151:1,223462,DE,ripencc,"CHRISELSEN, DE"
+route-views.amsix.routeviews.org,AS56662,2001:7f8:f2:e1:0:a105:6662:1,221397,PL,ripencc,"EUTPNET, PL"
+route-views.amsix.routeviews.org,AS208753,2001:7f8:f2:e1:0:a520:8753:1,224752,IT,ripencc,"6NETWORK, IT"
+route-views.bdix.routeviews.org,AS140684,103.151.196.1,6737,BD,apnic,
+route-views.bdix.routeviews.org,AS140684,103.151.196.5,6571,BD,apnic,
+route-views.bdix.routeviews.org,AS140684,2001:df3:d680::1,1997,BD,apnic,
+route-views.bdix.routeviews.org,AS140684,2001:df3:d680::5,1809,BD,apnic,
+route-views.bknix.routeviews.org,AS63528,203.159.68.1,3,TH,apnic,
+route-views.bknix.routeviews.org,AS63528,203.159.68.2,4,TH,apnic,
+route-views.bknix.routeviews.org,AS63528,203.159.68.5,4,TH,apnic,
+route-views.bknix.routeviews.org,AS59238,203.159.68.12,64902,TH,apnic,
+route-views.bknix.routeviews.org,AS20940,203.159.68.40,2,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.bknix.routeviews.org,AS63529,203.159.68.68,107916,TH,apnic,
+route-views.bknix.routeviews.org,AS63529,203.159.68.69,107949,TH,apnic,
+route-views.bknix.routeviews.org,AS135419,203.159.68.107,9,TH,apnic,
+route-views.bknix.routeviews.org,AS132280,203.159.68.122,399,TH,apnic,
+route-views.bknix.routeviews.org,AS16509,203.159.68.130,949,US,arin,
+route-views.bknix.routeviews.org,AS16509,203.159.68.131,949,US,arin,
+route-views.bknix.routeviews.org,AS137566,203.159.68.158,5,TH,apnic,
+route-views.bknix.routeviews.org,AS32934,203.159.68.162,9,US,arin,
+route-views.bknix.routeviews.org,AS32934,203.159.68.163,9,US,arin,
+route-views.bknix.routeviews.org,AS142108,203.159.68.168,995031,TH,apnic,
+route-views.bknix.routeviews.org,AS63528,2001:df5:b881::1,1,TH,apnic,
+route-views.bknix.routeviews.org,AS63528,2001:df5:b881::2,1,TH,apnic,
+route-views.bknix.routeviews.org,AS63528,2001:df5:b881::5,2,TH,apnic,
+route-views.bknix.routeviews.org,AS59238,2001:df5:b881::12,215929,TH,apnic,
+route-views.bknix.routeviews.org,AS20940,2001:df5:b881::40,1,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.bknix.routeviews.org,AS63529,2001:df5:b881::68,68119,TH,apnic,
+route-views.bknix.routeviews.org,AS63529,2001:df5:b881::69,68119,TH,apnic,
+route-views.bknix.routeviews.org,AS16509,2001:df5:b881::130,320,US,arin,
+route-views.bknix.routeviews.org,AS16509,2001:df5:b881::131,320,US,arin,
+route-views.bknix.routeviews.org,AS32934,2001:df5:b881::162,10,US,arin,
+route-views.bknix.routeviews.org,AS32934,2001:df5:b881::163,10,US,arin,
+route-views.bknix.routeviews.org,AS142108,2001:df5:b881::168,497,TH,apnic,
+route-views.chicago.routeviews.org,AS17350,208.115.136.5,984337,US,arin,
+route-views.chicago.routeviews.org,AS19151,208.115.136.18,992460,US,arin,
+route-views.chicago.routeviews.org,AS6325,208.115.136.22,63,US,arin,
+route-views.chicago.routeviews.org,AS8075,208.115.136.27,919,US,arin,
+route-views.chicago.routeviews.org,AS199524,208.115.136.42,984047,LU,ripencc,"GCORE, LU"
+route-views.chicago.routeviews.org,AS293,208.115.136.58,1006668,US,arin,
+route-views.chicago.routeviews.org,AS852,208.115.136.67,984028,CA,arin,
+route-views.chicago.routeviews.org,AS17350,208.115.136.95,984337,US,arin,
+route-views.chicago.routeviews.org,AS16509,208.115.136.98,3653,US,arin,
+route-views.chicago.routeviews.org,AS32934,208.115.136.115,43,US,arin,
+route-views.chicago.routeviews.org,AS13727,208.115.136.117,12,CA,arin,
+route-views.chicago.routeviews.org,AS19016,208.115.136.119,30,CA,arin,
+route-views.chicago.routeviews.org,AS19653,208.115.136.133,984832,US,arin,
+route-views.chicago.routeviews.org,AS32709,208.115.136.134,12,US,arin,
+route-views.chicago.routeviews.org,AS13335,208.115.136.180,5725,US,arin,
+route-views.chicago.routeviews.org,AS714,208.115.136.182,1240,US,arin,
+route-views.chicago.routeviews.org,AS16509,208.115.136.210,3653,US,arin,
+route-views.chicago.routeviews.org,AS53828,208.115.136.220,985451,US,arin,
+route-views.chicago.routeviews.org,AS32934,208.115.136.230,43,US,arin,
+route-views.chicago.routeviews.org,AS4775,208.115.136.231,220,PH,apnic,
+route-views.chicago.routeviews.org,AS8220,208.115.137.35,982075,GB,ripencc,"COLT COLT Technology Services Group Limited, GB"
+route-views.chicago.routeviews.org,AS49544,208.115.137.50,999829,NL,ripencc,"I3DNET, NL"
+route-views.chicago.routeviews.org,AS8075,208.115.137.61,919,US,arin,
+route-views.chicago.routeviews.org,AS16552,208.115.137.69,983468,US,arin,
+route-views.chicago.routeviews.org,AS13335,208.115.137.77,5685,US,arin,
+route-views.chicago.routeviews.org,AS14630,208.115.137.100,983282,US,arin,
+route-views.chicago.routeviews.org,AS20940,208.115.137.111,92,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.chicago.routeviews.org,AS14630,208.115.137.200,983282,US,arin,
+route-views.chicago.routeviews.org,AS20253,208.115.137.216,983260,US,arin,
+route-views.chicago.routeviews.org,AS24115,208.115.137.251,125003,SG,apnic,
+route-views.chicago.routeviews.org,AS24115,208.115.137.252,125003,SG,apnic,
+route-views.chicago.routeviews.org,AS293,2001:504:0:4::293:1,222467,US,arin,
+route-views.chicago.routeviews.org,AS714,2001:504:0:4::714:2,365,US,arin,
+route-views.chicago.routeviews.org,AS852,2001:504:0:4::852:1,212611,CA,arin,
+route-views.chicago.routeviews.org,AS3257,2001:504:0:4::3257:1,211944,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views.chicago.routeviews.org,AS4775,2001:504:0:4::4775:1,78,PH,apnic,
+route-views.chicago.routeviews.org,AS6325,2001:504:0:4::6325:1,2,US,arin,
+route-views.chicago.routeviews.org,AS8075,2001:504:0:4::8075:1,146,US,arin,
+route-views.chicago.routeviews.org,AS8075,2001:504:0:4::8075:2,146,US,arin,
+route-views.chicago.routeviews.org,AS8220,2001:504:0:4::8220:1,211700,GB,ripencc,"COLT COLT Technology Services Group Limited, GB"
+route-views.chicago.routeviews.org,AS13335,2001:504:0:4:0:1:3335:1,534,US,arin,
+route-views.chicago.routeviews.org,AS13335,2001:504:0:4:0:1:3335:2,485,US,arin,
+route-views.chicago.routeviews.org,AS14630,2001:504:0:4:0:1:4630:1,220704,US,arin,
+route-views.chicago.routeviews.org,AS14630,2001:504:0:4:0:1:4630:2,222129,US,arin,
+route-views.chicago.routeviews.org,AS16509,2001:504:0:4:0:1:6509:2,1222,US,arin,
+route-views.chicago.routeviews.org,AS16509,2001:504:0:4:0:1:6509:3,1222,US,arin,
+route-views.chicago.routeviews.org,AS16552,2001:504:0:4:0:1:6552:1,212721,US,arin,
+route-views.chicago.routeviews.org,AS17350,2001:504:0:4:0:1:7350:1,212615,US,arin,
+route-views.chicago.routeviews.org,AS17350,2001:504:0:4:0:1:7350:2,211844,US,arin,
+route-views.chicago.routeviews.org,AS19016,2001:504:0:4:0:1:9016:1,5,CA,arin,
+route-views.chicago.routeviews.org,AS19151,2001:504:0:4:0:1:9151:1,217850,US,arin,
+route-views.chicago.routeviews.org,AS19653,2001:504:0:4:0:1:9653:1,222722,US,arin,
+route-views.chicago.routeviews.org,AS20253,2001:504:0:4:0:2:253:1,212352,US,arin,
+route-views.chicago.routeviews.org,AS20940,2001:504:0:4:0:2:940:4,15,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.chicago.routeviews.org,AS32934,2001:504:0:4:0:3:2934:1,24,US,arin,
+route-views.chicago.routeviews.org,AS32934,2001:504:0:4:0:3:2934:2,24,US,arin,
+route-views.chicago.routeviews.org,AS49544,2001:504:0:4:0:4:9544:1,222574,NL,ripencc,"I3DNET, NL"
+route-views.chicago.routeviews.org,AS53828,2001:504:0:4:0:5:3828:1,223853,US,arin,
+route-views.chicago.routeviews.org,AS199524,2001:504:0:4:0:19:9524:1,221272,LU,ripencc,"GCORE, LU"
+route-views.chile.routeviews.org,AS27986,186.67.248.40,993946,CL,lacnic,
+route-views.chile.routeviews.org,AS27678,200.16.114.53,996944,CL,lacnic,
+route-views.chile.routeviews.org,AS27678,2001:1398:32:177::24,218729,CL,lacnic,
+route-views.chile.routeviews.org,AS27986,2800:300::5,218742,CL,lacnic,
+route-views.eqix.routeviews.org,AS2914,206.126.236.12,982036,US,arin,
+route-views.eqix.routeviews.org,AS3257,206.126.236.19,981873,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views.eqix.routeviews.org,AS6079,206.126.236.25,983736,US,arin,
+route-views.eqix.routeviews.org,AS6939,206.126.236.37,1005362,US,arin,
+route-views.eqix.routeviews.org,AS37721,206.126.236.40,264131,BF,afrinic,"Virtual-Technologies-Solutions-SA, BF"
+route-views.eqix.routeviews.org,AS19151,206.126.236.47,992447,US,arin,
+route-views.eqix.routeviews.org,AS32098,206.126.236.58,5942,US,arin,
+route-views.eqix.routeviews.org,AS16509,206.126.236.68,3688,US,arin,
+route-views.eqix.routeviews.org,AS3320,206.126.236.94,981716,DE,ripencc,"DTAG Internet service provider operations, DE"
+route-views.eqix.routeviews.org,AS6830,206.126.236.117,982145,NL,ripencc,"LIBERTYGLOBAL Liberty Global formerly UPC Broadband Holding, aka AORTA, NL"
+route-views.eqix.routeviews.org,AS41095,206.126.236.120,983367,GB,ripencc,"IPTP, GB"
+route-views.eqix.routeviews.org,AS293,206.126.236.137,1006657,US,arin,
+route-views.eqix.routeviews.org,AS61461,206.126.236.143,207,VE,lacnic,
+route-views.eqix.routeviews.org,AS20253,206.126.236.154,1,US,arin,
+route-views.eqix.routeviews.org,AS7795,206.126.236.156,393,US,arin,
+route-views.eqix.routeviews.org,AS11039,206.126.236.172,988863,US,arin,
+route-views.eqix.routeviews.org,AS8781,206.126.236.181,964,QA,ripencc,"QA-ISP, QA"
+route-views.eqix.routeviews.org,AS6057,206.126.236.189,994493,UY,lacnic,
+route-views.eqix.routeviews.org,AS398465,206.126.236.209,985708,US,arin,
+route-views.eqix.routeviews.org,AS57695,206.126.236.214,987900,US,ripencc,"MISAKA Misaka Network, Inc., US"
+route-views.eqix.routeviews.org,AS40934,206.126.236.218,738855,US,arin,
+route-views.eqix.routeviews.org,AS62955,206.126.236.224,22,US,arin,
+route-views.eqix.routeviews.org,AS399728,206.126.236.243,5,US,arin,
+route-views.eqix.routeviews.org,AS199524,206.126.237.22,990888,LU,ripencc,"GCORE, LU"
+route-views.eqix.routeviews.org,AS4775,206.126.237.90,0,PH,apnic,
+route-views.eqix.routeviews.org,AS26744,206.126.237.130,405,US,arin,
+route-views.eqix.routeviews.org,AS54113,206.126.237.169,39,US,arin,
+route-views.eqix.routeviews.org,AS54054,206.126.237.179,7,US,arin,
+route-views.eqix.routeviews.org,AS45102,206.126.237.184,66,CN,apnic,
+route-views.eqix.routeviews.org,AS49544,206.126.237.210,999840,NL,ripencc,"I3DNET, NL"
+route-views.eqix.routeviews.org,AS37468,206.126.238.56,9528,AO,afrinic,"ANGOLA-CABLES, AO"
+route-views.eqix.routeviews.org,AS8220,206.126.238.64,981986,GB,ripencc,"COLT COLT Technology Services Group Limited, GB"
+route-views.eqix.routeviews.org,AS16552,206.126.238.92,983570,US,arin,
+route-views.eqix.routeviews.org,AS7195,206.126.238.207,12400,CO,lacnic,
+route-views.eqix.routeviews.org,AS17350,206.126.238.208,984338,US,arin,
+route-views.eqix.routeviews.org,AS17350,206.126.238.209,984338,US,arin,
+route-views.eqix.routeviews.org,AS20253,206.126.238.215,982910,US,arin,
+route-views.eqix.routeviews.org,AS24115,206.126.239.251,146984,SG,apnic,
+route-views.eqix.routeviews.org,AS24115,206.126.239.252,146770,SG,apnic,
+route-views.eqix.routeviews.org,AS293,2001:504:0:2::293:1,222442,US,arin,
+route-views.eqix.routeviews.org,AS2914,2001:504:0:2::2914:1,212151,US,arin,
+route-views.eqix.routeviews.org,AS3257,2001:504:0:2::3257:1,211932,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views.eqix.routeviews.org,AS3320,2001:504:0:2::3320:2,186835,DE,ripencc,"DTAG Internet service provider operations, DE"
+route-views.eqix.routeviews.org,AS4775,2001:504:0:2::4775:1,0,PH,apnic,
+route-views.eqix.routeviews.org,AS6057,2001:504:0:2::6057:1,219390,UY,lacnic,
+route-views.eqix.routeviews.org,AS6079,2001:504:0:2::6079:1,222167,US,arin,
+route-views.eqix.routeviews.org,AS6762,2001:504:0:2::6762:1,39769,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.eqix.routeviews.org,AS6830,2001:504:0:2::6830:1,213365,NL,ripencc,"LIBERTYGLOBAL Liberty Global formerly UPC Broadband Holding, aka AORTA, NL"
+route-views.eqix.routeviews.org,AS6939,2001:504:0:2::6939:1,217076,US,arin,
+route-views.eqix.routeviews.org,AS7195,2001:504:0:2::7195:1,6003,CO,lacnic,
+route-views.eqix.routeviews.org,AS8220,2001:504:0:2::8220:1,211764,GB,ripencc,"COLT COLT Technology Services Group Limited, GB"
+route-views.eqix.routeviews.org,AS8781,2001:504:0:2::8781:1,1774,QA,ripencc,"QA-ISP, QA"
+route-views.eqix.routeviews.org,AS11039,2001:504:0:2:0:1:1039:1,224376,US,arin,
+route-views.eqix.routeviews.org,AS16509,2001:504:0:2:0:1:6509:1,1228,US,arin,
+route-views.eqix.routeviews.org,AS16552,2001:504:0:2:0:1:6552:1,212234,US,arin,
+route-views.eqix.routeviews.org,AS17350,2001:504:0:2:0:1:7350:1,212938,US,arin,
+route-views.eqix.routeviews.org,AS17350,2001:504:0:2:0:1:7350:2,210629,US,arin,
+route-views.eqix.routeviews.org,AS19151,2001:504:0:2:0:1:9151:1,214394,US,arin,
+route-views.eqix.routeviews.org,AS20253,2001:504:0:2:0:2:253:1,212300,US,arin,
+route-views.eqix.routeviews.org,AS20253,2001:504:0:2:0:2:253:2,2,US,arin,
+route-views.eqix.routeviews.org,AS26744,2001:504:0:2:0:2:6744:130,9,US,arin,
+route-views.eqix.routeviews.org,AS32098,2001:504:0:2:0:3:2098:1,4424,US,arin,
+route-views.eqix.routeviews.org,AS37468,2001:504:0:2:0:3:7468:1,4314,AO,afrinic,"ANGOLA-CABLES, AO"
+route-views.eqix.routeviews.org,AS37721,2001:504:0:2:0:3:7721:1,25293,BF,afrinic,"Virtual-Technologies-Solutions-SA, BF"
+route-views.eqix.routeviews.org,AS40934,2001:504:0:2:0:4:934:2,0,US,arin,
+route-views.eqix.routeviews.org,AS49544,2001:504:0:2:0:4:9544:1,222571,NL,ripencc,"I3DNET, NL"
+route-views.eqix.routeviews.org,AS54054,2001:504:0:2:0:5:4054:1,3,US,arin,
+route-views.eqix.routeviews.org,AS54113,2001:504:0:2:0:5:4113:2,44,US,arin,
+route-views.eqix.routeviews.org,AS57695,2001:504:0:2:0:5:7695:1,215544,US,ripencc,"MISAKA Misaka Network, Inc., US"
+route-views.eqix.routeviews.org,AS61461,2001:504:0:2:0:6:1461:1,78,VE,lacnic,
+route-views.eqix.routeviews.org,AS62955,2001:504:0:2:0:6:2955:1,1,US,arin,
+route-views.eqix.routeviews.org,AS199524,2001:504:0:2:0:19:9524:1,220502,LU,ripencc,"GCORE, LU"
+route-views.eqix.routeviews.org,AS398465,2001:504:0:2:0:39:8465:1,222318,US,arin,
+route-views.eqix.routeviews.org,AS24115,2001:504:0:2:ffff:ffff:ffff:1,68831,SG,apnic,
+route-views.eqix.routeviews.org,AS24115,2001:504:0:2:ffff:ffff:ffff:2,68831,SG,apnic,
+route-views.flix.routeviews.org,AS63221,206.41.108.4,158365,US,arin,
+route-views.flix.routeviews.org,AS63221,206.41.108.5,158363,US,arin,
+route-views.flix.routeviews.org,AS19151,206.41.108.11,992447,US,arin,
+route-views.flix.routeviews.org,AS6461,206.41.108.13,983165,US,arin,
+route-views.flix.routeviews.org,AS16509,206.41.108.16,3606,US,arin,
+route-views.flix.routeviews.org,AS20940,206.41.108.17,42,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.flix.routeviews.org,AS13335,206.41.108.18,5613,US,arin,
+route-views.flix.routeviews.org,AS6939,206.41.108.23,1005450,US,arin,
+route-views.flix.routeviews.org,AS8075,206.41.108.25,919,US,arin,
+route-views.flix.routeviews.org,AS20080,206.41.108.52,776,US,arin,
+route-views.flix.routeviews.org,AS28283,206.41.108.56,1220,BR,lacnic,
+route-views.flix.routeviews.org,AS52320,206.41.108.60,983803,CO,lacnic,
+route-views.flix.routeviews.org,AS15280,206.41.108.66,208353,US,arin,
+route-views.flix.routeviews.org,AS20940,206.41.108.85,119,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.flix.routeviews.org,AS32934,206.41.108.93,44,US,arin,
+route-views.flix.routeviews.org,AS32934,206.41.108.94,44,US,arin,
+route-views.flix.routeviews.org,AS26744,206.41.108.102,416,US,arin,
+route-views.flix.routeviews.org,AS52468,206.41.108.110,982209,PA,lacnic,
+route-views.flix.routeviews.org,AS16509,206.41.108.136,3606,US,arin,
+route-views.flix.routeviews.org,AS7195,206.41.108.146,11511,CO,lacnic,
+route-views.flix.routeviews.org,AS16552,206.41.108.147,983066,US,arin,
+route-views.flix.routeviews.org,AS52468,206.41.108.150,982812,PA,lacnic,
+route-views.flix.routeviews.org,AS263237,206.41.108.153,713,CL,lacnic,
+route-views.flix.routeviews.org,AS20253,206.41.108.156,1,US,arin,
+route-views.flix.routeviews.org,AS61461,206.41.108.157,207,VE,lacnic,
+route-views.flix.routeviews.org,AS13335,206.41.108.169,5613,US,arin,
+route-views.flix.routeviews.org,AS264409,206.41.108.178,983692,BR,lacnic,
+route-views.flix.routeviews.org,AS1031,206.41.108.179,969259,US,arin,
+route-views.flix.routeviews.org,AS20253,206.41.108.209,982576,US,arin,
+route-views.flix.routeviews.org,AS63221,2001:504:40:108::1:4,73590,US,arin,
+route-views.flix.routeviews.org,AS63221,2001:504:40:108::1:5,73588,US,arin,
+route-views.flix.routeviews.org,AS19151,2001:504:40:108::1:11,217804,US,arin,
+route-views.flix.routeviews.org,AS6461,2001:504:40:108::1:13,213335,US,arin,
+route-views.flix.routeviews.org,AS16509,2001:504:40:108::1:16,1196,US,arin,
+route-views.flix.routeviews.org,AS20940,2001:504:40:108::1:17,4,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.flix.routeviews.org,AS13335,2001:504:40:108::1:18,518,US,arin,
+route-views.flix.routeviews.org,AS6939,2001:504:40:108::1:23,217078,US,arin,
+route-views.flix.routeviews.org,AS8075,2001:504:40:108::1:25,146,US,arin,
+route-views.flix.routeviews.org,AS20080,2001:504:40:108::1:52,50,US,arin,
+route-views.flix.routeviews.org,AS28283,2001:504:40:108::1:56,526,BR,lacnic,
+route-views.flix.routeviews.org,AS52320,2001:504:40:108::1:60,213443,CO,lacnic,
+route-views.flix.routeviews.org,AS15280,2001:504:40:108::1:66,79167,US,arin,
+route-views.flix.routeviews.org,AS20940,2001:504:40:108::1:85,27,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.flix.routeviews.org,AS32934,2001:504:40:108::1:93,24,US,arin,
+route-views.flix.routeviews.org,AS32934,2001:504:40:108::1:94,24,US,arin,
+route-views.flix.routeviews.org,AS26744,2001:504:40:108::1:102,9,US,arin,
+route-views.flix.routeviews.org,AS52468,2001:504:40:108::1:110,212068,PA,lacnic,
+route-views.flix.routeviews.org,AS16509,2001:504:40:108::1:136,1196,US,arin,
+route-views.flix.routeviews.org,AS7195,2001:504:40:108::1:146,5616,CO,lacnic,
+route-views.flix.routeviews.org,AS16552,2001:504:40:108::1:147,212490,US,arin,
+route-views.flix.routeviews.org,AS52468,2001:504:40:108::1:150,212680,PA,lacnic,
+route-views.flix.routeviews.org,AS263237,2001:504:40:108::1:153,390,CL,lacnic,
+route-views.flix.routeviews.org,AS20253,2001:504:40:108::1:156,2,US,arin,
+route-views.flix.routeviews.org,AS61461,2001:504:40:108::1:157,78,VE,lacnic,
+route-views.flix.routeviews.org,AS13335,2001:504:40:108::1:169,511,US,arin,
+route-views.flix.routeviews.org,AS1031,2001:504:40:108::1:179,213124,US,arin,
+route-views.flix.routeviews.org,AS20253,2001:504:40:108::1:209,212063,US,arin,
+route-views.fortaleza.routeviews.org,AS263945,45.68.72.39,27406,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS32934,45.68.72.53,8,US,arin,
+route-views.fortaleza.routeviews.org,AS53202,45.68.72.88,1013059,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS32934,45.68.72.106,8,US,arin,
+route-views.fortaleza.routeviews.org,AS52320,45.68.72.128,984521,CO,lacnic,
+route-views.fortaleza.routeviews.org,AS61618,45.68.72.134,69,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS13335,45.68.72.137,5861,US,arin,
+route-views.fortaleza.routeviews.org,AS28624,45.68.72.187,1014396,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS262393,45.68.73.12,7,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS262462,45.68.74.7,994070,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS32934,45.68.74.36,8,US,arin,
+route-views.fortaleza.routeviews.org,AS32934,45.68.74.37,8,US,arin,
+route-views.fortaleza.routeviews.org,AS199524,45.68.74.59,986085,LU,ripencc,"GCORE, LU"
+route-views.fortaleza.routeviews.org,AS264409,45.68.75.74,3160,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS20253,45.68.75.173,998172,US,arin,
+route-views.fortaleza.routeviews.org,AS26162,45.68.79.253,137565,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS26162,45.68.79.254,137527,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS265269,45.184.144.213,415,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS264479,45.184.145.15,1005587,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS1031,45.184.147.17,422830,US,arin,
+route-views.fortaleza.routeviews.org,AS263945,2001:12f8:0:9::39,8821,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS32934,2001:12f8:0:9::53,7,US,arin,
+route-views.fortaleza.routeviews.org,AS53202,2001:12f8:0:9::88,231476,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS32934,2001:12f8:0:9::106,7,US,arin,
+route-views.fortaleza.routeviews.org,AS52320,2001:12f8:0:9::128,213435,CO,lacnic,
+route-views.fortaleza.routeviews.org,AS61618,2001:12f8:0:9::134,209,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS13335,2001:12f8:0:9::137,640,US,arin,
+route-views.fortaleza.routeviews.org,AS265269,2001:12f8:0:9::213,270,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS26162,2001:12f8:0:9::253,77030,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS26162,2001:12f8:0:9::254,77036,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS262393,2001:12f8:0:9::145:12,3,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS264479,2001:12f8:0:9::145:15,0,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS7195,2001:12f8:0:9::145:162,5455,CO,lacnic,
+route-views.fortaleza.routeviews.org,AS262462,2001:12f8:0:9::146:7,218938,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS32934,2001:12f8:0:9::146:36,7,US,arin,
+route-views.fortaleza.routeviews.org,AS32934,2001:12f8:0:9::146:37,7,US,arin,
+route-views.fortaleza.routeviews.org,AS199524,2001:12f8:0:9::146:59,215860,LU,ripencc,"GCORE, LU"
+route-views.fortaleza.routeviews.org,AS16509,2001:12f8:0:9::146:144,154,US,arin,
+route-views.fortaleza.routeviews.org,AS16509,2001:12f8:0:9::146:145,154,US,arin,
+route-views.fortaleza.routeviews.org,AS1031,2001:12f8:0:9::147:17,147256,US,arin,
+route-views.fortaleza.routeviews.org,AS264409,2001:12f8:0:9::147:74,303,BR,lacnic,
+route-views.fortaleza.routeviews.org,AS20253,2001:12f8:0:9::147:173,220783,US,arin,
+route-views.gixa.routeviews.org,AS30997,196.201.2.1,1221,GH,afrinic,"GIXA-AS, GH"
+route-views.gixa.routeviews.org,AS30997,196.201.2.2,940,GH,afrinic,"GIXA-AS, GH"
+route-views.gixa.routeviews.org,AS327992,196.201.2.33,30,GH,afrinic,"GHANAIAN-ACADEMIC-AND-RESEARCH-NETWORK, GH"
+route-views.gixa.routeviews.org,AS63293,196.201.2.133,1,US,arin,
+route-views.gixa.routeviews.org,AS20940,196.201.2.160,2,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.gorex.routeviews.org,AS13335,103.115.193.17,632,US,arin,
+route-views.gorex.routeviews.org,AS35889,192.35.145.24,2077,US,arin,
+route-views.gorex.routeviews.org,AS40300,206.197.210.3,565,US,arin,
+route-views.gorex.routeviews.org,AS20940,206.197.210.32,9,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.gorex.routeviews.org,AS8075,206.197.210.37,921,US,arin,
+route-views.gorex.routeviews.org,AS63293,206.197.210.53,1,US,arin,
+route-views.gorex.routeviews.org,AS13335,206.197.210.54,5188,US,arin,
+route-views.gorex.routeviews.org,AS16509,206.197.210.71,1841,US,arin,
+route-views.gorex.routeviews.org,AS16509,206.197.210.72,1841,US,arin,
+route-views.gorex.routeviews.org,AS13335,2001:de9:4000::11,162,US,arin,
+route-views.gorex.routeviews.org,AS35889,2604:8ac0:3000:3005::1,238,US,arin,
+route-views.gorex.routeviews.org,AS20940,2606:7c80:3375:50::32,18,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.gorex.routeviews.org,AS8075,2606:7c80:3375:50::37,146,US,arin,
+route-views.gorex.routeviews.org,AS63293,2606:7c80:3375:50::53,0,US,arin,
+route-views.gorex.routeviews.org,AS13335,2606:7c80:3375:50::54,265,US,arin,
+route-views.gorex.routeviews.org,AS16509,2606:7c80:3375:50::71,775,US,arin,
+route-views.gorex.routeviews.org,AS16509,2606:7c80:3375:50::72,775,US,arin,
+route-views.isc.routeviews.org,AS1280,198.32.176.3,5,US,arin,
+route-views.isc.routeviews.org,AS6939,198.32.176.20,1005400,US,arin,
+route-views.isc.routeviews.org,AS16509,198.32.176.36,2257,US,arin,
+route-views.isc.routeviews.org,AS8075,198.32.176.45,908,US,arin,
+route-views.isc.routeviews.org,AS3320,198.32.176.57,981715,DE,ripencc,"DTAG Internet service provider operations, DE"
+route-views.isc.routeviews.org,AS6762,198.32.176.70,230745,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.isc.routeviews.org,AS49544,198.32.176.95,998052,NL,ripencc,"I3DNET, NL"
+route-views.isc.routeviews.org,AS20940,198.32.176.127,121,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.isc.routeviews.org,AS8075,198.32.176.145,908,US,arin,
+route-views.isc.routeviews.org,AS19151,198.32.176.164,992446,US,arin,
+route-views.isc.routeviews.org,AS13335,198.32.176.171,5877,US,arin,
+route-views.isc.routeviews.org,AS7575,198.32.176.177,990542,AU,apnic,
+route-views.isc.routeviews.org,AS16509,198.32.176.217,2257,US,arin,
+route-views.isc.routeviews.org,AS199524,198.32.176.226,983476,LU,ripencc,"GCORE, LU"
+route-views.isc.routeviews.org,AS714,198.32.176.237,1213,US,arin,
+route-views.isc.routeviews.org,AS1280,2001:504:d::1,5,US,arin,
+route-views.isc.routeviews.org,AS6939,2001:504:d::10,217080,US,arin,
+route-views.isc.routeviews.org,AS16509,2001:504:d::24,1000,US,arin,
+route-views.isc.routeviews.org,AS3320,2001:504:d::39,186836,DE,ripencc,"DTAG Internet service provider operations, DE"
+route-views.isc.routeviews.org,AS6762,2001:504:d::46,43667,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.isc.routeviews.org,AS7575,2001:504:d::b1,221263,AU,apnic,
+route-views.isc.routeviews.org,AS16509,2001:504:d::d9,1000,US,arin,
+route-views.isc.routeviews.org,AS714,2001:504:d::714:1,360,US,arin,
+route-views.isc.routeviews.org,AS8075,2001:504:d::8075:1,146,US,arin,
+route-views.isc.routeviews.org,AS8075,2001:504:d::8075:2,146,US,arin,
+route-views.isc.routeviews.org,AS13335,2001:504:d::1:3335:2,518,US,arin,
+route-views.isc.routeviews.org,AS20940,2001:504:d::2:940:1,31,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.isc.routeviews.org,AS49544,2001:504:d::4:9544:1,222573,NL,ripencc,"I3DNET, NL"
+route-views.isc.routeviews.org,AS199524,2001:504:d::19:9524:1,212461,LU,ripencc,"GCORE, LU"
+route-views.kixp.routeviews.org,AS37273,196.223.21.23,187,UG,afrinic,"BCS, UG"
+route-views.kixp.routeviews.org,AS37684,196.223.21.39,25,KE,afrinic,"ANGANI-AS, KE"
+route-views.kixp.routeviews.org,AS30844,196.223.21.44,987521,GB,ripencc,"LIQUID-AS, GB"
+route-views.kixp.routeviews.org,AS37704,196.223.21.65,94747,KE,afrinic,"Nairobi-IX-Peering, KE"
+route-views.kixp.routeviews.org,AS37704,196.223.21.66,94655,KE,afrinic,"Nairobi-IX-Peering, KE"
+route-views.kixp.routeviews.org,AS37271,196.223.21.72,987410,ZA,afrinic,"Workonline, ZA"
+route-views.kixp.routeviews.org,AS37271,196.223.21.73,987410,ZA,afrinic,"Workonline, ZA"
+route-views.kixp.routeviews.org,AS6939,196.223.21.74,1005415,US,arin,
+route-views.kixp.routeviews.org,AS16509,196.223.21.103,2158,US,arin,
+route-views.kixp.routeviews.org,AS136907,196.223.21.112,23,HK,apnic,
+route-views.kixp.routeviews.org,AS136907,196.223.21.113,23,HK,apnic,
+route-views.kixp.routeviews.org,AS16509,196.223.21.114,2158,US,arin,
+route-views.kixp.routeviews.org,AS63293,196.223.21.135,1,US,arin,
+route-views.kixp.routeviews.org,AS14593,196.223.21.148,57,US,arin,
+route-views.kixp.routeviews.org,AS139057,196.223.21.215,3,SG,apnic,
+route-views.kixp.routeviews.org,AS328977,196.223.21.229,7985,KE,afrinic,"WAVEX, KE"
+route-views.kixp.routeviews.org,AS37273,2001:43f8:60:1::23,9,UG,afrinic,"BCS, UG"
+route-views.kixp.routeviews.org,AS37684,2001:43f8:60:1::39,0,KE,afrinic,"ANGANI-AS, KE"
+route-views.kixp.routeviews.org,AS30844,2001:43f8:60:1::44,215037,GB,ripencc,"LIQUID-AS, GB"
+route-views.kixp.routeviews.org,AS37704,2001:43f8:60:1::65,29914,KE,afrinic,"Nairobi-IX-Peering, KE"
+route-views.kixp.routeviews.org,AS37704,2001:43f8:60:1::66,29907,KE,afrinic,"Nairobi-IX-Peering, KE"
+route-views.kixp.routeviews.org,AS37271,2001:43f8:60:1::72,215726,ZA,afrinic,"Workonline, ZA"
+route-views.kixp.routeviews.org,AS37271,2001:43f8:60:1::73,215726,ZA,afrinic,"Workonline, ZA"
+route-views.kixp.routeviews.org,AS6939,2001:43f8:60:1::74,217080,US,arin,
+route-views.kixp.routeviews.org,AS16509,2001:43f8:60:1::103,1286,US,arin,
+route-views.kixp.routeviews.org,AS136907,2001:43f8:60:1::112,1,HK,apnic,
+route-views.kixp.routeviews.org,AS136907,2001:43f8:60:1::113,1,HK,apnic,
+route-views.kixp.routeviews.org,AS16509,2001:43f8:60:1::114,1286,US,arin,
+route-views.kixp.routeviews.org,AS63293,2001:43f8:60:1::135,1,US,arin,
+route-views.kixp.routeviews.org,AS14593,2001:43f8:60:1::148,42,US,arin,
+route-views.kixp.routeviews.org,AS139057,2001:43f8:60:1::215,1,SG,apnic,
+route-views.linx.routeviews.org,AS47957,195.66.224.12,424591,FR,ripencc,"ING-AS, FR"
+route-views.linx.routeviews.org,AS6939,195.66.224.21,1005415,US,arin,
+route-views.linx.routeviews.org,AS37497,195.66.224.25,986449,ZA,afrinic,"Network-Platforms, ZA"
+route-views.linx.routeviews.org,AS5413,195.66.224.29,0,GB,ripencc,"AS5413, GB"
+route-views.linx.routeviews.org,AS3257,195.66.224.32,981689,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views.linx.routeviews.org,AS6453,195.66.224.51,981786,US,arin,
+route-views.linx.routeviews.org,AS3292,195.66.224.64,641,DK,ripencc,"TDC TDC AS, DK"
+route-views.linx.routeviews.org,AS8426,195.66.224.66,124,GB,ripencc,"CLARANET-AS ClaraNET LTD, GB"
+route-views.linx.routeviews.org,AS5511,195.66.224.83,157405,FR,ripencc,"OPENTRANSIT, FR"
+route-views.linx.routeviews.org,AS6830,195.66.224.89,982145,NL,ripencc,"LIBERTYGLOBAL Liberty Global formerly UPC Broadband Holding, aka AORTA, NL"
+route-views.linx.routeviews.org,AS13237,195.66.224.99,985645,DE,ripencc,"LAMBDANET-AS European Backbone of AS13237, DE"
+route-views.linx.routeviews.org,AS6667,195.66.224.114,983407,FI,ripencc,"EUNET-FINLAND, FI"
+route-views.linx.routeviews.org,AS14537,195.66.224.118,985372,US,arin,
+route-views.linx.routeviews.org,AS2914,195.66.224.138,982078,US,arin,
+route-views.linx.routeviews.org,AS6762,195.66.224.153,214757,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.linx.routeviews.org,AS16552,195.66.224.157,983423,US,arin,
+route-views.linx.routeviews.org,AS38880,195.66.224.165,1020957,AU,apnic,
+route-views.linx.routeviews.org,AS3491,195.66.224.167,978747,US,arin,
+route-views.linx.routeviews.org,AS13030,195.66.224.175,982341,CH,ripencc,"INIT7, CH"
+route-views.linx.routeviews.org,AS9002,195.66.224.193,982906,GB,ripencc,"RETN-AS, GB"
+route-views.linx.routeviews.org,AS31500,195.66.224.215,3716,AG,ripencc,"GNM-AS, AG"
+route-views.linx.routeviews.org,AS5459,195.66.224.254,0,GB,ripencc,"LINX-AS London interconnection point, GB"
+route-views.linx.routeviews.org,AS45102,195.66.225.79,42,CN,apnic,
+route-views.linx.routeviews.org,AS25091,195.66.225.82,406,CH,ripencc,"IP-MAX IP-Max SA, CH"
+route-views.linx.routeviews.org,AS34288,195.66.225.86,992998,CH,ripencc,"AS34288 EDU-ZG-CH - Public Schools in the Canton of Zug, CH"
+route-views.linx.routeviews.org,AS35313,195.66.225.145,12,BH,ripencc,"BH-INFONAS-ASN, BH"
+route-views.linx.routeviews.org,AS49544,195.66.225.146,997982,NL,ripencc,"I3DNET, NL"
+route-views.linx.routeviews.org,AS8674,195.66.225.151,4,SE,ripencc,"NETNOD-IX Netnod AB, SE"
+route-views.linx.routeviews.org,AS8674,195.66.225.152,5,SE,ripencc,"NETNOD-IX Netnod AB, SE"
+route-views.linx.routeviews.org,AS16509,195.66.225.175,2660,US,arin,
+route-views.linx.routeviews.org,AS38182,195.66.225.178,146,MY,apnic,
+route-views.linx.routeviews.org,AS41811,195.66.225.196,979067,GB,ripencc,"CONVERGENCE-GROUP, GB"
+route-views.linx.routeviews.org,AS6424,195.66.225.212,997777,PT,ripencc,"EDGOO NETWORKS, PT"
+route-views.linx.routeviews.org,AS8714,195.66.225.230,210629,GB,ripencc,"LINX-ROUTESRV For use with the LINX Route Servers, GB"
+route-views.linx.routeviews.org,AS8714,195.66.225.231,214226,GB,ripencc,"LINX-ROUTESRV For use with the LINX Route Servers, GB"
+route-views.linx.routeviews.org,AS14061,195.66.226.25,266,US,arin,
+route-views.linx.routeviews.org,AS8529,195.66.226.33,995387,AE,ripencc,"OMANTEL-AS ZOI - Zain Omantel International, AE"
+route-views.linx.routeviews.org,AS267613,195.66.226.39,994844,BR,lacnic,
+route-views.linx.routeviews.org,AS39122,195.66.226.97,983468,IE,ripencc,"BLACKNIGHT-AS, IE"
+route-views.linx.routeviews.org,AS37271,195.66.226.102,987412,ZA,afrinic,"Workonline, ZA"
+route-views.linx.routeviews.org,AS714,195.66.226.145,1222,US,arin,
+route-views.linx.routeviews.org,AS21320,195.66.226.161,984417,NL,ripencc,"GEANT_IAS_VRF, NL"
+route-views.linx.routeviews.org,AS48070,195.66.226.254,983057,GB,ripencc,"DSM MyHostingSpace, GB"
+route-views.linx.routeviews.org,AS8455,195.66.227.118,983137,NL,ripencc,"ATOM86-AS ATOM86, NL"
+route-views.linx.routeviews.org,AS398465,195.66.227.122,985665,US,arin,
+route-views.linx.routeviews.org,AS4775,195.66.227.151,1028,PH,apnic,
+route-views.linx.routeviews.org,AS38195,195.66.227.164,2766,AU,apnic,
+route-views.linx.routeviews.org,AS3170,195.66.227.195,985440,GB,ripencc,"VELOXSERV, GB"
+route-views.linx.routeviews.org,AS1031,195.66.231.48,968523,US,arin,
+route-views.linx.routeviews.org,AS5413,195.66.236.29,810964,GB,ripencc,"AS5413, GB"
+route-views.linx.routeviews.org,AS8426,195.66.236.66,124,GB,ripencc,"CLARANET-AS ClaraNET LTD, GB"
+route-views.linx.routeviews.org,AS6667,195.66.236.114,983407,FI,ripencc,"EUNET-FINLAND, FI"
+route-views.linx.routeviews.org,AS13030,195.66.236.175,982341,CH,ripencc,"INIT7, CH"
+route-views.linx.routeviews.org,AS5459,195.66.236.254,0,GB,ripencc,"LINX-AS London interconnection point, GB"
+route-views.linx.routeviews.org,AS16509,195.66.237.175,2661,US,arin,
+route-views.linx.routeviews.org,AS14061,195.66.238.25,266,US,arin,
+route-views.linx.routeviews.org,AS714,2001:7f8:4::2ca:1,355,US,arin,
+route-views.linx.routeviews.org,AS1031,2001:7f8:4::407:1,213857,US,arin,
+route-views.linx.routeviews.org,AS2914,2001:7f8:4::b62:1,212146,US,arin,
+route-views.linx.routeviews.org,AS3170,2001:7f8:4::c62:1,215113,GB,ripencc,"VELOXSERV, GB"
+route-views.linx.routeviews.org,AS3257,2001:7f8:4::cb9:1,211944,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views.linx.routeviews.org,AS3491,2001:7f8:4::da3:1,212109,US,arin,
+route-views.linx.routeviews.org,AS5413,2001:7f8:4::1525:1,0,GB,ripencc,"AS5413, GB"
+route-views.linx.routeviews.org,AS5459,2001:7f8:4::1553:1,0,GB,ripencc,"LINX-AS London interconnection point, GB"
+route-views.linx.routeviews.org,AS6667,2001:7f8:4::1a0b:1,213810,FI,ripencc,"EUNET-FINLAND, FI"
+route-views.linx.routeviews.org,AS6762,2001:7f8:4::1a6a:1,41980,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views.linx.routeviews.org,AS6830,2001:7f8:4::1aae:4,213374,NL,ripencc,"LIBERTYGLOBAL Liberty Global formerly UPC Broadband Holding, aka AORTA, NL"
+route-views.linx.routeviews.org,AS6939,2001:7f8:4::1b1b:1,217079,US,arin,
+route-views.linx.routeviews.org,AS8426,2001:7f8:4::20ea:1,37,GB,ripencc,"CLARANET-AS ClaraNET LTD, GB"
+route-views.linx.routeviews.org,AS8455,2001:7f8:4::2107:1,214056,NL,ripencc,"ATOM86-AS ATOM86, NL"
+route-views.linx.routeviews.org,AS8674,2001:7f8:4::21e2:1,3,SE,ripencc,"NETNOD-IX Netnod AB, SE"
+route-views.linx.routeviews.org,AS8674,2001:7f8:4::21e2:2,5,SE,ripencc,"NETNOD-IX Netnod AB, SE"
+route-views.linx.routeviews.org,AS8714,2001:7f8:4::220a:1,52173,GB,ripencc,"LINX-ROUTESRV For use with the LINX Route Servers, GB"
+route-views.linx.routeviews.org,AS8714,2001:7f8:4::220a:2,52062,GB,ripencc,"LINX-ROUTESRV For use with the LINX Route Servers, GB"
+route-views.linx.routeviews.org,AS9002,2001:7f8:4::232a:1,214374,GB,ripencc,"RETN-AS, GB"
+route-views.linx.routeviews.org,AS13030,2001:7f8:4::32e6:1,212237,CH,ripencc,"INIT7, CH"
+route-views.linx.routeviews.org,AS16509,2001:7f8:4::407d:1,1362,US,arin,
+route-views.linx.routeviews.org,AS16552,2001:7f8:4::40a8:1,212152,US,arin,
+route-views.linx.routeviews.org,AS21320,2001:7f8:4::5348:1,214126,NL,ripencc,"GEANT_IAS_VRF, NL"
+route-views.linx.routeviews.org,AS25091,2001:7f8:4::6203:1,178,CH,ripencc,"IP-MAX IP-Max SA, CH"
+route-views.linx.routeviews.org,AS34288,2001:7f8:4::85f0:1,227581,CH,ripencc,"AS34288 EDU-ZG-CH - Public Schools in the Canton of Zug, CH"
+route-views.linx.routeviews.org,AS37271,2001:7f8:4::9197:1,215726,ZA,afrinic,"Workonline, ZA"
+route-views.linx.routeviews.org,AS37497,2001:7f8:4::9279:1,214869,ZA,afrinic,"Network-Platforms, ZA"
+route-views.linx.routeviews.org,AS38195,2001:7f8:4::9533:1,289,AU,apnic,
+route-views.linx.routeviews.org,AS39122,2001:7f8:4::98d2:1,212470,IE,ripencc,"BLACKNIGHT-AS, IE"
+route-views.linx.routeviews.org,AS41811,2001:7f8:4::a353:1,1,GB,ripencc,"CONVERGENCE-GROUP, GB"
+route-views.linx.routeviews.org,AS47957,2001:7f8:4::bb55:1,216835,FR,ripencc,"ING-AS, FR"
+route-views.linx.routeviews.org,AS48070,2001:7f8:4::bbc6:1,212620,GB,ripencc,"DSM MyHostingSpace, GB"
+route-views.linx.routeviews.org,AS49544,2001:7f8:4::c188:1,222514,NL,ripencc,"I3DNET, NL"
+route-views.linx.routeviews.org,AS35313,2001:7f8:4::c8ce:1,8,BH,ripencc,"BH-INFONAS-ASN, BH"
+route-views.linx.routeviews.org,AS8529,2001:7f8:4::e8d5:1,215396,AE,ripencc,"OMANTEL-AS ZOI - Zain Omantel International, AE"
+route-views.linx.routeviews.org,AS267613,2001:7f8:4::4:155d:1,220368,BR,lacnic,
+route-views.linx.routeviews.org,AS398465,2001:7f8:4::6:1481:1,217930,US,arin,
+route-views.linx.routeviews.org,AS5413,2001:7f8:4:1::1525:1,140487,GB,ripencc,"AS5413, GB"
+route-views.linx.routeviews.org,AS5459,2001:7f8:4:1::1553:2,7,GB,ripencc,"LINX-AS London interconnection point, GB"
+route-views.linx.routeviews.org,AS6667,2001:7f8:4:1::1a0b:1,213810,FI,ripencc,"EUNET-FINLAND, FI"
+route-views.linx.routeviews.org,AS8426,2001:7f8:4:1::20ea:1,37,GB,ripencc,"CLARANET-AS ClaraNET LTD, GB"
+route-views.linx.routeviews.org,AS13030,2001:7f8:4:1::32e6:1,212239,CH,ripencc,"INIT7, CH"
+route-views.linx.routeviews.org,AS16509,2001:7f8:4:1::407d:1,1363,US,arin,
+route-views.mwix.routeviews.org,AS13681,206.53.139.2,88999,US,arin,
+route-views.mwix.routeviews.org,AS20940,206.53.139.22,2,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.mwix.routeviews.org,AS19782,206.53.139.23,0,US,arin,
+route-views.mwix.routeviews.org,AS63293,206.53.139.29,1,US,arin,
+route-views.mwix.routeviews.org,AS13335,206.53.139.34,5169,US,arin,
+route-views.mwix.routeviews.org,AS13681,206.53.139.252,90424,US,arin,
+route-views.mwix.routeviews.org,AS13681,2001:504:45:f3e8::2,53705,US,arin,
+route-views.mwix.routeviews.org,AS20940,2001:504:45:f3e8::13,1,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.mwix.routeviews.org,AS19782,2001:504:45:f3e8::16,0,US,arin,
+route-views.mwix.routeviews.org,AS13335,2001:504:45:f3e8::24,250,US,arin,
+route-views.mwix.routeviews.org,AS63293,2001:504:45:f3e8::29,1,US,arin,
+route-views.mwix.routeviews.org,AS13681,2001:504:45:f3e8::252,57240,US,arin,
+route-views.nwax.routeviews.org,AS1798,198.32.195.23,20,US,arin,
+route-views.nwax.routeviews.org,AS15301,198.32.195.24,6,US,arin,
+route-views.nwax.routeviews.org,AS6423,198.32.195.30,1006604,US,arin,
+route-views.nwax.routeviews.org,AS32869,198.32.195.32,21,US,arin,
+route-views.nwax.routeviews.org,AS2044,198.32.195.35,29,US,arin,
+route-views.nwax.routeviews.org,AS13335,198.32.195.95,5201,US,arin,
+route-views.nwax.routeviews.org,AS16509,198.32.195.101,2217,US,arin,
+route-views.nwax.routeviews.org,AS16509,198.32.195.102,2217,US,arin,
+route-views.nwax.routeviews.org,AS63293,198.32.195.128,1,US,arin,
+route-views.nwax.routeviews.org,AS20940,198.32.195.147,91,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.nwax.routeviews.org,AS1798,2620:124:2000::23,2,US,arin,
+route-views.nwax.routeviews.org,AS32869,2620:124:2000::32,0,US,arin,
+route-views.nwax.routeviews.org,AS13335,2620:124:2000::95,263,US,arin,
+route-views.nwax.routeviews.org,AS16509,2620:124:2000::101,976,US,arin,
+route-views.nwax.routeviews.org,AS16509,2620:124:2000::102,991,US,arin,
+route-views.nwax.routeviews.org,AS63293,2620:124:2000::128,1,US,arin,
+route-views.nwax.routeviews.org,AS20940,2620:124:2000::147,87,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.ny.routeviews.org,AS13335,206.82.104.31,5800,US,arin,
+route-views.ny.routeviews.org,AS20940,206.82.104.62,158,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.ny.routeviews.org,AS49544,206.82.104.63,998060,NL,ripencc,"I3DNET, NL"
+route-views.ny.routeviews.org,AS13335,206.82.104.68,5767,US,arin,
+route-views.ny.routeviews.org,AS32934,206.82.104.136,42,US,arin,
+route-views.ny.routeviews.org,AS11399,206.82.104.161,1015285,US,arin,
+route-views.ny.routeviews.org,AS32934,206.82.104.164,42,US,arin,
+route-views.ny.routeviews.org,AS398465,206.82.104.185,989948,US,arin,
+route-views.ny.routeviews.org,AS63034,206.82.104.254,188388,US,arin,
+route-views.ny.routeviews.org,AS28213,206.82.105.3,13,BR,lacnic,
+route-views.ny.routeviews.org,AS209823,206.82.105.109,987573,FR,ripencc,"ENKI-AS, FR"
+route-views.ny.routeviews.org,AS54309,206.82.105.116,983412,US,arin,
+route-views.ny.routeviews.org,AS63034,206.82.106.254,188386,US,arin,
+route-views.ny.routeviews.org,AS13335,2001:504:36::3417:0:1,538,US,arin,
+route-views.ny.routeviews.org,AS13335,2001:504:36::3417:0:2,541,US,arin,
+route-views.ny.routeviews.org,AS20940,2001:504:36::51cc:0:2,33,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.ny.routeviews.org,AS28213,2001:504:36::6e35:0:1,3,BR,lacnic,
+route-views.ny.routeviews.org,AS32934,2001:504:36::80a6:0:1,22,US,arin,
+route-views.ny.routeviews.org,AS32934,2001:504:36::80a6:0:2,22,US,arin,
+route-views.ny.routeviews.org,AS49544,2001:504:36::c188:0:1,222929,NL,ripencc,"I3DNET, NL"
+route-views.ny.routeviews.org,AS54309,2001:504:36::d425:0:1,217113,US,arin,
+route-views.ny.routeviews.org,AS63034,2001:504:36::f63a:afc:1,75580,US,arin,
+route-views.ny.routeviews.org,AS63034,2001:504:36::f63a:afd:1,75580,US,arin,
+route-views.ny.routeviews.org,AS11399,2001:504:36:0:1:8783:0:1,222583,US,arin,
+route-views.ny.routeviews.org,AS209823,2001:504:36:0:3:339:0:1,223663,FR,ripencc,"ENKI-AS, FR"
+route-views.ny.routeviews.org,AS398465,2001:504:36:0:6:1481:0:1,222210,US,arin,
+route-views.perth.routeviews.org,AS7606,27.106.192.1,110970,AU,apnic,
+route-views.perth.routeviews.org,AS7606,27.106.192.2,110909,AU,apnic,
+route-views.perth.routeviews.org,AS38195,27.106.192.71,2780,AU,apnic,
+route-views.perth.routeviews.org,AS16509,27.106.192.147,790,US,arin,
+route-views.perth.routeviews.org,AS7606,218.100.52.1,116423,AU,apnic,
+route-views.perth.routeviews.org,AS16509,218.100.52.9,827,US,arin,
+route-views.perth.routeviews.org,AS49544,218.100.52.60,987999,NL,ripencc,"I3DNET, NL"
+route-views.perth.routeviews.org,AS140627,218.100.52.62,203896,AU,apnic,
+route-views.perth.routeviews.org,AS38195,218.100.52.71,2780,AU,apnic,
+route-views.perth.routeviews.org,AS136557,218.100.52.247,987575,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.52.254,116394,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.54.1,22611,AU,apnic,
+route-views.perth.routeviews.org,AS38195,218.100.54.8,2780,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.54.126,22610,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.54.129,1304,AU,apnic,
+route-views.perth.routeviews.org,AS16509,218.100.54.134,772,US,arin,
+route-views.perth.routeviews.org,AS16509,218.100.54.135,772,US,arin,
+route-views.perth.routeviews.org,AS7606,218.100.54.254,1304,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.76.1,24606,AU,apnic,
+route-views.perth.routeviews.org,AS7594,218.100.76.5,134,AU,apnic,
+route-views.perth.routeviews.org,AS38195,218.100.76.32,2780,AU,apnic,
+route-views.perth.routeviews.org,AS16509,218.100.76.46,795,US,arin,
+route-views.perth.routeviews.org,AS16509,218.100.76.52,795,US,arin,
+route-views.perth.routeviews.org,AS136557,218.100.76.80,987575,AU,apnic,
+route-views.perth.routeviews.org,AS17766,218.100.76.125,77,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.76.254,24602,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.78.1,118105,AU,apnic,
+route-views.perth.routeviews.org,AS38195,218.100.78.4,2780,AU,apnic,
+route-views.perth.routeviews.org,AS13150,218.100.78.29,1,IL,ripencc,"CATON, IL"
+route-views.perth.routeviews.org,AS16509,218.100.78.50,817,US,arin,
+route-views.perth.routeviews.org,AS136557,218.100.78.98,987575,AU,apnic,
+route-views.perth.routeviews.org,AS16509,218.100.78.143,817,US,arin,
+route-views.perth.routeviews.org,AS17766,218.100.78.159,77,AU,apnic,
+route-views.perth.routeviews.org,AS7606,218.100.78.254,118059,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11::1db6:0:1,67491,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11::1db6:0:2,67479,AU,apnic,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11::407d:0:2,260,US,arin,
+route-views.perth.routeviews.org,AS38195,2001:7fa:11::9533:0:1,291,AU,apnic,
+route-views.perth.routeviews.org,AS136557,2001:7fa:11:1:0:156d:0:1,221487,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:1:0:1db6:0:1,32538,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:1:0:1db6:0:2,32517,AU,apnic,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:1:0:407d:0:1,268,US,arin,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:1:0:407d:0:2,268,US,arin,
+route-views.perth.routeviews.org,AS17766,2001:7fa:11:1:0:4566:0:1,210706,AU,apnic,
+route-views.perth.routeviews.org,AS38195,2001:7fa:11:1:0:9533:0:1,291,AU,apnic,
+route-views.perth.routeviews.org,AS140627,2001:7fa:11:1:2:2553:0:1,65412,AU,apnic,
+route-views.perth.routeviews.org,AS7594,2001:7fa:11:2:0:1daa:0:1,4,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:2:0:1db6:0:1,69755,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:2:0:1db6:0:2,69746,AU,apnic,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:2:0:407d:0:1,260,US,arin,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:2:0:407d:0:2,260,US,arin,
+route-views.perth.routeviews.org,AS17766,2001:7fa:11:2:0:4566:0:1,7,AU,apnic,
+route-views.perth.routeviews.org,AS38195,2001:7fa:11:2:0:9533:0:1,291,AU,apnic,
+route-views.perth.routeviews.org,AS136557,2001:7fa:11:2:2:156d:0:1,196422,AU,apnic,
+route-views.perth.routeviews.org,AS140627,2001:7fa:11:2:2:2553:0:1,199593,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:3:0:1db6:0:1,4910,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:3:0:1db6:0:2,4910,AU,apnic,
+route-views.perth.routeviews.org,AS38195,2001:7fa:11:3:0:9533:0:1,291,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:4:0:1db6:0:1,69896,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:4:0:1db6:0:2,69887,AU,apnic,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:4:0:407d:0:1,278,US,arin,
+route-views.perth.routeviews.org,AS38195,2001:7fa:11:4:0:9533:0:1,291,AU,apnic,
+route-views.perth.routeviews.org,AS49544,2001:7fa:11:4:0:c188:0:1,217768,NL,ripencc,"I3DNET, NL"
+route-views.perth.routeviews.org,AS136557,2001:7fa:11:4:2:156d:0:1,195162,AU,apnic,
+route-views.perth.routeviews.org,AS140627,2001:7fa:11:4:2:2553:0:1,201238,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:5:0:1db6:0:1,342,AU,apnic,
+route-views.perth.routeviews.org,AS7606,2001:7fa:11:5:0:1db6:0:2,342,AU,apnic,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:5:0:407d:0:1,265,US,arin,
+route-views.perth.routeviews.org,AS16509,2001:7fa:11:5:0:407d:0:2,265,US,arin,
+route-views.phoix.routeviews.org,AS4775,198.32.172.4,1264,PH,apnic,
+route-views.phoix.routeviews.org,AS9927,198.32.172.87,69,PH,apnic,
+route-views.phoix.routeviews.org,AS135423,198.32.172.125,32,PH,apnic,
+route-views.phoix.routeviews.org,AS142271,198.32.172.156,632599,PH,apnic,
+route-views.phoix.routeviews.org,AS150000,198.32.172.170,1013097,PH,apnic,
+route-views.phoix.routeviews.org,AS150000,198.32.172.171,158548,PH,apnic,
+route-views.phoix.routeviews.org,AS4779,198.32.172.249,4298,PH,apnic,
+route-views.phoix.routeviews.org,AS4775,2001:478:172::4,3,PH,apnic,
+route-views.phoix.routeviews.org,AS142271,2001:478:172::156,138745,PH,apnic,
+route-views.phoix.routeviews.org,AS150000,2001:478:172::170,228080,PH,apnic,
+route-views.phoix.routeviews.org,AS150000,2001:478:172::171,67210,PH,apnic,
+route-views.rio.routeviews.org,AS267613,45.6.52.62,1000057,BR,lacnic,
+route-views.rio.routeviews.org,AS52320,45.6.52.193,984556,CO,lacnic,
+route-views.rio.routeviews.org,AS13335,45.6.52.203,5970,US,arin,
+route-views.rio.routeviews.org,AS26162,45.6.52.253,147211,BR,lacnic,
+route-views.rio.routeviews.org,AS26162,45.6.52.254,146792,BR,lacnic,
+route-views.rio.routeviews.org,AS32934,45.6.53.82,8,US,arin,
+route-views.rio.routeviews.org,AS32934,45.6.53.83,8,US,arin,
+route-views.rio.routeviews.org,AS16509,45.6.53.102,645,US,arin,
+route-views.rio.routeviews.org,AS268207,45.6.53.103,10,BR,lacnic,
+route-views.rio.routeviews.org,AS264479,45.6.53.167,1004518,BR,lacnic,
+route-views.rio.routeviews.org,AS20940,45.6.53.205,116,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.rio.routeviews.org,AS32934,45.6.53.207,8,US,arin,
+route-views.rio.routeviews.org,AS32934,45.6.53.208,8,US,arin,
+route-views.rio.routeviews.org,AS16509,45.6.53.216,645,US,arin,
+route-views.rio.routeviews.org,AS7195,45.6.53.236,13600,CO,lacnic,
+route-views.rio.routeviews.org,AS1031,45.6.53.250,420703,US,arin,
+route-views.rio.routeviews.org,AS199524,45.6.54.171,986568,LU,ripencc,"GCORE, LU"
+route-views.rio.routeviews.org,AS999,45.6.54.199,994461,US,arin,
+route-views.rio.routeviews.org,AS6057,45.6.54.203,995162,UY,lacnic,
+route-views.rio.routeviews.org,AS264409,45.6.55.6,885966,BR,lacnic,
+route-views.rio.routeviews.org,AS13335,45.6.55.22,5970,US,arin,
+route-views.rio.routeviews.org,AS52468,45.6.55.32,1004769,PA,lacnic,
+route-views.rio.routeviews.org,AS20253,45.6.55.134,998426,US,arin,
+route-views.rio.routeviews.org,AS264409,45.6.55.214,1001631,BR,lacnic,
+route-views.rio.routeviews.org,AS267613,2001:12f8:0:2::62,220675,BR,lacnic,
+route-views.rio.routeviews.org,AS52320,2001:12f8:0:2::193,213440,CO,lacnic,
+route-views.rio.routeviews.org,AS13335,2001:12f8:0:2::203,673,US,arin,
+route-views.rio.routeviews.org,AS26162,2001:12f8:0:2::52:253,77271,BR,lacnic,
+route-views.rio.routeviews.org,AS26162,2001:12f8:0:2::52:254,77256,BR,lacnic,
+route-views.rio.routeviews.org,AS32934,2001:12f8:0:2::53:82,8,US,arin,
+route-views.rio.routeviews.org,AS32934,2001:12f8:0:2::53:83,8,US,arin,
+route-views.rio.routeviews.org,AS16509,2001:12f8:0:2::53:102,162,US,arin,
+route-views.rio.routeviews.org,AS268207,2001:12f8:0:2::53:103,2,BR,lacnic,
+route-views.rio.routeviews.org,AS264479,2001:12f8:0:2::53:167,114200,BR,lacnic,
+route-views.rio.routeviews.org,AS32934,2001:12f8:0:2::53:207,8,US,arin,
+route-views.rio.routeviews.org,AS32934,2001:12f8:0:2::53:208,8,US,arin,
+route-views.rio.routeviews.org,AS16509,2001:12f8:0:2::53:216,162,US,arin,
+route-views.rio.routeviews.org,AS7195,2001:12f8:0:2::53:236,5459,CO,lacnic,
+route-views.rio.routeviews.org,AS1031,2001:12f8:0:2::53:250,3945,US,arin,
+route-views.rio.routeviews.org,AS199524,2001:12f8:0:2::54:171,215697,LU,ripencc,"GCORE, LU"
+route-views.rio.routeviews.org,AS999,2001:12f8:0:2::54:199,212084,US,arin,
+route-views.rio.routeviews.org,AS6057,2001:12f8:0:2::54:203,219210,UY,lacnic,
+route-views.rio.routeviews.org,AS264409,2001:12f8:0:2::55:6,1,BR,lacnic,
+route-views.rio.routeviews.org,AS13335,2001:12f8:0:2::55:22,673,US,arin,
+route-views.rio.routeviews.org,AS52468,2001:12f8:0:2::55:32,0,PA,lacnic,
+route-views.rio.routeviews.org,AS20253,2001:12f8:0:2::55:134,220656,US,arin,
+route-views.rio.routeviews.org,AS264409,2001:12f8:0:2::55:214,78924,BR,lacnic,
+route-views.routeviews.org,AS3356,4.68.4.46,980346,US,arin,
+route-views.routeviews.org,AS7018,12.0.1.63,980714,US,arin,
+route-views.routeviews.org,AS57866,37.139.139.17,984105,NL,ripencc,"FUSIX-AS, NL"
+route-views.routeviews.org,AS6939,64.71.137.241,1005410,US,arin,
+route-views.routeviews.org,AS20912,77.39.192.30,983388,IT,ripencc,"ASN-PANSERVICE, IT"
+route-views.routeviews.org,AS3257,89.149.178.10,981650,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views.routeviews.org,AS49788,91.218.184.60,985029,NO,ripencc,"NEXTHOP, NO"
+route-views.routeviews.org,AS8283,94.142.247.3,987089,NL,ripencc,"COLOCLUE-AS Netwerkvereniging Coloclue, Amsterdam, Netherlands, NL"
+route-views.routeviews.org,AS4826,114.31.199.16,1007399,AU,apnic,
+route-views.routeviews.org,AS1351,132.198.255.253,1007146,US,arin,
+route-views.routeviews.org,AS20130,140.192.8.16,1007839,US,arin,
+route-views.routeviews.org,AS4901,162.250.137.254,986967,US,arin,
+route-views.routeviews.org,AS53767,162.251.163.2,161675,US,arin,
+route-views.routeviews.org,AS3333,193.0.0.56,990627,NL,ripencc,"RIPE-NCC-AS Reseaux IP Europeens Network Coordination Centre RIPE NCC, NL"
+route-views.routeviews.org,AS20080,198.32.252.33,19086,US,arin,
+route-views.routeviews.org,AS2497,202.232.0.2,988467,JP,apnic,
+route-views.routeviews.org,AS7660,203.181.248.195,19414,JP,apnic,
+route-views.routeviews.org,AS3561,206.24.210.80,977932,US,arin,
+route-views.routeviews.org,AS3549,208.51.134.254,982022,US,arin,
+route-views.routeviews.org,AS101,209.124.176.223,985303,US,arin,
+route-views.routeviews.org,AS3303,217.192.89.50,1004155,CH,ripencc,"SWISSCOM Swisscom Switzerland Ltd, CH"
+route-views.routeviews.org,AS7575,2001:388:1::16,6231,AU,apnic,
+route-views.routeviews.org,AS3303,2001:918:0:5::1,220778,CH,ripencc,"SWISSCOM Swisscom Switzerland Ltd, CH"
+route-views.routeviews.org,AS101,2001:1860::223,203193,US,arin,
+route-views.routeviews.org,AS20912,2001:40D0::1E,221286,IT,ripencc,"ASN-PANSERVICE, IT"
+route-views.routeviews.org,AS24441,2404:CC00:1::1,66,KH,apnic,
+route-views.routeviews.org,AS53767,2605:9D00::2,603,US,arin,
+route-views.routeviews.org,AS49788,2A02:D140:1::60,223760,NO,ripencc,"NEXTHOP, NO"
+route-views.sfmix.routeviews.org,AS12276,206.197.187.1,0,US,arin,
+route-views.sfmix.routeviews.org,AS20940,206.197.187.6,68,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.sfmix.routeviews.org,AS10310,206.197.187.9,260,US,arin,
+route-views.sfmix.routeviews.org,AS2734,206.197.187.10,1015819,US,arin,
+route-views.sfmix.routeviews.org,AS10310,206.197.187.24,260,US,arin,
+route-views.sfmix.routeviews.org,AS35008,206.197.187.41,1008351,US,arin,
+route-views.sfmix.routeviews.org,AS13335,206.197.187.62,5877,US,arin,
+route-views.sfmix.routeviews.org,AS16509,206.197.187.65,2257,US,arin,
+route-views.sfmix.routeviews.org,AS397131,206.197.187.85,1005999,CA,arin,
+route-views.sfmix.routeviews.org,AS49544,206.197.187.87,998055,NL,ripencc,"I3DNET, NL"
+route-views.sfmix.routeviews.org,AS32934,206.197.187.91,42,US,arin,
+route-views.sfmix.routeviews.org,AS32934,206.197.187.92,42,US,arin,
+route-views.sfmix.routeviews.org,AS16509,206.197.187.103,2257,US,arin,
+route-views.sfmix.routeviews.org,AS34927,206.197.187.106,1005956,CH,ripencc,"IFOG-GMBH, CH"
+route-views.sfmix.routeviews.org,AS63055,206.197.187.253,94515,US,arin,
+route-views.sfmix.routeviews.org,AS63055,206.197.187.254,95130,US,arin,
+route-views.sfmix.routeviews.org,AS2734,2001:504:30::ba00:2734:1,225957,US,arin,
+route-views.sfmix.routeviews.org,AS10310,2001:504:30::ba01:310:1,109,US,arin,
+route-views.sfmix.routeviews.org,AS10310,2001:504:30::ba01:310:2,109,US,arin,
+route-views.sfmix.routeviews.org,AS12276,2001:504:30::ba01:2276:1,0,US,arin,
+route-views.sfmix.routeviews.org,AS13335,2001:504:30::ba01:3335:2,518,US,arin,
+route-views.sfmix.routeviews.org,AS16509,2001:504:30::ba01:6509:1,1000,US,arin,
+route-views.sfmix.routeviews.org,AS16509,2001:504:30::ba01:6509:2,1000,US,arin,
+route-views.sfmix.routeviews.org,AS20940,2001:504:30::ba02:940:1,29,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.sfmix.routeviews.org,AS32934,2001:504:30::ba03:2934:1,23,US,arin,
+route-views.sfmix.routeviews.org,AS32934,2001:504:30::ba03:2934:2,23,US,arin,
+route-views.sfmix.routeviews.org,AS34927,2001:504:30::ba03:4927:1,222158,CH,ripencc,"IFOG-GMBH, CH"
+route-views.sfmix.routeviews.org,AS35008,2001:504:30::ba03:5008:1,221558,US,arin,
+route-views.sfmix.routeviews.org,AS49544,2001:504:30::ba04:9544:1,222577,NL,ripencc,"I3DNET, NL"
+route-views.sfmix.routeviews.org,AS63055,2001:504:30::ba06:3055:1,56301,US,arin,
+route-views.sfmix.routeviews.org,AS63055,2001:504:30::ba06:3055:2,59228,US,arin,
+route-views.sfmix.routeviews.org,AS397131,2001:504:30::ba39:7131:1,222135,CA,arin,
+route-views.soxrs.routeviews.org,AS13004,185.1.27.1,231424,RS,ripencc,"SOX, RS"
+route-views.soxrs.routeviews.org,AS13004,185.1.27.5,231422,RS,ripencc,"SOX, RS"
+route-views.soxrs.routeviews.org,AS13335,185.1.27.61,5171,US,arin,
+route-views.soxrs.routeviews.org,AS32934,185.1.27.67,8,US,arin,
+route-views.soxrs.routeviews.org,AS9009,185.1.27.77,35,RO,ripencc,"M247, RO"
+route-views.soxrs.routeviews.org,AS63293,185.1.27.88,1,US,arin,
+route-views.soxrs.routeviews.org,AS13004,2001:7f8:1e::1,75691,RS,ripencc,"SOX, RS"
+route-views.soxrs.routeviews.org,AS13004,2001:7f8:1e::5,75691,RS,ripencc,"SOX, RS"
+route-views.soxrs.routeviews.org,AS13335,2001:7f8:1e::61,239,US,arin,
+route-views.soxrs.routeviews.org,AS32934,2001:7f8:1e::67,9,US,arin,
+route-views.soxrs.routeviews.org,AS9009,2001:7f8:1e::77,12,RO,ripencc,"M247, RO"
+route-views.soxrs.routeviews.org,AS63293,2001:7f8:1e::88,1,US,arin,
+route-views.sydney.routeviews.org,AS63956,45.127.172.2,175726,AU,apnic,
+route-views.sydney.routeviews.org,AS8075,45.127.172.36,938,US,arin,
+route-views.sydney.routeviews.org,AS9266,45.127.172.38,218564,HK,apnic,
+route-views.sydney.routeviews.org,AS32934,45.127.172.39,7,US,arin,
+route-views.sydney.routeviews.org,AS7575,45.127.172.46,991395,AU,apnic,
+route-views.sydney.routeviews.org,AS148968,45.127.172.67,1012652,AU,apnic,
+route-views.sydney.routeviews.org,AS4826,45.127.172.74,1007391,AU,apnic,
+route-views.sydney.routeviews.org,AS199524,45.127.172.78,997630,LU,ripencc,"GCORE, LU"
+route-views.sydney.routeviews.org,AS3491,45.127.172.80,0,US,arin,
+route-views.sydney.routeviews.org,AS38195,45.127.172.89,2780,AU,apnic,
+route-views.sydney.routeviews.org,AS20940,45.127.172.102,104,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.sydney.routeviews.org,AS24115,45.127.172.122,143834,SG,apnic,
+route-views.sydney.routeviews.org,AS24115,45.127.172.123,143861,SG,apnic,
+route-views.sydney.routeviews.org,AS16509,45.127.172.131,827,US,arin,
+route-views.sydney.routeviews.org,AS58511,45.127.172.149,991933,AU,apnic,
+route-views.sydney.routeviews.org,AS17766,45.127.172.150,77,AU,apnic,
+route-views.sydney.routeviews.org,AS132847,45.127.172.152,992683,AU,apnic,
+route-views.sydney.routeviews.org,AS13335,45.127.172.154,5774,US,arin,
+route-views.sydney.routeviews.org,AS24516,45.127.172.196,991440,AU,apnic,
+route-views.sydney.routeviews.org,AS32934,45.127.172.197,7,US,arin,
+route-views.sydney.routeviews.org,AS714,45.127.172.208,1233,US,arin,
+route-views.sydney.routeviews.org,AS16509,45.127.172.231,827,US,arin,
+route-views.sydney.routeviews.org,AS8888,45.127.173.20,1000633,AU,ripencc,"XTOM xTom Pty Ltd, AU"
+route-views.sydney.routeviews.org,AS135895,45.127.173.40,1011436,AU,apnic,
+route-views.sydney.routeviews.org,AS8075,45.127.173.62,938,US,arin,
+route-views.sydney.routeviews.org,AS7594,45.127.173.66,991500,AU,apnic,
+route-views.sydney.routeviews.org,AS16552,45.127.173.71,988750,US,arin,
+route-views.sydney.routeviews.org,AS398465,45.127.173.76,1007383,US,arin,
+route-views.sydney.routeviews.org,AS4805,45.127.173.80,16,AU,apnic,
+route-views.sydney.routeviews.org,AS714,2001:de8:6::714:2,389,US,arin,
+route-views.sydney.routeviews.org,AS3491,2001:de8:6::3491:1,0,US,arin,
+route-views.sydney.routeviews.org,AS4805,2001:de8:6::4805:1,0,AU,apnic,
+route-views.sydney.routeviews.org,AS4826,2001:de8:6::4826:1,225953,AU,apnic,
+route-views.sydney.routeviews.org,AS7575,2001:de8:6::7575:1,221279,AU,apnic,
+route-views.sydney.routeviews.org,AS7594,2001:de8:6::7594:1,214535,AU,apnic,
+route-views.sydney.routeviews.org,AS8075,2001:de8:6::8075:2,146,US,arin,
+route-views.sydney.routeviews.org,AS8888,2001:de8:6::8888:1,226735,AU,ripencc,"XTOM xTom Pty Ltd, AU"
+route-views.sydney.routeviews.org,AS8075,2001:de8:6::1:2076:1,146,US,arin,
+route-views.sydney.routeviews.org,AS13335,2001:de8:6::1:3335:1,582,US,arin,
+route-views.sydney.routeviews.org,AS16509,2001:de8:6::1:6509:1,0,US,arin,
+route-views.sydney.routeviews.org,AS17766,2001:de8:6::1:7766:1,7,AU,apnic,
+route-views.sydney.routeviews.org,AS20940,2001:de8:6::2:940:1,95,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.sydney.routeviews.org,AS24115,2001:de8:6::2:4115:1,63274,SG,apnic,
+route-views.sydney.routeviews.org,AS24115,2001:de8:6::2:4115:2,63274,SG,apnic,
+route-views.sydney.routeviews.org,AS24516,2001:de8:6::2:4516:1,216628,AU,apnic,
+route-views.sydney.routeviews.org,AS32934,2001:de8:6::3:2934:1,8,US,arin,
+route-views.sydney.routeviews.org,AS32934,2001:de8:6::3:2934:2,8,US,arin,
+route-views.sydney.routeviews.org,AS38195,2001:de8:6::3:8195:1,291,AU,apnic,
+route-views.sydney.routeviews.org,AS58511,2001:de8:6::5:8511:1,224817,AU,apnic,
+route-views.sydney.routeviews.org,AS132847,2001:de8:6::13:2847:1,227474,AU,apnic,
+route-views.sydney.routeviews.org,AS135895,2001:de8:6::13:5895:1,217041,AU,apnic,
+route-views.sydney.routeviews.org,AS148968,2001:de8:6::14:8968:1,225719,AU,apnic,
+route-views.sydney.routeviews.org,AS199524,2001:de8:6::19:9524:1,222833,LU,ripencc,"GCORE, LU"
+route-views.sydney.routeviews.org,AS398465,2001:de8:6::39:8465:1,226051,US,arin,
+route-views.telxatl.routeviews.org,AS32299,206.126.110.5,24226,US,arin,
+route-views.telxatl.routeviews.org,AS32299,206.126.110.6,24226,US,arin,
+route-views.telxatl.routeviews.org,AS19151,206.126.110.12,992461,US,arin,
+route-views.telxatl.routeviews.org,AS4181,206.126.110.28,983463,US,arin,
+route-views.telxatl.routeviews.org,AS20940,206.126.110.73,52,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.telxatl.routeviews.org,AS6939,206.126.110.75,1005427,US,arin,
+route-views.telxatl.routeviews.org,AS16700,206.126.110.114,17,US,arin,
+route-views.telxatl.routeviews.org,AS20253,206.126.110.118,982788,US,arin,
+route-views.telxatl.routeviews.org,AS13760,206.126.110.129,928,US,arin,
+route-views.telxatl.routeviews.org,AS13335,206.126.110.136,5793,US,arin,
+route-views.telxatl.routeviews.org,AS13150,206.126.110.145,3,IL,ripencc,"CATON, IL"
+route-views.telxatl.routeviews.org,AS6082,206.126.110.152,984602,US,arin,
+route-views.telxatl.routeviews.org,AS53828,206.126.110.155,985452,US,arin,
+route-views.telxatl.routeviews.org,AS16509,206.126.110.251,3647,US,arin,
+route-views.telxatl.routeviews.org,AS32299,2001:504:17:110::5,58094,US,arin,
+route-views.telxatl.routeviews.org,AS32299,2001:504:17:110::6,58094,US,arin,
+route-views.telxatl.routeviews.org,AS19151,2001:504:17:110::12,217845,US,arin,
+route-views.telxatl.routeviews.org,AS4181,2001:504:17:110::28,222367,US,arin,
+route-views.telxatl.routeviews.org,AS20940,2001:504:17:110::73,2,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.telxatl.routeviews.org,AS6939,2001:504:17:110::75,217079,US,arin,
+route-views.telxatl.routeviews.org,AS16700,2001:504:17:110::114,4,US,arin,
+route-views.telxatl.routeviews.org,AS20253,2001:504:17:110::118,212338,US,arin,
+route-views.telxatl.routeviews.org,AS13760,2001:504:17:110::129,53,US,arin,
+route-views.telxatl.routeviews.org,AS13335,2001:504:17:110::136,517,US,arin,
+route-views.telxatl.routeviews.org,AS6082,2001:504:17:110::152,212548,US,arin,
+route-views.telxatl.routeviews.org,AS53828,2001:504:17:110::155,223853,US,arin,
+route-views.telxatl.routeviews.org,AS26744,2001:504:17:110::167,9,US,arin,
+route-views.telxatl.routeviews.org,AS16509,2001:504:17:110::251,1221,US,arin,
+route-views.uaeix.routeviews.org,AS48237,185.1.8.3,2104,SA,ripencc,"MOBILY-AS, SA"
+route-views.uaeix.routeviews.org,AS42473,185.1.8.11,1023076,AT,ripencc,"AS-ANEXIA ANEXIA Internetdienstleistungs GmbH, AT"
+route-views.uaeix.routeviews.org,AS5583,185.1.8.12,4,FR,ripencc,"ORANGE-BUSINESS-SERVICES-BENELUX Orange Business Services formerly Equant AS for BENELUX, FR"
+route-views.uaeix.routeviews.org,AS4455,185.1.8.13,10,GB,ripencc,"BSO, GB"
+route-views.uaeix.routeviews.org,AS20940,185.1.8.16,40,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.uaeix.routeviews.org,AS57187,185.1.8.17,89,AE,ripencc,"DATAMENA-ASN, AE"
+route-views.uaeix.routeviews.org,AS60924,185.1.8.23,998999,IE,ripencc,"ORIXCOM, IE"
+route-views.uaeix.routeviews.org,AS29357,185.1.8.29,219,KW,ripencc,"WATANIYATELECOM-AS, KW"
+route-views.uaeix.routeviews.org,AS60051,185.1.8.42,711,AE,ripencc,"EARTHLINK-DMCC, AE"
+route-views.uaeix.routeviews.org,AS45102,185.1.8.47,23,CN,apnic,
+route-views.uaeix.routeviews.org,AS51375,185.1.8.53,376,BH,ripencc,"VIVA, BH"
+route-views.uaeix.routeviews.org,AS35313,185.1.8.58,12,BH,ripencc,"BH-INFONAS-ASN, BH"
+route-views.uaeix.routeviews.org,AS49544,185.1.8.59,998614,NL,ripencc,"I3DNET, NL"
+route-views.uaeix.routeviews.org,AS21859,185.1.8.61,71,US,arin,
+route-views.uaeix.routeviews.org,AS35753,185.1.8.85,1017,SA,ripencc,"ITC ITC AS number, SA"
+route-views.uaeix.routeviews.org,AS136907,185.1.8.87,0,HK,apnic,
+route-views.uaeix.routeviews.org,AS136907,185.1.8.90,0,HK,apnic,
+route-views.uaeix.routeviews.org,AS12654,185.1.8.106,2,NL,ripencc,"RIPE-NCC-RIS-AS Reseaux IP Europeens Network Coordination Centre RIPE NCC, NL"
+route-views.uaeix.routeviews.org,AS199524,185.1.8.114,1020889,LU,ripencc,"GCORE, LU"
+route-views.uaeix.routeviews.org,AS61374,185.1.8.250,116224,DE,ripencc,"UAEIX-AS UAE-IX Route Servers, DE"
+route-views.uaeix.routeviews.org,AS61374,185.1.8.251,116053,DE,ripencc,"UAEIX-AS UAE-IX Route Servers, DE"
+route-views.uaeix.routeviews.org,AS4455,2001:7f8:73::1167:0:1,3,GB,ripencc,"BSO, GB"
+route-views.uaeix.routeviews.org,AS5583,2001:7f8:73::15cf:0:1,1,FR,ripencc,"ORANGE-BUSINESS-SERVICES-BENELUX Orange Business Services formerly Equant AS for BENELUX, FR"
+route-views.uaeix.routeviews.org,AS12654,2001:7f8:73::316e:0:1,4,NL,ripencc,"RIPE-NCC-RIS-AS Reseaux IP Europeens Network Coordination Centre RIPE NCC, NL"
+route-views.uaeix.routeviews.org,AS16509,2001:7f8:73::407d:0:1,1439,US,arin,
+route-views.uaeix.routeviews.org,AS16509,2001:7f8:73::407d:0:2,1439,US,arin,
+route-views.uaeix.routeviews.org,AS20940,2001:7f8:73::51cc:0:1,17,NL,ripencc,"AKAMAI-ASN1, NL"
+route-views.uaeix.routeviews.org,AS21859,2001:7f8:73::5563:0:1,7,US,arin,
+route-views.uaeix.routeviews.org,AS29357,2001:7f8:73::72ad:0:1,114,KW,ripencc,"WATANIYATELECOM-AS, KW"
+route-views.uaeix.routeviews.org,AS35753,2001:7f8:73::8ba9:0:2,864,SA,ripencc,"ITC ITC AS number, SA"
+route-views.uaeix.routeviews.org,AS48237,2001:7f8:73::8beb:0:1,43,SA,ripencc,"MOBILY-AS, SA"
+route-views.uaeix.routeviews.org,AS42473,2001:7f8:73::a5e9:0:1,229594,AT,ripencc,"AS-ANEXIA ANEXIA Internetdienstleistungs GmbH, AT"
+route-views.uaeix.routeviews.org,AS49544,2001:7f8:73::c188:0:1,222822,NL,ripencc,"I3DNET, NL"
+route-views.uaeix.routeviews.org,AS60051,2001:7f8:73::c616:0:2,15,AE,ripencc,"EARTHLINK-DMCC, AE"
+route-views.uaeix.routeviews.org,AS57187,2001:7f8:73::df63:0:2,16,AE,ripencc,"DATAMENA-ASN, AE"
+route-views.uaeix.routeviews.org,AS60924,2001:7f8:73::edfc:0:1,227168,IE,ripencc,"ORIXCOM, IE"
+route-views.uaeix.routeviews.org,AS61374,2001:7f8:73::efbe:fa:1,60749,DE,ripencc,"UAEIX-AS UAE-IX Route Servers, DE"
+route-views.uaeix.routeviews.org,AS61374,2001:7f8:73::efbe:fb:1,60748,DE,ripencc,"UAEIX-AS UAE-IX Route Servers, DE"
+route-views.uaeix.routeviews.org,AS199524,2001:7f8:73:0:3:b64:0:1,231957,LU,ripencc,"GCORE, LU"
+route-views.wide.routeviews.org,AS4777,202.249.2.20,5,JP,apnic,
+route-views.wide.routeviews.org,AS4862,202.249.2.41,81,HK,apnic,
+route-views.wide.routeviews.org,AS2500,202.249.2.83,989214,JP,apnic,
+route-views.wide.routeviews.org,AS7500,202.249.2.86,1010014,JP,apnic,
+route-views.wide.routeviews.org,AS2497,202.249.2.169,987965,JP,apnic,
+route-views.wide.routeviews.org,AS2497,2001:200:0:fe00::9c1:0,215212,JP,apnic,
+route-views.wide.routeviews.org,AS2500,2001:200:0:fe00::9c4:11,213175,JP,apnic,
+route-views.wide.routeviews.org,AS2516,2001:200:0:fe00::9d4:0,223127,JP,apnic,
+route-views.wide.routeviews.org,AS4777,2001:200:0:fe00::12a9:0,5,JP,apnic,
+route-views.wide.routeviews.org,AS4862,2001:200:0:fe00::fde8:10,10,HK,apnic,
+route-views2.routeviews.org,AS7018,12.0.1.63,980718,US,arin,
+route-views2.routeviews.org,AS57866,37.139.139.17,984104,NL,ripencc,"FUSIX-AS, NL"
+route-views2.routeviews.org,AS22652,45.61.0.85,984987,CA,arin,
+route-views2.routeviews.org,AS208821,45.83.33.27,998409,TR,ripencc,"DURUNET DURUNET TELEKOMUNIKASYON , TR"
+route-views2.routeviews.org,AS6939,64.71.137.241,1005406,US,arin,
+route-views2.routeviews.org,AS57463,87.121.64.4,520575,BG,ripencc,"NETIX, BG"
+route-views2.routeviews.org,AS3257,89.149.178.10,981641,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views2.routeviews.org,AS49788,91.218.184.60,985029,NO,ripencc,"NEXTHOP, NO"
+route-views2.routeviews.org,AS34224,94.156.252.18,1021700,BG,ripencc,"NETERRA-AS, BG"
+route-views2.routeviews.org,AS37100,105.16.0.247,985204,MU,afrinic,"SEACOM-AS, MU"
+route-views2.routeviews.org,AS2914,129.250.1.71,982345,US,arin,
+route-views2.routeviews.org,AS2152,137.164.16.84,983544,US,arin,
+route-views2.routeviews.org,AS20130,140.192.8.16,1007835,US,arin,
+route-views2.routeviews.org,AS3130,147.28.7.1,17,EE,ripencc,"RGNET-SEA RGnet Seattle Westin, EE"
+route-views2.routeviews.org,AS3130,147.28.7.2,988828,EE,ripencc,"RGNET-SEA RGnet Seattle Westin, EE"
+route-views2.routeviews.org,AS53767,162.251.163.2,161677,US,arin,
+route-views2.routeviews.org,AS11537,163.253.3.14,23079,US,arin,
+route-views2.routeviews.org,AS3741,168.209.255.56,986968,ZA,afrinic,"IS, ZA"
+route-views2.routeviews.org,AS5413,194.153.0.253,810964,GB,ripencc,"AS5413, GB"
+route-views2.routeviews.org,AS1403,198.58.198.252,984263,CA,arin,
+route-views2.routeviews.org,AS293,198.129.33.85,1006668,US,arin,
+route-views2.routeviews.org,AS18106,202.73.40.45,1011444,SG,apnic,
+route-views2.routeviews.org,AS2497,202.232.0.3,988455,JP,apnic,
+route-views2.routeviews.org,AS7660,203.181.248.195,19414,JP,apnic,
+route-views2.routeviews.org,AS3561,206.24.210.80,977926,US,arin,
+route-views2.routeviews.org,AS3549,208.51.134.255,982231,US,arin,
+route-views2.routeviews.org,AS3303,217.192.89.50,1004149,CH,ripencc,"SWISSCOM Swisscom Switzerland Ltd, CH"
+route-views3.routeviews.org,AS63927,43.226.4.1,991334,HK,apnic,
+route-views3.routeviews.org,AS6939,64.71.137.241,1005405,US,arin,
+route-views3.routeviews.org,AS23367,64.250.124.15,983712,US,arin,
+route-views3.routeviews.org,AS19653,67.219.192.5,984837,US,arin,
+route-views3.routeviews.org,AS40387,72.36.126.8,1008358,US,arin,
+route-views3.routeviews.org,AS3257,89.149.178.10,981641,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views3.routeviews.org,AS39120,94.101.60.146,1003476,IT,ripencc,"CONVERGENZE-AS ISP services in Italy, IT"
+route-views3.routeviews.org,AS134640,103.22.205.101,5,ID,apnic,
+route-views3.routeviews.org,AS14315,104.251.122.1,982820,US,arin,
+route-views3.routeviews.org,AS29479,109.233.62.1,897292,NO,ripencc,"TRANSDATA, NO"
+route-views3.routeviews.org,AS46450,158.106.197.135,984880,US,arin,
+route-views3.routeviews.org,AS55222,162.211.99.255,984569,CA,arin,
+route-views3.routeviews.org,AS11537,163.253.3.22,23079,US,arin,
+route-views3.routeviews.org,AS61568,190.15.124.18,1007816,BR,lacnic,
+route-views3.routeviews.org,AS3216,195.239.77.236,988513,RU,ripencc,"SOVAM-AS, RU"
+route-views3.routeviews.org,AS3216,195.239.252.124,992567,RU,ripencc,"SOVAM-AS, RU"
+route-views3.routeviews.org,AS38001,202.150.221.33,992647,SG,apnic,
+route-views3.routeviews.org,AS9268,203.62.187.102,992698,AU,apnic,
+route-views3.routeviews.org,AS9268,203.62.187.103,992706,AU,apnic,
+route-views3.routeviews.org,AS209,205.171.3.54,978106,US,arin,
+route-views3.routeviews.org,AS209,205.171.8.123,978104,US,arin,
+route-views3.routeviews.org,AS209,205.171.200.245,978104,US,arin,
+route-views3.routeviews.org,AS3561,206.24.210.80,977926,US,arin,
+route-views3.routeviews.org,AS23367,206.198.182.15,983308,US,arin,
+route-views3.routeviews.org,AS45352,210.5.41.225,1001445,MY,apnic,
+route-views3.routeviews.org,AS396390,2001:468:2900::2,6175,US,arin,
+route-views3.routeviews.org,AS63927,2401:da80::1,226997,HK,apnic,
+route-views3.routeviews.org,AS139317,2406:840:10::1,231059,CN,apnic,
+route-views3.routeviews.org,AS38001,2406:f400:8:35::1,220404,SG,apnic,
+route-views3.routeviews.org,AS141237,2602:fed2:fc0:e4::1,1,HK,apnic,
+route-views3.routeviews.org,AS38136,2604:9cc0:1:c::2,221348,HK,apnic,
+route-views3.routeviews.org,AS23367,2605:1080:1:f00::15,220855,US,arin,
+route-views3.routeviews.org,AS23367,2605:1080:2:f00::15,220920,US,arin,
+route-views3.routeviews.org,AS19653,2605:8200::5,222719,US,arin,
+route-views3.routeviews.org,AS14315,2605:8340:0:8::1,212633,US,arin,
+route-views3.routeviews.org,AS46450,2606:3580:fc00:102::1,210583,US,arin,
+route-views3.routeviews.org,AS29479,2a02:20c8:1f:4f::2,2,NO,ripencc,"TRANSDATA, NO"
+route-views4.routeviews.org,AS56665,31.204.91.150,998007,LU,ripencc,"TANGO-PROXIMUS_NXT, LU"
+route-views4.routeviews.org,AS63956,45.112.244.1,991934,AU,apnic,
+route-views4.routeviews.org,AS1299,62.115.129.134,954469,SE,ripencc,"TWELVE99 Arelion, fka Telia Carrier, SE"
+route-views4.routeviews.org,AS58682,103.15.40.17,80533,BD,apnic,
+route-views4.routeviews.org,AS63956,103.52.116.4,991899,AU,apnic,
+route-views4.routeviews.org,AS133950,103.96.117.253,1010640,NZ,apnic,
+route-views4.routeviews.org,AS58511,103.247.3.36,991941,AU,apnic,
+route-views4.routeviews.org,AS58511,103.247.3.143,991960,AU,apnic,
+route-views4.routeviews.org,AS36236,104.225.4.202,1021924,US,arin,
+route-views4.routeviews.org,AS34288,109.233.180.32,993006,CH,ripencc,"AS34288 EDU-ZG-CH - Public Schools in the Canton of Zug, CH"
+route-views4.routeviews.org,AS45437,114.141.109.44,991392,AU,apnic,
+route-views4.routeviews.org,AS38726,119.18.185.44,1015785,VN,apnic,
+route-views4.routeviews.org,AS2914,129.250.1.248,982343,US,arin,
+route-views4.routeviews.org,AS1351,132.198.255.254,1007138,US,arin,
+route-views4.routeviews.org,AS2518,133.205.1.142,988728,JP,apnic,
+route-views4.routeviews.org,AS19782,149.165.255.64,28702,US,arin,
+route-views4.routeviews.org,AS19782,149.165.255.65,28701,US,arin,
+route-views4.routeviews.org,AS32653,154.72.103.192,990509,ZA,afrinic,"ENETWORKS, ZA"
+route-views4.routeviews.org,AS14041,192.43.217.142,982192,US,arin,
+route-views4.routeviews.org,AS30950,193.28.236.32,982301,NO,ripencc,"EVINY-AS30950 Norway, NO"
+route-views4.routeviews.org,AS19754,198.98.84.183,991026,US,arin,
+route-views4.routeviews.org,AS24482,203.175.175.15,1010837,SG,apnic,
+route-views4.routeviews.org,AS6360,205.166.205.202,986167,US,arin,
+route-views4.routeviews.org,AS57050,212.81.56.227,190763,RO,ripencc,"DREAMSERVER-SRL, RO"
+route-views4.routeviews.org,AS2518,2001:260:300:1::1:30,226763,JP,apnic,
+route-views4.routeviews.org,AS7575,2001:388:1::16,6232,AU,apnic,
+route-views4.routeviews.org,AS2914,2001:418:0:1000::f003,212163,US,arin,
+route-views4.routeviews.org,AS30950,2001:67c:324::32,213552,NO,ripencc,"EVINY-AS30950 Norway, NO"
+route-views4.routeviews.org,AS1299,2001:2034:0:139::1,210631,SE,ripencc,"TWELVE99 Arelion, fka Telia Carrier, SE"
+route-views4.routeviews.org,AS34288,2001:4b27:ffff::32,227583,CH,ripencc,"AS34288 EDU-ZG-CH - Public Schools in the Canton of Zug, CH"
+route-views4.routeviews.org,AS63956,2402:1b80::1,217050,AU,apnic,
+route-views4.routeviews.org,AS63956,2402:1b80:1000::1,217126,AU,apnic,
+route-views4.routeviews.org,AS58682,2404:c900:1::17,22335,BD,apnic,
+route-views4.routeviews.org,AS24482,2405:4200:100::15,224579,SG,apnic,
+route-views4.routeviews.org,AS45437,2406:a800:ffff::1,224947,AU,apnic,
+route-views4.routeviews.org,AS19754,2607:b580::15,88087,US,arin,
+route-views4.routeviews.org,AS6360,2607:f278:0:ffff::2,217627,US,arin,
+route-views4.routeviews.org,AS36236,2607:fc50:2000:99::1eb,238865,US,arin,
+route-views4.routeviews.org,AS1351,2620:104:e000:1000::2,221450,US,arin,
+route-views4.routeviews.org,AS56665,2a00:4180:1:100:31:204:89:250,228682,LU,ripencc,"TANGO-PROXIMUS_NXT, LU"
+route-views4.routeviews.org,AS57050,2a10:fa80:10::246,217098,RO,ripencc,"DREAMSERVER-SRL, RO"
+route-views5.routeviews.org,AS56987,5.180.58.0,987185,FR,ripencc,"AS-ABACLOUDA, FR"
+route-views5.routeviews.org,AS22296,23.155.8.1,1006085,US,arin,
+route-views5.routeviews.org,AS269180,45.181.104.1,1000625,BR,lacnic,
+route-views5.routeviews.org,AS199518,65.19.141.130,1008662,US,ripencc,"GSHAPIRO-AS, US"
+route-views5.routeviews.org,AS132884,103.26.244.151,1006426,BD,apnic,
+route-views5.routeviews.org,AS955,103.203.242.1,1005426,US,arin,
+route-views5.routeviews.org,AS58511,103.247.3.36,991941,AU,apnic,
+route-views5.routeviews.org,AS58511,103.247.3.142,991965,AU,apnic,
+route-views5.routeviews.org,AS37721,165.16.221.67,867487,BF,afrinic,"Virtual-Technologies-Solutions-SA, BF"
+route-views5.routeviews.org,AS33185,170.39.196.254,984176,CA,arin,
+route-views5.routeviews.org,AS51185,178.248.48.141,1033818,IT,ripencc,"MAINSTREAMING-AS, IT"
+route-views5.routeviews.org,AS51185,178.248.51.149,1033911,IT,ripencc,"MAINSTREAMING-AS, IT"
+route-views5.routeviews.org,AS49544,185.197.24.1,981767,NL,ripencc,"I3DNET, NL"
+route-views5.routeviews.org,AS49544,185.197.26.1,982562,NL,ripencc,"I3DNET, NL"
+route-views5.routeviews.org,AS13058,192.108.73.66,1007139,DE,ripencc,"SERVE-U-AS, DE"
+route-views5.routeviews.org,AS60539,193.148.248.178,994805,HK,ripencc,"HUICAST_TELECOM, HK"
+route-views5.routeviews.org,AS6762,195.22.219.252,232537,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views5.routeviews.org,AS137409,202.165.70.255,996219,AU,apnic,
+route-views5.routeviews.org,AS1221,203.62.252.92,983720,AU,apnic,
+route-views5.routeviews.org,AS19529,207.2.124.0,1002060,US,arin,
+route-views5.routeviews.org,AS19529,207.2.125.0,974440,US,arin,
+route-views5.routeviews.org,AS11537,2001:468:0:2::14,7511,US,arin,
+route-views5.routeviews.org,AS199518,2001:470:1:b96::2,223128,US,ripencc,"GSHAPIRO-AS, US"
+route-views5.routeviews.org,AS6762,2001:41a8:5200::6,44083,IT,ripencc,"SEABONE-NET TELECOM ITALIA SPARKLE S.p.A., IT"
+route-views5.routeviews.org,AS1221,2001:8000:100::30:22e,221112,AU,apnic,
+route-views5.routeviews.org,AS58511,2400:8280::24,224818,AU,apnic,
+route-views5.routeviews.org,AS58511,2400:8280::8e,224906,AU,apnic,
+route-views5.routeviews.org,AS137409,2401:3cc0::4:285,221926,AU,apnic,
+route-views5.routeviews.org,AS955,2401:4020:1:1::1,220489,US,arin,
+route-views5.routeviews.org,AS132884,2407:d700:0:1::151,229483,BD,apnic,
+route-views5.routeviews.org,AS22296,2602:2e5::1,222194,US,arin,
+route-views5.routeviews.org,AS19529,2602:fd10:10::,220398,US,arin,
+route-views5.routeviews.org,AS19529,2602:fd10:20::,221085,US,arin,
+route-views5.routeviews.org,AS33185,2602:fd23:3::131,221191,CA,arin,
+route-views5.routeviews.org,AS269180,2804:609c:fff:ffff::1,1,BR,lacnic,
+route-views5.routeviews.org,AS49544,2a00:1d26::1,211750,NL,ripencc,"I3DNET, NL"
+route-views5.routeviews.org,AS49544,2a00:1d26:4001::1,211045,NL,ripencc,"I3DNET, NL"
+route-views5.routeviews.org,AS51185,2a02:2891:0:200::3,217424,IT,ripencc,"MAINSTREAMING-AS, IT"
+route-views5.routeviews.org,AS51185,2a02:2891:9:200::13,217423,IT,ripencc,"MAINSTREAMING-AS, IT"
+route-views5.routeviews.org,AS56987,2a0c:3d00::2,222231,FR,ripencc,"AS-ABACLOUDA, FR"
+route-views5.routeviews.org,AS13058,2a0c:7286:2736::66,221050,DE,ripencc,"SERVE-U-AS, DE"
+route-views5.routeviews.org,AS142289,2a0e:46c4:106::1,231741,NL,apnic,
+route-views5.routeviews.org,AS60539,2a13:aac7:100::,223471,HK,ripencc,"HUICAST_TELECOM, HK"
+route-views5.routeviews.org,AS37721,2c0f:ee00::221:67,222873,BF,afrinic,"Virtual-Technologies-Solutions-SA, BF"
+route-views6.routeviews.org,AS7660,2001:200:e000::1000:3,215703,JP,apnic,
+route-views6.routeviews.org,AS2497,2001:240:100:ff::2497:2,215322,JP,apnic,
+route-views6.routeviews.org,AS2914,2001:418:0:1000::f000,212152,US,arin,
+route-views6.routeviews.org,AS3130,2001:418:1:7::1,224247,EE,ripencc,"RGNET-SEA RGnet Seattle Westin, EE"
+route-views6.routeviews.org,AS3130,2001:418:1:7::2,224273,EE,ripencc,"RGNET-SEA RGnet Seattle Westin, EE"
+route-views6.routeviews.org,AS209,2001:428::205:171:8:75,210451,US,arin,
+route-views6.routeviews.org,AS209,2001:428::205:171:8:123,210455,US,arin,
+route-views6.routeviews.org,AS209,2001:428::205:171:200:139,210453,US,arin,
+route-views6.routeviews.org,AS6939,2001:470:0:1a::1,217081,US,arin,
+route-views6.routeviews.org,AS3257,2001:668:0:4::2,211910,US,ripencc,"GTT-BACKBONE GTT, US"
+route-views6.routeviews.org,AS18106,2001:d98::19,225818,SG,apnic,
+route-views6.routeviews.org,AS7018,2001:1890:111d:1::63,211759,US,arin,
+route-views6.routeviews.org,AS20912,2001:40d0::1e,221278,IT,ripencc,"ASN-PANSERVICE, IT"
+route-views6.routeviews.org,AS58511,2400:8280::24,224786,AU,apnic,
+route-views6.routeviews.org,AS24441,2404:cc00:1::1,66,KH,apnic,
+route-views6.routeviews.org,AS140731,2406:840:eb83::1,226177,CN,apnic,
+route-views6.routeviews.org,AS140731,2406:840:eb89::1,227330,CN,apnic,
+route-views6.routeviews.org,AS209306,2406:840:feed:2::1,230119,CN,ripencc,"SOHANET Soha Network, CN"
+route-views6.routeviews.org,AS53767,2605:9d00::2,603,US,arin,
+route-views6.routeviews.org,AS1403,2606:6d00:eb0::252,222303,CA,arin,
+route-views6.routeviews.org,AS22652,2607:fad8::1:9,212412,CA,arin,
+route-views6.routeviews.org,AS20130,2620:0:2250::ff0b,221381,US,arin,
+route-views6.routeviews.org,AS57463,2a00:1728::1f:4,219660,BG,ripencc,"NETIX, BG"
+route-views6.routeviews.org,AS57866,2a00:a7c0:e20a::17,214757,NL,ripencc,"FUSIX-AS, NL"
+route-views6.routeviews.org,AS49788,2a02:d140:1::60,223756,NO,ripencc,"NEXTHOP, NO"
+route-views6.routeviews.org,AS37100,2c0f:feb0:0:1::8,216501,MU,afrinic,"SEACOM-AS, MU"
+route-views7.routeviews.org,AS400442,23.133.168.1,982897,CA,arin,
+route-views7.routeviews.org,AS51999,23.154.81.152,154670,GB,ripencc,"WHITEHAT, GB"
+route-views7.routeviews.org,AS40864,23.159.240.61,983192,CA,arin,
+route-views7.routeviews.org,AS401021,23.176.152.1,984006,US,arin,
+route-views7.routeviews.org,AS5580,64.235.244.122,987747,NL,ripencc,"GTT-ASIA, NL"
+route-views7.routeviews.org,AS5580,64.235.244.123,987630,NL,ripencc,"GTT-ASIA, NL"
+route-views7.routeviews.org,AS260,78.40.205.254,999853,US,arin,
+route-views7.routeviews.org,AS216285,84.54.49.1,985347,GR,ripencc,"MYIPGR MYIP NETWORKS GP, GR"
+route-views7.routeviews.org,AS206271,91.151.84.218,3,TR,ripencc,"FATIHUNLU-TR Fatih Unlu, TR"
+route-views7.routeviews.org,AS328977,102.217.156.2,981256,KE,afrinic,"WAVEX, KE"
+route-views7.routeviews.org,AS328977,102.217.156.3,26406,KE,afrinic,"WAVEX, KE"
+route-views7.routeviews.org,AS150369,103.26.26.1,1002152,JP,apnic,
+route-views7.routeviews.org,AS150369,103.26.26.4,1002152,JP,apnic,
+route-views7.routeviews.org,AS132213,118.67.200.8,103930,KH,apnic,
+route-views7.routeviews.org,AS8582,128.127.155.254,987244,NL,ripencc,"GTT-AS, NL"
+route-views7.routeviews.org,AS57344,178.132.82.71,997284,BG,ripencc,"TELEHOUSE-AS, BG"
+route-views7.routeviews.org,AS57344,178.132.82.72,997290,BG,ripencc,"TELEHOUSE-AS, BG"
+route-views7.routeviews.org,AS924,185.121.168.42,1009449,US,arin,
+route-views7.routeviews.org,AS48112,185.173.16.135,983480,RO,ripencc,"XINDI-AS, RO"
+route-views7.routeviews.org,AS44901,185.205.208.5,985002,BG,ripencc,"BELCLOUD Premium IP transit network, BG"
+route-views7.routeviews.org,AS16260,192.157.24.250,986274,GB,ripencc,"GTT-AUS, GB"
+route-views7.routeviews.org,AS5398,193.221.216.44,984102,IT,ripencc,"INTERNETONE, IT"
+route-views7.routeviews.org,AS4641,202.45.189.241,986263,HK,apnic,
+route-views7.routeviews.org,AS4641,202.45.189.242,986275,HK,apnic,
+route-views7.routeviews.org,AS37989,203.123.48.6,1014128,SG,apnic,
+route-views7.routeviews.org,AS30371,207.223.100.254,994141,US,arin,
+route-views7.routeviews.org,AS40864,2001:438:fffe::389e,213376,CA,arin,
+route-views7.routeviews.org,AS8582,2001:668:1f4::1,211946,NL,ripencc,"GTT-AS, NL"
+route-views7.routeviews.org,AS30371,2001:668:1f8::1:1,217991,US,arin,
+route-views7.routeviews.org,AS16260,2001:668:1fc::1:1,213192,GB,ripencc,"GTT-AUS, GB"
+route-views7.routeviews.org,AS206271,2001:67c:be4:1337::1337,213142,TR,ripencc,"FATIHUNLU-TR Fatih Unlu, TR"
+route-views7.routeviews.org,AS5580,2400:f780:1f:ffff::1:1,212206,NL,ripencc,"GTT-ASIA, NL"
+route-views7.routeviews.org,AS5580,2400:f780:1f:ffff::1:2,212176,NL,ripencc,"GTT-ASIA, NL"
+route-views7.routeviews.org,AS150369,2401:2d60:0:1::1,228106,JP,apnic,
+route-views7.routeviews.org,AS150369,2401:2d60:0:1::4,228103,JP,apnic,
+route-views7.routeviews.org,AS4641,2405:3001:1:1ef::1,222881,HK,apnic,
+route-views7.routeviews.org,AS4641,2405:3001:1:1ef::2,222883,HK,apnic,
+route-views7.routeviews.org,AS132213,2405:aa00:1::8,62419,KH,apnic,
+route-views7.routeviews.org,AS37989,2405:fc00::6,217095,SG,apnic,
+route-views7.routeviews.org,AS701,2600:803::90,207295,US,arin,
+route-views7.routeviews.org,AS400442,2602:fbc7:4::1,213212,CA,arin,
+route-views7.routeviews.org,AS51999,2602:fed2:fb0:4d::1,217089,GB,ripencc,"WHITEHAT, GB"
+route-views7.routeviews.org,AS401021,2620:0:8001:a1b1::a,213641,US,arin,
+route-views7.routeviews.org,AS260,2a04:1123:ff00:0:1::1,218424,US,arin,
+route-views7.routeviews.org,AS924,2a06:1280:ce07::42,221934,US,arin,
+route-views7.routeviews.org,AS44901,2a07:5740:ffff:ffff::5,146618,BG,ripencc,"BELCLOUD Premium IP transit network, BG"
+route-views7.routeviews.org,AS48112,2a0b:2f00:0:234::135,222448,RO,ripencc,"XINDI-AS, RO"
+route-views7.routeviews.org,AS5398,2a0f:e880::304,214765,IT,ripencc,"INTERNETONE, IT"
+route-views7.routeviews.org,AS216285,2a14:4280:1:1::1,223180,GR,ripencc,"MYIPGR MYIP NETWORKS GP, GR"
+route-views7.routeviews.org,AS328977,2c0f:6300:eadc::2,216029,KE,afrinic,"WAVEX, KE"
+route-views7.routeviews.org,AS328977,2c0f:6300:eadc::3,3063,KE,afrinic,"WAVEX, KE"
+route-views8.routeviews.org,AS20965,62.40.96.71,18603,NL,ripencc,"GEANT The GEANT IP Service, NL"
+route-views8.routeviews.org,AS20965,62.40.97.5,18603,NL,ripencc,"GEANT The GEANT IP Service, NL"
+route-views8.routeviews.org,AS151704,85.209.161.5,984648,IN,apnic,
+route-views8.routeviews.org,AS58717,103.199.87.151,1016644,BD,apnic,
+route-views8.routeviews.org,AS45701,103.225.148.9,925649,ID,apnic,
+route-views8.routeviews.org,AS39642,139.45.112.208,982768,DK,ripencc,"NORLYS-FIBERNET, DK"
+route-views8.routeviews.org,AS17290,172.237.138.93,1006737,US,arin,
+route-views8.routeviews.org,AS401332,204.209.51.53,994331,US,arin,
+route-views8.routeviews.org,AS20965,2001:798:28:20ff::1,6189,NL,ripencc,"GEANT The GEANT IP Service, NL"
+route-views8.routeviews.org,AS20965,2001:798:aa:1::30,6189,NL,ripencc,"GEANT The GEANT IP Service, NL"
+route-views8.routeviews.org,AS45701,2402:2900::111,192986,ID,apnic,
+route-views8.routeviews.org,AS58717,2405:1500:0:1::151,234821,BD,apnic,
+route-views8.routeviews.org,AS17290,2600:3c06:e001:1cc::1,212207,US,arin,
+route-views8.routeviews.org,AS401332,2605:8400:ff:13e::1,221305,US,arin,
+route-views8.routeviews.org,AS39642,2a02:25c8:d200:101::1,222073,DK,ripencc,"NORLYS-FIBERNET, DK"

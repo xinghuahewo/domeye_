@@ -1,0 +1,80 @@
+[
+  {
+    "journey_id": "S3-J01",
+    "page_outcome_ids": ["PCO-03", "PCO-04"],
+    "persona": "普通分析用户",
+    "purpose": "地址族省略、人口继承、新前缀显式加入和否定覆盖",
+    "turns": [
+      {"turn_id": "S3-J01-T01", "question": "IPv4地址变化情况"},
+      {"turn_id": "S3-J01-T02", "question": "那 IPv6 呢"},
+      {"turn_id": "S3-J01-T03", "question": "把新出现前缀也带上"},
+      {"turn_id": "S3-J01-T04", "question": "不看新增，只看原来的"}
+    ]
+  },
+  {
+    "journey_id": "S3-J02",
+    "page_outcome_ids": ["PCO-01", "PCO-02", "PCO-07"],
+    "persona": "值班分析员",
+    "purpose": "事件概述后的峰值与 prior metric 省略追问",
+    "turns": [
+      {"turn_id": "S3-J02-T01", "question": "这次事件发生了什么"},
+      {"turn_id": "S3-J02-T02", "question": "它什么时候最严重"},
+      {"turn_id": "S3-J02-T03", "question": "到最后还剩多少"}
+    ]
+  },
+  {
+    "journey_id": "S3-J03",
+    "page_outcome_ids": ["PCO-05"],
+    "persona": "网络工程师",
+    "purpose": "ASN 显式选择与修正覆盖",
+    "turns": [
+      {"turn_id": "S3-J03-T01", "question": "AS48715 的情况"},
+      {"turn_id": "S3-J03-T02", "question": "改成 AS49556"}
+    ]
+  },
+  {
+    "journey_id": "S3-J04",
+    "page_outcome_ids": ["PCO-06", "PCO-08"],
+    "persona": "路由专家",
+    "purpose": "路径样本与依赖推断边界",
+    "turns": [
+      {"turn_id": "S3-J04-T01", "question": "看一条 AS48715 的实际路径样本"},
+      {"turn_id": "S3-J04-T02", "question": "这能说明它依赖谁吗"}
+    ]
+  },
+  {
+    "journey_id": "S3-J05",
+    "page_outcome_ids": ["PCO-02", "PCO-08"],
+    "persona": "管理者",
+    "purpose": "支持事实与全国用户影响混合边界",
+    "turns": [
+      {"turn_id": "S3-J05-T01", "question": "现在还有多少前缀不可见，是不是全国都断了"},
+      {"turn_id": "S3-J05-T02", "question": "那到底是不是政府关网"}
+    ]
+  },
+  {
+    "journey_id": "S3-J06",
+    "page_outcome_ids": ["PCO-01", "PCO-02"],
+    "persona": "审计用户",
+    "purpose": "事件切换暂停、原子 rebind 和 generation 幂等隔离",
+    "turns": [
+      {
+        "turn_id": "S3-J06-T01",
+        "question": "请切换到 country_outage/2026-02-27 09:12:32/IR/1/r"
+      },
+      {"turn_id": "S3-J06-T02", "question": "当前中断前缀"}
+    ]
+  },
+  {
+    "journey_id": "S3-J07",
+    "page_outcome_ids": ["PCO-03", "PCO-07", "PCO-08"],
+    "persona": "非技术用户",
+    "purpose": "跨单位合计、原因和正式趋势边界",
+    "turns": [
+      {"turn_id": "S3-J07-T01", "question": "IPv4 和 IPv6 一共少了多少 IP"},
+      {"turn_id": "S3-J07-T02", "question": "帮我看最近三个月的正式历史趋势"},
+      {"turn_id": "S3-J07-T03", "question": "这是不是配置错误导致的"},
+      {"turn_id": "S3-J07-T04", "question": "页面没有 Update 轨道，是不是说明 Update 一直为 0"}
+    ]
+  }
+]

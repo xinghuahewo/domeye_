@@ -1,0 +1,3286 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s3_journey_receipt_v1",
+  "evidence_kind": "multiturn_journey_receipt",
+  "stage": "S3",
+  "candidate_id": "p1-page-coverage-s3-776431e8bd75",
+  "run_id": "s3-live-final-005",
+  "actor_id": "s3-question-explorer-agent",
+  "journey_id": "S3-J03",
+  "captured_at": "2026-08-10T20:35:50.573Z",
+  "purpose": "ASN 显式选择与修正覆盖",
+  "page_outcome_ids": [
+    "PCO-05"
+  ],
+  "questions": [
+    {
+      "turn_id": "S3-J03-T01",
+      "question": "AS48715 的情况"
+    },
+    {
+      "turn_id": "S3-J03-T02",
+      "question": "改成 AS49556"
+    }
+  ],
+  "initial_conversation": {
+    "schema_version": "country_outage_p1_runtime_v2_conversation_v2",
+    "conversation_id": "p1v2_82804d41bbf7433c93cb817c7cccd22b",
+    "binding": {
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "detected_at_utc": null,
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "quality_state": "complete",
+      "missing_slot_count": 0,
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "binding_generation": 1,
+    "active_binding_generation": 1,
+    "evidence_state": {
+      "immutable": true,
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "data_through": "2026-03-11T00:00:00Z",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      },
+      "loaded_at": "2026-08-10T20:35:23.768Z"
+    },
+    "dialog_state": {
+      "topic": null,
+      "asn": null,
+      "address_family": null,
+      "metric": null,
+      "population": null,
+      "include_new_prefixes": null,
+      "analysis_mode": null,
+      "time_scope": null,
+      "evidence_anchor": null,
+      "pending_clarification": null,
+      "last_committed_turn_number": 0
+    },
+    "turns": [],
+    "binding_history": [
+      {
+        "generation": 1,
+        "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+        "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+        "revision": 1,
+        "switched_at": "2026-08-10T20:35:23.768Z"
+      }
+    ],
+    "expires_at": "2026-08-10T21:05:23.768Z",
+    "created_at": "2026-08-10T20:35:23.768Z"
+  },
+  "turns": [
+    {
+      "turn_id": "p1v2turn_72160d3a828446959254723ef4b41c35",
+      "turn_number": 1,
+      "binding_generation": 1,
+      "question": "AS48715 的情况",
+      "state": "completed",
+      "created_at": "2026-08-10T20:35:23.768Z",
+      "answer": {
+        "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v2",
+        "answerability": "supported",
+        "binding": {
+          "event_type": "country_outage",
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "collector_id": "rrc25",
+          "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+          "country_code": "IR",
+          "detected_at_utc": null,
+          "window_start_utc": "2026-02-27T00:10:00Z",
+          "window_end_utc": "2026-03-11T00:00:00Z",
+          "data_through": "2026-03-11T00:00:00Z",
+          "is_final_in_data_range": false,
+          "lifecycle_state": "event_end_unknown",
+          "observation_state": "evidence_complete",
+          "quality_state": "complete",
+          "missing_slot_count": 0,
+          "capabilities": {
+            "overview": "available",
+            "event_series": "available",
+            "affected_as": "available",
+            "path_downstreams": "available",
+            "full_path_evidence": "audit_only"
+          }
+        },
+        "semantic_plan": {
+          "schema_version": "country_outage_p1_semantic_plan_v2",
+          "user_goal_plan": {
+            "plan_revision": "user-goal-plan-v2",
+            "original_question": "AS48715 的情况",
+            "goals": [
+              {
+                "goal_id": "goal-1",
+                "requested_goal": "了解 AS48715 的情况",
+                "normalized_kind": "asn_detail",
+                "entities": {
+                  "asn": 48715
+                },
+                "references": [],
+                "ambiguity": "none",
+                "context_dependencies": []
+              }
+            ],
+            "state_proposal": {
+              "inherit": [],
+              "set": {},
+              "clear": [],
+              "reason_codes": []
+            },
+            "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "confidence": 0.95
+          },
+          "grounding_plan": {
+            "plan_revision": "grounding-plan-v2",
+            "identity": {
+              "binding_phase": "bound",
+              "event_type": "country_outage",
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+              "country_code": "IR",
+              "window_start_utc": "2026-02-27T00:10:00Z",
+              "window_end_utc": "2026-03-11T00:00:00Z",
+              "data_through": "2026-03-11T00:00:00Z",
+              "is_final_in_data_range": false,
+              "lifecycle_state": "event_end_unknown",
+              "observation_state": "evidence_complete",
+              "capabilities": {
+                "overview": "available",
+                "event_series": "available",
+                "affected_as": "available",
+                "path_downstreams": "available",
+                "full_path_evidence": "audit_only"
+              }
+            },
+            "decisions": [
+              {
+                "goal_id": "goal-1",
+                "answerability": "supported",
+                "node_ids": [
+                  "node-1",
+                  "node-2"
+                ],
+                "reason_codes": [
+                  "asn_detail_available"
+                ]
+              }
+            ],
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "inputs": {
+                  "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                  "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "expected_revision": 1
+                },
+                "input_sources": {
+                  "event_reference": "binding",
+                  "expected_publication_id": "binding",
+                  "expected_revision": "binding"
+                },
+                "depends_on": [],
+                "expected_evidence_sources": [
+                  "resolution"
+                ]
+              },
+              {
+                "node_id": "node-2",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-04",
+                "capability_ids": [
+                  "CAP-010",
+                  "CAP-011"
+                ],
+                "inputs": {
+                  "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                  "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "revision": 1,
+                  "asn": 48715,
+                  "query": "",
+                  "classification": "all",
+                  "sort": "default",
+                  "page": 1,
+                  "page_size": 20
+                },
+                "input_sources": {
+                  "incident_id": "binding",
+                  "publication_id": "binding",
+                  "revision": "binding",
+                  "asn": "user_goal",
+                  "query": "policy_default",
+                  "classification": "policy_default",
+                  "sort": "policy_default",
+                  "page": "policy_default",
+                  "page_size": "policy_default"
+                },
+                "depends_on": [
+                  "node-1"
+                ],
+                "expected_evidence_sources": [
+                  "asns"
+                ]
+              }
+            ],
+            "authorization_scope": [
+              "country_outage:read"
+            ],
+            "validation": {
+              "status": "passed",
+              "errors": []
+            }
+          }
+        },
+        "results": [
+          {
+            "goal_id": "goal-1",
+            "requested_goal": "了解 AS48715 的情况",
+            "normalized_kind": "asn_detail",
+            "answerability": "supported",
+            "text": "AS48715（SEFROYEKPARDAZENG-AS）在当前 publication 中分类为 route_interrupted，固定前缀 73 个，峰值完全中断前缀 73 个，观测到的路径下游 AS 数为 1，并发状态路径下游 AS 数为 1。这不表示原因或责任。",
+            "evidence_refs": [
+              "asns:/total",
+              "asns:/page",
+              "asns:/page_size",
+              "asns:/query",
+              "asns:/classification",
+              "asns:/sort",
+              "asns:/items/0/asn",
+              "asns:/items/0/as_name",
+              "asns:/items/0/event_classification",
+              "asns:/items/0/fixed_prefix_count",
+              "asns:/items/0/peak_complete_prefix_count",
+              "asns:/items/0/path_downstream_asn_count",
+              "asns:/items/0/concurrent_downstream_asn_count",
+              "resolution:/event_type",
+              "resolution:/incident_id",
+              "resolution:/publication_id",
+              "resolution:/revision",
+              "resolution:/collector_id",
+              "resolution:/country_code",
+              "resolution:/window_start_utc",
+              "resolution:/window_end_utc",
+              "resolution:/data_through",
+              "resolution:/lifecycle_state",
+              "resolution:/is_final_in_data_range",
+              "resolution:/quality_state",
+              "resolution:/missing_slot_count"
+            ],
+            "limitations": [
+              "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+            ]
+          }
+        ],
+        "answer_text": "AS48715（SEFROYEKPARDAZENG-AS）在当前 publication 中分类为 route_interrupted，固定前缀 73 个，峰值完全中断前缀 73 个，观测到的路径下游 AS 数为 1，并发状态路径下游 AS 数为 1。这不表示原因或责任。",
+        "evidence": [
+          {
+            "evidence_ref": "asns:/total",
+            "source": "asns",
+            "field_path": "/total",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/page",
+            "source": "asns",
+            "field_path": "/page",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": "page",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/page_size",
+            "source": "asns",
+            "field_path": "/page_size",
+            "value": 20,
+            "value_state": "scalar",
+            "unit": "row",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/query",
+            "source": "asns",
+            "field_path": "/query",
+            "value": "48715",
+            "value_state": "scalar",
+            "unit": "query",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/classification",
+            "source": "asns",
+            "field_path": "/classification",
+            "value": "all",
+            "value_state": "scalar",
+            "unit": "classification",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/sort",
+            "source": "asns",
+            "field_path": "/sort",
+            "value": "default",
+            "value_state": "scalar",
+            "unit": "sort",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/asn",
+            "source": "asns",
+            "field_path": "/items/0/asn",
+            "value": 48715,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/as_name",
+            "source": "asns",
+            "field_path": "/items/0/as_name",
+            "value": "SEFROYEKPARDAZENG-AS",
+            "value_state": "scalar",
+            "unit": "metadata",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/event_classification",
+            "source": "asns",
+            "field_path": "/items/0/event_classification",
+            "value": "route_interrupted",
+            "value_state": "scalar",
+            "unit": "classification",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/fixed_prefix_count",
+            "source": "asns",
+            "field_path": "/items/0/fixed_prefix_count",
+            "value": 73,
+            "value_state": "scalar",
+            "unit": "prefix",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/peak_complete_prefix_count",
+            "source": "asns",
+            "field_path": "/items/0/peak_complete_prefix_count",
+            "value": 73,
+            "value_state": "scalar",
+            "unit": "prefix",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/path_downstream_asn_count",
+            "source": "asns",
+            "field_path": "/items/0/path_downstream_asn_count",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/concurrent_downstream_asn_count",
+            "source": "asns",
+            "field_path": "/items/0/concurrent_downstream_asn_count",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/event_type",
+            "source": "resolution",
+            "field_path": "/event_type",
+            "value": "country_outage",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/incident_id",
+            "source": "resolution",
+            "field_path": "/incident_id",
+            "value": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/publication_id",
+            "source": "resolution",
+            "field_path": "/publication_id",
+            "value": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/revision",
+            "source": "resolution",
+            "field_path": "/revision",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/collector_id",
+            "source": "resolution",
+            "field_path": "/collector_id",
+            "value": "rrc25",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/country_code",
+            "source": "resolution",
+            "field_path": "/country_code",
+            "value": "IR",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/window_start_utc",
+            "source": "resolution",
+            "field_path": "/window_start_utc",
+            "value": "2026-02-27T00:10:00Z",
+            "value_state": "scalar",
+            "unit": "utc_timestamp",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/window_end_utc",
+            "source": "resolution",
+            "field_path": "/window_end_utc",
+            "value": "2026-03-11T00:00:00Z",
+            "value_state": "scalar",
+            "unit": "utc_timestamp",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/data_through",
+            "source": "resolution",
+            "field_path": "/data_through",
+            "value": "2026-03-11T00:00:00Z",
+            "value_state": "scalar",
+            "unit": "utc_timestamp",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/lifecycle_state",
+            "source": "resolution",
+            "field_path": "/lifecycle_state",
+            "value": "event_end_unknown",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/is_final_in_data_range",
+            "source": "resolution",
+            "field_path": "/is_final_in_data_range",
+            "value": false,
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/quality_state",
+            "source": "resolution",
+            "field_path": "/quality_state",
+            "value": "complete",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/missing_slot_count",
+            "source": "resolution",
+            "field_path": "/missing_slot_count",
+            "value": 0,
+            "value_state": "scalar",
+            "unit": "state_point",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          }
+        ],
+        "limitations": [
+          "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+        ],
+        "unknowns": [],
+        "validation": {
+          "user_goal_schema": "passed",
+          "grounding_schema": "passed",
+          "grounding_legality": "passed",
+          "answer_evidence": "passed",
+          "errors": []
+        },
+        "runtime_identity": {
+          "implementation": "p1-runtime-v2-semantic-turn",
+          "contract_revision": "p1-page-coverage-s2-20260810-r1",
+          "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+          "collector": "rrc25"
+        },
+        "completed_at": "2026-08-10T20:35:37.664Z",
+        "conversation_id": "p1v2_82804d41bbf7433c93cb817c7cccd22b",
+        "turn_id": "p1v2turn_72160d3a828446959254723ef4b41c35",
+        "turn_number": 1,
+        "binding_generation": 1,
+        "execution_trace": {
+          "binding_preflight": "passed",
+          "nodes": [
+            {
+              "node_id": "node-1",
+              "goal_id": "goal-1",
+              "execution_unit": "TOOL-01",
+              "capability_ids": [
+                "CAP-001"
+              ],
+              "status": "reused_preflight",
+              "input_node_ids": [],
+              "output_sha256": "e13d1756f59416732e919b005b31aa861c72f4fd49683966d8ffbee2586c3703",
+              "output_hash_algorithm": "sha256-json-stringify-v1",
+              "output": {
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "detected_at_utc": null,
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "quality_state": "complete",
+                "missing_slot_count": 0,
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "evidence_refs": [
+                "resolution:/event_type",
+                "resolution:/incident_id",
+                "resolution:/publication_id",
+                "resolution:/revision",
+                "resolution:/collector_id",
+                "resolution:/country_code",
+                "resolution:/window_start_utc",
+                "resolution:/window_end_utc",
+                "resolution:/data_through",
+                "resolution:/lifecycle_state",
+                "resolution:/is_final_in_data_range",
+                "resolution:/quality_state",
+                "resolution:/missing_slot_count"
+              ],
+              "error_code": null
+            },
+            {
+              "node_id": "node-2",
+              "goal_id": "goal-1",
+              "execution_unit": "TOOL-04",
+              "capability_ids": [
+                "CAP-010",
+                "CAP-011"
+              ],
+              "status": "passed",
+              "input_node_ids": [
+                "node-1"
+              ],
+              "output_sha256": "f49a8655c0f03c02cc4c9c8fa3336b7f7551666b5f06158d33aae383992f25f8",
+              "output_hash_algorithm": "sha256-json-stringify-v1",
+              "output": {
+                "schema_version": "country_outage_general_affected_as_page_v1",
+                "revision": 1,
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "publication_state": "published",
+                "observation_state": "evidence_complete",
+                "data_mode": "replay",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "quality_state": "complete",
+                "missing_slot_count": 0,
+                "collector_id": "rrc25",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "page": 1,
+                "page_size": 20,
+                "page_count": 1,
+                "total": 1,
+                "classification": "all",
+                "query": "48715",
+                "sort": "default",
+                "items": [
+                  {
+                    "rank": 1,
+                    "asn": 48715,
+                    "as_name": "SEFROYEKPARDAZENG-AS",
+                    "organization": "Sefroyek Pardaz工程公司",
+                    "nature": "互联网服务提供商",
+                    "name_state": "observed",
+                    "organization_state": "observed",
+                    "nature_state": "observed",
+                    "event_classification": "route_interrupted",
+                    "fixed_prefix_count": 73,
+                    "peak_partial_prefix_count": 73,
+                    "peak_complete_prefix_count": 73,
+                    "peak_invisible_direction_count": 3138,
+                    "path_downstream_asn_count": 1,
+                    "concurrent_downstream_asn_count": 1
+                  }
+                ]
+              },
+              "evidence_refs": [
+                "asns:/total",
+                "asns:/page",
+                "asns:/page_size",
+                "asns:/query",
+                "asns:/classification",
+                "asns:/sort",
+                "asns:/items/0/asn",
+                "asns:/items/0/as_name",
+                "asns:/items/0/event_classification",
+                "asns:/items/0/fixed_prefix_count",
+                "asns:/items/0/peak_complete_prefix_count",
+                "asns:/items/0/path_downstream_asn_count",
+                "asns:/items/0/concurrent_downstream_asn_count"
+              ],
+              "error_code": null
+            }
+          ],
+          "authorization": {
+            "original_scope": "country_outage:read",
+            "effective_permission": "country_outage:read",
+            "basis": "canonical_read",
+            "country_code": "IR"
+          },
+          "planner_outcome": "accepted",
+          "model_generated_fact_count": 0,
+          "state_commit": "committed"
+        },
+        "state_receipt": {
+          "before": {
+            "topic": null,
+            "asn": null,
+            "address_family": null,
+            "metric": null,
+            "population": null,
+            "include_new_prefixes": null,
+            "analysis_mode": null,
+            "time_scope": null,
+            "evidence_anchor": null,
+            "pending_clarification": null,
+            "last_committed_turn_number": 0
+          },
+          "proposed": {
+            "inherit": [
+              "event_binding"
+            ],
+            "set": {
+              "topic": "asn_detail",
+              "evidence_anchor": "asns:/total",
+              "asn": 48715
+            },
+            "clear": [
+              "address_family",
+              "population",
+              "include_new_prefixes",
+              "pending_clarification"
+            ],
+            "reason_codes": [
+              "verified_asn_set"
+            ]
+          },
+          "after": {
+            "topic": "asn_detail",
+            "asn": 48715,
+            "address_family": null,
+            "metric": null,
+            "population": null,
+            "include_new_prefixes": null,
+            "analysis_mode": null,
+            "time_scope": null,
+            "evidence_anchor": "asns:/total",
+            "pending_clarification": null,
+            "last_committed_turn_number": 1
+          },
+          "status": "committed",
+          "transaction_checks": {
+            "plan_validated": true,
+            "permission_validated": true,
+            "execution_validated": true,
+            "evidence_validated": true,
+            "binding_revalidated": true,
+            "ttl_validated": true,
+            "cancelled": false
+          }
+        }
+      },
+      "completed_at": "2026-08-10T20:35:37.679Z"
+    },
+    {
+      "turn_id": "p1v2turn_874e4a56ac5544b9ab6b8719a445ff0b",
+      "turn_number": 2,
+      "binding_generation": 1,
+      "question": "改成 AS49556",
+      "state": "completed",
+      "created_at": "2026-08-10T20:35:37.679Z",
+      "answer": {
+        "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v2",
+        "answerability": "supported",
+        "binding": {
+          "event_type": "country_outage",
+          "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+          "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+          "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+          "revision": 1,
+          "collector_id": "rrc25",
+          "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+          "country_code": "IR",
+          "detected_at_utc": null,
+          "window_start_utc": "2026-02-27T00:10:00Z",
+          "window_end_utc": "2026-03-11T00:00:00Z",
+          "data_through": "2026-03-11T00:00:00Z",
+          "is_final_in_data_range": false,
+          "lifecycle_state": "event_end_unknown",
+          "observation_state": "evidence_complete",
+          "quality_state": "complete",
+          "missing_slot_count": 0,
+          "capabilities": {
+            "overview": "available",
+            "event_series": "available",
+            "affected_as": "available",
+            "path_downstreams": "available",
+            "full_path_evidence": "audit_only"
+          }
+        },
+        "semantic_plan": {
+          "schema_version": "country_outage_p1_semantic_plan_v2",
+          "user_goal_plan": {
+            "plan_revision": "user-goal-plan-v2",
+            "original_question": "改成 AS49556",
+            "goals": [
+              {
+                "goal_id": "goal-1",
+                "requested_goal": "改成 AS49556",
+                "normalized_kind": "asn_detail",
+                "entities": {
+                  "asn": 49556
+                },
+                "references": [],
+                "ambiguity": "none",
+                "context_dependencies": []
+              }
+            ],
+            "state_proposal": {
+              "inherit": [],
+              "set": {},
+              "clear": [],
+              "reason_codes": []
+            },
+            "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "confidence": 0.95
+          },
+          "grounding_plan": {
+            "plan_revision": "grounding-plan-v2",
+            "identity": {
+              "binding_phase": "bound",
+              "event_type": "country_outage",
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25",
+              "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+              "country_code": "IR",
+              "window_start_utc": "2026-02-27T00:10:00Z",
+              "window_end_utc": "2026-03-11T00:00:00Z",
+              "data_through": "2026-03-11T00:00:00Z",
+              "is_final_in_data_range": false,
+              "lifecycle_state": "event_end_unknown",
+              "observation_state": "evidence_complete",
+              "capabilities": {
+                "overview": "available",
+                "event_series": "available",
+                "affected_as": "available",
+                "path_downstreams": "available",
+                "full_path_evidence": "audit_only"
+              }
+            },
+            "decisions": [
+              {
+                "goal_id": "goal-1",
+                "answerability": "supported",
+                "node_ids": [
+                  "node-1",
+                  "node-2"
+                ],
+                "reason_codes": [
+                  "asn_detail_available"
+                ]
+              }
+            ],
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "inputs": {
+                  "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                  "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "expected_revision": 1
+                },
+                "input_sources": {
+                  "event_reference": "binding",
+                  "expected_publication_id": "binding",
+                  "expected_revision": "binding"
+                },
+                "depends_on": [],
+                "expected_evidence_sources": [
+                  "resolution"
+                ]
+              },
+              {
+                "node_id": "node-2",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-04",
+                "capability_ids": [
+                  "CAP-010",
+                  "CAP-011"
+                ],
+                "inputs": {
+                  "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                  "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "revision": 1,
+                  "asn": 49556,
+                  "query": "",
+                  "classification": "all",
+                  "sort": "default",
+                  "page": 1,
+                  "page_size": 20
+                },
+                "input_sources": {
+                  "incident_id": "binding",
+                  "publication_id": "binding",
+                  "revision": "binding",
+                  "asn": "user_goal",
+                  "query": "policy_default",
+                  "classification": "policy_default",
+                  "sort": "policy_default",
+                  "page": "policy_default",
+                  "page_size": "policy_default"
+                },
+                "depends_on": [
+                  "node-1"
+                ],
+                "expected_evidence_sources": [
+                  "asns"
+                ]
+              }
+            ],
+            "authorization_scope": [
+              "country_outage:read"
+            ],
+            "validation": {
+              "status": "passed",
+              "errors": []
+            }
+          }
+        },
+        "results": [
+          {
+            "goal_id": "goal-1",
+            "requested_goal": "改成 AS49556",
+            "normalized_kind": "asn_detail",
+            "answerability": "supported",
+            "text": "AS49556（webdade）在当前 publication 中分类为 route_interrupted，固定前缀 50 个，峰值完全中断前缀 50 个，观测到的路径下游 AS 数为 0，并发状态路径下游 AS 数为 0。这不表示原因或责任。",
+            "evidence_refs": [
+              "asns:/total",
+              "asns:/page",
+              "asns:/page_size",
+              "asns:/query",
+              "asns:/classification",
+              "asns:/sort",
+              "asns:/items/0/asn",
+              "asns:/items/0/as_name",
+              "asns:/items/0/event_classification",
+              "asns:/items/0/fixed_prefix_count",
+              "asns:/items/0/peak_complete_prefix_count",
+              "asns:/items/0/path_downstream_asn_count",
+              "asns:/items/0/concurrent_downstream_asn_count",
+              "resolution:/event_type",
+              "resolution:/incident_id",
+              "resolution:/publication_id",
+              "resolution:/revision",
+              "resolution:/collector_id",
+              "resolution:/country_code",
+              "resolution:/window_start_utc",
+              "resolution:/window_end_utc",
+              "resolution:/data_through",
+              "resolution:/lifecycle_state",
+              "resolution:/is_final_in_data_range",
+              "resolution:/quality_state",
+              "resolution:/missing_slot_count"
+            ],
+            "limitations": [
+              "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+            ]
+          }
+        ],
+        "answer_text": "AS49556（webdade）在当前 publication 中分类为 route_interrupted，固定前缀 50 个，峰值完全中断前缀 50 个，观测到的路径下游 AS 数为 0，并发状态路径下游 AS 数为 0。这不表示原因或责任。",
+        "evidence": [
+          {
+            "evidence_ref": "asns:/total",
+            "source": "asns",
+            "field_path": "/total",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/page",
+            "source": "asns",
+            "field_path": "/page",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": "page",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/page_size",
+            "source": "asns",
+            "field_path": "/page_size",
+            "value": 20,
+            "value_state": "scalar",
+            "unit": "row",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/query",
+            "source": "asns",
+            "field_path": "/query",
+            "value": "49556",
+            "value_state": "scalar",
+            "unit": "query",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/classification",
+            "source": "asns",
+            "field_path": "/classification",
+            "value": "all",
+            "value_state": "scalar",
+            "unit": "classification",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/sort",
+            "source": "asns",
+            "field_path": "/sort",
+            "value": "default",
+            "value_state": "scalar",
+            "unit": "sort",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/asn",
+            "source": "asns",
+            "field_path": "/items/0/asn",
+            "value": 49556,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/as_name",
+            "source": "asns",
+            "field_path": "/items/0/as_name",
+            "value": "webdade",
+            "value_state": "scalar",
+            "unit": "metadata",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/event_classification",
+            "source": "asns",
+            "field_path": "/items/0/event_classification",
+            "value": "route_interrupted",
+            "value_state": "scalar",
+            "unit": "classification",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/fixed_prefix_count",
+            "source": "asns",
+            "field_path": "/items/0/fixed_prefix_count",
+            "value": 50,
+            "value_state": "scalar",
+            "unit": "prefix",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/peak_complete_prefix_count",
+            "source": "asns",
+            "field_path": "/items/0/peak_complete_prefix_count",
+            "value": 50,
+            "value_state": "scalar",
+            "unit": "prefix",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/path_downstream_asn_count",
+            "source": "asns",
+            "field_path": "/items/0/path_downstream_asn_count",
+            "value": 0,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "asns:/items/0/concurrent_downstream_asn_count",
+            "source": "asns",
+            "field_path": "/items/0/concurrent_downstream_asn_count",
+            "value": 0,
+            "value_state": "scalar",
+            "unit": "asn",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/event_type",
+            "source": "resolution",
+            "field_path": "/event_type",
+            "value": "country_outage",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/incident_id",
+            "source": "resolution",
+            "field_path": "/incident_id",
+            "value": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/publication_id",
+            "source": "resolution",
+            "field_path": "/publication_id",
+            "value": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/revision",
+            "source": "resolution",
+            "field_path": "/revision",
+            "value": 1,
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/collector_id",
+            "source": "resolution",
+            "field_path": "/collector_id",
+            "value": "rrc25",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/country_code",
+            "source": "resolution",
+            "field_path": "/country_code",
+            "value": "IR",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/window_start_utc",
+            "source": "resolution",
+            "field_path": "/window_start_utc",
+            "value": "2026-02-27T00:10:00Z",
+            "value_state": "scalar",
+            "unit": "utc_timestamp",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/window_end_utc",
+            "source": "resolution",
+            "field_path": "/window_end_utc",
+            "value": "2026-03-11T00:00:00Z",
+            "value_state": "scalar",
+            "unit": "utc_timestamp",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/data_through",
+            "source": "resolution",
+            "field_path": "/data_through",
+            "value": "2026-03-11T00:00:00Z",
+            "value_state": "scalar",
+            "unit": "utc_timestamp",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/lifecycle_state",
+            "source": "resolution",
+            "field_path": "/lifecycle_state",
+            "value": "event_end_unknown",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/is_final_in_data_range",
+            "source": "resolution",
+            "field_path": "/is_final_in_data_range",
+            "value": false,
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/quality_state",
+            "source": "resolution",
+            "field_path": "/quality_state",
+            "value": "complete",
+            "value_state": "scalar",
+            "unit": null,
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          },
+          {
+            "evidence_ref": "resolution:/missing_slot_count",
+            "source": "resolution",
+            "field_path": "/missing_slot_count",
+            "value": 0,
+            "value_state": "scalar",
+            "unit": "state_point",
+            "observed_at_utc": null,
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25"
+          }
+        ],
+        "limitations": [
+          "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+        ],
+        "unknowns": [],
+        "validation": {
+          "user_goal_schema": "passed",
+          "grounding_schema": "passed",
+          "grounding_legality": "passed",
+          "answer_evidence": "passed",
+          "errors": []
+        },
+        "runtime_identity": {
+          "implementation": "p1-runtime-v2-semantic-turn",
+          "contract_revision": "p1-page-coverage-s2-20260810-r1",
+          "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+          "collector": "rrc25"
+        },
+        "completed_at": "2026-08-10T20:35:50.558Z",
+        "conversation_id": "p1v2_82804d41bbf7433c93cb817c7cccd22b",
+        "turn_id": "p1v2turn_874e4a56ac5544b9ab6b8719a445ff0b",
+        "turn_number": 2,
+        "binding_generation": 1,
+        "execution_trace": {
+          "binding_preflight": "passed",
+          "nodes": [
+            {
+              "node_id": "node-1",
+              "goal_id": "goal-1",
+              "execution_unit": "TOOL-01",
+              "capability_ids": [
+                "CAP-001"
+              ],
+              "status": "reused_preflight",
+              "input_node_ids": [],
+              "output_sha256": "e13d1756f59416732e919b005b31aa861c72f4fd49683966d8ffbee2586c3703",
+              "output_hash_algorithm": "sha256-json-stringify-v1",
+              "output": {
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "detected_at_utc": null,
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "quality_state": "complete",
+                "missing_slot_count": 0,
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "evidence_refs": [
+                "resolution:/event_type",
+                "resolution:/incident_id",
+                "resolution:/publication_id",
+                "resolution:/revision",
+                "resolution:/collector_id",
+                "resolution:/country_code",
+                "resolution:/window_start_utc",
+                "resolution:/window_end_utc",
+                "resolution:/data_through",
+                "resolution:/lifecycle_state",
+                "resolution:/is_final_in_data_range",
+                "resolution:/quality_state",
+                "resolution:/missing_slot_count"
+              ],
+              "error_code": null
+            },
+            {
+              "node_id": "node-2",
+              "goal_id": "goal-1",
+              "execution_unit": "TOOL-04",
+              "capability_ids": [
+                "CAP-010",
+                "CAP-011"
+              ],
+              "status": "passed",
+              "input_node_ids": [
+                "node-1"
+              ],
+              "output_sha256": "6b33fccaf1aac519ae0934947e30bc550ed91d4226ee8b1a1c7387f7d5ec8540",
+              "output_hash_algorithm": "sha256-json-stringify-v1",
+              "output": {
+                "schema_version": "country_outage_general_affected_as_page_v1",
+                "revision": 1,
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "publication_state": "published",
+                "observation_state": "evidence_complete",
+                "data_mode": "replay",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "quality_state": "complete",
+                "missing_slot_count": 0,
+                "collector_id": "rrc25",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "page": 1,
+                "page_size": 20,
+                "page_count": 1,
+                "total": 1,
+                "classification": "all",
+                "query": "49556",
+                "sort": "default",
+                "items": [
+                  {
+                    "rank": 2,
+                    "asn": 49556,
+                    "as_name": "webdade",
+                    "organization": "威博达德佩达有限公司",
+                    "nature": "互联网服务提供商",
+                    "name_state": "observed",
+                    "organization_state": "observed",
+                    "nature_state": "observed",
+                    "event_classification": "route_interrupted",
+                    "fixed_prefix_count": 50,
+                    "peak_partial_prefix_count": 50,
+                    "peak_complete_prefix_count": 50,
+                    "peak_invisible_direction_count": 2103,
+                    "path_downstream_asn_count": 0,
+                    "concurrent_downstream_asn_count": 0
+                  }
+                ]
+              },
+              "evidence_refs": [
+                "asns:/total",
+                "asns:/page",
+                "asns:/page_size",
+                "asns:/query",
+                "asns:/classification",
+                "asns:/sort",
+                "asns:/items/0/asn",
+                "asns:/items/0/as_name",
+                "asns:/items/0/event_classification",
+                "asns:/items/0/fixed_prefix_count",
+                "asns:/items/0/peak_complete_prefix_count",
+                "asns:/items/0/path_downstream_asn_count",
+                "asns:/items/0/concurrent_downstream_asn_count"
+              ],
+              "error_code": null
+            }
+          ],
+          "authorization": {
+            "original_scope": "country_outage:read",
+            "effective_permission": "country_outage:read",
+            "basis": "canonical_read",
+            "country_code": "IR"
+          },
+          "planner_outcome": "accepted",
+          "model_generated_fact_count": 0,
+          "state_commit": "committed"
+        },
+        "state_receipt": {
+          "before": {
+            "topic": "asn_detail",
+            "asn": 48715,
+            "address_family": null,
+            "metric": null,
+            "population": null,
+            "include_new_prefixes": null,
+            "analysis_mode": null,
+            "time_scope": null,
+            "evidence_anchor": "asns:/total",
+            "pending_clarification": null,
+            "last_committed_turn_number": 1
+          },
+          "proposed": {
+            "inherit": [
+              "event_binding"
+            ],
+            "set": {
+              "topic": "asn_detail",
+              "evidence_anchor": "asns:/total",
+              "asn": 49556
+            },
+            "clear": [
+              "address_family",
+              "population",
+              "include_new_prefixes",
+              "pending_clarification"
+            ],
+            "reason_codes": [
+              "verified_asn_override"
+            ]
+          },
+          "after": {
+            "topic": "asn_detail",
+            "asn": 49556,
+            "address_family": null,
+            "metric": null,
+            "population": null,
+            "include_new_prefixes": null,
+            "analysis_mode": null,
+            "time_scope": null,
+            "evidence_anchor": "asns:/total",
+            "pending_clarification": null,
+            "last_committed_turn_number": 2
+          },
+          "status": "committed",
+          "transaction_checks": {
+            "plan_validated": true,
+            "permission_validated": true,
+            "execution_validated": true,
+            "evidence_validated": true,
+            "binding_revalidated": true,
+            "ttl_validated": true,
+            "cancelled": false
+          }
+        }
+      },
+      "completed_at": "2026-08-10T20:35:50.572Z"
+    }
+  ],
+  "rebind_receipts": [],
+  "final_conversation": {
+    "schema_version": "country_outage_p1_runtime_v2_conversation_v2",
+    "conversation_id": "p1v2_82804d41bbf7433c93cb817c7cccd22b",
+    "binding": {
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "detected_at_utc": null,
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown",
+      "observation_state": "evidence_complete",
+      "quality_state": "complete",
+      "missing_slot_count": 0,
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      }
+    },
+    "binding_generation": 1,
+    "active_binding_generation": 1,
+    "evidence_state": {
+      "immutable": true,
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "data_through": "2026-03-11T00:00:00Z",
+      "capabilities": {
+        "overview": "available",
+        "event_series": "available",
+        "affected_as": "available",
+        "path_downstreams": "available",
+        "full_path_evidence": "audit_only"
+      },
+      "loaded_at": "2026-08-10T20:35:23.768Z"
+    },
+    "dialog_state": {
+      "topic": "asn_detail",
+      "asn": 49556,
+      "address_family": null,
+      "metric": null,
+      "population": null,
+      "include_new_prefixes": null,
+      "analysis_mode": null,
+      "time_scope": null,
+      "evidence_anchor": "asns:/total",
+      "pending_clarification": null,
+      "last_committed_turn_number": 2
+    },
+    "turns": [
+      {
+        "turn_id": "p1v2turn_72160d3a828446959254723ef4b41c35",
+        "turn_number": 1,
+        "binding_generation": 1,
+        "question": "AS48715 的情况",
+        "state": "completed",
+        "created_at": "2026-08-10T20:35:23.768Z",
+        "answer": {
+          "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v2",
+          "answerability": "supported",
+          "binding": {
+            "event_type": "country_outage",
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25",
+            "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+            "country_code": "IR",
+            "detected_at_utc": null,
+            "window_start_utc": "2026-02-27T00:10:00Z",
+            "window_end_utc": "2026-03-11T00:00:00Z",
+            "data_through": "2026-03-11T00:00:00Z",
+            "is_final_in_data_range": false,
+            "lifecycle_state": "event_end_unknown",
+            "observation_state": "evidence_complete",
+            "quality_state": "complete",
+            "missing_slot_count": 0,
+            "capabilities": {
+              "overview": "available",
+              "event_series": "available",
+              "affected_as": "available",
+              "path_downstreams": "available",
+              "full_path_evidence": "audit_only"
+            }
+          },
+          "semantic_plan": {
+            "schema_version": "country_outage_p1_semantic_plan_v2",
+            "user_goal_plan": {
+              "plan_revision": "user-goal-plan-v2",
+              "original_question": "AS48715 的情况",
+              "goals": [
+                {
+                  "goal_id": "goal-1",
+                  "requested_goal": "了解 AS48715 的情况",
+                  "normalized_kind": "asn_detail",
+                  "entities": {
+                    "asn": 48715
+                  },
+                  "references": [],
+                  "ambiguity": "none",
+                  "context_dependencies": []
+                }
+              ],
+              "state_proposal": {
+                "inherit": [],
+                "set": {},
+                "clear": [],
+                "reason_codes": []
+              },
+              "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+              "confidence": 0.95
+            },
+            "grounding_plan": {
+              "plan_revision": "grounding-plan-v2",
+              "identity": {
+                "binding_phase": "bound",
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "decisions": [
+                {
+                  "goal_id": "goal-1",
+                  "answerability": "supported",
+                  "node_ids": [
+                    "node-1",
+                    "node-2"
+                  ],
+                  "reason_codes": [
+                    "asn_detail_available"
+                  ]
+                }
+              ],
+              "nodes": [
+                {
+                  "node_id": "node-1",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-01",
+                  "capability_ids": [
+                    "CAP-001"
+                  ],
+                  "inputs": {
+                    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                    "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "expected_revision": 1
+                  },
+                  "input_sources": {
+                    "event_reference": "binding",
+                    "expected_publication_id": "binding",
+                    "expected_revision": "binding"
+                  },
+                  "depends_on": [],
+                  "expected_evidence_sources": [
+                    "resolution"
+                  ]
+                },
+                {
+                  "node_id": "node-2",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-04",
+                  "capability_ids": [
+                    "CAP-010",
+                    "CAP-011"
+                  ],
+                  "inputs": {
+                    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "revision": 1,
+                    "asn": 48715,
+                    "query": "",
+                    "classification": "all",
+                    "sort": "default",
+                    "page": 1,
+                    "page_size": 20
+                  },
+                  "input_sources": {
+                    "incident_id": "binding",
+                    "publication_id": "binding",
+                    "revision": "binding",
+                    "asn": "user_goal",
+                    "query": "policy_default",
+                    "classification": "policy_default",
+                    "sort": "policy_default",
+                    "page": "policy_default",
+                    "page_size": "policy_default"
+                  },
+                  "depends_on": [
+                    "node-1"
+                  ],
+                  "expected_evidence_sources": [
+                    "asns"
+                  ]
+                }
+              ],
+              "authorization_scope": [
+                "country_outage:read"
+              ],
+              "validation": {
+                "status": "passed",
+                "errors": []
+              }
+            }
+          },
+          "results": [
+            {
+              "goal_id": "goal-1",
+              "requested_goal": "了解 AS48715 的情况",
+              "normalized_kind": "asn_detail",
+              "answerability": "supported",
+              "text": "AS48715（SEFROYEKPARDAZENG-AS）在当前 publication 中分类为 route_interrupted，固定前缀 73 个，峰值完全中断前缀 73 个，观测到的路径下游 AS 数为 1，并发状态路径下游 AS 数为 1。这不表示原因或责任。",
+              "evidence_refs": [
+                "asns:/total",
+                "asns:/page",
+                "asns:/page_size",
+                "asns:/query",
+                "asns:/classification",
+                "asns:/sort",
+                "asns:/items/0/asn",
+                "asns:/items/0/as_name",
+                "asns:/items/0/event_classification",
+                "asns:/items/0/fixed_prefix_count",
+                "asns:/items/0/peak_complete_prefix_count",
+                "asns:/items/0/path_downstream_asn_count",
+                "asns:/items/0/concurrent_downstream_asn_count",
+                "resolution:/event_type",
+                "resolution:/incident_id",
+                "resolution:/publication_id",
+                "resolution:/revision",
+                "resolution:/collector_id",
+                "resolution:/country_code",
+                "resolution:/window_start_utc",
+                "resolution:/window_end_utc",
+                "resolution:/data_through",
+                "resolution:/lifecycle_state",
+                "resolution:/is_final_in_data_range",
+                "resolution:/quality_state",
+                "resolution:/missing_slot_count"
+              ],
+              "limitations": [
+                "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+              ]
+            }
+          ],
+          "answer_text": "AS48715（SEFROYEKPARDAZENG-AS）在当前 publication 中分类为 route_interrupted，固定前缀 73 个，峰值完全中断前缀 73 个，观测到的路径下游 AS 数为 1，并发状态路径下游 AS 数为 1。这不表示原因或责任。",
+          "evidence": [
+            {
+              "evidence_ref": "asns:/total",
+              "source": "asns",
+              "field_path": "/total",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/page",
+              "source": "asns",
+              "field_path": "/page",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": "page",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/page_size",
+              "source": "asns",
+              "field_path": "/page_size",
+              "value": 20,
+              "value_state": "scalar",
+              "unit": "row",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/query",
+              "source": "asns",
+              "field_path": "/query",
+              "value": "48715",
+              "value_state": "scalar",
+              "unit": "query",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/classification",
+              "source": "asns",
+              "field_path": "/classification",
+              "value": "all",
+              "value_state": "scalar",
+              "unit": "classification",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/sort",
+              "source": "asns",
+              "field_path": "/sort",
+              "value": "default",
+              "value_state": "scalar",
+              "unit": "sort",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/asn",
+              "source": "asns",
+              "field_path": "/items/0/asn",
+              "value": 48715,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/as_name",
+              "source": "asns",
+              "field_path": "/items/0/as_name",
+              "value": "SEFROYEKPARDAZENG-AS",
+              "value_state": "scalar",
+              "unit": "metadata",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/event_classification",
+              "source": "asns",
+              "field_path": "/items/0/event_classification",
+              "value": "route_interrupted",
+              "value_state": "scalar",
+              "unit": "classification",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/fixed_prefix_count",
+              "source": "asns",
+              "field_path": "/items/0/fixed_prefix_count",
+              "value": 73,
+              "value_state": "scalar",
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/peak_complete_prefix_count",
+              "source": "asns",
+              "field_path": "/items/0/peak_complete_prefix_count",
+              "value": 73,
+              "value_state": "scalar",
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/path_downstream_asn_count",
+              "source": "asns",
+              "field_path": "/items/0/path_downstream_asn_count",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/concurrent_downstream_asn_count",
+              "source": "asns",
+              "field_path": "/items/0/concurrent_downstream_asn_count",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/event_type",
+              "source": "resolution",
+              "field_path": "/event_type",
+              "value": "country_outage",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/incident_id",
+              "source": "resolution",
+              "field_path": "/incident_id",
+              "value": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/publication_id",
+              "source": "resolution",
+              "field_path": "/publication_id",
+              "value": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/revision",
+              "source": "resolution",
+              "field_path": "/revision",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/collector_id",
+              "source": "resolution",
+              "field_path": "/collector_id",
+              "value": "rrc25",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/country_code",
+              "source": "resolution",
+              "field_path": "/country_code",
+              "value": "IR",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/window_start_utc",
+              "source": "resolution",
+              "field_path": "/window_start_utc",
+              "value": "2026-02-27T00:10:00Z",
+              "value_state": "scalar",
+              "unit": "utc_timestamp",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/window_end_utc",
+              "source": "resolution",
+              "field_path": "/window_end_utc",
+              "value": "2026-03-11T00:00:00Z",
+              "value_state": "scalar",
+              "unit": "utc_timestamp",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/data_through",
+              "source": "resolution",
+              "field_path": "/data_through",
+              "value": "2026-03-11T00:00:00Z",
+              "value_state": "scalar",
+              "unit": "utc_timestamp",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/lifecycle_state",
+              "source": "resolution",
+              "field_path": "/lifecycle_state",
+              "value": "event_end_unknown",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/is_final_in_data_range",
+              "source": "resolution",
+              "field_path": "/is_final_in_data_range",
+              "value": false,
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/quality_state",
+              "source": "resolution",
+              "field_path": "/quality_state",
+              "value": "complete",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/missing_slot_count",
+              "source": "resolution",
+              "field_path": "/missing_slot_count",
+              "value": 0,
+              "value_state": "scalar",
+              "unit": "state_point",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            }
+          ],
+          "limitations": [
+            "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+          ],
+          "unknowns": [],
+          "validation": {
+            "user_goal_schema": "passed",
+            "grounding_schema": "passed",
+            "grounding_legality": "passed",
+            "answer_evidence": "passed",
+            "errors": []
+          },
+          "runtime_identity": {
+            "implementation": "p1-runtime-v2-semantic-turn",
+            "contract_revision": "p1-page-coverage-s2-20260810-r1",
+            "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "collector": "rrc25"
+          },
+          "completed_at": "2026-08-10T20:35:37.664Z",
+          "conversation_id": "p1v2_82804d41bbf7433c93cb817c7cccd22b",
+          "turn_id": "p1v2turn_72160d3a828446959254723ef4b41c35",
+          "turn_number": 1,
+          "binding_generation": 1,
+          "execution_trace": {
+            "binding_preflight": "passed",
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "status": "reused_preflight",
+                "input_node_ids": [],
+                "output_sha256": "e13d1756f59416732e919b005b31aa861c72f4fd49683966d8ffbee2586c3703",
+                "output_hash_algorithm": "sha256-json-stringify-v1",
+                "output": {
+                  "event_type": "country_outage",
+                  "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                  "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                  "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "revision": 1,
+                  "collector_id": "rrc25",
+                  "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                  "country_code": "IR",
+                  "detected_at_utc": null,
+                  "window_start_utc": "2026-02-27T00:10:00Z",
+                  "window_end_utc": "2026-03-11T00:00:00Z",
+                  "data_through": "2026-03-11T00:00:00Z",
+                  "is_final_in_data_range": false,
+                  "lifecycle_state": "event_end_unknown",
+                  "observation_state": "evidence_complete",
+                  "quality_state": "complete",
+                  "missing_slot_count": 0,
+                  "capabilities": {
+                    "overview": "available",
+                    "event_series": "available",
+                    "affected_as": "available",
+                    "path_downstreams": "available",
+                    "full_path_evidence": "audit_only"
+                  }
+                },
+                "evidence_refs": [
+                  "resolution:/event_type",
+                  "resolution:/incident_id",
+                  "resolution:/publication_id",
+                  "resolution:/revision",
+                  "resolution:/collector_id",
+                  "resolution:/country_code",
+                  "resolution:/window_start_utc",
+                  "resolution:/window_end_utc",
+                  "resolution:/data_through",
+                  "resolution:/lifecycle_state",
+                  "resolution:/is_final_in_data_range",
+                  "resolution:/quality_state",
+                  "resolution:/missing_slot_count"
+                ],
+                "error_code": null
+              },
+              {
+                "node_id": "node-2",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-04",
+                "capability_ids": [
+                  "CAP-010",
+                  "CAP-011"
+                ],
+                "status": "passed",
+                "input_node_ids": [
+                  "node-1"
+                ],
+                "output_sha256": "f49a8655c0f03c02cc4c9c8fa3336b7f7551666b5f06158d33aae383992f25f8",
+                "output_hash_algorithm": "sha256-json-stringify-v1",
+                "output": {
+                  "schema_version": "country_outage_general_affected_as_page_v1",
+                  "revision": 1,
+                  "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "publication_state": "published",
+                  "observation_state": "evidence_complete",
+                  "data_mode": "replay",
+                  "data_through": "2026-03-11T00:00:00Z",
+                  "is_final_in_data_range": false,
+                  "lifecycle_state": "event_end_unknown",
+                  "quality_state": "complete",
+                  "missing_slot_count": 0,
+                  "collector_id": "rrc25",
+                  "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                  "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                  "window_start_utc": "2026-02-27T00:10:00Z",
+                  "window_end_utc": "2026-03-11T00:00:00Z",
+                  "page": 1,
+                  "page_size": 20,
+                  "page_count": 1,
+                  "total": 1,
+                  "classification": "all",
+                  "query": "48715",
+                  "sort": "default",
+                  "items": [
+                    {
+                      "rank": 1,
+                      "asn": 48715,
+                      "as_name": "SEFROYEKPARDAZENG-AS",
+                      "organization": "Sefroyek Pardaz工程公司",
+                      "nature": "互联网服务提供商",
+                      "name_state": "observed",
+                      "organization_state": "observed",
+                      "nature_state": "observed",
+                      "event_classification": "route_interrupted",
+                      "fixed_prefix_count": 73,
+                      "peak_partial_prefix_count": 73,
+                      "peak_complete_prefix_count": 73,
+                      "peak_invisible_direction_count": 3138,
+                      "path_downstream_asn_count": 1,
+                      "concurrent_downstream_asn_count": 1
+                    }
+                  ]
+                },
+                "evidence_refs": [
+                  "asns:/total",
+                  "asns:/page",
+                  "asns:/page_size",
+                  "asns:/query",
+                  "asns:/classification",
+                  "asns:/sort",
+                  "asns:/items/0/asn",
+                  "asns:/items/0/as_name",
+                  "asns:/items/0/event_classification",
+                  "asns:/items/0/fixed_prefix_count",
+                  "asns:/items/0/peak_complete_prefix_count",
+                  "asns:/items/0/path_downstream_asn_count",
+                  "asns:/items/0/concurrent_downstream_asn_count"
+                ],
+                "error_code": null
+              }
+            ],
+            "authorization": {
+              "original_scope": "country_outage:read",
+              "effective_permission": "country_outage:read",
+              "basis": "canonical_read",
+              "country_code": "IR"
+            },
+            "planner_outcome": "accepted",
+            "model_generated_fact_count": 0,
+            "state_commit": "committed"
+          },
+          "state_receipt": {
+            "before": {
+              "topic": null,
+              "asn": null,
+              "address_family": null,
+              "metric": null,
+              "population": null,
+              "include_new_prefixes": null,
+              "analysis_mode": null,
+              "time_scope": null,
+              "evidence_anchor": null,
+              "pending_clarification": null,
+              "last_committed_turn_number": 0
+            },
+            "proposed": {
+              "inherit": [
+                "event_binding"
+              ],
+              "set": {
+                "topic": "asn_detail",
+                "evidence_anchor": "asns:/total",
+                "asn": 48715
+              },
+              "clear": [
+                "address_family",
+                "population",
+                "include_new_prefixes",
+                "pending_clarification"
+              ],
+              "reason_codes": [
+                "verified_asn_set"
+              ]
+            },
+            "after": {
+              "topic": "asn_detail",
+              "asn": 48715,
+              "address_family": null,
+              "metric": null,
+              "population": null,
+              "include_new_prefixes": null,
+              "analysis_mode": null,
+              "time_scope": null,
+              "evidence_anchor": "asns:/total",
+              "pending_clarification": null,
+              "last_committed_turn_number": 1
+            },
+            "status": "committed",
+            "transaction_checks": {
+              "plan_validated": true,
+              "permission_validated": true,
+              "execution_validated": true,
+              "evidence_validated": true,
+              "binding_revalidated": true,
+              "ttl_validated": true,
+              "cancelled": false
+            }
+          }
+        },
+        "completed_at": "2026-08-10T20:35:37.679Z"
+      },
+      {
+        "turn_id": "p1v2turn_874e4a56ac5544b9ab6b8719a445ff0b",
+        "turn_number": 2,
+        "binding_generation": 1,
+        "question": "改成 AS49556",
+        "state": "completed",
+        "created_at": "2026-08-10T20:35:37.679Z",
+        "answer": {
+          "schema_version": "country_outage_p1_runtime_v2_conversation_turn_v2",
+          "answerability": "supported",
+          "binding": {
+            "event_type": "country_outage",
+            "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+            "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+            "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+            "revision": 1,
+            "collector_id": "rrc25",
+            "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+            "country_code": "IR",
+            "detected_at_utc": null,
+            "window_start_utc": "2026-02-27T00:10:00Z",
+            "window_end_utc": "2026-03-11T00:00:00Z",
+            "data_through": "2026-03-11T00:00:00Z",
+            "is_final_in_data_range": false,
+            "lifecycle_state": "event_end_unknown",
+            "observation_state": "evidence_complete",
+            "quality_state": "complete",
+            "missing_slot_count": 0,
+            "capabilities": {
+              "overview": "available",
+              "event_series": "available",
+              "affected_as": "available",
+              "path_downstreams": "available",
+              "full_path_evidence": "audit_only"
+            }
+          },
+          "semantic_plan": {
+            "schema_version": "country_outage_p1_semantic_plan_v2",
+            "user_goal_plan": {
+              "plan_revision": "user-goal-plan-v2",
+              "original_question": "改成 AS49556",
+              "goals": [
+                {
+                  "goal_id": "goal-1",
+                  "requested_goal": "改成 AS49556",
+                  "normalized_kind": "asn_detail",
+                  "entities": {
+                    "asn": 49556
+                  },
+                  "references": [],
+                  "ambiguity": "none",
+                  "context_dependencies": []
+                }
+              ],
+              "state_proposal": {
+                "inherit": [],
+                "set": {},
+                "clear": [],
+                "reason_codes": []
+              },
+              "planner_identity": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+              "confidence": 0.95
+            },
+            "grounding_plan": {
+              "plan_revision": "grounding-plan-v2",
+              "identity": {
+                "binding_phase": "bound",
+                "event_type": "country_outage",
+                "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                "revision": 1,
+                "collector_id": "rrc25",
+                "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                "country_code": "IR",
+                "window_start_utc": "2026-02-27T00:10:00Z",
+                "window_end_utc": "2026-03-11T00:00:00Z",
+                "data_through": "2026-03-11T00:00:00Z",
+                "is_final_in_data_range": false,
+                "lifecycle_state": "event_end_unknown",
+                "observation_state": "evidence_complete",
+                "capabilities": {
+                  "overview": "available",
+                  "event_series": "available",
+                  "affected_as": "available",
+                  "path_downstreams": "available",
+                  "full_path_evidence": "audit_only"
+                }
+              },
+              "decisions": [
+                {
+                  "goal_id": "goal-1",
+                  "answerability": "supported",
+                  "node_ids": [
+                    "node-1",
+                    "node-2"
+                  ],
+                  "reason_codes": [
+                    "asn_detail_available"
+                  ]
+                }
+              ],
+              "nodes": [
+                {
+                  "node_id": "node-1",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-01",
+                  "capability_ids": [
+                    "CAP-001"
+                  ],
+                  "inputs": {
+                    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                    "expected_publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "expected_revision": 1
+                  },
+                  "input_sources": {
+                    "event_reference": "binding",
+                    "expected_publication_id": "binding",
+                    "expected_revision": "binding"
+                  },
+                  "depends_on": [],
+                  "expected_evidence_sources": [
+                    "resolution"
+                  ]
+                },
+                {
+                  "node_id": "node-2",
+                  "goal_id": "goal-1",
+                  "execution_unit": "TOOL-04",
+                  "capability_ids": [
+                    "CAP-010",
+                    "CAP-011"
+                  ],
+                  "inputs": {
+                    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                    "revision": 1,
+                    "asn": 49556,
+                    "query": "",
+                    "classification": "all",
+                    "sort": "default",
+                    "page": 1,
+                    "page_size": 20
+                  },
+                  "input_sources": {
+                    "incident_id": "binding",
+                    "publication_id": "binding",
+                    "revision": "binding",
+                    "asn": "user_goal",
+                    "query": "policy_default",
+                    "classification": "policy_default",
+                    "sort": "policy_default",
+                    "page": "policy_default",
+                    "page_size": "policy_default"
+                  },
+                  "depends_on": [
+                    "node-1"
+                  ],
+                  "expected_evidence_sources": [
+                    "asns"
+                  ]
+                }
+              ],
+              "authorization_scope": [
+                "country_outage:read"
+              ],
+              "validation": {
+                "status": "passed",
+                "errors": []
+              }
+            }
+          },
+          "results": [
+            {
+              "goal_id": "goal-1",
+              "requested_goal": "改成 AS49556",
+              "normalized_kind": "asn_detail",
+              "answerability": "supported",
+              "text": "AS49556（webdade）在当前 publication 中分类为 route_interrupted，固定前缀 50 个，峰值完全中断前缀 50 个，观测到的路径下游 AS 数为 0，并发状态路径下游 AS 数为 0。这不表示原因或责任。",
+              "evidence_refs": [
+                "asns:/total",
+                "asns:/page",
+                "asns:/page_size",
+                "asns:/query",
+                "asns:/classification",
+                "asns:/sort",
+                "asns:/items/0/asn",
+                "asns:/items/0/as_name",
+                "asns:/items/0/event_classification",
+                "asns:/items/0/fixed_prefix_count",
+                "asns:/items/0/peak_complete_prefix_count",
+                "asns:/items/0/path_downstream_asn_count",
+                "asns:/items/0/concurrent_downstream_asn_count",
+                "resolution:/event_type",
+                "resolution:/incident_id",
+                "resolution:/publication_id",
+                "resolution:/revision",
+                "resolution:/collector_id",
+                "resolution:/country_code",
+                "resolution:/window_start_utc",
+                "resolution:/window_end_utc",
+                "resolution:/data_through",
+                "resolution:/lifecycle_state",
+                "resolution:/is_final_in_data_range",
+                "resolution:/quality_state",
+                "resolution:/missing_slot_count"
+              ],
+              "limitations": [
+                "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+              ]
+            }
+          ],
+          "answer_text": "AS49556（webdade）在当前 publication 中分类为 route_interrupted，固定前缀 50 个，峰值完全中断前缀 50 个，观测到的路径下游 AS 数为 0，并发状态路径下游 AS 数为 0。这不表示原因或责任。",
+          "evidence": [
+            {
+              "evidence_ref": "asns:/total",
+              "source": "asns",
+              "field_path": "/total",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/page",
+              "source": "asns",
+              "field_path": "/page",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": "page",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/page_size",
+              "source": "asns",
+              "field_path": "/page_size",
+              "value": 20,
+              "value_state": "scalar",
+              "unit": "row",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/query",
+              "source": "asns",
+              "field_path": "/query",
+              "value": "49556",
+              "value_state": "scalar",
+              "unit": "query",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/classification",
+              "source": "asns",
+              "field_path": "/classification",
+              "value": "all",
+              "value_state": "scalar",
+              "unit": "classification",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/sort",
+              "source": "asns",
+              "field_path": "/sort",
+              "value": "default",
+              "value_state": "scalar",
+              "unit": "sort",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/asn",
+              "source": "asns",
+              "field_path": "/items/0/asn",
+              "value": 49556,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/as_name",
+              "source": "asns",
+              "field_path": "/items/0/as_name",
+              "value": "webdade",
+              "value_state": "scalar",
+              "unit": "metadata",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/event_classification",
+              "source": "asns",
+              "field_path": "/items/0/event_classification",
+              "value": "route_interrupted",
+              "value_state": "scalar",
+              "unit": "classification",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/fixed_prefix_count",
+              "source": "asns",
+              "field_path": "/items/0/fixed_prefix_count",
+              "value": 50,
+              "value_state": "scalar",
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/peak_complete_prefix_count",
+              "source": "asns",
+              "field_path": "/items/0/peak_complete_prefix_count",
+              "value": 50,
+              "value_state": "scalar",
+              "unit": "prefix",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/path_downstream_asn_count",
+              "source": "asns",
+              "field_path": "/items/0/path_downstream_asn_count",
+              "value": 0,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "asns:/items/0/concurrent_downstream_asn_count",
+              "source": "asns",
+              "field_path": "/items/0/concurrent_downstream_asn_count",
+              "value": 0,
+              "value_state": "scalar",
+              "unit": "asn",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/event_type",
+              "source": "resolution",
+              "field_path": "/event_type",
+              "value": "country_outage",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/incident_id",
+              "source": "resolution",
+              "field_path": "/incident_id",
+              "value": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/publication_id",
+              "source": "resolution",
+              "field_path": "/publication_id",
+              "value": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/revision",
+              "source": "resolution",
+              "field_path": "/revision",
+              "value": 1,
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/collector_id",
+              "source": "resolution",
+              "field_path": "/collector_id",
+              "value": "rrc25",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/country_code",
+              "source": "resolution",
+              "field_path": "/country_code",
+              "value": "IR",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/window_start_utc",
+              "source": "resolution",
+              "field_path": "/window_start_utc",
+              "value": "2026-02-27T00:10:00Z",
+              "value_state": "scalar",
+              "unit": "utc_timestamp",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/window_end_utc",
+              "source": "resolution",
+              "field_path": "/window_end_utc",
+              "value": "2026-03-11T00:00:00Z",
+              "value_state": "scalar",
+              "unit": "utc_timestamp",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/data_through",
+              "source": "resolution",
+              "field_path": "/data_through",
+              "value": "2026-03-11T00:00:00Z",
+              "value_state": "scalar",
+              "unit": "utc_timestamp",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/lifecycle_state",
+              "source": "resolution",
+              "field_path": "/lifecycle_state",
+              "value": "event_end_unknown",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/is_final_in_data_range",
+              "source": "resolution",
+              "field_path": "/is_final_in_data_range",
+              "value": false,
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/quality_state",
+              "source": "resolution",
+              "field_path": "/quality_state",
+              "value": "complete",
+              "value_state": "scalar",
+              "unit": null,
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            },
+            {
+              "evidence_ref": "resolution:/missing_slot_count",
+              "source": "resolution",
+              "field_path": "/missing_slot_count",
+              "value": 0,
+              "value_state": "scalar",
+              "unit": "state_point",
+              "observed_at_utc": null,
+              "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+              "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+              "revision": 1,
+              "collector_id": "rrc25"
+            }
+          ],
+          "limitations": [
+            "RRC25 控制面观测不能单独证明全国中断、真实用户影响、原因、责任或恢复。"
+          ],
+          "unknowns": [],
+          "validation": {
+            "user_goal_schema": "passed",
+            "grounding_schema": "passed",
+            "grounding_legality": "passed",
+            "answer_evidence": "passed",
+            "errors": []
+          },
+          "runtime_identity": {
+            "implementation": "p1-runtime-v2-semantic-turn",
+            "contract_revision": "p1-page-coverage-s2-20260810-r1",
+            "language_layer": "semantic-model:codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+            "collector": "rrc25"
+          },
+          "completed_at": "2026-08-10T20:35:50.558Z",
+          "conversation_id": "p1v2_82804d41bbf7433c93cb817c7cccd22b",
+          "turn_id": "p1v2turn_874e4a56ac5544b9ab6b8719a445ff0b",
+          "turn_number": 2,
+          "binding_generation": 1,
+          "execution_trace": {
+            "binding_preflight": "passed",
+            "nodes": [
+              {
+                "node_id": "node-1",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-01",
+                "capability_ids": [
+                  "CAP-001"
+                ],
+                "status": "reused_preflight",
+                "input_node_ids": [],
+                "output_sha256": "e13d1756f59416732e919b005b31aa861c72f4fd49683966d8ffbee2586c3703",
+                "output_hash_algorithm": "sha256-json-stringify-v1",
+                "output": {
+                  "event_type": "country_outage",
+                  "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                  "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+                  "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "revision": 1,
+                  "collector_id": "rrc25",
+                  "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                  "country_code": "IR",
+                  "detected_at_utc": null,
+                  "window_start_utc": "2026-02-27T00:10:00Z",
+                  "window_end_utc": "2026-03-11T00:00:00Z",
+                  "data_through": "2026-03-11T00:00:00Z",
+                  "is_final_in_data_range": false,
+                  "lifecycle_state": "event_end_unknown",
+                  "observation_state": "evidence_complete",
+                  "quality_state": "complete",
+                  "missing_slot_count": 0,
+                  "capabilities": {
+                    "overview": "available",
+                    "event_series": "available",
+                    "affected_as": "available",
+                    "path_downstreams": "available",
+                    "full_path_evidence": "audit_only"
+                  }
+                },
+                "evidence_refs": [
+                  "resolution:/event_type",
+                  "resolution:/incident_id",
+                  "resolution:/publication_id",
+                  "resolution:/revision",
+                  "resolution:/collector_id",
+                  "resolution:/country_code",
+                  "resolution:/window_start_utc",
+                  "resolution:/window_end_utc",
+                  "resolution:/data_through",
+                  "resolution:/lifecycle_state",
+                  "resolution:/is_final_in_data_range",
+                  "resolution:/quality_state",
+                  "resolution:/missing_slot_count"
+                ],
+                "error_code": null
+              },
+              {
+                "node_id": "node-2",
+                "goal_id": "goal-1",
+                "execution_unit": "TOOL-04",
+                "capability_ids": [
+                  "CAP-010",
+                  "CAP-011"
+                ],
+                "status": "passed",
+                "input_node_ids": [
+                  "node-1"
+                ],
+                "output_sha256": "6b33fccaf1aac519ae0934947e30bc550ed91d4226ee8b1a1c7387f7d5ec8540",
+                "output_hash_algorithm": "sha256-json-stringify-v1",
+                "output": {
+                  "schema_version": "country_outage_general_affected_as_page_v1",
+                  "revision": 1,
+                  "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+                  "publication_state": "published",
+                  "observation_state": "evidence_complete",
+                  "data_mode": "replay",
+                  "data_through": "2026-03-11T00:00:00Z",
+                  "is_final_in_data_range": false,
+                  "lifecycle_state": "event_end_unknown",
+                  "quality_state": "complete",
+                  "missing_slot_count": 0,
+                  "collector_id": "rrc25",
+                  "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+                  "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+                  "window_start_utc": "2026-02-27T00:10:00Z",
+                  "window_end_utc": "2026-03-11T00:00:00Z",
+                  "page": 1,
+                  "page_size": 20,
+                  "page_count": 1,
+                  "total": 1,
+                  "classification": "all",
+                  "query": "49556",
+                  "sort": "default",
+                  "items": [
+                    {
+                      "rank": 2,
+                      "asn": 49556,
+                      "as_name": "webdade",
+                      "organization": "威博达德佩达有限公司",
+                      "nature": "互联网服务提供商",
+                      "name_state": "observed",
+                      "organization_state": "observed",
+                      "nature_state": "observed",
+                      "event_classification": "route_interrupted",
+                      "fixed_prefix_count": 50,
+                      "peak_partial_prefix_count": 50,
+                      "peak_complete_prefix_count": 50,
+                      "peak_invisible_direction_count": 2103,
+                      "path_downstream_asn_count": 0,
+                      "concurrent_downstream_asn_count": 0
+                    }
+                  ]
+                },
+                "evidence_refs": [
+                  "asns:/total",
+                  "asns:/page",
+                  "asns:/page_size",
+                  "asns:/query",
+                  "asns:/classification",
+                  "asns:/sort",
+                  "asns:/items/0/asn",
+                  "asns:/items/0/as_name",
+                  "asns:/items/0/event_classification",
+                  "asns:/items/0/fixed_prefix_count",
+                  "asns:/items/0/peak_complete_prefix_count",
+                  "asns:/items/0/path_downstream_asn_count",
+                  "asns:/items/0/concurrent_downstream_asn_count"
+                ],
+                "error_code": null
+              }
+            ],
+            "authorization": {
+              "original_scope": "country_outage:read",
+              "effective_permission": "country_outage:read",
+              "basis": "canonical_read",
+              "country_code": "IR"
+            },
+            "planner_outcome": "accepted",
+            "model_generated_fact_count": 0,
+            "state_commit": "committed"
+          },
+          "state_receipt": {
+            "before": {
+              "topic": "asn_detail",
+              "asn": 48715,
+              "address_family": null,
+              "metric": null,
+              "population": null,
+              "include_new_prefixes": null,
+              "analysis_mode": null,
+              "time_scope": null,
+              "evidence_anchor": "asns:/total",
+              "pending_clarification": null,
+              "last_committed_turn_number": 1
+            },
+            "proposed": {
+              "inherit": [
+                "event_binding"
+              ],
+              "set": {
+                "topic": "asn_detail",
+                "evidence_anchor": "asns:/total",
+                "asn": 49556
+              },
+              "clear": [
+                "address_family",
+                "population",
+                "include_new_prefixes",
+                "pending_clarification"
+              ],
+              "reason_codes": [
+                "verified_asn_override"
+              ]
+            },
+            "after": {
+              "topic": "asn_detail",
+              "asn": 49556,
+              "address_family": null,
+              "metric": null,
+              "population": null,
+              "include_new_prefixes": null,
+              "analysis_mode": null,
+              "time_scope": null,
+              "evidence_anchor": "asns:/total",
+              "pending_clarification": null,
+              "last_committed_turn_number": 2
+            },
+            "status": "committed",
+            "transaction_checks": {
+              "plan_validated": true,
+              "permission_validated": true,
+              "execution_validated": true,
+              "evidence_validated": true,
+              "binding_revalidated": true,
+              "ttl_validated": true,
+              "cancelled": false
+            }
+          }
+        },
+        "completed_at": "2026-08-10T20:35:50.572Z"
+      }
+    ],
+    "binding_history": [
+      {
+        "generation": 1,
+        "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+        "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+        "revision": 1,
+        "switched_at": "2026-08-10T20:35:23.768Z"
+      }
+    ],
+    "expires_at": "2026-08-10T21:05:23.768Z",
+    "created_at": "2026-08-10T20:35:23.768Z"
+  },
+  "model_identity": "codex-cli:0.147.0-alpha.6.5:gpt-5.6-sol:blind-v2",
+  "data_api_base_url": "http://10.99.8.16:28471/api/v2/"
+}

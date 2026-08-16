@@ -1,0 +1,54 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_raw_evidence_v1",
+  "artifact_kind": "page_capability_outcome_map",
+  "evidence_kind": "source_evidence",
+  "candidate_id": "p1-page-coverage-s0-aa8e16b63317",
+  "stage": "S0",
+  "run_id": "s0-capability-map-run-001",
+  "captured_at": "2026-08-10T14:00:00+08:00",
+  "source_revision": "p0-v1.3-20260809-ir-r1",
+  "source_files": [
+    {
+      "path": "evaluation/country-outage/p0-v1-3/capability-ledger.json",
+      "sha256": "4b37445392ee1cea25f56d4a11084d58e94c96b4dd4628ac3d39657977f9964d"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/unknown-ledger.json",
+      "sha256": "fc11a77d0f7fe97bb18772805ba08050098a5512e9a00f3629b03cb0a53c8e9c"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/oracle-seed.json",
+      "sha256": "9d69766af84fc4e7846c77597449e2e62cb558806b5c0b0074b20cabe78e73f8"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/cases.json",
+      "sha256": "86a64a6df3b1c5849946dd471bb9c23d30efa9d92b7246543b9731bf67af38c3"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/evidence/live-probe-20260809.json",
+      "sha256": "c907dd99beb89b6d279449b8a4b160c2990188db99c428046983018397fa79d2"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/p1-disposition.json",
+      "sha256": "8d9febc2562d320dd8a9e571687aa4b2512e26736c46bb6914544862fe990207"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/system-surface.json",
+      "sha256": "2622c93c555d79350cd434308d29f0789c348f29afbd9cb3bc1db9b57f5a29b0"
+    },
+    {
+      "path": "docs/agent/P0-\u9700\u6c42\u4e0e\u8bc4\u6d4b/P0-v1.3-P1\u5165\u53e3\u56de\u6267.md",
+      "sha256": "473b5dd36d1b6ea0468606f0f6b0b4370272e3c298ba2cc02fb428bc2eb9d2e7"
+    }
+  ],
+  "event_identity": {
+    "event_type": "country_outage",
+    "country_code": "IR",
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "data_through": "2026-03-11T00:00:00Z",
+    "lifecycle_state": "event_end_unknown"
+  }
+}

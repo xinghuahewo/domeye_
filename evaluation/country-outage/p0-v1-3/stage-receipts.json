@@ -1,0 +1,43 @@
+{
+  "schema_version": "country_outage_p0_v1_3_stage_receipts_v1",
+  "revision": "p0-v1.3-20260809-ir-r1",
+  "stages": [
+    {
+      "stage": "S0",
+      "name": "系统表面与后端能力普查",
+      "status": "completed",
+      "completed_at": "2026-08-09T08:30:00Z",
+      "evidence_refs": ["live-probe-20260809", "system-surface", "unknown-ledger"],
+      "exit_conclusion": "页面、正式 API、publication/read model、后端源码和中间数据已分层；16 个表面均有证据或显式 unknown。"
+    },
+    {
+      "stage": "S1",
+      "name": "能力建模与最小可行性",
+      "status": "completed",
+      "completed_at": "2026-08-09T08:31:00Z",
+      "evidence_refs": ["capability-ledger", "oracle-seed", "p1-disposition"],
+      "exit_conclusion": "26 项能力分别记录成熟度、输入输出、缺失语义、限制、禁止断言和 P1 处置；10 个只读 seed 可验证。"
+    },
+    {
+      "stage": "S2",
+      "name": "需求与评测合同映射",
+      "status": "completed",
+      "completed_at": "2026-08-09T08:32:00Z",
+      "evidence_refs": ["cases", "p0-v1 immutable case set"],
+      "exit_conclusion": "20/5/5/5 共 35 个案例继承旧参考真值，并增加开放用户目标、能力映射与失败关闭门。"
+    },
+    {
+      "stage": "S3",
+      "name": "新 revision 与 P1 交接",
+      "status": "completed",
+      "completed_at": "2026-08-09T08:33:00Z",
+      "evidence_refs": ["manifest", "discovery-report.semantic-review", "p1-receipt", "alignment-hooks"],
+      "exit_conclusion": "新 P0 revision 独立形成；独立产品语义复审 PASS 且无剩余阻断；旧 p0-v1/P1-v1/P1.1 S0 未修改；P1 获得 adopt/defer/reject 入口。"
+    }
+  ],
+  "global_limitations": [
+    "阶段完成表示 P0 能力普查制品闭合，不表示 P1 Agent 已实现",
+    "未执行报告或追问写请求，相关运行能力仍为 unknown",
+    "未接入外部数据源，未形成原因、责任、用户影响或 RCA 结论"
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s3_independent_semantic_review_v1",
+  "artifact_kind": "independent_semantic_review",
+  "stage": "S3",
+  "candidate_id": "p1-page-coverage-s3-776431e8bd75",
+  "candidate_identity_sha256": "776431e8bd759f4b8fc2fc3893efa30d310a640395417db63009aa3c7f989c31",
+  "status": "PASS",
+  "reviewer_role": "product_semantic_truth_reviewer",
+  "independent_from_question_explorer": true,
+  "verdict": "PASS",
+  "case_author_actor_id": "s3-question-explorer-agent",
+  "case_author_run_id": "s3-question-explorer-final-005",
+  "reviewer_actor_id": "s3-independent-product-semantic-truth-reviewer",
+  "reviewer_run_id": "s3-independent-semantic-reviewer-blind-001",
+  "blind_truth_created_at": "2026-08-10T20:31:20Z",
+  "system_output_revealed_at": "2026-08-10T20:42:04Z",
+  "review_completed_at": "2026-08-10T20:42:06Z",
+  "reviewed_input_sha256": "10f3546c20af0553f904d64ec325ba914ab3ad03c4bdb0af79e43cd224d93076",
+  "blind_truth_sha256": "97e91f05ed898782cf6ce026ff10cfbd13068951edccd16689ca513728adbb46",
+  "system_output_sha256": "ac7c471dc3fb7263fe89886c9a26290e8b46a0a0e7c60b1a43e67b7d382e07be",
+  "case_author_actor_receipt_sha256": "6594a5a4f35a36cdf5932b37f83670779c7cdfb621f6a11468f505fc77d125ed",
+  "reviewer_actor_receipt_sha256": "754c5099ca1bc4739611f718957c3d89293c6d253230021f1669f8a95ecf00c9",
+  "reviewed_items": [
+    {
+      "case_id": "S3-J01-T01",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "required_answer_points.window_drop",
+          "classification": "non_blocking_equivalent",
+          "summary": "回答给出最大值与最小值，且确定性算子输出 difference=579072；未产生错误总量或越界断言。"
+        }
+      ]
+    },
+    {
+      "case_id": "S3-J01-T02",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J01-T03",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J01-T04",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J02-T01",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "expected_goals",
+          "classification": "non_blocking_equivalent_decomposition",
+          "summary": "event_summary 与 fact_timeline 交付了窗口、检测时点、data-through 和 event_end_unknown，未生成因果边。"
+        },
+        {
+          "field": "answerability",
+          "classification": "non_blocking_status_granularity",
+          "summary": "系统以 supported 发布可证事件事实，同时明确事件结束未知，未提升为结束或恢复。"
+        },
+        {
+          "field": "required_answer_points.fixed_asn_count",
+          "classification": "non_blocking_summary_brevity",
+          "summary": "摘要未枚举固定 cohort AS 数 572，但将累计涉及 525 个 AS 明确标为不同口径，未发生人口混淆。"
+        }
+      ]
+    },
+    {
+      "case_id": "S3-J02-T02",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "expected_entities.context_inheritance",
+          "classification": "non_blocking_semantic_encoding",
+          "summary": "UserGoalPlan 归一为 prefix_peak，Grounding 只执行 CAP-004，并发布 interrupted_prefix_count=3855 及首个峰值时点。"
+        }
+      ]
+    },
+    {
+      "case_id": "S3-J02-T03",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J03-T01",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J03-T02",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J04-T01",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J04-T02",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "normalized_kind",
+          "classification": "non_blocking_equivalent_boundary",
+          "summary": "propagation_inference 与冻结的 path_dependency_inference 同样以零节点拒绝依赖、传播、原因和责任。"
+        }
+      ]
+    },
+    {
+      "case_id": "S3-J05-T01",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J05-T02",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J06-T01",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "expected_entities",
+          "classification": "non_blocking_grounding_binding",
+          "summary": "UserGoalPlan 保留原问题；TOOL-01、回答证据与 generation=2 原子 rebind 均绑定 exact target，旧事件状态被清理。"
+        }
+      ]
+    },
+    {
+      "case_id": "S3-J06-T02",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J07-T01",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J07-T02",
+      "verdict": "PASS",
+      "semantic_diff": []
+    },
+    {
+      "case_id": "S3-J07-T03",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "normalized_kind",
+          "classification": "non_blocking_equivalent_boundary",
+          "summary": "technical_mechanism_attribution 对配置错误原因执行零节点，并明确拒绝从 RRC25 证明原因。"
+        }
+      ]
+    },
+    {
+      "case_id": "S3-J07-T04",
+      "verdict": "PASS",
+      "semantic_diff": [
+        {
+          "field": "normalized_kind",
+          "classification": "non_blocking_equivalent_boundary",
+          "summary": "capability_absent_not_zero 以 update_track_unavailable_not_zero、零执行、零证据和零状态提交表达冻结的 bgp_update_activity 缺轨边界。"
+        }
+      ]
+    }
+  ],
+  "failure_review": {
+    "scenario_count": 8,
+    "passed_count": 8,
+    "published_answer_count": 0,
+    "rollback_or_safe_no_commit_verified": true,
+    "f08_invalid_data_null_verified": true
+  },
+  "high_risk_semantic_checks": {
+    "fixed_cohort_main_answer_and_new_prefix_independent_supplement": "PASS",
+    "ipv4_ipv6_unit_separation_and_cross_unit_total_forbidden": "PASS",
+    "missing_update_track_is_unsupported_with_zero_execution": "PASS",
+    "invalid_data_null_rolls_back_and_is_not_encoded_as_zero": "PASS"
+  },
+  "integrity_checks": {
+    "reviewed_turn_count": 19,
+    "execution_node_count_including_failure_receipts": 58,
+    "verified_output_hash_count": 58,
+    "resolved_answer_evidence_ref_count": 365,
+    "exact_rrc25_identity_on_published_evidence": true,
+    "model_generated_fact_count": 0
+  },
+  "unresolved_blockers": [],
+  "evidence_refs": [
+    {
+      "kind": "reviewed_input",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/reviewed-input.json",
+      "sha256": "10f3546c20af0553f904d64ec325ba914ab3ad03c4bdb0af79e43cd224d93076"
+    },
+    {
+      "kind": "blind_truth",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/blind-truth.json",
+      "sha256": "97e91f05ed898782cf6ce026ff10cfbd13068951edccd16689ca513728adbb46"
+    },
+    {
+      "kind": "system_output",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/review-system-output.json",
+      "sha256": "ac7c471dc3fb7263fe89886c9a26290e8b46a0a0e7c60b1a43e67b7d382e07be"
+    },
+    {
+      "kind": "case_author_actor_receipt",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/case-author-actor-receipt.json",
+      "sha256": "6594a5a4f35a36cdf5932b37f83670779c7cdfb621f6a11468f505fc77d125ed"
+    },
+    {
+      "kind": "reviewer_actor_receipt",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/reviewer-actor-receipt.json",
+      "sha256": "754c5099ca1bc4739611f718957c3d89293c6d253230021f1669f8a95ecf00c9"
+    },
+    {
+      "kind": "candidate_identity",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/candidate-identity.json",
+      "sha256": "19f5f9ae2388441043df292155445c6998953e32855516f5bae83200041afb31"
+    },
+    {
+      "kind": "semantic_review_result",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/review-result.json",
+      "sha256": "861488fa5578dcea9b75b0a73f16a20bad306b3618565cef7c4838bef0dcc02f"
+    },
+    {
+      "kind": "multiturn_journey_set",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/journeys/journey-set.json",
+      "sha256": "e48b8c6cf7b637ceb9d2bcecaaef09440ccac03245f9a25dda6f09ed2d49b641"
+    },
+    {
+      "kind": "failure_fixture_set",
+      "path": "evaluation/country-outage/p1-page-coverage/s3/raw/failure-fixture-set.json",
+      "sha256": "b76b1cccba528610ece9fbd091ee59f86480455f575a8c81fed87f376f9395b1"
+    }
+  ]
+}

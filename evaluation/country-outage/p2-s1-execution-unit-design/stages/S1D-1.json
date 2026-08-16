@@ -1,0 +1,44 @@
+{
+  "alignment_hook_sha256": "27d650767094cff9be6e3206f4bd7e4add44c0adc814b6f57a7674e24aaa6cd1",
+  "alignment_hook_tests_sha256": "900031ddc85a64cb41cb8acb803c7559461e8dad0c5e1e4c46b2f27c582d28a0",
+  "checks": [
+    "task_spec_version",
+    "question_population_28_of_28",
+    "execution_unit_population",
+    "as_sort_contract",
+    "execution_unit_function_atomicity",
+    "runtime_commit_consistency_separated",
+    "sol_then_ds_evidence_grounded_flow",
+    "design_only_boundary",
+    "phase_plan_version",
+    "seven_stage_sequence",
+    "tool_operator_stage_separation",
+    "stage_atomic_candidate_rule",
+    "design_only_receipt_rule",
+    "question_capability_closure",
+    "question_oracle_seed_closure",
+    "execution_unit_atomic_decomposition",
+    "q24_design_covered_runtime_deferred",
+    "shared_answer_binding_contract",
+    "sol_teacher_ds_student_role_contract"
+  ],
+  "design_candidate_id": "country-outage-p2-s1-s1d-1-0fe3ac5db092a9e381a51014",
+  "design_only": true,
+  "phase_plan_sha256": "f86955257b93e7ddc18553242f4b2f2fe7a78401f6237e855341e1147a63574d",
+  "prior_receipts": {
+    "S1D-0": "5c08d202863459dd697030f2e0386a0e28ce45018f2ecf3f1e609a64c80915e6"
+  },
+  "production_deployed": false,
+  "receipt_digest": "8a2c327b5e6947480e7c61fdf2aa1ef76aeedea5577b261b4e68dbb5155d2385",
+  "runtime_implemented": false,
+  "schema_version": "country_outage_p2_s1_design_alignment_receipt_v1",
+  "stage": "S1D-1",
+  "stage_artifact_sha256": {
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/execution-unit-decomposition.json": "4236714baa699872f4157543331415770286a00990929290aec02c555e09970a",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/model-role-contract.json": "e2250e1f932377e80492665a5822de40cb2902b17d31950b80f97bcd7279e532",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/question-capability-map.json": "65602e1609a7bf0d8558fbb0f136cb22acc74517d6b6d68f84df82f70f886902",
+    "contracts/agent/country-outage-p2-s1-execution-unit-design/question-oracle-seed.json": "c4d3c9899d24631f848c48eb73900d791ddfb0dd51fa3ba8415cdf72d59e9497"
+  },
+  "status": "alignment_passed",
+  "task_spec_sha256": "dbe1232d51064037716f321c5614042418dbcc9a66cfc908dc51fc1a7f8b6e61"
+}

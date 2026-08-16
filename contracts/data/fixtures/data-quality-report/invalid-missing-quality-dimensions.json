@@ -1,0 +1,13 @@
+{
+  "schema_version": "data-quality-report/v1",
+  "report_id": "dqr-invalid-missing-quality-dimensions",
+  "dimensions": {
+    "completeness": {
+      "dimension": "completeness",
+      "status": "pass",
+      "blocking": true,
+      "check_ids": ["only-completeness-was-reported"],
+      "summary_zh": "错误示例只报告完整性，遗漏其余九个维度。"
+    }
+  }
+}

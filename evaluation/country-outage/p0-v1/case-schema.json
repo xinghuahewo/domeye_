@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/schemas/country-outage-p0-cases-v1.json",
+  "title": "国家中断 Agent P0 首版案例合同",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "revision",
+    "content_summary",
+    "change_log",
+    "evidence_snapshot_id",
+    "event_binding",
+    "expected_counts",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "country_outage_p0_case_set_v1"
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct", "multi_turn", "boundary", "exception", "purpose"],
+      "properties": {
+        "direct": {"const": 20},
+        "multi_turn": {"const": 5},
+        "boundary": {"const": 5},
+        "exception": {"const": 5},
+        "purpose": {"type": "string", "minLength": 1}
+      }
+    },
+    "change_log": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "date", "summary"],
+        "properties": {
+          "revision": {"type": "string", "minLength": 1},
+          "date": {"type": "string", "format": "date"},
+          "summary": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "evidence_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_binding": {
+      "$ref": "#/$defs/eventBinding"
+    },
+    "expected_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct", "multi_turn", "boundary", "exception", "total"],
+      "properties": {
+        "direct": {"const": 20},
+        "multi_turn": {"const": 5},
+        "boundary": {"const": 5},
+        "exception": {"const": 5},
+        "total": {"const": 35}
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 35,
+      "maxItems": 35,
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    }
+  },
+  "$defs": {
+    "eventBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legacy_reference",
+        "incident_id",
+        "publication_id",
+        "revision",
+        "collector_id",
+        "country_code"
+      ],
+      "properties": {
+        "legacy_reference": {"type": "string"},
+        "incident_id": {"type": "string"},
+        "publication_id": {"type": "string"},
+        "revision": {"type": "integer", "minimum": 1},
+        "collector_id": {"const": "rrc25"},
+        "country_code": {"const": "IR"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "locator", "title", "rationale"],
+      "properties": {
+        "type": {
+          "enum": [
+            "current_product_must_answer",
+            "public_question_transcription",
+            "boundary_exception_construct"
+          ]
+        },
+        "locator": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "collected_at": {"type": "string"},
+        "original_language": {"type": "string"},
+        "transcription_note": {"type": "string"}
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_ref", "value"],
+      "properties": {
+        "evidence_ref": {"type": "string", "minLength": 1},
+        "value": {},
+        "unit": {"type": ["string", "null"]},
+        "meaning": {"type": "string"}
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "answer_type",
+        "facts",
+        "required_answer_points",
+        "required_limitations",
+        "forbidden_assertions",
+        "failure_closed"
+      ],
+      "properties": {
+        "answer_type": {
+          "enum": ["fact", "explanation", "partial", "clarification", "boundary", "failure"]
+        },
+        "facts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/fact"}
+        },
+        "required_answer_points": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "required_limitations": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "forbidden_assertions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "failure_closed": {"type": "boolean"}
+      }
+    },
+    "turn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["turn_id", "user", "state_expectation", "answer_expectation"],
+      "properties": {
+        "turn_id": {"type": "integer", "minimum": 1, "maximum": 4},
+        "user": {"type": "string", "minLength": 1},
+        "state_expectation": {
+          "type": "object",
+          "required": ["inherit", "set", "clear"],
+          "properties": {
+            "inherit": {"type": "array", "items": {"type": "string"}},
+            "set": {"type": "object"},
+            "clear": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "answer_expectation": {"type": "string", "minLength": 1}
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "required": ["type", "description"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "changes": {"type": "object"}
+      }
+    },
+    "entities": {
+      "type": "object",
+      "required": ["binding_ref"],
+      "properties": {
+        "binding_ref": {"const": "event_binding"},
+        "asn": {"type": "integer", "minimum": 1},
+        "address_family": {"enum": ["ipv4", "ipv6", "both"]},
+        "metric": {"type": "string"},
+        "requested_event": {"type": "string"},
+        "requested_publication": {"type": "string"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "revision",
+        "category",
+        "coverage_key",
+        "source",
+        "question",
+        "intent_labels",
+        "entities",
+        "operators",
+        "answerability",
+        "target_phase",
+        "expected",
+        "evidence_refs",
+        "hard_gates"
+      ],
+      "properties": {
+        "case_id": {"type": "string", "pattern": "^P0-[DMBX]-[0-9]{2}$"},
+        "revision": {"type": "string", "minLength": 1},
+        "category": {"enum": ["direct", "multi_turn", "boundary", "exception"]},
+        "coverage_key": {"type": "string", "minLength": 1},
+        "source": {"$ref": "#/$defs/source"},
+        "question": {"type": "string", "minLength": 1},
+        "turns": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/turn"}
+        },
+        "intent_labels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "entities": {"$ref": "#/$defs/entities"},
+        "operators": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "answerability": {
+          "enum": ["answerable", "partial", "clarify", "unsupported", "invalid_data"]
+        },
+        "target_phase": {"const": "P1"},
+        "fixture": {"$ref": "#/$defs/fixture"},
+        "expected": {"$ref": "#/$defs/expected"},
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "hard_gates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "event_binding",
+              "publication_binding",
+              "fact_match",
+              "evidence_resolvable",
+              "no_forbidden_assertion",
+              "context_isolation",
+              "missing_not_zero",
+              "invalid_answer_not_published"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

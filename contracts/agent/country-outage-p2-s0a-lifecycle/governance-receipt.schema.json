@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/country-outage-p2-s0a-governance-receipt-v1.schema.json",
+  "title": "P2-S0A 离线治理回执",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "request_id", "candidate_id", "action", "status", "actor_id", "before_revision", "after_revision", "before_digest", "after_digest", "evidence_refs", "at_utc"],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s0a_governance_receipt_v1"},
+    "receipt_id": {"type": "string", "pattern": "^govrcpt-sha256:[a-f0-9]{64}$"},
+    "request_id": {"type": "string", "minLength": 1},
+    "candidate_id": {"type": "string", "pattern": "^p2-s0a-[a-f0-9]{16}$"},
+    "action": {"type": "string", "minLength": 1},
+    "status": {"enum": ["applied", "rejected", "read_only"]},
+    "actor_id": {"type": "string", "minLength": 1},
+    "before_revision": {"type": "integer", "minimum": 1},
+    "after_revision": {"type": "integer", "minimum": 1},
+    "before_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "after_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "impact": {"type": ["object", "null"]},
+    "error_code": {"type": ["string", "null"]},
+    "at_utc": {"type": "string", "format": "date-time"}
+  }
+}

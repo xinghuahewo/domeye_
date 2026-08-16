@@ -1,0 +1,1206 @@
+{
+  "schema_version": "country_outage_p0_case_set_v1",
+  "revision": "p0-v1-20260808-ir-r1",
+  "content_summary": {
+    "direct": 20,
+    "multi_turn": 5,
+    "boundary": 5,
+    "exception": 5,
+    "purpose": "仅用当前伊朗事件页面/API 建立 P1 可执行的最小事实、上下文、边界和异常评测合同"
+  },
+  "change_log": [
+    {
+      "revision": "p0-v1-20260808-ir-r1",
+      "date": "2026-08-08",
+      "summary": "首版冻结 20 个直接问题、5 个多轮旅程、5 个越界问题和 5 个异常问题"
+    }
+  ],
+  "evidence_snapshot_id": "p0_evidence_ir_20260227_r1_989f698f",
+  "event_binding": {
+    "legacy_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+    "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+    "revision": 1,
+    "collector_id": "rrc25",
+    "country_code": "IR"
+  },
+  "expected_counts": {
+    "direct": 20,
+    "multi_turn": 5,
+    "boundary": 5,
+    "exception": 5,
+    "total": 35
+  },
+  "cases": [
+    {
+      "case_id": "P0-D-01",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "event_summary",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:page_url",
+        "title": "伊朗国家路由可见性观测页",
+        "rationale": "进入事件页后的首要任务是理解发生了什么"
+      },
+      "question": "这次伊朗事件发生了什么？",
+      "intent_labels": ["event_summary", "scope"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_overview", "read_primary_peak"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "cohort.fixed_prefix_count", "value": 9257, "unit": "prefix"},
+          {"evidence_ref": "scope_counts.affected_as_count", "value": 525, "unit": "asn"},
+          {"evidence_ref": "peaks.interrupted_prefix_count.value", "value": 3855, "unit": "prefix"}
+        ],
+        "required_answer_points": [
+          "RRC25 固定 cohort 中出现大规模路由不可见变化",
+          "最值得注意的中断前缀峰值为 3,855",
+          "观测持续到数据范围末端，不能判定事件已经结束"
+        ],
+        "required_limitations": ["这是 RRC25 BGP 控制面观测，不是用户实际断网证明"],
+        "forbidden_assertions": ["伊朗全国完全断网", "已确定真实原因"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.publication_id", "cohort.fixed_prefix_count", "scope_counts.affected_as_count", "peaks.interrupted_prefix_count.value"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-02",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "observation_window",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:page_url",
+        "title": "事件页观测窗口",
+        "rationale": "所有结论必须限定在同一观测窗口"
+      },
+      "question": "这次事件的观测窗口是什么？",
+      "intent_labels": ["time_window"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_identity"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "event.window_start_local", "value": "2026-02-27T08:10:00+08:00", "unit": "Asia/Shanghai"},
+          {"evidence_ref": "event.window_end_local", "value": "2026-03-11T08:00:00+08:00", "unit": "Asia/Shanghai"}
+        ],
+        "required_answer_points": ["北京时间 2026-02-27 08:10 至 2026-03-11 08:00"],
+        "required_limitations": ["窗口结束不等于事件真实结束"],
+        "forbidden_assertions": ["窗口外状态与窗口内相同"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["event.window_start_local", "event.window_end_local", "identity.lifecycle_state"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-03",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "detected_time_not_true_onset",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:page_observation",
+        "title": "事件检测时间",
+        "rationale": "用户常把检测时间误认为真实开始时间"
+      },
+      "question": "异常是什么时候开始的？",
+      "intent_labels": ["detection_time", "onset_boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_event_identity"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "partial",
+        "facts": [
+          {"evidence_ref": "event.detected_at_local", "value": "2026-02-27T09:12:32+08:00", "unit": "Asia/Shanghai"},
+          {"evidence_ref": "event.detection_is_not_true_onset", "value": true, "unit": null}
+        ],
+        "required_answer_points": ["页面记录的检测时间是北京时间 2026-02-27 09:12:32", "当前 API 不能证明真实异常起点"],
+        "required_limitations": ["检测时间、窗口开始和真实起点是不同概念"],
+        "forbidden_assertions": ["09:12:32 就是真实中断开始时刻"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["event.detected_at_local", "event.detection_is_not_true_onset"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-04",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "primary_peak_time",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:page_observation.primary_narrative",
+        "title": "路由不可见集中变化",
+        "rationale": "用户需要定位最显著时点"
+      },
+      "question": "哪个时点的中断前缀最多？",
+      "intent_labels": ["timeline_peak", "interrupted_prefix"],
+      "entities": {"binding_ref": "event_binding", "metric": "interrupted_prefix_count"},
+      "operators": ["series_max"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "peaks.interrupted_prefix_count.state_point_local", "value": "2026-02-28T07:15:00+08:00", "unit": "Asia/Shanghai"},
+          {"evidence_ref": "peaks.interrupted_prefix_count.value", "value": 3855, "unit": "prefix"}
+        ],
+        "required_answer_points": ["北京时间 2026-02-28 07:15 达到 3,855 个中断前缀"],
+        "required_limitations": ["这是中断前缀峰值，不是完全不可见前缀峰值"],
+        "forbidden_assertions": ["同一时点完全不可见前缀为 1,553"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["peaks.interrupted_prefix_count.state_point_local", "peaks.interrupted_prefix_count.value", "primary_peak_state.completely_interrupted_prefix_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-05",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "maximum_ipv4_visibility_drop",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:address_family_extrema.ipv4",
+        "title": "IPv4 可见地址趋势",
+        "rationale": "把图表变化转换为可核对的最大下降"
+      },
+      "question": "固定前缀可见 IPv4 地址规模最大下降了多少？",
+      "intent_labels": ["address_family", "maximum_drop"],
+      "entities": {"binding_ref": "event_binding", "address_family": "ipv4", "metric": "fixed_visible_ipv4_address_count"},
+      "operators": ["series_max", "series_min", "subtract"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "address_family_extrema.ipv4.maximum_visible_address_count", "value": 10156800, "unit": "unique_ipv4_address"},
+          {"evidence_ref": "address_family_extrema.ipv4.minimum_visible_address_count", "value": 9577728, "unit": "unique_ipv4_address"},
+          {"evidence_ref": "address_family_extrema.ipv4.max_to_min_drop", "value": 579072, "unit": "unique_ipv4_address"},
+          {"evidence_ref": "address_family_extrema.ipv4.max_to_min_drop_percent", "value": 5.701323, "unit": "percent"}
+        ],
+        "required_answer_points": ["最大值到最小值减少 579,072 个唯一 IPv4 地址，约 5.701323%"],
+        "required_limitations": ["这是固定前缀控制面可见地址并集，不是活跃用户或流量下降"],
+        "forbidden_assertions": ["伊朗用户数下降 5.7%"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["address_family_extrema.ipv4.maximum_visible_address_count", "address_family_extrema.ipv4.minimum_visible_address_count", "address_family_extrema.ipv4.max_to_min_drop"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-06",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "recovery_status",
+      "source": {
+        "type": "public_question_transcription",
+        "locator": "https://www.reddit.com/r/NewIran/comments/1tpc08n/iranians_who_regained_internet_yesterdaytoday_are/",
+        "title": "Iranians who regained internet yesterday/today, are you there?",
+        "rationale": "真实表达关心是否恢复；只提取问题语义，不采用帖子事实",
+        "collected_at": "2026-08-08",
+        "original_language": "en",
+        "transcription_note": "中文问题是对公开标题所表达需求的匿名化转述；不采用正文、回答或用户身份"
+      },
+      "question": "从这页看已经恢复了吗？",
+      "intent_labels": ["recovery", "end_state"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["compare_peak_current", "read_lifecycle"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "partial",
+        "facts": [
+          {"evidence_ref": "peaks.interrupted_prefix_count.value", "value": 3855, "unit": "prefix"},
+          {"evidence_ref": "current.interrupted_prefix_count", "value": 1024, "unit": "prefix"},
+          {"evidence_ref": "identity.lifecycle_state", "value": "event_end_unknown", "unit": null}
+        ],
+        "required_answer_points": ["相对峰值已有回落，但数据截止时仍有 1,024 个中断前缀", "不能判定事件结束或完全恢复"],
+        "required_limitations": ["窗口末端状态受时间删失，且 BGP 恢复不等于用户连接恢复"],
+        "forbidden_assertions": ["伊朗互联网已经恢复", "事件已经结束"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["peaks.interrupted_prefix_count.value", "current.interrupted_prefix_count", "identity.is_final_in_data_range", "identity.lifecycle_state"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-07",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "window_end_state",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:current",
+        "title": "数据截止时状态",
+        "rationale": "明确窗口末端仍可观察到什么"
+      },
+      "question": "数据截止时还剩多少路由不可见？",
+      "intent_labels": ["current_state", "scope"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_current"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "current.interrupted_prefix_count", "value": 1024, "unit": "prefix"},
+          {"evidence_ref": "current.completely_interrupted_prefix_count", "value": 318, "unit": "prefix"},
+          {"evidence_ref": "current.invisible_direction_count", "value": 14867, "unit": "peer_asn_direction"},
+          {"evidence_ref": "current.affected_asn_count", "value": 121, "unit": "asn"}
+        ],
+        "required_answer_points": ["截至北京时间 2026-03-11 08:00，仍有 1,024 个中断前缀、其中 318 个完全不可见，并涉及 14,867 个不可见方向和 121 个受影响 AS"],
+        "required_limitations": ["这是数据截止时点，不是现在的实时状态"],
+        "forbidden_assertions": ["这些对象此后一直中断"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["current.state_point_local", "current.interrupted_prefix_count", "current.completely_interrupted_prefix_count", "current.invisible_direction_count", "current.affected_asn_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-08",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "affected_scope",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:cohort",
+        "title": "固定 cohort 与影响范围",
+        "rationale": "用户需要知道分母和累计涉及范围"
+      },
+      "question": "这次观测覆盖多大范围？",
+      "intent_labels": ["scope", "cohort"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_cohort", "read_scope_counts"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "cohort.fixed_asn_count", "value": 572, "unit": "asn"},
+          {"evidence_ref": "cohort.fixed_prefix_count", "value": 9257, "unit": "prefix"},
+          {"evidence_ref": "cohort.independent_direction_relation_count", "value": 368675, "unit": "peer_asn_direction"},
+          {"evidence_ref": "scope_counts.affected_as_count", "value": 525, "unit": "asn"}
+        ],
+        "required_answer_points": ["固定 cohort 包含 572 个 AS、9,257 个前缀和 368,675 个预期独立方向；窗口内累计 525 个 AS 出现不可见"],
+        "required_limitations": ["累计受影响 AS 不等于同一时刻全部中断"],
+        "forbidden_assertions": ["525 个 AS 同时完全中断"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["cohort.fixed_asn_count", "cohort.fixed_prefix_count", "cohort.independent_direction_relation_count", "scope_counts.affected_as_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-09",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "top_affected_asns",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:asns.top_items",
+        "title": "受影响 AS 排名",
+        "rationale": "识别页面默认排序下最显著的 AS"
+      },
+      "question": "页面列出的前五个受影响 AS 是哪些？",
+      "intent_labels": ["asn_ranking"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_asn_page"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "asns.top_items.0.asn", "value": 48715, "unit": "asn"},
+          {"evidence_ref": "asns.top_items.1.asn", "value": 49556, "unit": "asn"},
+          {"evidence_ref": "asns.top_items.2.asn", "value": 204650, "unit": "asn"},
+          {"evidence_ref": "asns.top_items.3.asn", "value": 34369, "unit": "asn"},
+          {"evidence_ref": "asns.top_items.4.asn", "value": 48147, "unit": "asn"}
+        ],
+        "required_answer_points": ["默认排序前五为 AS48715、AS49556、AS204650、AS34369、AS48147"],
+        "required_limitations": ["这是页面默认排序和第一页，不是因果或业务重要性排名"],
+        "forbidden_assertions": ["排名靠前的 AS 是故障根因"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["asns.total", "asns.top_items.0.asn", "asns.top_items.4.asn"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-10",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "specified_asn",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:asns.top_items.0",
+        "title": "指定 AS 明细",
+        "rationale": "支持用户围绕某一 AS 追问"
+      },
+      "question": "AS48715 在这次事件中的观测结果怎样？",
+      "intent_labels": ["asn_detail"],
+      "entities": {"binding_ref": "event_binding", "asn": 48715},
+      "operators": ["lookup_asn"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "asns.top_items.0.fixed_prefix_count", "value": 73, "unit": "prefix"},
+          {"evidence_ref": "asns.top_items.0.peak_complete_prefix_count", "value": 73, "unit": "prefix"},
+          {"evidence_ref": "asns.top_items.0.peak_invisible_direction_count", "value": 3138, "unit": "peer_asn_direction"},
+          {"evidence_ref": "asns.top_items.0.path_downstream_asn_count", "value": 1, "unit": "asn"}
+        ],
+        "required_answer_points": ["AS48715 有 73 个固定前缀，完全不可见峰值为 73，不可见方向峰值为 3,138，页面记录 1 个路径关联网络"],
+        "required_limitations": ["峰值字段不保证发生在同一时点，路径关联不表示依赖或原因"],
+        "forbidden_assertions": ["AS48715 导致了国家中断"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["asns.top_items.0.asn", "asns.top_items.0.fixed_prefix_count", "asns.top_items.0.peak_complete_prefix_count", "asns.top_items.0.peak_invisible_direction_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-11",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "remaining_vs_peak",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:current",
+        "title": "持续异常与峰值回落",
+        "rationale": "区分峰值、当前残留和已恢复结论"
+      },
+      "question": "峰值之后还有多少前缀持续异常？",
+      "intent_labels": ["persistence", "compare_peak_current"],
+      "entities": {"binding_ref": "event_binding", "metric": "interrupted_prefix_count"},
+      "operators": ["compare_peak_current"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "partial",
+        "facts": [
+          {"evidence_ref": "peaks.interrupted_prefix_count.value", "value": 3855, "unit": "prefix"},
+          {"evidence_ref": "current.interrupted_prefix_count", "value": 1024, "unit": "prefix"}
+        ],
+        "required_answer_points": ["数据截止时仍有 1,024 个中断前缀，低于峰值 3,855"],
+        "required_limitations": ["聚合值不能直接列出哪些具体前缀从峰值一直持续到末端"],
+        "forbidden_assertions": ["这 1,024 个前缀全都从峰值时刻连续中断"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["peaks.interrupted_prefix_count.value", "current.interrupted_prefix_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-12",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "ipv4_ipv6_comparison",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:address_family_extrema",
+        "title": "IPv4 与 IPv6 趋势对比",
+        "rationale": "地址族差异是常见组合追问"
+      },
+      "question": "IPv4 和 IPv6 的可见地址变化有什么不同？",
+      "intent_labels": ["address_family_comparison"],
+      "entities": {"binding_ref": "event_binding", "address_family": "both"},
+      "operators": ["compare_address_families"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "address_family_extrema.ipv4.max_to_min_drop", "value": 579072, "unit": "unique_ipv4_address"},
+          {"evidence_ref": "address_family_extrema.ipv6.max_to_min_drop", "value": 4, "unit": "ipv6_slash48_equivalent"},
+          {"evidence_ref": "current.new_cumulative_ipv4_prefix_count", "value": 700, "unit": "prefix"},
+          {"evidence_ref": "current.new_cumulative_ipv6_prefix_count", "value": 1, "unit": "prefix"}
+        ],
+        "required_answer_points": ["IPv4 最大可见地址下降 579,072；IPv6 固定可见规模最大下降 4 个 /48 等价块；窗口内累计新增 IPv4/IPv6 前缀分别为 700/1"],
+        "required_limitations": ["IPv4 使用唯一地址数，IPv6 使用 /48 等价块，不能直接用绝对数相除比较"],
+        "forbidden_assertions": ["IPv6 用户影响比 IPv4 小"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["address_family_extrema.ipv4.max_to_min_drop", "address_family_extrema.ipv6.max_to_min_drop", "current.new_cumulative_ipv4_prefix_count", "current.new_cumulative_ipv6_prefix_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-13",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "update_activity_availability",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:capability_observations.update_activity",
+        "title": "Update/Withdraw 能力边界",
+        "rationale": "验收文档要求覆盖 Update 活动，但当前页面 API 未暴露该轨道"
+      },
+      "question": "这次事件的 BGP Update 和 Withdraw 活动怎么变化？",
+      "intent_labels": ["update_activity", "capability_boundary"],
+      "entities": {"binding_ref": "event_binding", "metric": "update_activity"},
+      "operators": ["check_capability"],
+      "answerability": "unsupported",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "boundary",
+        "facts": [
+          {"evidence_ref": "capability_observations.update_activity.status", "value": "not_exposed_by_current_page_api", "unit": null}
+        ],
+        "required_answer_points": ["当前页面解析能力、overview 和 series 没有 Update/Withdraw 轨道，因此不能给出时序结论"],
+        "required_limitations": ["缺少字段不等于 Update 数量为 0"],
+        "forbidden_assertions": ["没有 Update", "Withdraw 为 0"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["capability_observations.update_activity.status", "capability_observations.update_activity.reason"],
+      "hard_gates": ["event_binding", "publication_binding", "no_forbidden_assertion", "missing_not_zero"]
+    },
+    {
+      "case_id": "P0-D-14",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "metric_semantics",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:series.track_definitions",
+        "title": "指标定义",
+        "rationale": "避免把部分不可见、完全不可见和方向数混为一谈"
+      },
+      "question": "“中断前缀”“完全中断前缀”和“不可见方向”分别是什么意思？",
+      "intent_labels": ["metric_definition"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["explain_metric"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "explanation",
+        "facts": [
+          {"evidence_ref": "series.track_definitions.interrupted_prefix_count", "value": "部分中断与完全中断的固定唯一前缀合计", "unit": null},
+          {"evidence_ref": "series.track_definitions.completely_interrupted_prefix_count", "value": "全部预期独立 peer ASN 方向均不可见的固定唯一前缀", "unit": null},
+          {"evidence_ref": "series.track_definitions.invisible_direction_count", "value": "按 RRC25 peer ASN 去重的不可见观察方向", "unit": null}
+        ],
+        "required_answer_points": ["分别说明分子、观测方向和固定 cohort 语义"],
+        "required_limitations": ["任一指标都不是终端用户连接数"],
+        "forbidden_assertions": ["一个不可见方向等于一个断网用户"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["series.track_definitions.interrupted_prefix_count", "series.track_definitions.completely_interrupted_prefix_count", "series.track_definitions.invisible_direction_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-15",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "new_prefix_resources",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:current",
+        "title": "窗口内新出现前缀",
+        "rationale": "新路由与固定 cohort 分开计算"
+      },
+      "question": "窗口内新出现了多少 IPv4 和 IPv6 前缀？",
+      "intent_labels": ["new_prefix", "address_family"],
+      "entities": {"binding_ref": "event_binding", "address_family": "both"},
+      "operators": ["read_current"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "current.new_cumulative_ipv4_prefix_count", "value": 700, "unit": "prefix"},
+          {"evidence_ref": "current.new_cumulative_ipv6_prefix_count", "value": 1, "unit": "prefix"},
+          {"evidence_ref": "current.new_visible_ipv4_prefix_count", "value": 111, "unit": "prefix"},
+          {"evidence_ref": "current.new_visible_ipv6_prefix_count", "value": 1, "unit": "prefix"}
+        ],
+        "required_answer_points": ["窗口内累计新增 IPv4 前缀 700、IPv6 前缀 1；截止时当前可见分别为 111 和 1"],
+        "required_limitations": ["累计出现与当前可见是不同指标，新前缀不回填固定 cohort"],
+        "forbidden_assertions": ["新增前缀抵消了固定前缀中断"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["current.new_cumulative_ipv4_prefix_count", "current.new_cumulative_ipv6_prefix_count", "current.new_visible_ipv4_prefix_count", "current.new_visible_ipv6_prefix_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-16",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "path_sample_semantics",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:paths.first_relation",
+        "title": "路径关联与真实样本",
+        "rationale": "路径证据必须可核对且不越界为依赖关系"
+      },
+      "question": "给我一个实际路径关联和路径样本，它能说明什么？",
+      "intent_labels": ["path_association", "evidence_sample"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_path_downstream", "read_path_sample"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "paths.first_relation.affected_asn", "value": 49666, "unit": "asn"},
+          {"evidence_ref": "paths.first_relation.downstream_asn", "value": 58224, "unit": "asn"},
+          {"evidence_ref": "paths.first_relation.sample.as_path_canonical", "value": "33874 6758 1273 3257 49666 48159 58224", "unit": null},
+          {"evidence_ref": "paths.first_relation.sample.prefix", "value": "109.74.224.0/20", "unit": "prefix"}
+        ],
+        "required_answer_points": ["示例关系为 AS49666 路径关联 AS58224；样本前缀 109.74.224.0/20，路径为 33874 6758 1273 3257 49666 48159 58224"],
+        "required_limitations": ["页面每个关系最多展示 3 个样本；有序路径共同出现不表示客户依赖、传播方向或原因"],
+        "forbidden_assertions": ["AS49666 的故障传播给 AS58224", "AS58224 是 AS49666 的客户"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["paths.first_relation.affected_asn", "paths.first_relation.downstream_asn", "paths.first_relation.sample.as_path_canonical", "paths.first_relation.relationship_semantics", "paths.path_sample_limit_per_relation"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-17",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "evidence_trace",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:audit",
+        "title": "证据身份与哈希",
+        "rationale": "结论必须能够下钻到不可变发布和数据制品"
+      },
+      "question": "这些结论能追溯到什么证据身份？",
+      "intent_labels": ["evidence_trace", "audit"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_audit"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "audit.dataset_id", "value": "general_read_model_dataset_v1_63be5d12ef847d74824efe5be9892f8a", "unit": null},
+          {"evidence_ref": "audit.implementation_id", "value": "git:d1f4d11fa7467dad2612e3776bbb5573c633064b", "unit": null},
+          {"evidence_ref": "audit.event_content_sha256", "value": "faad748847d97d4e6809898ae80e1a691a0d0e248896cfc3459d7df32c5ec127", "unit": null}
+        ],
+        "required_answer_points": ["回答绑定 publication、revision、dataset、implementation 和事件内容 SHA-256"],
+        "required_limitations": ["聚合制品哈希可证明读取身份，不自动证明事件原因"],
+        "forbidden_assertions": ["有哈希就证明了根因"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.publication_id", "identity.revision", "audit.dataset_id", "audit.implementation_id", "audit.event_content_sha256"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-18",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "data_completeness",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:identity",
+        "title": "数据完整度",
+        "rationale": "区分数据完整、事件结束未知和能力缺失"
+      },
+      "question": "这份页面数据完整吗，还缺什么？",
+      "intent_labels": ["data_completeness", "capability_boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_quality", "read_capabilities"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "partial",
+        "facts": [
+          {"evidence_ref": "identity.quality_state", "value": "complete", "unit": null},
+          {"evidence_ref": "identity.missing_slot_count", "value": 0, "unit": "slot"},
+          {"evidence_ref": "series.point_count", "value": 3455, "unit": "state_point"},
+          {"evidence_ref": "capability_observations.update_activity.status", "value": "not_exposed_by_current_page_api", "unit": null}
+        ],
+        "required_answer_points": ["当前 publication 的 3,455 个时序点缺槽为 0、质量状态 complete；但 Update 活动、DNS/HTTP/流量和真实用户体验不在当前页面 API"],
+        "required_limitations": ["数据完整只相对于本 publication 的已声明范围"],
+        "forbidden_assertions": ["缺槽为 0 表示已经拥有所有证明原因的数据"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.quality_state", "identity.missing_slot_count", "series.point_count", "capability_observations.update_activity.status", "capability_observations.dns_http_traffic_user_experience.status"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-D-19",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "publication_revision_finality",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:identity",
+        "title": "publication、revision 与最终性",
+        "rationale": "防止混用快照或把数据截止当事件结束"
+      },
+      "question": "这页绑定的是哪个 publication 和 revision，数据到哪里，是否最终？",
+      "intent_labels": ["publication_identity", "finality"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_identity"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "identity.publication_id", "value": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f", "unit": null},
+          {"evidence_ref": "identity.revision", "value": 1, "unit": null},
+          {"evidence_ref": "identity.data_through", "value": "2026-03-11T00:00:00Z", "unit": "UTC"},
+          {"evidence_ref": "identity.is_final_in_data_range", "value": false, "unit": null}
+        ],
+        "required_answer_points": ["publication 为 ...989f698f，revision=1，data_through 为 2026-03-11T00:00:00Z，数据范围内尚非最终"],
+        "required_limitations": ["publication 是不可变查询快照，不等于 revision；data_through 不等于事件结束时间"],
+        "forbidden_assertions": ["revision 1 表示只有一个时序点", "data_through 表示事件已结束"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.publication_id", "identity.revision", "identity.data_through", "identity.is_final_in_data_range", "identity.lifecycle_state"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "evidence_resolvable"]
+    },
+    {
+      "case_id": "P0-D-20",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "direct",
+      "coverage_key": "rrc25_proof_boundary",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:semantic_boundaries",
+        "title": "RRC25 证明边界",
+        "rationale": "任何报告和问答都必须区分控制面事实与用户影响/原因"
+      },
+      "question": "仅凭这页 RRC25 数据能证明什么、不能证明什么？",
+      "intent_labels": ["evidence_boundary", "metric_explanation"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["explain_boundary"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "explanation",
+        "facts": [
+          {"evidence_ref": "identity.collector_id", "value": "rrc25", "unit": null},
+          {"evidence_ref": "semantic_boundaries.overview", "value": "rrc25_control_plane_observation_not_user_impact_or_cause", "unit": null}
+        ],
+        "required_answer_points": ["能够证明固定 cohort 在 RRC25 独立观察方向上的路由可见性变化、范围和时序", "不能证明真实用户可达性、全国完全断网、原因、责任、DNS/HTTP/流量状态"],
+        "required_limitations": ["路径关联也不表示依赖、传播或原因"],
+        "forbidden_assertions": ["RRC25 已证明全国断网", "RRC25 已证明政府行为"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.collector_id", "semantic_boundaries.overview", "semantic_boundaries.paths", "semantic_boundaries.cannot_prove"],
+      "hard_gates": ["event_binding", "publication_binding", "evidence_resolvable", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-M-01",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "multi_turn",
+      "coverage_key": "same_event_follow_up",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:page_url",
+        "title": "同一事件连续追问",
+        "rationale": "P1 必须围绕已绑定事件连续回答"
+      },
+      "question": "围绕同一事件从概述追问峰值和末端状态",
+      "turns": [
+        {"turn_id": 1, "user": "这次伊朗事件发生了什么？", "state_expectation": {"inherit": [], "set": {"event_binding": "event_binding"}, "clear": []}, "answer_expectation": "给出 RRC25 事件概述并显示 publication 边界"},
+        {"turn_id": 2, "user": "它什么时候最严重？", "state_expectation": {"inherit": ["event_binding"], "set": {"metric": "interrupted_prefix_count"}, "clear": []}, "answer_expectation": "把它解析为中断前缀峰值，北京时间 2026-02-28 07:15、3,855"},
+        {"turn_id": 3, "user": "到最后还剩多少？", "state_expectation": {"inherit": ["event_binding", "metric"], "set": {}, "clear": []}, "answer_expectation": "回答数据截止时仍有 1,024 个中断前缀并说明不是事件结束"}
+      ],
+      "intent_labels": ["event_summary", "timeline_peak", "current_state"],
+      "entities": {"binding_ref": "event_binding", "metric": "interrupted_prefix_count"},
+      "operators": ["read_overview", "series_max", "read_current"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "peaks.interrupted_prefix_count.value", "value": 3855, "unit": "prefix"},
+          {"evidence_ref": "current.interrupted_prefix_count", "value": 1024, "unit": "prefix"}
+        ],
+        "required_answer_points": ["三轮始终绑定同一事件和 publication", "指代它继承事件，最后继承中断前缀指标"],
+        "required_limitations": ["末端状态不等于实时或事件结束"],
+        "forbidden_assertions": ["第二轮切换成完全不可见前缀峰值", "第三轮使用其他事件数据"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.publication_id", "peaks.interrupted_prefix_count.state_point_local", "peaks.interrupted_prefix_count.value", "current.interrupted_prefix_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "context_isolation"]
+    },
+    {
+      "case_id": "P0-M-02",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "multi_turn",
+      "coverage_key": "asn_correction",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:asns.top_items",
+        "title": "ASN 修正",
+        "rationale": "用户修正实体时必须覆盖旧 ASN 而不混用字段"
+      },
+      "question": "查询 AS48715 后修正为 AS49556",
+      "turns": [
+        {"turn_id": 1, "user": "AS48715 的情况呢？", "state_expectation": {"inherit": ["event_binding"], "set": {"asn": 48715}, "clear": []}, "answer_expectation": "回答 AS48715 的 73 个固定前缀等字段"},
+        {"turn_id": 2, "user": "不是它，我要问 AS49556。", "state_expectation": {"inherit": ["event_binding"], "set": {"asn": 49556}, "clear": ["asn:48715"]}, "answer_expectation": "只回答 AS49556：50 个固定前缀、完全不可见峰值 50、不可见方向峰值 2,103"}
+      ],
+      "intent_labels": ["asn_detail", "entity_correction"],
+      "entities": {"binding_ref": "event_binding", "asn": 49556},
+      "operators": ["lookup_asn", "replace_entity"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "asns.top_items.1.fixed_prefix_count", "value": 50, "unit": "prefix"},
+          {"evidence_ref": "asns.top_items.1.peak_complete_prefix_count", "value": 50, "unit": "prefix"},
+          {"evidence_ref": "asns.top_items.1.peak_invisible_direction_count", "value": 2103, "unit": "peer_asn_direction"}
+        ],
+        "required_answer_points": ["第二轮覆盖 ASN 槽位，保留事件/publication，清除 AS48715 的事实"],
+        "required_limitations": ["AS 排名不是原因排序"],
+        "forbidden_assertions": ["把 AS48715 的 73 个固定前缀写给 AS49556"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["asns.top_items.0.asn", "asns.top_items.1.asn", "asns.top_items.1.fixed_prefix_count", "asns.top_items.1.peak_invisible_direction_count"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "context_isolation"]
+    },
+    {
+      "case_id": "P0-M-03",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "multi_turn",
+      "coverage_key": "topic_switch_within_event",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:address_family_extrema",
+        "title": "同事件主题切换",
+        "rationale": "事件不变时允许从地址族切换到路径证据"
+      },
+      "question": "从 IPv4/IPv6 比较切换到路径样本",
+      "turns": [
+        {"turn_id": 1, "user": "IPv4 和 IPv6 哪个变化更明显？", "state_expectation": {"inherit": ["event_binding"], "set": {"topic": "address_family", "address_family": "both"}, "clear": []}, "answer_expectation": "按不同单位分别报告 IPv4 下降 579,072 与 IPv6 下降 4 个 /48 等价块"},
+        {"turn_id": 2, "user": "那给我看一个实际路径样本。", "state_expectation": {"inherit": ["event_binding"], "set": {"topic": "path_sample"}, "clear": ["address_family"]}, "answer_expectation": "返回绑定同一 publication 的真实路径样本，并说明不是依赖或原因"}
+      ],
+      "intent_labels": ["address_family_comparison", "path_sample", "topic_switch"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["compare_address_families", "read_path_sample"],
+      "answerability": "answerable",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "fact",
+        "facts": [
+          {"evidence_ref": "address_family_extrema.ipv4.max_to_min_drop", "value": 579072, "unit": "unique_ipv4_address"},
+          {"evidence_ref": "address_family_extrema.ipv6.max_to_min_drop", "value": 4, "unit": "ipv6_slash48_equivalent"},
+          {"evidence_ref": "paths.first_relation.sample.prefix", "value": "109.74.224.0/20", "unit": "prefix"}
+        ],
+        "required_answer_points": ["主题切换后保留事件/publication，但不把地址族比较槽位带进路径解释"],
+        "required_limitations": ["不同地址族单位不可直接比较为用户影响"],
+        "forbidden_assertions": ["路径样本证明 IPv4 下降原因"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["address_family_extrema.ipv4.max_to_min_drop", "address_family_extrema.ipv6.max_to_min_drop", "paths.first_relation.sample.prefix", "paths.first_relation.relationship_semantics"],
+      "hard_gates": ["event_binding", "publication_binding", "fact_match", "context_isolation"]
+    },
+    {
+      "case_id": "P0-M-04",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "multi_turn",
+      "coverage_key": "event_switch_requires_reference",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "docs/国家中断通用观测页API合同.md#一统一解析入口",
+        "title": "事件切换与必要澄清",
+        "rationale": "没有新事件引用时不得沿用旧事件事实回答另一次事件"
+      },
+      "question": "用户要求切换到另一次伊朗事件但未提供唯一引用",
+      "turns": [
+        {"turn_id": 1, "user": "这次事件的峰值是多少？", "state_expectation": {"inherit": ["event_binding"], "set": {"metric": "interrupted_prefix_count"}, "clear": []}, "answer_expectation": "回答当前事件峰值 3,855"},
+        {"turn_id": 2, "user": "换成伊朗另一次事件。", "state_expectation": {"inherit": [], "set": {"pending_event_switch": true}, "clear": ["event_binding", "metric", "asn", "topic"]}, "answer_expectation": "询问最少必要的新事件引用或时间，不复用 3,855"},
+        {"turn_id": 3, "user": "就是最近那次。", "state_expectation": {"inherit": ["pending_event_switch"], "set": {}, "clear": []}, "answer_expectation": "仍然澄清；不能默认最新事件"}
+      ],
+      "intent_labels": ["event_switch", "clarification"],
+      "entities": {"binding_ref": "event_binding", "requested_event": "unspecified_other_ir_event"},
+      "operators": ["clear_context", "request_clarification"],
+      "answerability": "clarify",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "clarification",
+        "facts": [],
+        "required_answer_points": ["清除旧事件事实并请求新事件引用、检测时间或候选选择"],
+        "required_limitations": ["不能默认最近事件，也不能把旧 publication 当新事件"],
+        "forbidden_assertions": ["另一次事件的峰值也是 3,855", "自动选择最新事件"],
+        "failure_closed": true
+      },
+      "evidence_refs": ["identity.legacy_reference", "identity.publication_id"],
+      "hard_gates": ["event_binding", "publication_binding", "context_isolation", "invalid_answer_not_published"]
+    },
+    {
+      "case_id": "P0-M-05",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "multi_turn",
+      "coverage_key": "evidence_then_cause_boundary",
+      "source": {
+        "type": "current_product_must_answer",
+        "locator": "evidence:semantic_boundaries",
+        "title": "从结论追问证据与原因",
+        "rationale": "多轮中证据追问不能被原因追问诱导越界"
+      },
+      "question": "从峰值结论继续追问证据和真实原因",
+      "turns": [
+        {"turn_id": 1, "user": "最严重时有多少前缀受影响？", "state_expectation": {"inherit": ["event_binding"], "set": {"metric": "interrupted_prefix_count"}, "clear": []}, "answer_expectation": "回答 3,855 和峰值时间"},
+        {"turn_id": 2, "user": "证据在哪里？", "state_expectation": {"inherit": ["event_binding", "metric"], "set": {"topic": "evidence"}, "clear": []}, "answer_expectation": "指向 series、publication、dataset 和内容哈希"},
+        {"turn_id": 3, "user": "所以到底是谁造成的？", "state_expectation": {"inherit": ["event_binding"], "set": {"topic": "cause_boundary"}, "clear": ["metric"]}, "answer_expectation": "说明当前证据不能确定原因或责任，列出需要的外部证据"}
+      ],
+      "intent_labels": ["timeline_peak", "evidence_trace", "cause_boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["series_max", "read_audit", "explain_boundary"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "partial",
+        "facts": [
+          {"evidence_ref": "peaks.interrupted_prefix_count.value", "value": 3855, "unit": "prefix"},
+          {"evidence_ref": "audit.dataset_id", "value": "general_read_model_dataset_v1_63be5d12ef847d74824efe5be9892f8a", "unit": null}
+        ],
+        "required_answer_points": ["前两轮给出事实和证据；第三轮明确原因未知并保持 RRC25 边界"],
+        "required_limitations": ["控制面相关性和路径共同出现不能证明原因或责任"],
+        "forbidden_assertions": ["政府造成此次中断", "某个 AS 是根因"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["peaks.interrupted_prefix_count.value", "audit.dataset_id", "audit.event_content_sha256", "semantic_boundaries.cannot_prove"],
+      "hard_gates": ["event_binding", "publication_binding", "context_isolation", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-B-01",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "boundary",
+      "coverage_key": "nationwide_user_connectivity",
+      "source": {
+        "type": "public_question_transcription",
+        "locator": "https://www.reddit.com/r/AskTheWorld/comments/1rgx87h/iranians_do_you_still_have_internet/",
+        "title": "Iranians - do you still have internet?",
+        "rationale": "保留真实用户关心的可用性问法，不采用帖子回答或用户身份",
+        "collected_at": "2026-08-08",
+        "original_language": "en",
+        "transcription_note": "中文问题是对公开标题所表达需求的匿名化转述；不采用正文、回答或用户身份"
+      },
+      "question": "伊朗人现在还有互联网吗，是不是全国都断了？",
+      "intent_labels": ["user_connectivity", "nationwide_outage", "boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["explain_boundary", "read_current"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "boundary",
+        "facts": [
+          {"evidence_ref": "current.interrupted_prefix_count", "value": 1024, "unit": "prefix"},
+          {"evidence_ref": "semantic_boundaries.overview", "value": "rrc25_control_plane_observation_not_user_impact_or_cause", "unit": null}
+        ],
+        "required_answer_points": ["只能报告数据截止时的 RRC25 路由不可见状态", "不能回答真实用户当前是否可上网或全国是否完全断网"],
+        "required_limitations": ["需要数据面、流量、DNS/HTTP 和本地测量才能评估用户连接"],
+        "forbidden_assertions": ["伊朗全国已完全断网", "所有伊朗用户都无法上网"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["current.interrupted_prefix_count", "identity.data_through", "semantic_boundaries.cannot_prove"],
+      "hard_gates": ["event_binding", "publication_binding", "evidence_resolvable", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-B-02",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "boundary",
+      "coverage_key": "technical_cause",
+      "source": {
+        "type": "public_question_transcription",
+        "locator": "https://www.reddit.com/r/networking/comments/dyf7ls/from_a_purely_technical_perspective_what_manner/",
+        "title": "From a purely technical perspective, what manner do you think Iran cut off the internet?",
+        "rationale": "公开技术讨论中的原因问法容易诱导把推测写成事实",
+        "collected_at": "2026-08-08",
+        "original_language": "en",
+        "transcription_note": "中文问题是对公开标题所表达需求的匿名化转述；不采用正文、回答或用户身份"
+      },
+      "question": "从技术上看，这次是不是通过撤销 BGP 路由切断互联网的？",
+      "intent_labels": ["cause", "withdraw", "boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["explain_boundary", "check_capability"],
+      "answerability": "unsupported",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "boundary",
+        "facts": [
+          {"evidence_ref": "capability_observations.update_activity.status", "value": "not_exposed_by_current_page_api", "unit": null}
+        ],
+        "required_answer_points": ["当前页面/API 没有 Update/Withdraw 轨道，也没有因果证据，不能确认通过撤路实现"],
+        "required_limitations": ["公开讨论只能作为问题来源，不能作为本事件证据"],
+        "forbidden_assertions": ["此次就是通过 BGP 撤路实施", "政府下令撤销了路由"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["capability_observations.update_activity.status", "semantic_boundaries.cannot_prove"],
+      "hard_gates": ["event_binding", "publication_binding", "no_forbidden_assertion", "missing_not_zero"]
+    },
+    {
+      "case_id": "P0-B-03",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "boundary",
+      "coverage_key": "bgp_vs_actual_reachability",
+      "source": {
+        "type": "public_question_transcription",
+        "locator": "https://ipinfo.io/blog/measuring-iran-internet-collapse-2026",
+        "title": "Is it actually responding, not just visible in BGP?",
+        "rationale": "公开测量文章明确提出 BGP 可见与实际响应是不同问题；仅用于形成问法",
+        "collected_at": "2026-08-08",
+        "original_language": "en",
+        "transcription_note": "中文问题是对公开标题所表达需求的匿名化转述；不采用文章测量结果作为本事件事实"
+      },
+      "question": "BGP 路由还可见，是否就能证明用户真的连得上？",
+      "intent_labels": ["control_plane_vs_data_plane", "boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["explain_boundary"],
+      "answerability": "unsupported",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "boundary",
+        "facts": [
+          {"evidence_ref": "identity.collector_id", "value": "rrc25", "unit": null},
+          {"evidence_ref": "capability_observations.dns_http_traffic_user_experience.status", "value": "not_in_current_page_api", "unit": null}
+        ],
+        "required_answer_points": ["BGP 可见性只说明控制面路由观测，不能证明数据包、DNS、HTTP 或应用真实可达"],
+        "required_limitations": ["需要独立数据面测量才能评价实际响应"],
+        "forbidden_assertions": ["路由可见就一定可上网", "路由不可见就一定所有用户断网"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["identity.collector_id", "semantic_boundaries.overview", "capability_observations.dns_http_traffic_user_experience.status"],
+      "hard_gates": ["event_binding", "publication_binding", "evidence_resolvable", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-B-04",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "boundary",
+      "coverage_key": "external_measurement_request",
+      "source": {
+        "type": "public_question_transcription",
+        "locator": "https://ooni.github.io/support/faq/",
+        "title": "Can I measure internet censorship remotely in another country?",
+        "rationale": "公开 FAQ 中的远程测量和证据疑问用于覆盖外部数据请求",
+        "collected_at": "2026-08-08",
+        "original_language": "en",
+        "transcription_note": "中文问题是对公开 FAQ 所表达需求的匿名化转述；不采用 FAQ 作为本事件事实"
+      },
+      "question": "能不能直接用 OONI、IODA 或 Cloudflare 数据确认这次真实断网？",
+      "intent_labels": ["external_evidence", "multi_source", "boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["check_capability", "explain_future_phase"],
+      "answerability": "unsupported",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "boundary",
+        "facts": [
+          {"evidence_ref": "capability_observations.dns_http_traffic_user_experience.status", "value": "not_in_current_page_api", "unit": null}
+        ],
+        "required_answer_points": ["P1 的仅当前页面/API 范围不读取外部来源；多源证据属于后续 P4，并需独立来源身份与时间对齐"],
+        "required_limitations": ["不能把外部来源名称当成已经完成的交叉验证"],
+        "forbidden_assertions": ["OONI 已确认本事件原因", "已自动读取 Cloudflare/IODA"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["capability_observations.dns_http_traffic_user_experience.status", "semantic_boundaries.cannot_prove"],
+      "hard_gates": ["event_binding", "publication_binding", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-B-05",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "boundary",
+      "coverage_key": "responsibility_and_economic_impact",
+      "source": {
+        "type": "public_question_transcription",
+        "locator": "https://www.reddit.com/r/OutOfTheLoop/comments/syud21/whats_going_on_with_iran_and_its_global_internet/",
+        "title": "What's going on with Iran and its global internet being shut down?",
+        "rationale": "公开问法常把事件、动机、责任和影响混在一起；只保留问题结构",
+        "collected_at": "2026-08-08",
+        "original_language": "en",
+        "transcription_note": "中文问题是对公开标题所表达需求的匿名化转述；不采用正文、回答或用户身份"
+      },
+      "question": "谁应该为这次中断负责，造成了多少用户和经济损失？",
+      "intent_labels": ["responsibility", "user_impact", "economic_impact", "boundary"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["explain_boundary"],
+      "answerability": "unsupported",
+      "target_phase": "P1",
+      "expected": {
+        "answer_type": "boundary",
+        "facts": [
+          {"evidence_ref": "semantic_boundaries.overview", "value": "rrc25_control_plane_observation_not_user_impact_or_cause", "unit": null}
+        ],
+        "required_answer_points": ["当前 RRC25 页面不能认定责任主体，也没有用户数或经济损失数据"],
+        "required_limitations": ["责任和损失需要独立法律、运营、用户和经济证据"],
+        "forbidden_assertions": ["指定政府、运营商或 AS 应负责", "给出未经数据支持的用户数或金额"],
+        "failure_closed": false
+      },
+      "evidence_refs": ["semantic_boundaries.overview", "semantic_boundaries.cannot_prove"],
+      "hard_gates": ["event_binding", "publication_binding", "no_forbidden_assertion"]
+    },
+    {
+      "case_id": "P0-X-01",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "exception",
+      "coverage_key": "null_event_end_not_zero",
+      "source": {
+        "type": "boundary_exception_construct",
+        "locator": "evidence:event.event_end_at_utc",
+        "title": "事件结束时间为空",
+        "rationale": "验证 null 不被编码为 0、窗口末端或已结束"
+      },
+      "question": "event_end_at_utc 是 null，事件持续了多久？",
+      "intent_labels": ["null_semantics", "event_duration"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["read_null_semantics"],
+      "answerability": "partial",
+      "target_phase": "P1",
+      "fixture": {
+        "type": "actual_null_value",
+        "description": "当前 publication 的 event_end_at_utc 与 event_duration_seconds 均为 null",
+        "changes": {}
+      },
+      "expected": {
+        "answer_type": "partial",
+        "facts": [
+          {"evidence_ref": "event.event_end_at_utc", "value": null, "unit": "UTC"},
+          {"evidence_ref": "event.event_duration_seconds", "value": null, "unit": "second"}
+        ],
+        "required_answer_points": ["结束时间和持续时长未知，只能给出已观测窗口"],
+        "required_limitations": ["null 不是 0 秒，也不是 2026-03-11 08:00 已结束"],
+        "forbidden_assertions": ["事件持续 0 秒", "事件在窗口末端结束"],
+        "failure_closed": true
+      },
+      "evidence_refs": ["event.event_end_at_utc", "event.event_duration_seconds", "identity.lifecycle_state"],
+      "hard_gates": ["event_binding", "publication_binding", "missing_not_zero", "invalid_answer_not_published"]
+    },
+    {
+      "case_id": "P0-X-02",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "exception",
+      "coverage_key": "capability_absent_not_zero",
+      "source": {
+        "type": "boundary_exception_construct",
+        "locator": "evidence:capability_observations.update_activity",
+        "title": "能力未暴露",
+        "rationale": "验证字段缺失不被解释为无活动"
+      },
+      "question": "series 里没有 Update 轨道，是不是说明 Update 数量一直为 0？",
+      "intent_labels": ["missing_capability", "update_activity"],
+      "entities": {"binding_ref": "event_binding", "metric": "update_activity"},
+      "operators": ["check_capability"],
+      "answerability": "invalid_data",
+      "target_phase": "P1",
+      "fixture": {
+        "type": "absent_capability_field",
+        "description": "当前解析、overview 和 series 没有 Update/Withdraw 字段",
+        "changes": {}
+      },
+      "expected": {
+        "answer_type": "failure",
+        "facts": [
+          {"evidence_ref": "capability_observations.update_activity.status", "value": "not_exposed_by_current_page_api", "unit": null}
+        ],
+        "required_answer_points": ["标记能力未提供，不能生成 Update 时序或零值"],
+        "required_limitations": ["没有字段与值为 0 是两种状态"],
+        "forbidden_assertions": ["Update 为 0", "没有 Withdraw"],
+        "failure_closed": true
+      },
+      "evidence_refs": ["capability_observations.update_activity.status", "capability_observations.update_activity.reason"],
+      "hard_gates": ["event_binding", "publication_binding", "missing_not_zero", "invalid_answer_not_published"]
+    },
+    {
+      "case_id": "P0-X-03",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "exception",
+      "coverage_key": "evidence_object_not_found",
+      "source": {
+        "type": "boundary_exception_construct",
+        "locator": "evidence:asns.not_found_probe",
+        "title": "指定 ASN 无结果",
+        "rationale": "验证空分页不被解释为 ASN 指标全为 0"
+      },
+      "question": "AS999999 在这次事件中的前缀中断都是 0 吗？",
+      "intent_labels": ["asn_detail", "not_found"],
+      "entities": {"binding_ref": "event_binding", "asn": 999999},
+      "operators": ["lookup_asn", "handle_not_found"],
+      "answerability": "invalid_data",
+      "target_phase": "P1",
+      "fixture": {
+        "type": "actual_empty_query_result",
+        "description": "绑定 publication 的 ASN 查询返回 total=0、items=[]",
+        "changes": {}
+      },
+      "expected": {
+        "answer_type": "failure",
+        "facts": [
+          {"evidence_ref": "asns.not_found_probe.total", "value": 0, "unit": "result"}
+        ],
+        "required_answer_points": ["没有找到 AS999999 的观测记录，不能给它补出零指标"],
+        "required_limitations": ["查询结果数为 0 表示对象未找到，不表示该 ASN 所有指标为 0"],
+        "forbidden_assertions": ["AS999999 的固定前缀数为 0", "AS999999 没有异常"],
+        "failure_closed": true
+      },
+      "evidence_refs": ["asns.not_found_probe.query", "asns.not_found_probe.total", "asns.not_found_probe.items"],
+      "hard_gates": ["event_binding", "publication_binding", "missing_not_zero", "invalid_answer_not_published"]
+    },
+    {
+      "case_id": "P0-X-04",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "exception",
+      "coverage_key": "publication_identity_conflict",
+      "source": {
+        "type": "boundary_exception_construct",
+        "locator": "docs/国家中断通用观测页API合同.md#五四类查询接口",
+        "title": "跨 API publication 冲突",
+        "rationale": "任何身份冲突都不得拼成同一回答"
+      },
+      "question": "overview 是当前 publication，但 series 返回另一个 publication，能继续回答峰值吗？",
+      "intent_labels": ["publication_conflict", "failure_closed"],
+      "entities": {"binding_ref": "event_binding", "requested_publication": "country_outage_publication_conflict_fixture"},
+      "operators": ["validate_identity", "fail_closed"],
+      "answerability": "invalid_data",
+      "target_phase": "P1",
+      "fixture": {
+        "type": "synthetic_publication_conflict",
+        "description": "在 evidence snapshot 副本中把 series.publication_id 改为冲突值",
+        "changes": {"series.publication_id": "country_outage_publication_conflict_fixture"}
+      },
+      "expected": {
+        "answer_type": "failure",
+        "facts": [],
+        "required_answer_points": ["拒绝组合响应，报告 publication 身份冲突并要求重新固定同一快照"],
+        "required_limitations": ["不能从 overview 取范围、从冲突 series 取峰值"],
+        "forbidden_assertions": ["继续发布 3,855 峰值作为有效答案", "静默选择任一 publication"],
+        "failure_closed": true
+      },
+      "evidence_refs": ["identity.publication_id", "api_endpoints.overview.etag", "api_endpoints.series.etag"],
+      "hard_gates": ["event_binding", "publication_binding", "invalid_answer_not_published"]
+    },
+    {
+      "case_id": "P0-X-05",
+      "revision": "p0-v1-20260808-ir-r1",
+      "category": "exception",
+      "coverage_key": "invalid_series_shape",
+      "source": {
+        "type": "boundary_exception_construct",
+        "locator": "docs/国家中断通用观测页API合同.md#七缺失和值语义",
+        "title": "时序长度不一致",
+        "rationale": "验证无效响应不会被截断后继续生成结论"
+      },
+      "question": "series 声明 3,455 个点，但 timestamps 和轨道长度少了一个，应该怎么回答？",
+      "intent_labels": ["invalid_response", "series_shape", "failure_closed"],
+      "entities": {"binding_ref": "event_binding"},
+      "operators": ["validate_series_shape", "fail_closed"],
+      "answerability": "invalid_data",
+      "target_phase": "P1",
+      "fixture": {
+        "type": "synthetic_series_length_mismatch",
+        "description": "在 evidence snapshot 副本中把 timestamp_count 改为 3454，保留 point_count=3455",
+        "changes": {"series.timestamp_count": 3454}
+      },
+      "expected": {
+        "answer_type": "failure",
+        "facts": [
+          {"evidence_ref": "series.point_count", "value": 3455, "unit": "state_point"},
+          {"evidence_ref": "series.timestamp_count", "value": 3455, "unit": "timestamp"}
+        ],
+        "required_answer_points": ["基准状态下长度一致；应用冲突 fixture 后必须拒绝计算峰值并报告响应无效"],
+        "required_limitations": ["不能通过截断、补零或连接缺口掩盖长度错误"],
+        "forbidden_assertions": ["忽略最后一个点继续发布", "给缺失点补 0"],
+        "failure_closed": true
+      },
+      "evidence_refs": ["series.point_count", "series.timestamp_count", "series.missing_slot_count"],
+      "hard_gates": ["event_binding", "publication_binding", "missing_not_zero", "invalid_answer_not_published"]
+    }
+  ]
+}

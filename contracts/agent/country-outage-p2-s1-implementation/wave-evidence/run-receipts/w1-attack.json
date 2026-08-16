@@ -1,0 +1,165 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
+      "sha256": "96caead22556a91c2c0bb1c360d84488a70ef9d5e106836e58461b4180df3a05",
+      "size_bytes": 33771
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
+      "sha256": "bb5f7a9ab338bc71f13e4d954ecf0aaf29032fdb596caa766a201c5a3f0e47e2",
+      "size_bytes": 84902
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_tools.py",
+      "sha256": "52669b19d118bb939b901313daa0a98500075f839a2d059cbb9bced3c941a36f",
+      "size_bytes": 61327
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_operators.py",
+      "sha256": "504eebfad813d1bf8b508358f4623d65a0b240889dd00b22e083be611145f580",
+      "size_bytes": 147874
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json",
+      "sha256": "bd2742a16468f71b551422bcd1d9b10a878b1f6c3a5387b799aca3d2d6f6c9a5",
+      "size_bytes": 33246
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json",
+      "sha256": "40a80c26ee9cc60a3d713534e6c58277d413d9506b08ab27eb3c8c049d4878b3",
+      "size_bytes": 12520
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json",
+      "sha256": "dd154f4d6dc0dcc8d001150395c1f110367576c60ed2329fc5d6bc564658fb56",
+      "size_bytes": 185219
+    }
+  ],
+  "category": "attack",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests.test_op10_op36_trusted_projection_binding_attacks",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_cross_publication_and_incomplete_inputs_fail_closed",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_operator_functions_do_not_call_other_operator_functions",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_module_has_no_file_network_tool_or_model_dependency"
+  ],
+  "completed_at_utc": "2026-08-14T03:19:25Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n[stderr]\ntest_op10_op36_trusted_projection_binding_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_cross_publication_and_incomplete_inputs_fail_closed (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\ntest_operator_functions_do_not_call_other_operator_functions (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\ntest_module_has_no_file_network_tool_or_model_dependency (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in <ELAPSED>\n\nOK\n",
+  "normalized_output_sha256": "42bfd52d32d44502d00fad8de7fbf70cfd88f7b860a60c3aba566ed7f88c62d1",
+  "passed": true,
+  "receipt_digest": "edbcb8619ce4078ab51950d2191eb24acb66750975b1f07ea8201f7f1fd23671",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.0.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests.test_op10_op36_trusted_projection_binding_attacks",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_cross_publication_and_incomplete_inputs_fail_closed",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_operator_functions_do_not_call_other_operator_functions",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_module_has_no_file_network_tool_or_model_dependency"
+  ],
+  "skipped_count": 0,
+  "stage": "W1",
+  "started_at_utc": "2026-08-14T03:19:25Z",
+  "suite_id": "w1-attack",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-10",
+        "OP-12",
+        "OP-14",
+        "OP-36"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests.test_op10_op36_trusted_projection_binding_attacks",
+      "unit_ids": [
+        "OP-10",
+        "OP-12",
+        "OP-14",
+        "OP-36"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-05"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_cross_publication_and_incomplete_inputs_fail_closed",
+      "unit_ids": [
+        "OP-05"
+      ]
+    },
+    {
+      "coverage_kind": "static_atomicity_analysis",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_operator_functions_do_not_call_other_operator_functions",
+      "unit_ids": [
+        "OP-05",
+        "OP-06",
+        "OP-07",
+        "OP-08",
+        "OP-09",
+        "OP-10",
+        "OP-11",
+        "OP-12",
+        "OP-13",
+        "OP-14",
+        "OP-35",
+        "OP-36"
+      ]
+    },
+    {
+      "coverage_kind": "static_atomicity_analysis",
+      "executed_unit_ids": [],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_module_has_no_file_network_tool_or_model_dependency",
+      "unit_ids": [
+        "OP-05",
+        "OP-06",
+        "OP-07",
+        "OP-08",
+        "OP-09",
+        "OP-10",
+        "OP-11",
+        "OP-12",
+        "OP-13",
+        "OP-14",
+        "OP-35",
+        "OP-36"
+      ]
+    }
+  ],
+  "tested_execution_unit_ids": [
+    "OP-05",
+    "OP-10",
+    "OP-12",
+    "OP-14",
+    "OP-36"
+  ],
+  "tested_unit_ids": [
+    "OP-05",
+    "OP-06",
+    "OP-07",
+    "OP-08",
+    "OP-09",
+    "OP-10",
+    "OP-11",
+    "OP-12",
+    "OP-13",
+    "OP-14",
+    "OP-35",
+    "OP-36"
+  ],
+  "tests_run": 4,
+  "working_directory": "."
+}

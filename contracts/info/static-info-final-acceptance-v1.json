@@ -1,0 +1,1019 @@
+{
+  "schema_version": 1,
+  "contract_id": "domeye-static-info-final-acceptance-v1",
+  "acceptance_document": {
+    "path": "docs/INFO目录数据落库最终验收文档.md",
+    "sha256": "aa896166d6839b1433286c6544803beec5ca160dda0b1603ddea52735130410b"
+  },
+  "stage_plan_document": {
+    "path": "docs/INFO目录数据落库分阶段计划.md",
+    "sha256": "70ec8c17d8bbb4f5e8f3f0504eea142d94a471272296fa8923967baa095a043b"
+  },
+  "requirements": [
+    {
+      "id": "FA-01",
+      "title": "来源身份唯一且可复现",
+      "due_stage": "S0"
+    },
+    {
+      "id": "FA-02",
+      "title": "全部数据都有去向",
+      "due_stage": "S2"
+    },
+    {
+      "id": "FA-03",
+      "title": "既有数据语义得到保持",
+      "due_stage": "S3"
+    },
+    {
+      "id": "FA-04",
+      "title": "业务结果可追溯，异常可解释",
+      "due_stage": "S2"
+    },
+    {
+      "id": "FA-05",
+      "title": "运行时消费同一 release",
+      "due_stage": "S5"
+    },
+    {
+      "id": "FA-06",
+      "title": "查询与 API 行为等价",
+      "due_stage": "S3"
+    },
+    {
+      "id": "FA-07",
+      "title": "检测行为等价",
+      "due_stage": "S4"
+    },
+    {
+      "id": "FA-08",
+      "title": "性能和容量达到可运行水平",
+      "due_stage": "S4"
+    },
+    {
+      "id": "FA-09",
+      "title": "权限与隐私边界成立",
+      "due_stage": "S4"
+    },
+    {
+      "id": "FA-10",
+      "title": "激活与回滚可控",
+      "due_stage": "S5"
+    },
+    {
+      "id": "FA-11",
+      "title": "运行状态可观察且可复核",
+      "due_stage": "S4"
+    },
+    {
+      "id": "FA-12",
+      "title": "旧目录不再是运行依赖，回滚材料仍然完整",
+      "due_stage": "S6"
+    }
+  ],
+  "common_artifacts": [
+    {
+      "path": "static-info-manifest.json",
+      "checks": [
+        {
+          "id": "COMMON-MANIFEST-COMPONENT",
+          "pointer": "/component",
+          "operator": "eq",
+          "expected": "static_info"
+        },
+        {
+          "id": "COMMON-MANIFEST-SCHEMA-VERSION",
+          "pointer": "/schema_version",
+          "operator": "eq",
+          "expected": 1
+        },
+        {
+          "id": "COMMON-MANIFEST-PARSER-VERSION",
+          "pointer": "/parser_version",
+          "operator": "eq",
+          "expected": "info-parser-v5"
+        },
+        {
+          "id": "COMMON-MANIFEST-IMPORTER-CONFIG",
+          "pointer": "/importer_config_sha256",
+          "operator": "eq",
+          "expected": "222bcd68ae08751a1a207abe559a5078cd50b4a991cfaef0302db87e995d2945"
+        },
+        {
+          "id": "COMMON-MANIFEST-FILE-COUNT",
+          "pointer": "/file_count",
+          "operator": "eq",
+          "expected": 24
+        },
+        {
+          "id": "COMMON-FULL-IMPORTER-VERSION",
+          "pointer": "/full_importer_version",
+          "operator": "eq",
+          "expected": "info-full-importer-v2"
+        },
+        {
+          "id": "COMMON-MANIFEST-FILES-LENGTH",
+          "pointer": "/files",
+          "operator": "length_eq",
+          "expected": 24
+        },
+        {
+          "id": "COMMON-MANIFEST-EXACT-FILE-SET",
+          "pointer": "/files",
+          "operator": "array_object_field_values_eq",
+          "expected": {
+            "field": "name",
+            "values": [
+              "as_entity.csv",
+              "important_as.csv",
+              "ip_bgp_entity.csv",
+              "country.xlsx",
+              "website_entity.csv",
+              "domain_cn.csv",
+              "pfx2as_dict.txt",
+              "as_rel_dict.txt",
+              "domain_cn_center.txt",
+              "private_as_dict_new.json",
+              "triplet_20days.csv",
+              "ipv4_all_prefix.xls",
+              "ipv6_all_prefix.xls",
+              "as_dict.txt",
+              "top_nx.csv",
+              "top_ip.txt",
+              "as_rank.json",
+              "org_entity.csv",
+              "as_dict_new.txt",
+              "as_entity_is_ddos_provider.csv",
+              "as_rel_dict_old.txt",
+              "ases_cn.csv",
+              "private_as_dict.json",
+              "triplet_20days_1.csv"
+            ]
+          }
+        },
+        {
+          "id": "COMMON-MANIFEST-FILE-CONTRACTS",
+          "pointer": "/files",
+          "operator": "array_objects_by_key_fields_eq",
+          "expected": {
+            "key_field": "name",
+            "items": {
+              "as_entity.csv": {"dataset_kind": "autonomous_system", "file_format": "csv", "role": "active", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "important_as.csv": {"dataset_kind": "important_as", "file_format": "csv", "role": "active", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "ip_bgp_entity.csv": {"dataset_kind": "prefix", "file_format": "csv", "role": "active", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "country.xlsx": {"dataset_kind": "country", "file_format": "xlsx", "role": "active", "parser": "excel-magic-read-only", "delimiter": null, "source_priority": null},
+              "website_entity.csv": {"dataset_kind": "domain", "file_format": "csv", "role": "active", "parser": "csv", "delimiter": ";", "source_priority": 0},
+              "domain_cn.csv": {"dataset_kind": "domain", "file_format": "csv", "role": "active", "parser": "csv", "delimiter": ",", "source_priority": 1},
+              "pfx2as_dict.txt": {"dataset_kind": "as_prefix_history", "file_format": "json", "role": "active", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "as_rel_dict.txt": {"dataset_kind": "as_relation", "file_format": "json", "role": "active", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "domain_cn_center.txt": {"dataset_kind": "important_domain", "file_format": "json", "role": "active", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "private_as_dict_new.json": {"dataset_kind": "private_as_location", "file_format": "json", "role": "active", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "triplet_20days.csv": {"dataset_kind": "route_triplet_baseline", "file_format": "csv", "role": "active", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "ipv4_all_prefix.xls": {"dataset_kind": "important_prefix", "file_format": "xls", "role": "loaded_not_consumed", "parser": "excel-magic-read-only", "delimiter": null, "source_priority": null},
+              "ipv6_all_prefix.xls": {"dataset_kind": "important_prefix", "file_format": "xls", "role": "loaded_not_consumed", "parser": "excel-magic-read-only", "delimiter": null, "source_priority": null},
+              "as_dict.txt": {"dataset_kind": "legacy_as_dictionary", "file_format": "json", "role": "config_only", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "top_nx.csv": {"dataset_kind": "dns_observation", "file_format": "csv", "role": "config_only", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "top_ip.txt": {"dataset_kind": "dns_observation", "file_format": "line_text", "role": "config_only", "parser": "non-empty-lines", "delimiter": null, "source_priority": null},
+              "as_rank.json": {"dataset_kind": "as_rank", "file_format": "json", "role": "config_only", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "org_entity.csv": {"dataset_kind": "organization", "file_format": "csv", "role": "config_only", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "as_dict_new.txt": {"dataset_kind": "legacy_as_dictionary", "file_format": "json", "role": "legacy", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "as_entity_is_ddos_provider.csv": {"dataset_kind": "ddos_provider_evidence", "file_format": "csv", "role": "legacy", "parser": "csv", "delimiter": ",", "source_priority": null},
+              "as_rel_dict_old.txt": {"dataset_kind": "as_relation", "file_format": "json", "role": "legacy", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "ases_cn.csv": {"dataset_kind": "legacy_as_cn", "file_format": "csv", "role": "legacy", "parser": "csv", "encoding": "gb18030", "delimiter": ",", "source_priority": null},
+              "private_as_dict.json": {"dataset_kind": "private_as_location", "file_format": "json", "role": "legacy", "parser": "json-top-level-object", "delimiter": null, "source_priority": null},
+              "triplet_20days_1.csv": {"dataset_kind": "route_triplet_baseline", "file_format": "csv", "role": "legacy", "parser": "csv", "delimiter": ",", "source_priority": null}
+            }
+          }
+        },
+        {
+          "id": "COMMON-MANIFEST-FILE-IDENTITIES",
+          "pointer": "/files",
+          "operator": "all_items_match",
+          "expected": {
+            "field_checks": [
+              {"field": "size_bytes", "operator": "gte", "expected": 0},
+              {"field": "sha256", "operator": "regex", "expected": "^[0-9a-f]{64}$"},
+              {"field": "modified_time_ns", "operator": "gte", "expected": 0},
+              {"field": "inode", "operator": "gte", "expected": 0},
+              {"field": "physical_line_count", "operator": "gte", "expected": 0},
+              {"field": "header_sha256", "operator": "regex", "expected": "^[0-9a-f]{64}$"},
+              {"field": "logical_record_count", "operator": "gte", "expected": 0},
+              {"field": "count_method", "operator": "regex", "expected": "^.+$"}
+            ]
+          }
+        },
+        {
+          "id": "COMMON-CONTENT-ID",
+          "pointer": "/content_id",
+          "operator": "regex",
+          "expected": "^info_v1_[0-9a-f]{32}$"
+        },
+        {
+          "id": "COMMON-MANIFEST-SHA",
+          "pointer": "/manifest_sha256",
+          "operator": "regex",
+          "expected": "^[0-9a-f]{64}$"
+        }
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "S0",
+      "name": "冻结最终合同与来源基线",
+      "predecessor": null,
+      "newly_due_requirements": [
+        "FA-01"
+      ],
+      "artifacts": [
+        {
+          "path": "static-info-quality.json",
+          "checks": [
+            {
+              "id": "S0-QUALITY-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S0-QUALITY-BLOCKING-FAILURES",
+              "pointer": "/blocking_failure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S0-QUALITY-SCOPE",
+              "pointer": "/scope",
+              "operator": "eq",
+              "expected": "core_four_files"
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S0-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-quality.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S0-MANIFEST-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/manifest_sha256",
+          "operator": "eq",
+          "right_artifact": "static-info-quality.json",
+          "right_pointer": "/manifest_sha256"
+        }
+      ]
+    },
+    {
+      "id": "S1",
+      "name": "四核心文件 shadow 成立",
+      "predecessor": "S0",
+      "newly_due_requirements": [],
+      "artifacts": [
+        {
+          "path": "static-info-quality.json",
+          "checks": [
+            {
+              "id": "S1-QUALITY-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            }
+          ]
+        },
+        {
+          "path": "static-info-load-result.json",
+          "checks": [
+            {
+              "id": "S1-LOAD-STATUS",
+              "pointer": "/status",
+              "operator": "in",
+              "expected": [
+                "completed",
+                "already_completed"
+              ]
+            },
+            {
+              "id": "S1-LOAD-SCOPE",
+              "pointer": "/scope",
+              "operator": "eq",
+              "expected": "core_four_files"
+            },
+            {
+              "id": "S1-RELEASE-STATUS",
+              "pointer": "/database_release_status",
+              "operator": "eq",
+              "expected": "validating"
+            },
+            {
+              "id": "S1-NOT-ACTIVATED",
+              "pointer": "/activated",
+              "operator": "eq",
+              "expected": false
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S1-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-load-result.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S1-MANIFEST-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/manifest_sha256",
+          "operator": "eq",
+          "right_artifact": "static-info-load-result.json",
+          "right_pointer": "/manifest_sha256"
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "name": "全部 24 文件闭合",
+      "predecessor": "S1",
+      "newly_due_requirements": [
+        "FA-02",
+        "FA-04"
+      ],
+      "artifacts": [
+        {
+          "path": "static-info-full-quality.json",
+          "checks": [
+            {
+              "id": "S2-QUALITY-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S2-BLOCKING-FAILURE-COUNT",
+              "pointer": "/blocking_failure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S2-QUALITY-SCOPE",
+              "pointer": "/scope",
+              "operator": "eq",
+              "expected": "all_24_files"
+            },
+            {
+              "id": "S2-QUALITY-FILE-COUNT",
+              "pointer": "/files",
+              "operator": "length_eq",
+              "expected": 24
+            },
+            {
+              "id": "S2-QUALITY-EXACT-FILE-SET",
+              "pointer": "/files",
+              "operator": "object_keys_eq",
+              "expected": [
+                "as_dict.txt",
+                "as_dict_new.txt",
+                "as_entity.csv",
+                "as_entity_is_ddos_provider.csv",
+                "as_rank.json",
+                "as_rel_dict.txt",
+                "as_rel_dict_old.txt",
+                "ases_cn.csv",
+                "country.xlsx",
+                "domain_cn.csv",
+                "domain_cn_center.txt",
+                "important_as.csv",
+                "ip_bgp_entity.csv",
+                "ipv4_all_prefix.xls",
+                "ipv6_all_prefix.xls",
+                "org_entity.csv",
+                "pfx2as_dict.txt",
+                "private_as_dict.json",
+                "private_as_dict_new.json",
+                "top_ip.txt",
+                "top_nx.csv",
+                "triplet_20days.csv",
+                "triplet_20days_1.csv",
+                "website_entity.csv"
+              ]
+            },
+            {
+              "id": "S2-QUALITY-PER-FILE-RECONCILIATION",
+              "pointer": "/files",
+              "operator": "all_values_match",
+              "expected": {
+                "field_checks": [
+                  {
+                    "field": "load_status",
+                    "operator": "eq",
+                    "expected": "loaded"
+                  },
+                  {
+                    "field": "quarantine_missing_reason_count",
+                    "operator": "eq",
+                    "expected": 0
+                  }
+                ],
+                "sum_checks": [
+                  {
+                    "total_field": "logical_record_count",
+                    "part_fields": [
+                      "loaded_record_count",
+                      "quarantined_record_count"
+                    ]
+                  }
+                ],
+                "equal_field_checks": [
+                  [
+                    "source_record_count",
+                    "logical_record_count"
+                  ],
+                  [
+                    "source_record_accepted_count",
+                    "loaded_record_count"
+                  ],
+                  [
+                    "source_record_quarantined_count",
+                    "quarantined_record_count"
+                  ]
+                ]
+              }
+            },
+            {
+              "id": "S2-BUSINESS-TRACEABILITY-FAILURES",
+              "pointer": "/business_traceability_failure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S2-ACCEPTED-RECORD-VISIBILITY-FAILURES",
+              "pointer": "/accepted_record_visibility_failure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S2-BLOCKING-QUALITY-FLAGS",
+              "pointer": "/blocking_quality_flag_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S2-QUARANTINE-MIRROR-FAILURES",
+              "pointer": "/quarantine_mirror_failure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S2-SOURCE-ROLE-ACTIVATION-FAILURES",
+              "pointer": "/source_role_activation_failure_count",
+              "operator": "eq",
+              "expected": 0
+            }
+          ]
+        },
+        {
+          "path": "static-info-full-load-result.json",
+          "checks": [
+            {
+              "id": "S2-LOAD-STATUS",
+              "pointer": "/status",
+              "operator": "in",
+              "expected": [
+                "completed",
+                "already_completed"
+              ]
+            },
+            {
+              "id": "S2-LOAD-SCOPE",
+              "pointer": "/scope",
+              "operator": "eq",
+              "expected": "all_24_files"
+            },
+            {
+              "id": "S2-SOURCE-FILE-COUNT",
+              "pointer": "/source_file_count",
+              "operator": "eq",
+              "expected": 24
+            },
+            {
+              "id": "S2-RECONCILED-FILE-COUNT",
+              "pointer": "/reconciled_source_file_count",
+              "operator": "eq",
+              "expected": 24
+            },
+            {
+              "id": "S2-UNRECONCILED-RECORDS",
+              "pointer": "/unreconciled_record_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S2-VISIBLE-TRACEABILITY",
+              "pointer": "/visible_record_traceability_percent",
+              "operator": "eq",
+              "expected": 100
+            },
+            {
+              "id": "S2-QUARANTINE-REASON-COVERAGE",
+              "pointer": "/quarantine_reason_coverage_percent",
+              "operator": "eq",
+              "expected": 100
+            },
+            {
+              "id": "S2-NOT-ACTIVATED",
+              "pointer": "/activated",
+              "operator": "eq",
+              "expected": false
+            },
+            {
+              "id": "S2-RELEASE-STATUS",
+              "pointer": "/database_release_status",
+              "operator": "eq",
+              "expected": "validating"
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S2-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-full-load-result.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S2-QUALITY-CONTENT-IDENTITY",
+          "left_artifact": "static-info-full-quality.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-full-load-result.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S2-MANIFEST-SHA-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/manifest_sha256",
+          "operator": "eq",
+          "right_artifact": "static-info-full-load-result.json",
+          "right_pointer": "/manifest_sha256"
+        },
+        {
+          "id": "S2-QUALITY-MANIFEST-SHA-IDENTITY",
+          "left_artifact": "static-info-full-quality.json",
+          "left_pointer": "/manifest_sha256",
+          "operator": "eq",
+          "right_artifact": "static-info-full-load-result.json",
+          "right_pointer": "/manifest_sha256"
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "name": "查询与快照语义闭合",
+      "predecessor": "S2",
+      "newly_due_requirements": [
+        "FA-03",
+        "FA-06"
+      ],
+      "artifacts": [
+        {
+          "path": "static-info-shadow-diff.json",
+          "checks": [
+            {
+              "id": "S3-SHADOW-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S3-SHADOW-SCOPE",
+              "pointer": "/scope",
+              "operator": "eq",
+              "expected": "all_static_queries_and_snapshot"
+            },
+            {
+              "id": "S3-QUERY-DIFFERENCES",
+              "pointer": "/deterministic_query_unapproved_difference_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S3-SET-DIFFERENCES",
+              "pointer": "/full_set_unapproved_difference_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S3-SNAPSHOT-DIFFERENCES",
+              "pointer": "/snapshot_unapproved_difference_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S3-CONTACT-EXPOSURE",
+              "pointer": "/contact_plaintext_exposure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S3-NOT-ACTIVATED",
+              "pointer": "/activated",
+              "operator": "eq",
+              "expected": false
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S3-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-shadow-diff.json",
+          "right_pointer": "/content_id"
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "name": "检测与非功能边界闭合",
+      "predecessor": "S3",
+      "newly_due_requirements": [
+        "FA-07",
+        "FA-08",
+        "FA-09",
+        "FA-11"
+      ],
+      "artifacts": [
+        {
+          "path": "static-info-detector-ab.json",
+          "checks": [
+            {
+              "id": "S4-DETECTOR-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S4-EVENT-TYPE-COUNT",
+              "pointer": "/event_type_count",
+              "operator": "eq",
+              "expected": 6
+            },
+            {
+              "id": "S4-DETECTOR-DIFFERENCES",
+              "pointer": "/unapproved_difference_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S4-CORE-UNCHANGED",
+              "pointer": "/core_hash_unchanged",
+              "operator": "eq",
+              "expected": true
+            }
+          ]
+        },
+        {
+          "path": "static-info-performance.json",
+          "checks": [
+            {
+              "id": "S4-PERFORMANCE-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S4-QUERY-P95",
+              "pointer": "/exact_query_p95_ms",
+              "operator": "lte",
+              "expected": 20
+            },
+            {
+              "id": "S4-QUERY-P99",
+              "pointer": "/exact_query_p99_ms",
+              "operator": "lte",
+              "expected": 50
+            },
+            {
+              "id": "S4-LPM-P95",
+              "pointer": "/longest_prefix_match_p95_ms",
+              "operator": "lte",
+              "expected": 30
+            },
+            {
+              "id": "S4-SNAPSHOT-TIME-REGRESSION",
+              "pointer": "/snapshot_load_time_regression_percent",
+              "operator": "lte",
+              "expected": 10
+            },
+            {
+              "id": "S4-SNAPSHOT-RSS-REGRESSION",
+              "pointer": "/snapshot_peak_rss_regression_percent",
+              "operator": "lte",
+              "expected": 10
+            },
+            {
+              "id": "S4-THROUGHPUT-REGRESSION",
+              "pointer": "/detector_throughput_regression_percent",
+              "operator": "lte",
+              "expected": 5
+            },
+            {
+              "id": "S4-FULL-TABLE-LOAD",
+              "pointer": "/request_path_full_table_load_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S4-CAPACITY-STATUS",
+              "pointer": "/capacity_status",
+              "operator": "eq",
+              "expected": "pass"
+            }
+          ]
+        },
+        {
+          "path": "static-info-security.json",
+          "checks": [
+            {
+              "id": "S4-SECURITY-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S4-UNAUTHORIZED-WRITE",
+              "pointer": "/unauthorized_write_success_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S4-CONTACT-EXPOSURE",
+              "pointer": "/contact_plaintext_exposure_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S4-CHECK-SIDE-EFFECT",
+              "pointer": "/check_production_side_effect_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S4-RUNTIME-READ-ONLY",
+              "pointer": "/runtime_role_read_only",
+              "operator": "eq",
+              "expected": true
+            }
+          ]
+        },
+        {
+          "path": "static-info-operations.json",
+          "checks": [
+            {
+              "id": "S4-OPERATIONS-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S4-RELEASE-OBSERVABLE",
+              "pointer": "/release_state_observable",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S4-FILE-COUNTS-OBSERVABLE",
+              "pointer": "/per_file_counts_observable",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S4-CHECKPOINT-RESUMABLE",
+              "pointer": "/checkpoint_resumable",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S4-REPRODUCIBLE",
+              "pointer": "/same_input_reproducible",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S4-NOT-ACTIVATED",
+              "pointer": "/activated",
+              "operator": "eq",
+              "expected": false
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S4-DETECTOR-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-detector-ab.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S4-PERFORMANCE-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-performance.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S4-SECURITY-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-security.json",
+          "right_pointer": "/content_id"
+        },
+        {
+          "id": "S4-OPERATIONS-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-operations.json",
+          "right_pointer": "/content_id"
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "name": "激活与回滚边界闭合",
+      "predecessor": "S4",
+      "newly_due_requirements": [
+        "FA-05",
+        "FA-10"
+      ],
+      "artifacts": [
+        {
+          "path": "static-info-release-acceptance.json",
+          "checks": [
+            {
+              "id": "S5-RELEASE-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S5-ACTIVATION-AUTHORIZED",
+              "pointer": "/activation_authorized",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S5-ACTIVATED",
+              "pointer": "/activated",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S5-SAFE-BOUNDARY",
+              "pointer": "/safe_boundary_observed",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S5-SINGLE-CONTENT",
+              "pointer": "/mixed_content_run_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S5-ROLLBACK-TESTED",
+              "pointer": "/rollback_tested",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S5-PREVIOUS-AVAILABLE",
+              "pointer": "/previous_release_available",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S5-FAILURE-EVIDENCE-PRESERVED",
+              "pointer": "/failure_evidence_preserved",
+              "operator": "eq",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S5-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-release-acceptance.json",
+          "right_pointer": "/active_content_id"
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "name": "运行时收口",
+      "predecessor": "S5",
+      "newly_due_requirements": [
+        "FA-12"
+      ],
+      "artifacts": [
+        {
+          "path": "static-info-closure.json",
+          "checks": [
+            {
+              "id": "S6-CLOSURE-STATUS",
+              "pointer": "/status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S6-FINAL-STATUS",
+              "pointer": "/final_acceptance_status",
+              "operator": "eq",
+              "expected": "pass"
+            },
+            {
+              "id": "S6-REQUIREMENT-COUNT",
+              "pointer": "/passed_requirement_count",
+              "operator": "eq",
+              "expected": 12
+            },
+            {
+              "id": "S6-DIRECT-FILE-READS",
+              "pointer": "/runtime_direct_info_file_read_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S6-LEGACY-DATABASE-CONNECTIONS",
+              "pointer": "/legacy_database_connection_count",
+              "operator": "eq",
+              "expected": 0
+            },
+            {
+              "id": "S6-CURRENT-AVAILABLE",
+              "pointer": "/current_release_available",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S6-PREVIOUS-AVAILABLE",
+              "pointer": "/previous_release_available",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S6-ROLLBACK-ARTIFACT-AVAILABLE",
+              "pointer": "/file_rollback_artifact_available",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S6-OBSERVATION-COMPLETE",
+              "pointer": "/observation_period_complete",
+              "operator": "eq",
+              "expected": true
+            },
+            {
+              "id": "S6-REFERENCED-CONTENT-PRESERVED",
+              "pointer": "/referenced_content_preserved",
+              "operator": "eq",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "cross_checks": [
+        {
+          "id": "S6-CONTENT-IDENTITY",
+          "left_artifact": "static-info-manifest.json",
+          "left_pointer": "/content_id",
+          "operator": "eq",
+          "right_artifact": "static-info-closure.json",
+          "right_pointer": "/content_id"
+        }
+      ]
+    }
+  ]
+}

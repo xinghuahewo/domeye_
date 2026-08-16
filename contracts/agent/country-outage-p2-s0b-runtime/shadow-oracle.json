@@ -1,0 +1,104 @@
+{
+  "schema_version": "country_outage_p2_s0b_shadow_oracle_v1",
+  "candidate_scope": "local_shadow_only",
+  "categories": [
+    "required_call",
+    "conditional_call",
+    "forbidden_call",
+    "missing",
+    "null",
+    "wrong_identity",
+    "unavailable",
+    "inactive",
+    "tamper",
+    "dependency",
+    "snapshot_drift",
+    "handler_missing",
+    "evidence_binding",
+    "rollback"
+  ],
+  "gates": {
+    "should_call_coverage": 1.0,
+    "should_not_call_rate": 0.0,
+    "non_active_execution_count": 0,
+    "snapshot_drift_count": 0,
+    "evidence_identity_completeness": 1.0,
+    "product_semantic_blocking_count": 0
+  },
+  "cases": [
+    {
+      "case_id": "S0B-REQ-001",
+      "question": "当前事件是什么？",
+      "expected_units": ["TOOL-01", "TOOL-02"],
+      "expected": "admitted_and_executed"
+    },
+    {
+      "case_id": "S0B-COND-001",
+      "question": "IPv4和IPv6走势如何？",
+      "expected_units": ["TOOL-01", "TOOL-03", "OP-01", "OP-04"],
+      "expected": "admitted_when_goal_requires_trend"
+    },
+    {
+      "case_id": "S0B-FORBID-001",
+      "question": "这次中断的技术原因是什么？",
+      "expected_units": [],
+      "expected": "unsupported_zero_execution"
+    },
+    {
+      "case_id": "S0B-INACTIVE-001",
+      "mutation": "TOOL-03 state=retired with resealed snapshot",
+      "expected_error": "execution_unit_not_active"
+    },
+    {
+      "case_id": "S0B-TAMPER-001",
+      "mutation": "snapshot payload changed without digest update",
+      "expected_error": "registry_snapshot_digest_mismatch"
+    },
+    {
+      "case_id": "S0B-TAMPER-002",
+      "mutation": "Capability to Unit implementation digest conflict",
+      "expected_error": "capability_unit_digest_mismatch"
+    },
+    {
+      "case_id": "S0B-DEP-001",
+      "mutation": "OP-04 source dependency removed",
+      "expected_error": "execution_dependency_missing"
+    },
+    {
+      "case_id": "S0B-HANDLER-001",
+      "mutation": "active unit has no host handler",
+      "expected_error": "execution_handler_missing"
+    },
+    {
+      "case_id": "S0B-IDENTITY-001",
+      "mutation": "collector_id changed from rrc25",
+      "expected_error": "registry_boundary_violation"
+    },
+    {
+      "case_id": "S0B-SNAPSHOT-001",
+      "mutation": "snapshot file changes after turn admission",
+      "expected": "current_turn_keeps_old_snapshot_next_turn_loads_new"
+    },
+    {
+      "case_id": "S0B-EVIDENCE-001",
+      "question": "中断前缀峰值是多少？",
+      "expected": "each_execution_receipt_has_snapshot_version_and_digests"
+    },
+    {
+      "case_id": "S0B-NULL-001",
+      "mutation": "critical registry identity null",
+      "expected_error": "registry_snapshot_invalid"
+    },
+    {
+      "case_id": "S0B-MISSING-001",
+      "mutation": "snapshot file missing",
+      "expected_error": "registry_snapshot_missing"
+    },
+    {
+      "case_id": "S0B-ROLLBACK-001",
+      "mutation": "active pointer returns to prior certified snapshot",
+      "expected": "new_turn_uses_rollback_snapshot_without_history_mutation"
+    }
+  ],
+  "production_deployed": false
+}

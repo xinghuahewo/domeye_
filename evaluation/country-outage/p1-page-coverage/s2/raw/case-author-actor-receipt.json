@@ -1,0 +1,23 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s2_actor_receipt_v1",
+  "evidence_kind": "case_author_actor_receipt",
+  "candidate_id": "p1-page-coverage-s2-9ca11dce72d0",
+  "stage": "S2",
+  "run_id": "s2-question-explorer-final-008",
+  "actor_id": "question-explorer-agent",
+  "captured_at": "2026-08-10T19:05:43.760Z",
+  "orchestrator_receipt_id": "s2-question-explorer-orchestrator-receipt-001",
+  "allowed_actions": [
+    "generate_probe_cases",
+    "execute_frozen_questions",
+    "capture_raw_receipts"
+  ],
+  "denied_actions": [
+    "write_truth",
+    "mark_pass",
+    "modify_implementation",
+    "modify_contract",
+    "modify_oracle"
+  ],
+  "reviewed_input_sha256": "19d60565d535cdd6c44188d8bb8592bb79e915c79fc05e7e8e0c45107a1efff2"
+}

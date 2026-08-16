@@ -1,0 +1,586 @@
+{
+  "schema_version": "iran-revised-mapping-delta/v1",
+  "target_country": "IR",
+  "compatible_base_binding": {
+    "snapshot_id": "asmap_v1_3b3ce2a0caf779152cd38b69617ffa20",
+    "source_file_sha256": "9ef7bd4dcf07b53d986be392f57e40652e37f352c5e2631d24649cda41ba7da2",
+    "semantic_fingerprint_sha256": "c13d9814dbf2577668fcd9bae9b88b0b83d1af514c81b8c2311e498d0f045434"
+  },
+  "source": {
+    "path": "/home/bgpdata/Domeye/reports/iran_delegate_20260407/source_data/official_delegate_missing_in_as_entity_iran_20260407.csv",
+    "sha256": "e720d11beec124252ce5df350e1e39d3fc1055c3c9dc6cd7d119113662e9091e",
+    "size_bytes": 2841,
+    "source_kind": "legacy_derived_official_delegate_missing_list",
+    "generated_on": "2026-04-07",
+    "upstream_artifact_state": "not_retained_in_discovered_directory"
+  },
+  "temporal_policy": {
+    "delegated_date_on_or_before": "20260227",
+    "interval_role": "known_allocated_by_research_window_start_date",
+    "excluded_after_cutoff_count": 2,
+    "excluded_after_cutoff_asns": [
+      199467,
+      200116
+    ]
+  },
+  "rows": [
+    {
+      "asn": 200785,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20260220",
+      "status": "allocated",
+      "range_start": 200785,
+      "range_count": 1
+    },
+    {
+      "asn": 201287,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20260210",
+      "status": "allocated",
+      "range_start": 201287,
+      "range_count": 1
+    },
+    {
+      "asn": 201309,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20260210",
+      "status": "allocated",
+      "range_start": 201309,
+      "range_count": 1
+    },
+    {
+      "asn": 201810,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20260130",
+      "status": "allocated",
+      "range_start": 201810,
+      "range_count": 1
+    },
+    {
+      "asn": 202684,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251218",
+      "status": "allocated",
+      "range_start": 202684,
+      "range_count": 1
+    },
+    {
+      "asn": 202807,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251216",
+      "status": "allocated",
+      "range_start": 202807,
+      "range_count": 1
+    },
+    {
+      "asn": 203010,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251209",
+      "status": "allocated",
+      "range_start": 203010,
+      "range_count": 1
+    },
+    {
+      "asn": 203014,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251209",
+      "status": "allocated",
+      "range_start": 203014,
+      "range_count": 1
+    },
+    {
+      "asn": 203024,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251209",
+      "status": "allocated",
+      "range_start": 203024,
+      "range_count": 1
+    },
+    {
+      "asn": 203433,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251126",
+      "status": "allocated",
+      "range_start": 203433,
+      "range_count": 1
+    },
+    {
+      "asn": 203638,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251118",
+      "status": "allocated",
+      "range_start": 203638,
+      "range_count": 1
+    },
+    {
+      "asn": 204270,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251029",
+      "status": "allocated",
+      "range_start": 204270,
+      "range_count": 1
+    },
+    {
+      "asn": 204402,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251024",
+      "status": "allocated",
+      "range_start": 204402,
+      "range_count": 1
+    },
+    {
+      "asn": 204687,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251021",
+      "status": "allocated",
+      "range_start": 204687,
+      "range_count": 1
+    },
+    {
+      "asn": 204721,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251020",
+      "status": "allocated",
+      "range_start": 204721,
+      "range_count": 1
+    },
+    {
+      "asn": 204981,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250829",
+      "status": "allocated",
+      "range_start": 204981,
+      "range_count": 1
+    },
+    {
+      "asn": 204999,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250829",
+      "status": "allocated",
+      "range_start": 204999,
+      "range_count": 1
+    },
+    {
+      "asn": 205256,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250821",
+      "status": "allocated",
+      "range_start": 205256,
+      "range_count": 1
+    },
+    {
+      "asn": 205536,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250812",
+      "status": "allocated",
+      "range_start": 205536,
+      "range_count": 1
+    },
+    {
+      "asn": 205560,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250812",
+      "status": "allocated",
+      "range_start": 205560,
+      "range_count": 1
+    },
+    {
+      "asn": 205899,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250804",
+      "status": "allocated",
+      "range_start": 205899,
+      "range_count": 1
+    },
+    {
+      "asn": 205965,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250731",
+      "status": "allocated",
+      "range_start": 205965,
+      "range_count": 1
+    },
+    {
+      "asn": 206345,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250718",
+      "status": "allocated",
+      "range_start": 206345,
+      "range_count": 1
+    },
+    {
+      "asn": 206443,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250717",
+      "status": "allocated",
+      "range_start": 206443,
+      "range_count": 1
+    },
+    {
+      "asn": 206507,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250715",
+      "status": "allocated",
+      "range_start": 206507,
+      "range_count": 1
+    },
+    {
+      "asn": 206647,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250715",
+      "status": "allocated",
+      "range_start": 206647,
+      "range_count": 1
+    },
+    {
+      "asn": 206929,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251208",
+      "status": "allocated",
+      "range_start": 206929,
+      "range_count": 1
+    },
+    {
+      "asn": 206931,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251022",
+      "status": "allocated",
+      "range_start": 206931,
+      "range_count": 1
+    },
+    {
+      "asn": 207350,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250605",
+      "status": "allocated",
+      "range_start": 207350,
+      "range_count": 1
+    },
+    {
+      "asn": 207817,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250611",
+      "status": "allocated",
+      "range_start": 207817,
+      "range_count": 1
+    },
+    {
+      "asn": 208173,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251027",
+      "status": "allocated",
+      "range_start": 208173,
+      "range_count": 1
+    },
+    {
+      "asn": 208231,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250519",
+      "status": "allocated",
+      "range_start": 208231,
+      "range_count": 1
+    },
+    {
+      "asn": 208254,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250516",
+      "status": "allocated",
+      "range_start": 208254,
+      "range_count": 1
+    },
+    {
+      "asn": 208492,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250515",
+      "status": "allocated",
+      "range_start": 208492,
+      "range_count": 1
+    },
+    {
+      "asn": 208940,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250508",
+      "status": "allocated",
+      "range_start": 208940,
+      "range_count": 1
+    },
+    {
+      "asn": 210707,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250703",
+      "status": "allocated",
+      "range_start": 210707,
+      "range_count": 1
+    },
+    {
+      "asn": 211162,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251001",
+      "status": "allocated",
+      "range_start": 211162,
+      "range_count": 1
+    },
+    {
+      "asn": 211634,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250709",
+      "status": "allocated",
+      "range_start": 211634,
+      "range_count": 1
+    },
+    {
+      "asn": 212056,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251105",
+      "status": "allocated",
+      "range_start": 212056,
+      "range_count": 1
+    },
+    {
+      "asn": 212188,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250911",
+      "status": "allocated",
+      "range_start": 212188,
+      "range_count": 1
+    },
+    {
+      "asn": 212227,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250923",
+      "status": "allocated",
+      "range_start": 212227,
+      "range_count": 1
+    },
+    {
+      "asn": 213069,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250930",
+      "status": "allocated",
+      "range_start": 213069,
+      "range_count": 1
+    },
+    {
+      "asn": 214475,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250825",
+      "status": "allocated",
+      "range_start": 214475,
+      "range_count": 1
+    },
+    {
+      "asn": 214751,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251015",
+      "status": "allocated",
+      "range_start": 214751,
+      "range_count": 1
+    },
+    {
+      "asn": 214908,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20251027",
+      "status": "allocated",
+      "range_start": 214908,
+      "range_count": 1
+    },
+    {
+      "asn": 214998,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20260107",
+      "status": "allocated",
+      "range_start": 214998,
+      "range_count": 1
+    },
+    {
+      "asn": 215177,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250612",
+      "status": "allocated",
+      "range_start": 215177,
+      "range_count": 1
+    },
+    {
+      "asn": 215285,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250908",
+      "status": "allocated",
+      "range_start": 215285,
+      "range_count": 1
+    },
+    {
+      "asn": 215496,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250708",
+      "status": "allocated",
+      "range_start": 215496,
+      "range_count": 1
+    },
+    {
+      "asn": 215767,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250630",
+      "status": "allocated",
+      "range_start": 215767,
+      "range_count": 1
+    },
+    {
+      "asn": 215978,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250526",
+      "status": "allocated",
+      "range_start": 215978,
+      "range_count": 1
+    },
+    {
+      "asn": 216061,
+      "registry": "ripencc",
+      "country_code": "IR",
+      "resource_type": "asn",
+      "delegated_date": "20250728",
+      "status": "allocated",
+      "range_start": 216061,
+      "range_count": 1
+    }
+  ],
+  "summary": {
+    "source_row_count": 54,
+    "included_row_count": 52,
+    "excluded_after_cutoff_count": 2,
+    "present_in_compatible_snapshot_count": 52,
+    "compatible_zz_count": 48,
+    "compatible_explicit_other_country_count": 4
+  },
+  "compatible_override_audit": {
+    "policy": "revised_view_only_compatible_view_unchanged",
+    "explicit_other_country_rows": [
+      {
+        "asn": 208173,
+        "compatible_country": "RU",
+        "revised_country": "IR"
+      },
+      {
+        "asn": 212056,
+        "compatible_country": "US",
+        "revised_country": "IR"
+      },
+      {
+        "asn": 214908,
+        "compatible_country": "PL",
+        "revised_country": "IR"
+      },
+      {
+        "asn": 214998,
+        "compatible_country": "FR",
+        "revised_country": "IR"
+      }
+    ]
+  },
+  "limitations_zh": [
+    "该增量文件由旧项目在2026-04-07生成，上游官方 delegated 原始文件未在发现目录中保留。",
+    "修订视图只纳入 delegated_date 不晚于2026-02-27的单 ASN allocated 记录；事件后分配项明确排除。",
+    "delegated 国家归属表示注册分配关系，不等同于路由运营位置或事件因果归属。"
+  ]
+}

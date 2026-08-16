@@ -1,0 +1,22 @@
+{
+  "schema_version": "country-outage-episode/v1",
+  "episode_id": "episode_v1_111111111111111111111111",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "collector_id": "rrc25",
+  "country_code": "IR",
+  "cohort_view": "compatible",
+  "algorithm_version": "country-outage-episode-v1",
+  "onset_at": "2026-02-28T14:30:00Z",
+  "detected_at": "2026-02-28T14:35:00Z",
+  "peak_at": "2026-02-28T14:35:00Z",
+  "trough_at": "2026-02-28T14:30:00Z",
+  "partial_recovery_at": "2026-03-03T00:35:00Z",
+  "full_recovery_at": "2026-03-06T08:40:00Z",
+  "observation_end_at": "2026-03-06T08:40:00Z",
+  "recovery_state": "partially_recovered",
+  "duration": {"duration_state": "exact", "seconds": 583800, "minimum_seconds": null, "maximum_seconds": null, "measured_to": "2026-03-06T08:40:00Z"},
+  "supporting_sample_ids": ["sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "sample_v1_bbbbbbbbbbbbbbbbbbbbbbbb"],
+  "wave_ids": ["wave_v1_111111111111111111111111"],
+  "split_evidence": [],
+  "incident_mappings": [{"incident_ref": "country_outage/2026-02-27 09:12:32/IR/1/r", "relation": "legacy_reconciliation", "causal": false, "evidence_sample_ids": ["sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa"]}]
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "country-outage-sample/v1",
+  "sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa",
+  "run_id": "research_run_v1_cccccccccccccccccccccccc",
+  "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb",
+  "collector_id": "rrc25",
+  "country_code": "IR",
+  "cohort_view": "compatible",
+  "slot": {"start": "2026-02-27T16:00:00Z", "end": "2026-02-27T16:05:00Z", "boundary": "[start,end)", "granularity_seconds": 300},
+  "continuity_state": "continuous",
+  "metrics": {
+    "visible_asn_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 2, "value_state": "observed", "missing_reason": null},
+    "damaged_asn_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 1, "value_state": "observed", "missing_reason": null},
+    "baseline_asn_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 3, "value_state": "observed", "missing_reason": null},
+    "visible_ipv4_prefix_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 4, "value_state": "observed", "missing_reason": null},
+    "visible_ipv6_prefix_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 2, "value_state": "observed", "missing_reason": null},
+    "visible_ipv4_address_union": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 1024, "value_state": "observed", "missing_reason": null},
+    "visible_ipv4_24_equivalent": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 4, "value_state": "observed", "missing_reason": null},
+    "visible_ipv6_48_equivalent": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 2, "value_state": "observed", "missing_reason": null},
+    "announce_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 5, "value_state": "observed", "missing_reason": null},
+    "withdraw_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 0, "value_state": "observed_zero", "missing_reason": null},
+    "vp_expected_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 2, "value_state": "observed", "missing_reason": null},
+    "vp_observed_count": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 2, "value_state": "observed", "missing_reason": null},
+    "damaged_asn_ratio": {
+      "sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa",
+      "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb",
+      "numerator": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_dddddddddddddddddddddddd", "value": 1},
+      "denominator": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": 3},
+      "value": 0.3333333333333333,
+      "value_state": "observed",
+      "missing_reason": null
+    }
+  },
+  "asn_sets": {
+    "visible": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": [1, 2], "value_state": "observed", "missing_reason": null},
+    "damaged": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": [3], "value_state": "observed", "missing_reason": null},
+    "baseline": {"sample_id": "sample_v1_aaaaaaaaaaaaaaaaaaaaaaaa", "snapshot_id": "snapshot_v1_bbbbbbbbbbbbbbbbbbbbbbbb", "value": [1, 2, 3], "value_state": "observed", "missing_reason": null}
+  },
+  "source_refs": [{"ref_type": "state_shard", "ref_id": "state/0001.jsonl.gz", "sha256": "1111111111111111111111111111111111111111111111111111111111111111"}]
+}

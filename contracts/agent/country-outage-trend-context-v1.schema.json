@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/agent/country-outage-trend-context-v1.schema.json",
+  "title": "RRC25 国家中断趋势上下文 v1",
+  "oneOf": [
+    {"$ref": "#/$defs/addressFamilyContext"},
+    {"$ref": "#/$defs/asnStateContext"},
+    {"$ref": "#/$defs/activityAlignmentContext"}
+  ],
+  "$defs": {
+    "contextId": {"type": "string", "pattern": "^trend_context_v1_[0-9a-f]{32}$"},
+    "snapshot": {
+      "type": "object",
+      "required": ["incident_id", "publication_id", "revision", "data_through", "collector_id", "collector_count", "window_start_utc", "window_end_utc"],
+      "properties": {
+        "collector_id": {"const": "rrc25"},
+        "collector_count": {"const": 1}
+      }
+    },
+    "timeGrid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_seconds", "expected_slot_count", "window_start_utc", "window_end_utc"],
+      "properties": {
+        "slot_seconds": {"type": "integer", "minimum": 1},
+        "expected_slot_count": {"type": "integer", "minimum": 1},
+        "window_start_utc": {"type": "string", "format": "date-time"},
+        "window_end_utc": {"type": "string", "format": "date-time"}
+      }
+    },
+    "denominator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "statistical_population"],
+      "properties": {
+        "value": {"type": "integer", "minimum": 1},
+        "unit": {"const": "count"},
+        "statistical_population": {"enum": ["ipv4_fixed_prefix_vp", "ipv6_fixed_prefix_vp"]}
+      }
+    },
+    "familyView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "analysis_id", "quality_status", "denominator", "pattern", "key_points", "phases", "end_residual"],
+      "properties": {
+        "profile_id": {"type": "string", "minLength": 1},
+        "analysis_id": {"type": "string", "minLength": 1},
+        "quality_status": {"enum": ["complete", "degraded", "unavailable"]},
+        "denominator": {"$ref": "#/$defs/denominator"},
+        "pattern": {"type": "object"},
+        "key_points": {"type": "array"},
+        "phases": {"type": "array"},
+        "end_residual": {"type": ["object", "null"]}
+      }
+    },
+    "divergenceSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot_index", "observed_at_utc", "ipv4_value", "ipv4_ratio", "ipv4_denominator", "ipv6_value", "ipv6_ratio", "ipv6_denominator", "ipv4_minus_ipv6_percentage_points", "source_refs"],
+      "properties": {
+        "slot_index": {"type": "integer", "minimum": 0},
+        "observed_at_utc": {"type": "string", "format": "date-time"},
+        "ipv4_value": {"type": "number", "minimum": 0},
+        "ipv4_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "ipv4_denominator": {"type": "integer", "minimum": 1},
+        "ipv6_value": {"type": "number", "minimum": 0},
+        "ipv6_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "ipv6_denominator": {"type": "integer", "minimum": 1},
+        "ipv4_minus_ipv6_percentage_points": {"type": "number"},
+        "source_refs": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string"}}
+      }
+    },
+    "addressFamilyContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "algorithm_version", "context_type", "context_id", "snapshot", "time_grid", "families", "comparison"],
+      "properties": {
+        "schema_version": {"const": "country_outage_trend_context_v1"},
+        "algorithm_version": {"const": "country_outage_trend_context_s3_v1"},
+        "context_type": {"const": "address_family_comparison"},
+        "context_id": {"$ref": "#/$defs/contextId"},
+        "snapshot": {"$ref": "#/$defs/snapshot"},
+        "time_grid": {"$ref": "#/$defs/timeGrid"},
+        "families": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ipv4", "ipv6"],
+          "properties": {
+            "ipv4": {"$ref": "#/$defs/familyView"},
+            "ipv6": {"$ref": "#/$defs/familyView"}
+          }
+        },
+        "comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "denominator_ratio", "divergence_slots", "maximum_divergence", "extreme_alignment", "warnings", "limitations"],
+          "properties": {
+            "status": {"enum": ["complete", "insufficient_data"]},
+            "denominator_ratio": {"type": "number", "minimum": 1},
+            "divergence_slots": {"type": "array", "items": {"$ref": "#/$defs/divergenceSlot"}},
+            "maximum_divergence": {"oneOf": [{"$ref": "#/$defs/divergenceSlot"}, {"type": "null"}]},
+            "extreme_alignment": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["ipv4_slot_index", "ipv6_slot_index", "delta_slots_ipv6_minus_ipv4", "relation"],
+                  "properties": {
+                    "ipv4_slot_index": {"type": "integer", "minimum": 0},
+                    "ipv6_slot_index": {"type": "integer", "minimum": 0},
+                    "delta_slots_ipv6_minus_ipv4": {"type": "integer"},
+                    "relation": {"enum": ["same_slot", "adjacent_slot", "lagged_slot"]}
+                  }
+                },
+                {"type": "null"}
+              ]
+            },
+            "warnings": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+            "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "stateCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fully_visible", "partially_visible", "fully_invisible", "unknown"],
+      "properties": {
+        "fully_visible": {"type": "integer", "minimum": 0},
+        "partially_visible": {"type": "integer", "minimum": 0},
+        "fully_invisible": {"type": "integer", "minimum": 0},
+        "unknown": {"type": "integer", "minimum": 0}
+      }
+    },
+    "asnStateContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "algorithm_version", "context_type", "context_id", "profile_id", "analysis_id", "snapshot", "time_grid", "asn_states", "sample_indices", "asn_count", "baseline_prefix_vp_count", "slot_population", "transition_matrices", "asns", "priority_views", "limitations"],
+      "properties": {
+        "schema_version": {"const": "country_outage_trend_context_v1"},
+        "algorithm_version": {"const": "country_outage_trend_context_s3_v1"},
+        "context_type": {"const": "asn_state_context"},
+        "context_id": {"$ref": "#/$defs/contextId"},
+        "profile_id": {"type": "string", "minLength": 1},
+        "analysis_id": {"type": "string", "minLength": 1},
+        "snapshot": {"$ref": "#/$defs/snapshot"},
+        "time_grid": {"$ref": "#/$defs/timeGrid"},
+        "asn_states": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"enum": ["fully_visible", "partially_visible", "fully_invisible", "unknown"]}},
+        "sample_indices": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+        "asn_count": {"type": "integer", "minimum": 1},
+        "baseline_prefix_vp_count": {"type": "integer", "minimum": 1},
+        "slot_population": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot_index", "state_counts", "total_asn_count"],
+            "properties": {
+              "slot_index": {"type": "integer", "minimum": 0},
+              "state_counts": {"$ref": "#/$defs/stateCounts"},
+              "total_asn_count": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        "transition_matrices": {"type": "array", "items": {"type": "object"}},
+        "asns": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+        "priority_views": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by_observation_scale", "by_persistence", "single_impact_score"],
+          "properties": {
+            "by_observation_scale": {"type": "array", "items": {"type": "object"}},
+            "by_persistence": {"type": "array", "items": {"type": "object"}},
+            "single_impact_score": {"type": "null"}
+          }
+        },
+        "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "activityAlignmentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "algorithm_version", "context_type", "context_id", "profile_id", "analysis_id", "snapshot", "time_grid", "tracks", "aligned_slots", "temporal_relations", "cross_population_arithmetic_performed", "common_impact_score", "causal_claim", "limitations"],
+      "properties": {
+        "schema_version": {"const": "country_outage_trend_context_v1"},
+        "algorithm_version": {"const": "country_outage_trend_context_s3_v1"},
+        "context_type": {"const": "activity_alignment"},
+        "context_id": {"$ref": "#/$defs/contextId"},
+        "profile_id": {"type": "string", "minLength": 1},
+        "analysis_id": {"type": "string", "minLength": 1},
+        "snapshot": {"$ref": "#/$defs/snapshot"},
+        "time_grid": {"$ref": "#/$defs/timeGrid"},
+        "tracks": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+        "aligned_slots": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+        "temporal_relations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["relation", "causal_interpretation"],
+            "properties": {
+              "relation": {"enum": ["same_slot", "adjacent_slot", "lagged_slot", "unavailable"]},
+              "causal_interpretation": {"type": "null"}
+            }
+          }
+        },
+        "cross_population_arithmetic_performed": {"const": false},
+        "common_impact_score": {"type": "null"},
+        "causal_claim": {"type": "null"},
+        "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

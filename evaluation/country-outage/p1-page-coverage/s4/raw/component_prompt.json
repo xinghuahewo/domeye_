@@ -1,0 +1,16 @@
+{
+  "schema_version": "country_outage_p1_page_coverage_s4_component_prompt_v1",
+  "evidence_kind": "component_prompt",
+  "stage": "S4",
+  "candidate_id": "p1-page-coverage-s4-live-rrc25-01",
+  "run_id": "s4-browser-api-live-001",
+  "captured_at": "2026-08-10T21:30:26.390Z",
+  "component": "prompt",
+  "identity": "prompt-source:199131c3b483c60a55cfa7d2003f658890d94d38a8932b19bd2241e0d4ca0adb",
+  "source_files": [
+    {
+      "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
+      "sha256": "49211383e94274d0fe60ea3f2e1b74f72a5fc4b6633cb71cfd1b7542f1ddfcb7"
+    }
+  ]
+}

@@ -1,0 +1,210 @@
+{
+  "artifact_bindings": [
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
+      "sha256": "472e592c46be7cc21edb19778a45baca5eba0df05bcf432cb3ee33156f5c6edf",
+      "size_bytes": 33235
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
+      "sha256": "96caead22556a91c2c0bb1c360d84488a70ef9d5e106836e58461b4180df3a05",
+      "size_bytes": 33771
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
+      "sha256": "bb5f7a9ab338bc71f13e4d954ecf0aaf29032fdb596caa766a201c5a3f0e47e2",
+      "size_bytes": 84902
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_tools.py",
+      "sha256": "52669b19d118bb939b901313daa0a98500075f839a2d059cbb9bced3c941a36f",
+      "size_bytes": 61327
+    },
+    {
+      "path": "backend/services/country_outage_p2_s1_operators.py",
+      "sha256": "504eebfad813d1bf8b508358f4623d65a0b240889dd00b22e083be611145f580",
+      "size_bytes": 147874
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json",
+      "sha256": "bd2742a16468f71b551422bcd1d9b10a878b1f6c3a5387b799aca3d2d6f6c9a5",
+      "size_bytes": 33246
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json",
+      "sha256": "40a80c26ee9cc60a3d713534e6c58277d413d9506b08ab27eb3c8c049d4878b3",
+      "size_bytes": 12520
+    },
+    {
+      "path": "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json",
+      "sha256": "dd154f4d6dc0dcc8d001150395c1f110367576c60ed2329fc5d6bc564658fb56",
+      "size_bytes": 185219
+    }
+  ],
+  "category": "boundary",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_noneligible_anchor_is_unsupported_with_trusted_failure_receipt",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_eligible_anchor_with_additional_zero_match_is_complete_empty",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_input_contract_rejects_wrong_shapes_ranges_and_silent_rounding",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_actual_request_result_and_failure_envelopes_validate_draft202012_schema",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_actual_input_output_examples_validate_frozen_draft202012_schema"
+  ],
+  "completed_at_utc": "2026-08-14T03:19:27Z",
+  "error_count": 0,
+  "exit_code": 0,
+  "failure_count": 0,
+  "normalized_output": "[stdout]\n\n[stderr]\ntest_tool12_noneligible_anchor_is_unsupported_with_trusted_failure_receipt (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_tool12_eligible_anchor_with_additional_zero_match_is_complete_empty (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_input_contract_rejects_wrong_shapes_ranges_and_silent_rounding (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_actual_request_result_and_failure_envelopes_validate_draft202012_schema (backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest) ... ok\ntest_set_operations_and_empty_semantics (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests) ... ok\ntest_actual_input_output_examples_validate_frozen_draft202012_schema (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests)\n每个 Operator 至少一个实际正例按冻结 Input/Output $def 完整验证。 ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in <ELAPSED>\n\nOK\n",
+  "normalized_output_sha256": "e59f949c13bcaf902d3391ddb0acc2f19249feaccd1cd500a5091a8374d221d8",
+  "passed": true,
+  "receipt_digest": "3d6e0978e15dcf8dfe1bb2faf403042e3dd82fab4149f2b3143b59d909f03a38",
+  "runner_id": "country_outage_p2_s1_stage_test_runner",
+  "runner_version": "1.0.0",
+  "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
+  "selected_test_ids": [
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_noneligible_anchor_is_unsupported_with_trusted_failure_receipt",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_eligible_anchor_with_additional_zero_match_is_complete_empty",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_input_contract_rejects_wrong_shapes_ranges_and_silent_rounding",
+    "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_actual_request_result_and_failure_envelopes_validate_draft202012_schema",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics",
+    "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_actual_input_output_examples_validate_frozen_draft202012_schema"
+  ],
+  "skipped_count": 0,
+  "stage": "W2",
+  "started_at_utc": "2026-08-14T03:19:25Z",
+  "suite_id": "w2-boundary",
+  "test_case_coverage": [
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_noneligible_anchor_is_unsupported_with_trusted_failure_receipt",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_tool12_eligible_anchor_with_additional_zero_match_is_complete_empty",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_input_contract_rejects_wrong_shapes_ranges_and_silent_rounding",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution_and_schema_validation",
+      "executed_unit_ids": [
+        "TOOL-12"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_tools.CountryOutageP2S1ToolsTest.test_actual_request_result_and_failure_envelopes_validate_draft202012_schema",
+      "unit_ids": [
+        "TOOL-12"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution",
+      "executed_unit_ids": [
+        "OP-25",
+        "OP-26",
+        "OP-27",
+        "OP-28"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorW2Tests.test_set_operations_and_empty_semantics",
+      "unit_ids": [
+        "OP-25",
+        "OP-26",
+        "OP-27",
+        "OP-28"
+      ]
+    },
+    {
+      "coverage_kind": "direct_execution_and_schema_validation",
+      "executed_unit_ids": [
+        "OP-15",
+        "OP-16",
+        "OP-17",
+        "OP-18",
+        "OP-19",
+        "OP-20",
+        "OP-21",
+        "OP-22",
+        "OP-23",
+        "OP-24",
+        "OP-25",
+        "OP-26",
+        "OP-27",
+        "OP-28"
+      ],
+      "test_id": "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_actual_input_output_examples_validate_frozen_draft202012_schema",
+      "unit_ids": [
+        "OP-15",
+        "OP-16",
+        "OP-17",
+        "OP-18",
+        "OP-19",
+        "OP-20",
+        "OP-21",
+        "OP-22",
+        "OP-23",
+        "OP-24",
+        "OP-25",
+        "OP-26",
+        "OP-27",
+        "OP-28"
+      ]
+    }
+  ],
+  "tested_execution_unit_ids": [
+    "OP-15",
+    "OP-16",
+    "OP-17",
+    "OP-18",
+    "OP-19",
+    "OP-20",
+    "OP-21",
+    "OP-22",
+    "OP-23",
+    "OP-24",
+    "OP-25",
+    "OP-26",
+    "OP-27",
+    "OP-28",
+    "TOOL-12"
+  ],
+  "tested_unit_ids": [
+    "OP-15",
+    "OP-16",
+    "OP-17",
+    "OP-18",
+    "OP-19",
+    "OP-20",
+    "OP-21",
+    "OP-22",
+    "OP-23",
+    "OP-24",
+    "OP-25",
+    "OP-26",
+    "OP-27",
+    "OP-28",
+    "TOOL-12"
+  ],
+  "tests_run": 6,
+  "working_directory": "."
+}

@@ -1,0 +1,235 @@
+{
+  "schema_version": "domeye_p0_legacy_risk_measurement/v1",
+  "read_only": true,
+  "note": "本报告只登记测量事实。结论类型为数据测量；任何成因归属须另行以有界原始重算确认，不得据代码阅读结案。",
+  "F2": {
+    "per_table": {
+      "prefix_outage_202602": {
+        "rows": 4553,
+        "private_32bit": 0,
+        "private_16bit": 0
+      },
+      "as_outage_202602": {
+        "rows": 417,
+        "private_32bit": 0,
+        "private_16bit": 0
+      },
+      "feature_other_202602": {
+        "rows": 6022110,
+        "private_32bit": 1546,
+        "private_16bit": 0
+      },
+      "prefix_outage_202603": {
+        "rows": 1064032,
+        "private_32bit": 0,
+        "private_16bit": 0
+      },
+      "as_outage_202603": {
+        "rows": 16041,
+        "private_32bit": 0,
+        "private_16bit": 0
+      },
+      "feature_other_202603": {
+        "rows": 31689670,
+        "private_32bit": 959,
+        "private_16bit": 0
+      }
+    },
+    "misclassified_samples": [],
+    "total_private_32bit_occurrences": 2505,
+    "total_private_16bit_occurrences": 0
+  },
+  "S2": {
+    "per_table": {
+      "leak_event_202602": {
+        "rows": 23535,
+        "distinct_prefixes": 23532,
+        "events_per_prefix_ratio": 1.0001274859765426,
+        "distribution": [
+          {
+            "events_per_prefix": 1,
+            "prefix_count": 23531
+          },
+          {
+            "events_per_prefix": 4,
+            "prefix_count": 1
+          }
+        ]
+      },
+      "leak_event_202603": {
+        "rows": 39746,
+        "distinct_prefixes": 33744,
+        "events_per_prefix_ratio": 1.177868658131816,
+        "distribution": [
+          {
+            "events_per_prefix": 1,
+            "prefix_count": 28346
+          },
+          {
+            "events_per_prefix": 2,
+            "prefix_count": 4800
+          },
+          {
+            "events_per_prefix": 3,
+            "prefix_count": 592
+          },
+          {
+            "events_per_prefix": 4,
+            "prefix_count": 6
+          }
+        ]
+      }
+    },
+    "event_table": {
+      "event_table_202602": {
+        "leak_rows": 23535,
+        "leak_with_e_time": 0,
+        "leak_with_duration": 0,
+        "by_event_type": [
+          {
+            "event_type": "路由泄漏",
+            "rows": 23535,
+            "with_e_time": 0
+          },
+          {
+            "event_type": "前缀中断",
+            "rows": 4553,
+            "with_e_time": 3146
+          },
+          {
+            "event_type": "AS中断",
+            "rows": 417,
+            "with_e_time": 389
+          },
+          {
+            "event_type": "前缀劫持",
+            "rows": 14,
+            "with_e_time": 2
+          },
+          {
+            "event_type": "子前缀劫持",
+            "rows": 8,
+            "with_e_time": 6
+          },
+          {
+            "event_type": "国家中断",
+            "rows": 1,
+            "with_e_time": 0
+          }
+        ]
+      },
+      "event_table_202603": {
+        "leak_rows": 39746,
+        "leak_with_e_time": 0,
+        "leak_with_duration": 0,
+        "by_event_type": [
+          {
+            "event_type": "前缀中断",
+            "rows": 1064032,
+            "with_e_time": 1050666
+          },
+          {
+            "event_type": "路由泄漏",
+            "rows": 39746,
+            "with_e_time": 0
+          },
+          {
+            "event_type": "AS中断",
+            "rows": 16041,
+            "with_e_time": 15286
+          },
+          {
+            "event_type": "前缀劫持",
+            "rows": 11301,
+            "with_e_time": 9044
+          },
+          {
+            "event_type": "子前缀劫持",
+            "rows": 11085,
+            "with_e_time": 9734
+          },
+          {
+            "event_type": "国家中断",
+            "rows": 731,
+            "with_e_time": 713
+          }
+        ]
+      }
+    }
+  },
+  "S4": {
+    "per_month": {
+      "202602": {
+        "matched_pairs": 0,
+        "attributed_equals_lexicographic_min": 0,
+        "attributed_equals_lexicographic_max": 0,
+        "attributed_equals_neither": 0,
+        "samples": []
+      },
+      "202603": {
+        "matched_pairs": 669595,
+        "attributed_equals_lexicographic_min": 607997,
+        "attributed_equals_lexicographic_max": 61597,
+        "attributed_equals_neither": 1,
+        "samples": [
+          {
+            "prefix": "89.251.10.0/24",
+            "attributed": "49666",
+            "hijacked_as": "216397",
+            "hijacker_as": "49666",
+            "lexicographic_min": "216397"
+          },
+          {
+            "prefix": "89.251.10.0/24",
+            "attributed": "216397",
+            "hijacked_as": "216397",
+            "hijacker_as": "49666",
+            "lexicographic_min": "216397"
+          },
+          {
+            "prefix": "2605:9cc0:c0e::/48",
+            "attributed": "21664",
+            "hijacked_as": "21664",
+            "hijacker_as": "8987",
+            "lexicographic_min": "21664"
+          },
+          {
+            "prefix": "2605:9cc0:c0e::/48",
+            "attributed": "21664",
+            "hijacked_as": "21664",
+            "hijacker_as": "8987",
+            "lexicographic_min": "21664"
+          },
+          {
+            "prefix": "2605:9cc0:c0e::/48",
+            "attributed": "21664",
+            "hijacked_as": "21664",
+            "hijacker_as": "8987",
+            "lexicographic_min": "21664"
+          },
+          {
+            "prefix": "2605:9cc0:c0e::/48",
+            "attributed": "21664",
+            "hijacked_as": "21664",
+            "hijacker_as": "8987",
+            "lexicographic_min": "21664"
+          },
+          {
+            "prefix": "2605:9cc0:c0e::/48",
+            "attributed": "21664",
+            "hijacked_as": "21664",
+            "hijacker_as": "8987",
+            "lexicographic_min": "21664"
+          },
+          {
+            "prefix": "2605:9cc0:c0e::/48",
+            "attributed": "8987",
+            "hijacked_as": "21664",
+            "hijacker_as": "8987",
+            "lexicographic_min": "21664"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/info/static-info-full-quality-v1.schema.json",
+  "title": "Domeye static INFO 全 24 文件质量报告 v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "component",
+    "quality_gate_version",
+    "content_id",
+    "manifest_sha256",
+    "scope",
+    "status",
+    "blocking_failure_count",
+    "blocking_failures",
+    "business_traceability_failure_count",
+    "accepted_record_visibility_failure_count",
+    "blocking_quality_flag_count",
+    "quarantine_mirror_failure_count",
+    "source_role_activation_failure_count",
+    "files",
+    "rules"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "component": {
+      "const": "static_info_full_quality"
+    },
+    "quality_gate_version": {
+      "const": "info-full-quality-v1"
+    },
+    "content_id": {
+      "type": "string",
+      "pattern": "^info_v1_[0-9a-f]{32}$"
+    },
+    "manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "scope": {
+      "const": "all_24_files"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "blocking_failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocking_failures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "business_traceability_failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "accepted_record_visibility_failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocking_quality_flag_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "quarantine_mirror_failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_role_activation_failure_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files": {
+      "type": "object",
+      "minProperties": 24,
+      "maxProperties": 24,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "load_status",
+          "logical_record_count",
+        "loaded_record_count",
+        "quarantined_record_count",
+        "source_record_count",
+        "source_record_accepted_count",
+        "source_record_quarantined_count",
+        "quarantine_missing_reason_count"
+        ],
+        "properties": {
+          "load_status": {
+            "enum": [
+              "pending",
+              "loading",
+              "loaded",
+              "failed"
+            ]
+          },
+          "logical_record_count": {
+            "$ref": "#/$defs/count"
+          },
+          "loaded_record_count": {
+            "$ref": "#/$defs/count"
+          },
+          "quarantined_record_count": {
+            "$ref": "#/$defs/count"
+          },
+        "source_record_count": {
+          "$ref": "#/$defs/count"
+        },
+        "source_record_accepted_count": {
+          "$ref": "#/$defs/count"
+        },
+        "source_record_quarantined_count": {
+          "$ref": "#/$defs/count"
+        },
+        "quarantine_missing_reason_count": {
+            "$ref": "#/$defs/count"
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rule_id",
+          "rule_version",
+          "blocking",
+          "status",
+          "observed",
+          "expected",
+          "evidence"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule_version": {
+            "const": 1
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail"
+            ]
+          },
+          "observed": {},
+          "expected": {},
+          "evidence": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

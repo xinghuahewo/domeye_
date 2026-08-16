@@ -1,0 +1,293 @@
+{
+  "candidate_binding_digest": "sha256:71787dfdaba1ec1c62b2897c1c7df08af85c7f7157108bf58c33234fca7283df",
+  "certification_semantics_version": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2",
+  "content_digest": "sha256:709236088682ca3af8dc9b1cf4c727653b86a7abe0ea836bdb413a265c0d20b5",
+  "contract_is_frozen_not_dynamically_reclassified": true,
+  "implementation_candidate_digest": "sha256:49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c",
+  "implementation_candidate_id": "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6",
+  "questions": [
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "oracle_answerability": "supported",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q01"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "oracle_answerability": "partial_until_full_path_tool",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q02"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "oracle_answerability": "supported",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q03"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "oracle_answerability": "new_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q04"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "oracle_answerability": "new_tools_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q05"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "oracle_answerability": "new_tools_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q06"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "oracle_answerability": "new_tools_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q07"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "oracle_answerability": "new_tool_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q08"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "oracle_answerability": "new_tools_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q09"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "oracle_answerability": "new_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q10"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "oracle_answerability": "new_tool_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q13"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "oracle_answerability": "new_tools_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q14"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "oracle_answerability": "new_tools_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q16"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "oracle_answerability": "boundary_supported",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q17"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "oracle_answerability": "new_tool_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q18"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "oracle_answerability": "new_path_tool_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q19"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "oracle_answerability": "new_path_tool_required",
+      "p2_1_deferred_subgoal": true,
+      "question_id": "Q20"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "oracle_answerability": "new_path_tool_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q21"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "oracle_answerability": "new_path_tool_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q22"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "oracle_answerability": "new_route_state_tool_required",
+      "p2_1_deferred_subgoal": true,
+      "question_id": "Q23"
+    },
+    {
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "oracle_answerability": "deferred_p2_1",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q24"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "oracle_answerability": "new_path_tool_required",
+      "p2_1_deferred_subgoal": true,
+      "question_id": "Q26"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "oracle_answerability": "new_path_tool_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q27"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "oracle_answerability": "external_evidence_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q29"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "oracle_answerability": "external_evidence_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q30"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "oracle_answerability": "new_temporal_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q31"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "oracle_answerability": "new_temporal_operator_required",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q32"
+    },
+    {
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "oracle_answerability": "bounded_control_plane_only",
+      "p2_1_deferred_subgoal": false,
+      "question_id": "Q33"
+    }
+  ],
+  "scenario_order": [
+    "N",
+    "E",
+    "M",
+    "I",
+    "B",
+    "L"
+  ],
+  "schema_version": "country_outage_p2_s1_w6_question_disposition_contract_v2"
+}
