@@ -1,0 +1,630 @@
+{
+  "schema_version": "country_outage_p1_runtime_v2_p0_results_v2",
+  "candidate_id": "p1-runtime-v2-34dcc7de840e33d8",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "evaluated_at": "2026-08-09T17:35:18.351Z",
+  "counts": {
+    "total": 35,
+    "passed": 35,
+    "direct": "20/20",
+    "multi_turn": "5/5",
+    "boundary": "5/5",
+    "exception": "5/5"
+  },
+  "results": [
+    {
+      "case_id": "P013-D-01",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "publication_binding",
+        "fact_match",
+        "rrc25_boundary"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/0",
+          "record_id": "P013-D-01"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-02",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "publication_binding",
+        "timezone_semantics",
+        "window_not_lifecycle"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/1",
+          "record_id": "P013-D-02"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-03",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "detection_not_onset",
+        "unknown_preserved"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/2",
+          "record_id": "P013-D-03"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-04",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "registered_metric",
+        "null_not_zero",
+        "fact_match"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/3",
+          "record_id": "P013-D-04"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-05",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "unit_preserved",
+        "deterministic_subtraction",
+        "no_user_impact"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/4",
+          "record_id": "P013-D-05"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-06",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "event_end_unknown",
+        "window_end_not_recovery"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/5",
+          "record_id": "P013-D-06"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-07",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "last_point_not_realtime",
+        "fact_match"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/6",
+          "record_id": "P013-D-07"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-08",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "population_names",
+        "asn_peak_times",
+        "cumulative_vs_slot_peak",
+        "no_national_user_scope"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/7",
+          "record_id": "P013-D-08"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-09",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "pagination_binding",
+        "sort_semantics",
+        "not_causal_rank"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/8",
+          "record_id": "P013-D-09"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-10",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "asn_normalization",
+        "event_binding",
+        "no_responsibility"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/9",
+          "record_id": "P013-D-10"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-11",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "peak_last_comparison",
+        "no_continuity_inference"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/10",
+          "record_id": "P013-D-11"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-12",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "unit_preserved",
+        "no_cross_family_total"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/11",
+          "record_id": "P013-D-12"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-13",
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "passed": true,
+      "hard_gates_passed": [
+        "missing_track_not_zero",
+        "no_fabrication"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/12",
+          "record_id": "P013-D-13"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-14",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "definition_exact",
+        "unit_exact",
+        "population_not_mixed"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/13",
+          "record_id": "P013-D-14"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-15",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "new_vs_fixed_separation",
+        "family_preserved"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/14",
+          "record_id": "P013-D-15"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-16",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "real_sample",
+        "association_not_cause"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/15",
+          "record_id": "P013-D-16"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-17",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "audit_identity",
+        "web_release_identity_not_inferred"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/16",
+          "record_id": "P013-D-17"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-18",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "completeness_dimensions_separated",
+        "no_silent_unknown"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/17",
+          "record_id": "P013-D-18"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-19",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "identity_exact",
+        "data_finality_not_lifecycle"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/18",
+          "record_id": "P013-D-19"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-D-20",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "facts_limitations_unknowns_separated"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/19",
+          "record_id": "P013-D-20"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-M-01",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "context_inheritance",
+        "publication_stable",
+        "state_commit_after_validation"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/20",
+          "record_id": "P013-M-01"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-M-02",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "slot_override",
+        "context_isolation",
+        "no_stale_asn"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/21",
+          "record_id": "P013-M-02"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-M-03",
+      "expected_answerability": "answerable",
+      "actual_answerability": "supported",
+      "passed": true,
+      "hard_gates_passed": [
+        "goal_switch",
+        "event_binding_preserved",
+        "no_plan_pollution"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/22",
+          "record_id": "P013-M-03"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-M-04",
+      "expected_answerability": "clarify",
+      "actual_answerability": "clarify",
+      "passed": true,
+      "hard_gates_passed": [
+        "clarification_required",
+        "no_guessed_event",
+        "no_state_commit"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/23",
+          "record_id": "P013-M-04"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-M-05",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "fact_answered",
+        "cause_declined",
+        "context_isolation"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/24",
+          "record_id": "P013-M-05"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-B-01",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "observable_subgoal_answered",
+        "boundary_subgoal_declined",
+        "control_plane_only",
+        "no_nationwide_claim",
+        "no_user_claim"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/25",
+          "record_id": "P013-B-01"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-B-02",
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "passed": true,
+      "hard_gates_passed": [
+        "no_withdraw_fabrication",
+        "no_causal_attribution"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/26",
+          "record_id": "P013-B-02"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-B-03",
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "passed": true,
+      "hard_gates_passed": [
+        "no_data_plane_inference"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/27",
+          "record_id": "P013-B-03"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-B-04",
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "passed": true,
+      "hard_gates_passed": [
+        "external_not_configured",
+        "rrc25_only"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/28",
+          "record_id": "P013-B-04"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-B-05",
+      "expected_answerability": "unsupported",
+      "actual_answerability": "unsupported",
+      "passed": true,
+      "hard_gates_passed": [
+        "no_responsibility",
+        "no_user_count",
+        "no_economic_estimate"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/29",
+          "record_id": "P013-B-05"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-X-01",
+      "expected_answerability": "partial",
+      "actual_answerability": "partial",
+      "passed": true,
+      "hard_gates_passed": [
+        "null_not_zero",
+        "failure_closed"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/30",
+          "record_id": "P013-X-01"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-X-02",
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data",
+      "passed": true,
+      "hard_gates_passed": [
+        "missing_not_zero",
+        "failure_closed"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/31",
+          "record_id": "P013-X-02"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-X-03",
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data",
+      "passed": true,
+      "hard_gates_passed": [
+        "object_absent_not_zero",
+        "failure_closed"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/32",
+          "record_id": "P013-X-03"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-X-04",
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data_fail_closed",
+      "passed": true,
+      "hard_gates_passed": [
+        "identity_conflict",
+        "no_cross_publication_composition",
+        "failure_closed"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/33",
+          "record_id": "P013-X-04"
+        }
+      ]
+    },
+    {
+      "case_id": "P013-X-05",
+      "expected_answerability": "invalid_data",
+      "actual_answerability": "invalid_data_fail_closed",
+      "passed": true,
+      "hard_gates_passed": [
+        "shape_validation",
+        "no_partial_extrema",
+        "failure_closed"
+      ],
+      "proof": [
+        {
+          "artifact": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+          "json_pointer": "/cases/34",
+          "record_id": "P013-X-05"
+        }
+      ]
+    }
+  ]
+}

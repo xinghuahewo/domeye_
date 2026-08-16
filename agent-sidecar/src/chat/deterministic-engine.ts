@@ -248,11 +248,11 @@ export class P1DeterministicQuestionEngine {
       ]))
     }
     if (/恢复|峰值之后.*多少|持续异常/.test(q)) {
-      parts.push(part('recovery', 'partial', `中断前缀由峰值 ${n(p.interrupted_prefix_count.value)} 回落到数据截止时的 ${n(c.interrupted_prefix_count)} 个，但仍不能判定事件结束或互联网完全恢复。`, [
+      parts.push(part('recovery', 'partial', `中断前缀峰值为 ${n(p.interrupted_prefix_count.value)}，数据截止时为 ${n(c.interrupted_prefix_count)} 个；这两个时点的对比不能证明期间一直持续异常，也不能判定事件结束或互联网完全恢复。`, [
         f('peaks.interrupted_prefix_count.value', o, p.interrupted_prefix_count.value, 'prefix', '中断前缀峰值'),
         f('current.interrupted_prefix_count', o, c.interrupted_prefix_count, 'prefix', '末端中断前缀'),
         f('identity.lifecycle_state', b.resolution, b.binding.lifecycle_state, null, '生命周期状态'),
-      ], { limitations: ['窗口末端状态受时间删失，BGP 恢复不等于用户连接恢复。'] }))
+      ], { limitations: ['只比较峰值与数据截止两个状态点，不能证明中间连续性；窗口末端状态受时间删失，BGP 恢复不等于用户连接恢复。'] }))
     }
     if (/数据截止|还剩多少路由|末端状态|到最后还剩多少/.test(q)) {
       parts.push(part('current_state', 'answerable', `截至北京时间 ${local(b.binding.data_through)}，仍有 ${n(c.interrupted_prefix_count)} 个中断前缀，其中 ${n(c.completely_interrupted_prefix_count)} 个完全不可见；涉及 ${n(c.invisible_direction_count)} 个不可见方向和 ${n(c.affected_asn_count)} 个受影响 AS。`, [
@@ -291,7 +291,10 @@ export class P1DeterministicQuestionEngine {
         ], { operator: 'query_asn', limitations: ['受影响 AS 排名是观测排序，不是原因或责任排序。'] }))
       }
     }
-    if (/IPv4.*IPv6|IPv6.*IPv4|可见 IPv4.*下降|IPv4 地址规模最大下降/.test(q)) {
+    if (
+      /IPv4.*IPv6|IPv6.*IPv4|可见 IPv4.*下降|IPv4 地址规模最大下降/.test(q)
+      && !/新出现|新.*前缀/.test(q)
+    ) {
       const d4 = b.derived.ipv4
       const d6 = b.derived.ipv6
       const only4 = /IPv4 地址规模最大下降/.test(q)
@@ -319,7 +322,10 @@ export class P1DeterministicQuestionEngine {
     }
     if (/中断前缀.*完全中断|不可见方向.*意思|分别是什么意思/.test(q)) {
       const defs = s.track_definitions
-      parts.push(part('metric_semantics', 'answerable', `“中断前缀”是${defs.interrupted_prefix_count.definition}；“完全中断前缀”是${defs.completely_interrupted_prefix_count.definition}；“不可见方向”是${defs.invisible_direction_count.definition}`, [
+      const interruptedDefinition = defs.interrupted_prefix_count.definition.replace(/。$/, '')
+      const completeDefinition = defs.completely_interrupted_prefix_count.definition.replace(/。$/, '')
+      const directionDefinition = defs.invisible_direction_count.definition.replace(/。$/, '')
+      parts.push(part('metric_semantics', 'answerable', `“中断前缀”是${interruptedDefinition}；“完全中断前缀”是${completeDefinition}；“不可见方向”是${directionDefinition}。`, [
         f('series.track_definitions.interrupted_prefix_count', s, defs.interrupted_prefix_count.definition.replace(/。$/, ''), null, '中断前缀定义'),
         f('series.track_definitions.completely_interrupted_prefix_count', s, defs.completely_interrupted_prefix_count.definition.replace(/。$/, ''), null, '完全中断前缀定义'),
         f('series.track_definitions.invisible_direction_count', s, defs.invisible_direction_count.definition.replace(/。$/, ''), null, '不可见方向定义'),

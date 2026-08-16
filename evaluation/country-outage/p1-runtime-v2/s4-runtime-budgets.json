@@ -1,0 +1,38 @@
+{
+  "schema_version": "country_outage_p1_runtime_budget_v1",
+  "candidate_scope": "local_development_candidate",
+  "collector_id": "rrc25",
+  "budgets": {
+    "semantic_model_timeout_ms": 60000,
+    "backend_proxy_connect_timeout_ms": 3000,
+    "backend_proxy_read_timeout_ms": 90000,
+    "upstream_data_api_timeout_ms": 10000,
+    "registered_read_tool_timeout_ms": 15000,
+    "deterministic_operator_timeout_ms": 1000,
+    "conversation_ttl_ms": 1800000,
+    "question_max_characters": 2000
+  },
+  "ordering_invariants": [
+    "semantic_model_timeout_ms 小于 backend_proxy_read_timeout_ms",
+    "upstream_data_api_timeout_ms 不大于 registered_read_tool_timeout_ms",
+    "所有超时均发生在回答发布和状态提交之前"
+  ],
+  "retry_policy": {
+    "automatic_retry_inside_turn": false,
+    "retryable_failures": [
+      "model_call_failed",
+      "tool_timeout",
+      "data_api_unavailable"
+    ],
+    "client_action": "使用新的轮次幂等键显式重试；旧失败轮次不发布回答、不提交状态",
+    "same_idempotency_key": "同一 binding generation 内只重放原结果，不重复执行",
+    "cross_binding_generation": "允许建立新 publication 身份下的新轮次，禁止返回旧代次答案"
+  },
+  "observed_local_behavior": {
+    "typical_single_semantic_turn_seconds": "12-20",
+    "back_to_back_batch_failures_observed": true,
+    "failure_behavior": "model_call_failed、retryable=true、零事实发布、零状态提交",
+    "production_slo_claim": false
+  },
+  "boundary": "本文件冻结本地开发候选的超时和重试语义，不构成生产延迟、吞吐、可用性或模型供应商认证。"
+}

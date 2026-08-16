@@ -1,0 +1,110 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v2",
+  "stage": "S4",
+  "stage_name": "同候选最终验收与 P2 入口",
+  "status": "completed",
+  "conclusion": "已修正",
+  "candidate_id": "p1-runtime-v2-34dcc7de840e33d8",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "requirements": [
+    "P1-UX-01", "P1-UX-02", "P1-UX-03", "P1-UX-04", "P1-UX-05",
+    "P1-UX-06", "P1-UX-07", "P1-UX-08", "P1-UX-09", "P1-UX-10",
+    "P1-CTR-01", "P1-CTR-02", "P1-CTR-03", "P1-CTR-04", "P1-CTR-05",
+    "P1-CTR-06", "P1-CTR-07", "P1-CTR-08", "P1-CTR-09", "P1-CTR-10",
+    "P1-CTR-11", "P1-CTR-12", "P1-CTR-13", "P1-CTR-14", "P1-CTR-15",
+    "P1-CTR-16", "P1-SCE-01", "P1-SCE-02", "P1-SCE-03", "P1-SCE-04",
+    "P1-SCE-05", "P1-SCE-06", "P1-SCE-07", "P1-SCE-08", "P1-SCE-09",
+    "P1-SCE-10", "P1-SCE-11", "P1-SCE-12"
+  ],
+  "checks": [
+    {
+      "name": "P0 v1.3 入口与 35 案",
+      "passed": true,
+      "result": "16 个系统表面、26 项能力、17 adopt / 5 defer / 4 reject、8 unknown、10 Oracle seed、35/35；33 个 live 首轮成功，2 个受控故障注入"
+    },
+    {
+      "name": "开放目标与封闭执行",
+      "passed": true,
+      "result": "现行 conversation Prompt 为 29/30=96.67%，无额外目标；GroundingPlan 24/24=100%，模型事实为 0"
+    },
+    {
+      "name": "M01 与 D11 语义真值",
+      "passed": true,
+      "result": "M01 为 event_summary→prefix_peak→metric_followup；D11 为 remaining_vs_peak/partial，3855→1024 且不推断持续性"
+    },
+    {
+      "name": "X04/X05 失败链",
+      "passed": true,
+      "result": "预检后 UGP/Grounding not_reached、Tool not_started、零发布，Binding/EvidenceState/DialogState/active generation 完整回滚"
+    },
+    {
+      "name": "CAP-018 时间线",
+      "passed": true,
+      "result": "六个有序事实节点、逐节点证据、OP-03 七引用、event_end_unknown，且明确事实时间线不是因果链"
+    },
+    {
+      "name": "浏览器/API/Joint 同候选",
+      "passed": true,
+      "result": "候选 34dcc7de840e33d8；会话 p1v2_1e703ec0f88d4a79b5bdd128bc128cf9；三轮 timeline/B01/D08；桌面与窄屏通过"
+    },
+    {
+      "name": "工程回归",
+      "passed": true,
+      "result": "Sidecar 639/639；Python runtime+S4 37/37；S4 篡改负例 12/12；后端 9/9；前端 17/17 与 build 通过"
+    },
+    {
+      "name": "边界保持",
+      "passed": true,
+      "result": "RRC25-only；未接入外部数据；不宣称原因、责任、全国/用户影响、恢复、生产完成或 P2/RCA"
+    }
+  ],
+  "alignment_hook": {
+    "command": "python3 .codex/hooks/country_outage_agent_p1_alignment.py --stage S4",
+    "exit_code": 0,
+    "conclusion": "已修正",
+    "closed_deviation": "关闭 X04/X05 占位证据、D11 与 M01 目标漂移、CAP-018 降级、Browser/API/Joint 旧候选和 OP-03 未入硬门等偏离"
+  },
+  "independent_semantic_review": {
+    "role": "独立人类专家模拟子 Agent（产品语义真值）",
+    "verdict": "PASS",
+    "candidate_id": "p1-runtime-v2-34dcc7de840e33d8",
+    "scope": [
+      "P0 v1.3 35 案目标、事实、证据、身份、边界与状态语义",
+      "M01 概述到峰值与末端状态的多轮继承",
+      "D11 两时点比较及持续性边界",
+      "X04/X05 预检失败关闭与完整回滚回执",
+      "UserGoalPlan 29/30 与 GroundingPlan 24/24",
+      "CAP-018 六节点、OP-03、逐节点证据与 event_end_unknown",
+      "Browser/API/Joint 同候选同会话与 RRC25-only 边界"
+    ],
+    "closed_blockers": [
+      "35 案证据指针曾只有自报字符串",
+      "X04/X05 曾缺完整失败链和状态快照",
+      "D11 曾只回答末端状态且误标 supported",
+      "M01 峰值追问曾漂移成 fact_timeline",
+      "CAP-018 曾缺完整有序节点与 OP-03 回执",
+      "浏览器、API、Joint 与候选身份曾不一致"
+    ],
+    "remaining_blockers": [],
+    "not_reviewed_as_pass": [
+      "合并、发布、部署、生产可用性、持久化、多副本、供应商 SLO 或 P2/RCA"
+    ]
+  },
+  "evidence": [
+    "evaluation/country-outage/p1-runtime-v2/candidate-identity.json",
+    "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+    "evaluation/country-outage/p1-runtime-v2/s4-semantic-current-prompt-evaluation.json",
+    "evaluation/country-outage/p1-runtime-v2/s4-browser-api-conversation.json",
+    "evaluation/country-outage/p1-runtime-v2/s4-joint-acceptance.json",
+    "evaluation/country-outage/p1-runtime-v2/s4-browser-desktop.png",
+    "evaluation/country-outage/p1-runtime-v2/s4-browser-narrow.png"
+  ],
+  "remaining_unknowns": [
+    "RRC25 控制面不能证明真实用户连通性、全国中断、原因、责任或恢复",
+    "Update/Withdraw、DNS、HTTP、流量、IODA、OONI 等未接入",
+    "SEM-004 标签差异继续保留为真实问题采样项",
+    "本地内存候选未验证生产持久化、多副本、吞吐、发布回滚或供应商 SLO"
+  ],
+  "boundary": "只证明 P1 本地开发候选完成 S0—S4；未合并、未发布、未部署、未生产验证，不实施 P2-P5 或 RCA。"
+}

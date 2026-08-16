@@ -22,7 +22,14 @@ import {
 } from '../server/index.js'
 import {
   HttpP1GeneralReadModelProvider,
+  P1CodexCliSemanticModel,
   P1ConversationManager,
+  P1ModelUserGoalPlanner,
+  P1RuntimeV2ConversationService,
+  P1RuntimeV2SemanticTurnService,
+  P1RuntimeV2SingleTurnService,
+  type P1GeneralReadModelProvider,
+  type P1RuntimeV2ReadProvider,
 } from '../chat/index.js'
 import {
   assertCountryOutageLoopbackHost,
@@ -31,6 +38,40 @@ import {
   positiveIntegerEnvironmentValue,
   requiredEnvironmentValue,
 } from './sidecar-security.js'
+
+function createDevelopmentSemanticRuntime(
+  provider: P1GeneralReadModelProvider & P1RuntimeV2ReadProvider,
+  deterministicFacts: P1RuntimeV2SingleTurnService,
+): {
+  semanticTurn: P1RuntimeV2SemanticTurnService
+  conversation: P1RuntimeV2ConversationService
+} | undefined {
+  const mode = process.env.COUNTRY_OUTAGE_P1_SEMANTIC_DEVELOPMENT_PROVIDER
+    ?.trim()
+  if (!mode) return undefined
+  if (mode !== 'codex-cli') {
+    throw new Error('S2 开发语义提供方只允许 codex-cli')
+  }
+  const executable =
+    process.env.COUNTRY_OUTAGE_P1_CODEX_EXECUTABLE?.trim()
+    || '/Applications/ChatGPT.app/Contents/Resources/codex'
+  const model = process.env.COUNTRY_OUTAGE_P1_CODEX_MODEL?.trim()
+    || 'gpt-5.6-sol'
+  const rawModel = new P1CodexCliSemanticModel({
+    executable,
+    model,
+    timeoutMs: 60_000,
+  })
+  const planner = new P1ModelUserGoalPlanner(rawModel)
+  return {
+    semanticTurn: new P1RuntimeV2SemanticTurnService(
+      provider,
+      deterministicFacts,
+      planner,
+    ),
+    conversation: new P1RuntimeV2ConversationService({ provider, planner }),
+  }
+}
 
 async function main(): Promise<void> {
   const host = process.env.COUNTRY_OUTAGE_AGENT_HOST?.trim() || '127.0.0.1'
@@ -56,13 +97,25 @@ async function main(): Promise<void> {
       'DOMEYE_API_TIMEOUT_MS',
       10_000,
     )
-    const chat = new P1ConversationManager({
-      provider: new HttpP1GeneralReadModelProvider(apiBaseUrl, apiTimeoutMs),
-    })
+    const chatProvider = new HttpP1GeneralReadModelProvider(
+      apiBaseUrl,
+      apiTimeoutMs,
+    )
+    const chat = new P1ConversationManager({ provider: chatProvider })
+    const runtimeV2SingleTurn = new P1RuntimeV2SingleTurnService(chatProvider)
+    const semanticRuntime = createDevelopmentSemanticRuntime(
+      chatProvider,
+      runtimeV2SingleTurn,
+    )
     const server = createServer(createCountryOutageAgentHttpHandler({
       // chat-only 只用于 P1 浏览器/机器验收；报告路径保持未配置，不能冒充正式报告入口。
       application: {} as CountryOutageAgentOrchestrator,
       chat,
+      runtimeV2SingleTurn,
+      ...(semanticRuntime ? {
+        runtimeV2SemanticTurn: semanticRuntime.semanticTurn,
+        runtimeV2Conversation: semanticRuntime.conversation,
+      } : {}),
       authenticate: createCountryOutageInternalAuthenticator(sharedToken),
     }))
     server.requestTimeout = 125_000
@@ -85,6 +138,9 @@ async function main(): Promise<void> {
       persistence: 'ephemeral',
       reportCapability: 'not_configured',
       p1Chat: 'event-bound-deterministic',
+      p1Semantic: semanticRuntime
+        ? 'codex-cli-development-candidate'
+        : 'not_configured',
     })}\n`)
     return
   }
@@ -156,13 +212,25 @@ async function main(): Promise<void> {
       new DisabledExternalEvidenceProvider(),
     annexComposer: new DisabledAnnexComposer(),
   })
-  const chat = new P1ConversationManager({
-    provider: new HttpP1GeneralReadModelProvider(apiBaseUrl, apiTimeoutMs),
-  })
+  const chatProvider = new HttpP1GeneralReadModelProvider(
+    apiBaseUrl,
+    apiTimeoutMs,
+  )
+  const chat = new P1ConversationManager({ provider: chatProvider })
+  const runtimeV2SingleTurn = new P1RuntimeV2SingleTurnService(chatProvider)
+  const semanticRuntime = createDevelopmentSemanticRuntime(
+    chatProvider,
+    runtimeV2SingleTurn,
+  )
   const server = createServer(
     createCountryOutageAgentHttpHandler({
       application: orchestrator,
       chat,
+      runtimeV2SingleTurn,
+      ...(semanticRuntime ? {
+        runtimeV2SemanticTurn: semanticRuntime.semanticTurn,
+        runtimeV2Conversation: semanticRuntime.conversation,
+      } : {}),
       authenticate: createCountryOutageInternalAuthenticator(sharedToken),
     }),
   )
@@ -191,6 +259,9 @@ async function main(): Promise<void> {
       piVersion: '0.82.1',
       externalEvidence: 'disabled',
       p1Chat: 'event-bound-deterministic',
+      p1Semantic: semanticRuntime
+        ? 'codex-cli-development-candidate'
+        : 'not_configured',
     })}\n`,
   )
 }

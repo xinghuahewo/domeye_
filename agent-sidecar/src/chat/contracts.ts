@@ -23,6 +23,7 @@ export type P1TurnState =
   | 'cancelled'
 
 export interface P1ConversationBinding {
+  event_type: 'country_outage'
   incident_id: string
   legacy_reference: string
   publication_id: string
@@ -30,11 +31,22 @@ export interface P1ConversationBinding {
   collector_id: 'rrc25'
   cohort_id: string
   country_code: string
+  detected_at_utc: string | null
   window_start_utc: string
   window_end_utc: string
   data_through: string | null
   is_final_in_data_range: boolean
   lifecycle_state: string
+  observation_state: string
+  quality_state: string
+  missing_slot_count: number
+  capabilities: {
+    overview: 'available' | 'unavailable'
+    event_series: 'available' | 'unavailable'
+    affected_as: 'available' | 'unavailable'
+    path_downstreams: 'available' | 'unavailable'
+    full_path_evidence: 'audit_only' | 'unavailable'
+  }
 }
 export interface P1ConversationState {
   topic: string | null

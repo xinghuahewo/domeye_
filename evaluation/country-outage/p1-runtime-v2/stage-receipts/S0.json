@@ -1,0 +1,41 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v2",
+  "stage": "S0",
+  "stage_name": "运行能力与执行合同冻结",
+  "status": "completed",
+  "conclusion": "已修正",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "requirements": ["P1-UX-01", "P1-UX-04", "P1-UX-05", "P1-UX-09", "P1-CTR-01", "P1-CTR-02", "P1-CTR-03", "P1-CTR-04", "P1-CTR-05", "P1-CTR-06", "P1-CTR-07", "P1-CTR-09"],
+  "checks": [
+    {"name": "P0 v1.3 原位真值修正回归", "passed": true, "result": "Validator PASS；16/16"},
+    {"name": "P1 Runtime v2 S0 合同", "passed": true, "result": "17 selected；5 defer；4 reject；8 unknown；9 execution units；102 Oracle"},
+    {"name": "P1 Runtime v2 S0 单元测试", "passed": true, "result": "25/25"},
+    {"name": "确定性算子真实执行", "passed": true, "result": "OP-01/02/03 共 18 个六类案例实际运行并与 expected 精确比较"},
+    {"name": "live series 真值绑定", "passed": true, "result": "响应 SHA 45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6；首峰 13:50:00Z"},
+    {"name": "差异格式检查", "passed": true, "result": "git diff --check exit 0"}
+  ],
+  "alignment_hook": {
+    "command": "python3 .codex/hooks/country_outage_agent_p1_alignment.py --stage S0",
+    "exit_code": 0,
+    "conclusion": "已修正"
+  },
+  "independent_semantic_review": {
+    "role": "独立人类专家模拟子 Agent",
+    "verdict": "PASS",
+    "review_rounds": 5,
+    "scope": ["逐 Capability 参数合同", "supported/partial 协商", "OP-01/02/03 执行真值", "CAP-018 时间线", "evidence_ref 值与身份绑定", "P0 原位修正范围"],
+    "remaining_blockers": []
+  },
+  "evidence": [
+    "contracts/agent/country-outage-p1-runtime-v2/capability-catalog.json",
+    "contracts/agent/country-outage-p1-runtime-v2/tool-contracts.json",
+    "contracts/agent/country-outage-p1-runtime-v2/oracle.json",
+    "contracts/agent/country-outage-p1-runtime-v2/semantic-plan.schema.json",
+    "contracts/agent/country-outage-p1-runtime-v2/policy.json",
+    "evaluation/country-outage/p1-runtime-v2/oracle-fixtures.json",
+    "dev/tools/validate_country_outage_p1_runtime_v2.py",
+    "dev/tests/test_country_outage_p1_runtime_v2.py"
+  ],
+  "boundary": "只证明 S0 运行能力、Typed Tool/Operator、Oracle、权限与语义边界冻结；不宣称 S1-S4、浏览器、部署或生产完成。"
+}

@@ -1,0 +1,137 @@
+{
+  "schema_version": "country_outage_p1_stage_receipt_v2",
+  "stage": "S2",
+  "stage_name": "开放目标到封闭计划",
+  "status": "completed",
+  "conclusion": "已修正",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "requirements": [
+    "P1-UX-02",
+    "P1-UX-05",
+    "P1-UX-06",
+    "P1-UX-08",
+    "P1-CTR-08",
+    "P1-CTR-09",
+    "P1-CTR-10",
+    "P1-CTR-11",
+    "P1-CTR-12",
+    "P1-CTR-13",
+    "P1-SCE-06",
+    "P1-SCE-08",
+    "P1-SCE-11"
+  ],
+  "checks": [
+    {
+      "name": "实际 runtime Prompt 语义回归",
+      "passed": true,
+      "result": "24 案、30 个参考子目标；29/30=96.67%，高于 95% 硬门；0 个额外目标；唯一已知错误 S2-SEM-008 如实保留"
+    },
+    {
+      "name": "GroundingPlan 合法性与真实执行回放",
+      "passed": true,
+      "result": "24/24=100%；每个 TOOL-02 节点对应一次真实 overview 调用；执行回执只绑定对应 goal 的证据"
+    },
+    {
+      "name": "开放 UserGoalPlan 与封闭 GroundingPlan",
+      "passed": true,
+      "result": "原问题与困难子目标不被 Tool 白名单裁剪；模型不得创建能力、事实、权限或状态；非法计划在执行前失败关闭"
+    },
+    {
+      "name": "混合意图真实 HTTP 旅程",
+      "passed": true,
+      "result": "当前不可见前缀返回 1,024 个；全国/真实用户影响单独 unsupported；3 条字段证据；0 model facts；state_commit=none"
+    },
+    {
+      "name": "多事实节点真实 HTTP 旅程",
+      "passed": true,
+      "result": "观测窗口与事件结束状态拆为两个目标；1 次 TOOL-01 与 2 次 TOOL-02；每个节点的 evidence refs 与对应目标一致"
+    },
+    {
+      "name": "处置建议政策边界真实 HTTP 与浏览器旅程",
+      "passed": true,
+      "result": "实时模型标签发生变化时仍稳定 unsupported；零 Grounding 节点；零证据；0 model facts；no state commit；页面明确显示当前不支持"
+    },
+    {
+      "name": "模型失败和状态越权安全回退",
+      "passed": true,
+      "result": "无效 JSON、Schema 漂移、原问题漂移、目标编号漂移、能力创造和状态提交均不执行事实 Tool"
+    },
+    {
+      "name": "Sidecar 全量回归",
+      "passed": true,
+      "result": "610/610"
+    },
+    {
+      "name": "Runtime v2 合同与单元回归",
+      "passed": true,
+      "result": "25/25"
+    },
+    {
+      "name": "后端同源代理回归",
+      "passed": true,
+      "result": "7/7"
+    },
+    {
+      "name": "前端相关回归",
+      "passed": true,
+      "result": "16/16"
+    },
+    {
+      "name": "P0 v1.3 入口回归",
+      "passed": true,
+      "result": "16 个系统表面；26 项能力；8 unknown；10 个 Oracle seed；35 个案例"
+    },
+    {
+      "name": "冻结核心摘要与差异格式",
+      "passed": true,
+      "result": "backend/core.sha256 全部 OK；git diff --check exit 0"
+    }
+  ],
+  "alignment_hook": {
+    "command": "python3 .codex/hooks/country_outage_agent_p1_alignment.py --stage S2",
+    "exit_code": 0,
+    "conclusion": "已修正",
+    "closed_deviation": "两个经审定的处置建议 kind 在 ambiguity 前稳定 unsupported，未知开放标签不做宿主关键词猜测；多目标 Grounding 节点不再复用一份全局执行回执；仅为 S2 评测器增加单文件 TASK 白名单"
+  },
+  "independent_semantic_review": {
+    "role": "独立人类专家模拟子 Agent",
+    "verdict": "PASS",
+    "review_rounds": 5,
+    "scope": [
+      "24 案 30 个参考子目标逐案产品语义真值",
+      "S2-SEM-022 事后语义别名的诚实性与不扩权",
+      "S2-SEM-021 处置建议的 unsupported 与零执行",
+      "多事实节点、真实调用、结果和 evidence refs 一一对应",
+      "审定 boundary kind 由宿主确定裁决，未知开放标签不做关键词改写",
+      "唯一已知错误是否可由 95% 语义合同容纳"
+    ],
+    "closed_blockers": [
+      "明确越界处置建议被误判为 clarify",
+      "多个逻辑 Grounding 节点复用一次 overview 并伪装为逐节点通过"
+    ],
+    "remaining_blockers": [],
+    "known_non_blocking_errors": [
+      "S2-SEM-008 把‘到最后还剩多少路由没回来’误解为 event_end_state；正确应为 current_prefix_state",
+      "同一模型一次实时采样把明确处置建议写成 unknown+blocking 并安全澄清；冻结候选已正确输出审定 alias，未知标签零执行且不由宿主关键词猜测"
+    ]
+  },
+  "evidence": [
+    "evaluation/country-outage/p1-runtime-v2/s2-semantic-variants.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-codex-cli-runtime-prompt-v2.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-semantic-evaluation.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-journey.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-multi-node.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-remediation-boundary.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-negated-remediation.json",
+    "evaluation/country-outage/p1-runtime-v2/s2-browser-mixed-intent.png",
+    "evaluation/country-outage/p1-runtime-v2/s2-browser-remediation-boundary.png",
+    "evaluation/country-outage/p1-runtime-v2/s2-browser-remediation-boundary.snapshot.txt",
+    "agent-sidecar/src/chat/runtime-v2-semantic.ts",
+    "agent-sidecar/src/chat/codex-cli-semantic-model.ts",
+    "agent-sidecar/src/chat/pi-semantic-model.ts",
+    "agent-sidecar/tests/p1-runtime-v2-semantic.test.ts",
+    "dev/tools/evaluate_country_outage_p1_s2_semantics.py"
+  ],
+  "boundary": "只证明 S2 在本地开发候选上实现开放 UserGoalPlan、封闭 GroundingPlan、逐子目标裁决、确定性事实执行与安全回退；不宣称 S3 多轮状态、事件切换、S4 联合最终验收、合并、部署、生产模型认证、开放集泛化、P2 调查或 RCA。"
+}

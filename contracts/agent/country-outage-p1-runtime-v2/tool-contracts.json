@@ -1,0 +1,305 @@
+{
+  "schema_version": "country_outage_p1_typed_tool_contract_v2",
+  "contract_revision": "p1-runtime-v2-s0-20260809-r2",
+  "openapi_contract": "contracts/openapi.json",
+  "common_identity": ["event_type", "incident_id", "publication_id", "revision", "collector_id", "cohort_id", "window_start_utc", "window_end_utc", "data_through", "is_final_in_data_range", "lifecycle_state"],
+  "common_rules": {
+    "event_type": "country_outage",
+    "collector_id": "rrc25",
+    "access": "read_only",
+    "identity_policy": "输入、结果、EvidenceState 和回答身份完全一致，否则整轮失败关闭",
+    "null_policy": "null、unknown、unavailable、not_configured、empty 和 0 不可互换",
+    "evidence_policy": "每个可发布事实必须由响应字段生成 evidence_ref，模型不得生成值或引用",
+    "timeout_policy": "超时返回 retryable tool_timeout，不发布部分结果、不提交状态",
+    "forbidden": ["写操作", "跨 publication 拼接", "RRC25 外部数据", "模型生成事实", "隐藏身份冲突"]
+  },
+  "registered_series_metrics": {
+    "interrupted_prefix_count": "prefix",
+    "completely_interrupted_prefix_count": "prefix",
+    "invisible_direction_count": "peer_asn_direction",
+    "affected_asn_count": "asn",
+    "route_interrupted_asn_count": "asn",
+    "fixed_visible_ipv4_address_count": "unique_ipv4_address",
+    "fixed_visible_ipv6_slash48_count": "ipv6_slash48_equivalent",
+    "new_cumulative_ipv4_prefix_count": "prefix",
+    "new_cumulative_ipv4_address_count": "unique_ipv4_address",
+    "new_cumulative_ipv6_prefix_count": "prefix",
+    "new_cumulative_ipv6_slash48_count": "ipv6_slash48_equivalent",
+    "new_visible_ipv4_prefix_count": "prefix",
+    "new_visible_ipv4_address_count": "unique_ipv4_address",
+    "new_visible_ipv6_prefix_count": "prefix",
+    "new_visible_ipv6_slash48_count": "ipv6_slash48_equivalent"
+  },
+  "$defs": {
+    "sourceIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_type", "incident_id", "publication_id", "revision", "collector_id", "cohort_id", "window_start_utc", "window_end_utc", "data_through", "is_final_in_data_range", "lifecycle_state"],
+      "properties": {
+        "event_type": {"const": "country_outage"}, "incident_id": {"type": "string", "minLength": 1}, "publication_id": {"type": "string", "minLength": 1}, "revision": {"type": "integer", "minimum": 1}, "collector_id": {"const": "rrc25"}, "cohort_id": {"type": "string", "minLength": 1},
+        "window_start_utc": {"type": "string", "format": "date-time"}, "window_end_utc": {"type": "string", "format": "date-time"}, "data_through": {"type": ["string", "null"], "format": "date-time"}, "is_final_in_data_range": {"type": "boolean"}, "lifecycle_state": {"type": "string", "minLength": 1}
+      }
+    },
+    "registeredMetricUnitPair": {
+      "oneOf": [
+        {"properties": {"metric": {"const": "interrupted_prefix_count"}, "unit": {"const": "prefix"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "completely_interrupted_prefix_count"}, "unit": {"const": "prefix"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "invisible_direction_count"}, "unit": {"const": "peer_asn_direction"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "affected_asn_count"}, "unit": {"const": "asn"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "route_interrupted_asn_count"}, "unit": {"const": "asn"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "fixed_visible_ipv4_address_count"}, "unit": {"const": "unique_ipv4_address"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "fixed_visible_ipv6_slash48_count"}, "unit": {"const": "ipv6_slash48_equivalent"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_cumulative_ipv4_prefix_count"}, "unit": {"const": "prefix"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_cumulative_ipv4_address_count"}, "unit": {"const": "unique_ipv4_address"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_cumulative_ipv6_prefix_count"}, "unit": {"const": "prefix"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_cumulative_ipv6_slash48_count"}, "unit": {"const": "ipv6_slash48_equivalent"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_visible_ipv4_prefix_count"}, "unit": {"const": "prefix"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_visible_ipv4_address_count"}, "unit": {"const": "unique_ipv4_address"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_visible_ipv6_prefix_count"}, "unit": {"const": "prefix"}}, "required": ["metric", "unit"]},
+        {"properties": {"metric": {"const": "new_visible_ipv6_slash48_count"}, "unit": {"const": "ipv6_slash48_equivalent"}}, "required": ["metric", "unit"]}
+      ]
+    },
+    "seriesExtremaInput": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_identity", "metric", "timestamps", "values", "unit", "tie_policy", "source_evidence_refs"],
+      "properties": {
+        "source_identity": {"$ref": "#/$defs/sourceIdentity"}, "metric": {"enum": ["interrupted_prefix_count", "completely_interrupted_prefix_count", "invisible_direction_count", "affected_asn_count", "route_interrupted_asn_count", "fixed_visible_ipv4_address_count", "fixed_visible_ipv6_slash48_count", "new_cumulative_ipv4_prefix_count", "new_cumulative_ipv4_address_count", "new_cumulative_ipv6_prefix_count", "new_cumulative_ipv6_slash48_count", "new_visible_ipv4_prefix_count", "new_visible_ipv4_address_count", "new_visible_ipv6_prefix_count", "new_visible_ipv6_slash48_count"]},
+        "timestamps": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "date-time"}}, "values": {"type": "array", "minItems": 1, "items": {"type": ["number", "null"]}}, "unit": {"type": "string", "minLength": 1}, "tie_policy": {"const": "first_observed_occurrence"}, "source_evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      },
+      "allOf": [{"$ref": "#/$defs/registeredMetricUnitPair"}]
+    },
+    "seriesExtremaResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_identity", "metric", "first", "last", "minimum", "minimum_at_utc", "maximum", "maximum_at_utc", "difference", "unit", "source_evidence_refs"],
+      "properties": {
+        "source_identity": {"$ref": "#/$defs/sourceIdentity"}, "metric": {"type": "string"}, "first": {"type": "number"}, "last": {"type": "number"}, "minimum": {"type": "number"}, "minimum_at_utc": {"type": "string", "format": "date-time"}, "maximum": {"type": "number"}, "maximum_at_utc": {"type": "string", "format": "date-time"}, "difference": {"type": "number"}, "unit": {"type": "string"}, "source_evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      },
+      "allOf": [{"$ref": "#/$defs/registeredMetricUnitPair"}]
+    },
+    "addressFamilyComparisonInput": {
+      "type": "object", "additionalProperties": false, "required": ["ipv4_extrema", "ipv6_extrema"],
+      "properties": {
+        "ipv4_extrema": {"allOf": [{"$ref": "#/$defs/seriesExtremaResult"}, {"properties": {"metric": {"const": "fixed_visible_ipv4_address_count"}, "unit": {"const": "unique_ipv4_address"}}}]},
+        "ipv6_extrema": {"allOf": [{"$ref": "#/$defs/seriesExtremaResult"}, {"properties": {"metric": {"const": "fixed_visible_ipv6_slash48_count"}, "unit": {"const": "ipv6_slash48_equivalent"}}}]}
+      }
+    },
+    "addressFamilyComparisonResult": {
+      "type": "object", "additionalProperties": false, "required": ["source_identity", "ipv4", "ipv6", "comparison", "combined_absolute_total", "source_evidence_refs"],
+      "properties": {"source_identity": {"$ref": "#/$defs/sourceIdentity"}, "ipv4": {"$ref": "#/$defs/seriesExtremaResult"}, "ipv6": {"$ref": "#/$defs/seriesExtremaResult"}, "comparison": {"const": "separate_units_only"}, "combined_absolute_total": {"const": "forbidden"}, "source_evidence_refs": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}, "uniqueItems": true}}
+    },
+    "verifiedFactBase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fact_id", "kind", "at_utc", "value", "unit", "source_identity", "evidence_ref"],
+      "properties": {
+        "fact_id": {"type": "string", "minLength": 1},
+        "kind": {"type": "string"},
+        "at_utc": {"type": "string", "format": "date-time"},
+        "value": {},
+        "unit": {"type": "string"},
+        "source_identity": {"$ref": "#/$defs/sourceIdentity"},
+        "evidence_ref": {"type": "string", "pattern": "^(resolution|overview|series|derived)\\."}
+      }
+    },
+    "verifiedFact": {
+      "oneOf": [
+        {"allOf": [{"$ref": "#/$defs/verifiedFactBase"}, {"properties": {"kind": {"enum": ["window_start", "detected", "event_end"]}, "value": {"type": "string", "format": "date-time"}, "unit": {"const": "UTC"}}}]},
+        {"allOf": [{"$ref": "#/$defs/verifiedFactBase"}, {"properties": {"kind": {"const": "data_through"}, "value": {"type": "number", "minimum": 0}, "unit": {"const": "prefix"}}}]},
+        {"allOf": [{"$ref": "#/$defs/verifiedFactBase"}, {"properties": {"kind": {"enum": ["interrupted_prefix_peak", "completely_interrupted_prefix_peak"]}, "value": {"type": "number", "minimum": 0}, "unit": {"const": "prefix"}}}]},
+        {"allOf": [{"$ref": "#/$defs/verifiedFactBase"}, {"properties": {"kind": {"const": "invisible_direction_peak"}, "value": {"type": "number", "minimum": 0}, "unit": {"const": "peer_asn_direction"}}}]},
+        {"allOf": [{"$ref": "#/$defs/verifiedFactBase"}, {"properties": {"kind": {"enum": ["affected_asn_peak", "route_interrupted_asn_peak"]}, "value": {"type": "number", "minimum": 0}, "unit": {"const": "asn"}}}]}
+      ]
+    },
+    "factTimelineInput": {
+      "type": "object", "additionalProperties": false, "required": ["identity_nodes", "peak_nodes", "data_through_node", "required_kinds", "lifecycle_state"],
+      "properties": {"identity_nodes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/verifiedFact"}}, "peak_nodes": {"type": "array", "items": {"$ref": "#/$defs/verifiedFact"}}, "data_through_node": {"allOf": [{"$ref": "#/$defs/verifiedFact"}, {"properties": {"kind": {"const": "data_through"}, "unit": {"const": "prefix"}}}]}, "required_kinds": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"enum": ["window_start", "detected", "interrupted_prefix_peak", "completely_interrupted_prefix_peak", "invisible_direction_peak", "affected_asn_peak", "route_interrupted_asn_peak", "data_through", "event_end"]}}, "lifecycle_state": {"const": "event_end_unknown"}}
+    },
+    "factTimelineResult": {
+      "type": "object", "additionalProperties": false, "required": ["source_identity", "ordered_fact_nodes", "terminal_unknown", "causal_edges"],
+      "properties": {"source_identity": {"$ref": "#/$defs/sourceIdentity"}, "ordered_fact_nodes": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/verifiedFact"}}, "terminal_unknown": {"type": "object", "additionalProperties": false, "required": ["reason", "event_end_at_utc"], "properties": {"reason": {"const": "event_end_unknown"}, "event_end_at_utc": {"type": "null"}}}, "causal_edges": {"const": "forbidden"}}
+    }
+  },
+  "execution_units": [
+    {
+      "unit_id": "TOOL-01",
+      "name": "resolve_event_binding",
+      "kind": "read_tool",
+      "purpose": "规范化事件引用并读取真实事件级能力状态",
+      "capability_ids": ["CAP-001"],
+      "source_operation": "GET /api/v2/events/resolve",
+      "preconditions": ["principal 具有 country_outage:read", "引用非空且长度不超过 1024"],
+      "input_schema": {"type": "object", "additionalProperties": false, "required": ["event_reference"], "properties": {"event_reference": {"type": "string", "minLength": 1, "maxLength": 1024}, "expected_publication_id": {"type": ["string", "null"]}, "expected_revision": {"type": ["integer", "null"], "minimum": 1}}},
+      "output_schema": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralResolutionV1"},
+      "units": {},
+      "time_semantics": "publication-bound UTC identity；data_through 不是事件结束时间",
+      "pagination": "not_applicable",
+      "null_semantics": "关键身份 null => invalid_data；event_end_unknown 保留未知结束",
+      "errors": ["invalid_reference", "unsupported_event", "event_not_found", "publication_not_found", "binding_conflict", "permission_denied", "tool_timeout", "data_api_unavailable", "invalid_data"],
+      "permission": "country_outage:read",
+      "timeout_ms": 15000,
+      "evidence_refs": ["resolution.event_type", "resolution.identity.*", "resolution.capabilities.*", "resolution.observation_state"],
+      "forbidden_uses": ["把当前事件 capabilities 外推到其他事件", "无合法新引用时切换事件"],
+      "notes": ["resolution=available 只表示 TOOL-01 成功返回后由宿主派生的绑定状态；它不是 resolver.capabilities 中的正式键"]
+    },
+    {
+      "unit_id": "TOOL-02",
+      "name": "read_event_overview",
+      "kind": "read_tool",
+      "purpose": "读取检测时间、窗口、截止、finality、质量、当前人口与前缀/AS 峰值",
+      "capability_ids": ["CAP-002", "CAP-003", "CAP-004", "CAP-005"],
+      "source_operation": "GET /api/v2/country-outages/{incident_id}/overview",
+      "preconditions": ["TOOL-01 身份已验证", "resolver.capabilities.overview=available", "principal 具有 country_outage:read"],
+      "input_schema": {"type": "object", "additionalProperties": false, "required": ["incident_id", "publication_id", "revision"], "properties": {"incident_id": {"type": "string", "minLength": 1}, "publication_id": {"type": "string", "minLength": 1}, "revision": {"type": "integer", "minimum": 1}}},
+      "output_schema": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralOverviewV1"},
+      "units": {"prefix": "固定 cohort 前缀", "asn": "固定 cohort 中不同 AS 人口", "vp_direction": "前缀×独立 RRC25 peer 观测方向"},
+      "time_semantics": "detected_at_utc、window、data_through、event_end_at_utc 分离；峰值为逐槽极值与首个命中时点；窗口人口汇总不是同时峰值",
+      "pagination": "not_applicable",
+      "null_semantics": "event_end_at_utc=null 表示结束未知；字段缺失为 invalid_data，不能编码为 0",
+      "errors": ["capability_unavailable", "evidence_not_found", "publication_identity_conflict", "permission_denied", "tool_timeout", "data_api_unavailable", "invalid_data"],
+      "permission": "country_outage:read",
+      "timeout_ms": 15000,
+      "evidence_refs": ["overview.event.*", "overview.cohort.*", "overview.current.*", "overview.peaks.*", "overview.affected_as_count", "overview.route_interrupted_as_count", "overview.semantic_boundary"],
+      "forbidden_uses": ["把前缀/AS 推为用户或流量", "把 data_through 推为恢复或结束", "把逐槽峰值推为窗口累计人口"]
+    },
+    {
+      "unit_id": "TOOL-03",
+      "name": "read_metric_series",
+      "kind": "read_tool",
+      "purpose": "读取正式 15 轨 RRC25 时序及每轨定义、单位和人口",
+      "capability_ids": ["CAP-006", "CAP-007", "CAP-008", "CAP-009"],
+      "source_operation": "GET /api/v2/country-outages/{incident_id}/series",
+      "preconditions": ["TOOL-01 身份已验证", "resolver.capabilities.event_series=available", "metrics 只取 registered_series_metrics"],
+      "input_schema": {"type": "object", "additionalProperties": false, "required": ["incident_id", "publication_id", "revision", "metrics"], "properties": {"incident_id": {"type": "string", "minLength": 1}, "publication_id": {"type": "string", "minLength": 1}, "revision": {"type": "integer", "minimum": 1}, "metrics": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["interrupted_prefix_count", "completely_interrupted_prefix_count", "invisible_direction_count", "affected_asn_count", "route_interrupted_asn_count", "fixed_visible_ipv4_address_count", "fixed_visible_ipv6_slash48_count", "new_cumulative_ipv4_prefix_count", "new_cumulative_ipv4_address_count", "new_cumulative_ipv6_prefix_count", "new_cumulative_ipv6_slash48_count", "new_visible_ipv4_prefix_count", "new_visible_ipv4_address_count", "new_visible_ipv6_prefix_count", "new_visible_ipv6_slash48_count"]}}}},
+      "output_schema": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralSeriesV1"},
+      "units": {"source": "registered_series_metrics；每条结果保留自己的单位，禁止默认单位"},
+      "time_semantics": "timestamps、15 轨与 point_count 同长；窗口固定为绑定 publication",
+      "pagination": "not_applicable",
+      "null_semantics": "单点 null 表示未观测；全 null 或空轨道为 unavailable，不是 0",
+      "errors": ["capability_unavailable", "unknown_metric", "metric_definition_missing", "empty_series", "empty_observed_set", "invalid_series_shape", "publication_identity_conflict", "permission_denied", "tool_timeout", "data_api_unavailable", "invalid_data"],
+      "permission": "country_outage:read",
+      "timeout_ms": 15000,
+      "evidence_refs": ["series.identity.*", "series.timestamps", "series.track_definitions.<metric>.*", "series.tracks.<metric>"],
+      "forbidden_uses": ["跨单位合并 IPv4 与 IPv6", "把新前缀推为新用户接入", "外推窗口外状态"]
+    },
+    {
+      "unit_id": "TOOL-04",
+      "name": "query_affected_asns",
+      "kind": "read_tool",
+      "purpose": "按 query/classification/sort 分页受影响 AS，并读取指定 ASN 详情",
+      "capability_ids": ["CAP-010", "CAP-011"],
+      "source_operation": "GET /api/v2/country-outages/{incident_id}/asns",
+      "preconditions": ["TOOL-01 身份已验证", "resolver.capabilities.affected_as=available"],
+      "input_schema": {"type": "object", "additionalProperties": false, "required": ["incident_id", "publication_id", "revision", "page", "page_size", "classification", "query", "sort"], "properties": {"incident_id": {"type": "string", "minLength": 1}, "publication_id": {"type": "string", "minLength": 1}, "revision": {"type": "integer", "minimum": 1}, "asn": {"type": ["integer", "null"], "minimum": 1, "maximum": 4294967295}, "query": {"type": "string", "maxLength": 128}, "classification": {"enum": ["all", "affected", "route_interrupted"]}, "sort": {"enum": ["default", "asn_asc"]}, "page": {"type": "integer", "minimum": 1}, "page_size": {"type": "integer", "minimum": 1, "maximum": 60}}},
+      "output_schema": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralAffectedAsPageV1"},
+      "units": {"fixed_prefix_count": "prefix", "peak_complete_prefix_count": "prefix", "path_downstream_asn_count": "observed_path_association"},
+      "time_semantics": "同一 publication 窗口；峰值不代表持续影响",
+      "pagination": "服务端稳定分页；page 从 1 开始，page_size<=60；total 是过滤后人口",
+      "null_semantics": "合法查询无结果为 empty items/total=0；AS 名称类 null 由对应 state=unknown 解释",
+      "errors": ["capability_unavailable", "invalid_asn", "invalid_query", "evidence_not_found", "publication_identity_conflict", "permission_denied", "tool_timeout", "data_api_unavailable", "invalid_data"],
+      "permission": "country_outage:read",
+      "timeout_ms": 15000,
+      "evidence_refs": ["asns.identity.*", "asns.page", "asns.page_size", "asns.total", "asns.classification", "asns.query", "asns.sort", "asns.items.<asn>.*"],
+      "forbidden_uses": ["把列表顺序写成因果重要性", "把 observed AS 写成责任主体"]
+    },
+    {
+      "unit_id": "TOOL-05",
+      "name": "query_path_evidence",
+      "kind": "read_tool",
+      "purpose": "按 affected_asn/scope/query 分页路径相邻关联与每行至多三个真实样本",
+      "capability_ids": ["CAP-012", "CAP-013"],
+      "source_operation": "GET /api/v2/country-outages/{incident_id}/path-downstreams",
+      "preconditions": ["TOOL-01 身份已验证", "resolver.capabilities.path_downstreams=available", "完整样本语义遵守 full_path_evidence=audit_only"],
+      "input_schema": {"type": "object", "additionalProperties": false, "required": ["incident_id", "publication_id", "revision", "scope", "query", "page", "page_size"], "properties": {"incident_id": {"type": "string", "minLength": 1}, "publication_id": {"type": "string", "minLength": 1}, "revision": {"type": "integer", "minimum": 1}, "affected_asn": {"type": ["integer", "null"], "minimum": 1, "maximum": 4294967295}, "scope": {"enum": ["all", "concurrent"]}, "query": {"type": "string", "maxLength": 128}, "page": {"type": "integer", "minimum": 1}, "page_size": {"type": "integer", "minimum": 1, "maximum": 60}}},
+      "output_schema": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralPathDownstreamPageV1"},
+      "row_sample_contract": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralPathDownstreamItemV1/properties/path_samples", "min_items": 1, "max_items": 3},
+      "units": {"observed_path_count": "observed_ordered_rrc25_path", "independent_direction_count": "independent_rrc25_peer_asn_direction"},
+      "time_semantics": "样本只代表 publication 窗口内 RRC25 观测；concurrent 是同一时点共同变化筛选",
+      "pagination": "服务端分页；page 从 1 开始，page_size<=60；affected_asn=null 表示全体",
+      "null_semantics": "合法空页不表示路径不存在或网络无连接；时间字段 null 表示无并发时点",
+      "errors": ["capability_unavailable", "invalid_asn", "invalid_query", "evidence_not_found", "publication_identity_conflict", "permission_denied", "tool_timeout", "data_api_unavailable", "invalid_data"],
+      "permission": "country_outage:read",
+      "timeout_ms": 15000,
+      "evidence_refs": ["paths.identity.*", "paths.affected_asn", "paths.scope", "paths.query", "paths.total", "paths.relationship_semantics", "paths.items.*", "paths.items.*.path_samples[0..2]"],
+      "forbidden_uses": ["将相邻关系解释为依赖、传播或原因", "将最多三个样本当成全网拓扑"]
+    },
+    {
+      "unit_id": "TOOL-06",
+      "name": "read_audit_identity",
+      "kind": "read_tool",
+      "purpose": "读取 publication 绑定的运行、数据集、实现、摘要、来源和文件 manifest 身份",
+      "capability_ids": ["CAP-014"],
+      "source_operation": "GET /api/v2/country-outages/{incident_id}/audit",
+      "preconditions": ["TOOL-01 身份已验证", "resolver.capabilities.full_path_evidence=audit_only"],
+      "input_schema": {"type": "object", "additionalProperties": false, "required": ["incident_id", "publication_id", "revision"], "properties": {"incident_id": {"type": "string", "minLength": 1}, "publication_id": {"type": "string", "minLength": 1}, "revision": {"type": "integer", "minimum": 1}}},
+      "output_schema": {"$ref": "../../openapi.json#/components/schemas/CountryOutageGeneralAuditV1"},
+      "required_output_fields": ["run_id", "dataset_id", "implementation_id", "manifest_sha256", "event_read_model_id", "event_content_sha256", "source_identities", "files", "causal_boundary"],
+      "units": {"files.*.size_bytes": "byte", "*.sha256": "sha256"},
+      "time_semantics": "audit 身份与同一 publication 绑定",
+      "pagination": "not_applicable",
+      "null_semantics": "任一 required_output_field 缺失为 integrity error；Web release identity 仍可为 unknown",
+      "errors": ["capability_unavailable", "evidence_not_found", "publication_identity_conflict", "audit_integrity_error", "permission_denied", "tool_timeout", "data_api_unavailable", "invalid_data"],
+      "permission": "country_outage:read",
+      "timeout_ms": 15000,
+      "evidence_refs": ["audit.run_id", "audit.dataset_id", "audit.implementation_id", "audit.manifest_sha256", "audit.event_read_model_id", "audit.event_content_sha256", "audit.source_identities.*", "audit.files.*"],
+      "forbidden_uses": ["把数据 implementation_id 写成 Web release 提交", "声称服务器文件已独立验签"]
+    },
+    {
+      "unit_id": "OP-01",
+      "name": "series_extrema",
+      "kind": "deterministic_operator",
+      "purpose": "对登记轨道计算首末、最小、最大、首个极值时点和差值",
+      "capability_ids": ["CAP-016"],
+      "source_operation": "host deterministic operator",
+      "preconditions": ["源轨已通过 TOOL-03 或来自登记 overview 峰值", "所有证据同一身份", "tie_policy=first_observed_occurrence"],
+      "input_schema": {"$ref": "#/$defs/seriesExtremaInput"},
+      "output_schema": {"$ref": "#/$defs/seriesExtremaResult"},
+      "units": {"unit": "必须等于 registered_series_metrics[metric]"},
+      "time_semantics": "忽略 null；并列极值返回首个观测时点",
+      "pagination": "not_applicable",
+      "null_semantics": "全 null 或无观测点返回 empty_observed_set，不返回 0",
+      "errors": ["unknown_metric", "identity_conflict", "empty_observed_set", "invalid_series_shape", "unit_mismatch", "invalid_data"],
+      "permission": "inherits_source_read_permission",
+      "timeout_ms": 1000,
+      "evidence_refs": ["derived.series_extrema.<metric>", "source_evidence_refs"],
+      "forbidden_uses": ["未登记指标", "把逐槽峰值写成累计人口", "外推因果或恢复"]
+    },
+    {
+      "unit_id": "OP-02",
+      "name": "compare_address_families",
+      "kind": "deterministic_operator",
+      "purpose": "比较 IPv4 与 IPv6 变化但保持不同单位",
+      "capability_ids": ["CAP-017"],
+      "source_operation": "host deterministic operator",
+      "preconditions": ["IPv4/IPv6 两轨来自同一 publication", "两轨分别通过 OP-01"],
+      "input_schema": {"$ref": "#/$defs/addressFamilyComparisonInput"},
+      "output_schema": {"$ref": "#/$defs/addressFamilyComparisonResult"},
+      "units": {"ipv4": "unique_ipv4_address", "ipv6": "ipv6_slash48_equivalent"},
+      "time_semantics": "比较同一 publication 窗口，不要求极值同一时点",
+      "pagination": "not_applicable",
+      "null_semantics": "一侧不可用 => partial；两侧不可用 => unavailable",
+      "errors": ["identity_conflict", "unit_mismatch", "missing_input", "invalid_data"],
+      "permission": "inherits_source_read_permission",
+      "timeout_ms": 1000,
+      "evidence_refs": ["derived.address_family_comparison", "source_evidence_refs"],
+      "forbidden_uses": ["跨单位相加", "比较推出用户或流量影响"]
+    },
+    {
+      "unit_id": "OP-03",
+      "name": "compose_fact_timeline",
+      "kind": "deterministic_operator",
+      "purpose": "把已验证事实组织为有序时间线",
+      "capability_ids": ["CAP-018"],
+      "source_operation": "host deterministic operator",
+      "preconditions": ["所有节点同一身份", "节点均有 evidence_ref", "结束状态来自 lifecycle_state"],
+      "input_schema": {"$ref": "#/$defs/factTimelineInput"},
+      "output_schema": {"$ref": "#/$defs/factTimelineResult"},
+      "units": {"per_node": "保留源事实单位"},
+      "time_semantics": "按 UTC 时点稳定排序；相邻只表示顺序，不表示因果",
+      "pagination": "not_applicable",
+      "null_semantics": "event_end_unknown 必须保留 null 结束时点",
+      "errors": ["identity_conflict", "missing_evidence_ref", "evidence_reference_not_resolved", "evidence_value_conflict", "invalid_timestamp", "invalid_data"],
+      "permission": "inherits_source_read_permission",
+      "timeout_ms": 1000,
+      "evidence_refs": ["derived.fact_timeline", "ordered_fact_nodes[].evidence_ref"],
+      "forbidden_uses": ["生成因果边", "把 data_through 当事件结束或恢复"]
+    }
+  ]
+}

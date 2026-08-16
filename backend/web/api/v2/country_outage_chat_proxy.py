@@ -49,6 +49,55 @@ def _validate_turn_request(value: dict) -> None:
     agent_proxy._validate_idempotency_header(key)
 
 
+def _validate_runtime_v2_single_turn_request(value: dict) -> None:
+    allowed = {
+        "event_reference",
+        "publication_id",
+        "revision",
+        "controlled_goal",
+    }
+    if set(value) - allowed:
+        raise ValueError("Runtime v2 单轮请求包含未授权字段")
+    reference = value.get("event_reference")
+    if not isinstance(reference, str) or not agent_proxy._COUNTRY_OUTAGE_REFERENCE.fullmatch(
+        reference
+    ):
+        raise ValueError("event_reference 不是合法 country_outage 引用")
+    publication_id = value.get("publication_id")
+    if not isinstance(publication_id, str) or not publication_id or len(publication_id) > 256:
+        raise ValueError("publication_id 必须是非空字符串")
+    revision = value.get("revision")
+    if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
+        raise ValueError("revision 必须是正整数")
+    if value.get("controlled_goal") != "event_summary":
+        raise ValueError("S1 受控入口只接受 event_summary")
+
+
+def _validate_runtime_v2_semantic_turn_request(value: dict) -> None:
+    allowed = {
+        "event_reference",
+        "publication_id",
+        "revision",
+        "question",
+    }
+    if set(value) - allowed:
+        raise ValueError("Runtime v2 语义轮次包含未授权字段")
+    reference = value.get("event_reference")
+    if not isinstance(reference, str) or not agent_proxy._COUNTRY_OUTAGE_REFERENCE.fullmatch(
+        reference
+    ):
+        raise ValueError("event_reference 不是合法 country_outage 引用")
+    publication_id = value.get("publication_id")
+    if not isinstance(publication_id, str) or not publication_id or len(publication_id) > 256:
+        raise ValueError("publication_id 必须是非空字符串")
+    revision = value.get("revision")
+    if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
+        raise ValueError("revision 必须是正整数")
+    question = value.get("question")
+    if not isinstance(question, str) or not question.strip() or len(question) > 2_000:
+        raise ValueError("question 必须是 1 至 2,000 字符的非空文本")
+
+
 def _empty_body() -> dict:
     value = agent_proxy._read_json_body()
     if value:
@@ -64,6 +113,109 @@ class CountryOutageChatConversationCollectionResource(Resource):
         except ValueError as error:
             return agent_proxy._error(400, "invalid_chat_request", str(error))
         return agent_proxy._json_proxy("POST", "/country-outage/chat/conversations", body)
+
+
+class CountryOutageRuntimeV2SingleTurnResource(Resource):
+    def post(self):
+        try:
+            body = agent_proxy._read_json_body()
+            _validate_runtime_v2_single_turn_request(body)
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "POST", "/country-outage/runtime-v2/single-turn", body
+        )
+
+
+class CountryOutageRuntimeV2SemanticTurnResource(Resource):
+    def post(self):
+        try:
+            body = agent_proxy._read_json_body()
+            _validate_runtime_v2_semantic_turn_request(body)
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "POST", "/country-outage/runtime-v2/semantic-turn", body
+        )
+
+
+class CountryOutageRuntimeV2ConversationCollectionResource(Resource):
+    def post(self):
+        try:
+            body = agent_proxy._read_json_body()
+            _validate_conversation_request(body)
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "POST", "/country-outage/runtime-v2/conversations", body
+        )
+
+
+class CountryOutageRuntimeV2ConversationResource(Resource):
+    def get(self, conversation_id: str):
+        try:
+            conversation_id = agent_proxy._safe_identifier(
+                conversation_id, "conversation_id"
+            )
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "GET", f"/country-outage/runtime-v2/conversations/{conversation_id}"
+        )
+
+
+class CountryOutageRuntimeV2TurnCollectionResource(Resource):
+    def post(self, conversation_id: str):
+        try:
+            conversation_id = agent_proxy._safe_identifier(
+                conversation_id, "conversation_id"
+            )
+            body = agent_proxy._read_json_body()
+            _validate_turn_request(body)
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "POST",
+            f"/country-outage/runtime-v2/conversations/{conversation_id}/turns",
+            body,
+        )
+
+
+class CountryOutageRuntimeV2TurnCancelResource(Resource):
+    def post(self, conversation_id: str, turn_id: str):
+        try:
+            conversation_id = agent_proxy._safe_identifier(
+                conversation_id, "conversation_id"
+            )
+            turn_id = agent_proxy._safe_identifier(turn_id, "turn_id")
+            body = _empty_body()
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "POST",
+            (
+                f"/country-outage/runtime-v2/conversations/{conversation_id}/"
+                f"turns/{turn_id}/cancel"
+            ),
+            body,
+        )
+
+
+class CountryOutageRuntimeV2RebindResource(Resource):
+    def post(self, conversation_id: str):
+        try:
+            conversation_id = agent_proxy._safe_identifier(
+                conversation_id, "conversation_id"
+            )
+            body = agent_proxy._read_json_body()
+            _validate_conversation_request(body)
+        except ValueError as error:
+            return agent_proxy._error(400, "invalid_runtime_v2_request", str(error))
+        return agent_proxy._json_proxy(
+            "POST",
+            f"/country-outage/runtime-v2/conversations/{conversation_id}/rebind",
+            body,
+        )
 
 
 class CountryOutageChatConversationResource(Resource):

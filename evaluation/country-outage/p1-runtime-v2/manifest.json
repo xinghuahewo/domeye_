@@ -1,0 +1,418 @@
+{
+  "schema_version": "country_outage_p1_runtime_manifest_v2",
+  "candidate_id": "p1-runtime-v2-34dcc7de840e33d8",
+  "base_spec_commit": "6cb2bd3",
+  "p0_entry_revision": "p0-v1.3-20260809-ir-r1",
+  "collector_id": "rrc25",
+  "stages": {
+    "S0": "completed",
+    "S1": "completed",
+    "S2": "completed",
+    "S3": "completed",
+    "S4": "completed"
+  },
+  "artifacts": [
+    {
+      "path": "contracts/agent/country-outage-p1-runtime-v2/README.md",
+      "size_bytes": 1766,
+      "sha256": "31c566a6618cd7649d4dd60082c6a21a39e10ff01404b920631869cb535fce8e"
+    },
+    {
+      "path": "contracts/agent/country-outage-p1-runtime-v2/capability-catalog.json",
+      "size_bytes": 10538,
+      "sha256": "f7b09aaddf84f0d74c8f61c3f8fdfd0b4326407b6f34ec3a5b315594bcd9c5aa"
+    },
+    {
+      "path": "contracts/agent/country-outage-p1-runtime-v2/tool-contracts.json",
+      "size_bytes": 28182,
+      "sha256": "49152d80340467911021197494a073673825d7af363a21d677f11f92a39417ef"
+    },
+    {
+      "path": "contracts/agent/country-outage-p1-runtime-v2/oracle.json",
+      "size_bytes": 70201,
+      "sha256": "11854ee5be1e376944a849eceb117aa3548a29776328295c1569441c418fb309"
+    },
+    {
+      "path": "contracts/agent/country-outage-p1-runtime-v2/semantic-plan.schema.json",
+      "size_bytes": 19605,
+      "sha256": "73041b0a00e33729ce53550510368ac13bdafe6f53867b7578f6703bae6781ac"
+    },
+    {
+      "path": "contracts/agent/country-outage-p1-runtime-v2/policy.json",
+      "size_bytes": 5807,
+      "sha256": "86c2efa3ec310916171901409348a67c8515ab145654e4708683dcaa2596b7eb"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/oracle-fixtures.json",
+      "size_bytes": 22310,
+      "sha256": "1917269ecb3673a5f1a7630759145b98edcbb07537bee170066ff5a369c1bab2"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/upstream-p0-truth-conflict.json",
+      "size_bytes": 1494,
+      "sha256": "bfa3d495dcebe34d70290e4262cc8b0f9bcd4d41e03346552b22fab30f3f061e"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/stage-receipts/S0.json",
+      "size_bytes": 2414,
+      "sha256": "bf748265eccba348bdaef402764772956c384db79b8198a9d037e4663ce6d12e"
+    },
+    {
+      "path": "dev/tools/validate_country_outage_p1_runtime_v2.py",
+      "size_bytes": 62220,
+      "sha256": "40ca12d70cb49cbf6853bd8f1c440473123300e0c14d11b85bd92a0463e996bf"
+    },
+    {
+      "path": "dev/tests/test_country_outage_p1_runtime_v2.py",
+      "size_bytes": 11542,
+      "sha256": "9d68c17dc905b0ccf14cd2a5c17f8fc6330670c086c727257e777c1d217e1269"
+    },
+    {
+      "path": "evaluation/country-outage/p0-v1-3/manifest.json",
+      "size_bytes": 3793,
+      "sha256": "132f53f2def7b076cbe9d16cdd44762c8df2ce77a6dc98c2c5490558e81b7ac2"
+    },
+    {
+      "path": ".codex/TASK.json",
+      "size_bytes": 6452,
+      "sha256": "d004527b7bbcbd4f107fdece98466522416a30e9d896c1e3f1d5a6c2de376c25"
+    },
+    {
+      "path": "agent-sidecar/src/chat/contracts.ts",
+      "size_bytes": 5709,
+      "sha256": "d0d0574fbf617d6b87a8c9cfcc9d4640688f1fab3748156d83ccf802121e6916"
+    },
+    {
+      "path": "agent-sidecar/src/chat/general-read-model-provider.ts",
+      "size_bytes": 13320,
+      "sha256": "56cf20db488909f812ddf6ffa6d76f23fddbafc231871b0bc496edffa3d888e3"
+    },
+    {
+      "path": "agent-sidecar/src/chat/index.ts",
+      "size_bytes": 379,
+      "sha256": "842ceb918ad1fba3701642750d6a9ec6e6029bec26ddf0258dfb7f900924a6ca"
+    },
+    {
+      "path": "agent-sidecar/src/chat/runtime-v2-single-turn.ts",
+      "size_bytes": 16175,
+      "sha256": "3f1051057434c989a7c68794e367ccdb69ff6873a9d487216e580cdce274436e"
+    },
+    {
+      "path": "agent-sidecar/src/cli/formal-sidecar.ts",
+      "size_bytes": 17278,
+      "sha256": "476c6ffec0366a7fcb9f6cf4ddb8c2eccd168095aec726a5fc6eff689ce58095"
+    },
+    {
+      "path": "agent-sidecar/src/cli/serve-acceptance.ts",
+      "size_bytes": 8865,
+      "sha256": "db07bd6b16b148ad183d40b3f31cddb9f36aecc51b6fed12e23075b8728c0f08"
+    },
+    {
+      "path": "agent-sidecar/src/server/http-handler.ts",
+      "size_bytes": 39892,
+      "sha256": "fec0ebb6a163f59cee6ec4ff2b90faa548812aaadcccf9e2c1bfe7302ec0d3b4"
+    },
+    {
+      "path": "agent-sidecar/tests/p1-chat.test.ts",
+      "size_bytes": 11974,
+      "sha256": "d12d8f4d399bb98b68080db07e750e5c21c0c2865233721155f0fa27f4ca7e37"
+    },
+    {
+      "path": "agent-sidecar/tests/p1-http-handler.test.ts",
+      "size_bytes": 17636,
+      "sha256": "e05b762a6e0510d9f189400d7364dd366107e07fdc3339f1c60a0f904cabd40f"
+    },
+    {
+      "path": "agent-sidecar/tests/p1-runtime-v2.test.ts",
+      "size_bytes": 16169,
+      "sha256": "db58be97602643153af835eca3adfe851f7bf7ed6d6076961975da1fcefdb236"
+    },
+    {
+      "path": "backend/web/api/v2/country_outage_agent_proxy.py",
+      "size_bytes": 20897,
+      "sha256": "b4ef44081ecace42bf6c6ea06b231f64143550ca1803f396b5cd209a969cb787"
+    },
+    {
+      "path": "backend/web/api/v2/country_outage_chat_proxy.py",
+      "size_bytes": 13048,
+      "sha256": "714f385946c150971bd79b4b99598c3826f07162495aaf78df52eea6ac58656a"
+    },
+    {
+      "path": "backend/web/api/v2/route.py",
+      "size_bytes": 4708,
+      "sha256": "daf526a0f96ca999125b069748b81043ae66ae76728abe5dab85dbf4358a9add"
+    },
+    {
+      "path": "backend/web/tests/test_country_outage_chat_proxy.py",
+      "size_bytes": 11959,
+      "sha256": "433b0f8a7f4c55862b5a663597af52123f41a2f1ee58c04b56e0ff88cfb02b36"
+    },
+    {
+      "path": "frontend/src/api/countryOutageChat.ts",
+      "size_bytes": 16156,
+      "sha256": "8fc32e39ccf1b56ccfa4c61d9109c50d095c944ac1379f5adfacbe07f01a376d"
+    },
+    {
+      "path": "frontend/src/api/countryOutageChat.test.ts",
+      "size_bytes": 5583,
+      "sha256": "b9e5401a11e5dade4ced66db3809fe95aee49880749765495d5728c4e32b82c2"
+    },
+    {
+      "path": "frontend/src/pages/CountryOutageChatPage.vue",
+      "size_bytes": 40606,
+      "sha256": "277e3acc91f0c14896d5040c9562914dd6f566c0da4f696fbd24bf2b10b20b5a"
+    },
+    {
+      "path": "frontend/src/pages/CountryOutageChatPage.test.ts",
+      "size_bytes": 4564,
+      "sha256": "b9604aedf990c75af7dd95ac118c4605e0790ed14bb391dbd188ade67516d68a"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s1-single-turn-evidence.json",
+      "size_bytes": 6599,
+      "sha256": "f45ed7cb35a6143f45735bb7137c89a989ac156e49e2f5b5f7bfc19bb5d90004"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s1-http-journey-receipt.json",
+      "size_bytes": 2710,
+      "sha256": "60a38260cc2cea50069f1a84b11bf685c6b2f55dd9b7955c4fe18b25d0b0d2a1"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s1-browser-journey.png",
+      "size_bytes": 267992,
+      "sha256": "5354ceb454404f7e18122352f8e2020b04ff839929bb5fad081ea852be19b3a7"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s1-browser-failed-closed.png",
+      "size_bytes": 177422,
+      "sha256": "8d4171489d185b5cb08f76f6efbf7d34ef759f06cde726701638ccd511d358a5"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/stage-receipts/S1.json",
+      "size_bytes": 4811,
+      "sha256": "9e27b11c920e05fa98d6144944cc719505f656766f7771c24a661896ba379acd"
+    },
+    {
+      "path": "agent-sidecar/src/chat/codex-cli-semantic-model.ts",
+      "size_bytes": 5825,
+      "sha256": "66de7711cefc1d2ae2d35f04721b28afd2e98c02b894f7e62799697a24156167"
+    },
+    {
+      "path": "agent-sidecar/src/chat/pi-semantic-model.ts",
+      "size_bytes": 7331,
+      "sha256": "7519eb7b784af43a4892333d74826c66376f74741466c13be5b3b7272aaf51a5"
+    },
+    {
+      "path": "agent-sidecar/src/chat/runtime-v2-semantic.ts",
+      "size_bytes": 54661,
+      "sha256": "ff7fa172cba131f5adbc558e041aeb829dde2046ce0580c40f2ce663b5ca212f"
+    },
+    {
+      "path": "agent-sidecar/tests/p1-runtime-v2-semantic.test.ts",
+      "size_bytes": 24015,
+      "sha256": "04b8b09b31be3885a1b123a482626dc55da52b67051eb3958d192e308c90a74a"
+    },
+    {
+      "path": "dev/tools/evaluate_country_outage_p1_s2_semantics.py",
+      "size_bytes": 12209,
+      "sha256": "f66576523e327fee02d741bd1f6e5e96b5e1c7fffd7c6e0bcda57cbb09eb4e32"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-semantic-variants.json",
+      "size_bytes": 11600,
+      "sha256": "5202354e336f9172ea54391457cd12b78671f3a1eca79dd2b4da3500b89ddb01"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-codex-cli-runtime-prompt-v2.json",
+      "size_bytes": 22080,
+      "sha256": "5075a23d5d57153fae73dc80436ef621faa8a7f59bbce1e6572b6a714ee577ed"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-semantic-evaluation.json",
+      "size_bytes": 14254,
+      "sha256": "a42a27a23fe8569a1a1c49b9c63b68e06445ee3627da13e936b7888df6cffc2c"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-journey.json",
+      "size_bytes": 9792,
+      "sha256": "6a9d8202ca0e63352d7ebb3d4200f1c43d7ed51aa8d563b8e6993f37c38b016a"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-multi-node.json",
+      "size_bytes": 12004,
+      "sha256": "992f3145c764742b538743cc93bac801a8832ae38ffbc1dcab569819274e7d0c"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-remediation-boundary.json",
+      "size_bytes": 5091,
+      "sha256": "8fb91f78ac87f0041da748c72d30a3fffc561b08640ddb869565c5e0fca83205"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-semantic-http-negated-remediation.json",
+      "size_bytes": 8470,
+      "sha256": "a3c143079b3415bb4143452ac6867bdbddfb812139e74646afce406a0f8f20e2"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-browser-mixed-intent.png",
+      "size_bytes": 207443,
+      "sha256": "694b3de0715490619734e91069457305a847f47bafbaa8d0da1e038bc259baf4"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-browser-remediation-boundary.png",
+      "size_bytes": 193447,
+      "sha256": "453ec3f01ba34da5607c27cfd07158e0ea8d785dba3c89975ce0421228125ab4"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s2-browser-remediation-boundary.snapshot.txt",
+      "size_bytes": 7696,
+      "sha256": "2b7de2afcc73fe61559c116e27f137729b7c306ac5e776cb0120c21d0bd57bd4"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/stage-receipts/S2.json",
+      "size_bytes": 5975,
+      "sha256": "9ae89b0e9667a6652ad4309c81514f775c283d90df5b3c24d8ede83ff2863ce5"
+    },
+    {
+      "path": "agent-sidecar/src/chat/runtime-v2-conversation.ts",
+      "size_bytes": 87116,
+      "sha256": "240e9e79e61e722921d7694c83250564c42dd2aa14563ccfe354426097f97b7b"
+    },
+    {
+      "path": "agent-sidecar/tests/p1-runtime-v2-conversation.test.ts",
+      "size_bytes": 51553,
+      "sha256": "6a47d913ae8ea9bb876a5accc0ec36cd3c1c27bb3820c19c47f412a36f597449"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s3-multiturn-evaluation.json",
+      "size_bytes": 9085,
+      "sha256": "5276d2786f2d47c9943ba1db768c8cf87992a080c6ba60d2a546b0bc2c93e09c"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s3-browser-multiturn.png",
+      "size_bytes": 228068,
+      "sha256": "05c15e85eb103c1c6cadc25dc260d21f95d8e8367fc7961ec350ee4cc1d76205"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/stage-receipts/S3.json",
+      "size_bytes": 5029,
+      "sha256": "d91d3b11c6481f5c7fcff4b97126d8a1e659dcaf69c9a1332e60c005ef5158f2"
+    },
+    {
+      "path": "agent-sidecar/src/chat/deterministic-engine.ts",
+      "size_bytes": 30351,
+      "sha256": "87fd58fcd9df14a42aeaae1690906e09a7039377e86fc1f22c79b912a564a723"
+    },
+    {
+      "path": "dev/tools/generate_country_outage_p1_candidate_identity.mjs",
+      "size_bytes": 4902,
+      "sha256": "c63ca566dcf0218e7a39f003f602f2fab7b6b25b5012747fa40c169135d2bc6c"
+    },
+    {
+      "path": "dev/tools/capture_country_outage_p1_s4_live_evidence.mjs",
+      "size_bytes": 14720,
+      "sha256": "4ad0002a6ee1c625240161539c7426a9d0c300821d2aebe455afabde298eb352"
+    },
+    {
+      "path": "dev/tools/capture_country_outage_p1_s4_browser_api.mjs",
+      "size_bytes": 2577,
+      "sha256": "cc1fd638ab069ceebc305d52fc7bc4c9021979f1b47788eef889836548dd5851"
+    },
+    {
+      "path": "dev/tools/update_country_outage_p1_runtime_manifest.mjs",
+      "size_bytes": 3687,
+      "sha256": "6c14844bc2bb55d0c6004c7683ac425fe2268c3d87faff302f4f1519a252897b"
+    },
+    {
+      "path": "dev/tools/validate_country_outage_p1_s4.py",
+      "size_bytes": 45744,
+      "sha256": "486dbc07065690dd628eb17ff93084c1642ff11befeed826659f8f24f4c2cfa4"
+    },
+    {
+      "path": "dev/tests/test_country_outage_p1_s4.py",
+      "size_bytes": 6811,
+      "sha256": "665b9c6ca88365f37bd851bf662629dca1f5981c87343e0e041630835804bc24"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/candidate-identity.json",
+      "size_bytes": 17466,
+      "sha256": "c8d10e22a8f72db61476bacae5c5d7f86e002b928e1d05587af5016810142bed"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-runtime-budgets.json",
+      "size_bytes": 1667,
+      "sha256": "37289dd279170373e6dcfeb673a2d5d09865cda2f7c1aa849f742d7cdc70b5d1"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-p0-v1-3-results.json",
+      "size_bytes": 17063,
+      "sha256": "d3121f2f8095e4c56577634cdd4f225601508c4c424d3a8944f69bdf7f835071"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-p0-live-evidence.json",
+      "size_bytes": 647733,
+      "sha256": "7ac612e47da7ffc176336ac3a5fbd6da7bd9e313fff6b67d1c76f5dc3f1c54bb"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-semantic-current-prompt-candidate.json",
+      "size_bytes": 385878,
+      "sha256": "edfb86991b91ae52da858185f7ec3d86f161ae9974fc244c11ae09bba3c61fa4"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-semantic-current-prompt-evaluation.json",
+      "size_bytes": 14047,
+      "sha256": "fe5ad3d8dc84dae885046efaf67a4a37dc75bbd31202d170fa5d290e2290bc20"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-joint-acceptance.json",
+      "size_bytes": 6124,
+      "sha256": "037dd5752c51a62475d301cd65c96f2153c01ad87bbe0000fa073f7445331244"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-browser-api-conversation.json",
+      "size_bytes": 62899,
+      "sha256": "cc19c37347b2c469f5214dd0a3e4e1633c937ce9cf8f368927a6178a610ef1aa"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-browser-desktop.png",
+      "size_bytes": 227002,
+      "sha256": "c497087a81b7150f0873df67ef5f12ec50396bca305ef25b5ec30cb7303001ba"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-browser-narrow.png",
+      "size_bytes": 273499,
+      "sha256": "79c58a1ccbafcc4437d6f144d37f61d3efcbbb5e95f13c6a9fa4a7b7a8db0e9a"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/s4-browser-desktop.snapshot.txt",
+      "size_bytes": 1853,
+      "sha256": "f10580f2dd18e53cf591ccdfe3db36aebfa62756f5fde5bc76799abbdf05c4d8"
+    },
+    {
+      "path": "evaluation/country-outage/p1-runtime-v2/stage-receipts/S4.json",
+      "size_bytes": 5161,
+      "sha256": "595631b8d6e06c992364eaa99d7a53957108f6c80cd085e0f27ab701bf864ee3"
+    },
+    {
+      "path": "docs/agent/P1-聊天问答/P1-runtime-v2-阶段与最终验收记录.md",
+      "size_bytes": 6652,
+      "sha256": "e68d06ef4988910b1963955acf672d520e26e786215ffda6f41dce30c603c9b3"
+    },
+    {
+      "path": "docs/agent/P1-聊天问答/P1-runtime-v2-P2入口回执.md",
+      "size_bytes": 2609,
+      "sha256": "efd62d1337c3fa6e9aa8e66359d65fb2216c31ffb6b2ede4159197f4e871e040"
+    }
+  ],
+  "boundary": {
+    "s0_contract_accepted": true,
+    "single_turn_accepted": true,
+    "semantic_planner_accepted": true,
+    "multi_turn_accepted": true,
+    "joint_acceptance": true,
+    "local_candidate_only": true,
+    "merged": false,
+    "deployed": false,
+    "production_verified": false,
+    "p2_or_rca": false
+  }
+}

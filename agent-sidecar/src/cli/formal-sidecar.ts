@@ -37,7 +37,12 @@ import {
 } from '../server/index.js'
 import {
   HttpP1GeneralReadModelProvider,
+  P1ModelUserGoalPlanner,
+  P1PiSemanticModel,
   P1ConversationManager,
+  P1RuntimeV2ConversationService,
+  P1RuntimeV2SemanticTurnService,
+  P1RuntimeV2SingleTurnService,
 } from '../chat/index.js'
 import {
   frozenAcceptanceEnvironmentInteger,
@@ -96,6 +101,9 @@ export interface FormalCountryOutageSidecar {
   core: CountryOutageCoreSessionManager
   orchestrator: CountryOutageAgentOrchestrator
   chat: P1ConversationManager
+  runtimeV2SingleTurn: P1RuntimeV2SingleTurnService
+  runtimeV2SemanticTurn: P1RuntimeV2SemanticTurnService
+  runtimeV2Conversation: P1RuntimeV2ConversationService
   /** @deprecated 使用 orchestrator；仅保留既有调用兼容。 */
   manager: CountryOutageAgentOrchestrator
   narrator: PiReportNarrator
@@ -448,15 +456,29 @@ export async function createFormalCountryOutageSidecar(
       new DisabledExternalEvidenceProvider(),
     annexComposer: new DisabledAnnexComposer(),
   })
-  const chat = new P1ConversationManager({
-    provider: new HttpP1GeneralReadModelProvider(
-      config.apiBaseUrl,
-      config.apiTimeoutMs,
-    ),
+  const chatProvider = new HttpP1GeneralReadModelProvider(
+    config.apiBaseUrl,
+    config.apiTimeoutMs,
+  )
+  const chat = new P1ConversationManager({ provider: chatProvider })
+  const runtimeV2SingleTurn = new P1RuntimeV2SingleTurnService(chatProvider)
+  const semanticModel = new P1PiSemanticModel({ binding })
+  const semanticPlanner = new P1ModelUserGoalPlanner(semanticModel)
+  const runtimeV2SemanticTurn = new P1RuntimeV2SemanticTurnService(
+    chatProvider,
+    runtimeV2SingleTurn,
+    semanticPlanner,
+  )
+  const runtimeV2Conversation = new P1RuntimeV2ConversationService({
+    provider: chatProvider,
+    planner: semanticPlanner,
   })
   const requestListener = createCountryOutageAgentHttpHandler({
     application: orchestrator,
     chat,
+    runtimeV2SingleTurn,
+    runtimeV2SemanticTurn,
+    runtimeV2Conversation,
     authenticate: createCountryOutageInternalAuthenticator(
       config.sharedToken,
     ),
@@ -475,6 +497,9 @@ export async function createFormalCountryOutageSidecar(
     core,
     orchestrator,
     chat,
+    runtimeV2SingleTurn,
+    runtimeV2SemanticTurn,
+    runtimeV2Conversation,
     manager: orchestrator,
     narrator,
     binding,
