@@ -21,7 +21,7 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-RUNNER_VERSION = "1.2.0"
+RUNNER_VERSION = "1.3.0"
 RUNNER_PATH = "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py"
 
 W1_UNITS = [
@@ -37,6 +37,17 @@ W5_UNITS = [
     "BOUNDARY-01",
     "RENDERER-01", "RENDERER-02", "RENDERER-03",
     "DELIVERY-01",
+]
+
+W6_CERTIFIER_PATH = (
+    "contracts/agent/country-outage-p2-s1-implementation/tools/"
+    "run_w6_certification.py"
+)
+W6_TEST_PATH = "backend/web/tests/test_country_outage_p2_s1_w6_certification.py"
+W6_SCHEMA_PATHS = [
+    "contracts/agent/country-outage-p2-s1-implementation/w6-case-receipt.schema.json",
+    "contracts/agent/country-outage-p2-s1-implementation/w6-acceptance-manifest.schema.json",
+    "contracts/agent/country-outage-p2-s1-implementation/w6-independent-review.schema.json",
 ]
 
 
@@ -346,12 +357,81 @@ SUITES: dict[str, dict[str, Any]] = {
             "frontend/src/types/openapi.generated.d.ts",
         ],
     },
+    "w6-python": {
+        "stage": "W6",
+        "category": "same_candidate_168_case_certification",
+        "runner_kind": "python",
+        "tests": ["backend.web.tests.test_country_outage_p2_s1_w6_certification"],
+        "tested_unit_ids": [],
+        "artifacts": [
+            W6_TEST_PATH,
+            W6_CERTIFIER_PATH,
+            *W6_SCHEMA_PATHS,
+            "contracts/agent/country-outage-p2-s1-execution-unit-design/oracle.json",
+            "contracts/agent/country-outage-p2-s1-execution-unit-design/question-oracle-seed.json",
+            "contracts/agent/country-outage-p2-s1-execution-unit-design/question-capability-map.json",
+            "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/W5.json",
+            "evaluation/country-outage/p2-s1-implementation/stages/W5.json",
+        ],
+    },
+    "w6-sidecar": {
+        "stage": "W6",
+        "category": "unchanged_local_fixture_protocol_replay",
+        "runner_kind": "node",
+        "command": ["bash", "-lc", "npm run test:p2-s1-w5"],
+        "working_directory": "agent-sidecar",
+        "tests": [
+            "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+            "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+            "agent-sidecar/tests/p2-s1-w5-integrated-answer-test-server.test.ts",
+        ],
+        "tested_unit_ids": [],
+        "artifacts": [
+            "agent-sidecar/package.json",
+            "agent-sidecar/package-lock.json",
+            "agent-sidecar/tsconfig.json",
+            "agent-sidecar/src/chat/p2-s1-composition-contracts.ts",
+            "agent-sidecar/src/chat/p2-s1-composition-runtime.ts",
+            "agent-sidecar/src/chat/p2-s1-integrated-answer-runtime.ts",
+            "agent-sidecar/src/chat/p2-s1-planning-grounding-port.ts",
+            "agent-sidecar/src/server/p2-s1-w5-http-handler.ts",
+            "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+            "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+            "agent-sidecar/tests/p2-s1-w5-integrated-answer-test-server.test.ts",
+            W6_CERTIFIER_PATH,
+        ],
+    },
+    "w6-recovery-attack": {
+        "stage": "W6",
+        "category": "cas_recovery_cancel_idempotency_and_residue",
+        "runner_kind": "python",
+        "tests": [
+            _test_id("backend.web.tests.test_country_outage_p2_s1_runtime", "CountryOutageP2S1RuntimeTest", "test_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue"),
+            _test_id("backend.web.tests.test_country_outage_p2_s1_runtime", "CountryOutageP2S1RuntimeTest", "test_running_revision_is_visible_and_cancel_wins_worker_cas"),
+            _test_id("backend.web.tests.test_country_outage_p2_s1_runtime", "CountryOutageP2S1RuntimeTest", "test_store_tamper_symlink_and_registry_ghost_are_rejected"),
+            _test_id("backend.web.tests.test_country_outage_p2_s1_runtime", "CountryOutageP2S1RuntimeTest", "test_cas_journal_recovers_pointer_before_idempotency_crash"),
+            _test_id("backend.web.tests.test_country_outage_p2_s1_runtime", "CountryOutageP2S1RuntimeTest", "test_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref"),
+            _test_id("backend.web.tests.test_country_outage_p2_s1_runtime", "CountryOutageP2S1RuntimeTest", "test_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan"),
+        ],
+        "tested_unit_ids": [],
+        "artifacts": [
+            "backend/services/country_outage_p2_s1_trusted_store.py",
+            "backend/services/country_outage_p2_s1_investigation_runtime.py",
+            "backend/services/country_outage_p2_s1_result_set.py",
+            "backend/services/country_outage_p2_s1_evidence_graph.py",
+            "backend/web/tests/test_country_outage_p2_s1_runtime.py",
+            W6_CERTIFIER_PATH,
+        ],
+    },
 }
 
 
 def test_case_units(suite_id: str, test_id: str) -> list[str]:
     """登记每个实际测试选择器直接覆盖的原子单元，禁止整波自报。"""
 
+    if suite_id.startswith("w6-"):
+        # W6 验证实现候选、分类、恢复和fixture协议；它不新增或冒充执行单元。
+        return []
     if suite_id == "w5-python":
         # module selector only says which suite was invoked.  Per-unit execution
         # coverage is asserted by the runtime suite's structured trace and the
@@ -563,9 +643,12 @@ def run_suite(suite_id: str) -> dict[str, Any]:
     record: dict[str, Any] = {
         "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
         "runner_id": "country_outage_p2_s1_stage_test_runner",
-        # 历史波次保持其已发布 receipt schema/version 语义；W5 才启用支持
-        # 多框架真实子进程与structured trace的1.2 runner合同。
-        "runner_version": RUNNER_VERSION if definition["stage"] == "W5" else "1.0.0",
+        # 历史波次保持已发布语义；W5 使用1.2，W6使用1.3认证合同。
+        "runner_version": (
+            RUNNER_VERSION
+            if definition["stage"] == "W6"
+            else ("1.2.0" if definition["stage"] == "W5" else "1.0.0")
+        ),
         "suite_id": suite_id,
         "stage": definition["stage"],
         "category": definition["category"],

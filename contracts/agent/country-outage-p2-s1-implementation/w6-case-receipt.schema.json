@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://domeye.local/contracts/country-outage-p2-s1/w6-case-receipt.schema.json",
+  "title": "P2-S1 W6 离线可执行性分类回执",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "certification_semantics_version", "implementation_candidate_id",
+    "implementation_candidate_digest", "machine_facts_digest", "case_id", "question_id", "scenario_code",
+    "scenario_class", "oracle_binding", "required_capability_ids", "required_unit_ids",
+    "expected_disposition", "expected_reason_codes", "actual_disposition",
+    "actual_reason_codes", "unit_coverage", "proof_mode", "runtime_proof",
+    "blocked_proof", "boundary_proof", "deferred_proof", "same_candidate_checks",
+    "overclaim_checks", "case_acceptance", "content_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "country_outage_p2_s1_w6_case_receipt_v2"},
+    "certification_semantics_version": {"const": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2"},
+    "implementation_candidate_id": {"type": "string", "minLength": 1},
+    "implementation_candidate_digest": {"$ref": "#/$defs/prefixedSha256"},
+    "machine_facts_digest": {"$ref": "#/$defs/prefixedSha256"},
+    "case_id": {"pattern": "^Q(?:0[1-9]|[1-3][0-9])-(?:N|E|M|I|B|L)$"},
+    "question_id": {"pattern": "^Q(?:0[1-9]|[1-3][0-9])$"},
+    "scenario_code": {"enum": ["N", "E", "M", "I", "B", "L"]},
+    "scenario_class": {"enum": ["normal", "empty", "missing", "wrong_identity", "boundary", "large_result"]},
+    "oracle_binding": {"$ref": "#/$defs/oracleBinding"},
+    "required_capability_ids": {"$ref": "#/$defs/stringSet"},
+    "required_unit_ids": {"$ref": "#/$defs/stringSet"},
+    "expected_disposition": {"enum": ["correctly_blocked", "correctly_deferred", "correctly_bounded", "executed_supported"]},
+    "expected_reason_codes": {"$ref": "#/$defs/nonEmptyStringSet"},
+    "actual_disposition": {"enum": ["correctly_blocked", "correctly_deferred", "correctly_bounded", "executed_supported"]},
+    "actual_reason_codes": {"$ref": "#/$defs/nonEmptyStringSet"},
+    "unit_coverage": {"$ref": "#/$defs/unitCoverage"},
+    "proof_mode": {"enum": ["candidate_capability_audit", "actual_w5_runtime_execution", "host_boundary_execution", "p2_1_denial_probe"]},
+    "runtime_proof": {"type": ["object", "null"]},
+    "blocked_proof": {"anyOf": [{"$ref": "#/$defs/blockedProof"}, {"type": "null"}]},
+    "boundary_proof": {"type": ["object", "null"]},
+    "deferred_proof": {"anyOf": [{"$ref": "#/$defs/deferredProof"}, {"type": "null"}]},
+    "same_candidate_checks": {"$ref": "#/$defs/sameCandidateChecks"},
+    "overclaim_checks": {"$ref": "#/$defs/overclaimChecks"},
+    "case_acceptance": {"$ref": "#/$defs/caseAcceptance"},
+    "content_digest": {"$ref": "#/$defs/prefixedSha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"actual_disposition": {"const": "correctly_blocked"}}, "required": ["actual_disposition"]},
+      "then": {
+        "properties": {
+          "proof_mode": {"const": "candidate_capability_audit"},
+          "runtime_proof": {"type": "null"},
+          "blocked_proof": {"$ref": "#/$defs/blockedProof"},
+          "boundary_proof": {"type": "null"},
+          "deferred_proof": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"actual_disposition": {"const": "correctly_deferred"}}, "required": ["actual_disposition"]},
+      "then": {
+        "properties": {
+          "proof_mode": {"const": "p2_1_denial_probe"},
+          "runtime_proof": {"type": "null"},
+          "blocked_proof": {"type": "null"},
+          "boundary_proof": {"type": "null"},
+          "deferred_proof": {"$ref": "#/$defs/deferredProof"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "prefixedSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "stringSet": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "nonEmptyStringSet": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "oracleBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["oracle_digest", "seed_digest", "capability_map_digest", "question_record_digest", "scenario_expectation_digest"],
+      "properties": {
+        "oracle_digest": {"$ref": "#/$defs/prefixedSha256"},
+        "seed_digest": {"$ref": "#/$defs/prefixedSha256"},
+        "capability_map_digest": {"$ref": "#/$defs/prefixedSha256"},
+        "question_record_digest": {"$ref": "#/$defs/prefixedSha256"},
+        "scenario_expectation_digest": {"$ref": "#/$defs/prefixedSha256"}
+      }
+    },
+    "unitCoverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required", "w5_registry_admitted", "legacy_p1_only", "deferred_p2_1", "machine_blocker_reason_codes", "actually_dispatched"],
+      "properties": {
+        "required": {"$ref": "#/$defs/stringSet"},
+        "w5_registry_admitted": {"$ref": "#/$defs/stringSet"},
+        "legacy_p1_only": {"$ref": "#/$defs/stringSet"},
+        "deferred_p2_1": {"$ref": "#/$defs/stringSet"},
+        "machine_blocker_reason_codes": {"$ref": "#/$defs/nonEmptyStringSet"},
+        "actually_dispatched": {"maxItems": 0, "$ref": "#/$defs/stringSet"}
+      }
+    },
+    "blockedProof": {
+      "type": "object", "additionalProperties": false,
+      "required": ["machine_recomputed", "classification_before_execution", "execution_started", "blocker_contract_refs", "observed_zero_fact_commit", "deferred_subgoal_proof"],
+      "properties": {
+        "machine_recomputed": {"const": true},
+        "classification_before_execution": {"const": true},
+        "execution_started": {"const": false},
+        "blocker_contract_refs": {"$ref": "#/$defs/nonEmptyStringSet"},
+        "observed_zero_fact_commit": {"const": false},
+        "deferred_subgoal_proof": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["plan_capability_id", "status", "dispatch_count", "denial_probe_digest"],
+              "properties": {
+                "plan_capability_id": {"const": "PLAN-CAP-02"},
+                "status": {"const": "deferred_p2_1"},
+                "dispatch_count": {"const": 0},
+                "denial_probe_digest": {"$ref": "#/$defs/prefixedSha256"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "deferredProof": {
+      "type": "object", "additionalProperties": false,
+      "required": ["unit_ids", "denial_code", "denial_probe_digest", "execution_attempt_count", "dispatch_count", "public_result_set_count", "public_graph_count", "next_action"],
+      "properties": {
+        "unit_ids": {"type": "array", "const": ["TOOL-13", "OP-34"]},
+        "denial_code": {"const": "p2_1_unit_forbidden"},
+        "denial_probe_digest": {"$ref": "#/$defs/prefixedSha256"},
+        "execution_attempt_count": {"const": 2},
+        "dispatch_count": {"const": 0},
+        "public_result_set_count": {"const": 0},
+        "public_graph_count": {"const": 0},
+        "next_action": {"const": "implement_and_independently_certify_p2_1"}
+      }
+    },
+    "sameCandidateChecks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_equal", "registry_equal", "publication_equal_or_not_applicable", "cross_candidate_reuse"],
+      "properties": {
+        "candidate_equal": {"const": true},
+        "registry_equal": {"const": true},
+        "publication_equal_or_not_applicable": {"const": true},
+        "cross_candidate_reuse": {"const": false}
+      }
+    },
+    "overclaimChecks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["question_answer_claimed", "provider_model_claimed", "provider_performance_claimed", "runtime_promotion_claimed", "production_claimed"],
+      "properties": {
+        "question_answer_claimed": {"const": false},
+        "provider_model_claimed": {"const": false},
+        "provider_performance_claimed": {"const": false},
+        "runtime_promotion_claimed": {"const": false},
+        "production_claimed": {"const": false}
+      }
+    },
+    "caseAcceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["classification_matches_contract", "case_passed", "meaning"],
+      "properties": {
+        "classification_matches_contract": {"const": true},
+        "case_passed": {"const": true},
+        "meaning": {"const": "disposition_classification_only_not_question_answer"}
+      }
+    }
+  }
+}

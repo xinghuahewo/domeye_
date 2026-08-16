@@ -1,0 +1,113 @@
+{
+  "acceptance_meaning": "冻结W5实现候选、离线确定性能力与28题可执行性分类已按同候选证据验收，可进入实际provider认证及独立发布准备；不表示问题回答、provider模型、provider性能、runtime promotion或生产通过。",
+  "actual_provider_cost_acceptance": false,
+  "actual_provider_model_alignment": false,
+  "actual_provider_performance_acceptance": false,
+  "artifact_refs": {
+    "attack_evidence": {
+      "content_digest": "sha256:45b5eee251f1e7f3df6fea4a6bee1a3238cb2868906f04e4317fda2b06760cef",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/attack-evidence.json",
+      "sha256": "8bd2425501ff1ee972819fa6e88e11372728c7ab52223b27765494a60a9eb3f1"
+    },
+    "case_index": {
+      "content_digest": "sha256:e82caebbb6385ac3a7c634fb3033a60ddbbb8eb51c5d82ae322ec62356f2a0ee",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/case-index.json",
+      "sha256": "c07c40a91cb050d4573f234a3ced3ff65be7c0b42b744daf5a1d15acf2b694b3"
+    },
+    "case_matrix": {
+      "content_digest": "sha256:b1fdc872db72249c10656fc26ff5f1e4a0876891d9c6a994c218cf4afd3750f5",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/case-matrix.json",
+      "sha256": "3d70161775b0c254153553d638452a4cb1cc580040c6b97f3a49cafbb02fe492"
+    },
+    "certification_semantics": {
+      "content_digest": "sha256:f391d40183261452782ff2566744b473b68978f24a7dcdc1e2c097fc50cdba06",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/certification-semantics.json",
+      "sha256": "9f7aff7e1e2b217d1b018cee4f479e8378f7b7d975805d9dfaab78b520486f68"
+    },
+    "certifier_manifest": {
+      "content_digest": "sha256:f22267203e287dfaaaafa7f9a5f2dd3b4a50cfcdad97dc4f444ad6f835457792",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/certifier-manifest.json",
+      "sha256": "ef77b1f266d571fcfa647ae37c7566164df243533b9292dade6403407da12ef2"
+    },
+    "implementation_candidate": {
+      "content_digest": "sha256:71787dfdaba1ec1c62b2897c1c7df08af85c7f7157108bf58c33234fca7283df",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/implementation-candidate.json",
+      "sha256": "42c8edf5820f84f309847727095071de5fcf4e286e260c2123a1239a4630d54d"
+    },
+    "performance_recovery_cost": {
+      "content_digest": "sha256:9ae76f61b73e1f1eba98ef0c6aa6ff7a8399563547b233e12719b7525f036e89",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/performance-recovery-cost.json",
+      "sha256": "286ebc0fe43942bee5a93629e1156e3bd6c3efc8156ab85c07e193899ab4d8eb"
+    },
+    "question_disposition_contract": {
+      "content_digest": "sha256:709236088682ca3af8dc9b1cf4c727653b86a7abe0ea836bdb413a265c0d20b5",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/question-disposition-contract.json",
+      "sha256": "5b261029831cd56679a9b43dd09e496d533998228380f60519428107924ab380"
+    },
+    "runner_w6-python": {
+      "content_digest": "sha256:9e3d73afaa207303ae4c6104c40dedd6b952b40dfab188ee74dc5eb3e0b4062a",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w6-python.json",
+      "sha256": "8639452fd8694fa7ae27955444f9c807d3d720e7835e82c3378c1948249d8e2a"
+    },
+    "runner_w6-recovery-attack": {
+      "content_digest": "sha256:a04f5c1333d3cb9fcd73c89e725a6226ff47a3840c36af1308c8ff891e1ce67f",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w6-recovery-attack.json",
+      "sha256": "2b9ed907210d172e39e45508e441f7a48d5e7df1a97929e99d4b30e78bf67f8b"
+    },
+    "runner_w6-sidecar": {
+      "content_digest": "sha256:45aade1702cf2cff8b662d48f361795133d4dfc350259bd3ea919f17372d5914",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w6-sidecar.json",
+      "sha256": "de4e493134f0653fcf318e02938a08988e82a1f64df686efc3aca6a6e3485e80"
+    },
+    "same_candidate_runtime_proof": {
+      "content_digest": "sha256:1767fa7ea393286ac94e61b9832931dbe9464a3c0bfac24643c93e84ff6a4256",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/same-candidate-runtime-proof.json",
+      "sha256": "384a23ea16ad194bafa6b47ea69aaf2e3a300b9abdc64ec801c9f0c78db4b2ca"
+    }
+  },
+  "certification_semantics_version": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2",
+  "content_digest": "sha256:5312ef91304e422de63f901fd216274e30a2b9bfadb4812670499eec30e1d014",
+  "deterministic_runtime_performance_characterized": true,
+  "external_provider_call_count": 0,
+  "fixture_protocol_certified": true,
+  "full_question_answer_certification_passed": false,
+  "implementation_accepted_for_release_preparation": true,
+  "implementation_candidate": {
+    "implementation_candidate_digest": "sha256:49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c",
+    "implementation_candidate_id": "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6",
+    "w5_commit": "b8d5b04b67c41d2d5f9f4ec1f9c64972bd90fa73"
+  },
+  "offline_recovery_acceptance_passed": true,
+  "production_deployed": false,
+  "question_summary": {
+    "blocked_case_count": 162,
+    "blocked_question_count": 27,
+    "case_count": 168,
+    "correctly_bounded_question_count": 0,
+    "deferred_case_count": 6,
+    "deferred_question_count": 1,
+    "executed_supported_question_count": 0,
+    "p2_1_deferred_subgoal_question_ids": [
+      "Q20",
+      "Q23",
+      "Q26"
+    ],
+    "question_count": 28
+  },
+  "review_refs": {
+    "bgp_semantic": {
+      "content_digest": "sha256:393201255663218c66c0d93d9386815a60f74ea7797c5816285c347c799d8430",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/bgp-semantic-review.json",
+      "sha256": "79e473126ac8fe5272bcec28b3531210f036eb23a651a7fc70aa61f518408026"
+    },
+    "product_semantic": {
+      "content_digest": "sha256:9c1d6e8bd4fc29c64b7acb087e0c07deaef8b6f7f82b4037d6c24eb8e517caf2",
+      "path": "contracts/agent/country-outage-p2-s1-implementation/w6-certification/product-semantic-review.json",
+      "sha256": "6f25f533aeb4d9f8e306ac1e48fa328bb9db9c219671b2203368a02013900ce5"
+    }
+  },
+  "runtime_promotion": false,
+  "same_candidate_28_question_classification_completed": true,
+  "schema_version": "country_outage_p2_s1_w6_acceptance_manifest_v2",
+  "status": "implementation_accepted_for_release_preparation"
+}
