@@ -243,12 +243,12 @@
   ],
   "atomic_split_tests_passed": true,
   "baseline_content_digest": "c39af4604f0df1dc58e47725a7ceab5197e1e06373f38ef12a66a68eae350d0a",
-  "content_digest": "0149ab38267b6f2a7089ab910e6affebd19501aac07a57f23f7e9152a32e42a6",
+  "content_digest": "038cbbc080ab43cc8f7e9cef3a508172a93ef348529734a64fed0b25034426a9",
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "effect": "source_schema_view_registry_admission_and_trusted_receipt_store_implemented",
   "effect_verified": true,
-  "implementation_candidate_id": "country-outage-p2-s1-w0-bc5950acac073a647cdbc43e",
-  "implementation_semantic_digest": "bc5950acac073a647cdbc43e2320e8445aeedd299676fa4ac84107c65f16fdc8",
+  "implementation_candidate_id": "country-outage-p2-s1-w0-65930aee1a1af030ad983699",
+  "implementation_semantic_digest": "65930aee1a1af030ad9836999f993e28e4a10cd4414390612feadff9cbc23500",
   "implemented_unit_ids": [],
   "p2_1_units_included": [],
   "performance_baseline": {
@@ -479,15 +479,15 @@
     {
       "category": "source_and_store_positive_boundary_attack",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w0-python.json",
-      "receipt_digest": "633339fd07d366f3c16718704b9f3f3ad252975eb1d3dd3c2336078231b62651",
-      "sha256": "599b729287ef1fb4b3fd9adc71d53549b8d97d6511a8966a5ccf91d96989d1cc",
+      "receipt_digest": "a5b0be2411d9f90f1d5cc5ea29b5b6769c515415029eeaa0b90ca0c7115815e5",
+      "sha256": "4556c33ace2e534f54545af35d37f277457d2d15b8e2b35a34fbb3fc2107ade4",
       "suite_id": "w0-python"
     },
     {
       "category": "registry_and_receipt_positive_boundary_attack",
       "path": "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/run-receipts/w0-typescript.json",
-      "receipt_digest": "45487108c28d398ff712a6cabb96afe6c1d01e4f2a21e27523bbc7af4aa6daf3",
-      "sha256": "4fa6f1963a87070a1908f4af5c2891805f287d7ba6101c40d61449b75eb05654",
+      "receipt_digest": "30ab6189877b88360f7d96f0f06e317c1c7c67b1f6e9f63e1f054dc009f55dcc",
+      "sha256": "83e7de4319a9e95679d1ac8e63dc93da6b536f14699d3750d8929794eef7cdca",
       "suite_id": "w0-typescript"
     }
   ]

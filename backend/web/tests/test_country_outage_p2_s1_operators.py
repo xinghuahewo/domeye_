@@ -772,6 +772,63 @@ if errors:
         )
         self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
 
+    def test_op33_empty_population_inputs_and_outputs_validate_frozen_schema(self):
+        """OP-33 的左右完整人口可分别或同时为空，空人口仍须继承人口 Evidence。"""
+        left = {
+            "prefix": "10.0.0.0/8", "afi": 4,
+            "first_observed_at_utc": "2026-02-27T00:00:00Z",
+            "state_point_utc": "2026-02-27T00:05:00Z",
+            "classification": "partial", "evidence_ref": evidence("op33-empty-left-row"),
+        }
+        right = {
+            "prefix": "10.0.0.0/8", "afi": 4,
+            "state_point_utc": "2026-02-27T00:05:00Z",
+            "route_observation_key": "d1", "visibility": "visible",
+            "origin_asns": [64500], "common_path_status": "ordered",
+            "path_digest": D,
+            "path_canonicalization_profile_id": operators.PATH_PROFILE_ID,
+            "path_canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST,
+            "evidence_ref": evidence("op33-empty-right-row"),
+        }
+        cases = []
+        for left_rows, right_rows in (([], [right]), ([left], []), ([], [])):
+            current = envelope("OP-33", {
+                "new_prefix_state_rows": left_rows,
+                "route_state_rows": right_rows,
+                "left_digest": digest(left_rows),
+                "right_digest": digest(right_rows),
+            })
+            inherited = [evidence("op33-empty-populations")] if not left_rows and not right_rows else ()
+            output = operators.op33_join_new_prefix_route_state(
+                current, inherited_evidence_refs=inherited
+            )
+            cases.append({"Input": current, "Output": output})
+
+        script = r'''
+import json, sys
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
+schema=json.load(open("contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json"))
+route_schema=json.load(open("contracts/data/route-event.schema.json"))
+cases=json.load(sys.stdin)
+Draft202012Validator.check_schema(schema)
+registry=Registry().with_resource(route_schema["$id"], Resource.from_contents(route_schema))
+root=Draft202012Validator(schema, format_checker=FormatChecker(), registry=registry)
+errors=[]
+for index, pair in enumerate(cases):
+    for kind, payload in pair.items():
+        definition=schema["$defs"][f"op33{kind}Envelope"]
+        for error in root.evolve(schema=definition).iter_errors(payload):
+            errors.append(f"{index}/{kind}:{'/'.join(map(str,error.absolute_path))}:{error.message}")
+if errors:
+    raise SystemExit("\n".join(errors))
+'''
+        completed = subprocess.run(
+            ["uv", "run", "--with", "jsonschema[format-nongpl]==4.25.1", "python", "-c", script],
+            input=json.dumps(cases), text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
+
     def _build_schema_examples(self):
         examples = {}
         def add(env, output): examples[env["operator_id"]] = {"Input": env, "Output": output}

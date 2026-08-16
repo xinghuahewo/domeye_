@@ -27,24 +27,24 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
-  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
-  "implementation_candidate_id": "country-outage-p2-s1-w3-0bed7419f3f70dc486a4a9a2",
+  "hook_sha256": "d0d416984cc3b1a111f8a49636904c50d1884c58de5d8c9c1f65bf7f7756064c",
+  "hook_tests_sha256": "5cd2c3c8666bdc69b7653b3ce04acc23089c8cc03fd44c05e9b4f2eb04827bf0",
+  "implementation_candidate_id": "country-outage-p2-s1-w3-439589ceb25f257fa543f718",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "6e9bee8679391106ab512ef0e29732ee9cea28a707d10867e6719ee7a638b799",
-    "f2481e9b45e2a2a5964b48afae025aaea12e9a3aacbe6e55a0beb2f20a84d3de"
+    "95a2472a1b28d60296fa576f05837b20426056eebf3e33019ff1d10bce4b9e66",
+    "3e95f74a98d3d99a8f75e74c5c3f1492bc908ed78a7a9232bdb516ec5274f65b"
   ],
   "production_deployed": false,
-  "receipt_digest": "f5c4dd1ea7208e023a9432b4ab4c273ca0f8cf4a5e15fbfeb181210ef542c6a2",
+  "receipt_digest": "12c9cfb802bfb43e8dc603e102eff83c68ca84ae534aff10f65411ec78bf5cf9",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W3",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
-  "wave_evidence_sha256": "05644e5789ddecc0ce00ac350d320bee82c0a8676ac92163daec58c71976a9f2"
+  "task_sha256": "81123eecdf1259e970324c6abbcfdc9230a849ea0b76ad803ad986e176d1de12",
+  "wave_evidence_sha256": "626a65c78bf0c18bdb5a2d511a30bb07c000242bebe6c1c8225f8257cc6a2e20"
 }

@@ -953,6 +953,19 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
             lambda: HOOK.run_alignment(self.root, "W4"),
         )
 
+    def test_w4_rejects_op33_empty_population_contract_regression(self) -> None:
+        schema_path = HOOK.OPERATOR_CONTRACT_SCHEMA_PATH
+        target = self.root / schema_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / schema_path, target)
+        schema = self.load(schema_path)
+        schema["$defs"]["op33InputPayload"]["properties"]["new_prefix_state_rows"]["minItems"] = 1
+        self.write(schema_path, schema)
+        self.assert_alignment_error(
+            "op33_empty_population_contract_open",
+            lambda: HOOK._validate_op33_empty_population_contract(self.root),
+        )
+
     def test_w1_rejects_static_analysis_masquerading_as_execution_coverage(self) -> None:
         evidence = self.create_w1_w2_fixture("W1")
         suite_id = "w1-attack"

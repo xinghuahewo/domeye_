@@ -24,9 +24,9 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
-  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
-  "implementation_candidate_id": "country-outage-p2-s1-w0-bc5950acac073a647cdbc43e",
+  "hook_sha256": "d0d416984cc3b1a111f8a49636904c50d1884c58de5d8c9c1f65bf7f7756064c",
+  "hook_tests_sha256": "5cd2c3c8666bdc69b7653b3ce04acc23089c8cc03fd44c05e9b4f2eb04827bf0",
+  "implementation_candidate_id": "country-outage-p2-s1-w0-65930aee1a1af030ad983699",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
@@ -34,12 +34,12 @@
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59"
   ],
   "production_deployed": false,
-  "receipt_digest": "618cd5fc80a38db32c88e96cfe273620b8e1ecffa3aecaa01afdc71d6084e98b",
+  "receipt_digest": "2dc8660459dc194a3428fdca2780b8ef1c9c33a7f4342a71ad3b80a70ab5eacd",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W0",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
-  "wave_evidence_sha256": "88a5fd57b2420e36aa5145768c63ccc8db5b766a0316b0d2709ee24b2c2a5a07"
+  "task_sha256": "81123eecdf1259e970324c6abbcfdc9230a849ea0b76ad803ad986e176d1de12",
+  "wave_evidence_sha256": "47b33aa9ce07a836257191225149a7e735e9df74f3ad1ea61ca49e82d98eb532"
 }
