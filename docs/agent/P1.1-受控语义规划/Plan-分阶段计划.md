@@ -1,6 +1,6 @@
 # P1.1 受控 Semantic Planner 分阶段计划
 
-版本：1.0
+版本：1.2
 
 状态：建设路线与阶段边界，不是实施完成声明
 
@@ -19,13 +19,19 @@ Prompt 写法、内部类名或精确工期。S0 至 S4 是同一条受控 Seman
 路线允许根据实测结果调整，但不得跳过硬门禁。允许并行探索，不允许把尚未通过的探索结果
 直接接入执行、回答发布或会话状态。
 
+本路线将两个维度明确分开：用户目标和请求含义保持开放，包括 `unsupported`、越界、
+尚无映射和需要澄清的目标；capability/operator grounding 及其参数、身份和权限保持封闭。
+忠实保留用户目标不等于授权执行。
+
 ## 二、始终保持的最终方向
 
 ```text
 自然语言
-  → 不可信计划提案
+  → 开放 requested goals 与实体候选
+  → 可选的封闭 capability/operator grounding 提案（不可信）
   → Schema / 身份 / 能力 / 参数 / 边界 / 状态校验
-  → 唯一受信执行计划
+  → 逐目标裁决 bound / unsupported / out_of_scope / unmapped / clarify
+  → 只有 bound 目标形成唯一受信执行计划
   → P1 确定性事实算子
   → 事实与证据校验
   → 确定性 answerability 裁决
@@ -36,7 +42,12 @@ Prompt 写法、内部类名或精确工期。S0 至 S4 是同一条受控 Seman
 任何阶段都必须同时保持以下方向：
 
 - P1-v1 是冻结基线，不通过修改原候选、原 35 例或原验收记录制造 P1.1 成功；
-- 模型只提出 Semantic Plan，不拥有事件身份、事实、证据、回答等级、权限或状态提交权；
+- P0 v1.3 Capability Discovery Ledger 和 P1 v1.2 `adopt` 工具合同是新版 S0 的上游入口；
+  P1.1 不重新探索内部系统，也不把 P0 feasibility 或后端数据存在直接变成可执行能力；
+- 模型只提出开放请求语义与可选的封闭 grounding，不拥有事件身份、能力目录、事实、证据、
+  回答等级、权限或状态提交权；
+- Capability Catalog、Typed Operator Contract、Policy/Validator 和算子 oracle 必须先于语义计划
+  真值和可执行规划冻结；
 - 真实执行只能来自通过校验的唯一计划，Shadow 不参与投票、拼接、执行或发布；
 - `rrc25`、incident、publication、revision、cohort、window 和 `data_through` 由系统绑定；
 - 原因、责任、用户影响、全国完全断网、外部证据和 P2 至 P5 能力保持关闭；
@@ -82,24 +93,39 @@ Prompt 写法、内部类名或精确工期。S0 至 S4 是同一条受控 Seman
 
 ## 四、阶段目标
 
-### S0：语义合同、能力目录与基线
+### S0：能力与算子前置合同、语义边界与基线
 
 #### 入口
 
 - P1-v1 候选 `p1-candidate-61354911c7793d75` 可复验，身份、35 例和不可变制品明确；
+- P0 v1.3 能力 revision、Capability Discovery Ledger、分层证据、feasibility/Oracle seed
+  和 `adopt`/`defer`/`reject` 候选处置可校验；
+- P1 v1.2 已为 `adopt` 项形成 Capability Catalog、Typed Operator Contract、完整 oracle
+  和稳定只读端口；旧 P0/P1 基线不能单独证明本版入口成立；
+- 旧 S0 候选 `p1-1-s0-contract-7e534af51d92` 只能作为旧合同迁移输入，不得沿用其身份、
+  manifest 或阶段回执证明本 revision 的 S0 出口；
 - 当前 P1 规则规划、确定性算子、会话状态和边界能够被阅读、观测和作为对照；
+- P1 `adopt` 集合、证据身份、缺失语义和算子实际行为足以建立最小纵向切片 oracle；
 - P1.1 Task Spec、任务路径授权和阶段 Hook 已形成。
 
 #### 本阶段目标效果
 
-- 冻结受控计划的最低表达、字段所有权、Capability Catalog、策略裁决和状态提案语义；
-- 建立至少 15 例最小语义对照集的结构和审核标准，先覆盖“IP地址变换情况”、真实事件切换、
-  待澄清污染和复合表达；
+- 先冻结 Capability Catalog 的能力身份、支持状态、证据包络和边界；
+- 再冻结 Typed Operator Contract 的类型化输入输出、前置条件、缺失/失败语义、证据身份和
+  副作用边界；
+- 冻结 Policy/Validator 的 grounding disposition、字段所有权和失败关闭规则，并为最小纵向切片
+  建立算子 oracle；
+- 在上述前置制品具有同一 revision 后，才冻结受控计划的最低表达、开放 requested goal、
+  对应原问题片段或等价审计锚点、独立语义描述、封闭 grounding、状态提案语义与语义
+  计划真值；
+- 建立至少 15 例最小语义对照集的结构和审核标准，覆盖“IP地址变换情况”、真实事件切换、
+  待澄清污染、复合表达、`unsupported` 和越界目标；
 - 明确 baseline plan、shadow plan、reviewed plan 与 executed plan 的身份和比较口径；
-- 建立模型、Prompt、Schema、Catalog、Validator、基线规则和候选 revision 的追溯口径。
+- 建立模型、Prompt、Schema、Catalog、Typed Operator Contract、Policy/Validator、算子 oracle、
+  基线规则和候选 revision 的追溯口径。
 
-本阶段到期映射：P1.1-EFF-04、P1.1-EFF-05、P1.1-EFF-13、P1.1-EFF-16；
-P1.1-GATE-01、P1.1-GATE-02、P1.1-GATE-08、P1.1-GATE-14；
+本阶段到期映射：P1.1-EFF-02、P1.1-EFF-04、P1.1-EFF-05、P1.1-EFF-06、P1.1-EFF-07、P1.1-EFF-13、P1.1-EFF-16；
+P1.1-GATE-01、P1.1-GATE-02、P1.1-GATE-03、P1.1-GATE-08、P1.1-GATE-09、P1.1-GATE-14；
 P1.1-SCE-01、P1.1-SCE-02。
 
 #### 可调整空间
@@ -107,19 +133,32 @@ P1.1-SCE-01、P1.1-SCE-02。
 - Schema 可采用单计划多 goal 或显式子计划，只要完整保留多目标并能逐项裁决；
 - 对照集可先人工编写，再吸收真实问题；数量可增加，不得低于最终门禁；
 - Catalog 的文件形式、生成方式和版本策略可在可审计前提下调整；
+- 不要求先实现全部工具；未实现或越界目标必须在 Catalog/Policy 中表达为非 `bound`，
+  不得通过语义层模拟实现；
 - S0 可以做无 Provider 的 fixture 验证，但不能把 fixture 通过写成模型能力通过。
 
 #### 出口
 
 - 每个受控字段均有类型、来源、所有者、是否可由模型提出及失败语义；
-- 能力、算子、参数、边界和状态转换都有可版本化合同；
-- 最小对照集拥有审核后的 goals、entities、operators、policy、state effect 标准；
+- Capability Catalog、Typed Operator Contract、Policy/Validator 和算子 oracle 先行闭合，且能力、算子、
+  参数、边界和状态转换都有可版本化合同；
+- 开放的 requested goal 与封闭的 capability/operator grounding 在 Schema、Policy 和对照集中可分别校验；
+- 最小对照集的真值在前置制品后冻结，并拥有审核后的 requested goals、entities、grounding
+  disposition、可选 capability/operator、policy 和 state effect 标准；
 - P1-v1 冻结候选复验通过，P1.1 变更未重写原证据；
-- S1 可在完全不执行 Shadow 计划的前提下记录可比较输出。
+- P0 能力 revision 与 P1 `adopt` 工具合同引用闭合，`defer`、`reject`、unknown 或只有
+  feasibility 的条目均未进入可执行目录；
+- 新 S0 合同候选具有区别于旧候选的 revision、manifest 和阶段回执；旧回执未被复用；
+- S1 可在最小纵向切片合同已闭合、但不要求全部工具已实现的前提下，记录完全不执行的
+  Shadow 可比较输出。
 
 #### 边界
 
 - 不接入真实执行主路径，不让模型输出触发算子或状态写入；
+- 仅有封闭 `requested_goal` 枚举、通用 `unsupported` 回退、简化 operator 映射或旧阶段
+  回执时，必须判定存在待处理偏离，不得进入 S1；
+- P0 能力账本或 P1 v1.2 工具合同未形成时，必须判定存在待处理偏离，不得进入 S1；
+- 不得在 Catalog、Typed Operator Contract、Policy/Validator 或算子 oracle 未闭合时先冻结语义计划真值；
 - 不提前声称语义准确率、延迟、成本或 Provider 可用性；
 - 合同未闭合时不得用 Prompt 约定代替 Validator 或 Policy；
 - 未达到当前阶段出口时不得进入下一阶段。
@@ -128,14 +167,18 @@ P1.1-SCE-01、P1.1-SCE-02。
 
 #### 入口
 
-- S0 出口有回执，Schema、Catalog、比较口径和最小语义对照集已冻结 revision；
+- S0 出口有回执，Catalog、Typed Operator Contract、Policy/Validator、算子 oracle、Schema、
+  比较口径和最小语义对照集已按依赖顺序冻结 revision；
+- 最小纵向切片合同足以校验 Shadow 的 grounding 提案，但 Shadow 无任何算子执行权；
 - Provider 调用边界、凭据隔离、超时、取消和日志脱敏方案已审核；
 - Shadow 通道在设计上没有执行、发布和状态提交权限。
 
 #### 本阶段目标效果
 
-- 对同义、口语、输入误差、复合目标、实体、指代和省略生成结构化 Shadow 计划；
-- 同轮记录 baseline、shadow 和 reviewed plan，按 goal 完整性、实体、算子、政策、状态效果分类差异；
+- 对同义、口语、输入误差、复合目标、实体、指代和省略生成结构化 Shadow 计划，并忠实保留
+  `unsupported`、越界和无映射的 requested goals；
+- 同轮记录 baseline、shadow 和 reviewed plan，将 requested goal 完整性与 capability/operator grounding
+  正确性分开，再按实体、政策和状态效果分类差异；
 - 对最小语义对照集进行至少 3 次重复规划，观察规范结果稳定性而非原始文本一致性；
 - 记录模型/Provider、Prompt、Schema、Catalog、输入指纹、延迟、用量、成本估计和失败分类；
 - 保持 P1-v1 为唯一执行与回答路径。
@@ -156,7 +199,8 @@ P1.1-SCE-01、P1.1-SCE-02、P1.1-SCE-03、P1.1-SCE-11。
 - Shadow 的算子调用、用户回答发布和业务状态写入均为 0；
 - 最小语义对照集有逐例、重复、差异与审核结果，能解释收益和失败分布；
 - “IP地址变换情况”不再因单字“换”被 Shadow 规划为事件切换；
-- 复合表达不丢目标，无法唯一解析的表达给出最少必要澄清提案；
+- 复合表达不丢目标，`unsupported`、越界或无映射目标不被改写为已有 capability，无法唯一
+  解析的表达给出最少必要澄清提案；
 - 已形成是否进入 Validator 接管候选的证据化决定，而非按计划默认前进。
 
 #### 边界
@@ -171,12 +215,15 @@ P1.1-SCE-01、P1.1-SCE-02、P1.1-SCE-03、P1.1-SCE-11。
 #### 入口
 
 - S1 对照结果证明模型计划存在可验证增益，且进入有限候选的理由已记录；
-- Schema、Catalog、Validator、Policy 和回退 revision 均可独立识别；
+- Schema、Catalog、Typed Operator Contract、Validator、Policy、算子 oracle 和回退 revision 均可独立识别；
+- 进入受控执行的最小纵向切片算子已实现，并通过 Typed Operator Contract 和 oracle 校验；
 - 受控执行可以限制在测试/候选流量，并能一键回到 P1-v1。
 
 #### 本阶段目标效果
 
 - 模型计划先经过 Schema、身份、能力、参数、边界和状态转换校验，再形成唯一受信计划；
+- 确定性策略先逐 requested goal 裁决 `bound`、`unsupported`、`out_of_scope`、`unmapped` 或
+  `clarify`；只有 `bound` 目标可进入执行；
 - 未登记 capability、operator、参数、模型伪造身份和 Prompt Injection 在数据读取前失败关闭；
 - 事实、证据、时间、单位、ASN、前缀和 answerability 由确定性层生成和裁决；
 - 复合问题逐 goal 形成可回答、缺能力、证据不足或需澄清结果，允许局部成功；
@@ -320,7 +367,10 @@ Hook 结构检查通过不等于 Semantic Planner、模型、评测、页面、�
 ## 六、变更与回退规则
 
 - 若只改变 Prompt 或模型但不改变 Schema/Catalog/Policy，重验语义对照集、稳定性、失败和成本；
-- 若改变 Schema、Catalog、Validator、Policy 或状态转换，回到 S0/S2/S3 的受影响出口重验；
+- 若改变 Catalog、Typed Operator Contract、Policy/Validator 或算子 oracle，其派生的 Schema、语义计划真值和
+  可执行规划 revision 立即失效，回到 S0 重新冻结并只重验受影响切片；
+- 若只改变 Schema 内部组织或状态转换且未改变 Catalog/Operator/Policy 语义，回到 S0/S2/S3 的
+  受影响出口重验；
 - 若改变执行、回答或证据身份，必须重验 P1-v1 35 例和所有受影响联合场景；
 - 若候选身份、数据身份或制品摘要不一致，不得沿用旧阶段回执；
 - 若模型增益不足、成本不可接受或失败不可关闭，保持 Shadow 或回退 P1-v1，不视为工程失败造假；

@@ -152,6 +152,35 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
         errors = module.validate_document_texts(
             config,
             acceptance.replace(
+                "用户目标和请求含义保持开放",
+                "用户目标只能来自已有 capability",
+                1,
+            ),
+            plan,
+        )
+        self.assertTrue(
+            any("用户目标和请求含义保持开放" in error for error in errors)
+        )
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace("P0 v1.3 Capability Discovery Ledger", "旧 P0 案例"),
+            plan,
+        )
+        self.assertTrue(
+            any("P0 v1.3 Capability Discovery Ledger" in error for error in errors)
+        )
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance,
+            plan.replace("Shadow 无任何算子执行权", "Shadow 可执行算子", 1),
+        )
+        self.assertTrue(any("Shadow 无任何算子执行权" in error for error in errors))
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace(
                 "### P1.1-GATE-14：",
                 "### P1.1-GATE-15：",
                 1,
