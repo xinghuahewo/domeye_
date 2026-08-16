@@ -59,7 +59,7 @@ def envelope(operator_id, inputs, *, bound_identity=None):
     }
 
 
-def population_binding(operator_id, input_name, operator_input, member_keys):
+def population_binding(operator_id, input_name, operator_input, member_keys, *, bound_identity=None):
     completeness = F
     receipt = {
         "schema_version": "country_outage_p2_s1_population_evidence_binding_receipt_v1",
@@ -78,6 +78,8 @@ def population_binding(operator_id, input_name, operator_input, member_keys):
         "validator": {"validator_id": operators.STRUCTURAL_VALIDATOR_ID, "validator_version": "1.0.0", "contract_digest": D, "implementation_digest": E},
         "business_transform_count": 0,
     }
+    if operator_id == "OP-33":
+        receipt["identity_digest"] = digest(bound_identity or identity())
     receipt["receipt_digest"] = digest(receipt)
     return receipt
 
@@ -98,6 +100,22 @@ def offline_context(*bindings, op10_outputs=(), op11_outputs=(), op15_outputs=()
 
 def binding_kwargs(binding):
     return {"population_evidence_binding": binding, "offline_structural_context": offline_context(binding)}
+
+
+def op33_binding_kwargs(left_rows, right_rows):
+    left_binding = population_binding(
+        "OP-33", "new_prefix_state_rows", left_rows, [digest(row) for row in left_rows]
+    )
+    right_binding = population_binding(
+        "OP-33", "route_state_rows", right_rows, [digest(row) for row in right_rows]
+    )
+    return {
+        "population_evidence_bindings": {
+            "new_prefix_state_rows": left_binding,
+            "route_state_rows": right_binding,
+        },
+        "offline_structural_context": offline_context(left_binding, right_binding),
+    }
 
 
 def asn_operator_binding(source_operator_id, target_operator_id, asn, output):
@@ -574,7 +592,7 @@ class OperatorW3W4Tests(unittest.TestCase):
         route = {"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:05:00Z", "route_observation_key": "d1", "visibility": "visible", "origin_asns": [64500], "common_path_status": "ordered", "path_digest": D, "path_canonicalization_profile_id": operators.PATH_PROFILE_ID, "path_canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST, "evidence_ref": evidence("rs1")}
         right = [route, {**route, "state_point_utc": "2026-02-27T00:10:00Z", "route_observation_key": "future", "evidence_ref": evidence("future")}]
         env = envelope("OP-33", {"new_prefix_state_rows": left, "route_state_rows": right, "left_digest": digest(left), "right_digest": digest(right)})
-        out = operators.op33_join_new_prefix_route_state(env)
+        out = operators.op33_join_new_prefix_route_state(env, **op33_binding_kwargs(left, right))
         self.assertEqual(len(out["result"]["matched"]), 1)
         self.assertEqual(len(out["result"]["unmatched_left"]), 1)
         self.assertEqual(len(out["result"]["unmatched_right"]), 1)
@@ -584,22 +602,36 @@ class OperatorW3W4Tests(unittest.TestCase):
             operators.op33_join_new_prefix_route_state(forged)
         duplicate = deepcopy(env); duplicate["inputs"]["route_state_rows"].append(deepcopy(route)); duplicate["inputs"]["right_digest"] = digest(duplicate["inputs"]["route_state_rows"])
         with self.assertRaisesRegex(operators.OperatorContractError, "duplicate_route_state_join_member"):
-            operators.op33_join_new_prefix_route_state(duplicate)
+            operators.op33_join_new_prefix_route_state(
+                duplicate,
+                **op33_binding_kwargs(left, duplicate["inputs"]["route_state_rows"]),
+            )
 
         empty_left = envelope("OP-33", {
             "new_prefix_state_rows": [], "route_state_rows": [route],
             "left_digest": digest([]), "right_digest": digest([route]),
         })
-        empty_left_out = operators.op33_join_new_prefix_route_state(empty_left)
+        empty_left_kwargs = op33_binding_kwargs([], [route])
+        empty_left_out = operators.op33_join_new_prefix_route_state(empty_left, **empty_left_kwargs)
         self.assertEqual(empty_left_out["result"]["matched"], [])
         self.assertEqual(empty_left_out["result"]["unmatched_left"], [])
         self.assertEqual(empty_left_out["result"]["unmatched_right"], [route])
+        population_locators = {
+            item["member_key"] for item in empty_left_out["evidence_refs"]
+            if item["member_key"].startswith("population:")
+        }
+        self.assertEqual(
+            population_locators,
+            {"population:new_prefix_state_rows", "population:route_state_rows"},
+        )
 
         empty_right = envelope("OP-33", {
             "new_prefix_state_rows": [left[0]], "route_state_rows": [],
             "left_digest": digest([left[0]]), "right_digest": digest([]),
         })
-        empty_right_out = operators.op33_join_new_prefix_route_state(empty_right)
+        empty_right_out = operators.op33_join_new_prefix_route_state(
+            empty_right, **op33_binding_kwargs([left[0]], [])
+        )
         self.assertEqual(empty_right_out["result"]["matched"], [])
         self.assertEqual(empty_right_out["result"]["unmatched_left"], [left[0]])
         self.assertEqual(empty_right_out["result"]["unmatched_right"], [])
@@ -608,13 +640,52 @@ class OperatorW3W4Tests(unittest.TestCase):
             "new_prefix_state_rows": [], "route_state_rows": [],
             "left_digest": digest([]), "right_digest": digest([]),
         })
-        with self.assertRaisesRegex(operators.OperatorContractError, "population_evidence_ref_required"):
+        with self.assertRaisesRegex(operators.OperatorContractError, "population_evidence_bindings_required"):
             operators.op33_join_new_prefix_route_state(empty_both)
         empty_both_out = operators.op33_join_new_prefix_route_state(
-            empty_both, inherited_evidence_refs=[evidence("empty-populations")]
+            empty_both, **op33_binding_kwargs([], [])
         )
         self.assertEqual(empty_both_out["result_state"], "empty")
         self.assertEqual(empty_both_out["result"]["join_cardinality"]["matched_binding_count"], 0)
+
+        with self.assertRaisesRegex(operators.OperatorContractError, "missing_required_field"):
+            operators.op33_join_new_prefix_route_state(
+                empty_left,
+                population_evidence_bindings={
+                    "route_state_rows": empty_left_kwargs["population_evidence_bindings"]["route_state_rows"]
+                },
+                offline_structural_context=empty_left_kwargs["offline_structural_context"],
+            )
+
+        borrowed = dict(empty_left_kwargs["population_evidence_bindings"])
+        borrowed["new_prefix_state_rows"] = borrowed["route_state_rows"]
+        with self.assertRaisesRegex(operators.OperatorContractError, "population_binding_input_name_mismatch"):
+            operators.op33_join_new_prefix_route_state(
+                empty_left,
+                population_evidence_bindings=borrowed,
+                offline_structural_context=empty_left_kwargs["offline_structural_context"],
+            )
+
+        forged_left = deepcopy(empty_left_kwargs["population_evidence_bindings"]["new_prefix_state_rows"])
+        forged_left["member_count"] = 1
+        forged_left["receipt_digest"] = digest({key: value for key, value in forged_left.items() if key != "receipt_digest"})
+        right_binding = empty_left_kwargs["population_evidence_bindings"]["route_state_rows"]
+        with self.assertRaisesRegex(operators.OperatorContractError, "population_binding_member_count_mismatch"):
+            operators.op33_join_new_prefix_route_state(
+                empty_left,
+                population_evidence_bindings={
+                    "new_prefix_state_rows": forged_left,
+                    "route_state_rows": right_binding,
+                },
+                offline_structural_context=offline_context(forged_left, right_binding),
+            )
+
+        wrong_identity = deepcopy(empty_left)
+        wrong_identity["identity"]["publication_revision"] = 2
+        wrong_identity["inputs"]["identity"]["publication_revision"] = 2
+        wrong_identity["input_digests"] = [digest(wrong_identity["inputs"])]
+        with self.assertRaisesRegex(operators.OperatorContractError, "population_binding_identity_digest_mismatch"):
+            operators.op33_join_new_prefix_route_state(wrong_identity, **empty_left_kwargs)
 
     def _op29_and_receipt(self, left_digest, right_digest, relation="same_slot"):
         times = {
@@ -720,9 +791,12 @@ class OperatorAtomicityAndBoundaryTests(unittest.TestCase):
             self.assertFalse(definition["additionalProperties"], operator_id)
 
     def test_structural_binding_receipts_validate_draft202012_schema(self):
+        op33_bindings = op33_binding_kwargs([], [])["population_evidence_bindings"]
         receipts = [
             asn_operator_binding("OP-10", "OP-14", 10, {"output_digest": D, "result": {"input_digest": E}}),
             asn_operator_binding("OP-36", "OP-12", 10, {"output_digest": D, "result": {"input_digest": E}}),
+            op33_bindings["new_prefix_state_rows"],
+            op33_bindings["route_state_rows"],
         ]
         script = r'''
 import json, sys
@@ -769,6 +843,62 @@ if errors:
         completed = subprocess.run(
             ["uv", "run", "--with", "jsonschema[format-nongpl]==4.25.1", "python", "-c", script],
             input=json.dumps(examples), text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
+
+    def test_op33_empty_population_inputs_and_outputs_validate_frozen_schema(self):
+        """OP-33 左空、右空和双空都合法，但运行时仍需两份独立完整人口回执。"""
+        left = {
+            "prefix": "10.0.0.0/8", "afi": 4,
+            "first_observed_at_utc": "2026-02-27T00:00:00Z",
+            "state_point_utc": "2026-02-27T00:05:00Z",
+            "classification": "partial", "evidence_ref": evidence("op33-empty-left-row"),
+        }
+        right = {
+            "prefix": "10.0.0.0/8", "afi": 4,
+            "state_point_utc": "2026-02-27T00:05:00Z",
+            "route_observation_key": "d1", "visibility": "visible",
+            "origin_asns": [64500], "common_path_status": "ordered",
+            "path_digest": D,
+            "path_canonicalization_profile_id": operators.PATH_PROFILE_ID,
+            "path_canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST,
+            "evidence_ref": evidence("op33-empty-right-row"),
+        }
+        cases = []
+        for left_rows, right_rows in (([], [right]), ([left], []), ([], [])):
+            current = envelope("OP-33", {
+                "new_prefix_state_rows": left_rows,
+                "route_state_rows": right_rows,
+                "left_digest": digest(left_rows),
+                "right_digest": digest(right_rows),
+            })
+            output = operators.op33_join_new_prefix_route_state(
+                current, **op33_binding_kwargs(left_rows, right_rows)
+            )
+            cases.append({"Input": current, "Output": output})
+
+        script = r'''
+import json, sys
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
+schema=json.load(open("contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json"))
+route_schema=json.load(open("contracts/data/route-event.schema.json"))
+cases=json.load(sys.stdin)
+Draft202012Validator.check_schema(schema)
+registry=Registry().with_resource(route_schema["$id"], Resource.from_contents(route_schema))
+root=Draft202012Validator(schema, format_checker=FormatChecker(), registry=registry)
+errors=[]
+for index, pair in enumerate(cases):
+    for kind, payload in pair.items():
+        definition=schema["$defs"][f"op33{kind}Envelope"]
+        for error in root.evolve(schema=definition).iter_errors(payload):
+            errors.append(f"{index}/{kind}:{'/'.join(map(str,error.absolute_path))}:{error.message}")
+if errors:
+    raise SystemExit("\n".join(errors))
+'''
+        completed = subprocess.run(
+            ["uv", "run", "--with", "jsonschema[format-nongpl]==4.25.1", "python", "-c", script],
+            input=json.dumps(cases), text=True, capture_output=True, check=False,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
 
@@ -837,7 +967,7 @@ if errors:
         env = envelope("OP-32", {"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:00:00Z", "expected_direction_set": ["d1"], "canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST, "actual_path_rows": [{"direction_id": "d1", "path_state": "known_ordered", "path_digest": D, "evidence_ref": evidence("path1")}]}); add(env, operators.op32_classify_vp_path_consistency(env, inherited_evidence_refs=[evidence("vp-pop")]))
         new_prefix = [{"prefix": "10.0.0.0/8", "afi": 4, "first_observed_at_utc": "2026-02-27T00:00:00Z", "state_point_utc": "2026-02-27T00:05:00Z", "classification": "partial", "evidence_ref": evidence("np")}]
         route_state = [{"prefix": "10.0.0.0/8", "afi": 4, "state_point_utc": "2026-02-27T00:05:00Z", "route_observation_key": "d1", "visibility": "visible", "origin_asns": [64500], "common_path_status": "ordered", "path_digest": D, "path_canonicalization_profile_id": operators.PATH_PROFILE_ID, "path_canonicalization_profile_digest": operators.PATH_PROFILE_DIGEST, "evidence_ref": evidence("route")}]
-        env = envelope("OP-33", {"new_prefix_state_rows": new_prefix, "route_state_rows": route_state, "left_digest": digest(new_prefix), "right_digest": digest(route_state)}); add(env, operators.op33_join_new_prefix_route_state(env))
+        env = envelope("OP-33", {"new_prefix_state_rows": new_prefix, "route_state_rows": route_state, "left_digest": digest(new_prefix), "right_digest": digest(route_state)}); add(env, operators.op33_join_new_prefix_route_state(env, **op33_binding_kwargs(new_prefix, route_state)))
         left_fact = typed_fact("schema-fact-left", "visible"); right_fact = typed_fact("schema-fact-right", "invisible")
         left_for_29 = timed_fact("schema-fact-time-left", "2026-02-27T00:00:00Z"); left_for_29["fact_digest"] = left_fact["fact_digest"]
         right_for_29 = timed_fact("schema-fact-time-right", "2026-02-27T00:00:00Z"); right_for_29["fact_digest"] = right_fact["fact_digest"]

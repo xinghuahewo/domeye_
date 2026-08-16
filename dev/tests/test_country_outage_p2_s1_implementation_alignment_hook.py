@@ -915,6 +915,53 @@ class ImplementationAlignmentHookTest(unittest.TestCase):
             lambda: HOOK.run_alignment(self.root, "W4"),
         )
 
+    def test_w4_rejects_op33_empty_population_contract_regression(self) -> None:
+        self.create_w1_w2_fixture("W4")
+        schema = self.load(HOOK.OPERATOR_CONTRACT_SCHEMA_PATH)
+        schema["$defs"]["op33InputPayload"]["properties"]["new_prefix_state_rows"]["minItems"] = 1
+        self.write(HOOK.OPERATOR_CONTRACT_SCHEMA_PATH, schema)
+        self.assert_alignment_error(
+            "op33_empty_population_contract_open",
+            lambda: HOOK._validate_op33_population_evidence_contract(self.root),
+        )
+
+    def test_w4_rejects_op33_population_evidence_contract_regression(self) -> None:
+        self.create_w1_w2_fixture("W4")
+        schema = self.load(HOOK.STRUCTURAL_BINDING_PATH)
+        receipt = schema["$defs"]["populationEvidenceBindingReceipt"]
+        receipt["properties"]["operator_id"]["enum"].remove("OP-33")
+        self.write(HOOK.STRUCTURAL_BINDING_PATH, schema)
+        self.assert_alignment_error(
+            "op33_population_evidence_contract_open",
+            lambda: HOOK._validate_op33_population_evidence_contract(self.root),
+        )
+
+    def test_w4_rejects_op33_identity_binding_removal(self) -> None:
+        self.create_w1_w2_fixture("W4")
+        schema = self.load(HOOK.STRUCTURAL_BINDING_PATH)
+        receipt = schema["$defs"]["populationEvidenceBindingReceipt"]
+        receipt["allOf"] = []
+        self.write(HOOK.STRUCTURAL_BINDING_PATH, schema)
+        self.assert_alignment_error(
+            "op33_population_evidence_contract_open",
+            lambda: HOOK._validate_op33_population_evidence_contract(self.root),
+        )
+
+    def test_w4_rejects_op33_second_population_binding_removal(self) -> None:
+        self.create_w1_w2_fixture("W4")
+        path = self.root / HOOK.W1_W2_OPERATOR_IMPLEMENTATION_PATH
+        source = path.read_text(encoding="utf-8")
+        source = source.replace(
+            "    right_population_evidence = _population_evidence(",
+            "    right_population_evidence = _merge_evidence(",
+            1,
+        )
+        path.write_text(source, encoding="utf-8")
+        self.assert_alignment_error(
+            "op33_population_evidence_contract_open",
+            lambda: HOOK._validate_op33_population_evidence_contract(self.root),
+        )
+
     def test_w4_rejects_skipping_w3_governance_receipt_after_full_resign(self) -> None:
         evidence = self.create_w1_w2_fixture("W4")
         evidence["prior_stage_receipt_digests"].pop("W3")

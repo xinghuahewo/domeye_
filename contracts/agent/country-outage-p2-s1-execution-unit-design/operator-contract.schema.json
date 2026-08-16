@@ -6063,15 +6063,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/newPrefixState"
-          },
-          "minItems": 1
+          }
         },
         "route_state_rows": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/routeStateAtTime"
-          },
-          "minItems": 1
+          }
         },
         "left_digest": {
           "$ref": "#/$defs/digest"

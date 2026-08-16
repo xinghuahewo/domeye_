@@ -2,8 +2,8 @@
   "artifact_bindings": [
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/tools/run_stage_tests.py",
-      "sha256": "2a88b6d668f38d607136d7d856d7b2942dcd758593abfc5e15659578712796eb",
-      "size_bytes": 23872
+      "sha256": "2faa95b0f039c8d7e494c8efcd59e84d12961667930649a67511ccb264b17f6c",
+      "size_bytes": 24185
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_tools.py",
@@ -12,8 +12,8 @@
     },
     {
       "path": "backend/web/tests/test_country_outage_p2_s1_operators.py",
-      "sha256": "4dd544c8e654328189f9641d646bf357da868518d439b44b11062c1e4c77b2b0",
-      "size_bytes": 78269
+      "sha256": "bb5f7a9ab338bc71f13e4d954ecf0aaf29032fdb596caa766a201c5a3f0e47e2",
+      "size_bytes": 84902
     },
     {
       "path": "backend/services/country_outage_p2_s1_tools.py",
@@ -22,8 +22,8 @@
     },
     {
       "path": "backend/services/country_outage_p2_s1_operators.py",
-      "sha256": "7a937829a075256978d31a98e3b69f622c16552565d0a5c20e7c47bb171625b0",
-      "size_bytes": 146244
+      "sha256": "504eebfad813d1bf8b508358f4623d65a0b240889dd00b22e083be611145f580",
+      "size_bytes": 147874
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-tool-runtime.schema.json",
@@ -32,13 +32,13 @@
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json",
-      "sha256": "ce92afb0b4666caba0a76b4ceef40328ff06236cad73895e7932a384a4ecb112",
-      "size_bytes": 12055
+      "sha256": "40a80c26ee9cc60a3d713534e6c58277d413d9506b08ab27eb3c8c049d4878b3",
+      "size_bytes": 12520
     },
     {
       "path": "contracts/agent/country-outage-p2-s1-execution-unit-design/operator-contract.schema.json",
-      "sha256": "b2d57637c3003938961a5dd4e73bfef8abd18f4f862f753b21310b86c257d626",
-      "size_bytes": 185269
+      "sha256": "dd154f4d6dc0dcc8d001150395c1f110367576c60ed2329fc5d6bc564658fb56",
+      "size_bytes": 185219
     }
   ],
   "category": "attack",
@@ -52,14 +52,14 @@
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_operator_functions_do_not_call_other_operator_functions",
     "backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests.test_module_has_no_file_network_tool_or_model_dependency"
   ],
-  "completed_at_utc": "2026-08-13T05:39:52Z",
+  "completed_at_utc": "2026-08-13T06:14:31Z",
   "error_count": 0,
   "exit_code": 0,
   "failure_count": 0,
   "normalized_output": "[stdout]\n\n[stderr]\ntest_op10_op36_trusted_projection_binding_attacks (backend.web.tests.test_country_outage_p2_s1_operators.OperatorW1Tests) ... ok\ntest_cross_publication_and_incomplete_inputs_fail_closed (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\ntest_operator_functions_do_not_call_other_operator_functions (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\ntest_module_has_no_file_network_tool_or_model_dependency (backend.web.tests.test_country_outage_p2_s1_operators.OperatorAtomicityAndBoundaryTests) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in <ELAPSED>\n\nOK\n",
   "normalized_output_sha256": "42bfd52d32d44502d00fad8de7fbf70cfd88f7b860a60c3aba566ed7f88c62d1",
   "passed": true,
-  "receipt_digest": "c4be32dddfb412f4a595c4d45dcebf8eb7daecdb2990adf74b3c069546287d33",
+  "receipt_digest": "d94fe7f116c0a850e612f7b0e58c696c0b1554d4a60595a85ae1e4824a301d9f",
   "runner_id": "country_outage_p2_s1_stage_test_runner",
   "runner_version": "1.0.0",
   "schema_version": "country_outage_p2_s1_stage_test_run_receipt_v1",
@@ -71,7 +71,7 @@
   ],
   "skipped_count": 0,
   "stage": "W1",
-  "started_at_utc": "2026-08-13T05:39:52Z",
+  "started_at_utc": "2026-08-13T06:14:31Z",
   "suite_id": "w1-attack",
   "test_case_coverage": [
     {

@@ -27,24 +27,24 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
-  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
-  "implementation_candidate_id": "country-outage-p2-s1-w3-0bed7419f3f70dc486a4a9a2",
+  "hook_sha256": "151c0cd4e724afa6ce93bdf4bf69f69a7c290481d8cd4df44253f15a41905cf3",
+  "hook_tests_sha256": "4fcbb59096fcf72917fb57602a15720a8f8ac4fab7de05848bb8763aae849808",
+  "implementation_candidate_id": "country-outage-p2-s1-w3-9eb9412373dea867d34f186c",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "6e9bee8679391106ab512ef0e29732ee9cea28a707d10867e6719ee7a638b799",
-    "f2481e9b45e2a2a5964b48afae025aaea12e9a3aacbe6e55a0beb2f20a84d3de"
+    "8633dea55bf682163e545315033a5dca176375adcbc5ba40c25261d5c1418488",
+    "49ec43f42f06865170edc3ef9df1df802acd9e9a6fdbf3a43d4069ece53c8100"
   ],
   "production_deployed": false,
-  "receipt_digest": "f5c4dd1ea7208e023a9432b4ab4c273ca0f8cf4a5e15fbfeb181210ef542c6a2",
+  "receipt_digest": "3c30d625a684ed74cdbd07351c39bdb612d1ffd8ed9b82e2a0011913616fe6d9",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W3",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
-  "wave_evidence_sha256": "05644e5789ddecc0ce00ac350d320bee82c0a8676ac92163daec58c71976a9f2"
+  "task_sha256": "3caa61b0c0dc89dde1c080044c402c29e31598e926b44ffc30bf5fce2bb70bde",
+  "wave_evidence_sha256": "202469b53713a4b8bd3740cec84282b556558d5ed1ab2805515ad622f29a49c8"
 }

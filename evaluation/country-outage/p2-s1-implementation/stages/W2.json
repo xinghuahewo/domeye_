@@ -27,23 +27,23 @@
   ],
   "design_candidate_id": "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4",
   "design_contract_accepted": true,
-  "hook_sha256": "2232bc4f4140017f15c7397ca5df0d23b133344f178f72ef692fc1717e6be3ad",
-  "hook_tests_sha256": "870ebde5ff9863f1df26d4ca9dd086c50465d3587e95b2222eaaef6af11fffbc",
-  "implementation_candidate_id": "country-outage-p2-s1-w2-d4a9fcdced90ec258889ac8b",
+  "hook_sha256": "151c0cd4e724afa6ce93bdf4bf69f69a7c290481d8cd4df44253f15a41905cf3",
+  "hook_tests_sha256": "4fcbb59096fcf72917fb57602a15720a8f8ac4fab7de05848bb8763aae849808",
+  "implementation_candidate_id": "country-outage-p2-s1-w2-9920108cc88045f9d31c5f72",
   "implementation_planning": false,
   "implementation_wave": true,
   "phase_plan_sha256": "9062a2f0f3959952c4d7bec96c857dbfb24cdb41c17cbece31edd8c48e47188e",
   "prior_stage_receipt_digests": [
     "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
-    "618cd5fc80a38db32c88e96cfe273620b8e1ecffa3aecaa01afdc71d6084e98b"
+    "3a476fef7bbcdc6c5a1b577160e902ab5e510bdcfacfb7a0f56c21e1418f82a7"
   ],
   "production_deployed": false,
-  "receipt_digest": "f2481e9b45e2a2a5964b48afae025aaea12e9a3aacbe6e55a0beb2f20a84d3de",
+  "receipt_digest": "49ec43f42f06865170edc3ef9df1df802acd9e9a6fdbf3a43d4069ece53c8100",
   "runtime_implemented": false,
   "schema_version": "country_outage_p2_s1_implementation_alignment_receipt_v1",
   "stage": "W2",
   "status": "alignment_passed",
   "target_document_sha256": "679364b0003dc738d54ef498b850fbb548fccb22a978a3d9a31986b2ac54d729",
-  "task_sha256": "d8585bfdf18d80e44d37a23404927f79b13e93198d04b1a372231fa111c5aa43",
-  "wave_evidence_sha256": "2e11ed466735afe11a678347684b2412e52b348525fd6b368aadf75b92337469"
+  "task_sha256": "3caa61b0c0dc89dde1c080044c402c29e31598e926b44ffc30bf5fce2bb70bde",
+  "wave_evidence_sha256": "c47647350f637dfa25e74ec389a3198102d36ad1d1a383e657965057f00dc38a"
 }

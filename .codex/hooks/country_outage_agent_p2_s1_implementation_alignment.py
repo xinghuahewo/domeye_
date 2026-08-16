@@ -9,6 +9,7 @@ W3-W6 继续 fail-closed，直到各自实现任务补齐同等级证据。
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import hashlib
 import json
@@ -155,6 +156,8 @@ W1_W2_TASK_ID = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-20260813"
 W1_W2_TARGET_VERSION = "country-outage-agent-p2-s1-w1-w2-atomic-runtime-v1"
 W3_W4_TASK_ID = "country-outage-agent-p2-s1-w3-w4-atomic-runtime-20260813"
 W3_W4_TARGET_VERSION = "country-outage-agent-p2-s1-w3-w4-atomic-runtime-v1"
+W3_W4_OP33_EVIDENCE_TASK_ID = "country-outage-agent-p2-s1-w3-w4-op33-population-evidence-closure-20260813"
+W3_W4_OP33_EVIDENCE_TARGET_VERSION = "country-outage-agent-p2-s1-w3-w4-op33-population-evidence-closure-v1"
 REGISTRY_WAVE_SEQUENCE = ["W1", "W2", "W3", "W4"]
 STRUCTURAL_BINDING_PATH = Path(
     "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json"
@@ -193,10 +196,10 @@ W1_W2_REGISTRY_EVIDENCE_ROOT = Path(
     "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/registry-runtime"
 )
 W1_W2_REGISTRY_EVIDENCE_SHA256 = {
-    "W1": "ee992ac8144b2d4e097f921827fbea97743524ff96426c1035263380f1bb29fa",
-    "W2": "080c9383401f50b7dfc4a1866b5922670fcd8a7ead16a908d45fce7e53a4e437",
-    "W3": "2cee0ac652a5488a8bc7be08ebc253e9c8255b06d483ba985ee2420e20bf8e31",
-    "W4": "bc8570bbe7b0f91b3921c8b19d28606b8a03df8730b43223cecee300528a8ef7",
+    "W1": "8e8147d68d6a88b2ddda1de97a4aaadbafce6ee7e7974b5100f31f5f240aefcb",
+    "W2": "e471ef429e41093218da97738cc4f29ae53b7e7c1672e2a56721f75d7f98316c",
+    "W3": "6931bfad63c899ce2d13e740b48a8b54da3fcac53efa2c78f5b3e3086049c00c",
+    "W4": "a0af28ab57c2372ec07c76f3adbd5c8b188050c6d274d3718ed1b4831cd7ba5e",
 }
 W1_W2_SOURCE_STORE_PATH = Path("backend/services/country_outage_p2_s1_source_store.py")
 W1_W2_SOURCE_SCHEMA_PATHS = {
@@ -230,20 +233,20 @@ W1_W4_ALL_UNIT_IDS = set(
 P2_1_UNIT_IDS = {"PLAN-CAP-02", "TOOL-13", "OP-34"}
 REGISTRY_SNAPSHOT_ID = re.compile(r"^p2-s1-registry-wave-sha256:[0-9a-f]{64}$")
 STAGE_TEST_RUN_RECEIPTS = {
-    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "599b729287ef1fb4b3fd9adc71d53549b8d97d6511a8966a5ccf91d96989d1cc"),
-    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "4fa6f1963a87070a1908f4af5c2891805f287d7ba6101c40d61449b75eb05654"),
-    "w1-positive": ("W1", "positive", "1fa8cf89a1c15242bbb70db84e36a1691d428dcbe4f1217d4b01669a7c3f51a6"),
-    "w1-boundary": ("W1", "boundary", "b6eae94bd497a78bf5eefa7f1edf9dfe65f68fc9bad329d4926ff10f84da216d"),
-    "w1-attack": ("W1", "attack", "ac416b1aa5f8e39e76d22417f834405ae229f66cda064d6260bd3c0dc39fd4bd"),
-    "w2-positive": ("W2", "positive", "00443b97cb14b96aeb92c7c2c1d4080cde784f7494f8da15325912e9efb8ece3"),
-    "w2-boundary": ("W2", "boundary", "05ad37e8ed1e2d15703ededdc6225d5dd0262354c2bc142cabdcabae9f5a4b89"),
-    "w2-attack": ("W2", "attack", "a60030a1edd4ddb9148ba88c05f612e90f526bfa7893e6c6f8554caa8fa5ba05"),
-    "w3-positive": ("W3", "positive", "6438d5087cf165139b6cda967100c6a90f1264fcaf23bc57cbacd35bc3d1244e"),
-    "w3-boundary": ("W3", "boundary", "fc822b55f862d95549801ca10190754056d63fca0f3b87673f2d718c114f5baa"),
-    "w3-attack": ("W3", "attack", "29b0bd78642520921b4211a6eb6f3ea624a711dd30db768cacac7aee35a3bf66"),
-    "w4-positive": ("W4", "positive", "a477a81d5213b91f4d526e8d048231f11790388b1a4e10a61bf4654b2f6b4c18"),
-    "w4-boundary": ("W4", "boundary", "bf291a42eff3e4980a120ade53626db58c1d5bf059407b68a2f5afebb6cf8371"),
-    "w4-attack": ("W4", "attack", "dfd1913297acec40b09ad6e43ec618851aa7717ed89d5b3cc5a74784e0a0aaf4"),
+    "w0-python": ("W0", "source_and_store_positive_boundary_attack", "6ed8d7c6f31f1db47dab2efd7888568f73acf7458b737ccf63d87c2e800106ca"),
+    "w0-typescript": ("W0", "registry_and_receipt_positive_boundary_attack", "d801d4dcd65708654628e20fa0be4631d6d00d8e084f6c5a4aad0aa57c7e3e28"),
+    "w1-positive": ("W1", "positive", "b917ff655d50b25d8ba790d9c248a2d1fb6349476b8339fe9591fd80b5c650a0"),
+    "w1-boundary": ("W1", "boundary", "da53f57a47b7384b56c31bce063ed8b79c528b18cf73765adc63e247445c334d"),
+    "w1-attack": ("W1", "attack", "c795044392663ad9b7fcd27f5b27b2a504dd687bc6af7c012955c106240295e4"),
+    "w2-positive": ("W2", "positive", "5821e06abdb2b71f55cefdaee80c51ac5ccbe907a13b95255feccd387201f749"),
+    "w2-boundary": ("W2", "boundary", "615ce7503b594ad417ada6815cfcf679c1cce994ad04d73d12cb63d36af8e05d"),
+    "w2-attack": ("W2", "attack", "1d9a070c541a766f1315919aba24d27b0886bc1d64bd07c3da1b0b53c9e38ba0"),
+    "w3-positive": ("W3", "positive", "fa2ab567b9a490c69b7707926d7ce22a0bb5a7df87ed0dedfd1625711e645681"),
+    "w3-boundary": ("W3", "boundary", "b4c94b97bfec693988bff34ac62262ba7c3c849b8106709843bfd066a074f774"),
+    "w3-attack": ("W3", "attack", "52fb23354e8eca9916ec31901c346d2c420340f1503aa81107f7065437fef523"),
+    "w4-positive": ("W4", "positive", "213248562a227767fd5b9d1e85c693840aa2de023e753661e6c416858deca734"),
+    "w4-boundary": ("W4", "boundary", "76eda0594009afa9b06acef13cbb5ade53451b22e61f36552ae79eb3888c1a13"),
+    "w4-attack": ("W4", "attack", "e95e595651e1dca50f7646e3d1cbf609be181ee7e0297d537b46ec2f6e96d03b"),
 }
 
 
@@ -476,14 +479,20 @@ def validate_task(root: Path) -> list[str]:
     task_id = task.get("taskId")
     w0_task = task_id == "country-outage-agent-p2-s1-w0-source-governance-20260813"
     w1_w2_task = task_id == W1_W2_TASK_ID
-    w3_w4_task = task_id == W3_W4_TASK_ID
+    w3_w4_op33_evidence_task = task_id == W3_W4_OP33_EVIDENCE_TASK_ID
+    w3_w4_task = task_id == W3_W4_TASK_ID or w3_w4_op33_evidence_task
     expect(w0_task or w1_w2_task or w3_w4_task, "task_identity_mismatch", "Task ID 不属于冻结的 W0、W1/W2 或 W3/W4 实现任务")
     if w0_task:
         exact(task.get("targetVersion"), "country-outage-agent-p2-s1-w0-source-governance-v1", "task_version_mismatch", "W0 目标版本不匹配")
     elif w1_w2_task:
         exact(task.get("targetVersion"), W1_W2_TARGET_VERSION, "task_version_mismatch", "W1/W2 目标版本不匹配")
     else:
-        exact(task.get("targetVersion"), W3_W4_TARGET_VERSION, "task_version_mismatch", "W3/W4 目标版本不匹配")
+        exact(
+            task.get("targetVersion"),
+            W3_W4_OP33_EVIDENCE_TARGET_VERSION if w3_w4_op33_evidence_task else W3_W4_TARGET_VERSION,
+            "task_version_mismatch",
+            "W3/W4 目标版本不匹配",
+        )
     transition = task.get("taskTransition")
     expect(isinstance(transition, dict), "task_transition_missing", "缺少任务迁移记录")
     exact(transition.get("frozenDesignCandidateId"), DESIGN_CANDIDATE_ID, "task_design_binding_mismatch", "Task 未绑定冻结设计候选")
@@ -508,11 +517,19 @@ def validate_task(root: Path) -> list[str]:
         exact(transition.get("supersedesTaskId"), "country-outage-agent-p2-s1-w0-source-governance-20260813", "task_transition_invalid", "W1/W2 未显式继承 W0 Task")
         exact(transition.get("w0ReceiptDigest"), W0_TRANSITION_RECEIPT_DIGEST, "task_w0_binding_mismatch", "W1/W2 Task 未绑定创建时冻结的 W0 回执")
     else:
-        exact(transition.get("supersedesTaskId"), W1_W2_TASK_ID, "task_transition_invalid", "W3/W4 未显式继承已通过独立复审的 W1/W2 Task")
+        exact(
+            transition.get("supersedesTaskId"),
+            W3_W4_TASK_ID if w3_w4_op33_evidence_task else W1_W2_TASK_ID,
+            "task_transition_invalid",
+            "W3/W4 未显式继承已通过的前序 Task",
+        )
         exact(transition.get("implementationBaselineSha256"), "9dc80bec20db0c68ee044c4da9e4148a2a2ab7bd1c70c8863ae737cc6231422f", "task_baseline_transition_mismatch", "W3/W4 Task 创建时的实现基线摘要漂移")
         exact(transition.get("w0ReceiptDigest"), "cbab6787eeec1071c1c982063085f6fadb16e85e584c76289a43b31aecd4108c", "task_w0_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W0 回执")
         exact(transition.get("w1ReceiptDigest"), "2ac94ea56923bd8dff140af56aa6e8a876860931f6bd8fd479a4908eeaa34c73", "task_w1_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W1 回执")
         exact(transition.get("w2ReceiptDigest"), "b4672f844e559d3bdf44d713fd02f674ec431f4caacb77c3afa85886c27298a1", "task_w2_binding_mismatch", "W3/W4 Task 未绑定创建时冻结的 W2 回执")
+        if w3_w4_op33_evidence_task:
+            exact(transition.get("w3ReceiptDigest"), "f5c4dd1ea7208e023a9432b4ab4c273ca0f8cf4a5e15fbfeb181210ef542c6a2", "task_w3_binding_mismatch", "OP-33 Evidence Task 未绑定前序 W3 回执")
+            exact(transition.get("w4ReceiptDigest"), "2453e5d884e6ae821cd00573b467f430bfc838a5a6902b4ebc8d20402d246b6a", "task_w4_binding_mismatch", "OP-33 Evidence Task 未绑定前序 W4 回执")
     for path in (
         W1_W2_TOOL_IMPLEMENTATION_PATH,
         W1_W2_OPERATOR_IMPLEMENTATION_PATH,
@@ -1624,6 +1641,62 @@ def _validate_current_wave_stage_receipt(
     )
 
 
+def _validate_op33_population_evidence_contract(root: Path) -> None:
+    operator_schema = load_json(root / OPERATOR_CONTRACT_SCHEMA_PATH)
+    op33_inputs = operator_schema.get("$defs", {}).get("op33InputPayload", {}).get("properties", {})
+    expected_items = {
+        "new_prefix_state_rows": "#/$defs/newPrefixState",
+        "route_state_rows": "#/$defs/routeStateAtTime",
+    }
+    for field, item_ref in expected_items.items():
+        field_schema = op33_inputs.get(field)
+        expect(isinstance(field_schema, dict), "op33_empty_population_contract_open", f"OP-33 缺少 {field} 输入合同")
+        exact(field_schema.get("type"), "array", "op33_empty_population_contract_open", f"OP-33 {field} 必须保持数组人口")
+        exact(field_schema.get("items"), {"$ref": item_ref}, "op33_empty_population_contract_open", f"OP-33 {field} 成员 Schema 漂移")
+        expect("minItems" not in field_schema, "op33_empty_population_contract_open", f"OP-33 {field} 不得拒绝合法空人口")
+
+    binding_schema = load_json(root / STRUCTURAL_BINDING_PATH)
+    binding = binding_schema.get("$defs", {}).get("populationEvidenceBindingReceipt", {})
+    properties = binding.get("properties", {})
+    operator_ids = properties.get("operator_id", {}).get("enum", [])
+    input_names = properties.get("operator_input_name", {}).get("enum", [])
+    expect("OP-33" in operator_ids, "op33_population_evidence_contract_open", "人口 Evidence 合同未登记 OP-33")
+    for input_name in expected_items:
+        expect(input_name in input_names, "op33_population_evidence_contract_open", f"人口 Evidence 合同未登记 {input_name}")
+    expect("identity_digest" in properties, "op33_population_evidence_contract_open", "OP-33 人口回执未声明 identity_digest")
+    conditionals = binding.get("allOf", [])
+    expect(
+        any(
+            item.get("if", {}).get("properties", {}).get("operator_id", {}).get("const") == "OP-33"
+            and "identity_digest" in item.get("then", {}).get("required", [])
+            for item in conditionals
+            if isinstance(item, dict)
+        ),
+        "op33_population_evidence_contract_open",
+        "OP-33 人口回执未机器强制 identity_digest",
+    )
+
+    implementation_path = root / W1_W2_OPERATOR_IMPLEMENTATION_PATH
+    tree = ast.parse(implementation_path.read_text(encoding="utf-8"))
+    functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
+    op33 = functions.get("op33_join_new_prefix_route_state")
+    expect(op33 is not None, "op33_population_evidence_contract_open", "缺少 OP-33 实现")
+    keyword_names = {item.arg for item in op33.args.kwonlyargs}
+    expect(
+        {"population_evidence_bindings", "offline_structural_context"}.issubset(keyword_names),
+        "op33_population_evidence_contract_open",
+        "OP-33 未接收双人口绑定与离线结构上下文",
+    )
+    binding_calls = [
+        node for node in ast.walk(op33)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_population_evidence"
+    ]
+    exact(len(binding_calls), 2, "op33_population_evidence_contract_open", "OP-33 必须恰好验证左右两个人口回执")
+    op33_source = ast.get_source_segment(implementation_path.read_text(encoding="utf-8"), op33) or ""
+    for input_name in expected_items:
+        expect(input_name in op33_source, "op33_population_evidence_contract_open", f"OP-33 未绑定 {input_name}")
+
+
 def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dict[str, Any], list[str], list[str]]:
     expect(stage in {"W0", "W1", "W2", "W3", "W4"}, "wave_stage_not_implemented", f"{stage} 尚未进入本实现任务，必须 fail-closed")
     contract = WAVE_CONTRACT[stage]
@@ -1657,6 +1730,9 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
         wave_checks = validate_w0_evidence(root, evidence)
     else:
         wave_checks = validate_w1_w2_evidence(root, stage, evidence)
+        if stage == "W4":
+            _validate_op33_population_evidence_contract(root)
+            wave_checks.append("op33_dual_population_evidence_contract_verified")
     prior_receipt_digests: list[str] = []
     required_prior_stages = ["S1I-P0", *stage_prior_dependencies(stage)]
     supplied_prior = evidence.get("prior_stage_receipt_digests")

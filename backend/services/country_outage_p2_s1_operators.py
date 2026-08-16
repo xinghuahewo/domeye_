@@ -371,6 +371,7 @@ def validate_population_evidence_binding(
     operator_input: Any,
     member_keys: Sequence[str],
     offline_structural_context: Any,
+    operator_identity: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """校验 Host 的零业务变换人口 Evidence 回执。"""
 
@@ -381,6 +382,12 @@ def validate_population_evidence_binding(
     _require(receipt.get("operator_id") == operator_id, "population_binding_operator_mismatch")
     _require(receipt.get("operator_input_name") == operator_input_name, "population_binding_input_name_mismatch")
     _require(receipt.get("operator_input_digest") == _digest(operator_input), "population_binding_input_digest_mismatch")
+    if operator_id == "OP-33":
+        _require(isinstance(operator_identity, Mapping), "population_binding_identity_required")
+        _require(
+            receipt.get("identity_digest") == _digest(operator_identity),
+            "population_binding_identity_digest_mismatch",
+        )
     _require(receipt.get("set_completeness") == "complete", "incomplete_input_population")
     _require(receipt.get("member_count") == len(member_keys), "population_binding_member_count_mismatch")
     _require(receipt.get("member_keys_digest") == _digest(sorted(member_keys)), "population_binding_member_keys_digest_mismatch")
@@ -408,6 +415,7 @@ def _population_evidence(
     inherited_evidence_refs: Iterable[Any],
     population_evidence_binding: Any,
     offline_structural_context: Any,
+    operator_identity: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     _require(population_evidence_binding is not None, "population_evidence_binding_required")
     evidence: list[dict[str, Any]] = [validate_population_evidence_binding(
@@ -417,6 +425,7 @@ def _population_evidence(
         operator_input=operator_input,
         member_keys=member_keys,
         offline_structural_context=offline_structural_context,
+        operator_identity=operator_identity,
     )]
     evidence = _merge_evidence(evidence, inherited_evidence_refs)
     _require_evidence(evidence)
@@ -1828,7 +1837,13 @@ def _validate_route_state_at_time(row: Any, identity: Mapping[str, Any]) -> dict
     return dict(row)
 
 
-def op33_join_new_prefix_route_state(envelope: Mapping[str, Any], *, inherited_evidence_refs: Iterable[Any] = ()) -> dict[str, Any]:
+def op33_join_new_prefix_route_state(
+    envelope: Mapping[str, Any],
+    *,
+    inherited_evidence_refs: Iterable[Any] = (),
+    population_evidence_bindings: Any = None,
+    offline_structural_context: Any = None,
+) -> dict[str, Any]:
     env, inputs = _validate_envelope(envelope, "OP-33")
     _require_exact_keys(inputs, ("identity", "new_prefix_state_rows", "route_state_rows", "left_digest", "right_digest"), "op33.inputs")
     _require(isinstance(inputs["new_prefix_state_rows"], list), "new_prefix_state_rows_required")
@@ -1837,6 +1852,32 @@ def op33_join_new_prefix_route_state(envelope: Mapping[str, Any], *, inherited_e
     right_rows = [_validate_route_state_at_time(row, env["identity"]) for row in inputs["route_state_rows"]]
     _require(inputs["left_digest"] == _digest(inputs["new_prefix_state_rows"]), "left_digest_mismatch")
     _require(inputs["right_digest"] == _digest(inputs["route_state_rows"]), "right_digest_mismatch")
+    _require(isinstance(population_evidence_bindings, Mapping), "population_evidence_bindings_required")
+    _require_exact_keys(
+        population_evidence_bindings,
+        ("new_prefix_state_rows", "route_state_rows"),
+        "op33.population_evidence_bindings",
+    )
+    left_population_evidence = _population_evidence(
+        "OP-33",
+        "new_prefix_state_rows",
+        inputs["new_prefix_state_rows"],
+        [_digest(row) for row in inputs["new_prefix_state_rows"]],
+        (),
+        population_evidence_bindings["new_prefix_state_rows"],
+        offline_structural_context,
+        env["identity"],
+    )
+    right_population_evidence = _population_evidence(
+        "OP-33",
+        "route_state_rows",
+        inputs["route_state_rows"],
+        [_digest(row) for row in inputs["route_state_rows"]],
+        (),
+        population_evidence_bindings["route_state_rows"],
+        offline_structural_context,
+        env["identity"],
+    )
     left_by_key: dict[tuple[int, str, str], dict[str, Any]] = {}
     for row in left_rows:
         key = _new_prefix_join_key(row)
@@ -1883,7 +1924,13 @@ def op33_join_new_prefix_route_state(envelope: Mapping[str, Any], *, inherited_e
     unmatched_left.sort(key=lambda row: (row["afi"], int(ip_network(row["prefix"]).network_address), ip_network(row["prefix"]).prefixlen, row["state_point_utc"]))
     unmatched_right = [row for row in right_rows if (*_new_prefix_join_key(row), row["route_observation_key"]) not in matched_right_ids]
     unmatched_right.sort(key=lambda row: (row["afi"], int(ip_network(row["prefix"]).network_address), ip_network(row["prefix"]).prefixlen, row["state_point_utc"], row["route_observation_key"]))
-    evidence = _merge_evidence((row["evidence_ref"] for row in left_rows), (row["evidence_ref"] for row in right_rows), inherited_evidence_refs)
+    evidence = _merge_evidence(
+        left_population_evidence,
+        right_population_evidence,
+        (row["evidence_ref"] for row in left_rows),
+        (row["evidence_ref"] for row in right_rows),
+        inherited_evidence_refs,
+    )
     _require_evidence(evidence)
     result = {
         "matched": matched, "unmatched_left": unmatched_left, "unmatched_right": unmatched_right,
@@ -2202,7 +2249,7 @@ def execute_operator(
     kwargs: dict[str, Any] = {"inherited_evidence_refs": inherited_evidence_refs}
     if operator_id in {"OP-06", "OP-07", "OP-08", "OP-09", "OP-11", "OP-12", "OP-13", "OP-14", "OP-18", "OP-20", "OP-21", "OP-22", "OP-23", "OP-24", "OP-35", "OP-36"}:
         kwargs["population_evidence_binding"] = population_evidence_binding
-    if operator_id in {"OP-25", "OP-26", "OP-27", "OP-28"}:
+    if operator_id in {"OP-25", "OP-26", "OP-27", "OP-28", "OP-33"}:
         kwargs["population_evidence_bindings"] = population_evidence_bindings
     if operator_id == "OP-13":
         kwargs["asn_bound_op11_receipts"] = asn_bound_op11_receipts
@@ -2210,7 +2257,7 @@ def execute_operator(
         kwargs["asn_bound_op36_receipts"] = asn_bound_op36_receipts
     if operator_id == "OP-14":
         kwargs["asn_bound_op10_receipts"] = asn_bound_op10_receipts
-    if operator_id in {"OP-06", "OP-07", "OP-08", "OP-09", "OP-11", "OP-12", "OP-13", "OP-14", "OP-16", "OP-17", "OP-18", "OP-19", "OP-20", "OP-21", "OP-22", "OP-23", "OP-24", "OP-25", "OP-26", "OP-27", "OP-28", "OP-35", "OP-36", "OP-37"}:
+    if operator_id in {"OP-06", "OP-07", "OP-08", "OP-09", "OP-11", "OP-12", "OP-13", "OP-14", "OP-16", "OP-17", "OP-18", "OP-19", "OP-20", "OP-21", "OP-22", "OP-23", "OP-24", "OP-25", "OP-26", "OP-27", "OP-28", "OP-33", "OP-35", "OP-36", "OP-37"}:
         kwargs["offline_structural_context"] = offline_structural_context
     return function(envelope, **kwargs)
 
