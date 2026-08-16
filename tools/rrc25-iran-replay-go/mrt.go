@@ -307,38 +307,142 @@ type originResult struct {
 	ASN   uint32
 }
 
-func parseASPath(value []byte, asnWidth int) (originResult, error) {
+type ASPathSegment struct {
+	Type uint8
+	ASNs []uint32
+}
+
+type parsedASPath struct {
+	Segments []ASPathSegment
+	Origin   originResult
+}
+
+func parseFullASPath(value []byte, asnWidth int, allowConfederation bool) (parsedASPath, error) {
+	if asnWidth != 2 && asnWidth != 4 {
+		return parsedASPath{}, fmt.Errorf("invalid AS_PATH ASN width")
+	}
 	at := 0
-	var result originResult
+	result := parsedASPath{Segments: make([]ASPathSegment, 0)}
 	var lastType uint8
 	for at < len(value) {
 		if at+2 > len(value) {
-			return originResult{}, fmt.Errorf("AS_PATH segment header truncated")
+			return parsedASPath{}, fmt.Errorf("AS_PATH segment header truncated")
 		}
 		segmentType := value[at]
 		count := int(value[at+1])
 		at += 2
 		if segmentType < 1 || segmentType > 4 || count == 0 ||
 			at+count*asnWidth > len(value) {
-			return originResult{}, fmt.Errorf("invalid AS_PATH segment")
+			return parsedASPath{}, fmt.Errorf("invalid AS_PATH segment")
+		}
+		if !allowConfederation && segmentType > 2 {
+			return parsedASPath{}, fmt.Errorf("AS4_PATH confederation segment is invalid")
 		}
 		lastType = segmentType
-		if segmentType == 2 {
-			raw := value[at+(count-1)*asnWidth : at+count*asnWidth]
+		segment := ASPathSegment{Type: segmentType, ASNs: make([]uint32, count)}
+		for index := 0; index < count; index++ {
+			raw := value[at+index*asnWidth : at+(index+1)*asnWidth]
 			if asnWidth == 2 {
-				result = originResult{Known: true, ASN: uint32(binary.BigEndian.Uint16(raw))}
+				segment.ASNs[index] = uint32(binary.BigEndian.Uint16(raw))
 			} else {
-				result = originResult{Known: true, ASN: binary.BigEndian.Uint32(raw)}
+				segment.ASNs[index] = binary.BigEndian.Uint32(raw)
 			}
+		}
+		result.Segments = append(result.Segments, segment)
+		if segmentType == 2 {
+			result.Origin = originResult{Known: true, ASN: segment.ASNs[len(segment.ASNs)-1]}
 		} else {
-			result = originResult{}
+			result.Origin = originResult{}
 		}
 		at += count * asnWidth
 	}
 	if lastType != 2 {
-		return originResult{}, nil
+		result.Origin = originResult{}
 	}
 	return result, nil
+}
+
+func parseASPath(value []byte, asnWidth int) (originResult, error) {
+	path, err := parseFullASPath(value, asnWidth, true)
+	return path.Origin, err
+}
+
+func asPathContribution(segment ASPathSegment) int {
+	if segment.Type == 1 || segment.Type == 4 {
+		return 1
+	}
+	return len(segment.ASNs)
+}
+
+func collapseASSequences(path []ASPathSegment) []ASPathSegment {
+	result := make([]ASPathSegment, 0, len(path))
+	for _, segment := range path {
+		copySegment := ASPathSegment{Type: segment.Type, ASNs: append([]uint32(nil), segment.ASNs...)}
+		if len(result) > 0 && copySegment.Type == 2 && result[len(result)-1].Type == 2 {
+			result[len(result)-1].ASNs = append(result[len(result)-1].ASNs, copySegment.ASNs...)
+			continue
+		}
+		result = append(result, copySegment)
+	}
+	return result
+}
+
+func mergeAS4Path(oldPath, as4Path []ASPathSegment) ([]ASPathSegment, error) {
+	oldCount := 0
+	for _, segment := range oldPath {
+		oldCount += asPathContribution(segment)
+	}
+	newCount := 0
+	for _, segment := range as4Path {
+		newCount += asPathContribution(segment)
+	}
+	if oldCount < newCount {
+		return collapseASSequences(oldPath), nil
+	}
+	keepCount := oldCount - newCount
+	kept := make([]ASPathSegment, 0, len(oldPath)+len(as4Path))
+	consumed := 0
+	for _, segment := range oldPath {
+		if consumed >= keepCount {
+			break
+		}
+		contribution := asPathContribution(segment)
+		remaining := keepCount - consumed
+		if contribution <= remaining {
+			kept = append(kept, ASPathSegment{
+				Type: segment.Type, ASNs: append([]uint32(nil), segment.ASNs...),
+			})
+			consumed += contribution
+			continue
+		}
+		if segment.Type == 1 || segment.Type == 4 {
+			return nil, fmt.Errorf("AS4_PATH merge is ambiguous inside AS_SET")
+		}
+		kept = append(kept, ASPathSegment{
+			Type: segment.Type, ASNs: append([]uint32(nil), segment.ASNs[:remaining]...),
+		})
+		consumed += remaining
+	}
+	if consumed != keepCount {
+		return nil, fmt.Errorf("AS4_PATH merge count mismatch")
+	}
+	for _, segment := range as4Path {
+		kept = append(kept, ASPathSegment{
+			Type: segment.Type, ASNs: append([]uint32(nil), segment.ASNs...),
+		})
+	}
+	return collapseASSequences(kept), nil
+}
+
+func asPathOrigin(path []ASPathSegment) originResult {
+	if len(path) == 0 {
+		return originResult{}
+	}
+	last := path[len(path)-1]
+	if last.Type != 2 || len(last.ASNs) == 0 {
+		return originResult{}
+	}
+	return originResult{Known: true, ASN: last.ASNs[len(last.ASNs)-1]}
 }
 
 type parsedAttributes struct {
@@ -346,6 +450,8 @@ type parsedAttributes struct {
 	OriginSeen        bool
 	AS4Origin         originResult
 	AS4Seen           bool
+	ASPath            []ASPathSegment
+	AS4Path           []ASPathSegment
 	MPAnnounces       map[uint8][]netip.Prefix
 	MPWithdraws       map[uint8][]netip.Prefix
 	UnknownOptional   map[uint8]int64
@@ -528,11 +634,12 @@ func parseAttributesWithRIBMode(
 			if flags&0xe0 != 0x40 {
 				return result, fmt.Errorf("invalid AS_PATH flags")
 			}
-			origin, err := parseASPath(value, asnWidth)
+			path, err := parseFullASPath(value, asnWidth, true)
 			if err != nil {
 				return result, err
 			}
-			result.Origin, result.OriginSeen = origin, true
+			result.Origin, result.OriginSeen = path.Origin, true
+			result.ASPath = path.Segments
 		case 14:
 			if compactRIBMPReach {
 				if err := parseRIBCompactMPReach(value); err != nil {
@@ -553,11 +660,12 @@ func parseAttributesWithRIBMode(
 			}
 			result.MPWithdraws[afi] = prefixes
 		case 17:
-			origin, err := parseASPath(value, 4)
+			path, err := parseFullASPath(value, 4, false)
 			if err != nil {
 				return result, err
 			}
-			result.AS4Origin, result.AS4Seen = origin, true
+			result.AS4Origin, result.AS4Seen = path.Origin, true
+			result.AS4Path = path.Segments
 		case 21:
 			if flags&0xe0 != 0xc0 && flags&0xe0 != 0xe0 {
 				return result, fmt.Errorf("invalid AS_PATHLIMIT flags")
@@ -586,7 +694,12 @@ func parseAttributesWithRIBMode(
 		if asnWidth == 4 {
 			return result, fmt.Errorf("AS4_PATH in four-byte ASN message")
 		}
-		result.Origin = result.AS4Origin
+		merged, err := mergeAS4Path(result.ASPath, result.AS4Path)
+		if err != nil {
+			return result, err
+		}
+		result.ASPath = merged
+		result.Origin = asPathOrigin(merged)
 		result.OriginSeen = true
 	}
 	return result, nil
@@ -844,7 +957,14 @@ func parseBGP4MP(
 	return peer{IP: peerIP, ASN: peerASN}, micros, asnWidth, message[18], message[19:], nil
 }
 
-func decodeUpdateEvents(
+type decodedUpdateRecord struct {
+	Events          []ParsedEvent
+	ASPath          []ASPathSegment
+	HasAnnouncements bool
+	TreatAsWithdraw bool
+}
+
+func decodeUpdateRecord(
 	peer peer,
 	eventMicros int64,
 	body []byte,
@@ -852,28 +972,28 @@ func decodeUpdateEvents(
 	artifactIndex uint16,
 	recordOrdinal uint32,
 	stats *UpdateParseStats,
-) ([]ParsedEvent, error) {
+) (decodedUpdateRecord, error) {
 	if len(body) < 4 {
-		return nil, fmt.Errorf("BGP UPDATE body truncated")
+		return decodedUpdateRecord{}, fmt.Errorf("BGP UPDATE body truncated")
 	}
 	withdrawLength := int(binary.BigEndian.Uint16(body[:2]))
 	if 2+withdrawLength+2 > len(body) {
-		return nil, fmt.Errorf("withdraw section out of bounds")
+		return decodedUpdateRecord{}, fmt.Errorf("withdraw section out of bounds")
 	}
 	withdrawPrefixes, err := parseNLRIs(body[2:2+withdrawLength], 4)
 	if err != nil {
-		return nil, err
+		return decodedUpdateRecord{}, err
 	}
 	attributeLengthAt := 2 + withdrawLength
 	attributeLength := int(binary.BigEndian.Uint16(body[attributeLengthAt : attributeLengthAt+2]))
 	attributeStart := attributeLengthAt + 2
 	attributeEnd := attributeStart + attributeLength
 	if attributeEnd > len(body) {
-		return nil, fmt.Errorf("attribute section out of bounds")
+		return decodedUpdateRecord{}, fmt.Errorf("attribute section out of bounds")
 	}
 	attributes, err := parseAttributes(body[attributeStart:attributeEnd], asnWidth)
 	if err != nil {
-		return nil, err
+		return decodedUpdateRecord{}, err
 	}
 	for key, count := range attributes.UnknownOptional {
 		stats.UnknownOptional[key] += count
@@ -881,11 +1001,11 @@ func decodeUpdateEvents(
 	stats.MalformedOTC += attributes.MalformedOTC
 	announcePrefixes, err := parseNLRIs(body[attributeEnd:], 4)
 	if err != nil {
-		return nil, err
+		return decodedUpdateRecord{}, err
 	}
 	if (len(announcePrefixes) > 0 || len(attributes.MPAnnounces) > 0) &&
 		(!attributes.OriginSeen) {
-		return nil, fmt.Errorf("announcement missing AS_PATH")
+		return decodedUpdateRecord{}, fmt.Errorf("announcement missing AS_PATH")
 	}
 	events := make([]ParsedEvent, 0, len(withdrawPrefixes)+len(announcePrefixes))
 	element := uint32(0)
@@ -934,7 +1054,29 @@ func decodeUpdateEvents(
 			appendAnnounce(afi, prefix)
 		}
 	}
-	return events, nil
+	hasAnnouncements := len(announcePrefixes) > 0
+	for _, prefixes := range attributes.MPAnnounces {
+		hasAnnouncements = hasAnnouncements || len(prefixes) > 0
+	}
+	return decodedUpdateRecord{
+		Events: events, ASPath: collapseASSequences(attributes.ASPath),
+		HasAnnouncements: hasAnnouncements, TreatAsWithdraw: attributes.TreatAsWithdraw,
+	}, nil
+}
+
+func decodeUpdateEvents(
+	peer peer,
+	eventMicros int64,
+	body []byte,
+	asnWidth int,
+	artifactIndex uint16,
+	recordOrdinal uint32,
+	stats *UpdateParseStats,
+) ([]ParsedEvent, error) {
+	decoded, err := decodeUpdateRecord(
+		peer, eventMicros, body, asnWidth, artifactIndex, recordOrdinal, stats,
+	)
+	return decoded.Events, err
 }
 
 func ParseUpdate(
