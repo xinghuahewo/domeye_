@@ -2001,7 +2001,38 @@ def test_op29_to_op37_route_path_consistency_journey_commits_result_graph_and_ex
         task = self.load(HOOK.TASK_PATH)
         task["taskId"] = HOOK.W5_TASK_ID
         task["targetVersion"] = HOOK.W5_TARGET_VERSION
-        task["taskTransition"]["supersedesTaskId"] = "country-outage-agent-p2-s1-w5-composition-runtime-v5-20260813"
+        task["taskTransition"].update({
+            "supersedesTaskId": "country-outage-agent-p2-s1-w5-composition-runtime-v5-20260813",
+            "frozenDesignCandidateSha256": HOOK.DESIGN_CANDIDATE_SHA256,
+            "s1ip0ReceiptDigest": "0d661430471008cd84115bcdd6e1fcc7e404619b9503f8cf41a7148f2ce63b59",
+            "implementationBaselineSha256": "9dc80bec20db0c68ee044c4da9e4148a2a2ab7bd1c70c8863ae737cc6231422f",
+            "w0ReceiptDigest": "eb6fb53994a344c2bb3a6085f17269df851356b42ccbcf53301ec408ab0cd013",
+            "w1ReceiptDigest": "8fbf092fecffe241dad9e03fff076e4805143509c1a665ea755816171350b7c2",
+            "w2ReceiptDigest": "7feb0c930fc836525577dde3f49df52311cb237489dab30d7ca1491384feaf45",
+            "w3ReceiptDigest": "aa17bd95687265deb97a85327e3aaf2c4fcd8cada7a4aeee6a044b97739e8239",
+            "w4ReceiptDigest": "68c1c3546357d2ac5fe98026832ad0cee77cabb66479d788854061709c644918",
+        })
+        task["allowedPaths"] = sorted(set(task["allowedPaths"]) | {
+            "contracts/openapi.json",
+            "backend/web/api/v2/country_outage_investigations.py",
+            "frontend/src/pages/EventDetailPage.vue",
+            "agent-sidecar/src/cli/formal-p2-s1-w5-sidecar.ts",
+            "backend/pyproject.toml",
+            *(path.as_posix() for path in (
+                HOOK.W1_W2_TOOL_IMPLEMENTATION_PATH,
+                HOOK.W1_W2_OPERATOR_IMPLEMENTATION_PATH,
+                HOOK.W1_W2_TOOL_TEST_PATH,
+                HOOK.W1_W2_OPERATOR_TEST_PATH,
+                HOOK.W1_W2_REGISTRY_RUNTIME_PATH,
+                HOOK.STRUCTURAL_BINDING_PATH,
+            )),
+        })
+        task["explicitNonGoals"] = [
+            "W4不可调用Registry binding保持不变。",
+            "PLAN-CAP-02继续延期。",
+            "本地fixture不调用外部模型。",
+            "本阶段不表示性能、模型、运行时晋级或生产部署通过。",
+        ]
         task["requiredChecks"] = [
             {"command": ["uv", "run", "--project", "backend", "pytest", "-q", "backend/web/tests/test_openapi_contract.py"]},
             {"command": ["bash", "-lc", "cd agent-sidecar && npm run test:p2-s1-w5"]},

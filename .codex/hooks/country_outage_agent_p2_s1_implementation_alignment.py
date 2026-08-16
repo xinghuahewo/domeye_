@@ -4,7 +4,8 @@
 S1I-P0/W0 保留既有验收；W1-W4 只有在原子单元人口、真实实现制品、
 冻结合同、W0 Source 谱系、Registry 整波 binding 及三类测试均闭合时才放行。
 W5 另需本地隔离组合运行时、独立执行准入、真实执行轨迹、API/UI/导出与
-fixture 模型链证据；W6 继续 fail-closed，直到同候选认证补齐同等级证据。
+fixture 模型链证据；W6 只在同一W5候选的168项可执行性分类、恢复/攻击、
+离线性能边界和两份独立审查全部闭合时，以不包含provider/生产晋级的语义放行。
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ import subprocess
 import sys
 import tempfile
 from typing import Any, Callable, Sequence
+
+from jsonschema import Draft202012Validator
 
 DESIGN_CANDIDATE_ID = "country-outage-p2-s1-s1d-6-04135cee55b39ce5d574f7e4"
 DESIGN_CANDIDATE_SHA256 = "dfc764ff34ca2d79f4580f3eb4f9792c4a10ed907c485182f877a9079b31f957"
@@ -163,6 +166,63 @@ W3_W4_OP33_EVIDENCE_TASK_ID = "country-outage-agent-p2-s1-w3-w4-op33-population-
 W3_W4_OP33_EVIDENCE_TARGET_VERSION = "country-outage-agent-p2-s1-w3-w4-op33-population-evidence-closure-r2-v1"
 W5_TASK_ID = "country-outage-agent-p2-s1-w5-composition-runtime-v6-20260813"
 W5_TARGET_VERSION = "country-outage-agent-p2-s1-w5-composition-runtime-v6"
+W6_TASK_ID = "country-outage-agent-p2-s1-w6-offline-certification-v2-20260814"
+W6_TARGET_VERSION = "country-outage-agent-p2-s1-w6-offline-certification-v2"
+W6_SEMANTICS_VERSION = "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2"
+W6_W5_COMMIT = "b8d5b04b67c41d2d5f9f4ec1f9c64972bd90fa73"
+W6_W5_CANDIDATE_ID = "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6"
+W6_W5_CANDIDATE_DIGEST = "49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c"
+W6_W5_EVIDENCE_CONTENT_DIGEST = "135ca6bcc8c9c18046a31e8b43b6afbb80d8a1735370de619cbbb33000d7e4f2"
+W6_W5_STAGE_RECEIPT_DIGEST = "5f8f2d27b56060ec52cf78e43170e5f7e0ef0356c8ac6bc645e3fe1884f26f6b"
+W6_W5_EXECUTION_ADMISSION_DIGEST = "sha256:9c05bf1bb86c1c726827e1fe0c66df186a96546f899cd099a5bb3d7e5aa80a46"
+W6_CERTIFICATION_ROOT = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/w6-certification"
+)
+W6_CASE_SCHEMA_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/w6-case-receipt.schema.json"
+)
+W6_REVIEW_SCHEMA_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/w6-independent-review.schema.json"
+)
+W6_MANIFEST_SCHEMA_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/w6-acceptance-manifest.schema.json"
+)
+W6_CERTIFIER_PATH = Path(
+    "contracts/agent/country-outage-p2-s1-implementation/tools/run_w6_certification.py"
+)
+W6_TEST_PATH = Path("backend/web/tests/test_country_outage_p2_s1_w6_certification.py")
+W6_SUITE_IDS = ("w6-python", "w6-sidecar", "w6-recovery-attack")
+W6_SCENARIO_CODES = ("N", "E", "M", "I", "B", "L")
+W6_EXPECTED_REASONS = {
+    "Q01": ["legacy_p1_units_not_in_w5_dispatcher"],
+    "Q02": ["legacy_p1_units_not_in_w5_dispatcher"],
+    "Q03": ["legacy_p1_units_not_in_w5_dispatcher", "legacy_fact_to_op29_adapter_missing"],
+    "Q04": ["legacy_p1_units_not_in_w5_dispatcher", "fixture_population_insufficient_for_ranking"],
+    "Q05": ["legacy_p1_units_not_in_w5_dispatcher", "result_set_population_adapter_missing", "member_fanout_not_admitted"],
+    "Q06": ["result_set_population_join_adapter_missing"],
+    "Q07": ["plan_cap_01_scalar_only", "member_fanout_not_admitted"],
+    "Q08": ["legacy_p1_units_not_in_w5_dispatcher", "population_binding_and_asn_bound_receipts_missing"],
+    "Q09": ["multi_population_structural_adapter_missing"],
+    "Q10": ["legacy_p1_units_not_in_w5_dispatcher", "question_specific_boundary_disposition_missing"],
+    "Q13": ["legacy_p1_units_not_in_w5_dispatcher", "legacy_peak_to_plan_cap_bridge_missing"],
+    "Q14": ["result_set_to_vp_operator_adapter_missing", "member_fanout_not_admitted"],
+    "Q16": ["result_set_to_op33_population_binding_missing"],
+    "Q17": ["question_specific_boundary_disposition_missing", "formal_planning_allowlist_incomplete"],
+    "Q18": ["result_set_to_vp_operator_adapter_missing"],
+    "Q19": ["legacy_p1_units_not_in_w5_dispatcher", "per_path_fanout_not_admitted", "fixture_has_fewer_than_five_path_samples"],
+    "Q20": ["result_set_projection_adapter_missing", "p2_1_subgoal_deferred_plan_cap_02"],
+    "Q21": ["per_path_fanout_not_admitted"],
+    "Q22": ["legacy_p1_units_not_in_w5_dispatcher", "result_set_projection_adapter_missing"],
+    "Q23": ["legacy_p1_units_not_in_w5_dispatcher", "p2_1_subgoal_deferred_plan_cap_02"],
+    "Q24": ["tool_13_deferred", "op_34_deferred"],
+    "Q26": ["result_set_projection_adapter_missing", "p2_1_subgoal_deferred_plan_cap_02"],
+    "Q27": ["multi_result_set_binding_missing", "variable_member_fanout_not_admitted"],
+    "Q29": ["question_specific_external_evidence_boundary_disposition_missing"],
+    "Q30": ["question_specific_commercial_relationship_boundary_disposition_missing"],
+    "Q31": ["legacy_p1_units_not_in_w5_dispatcher", "legacy_fact_to_op29_op37_adapter_missing"],
+    "Q32": ["legacy_p1_units_not_in_w5_dispatcher", "legacy_fact_to_op29_op37_adapter_missing", "question_specific_conflict_gate_missing"],
+    "Q33": ["legacy_p1_units_not_in_w5_dispatcher", "exhaustive_unsupported_boundary_response_missing"],
+}
 REGISTRY_WAVE_SEQUENCE = ["W1", "W2", "W3", "W4"]
 STRUCTURAL_BINDING_PATH = Path(
     "contracts/agent/country-outage-p2-s1-implementation/w1-w2-structural-binding.schema.json"
@@ -258,6 +318,9 @@ STAGE_TEST_RUN_RECEIPTS = {
     "w5-openapi": ("W5", "openapi_contract_and_generated_types", "6ff574616affb931ee76a68339c9f74ab9528f6f67ea15ac595aa3de685e8278"),
     "w5-sidecar": ("W5", "local_fixture_sol_host_ds_chain", "305af56e55140857f794cec943779ff48c85166ebfa451be2562019dd7f460da"),
     "w5-frontend": ("W5", "ui_journey_typecheck_and_build", "87085d1870dee9820e288ea71a259e13e366016c0d453f53172f0b8ff25501a0"),
+    "w6-python": ("W6", "same_candidate_168_case_certification", "8639452fd8694fa7ae27955444f9c807d3d720e7835e82c3378c1948249d8e2a"),
+    "w6-sidecar": ("W6", "unchanged_local_fixture_protocol_replay", "de4e493134f0653fcf318e02938a08988e82a1f64df686efc3aca6a6e3485e80"),
+    "w6-recovery-attack": ("W6", "cas_recovery_cancel_idempotency_and_residue", "2b9ed907210d172e39e45508e441f7a48d5e7df1a97929e99d4b30e78bf67f8b"),
 }
 
 W5_TEST_SUITE_IDS = (
@@ -493,6 +556,40 @@ W5_SUITE_ARTIFACT_PATHS = {
         "frontend/src/types/api.ts",
         "frontend/src/types/openapi.generated.d.ts",
     ),
+    "w6-python": (
+        W6_TEST_PATH.as_posix(),
+        W6_CERTIFIER_PATH.as_posix(),
+        W6_CASE_SCHEMA_PATH.as_posix(),
+        W6_MANIFEST_SCHEMA_PATH.as_posix(),
+        W6_REVIEW_SCHEMA_PATH.as_posix(),
+        "contracts/agent/country-outage-p2-s1-execution-unit-design/oracle.json",
+        "contracts/agent/country-outage-p2-s1-execution-unit-design/question-oracle-seed.json",
+        "contracts/agent/country-outage-p2-s1-execution-unit-design/question-capability-map.json",
+        "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/W5.json",
+        "evaluation/country-outage/p2-s1-implementation/stages/W5.json",
+    ),
+    "w6-sidecar": (
+        "agent-sidecar/package.json",
+        "agent-sidecar/package-lock.json",
+        "agent-sidecar/tsconfig.json",
+        "agent-sidecar/src/chat/p2-s1-composition-contracts.ts",
+        "agent-sidecar/src/chat/p2-s1-composition-runtime.ts",
+        "agent-sidecar/src/chat/p2-s1-integrated-answer-runtime.ts",
+        "agent-sidecar/src/chat/p2-s1-planning-grounding-port.ts",
+        "agent-sidecar/src/server/p2-s1-w5-http-handler.ts",
+        "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+        "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+        "agent-sidecar/tests/p2-s1-w5-integrated-answer-test-server.test.ts",
+        W6_CERTIFIER_PATH.as_posix(),
+    ),
+    "w6-recovery-attack": (
+        "backend/services/country_outage_p2_s1_trusted_store.py",
+        "backend/services/country_outage_p2_s1_investigation_runtime.py",
+        "backend/services/country_outage_p2_s1_result_set.py",
+        "backend/services/country_outage_p2_s1_evidence_graph.py",
+        "backend/web/tests/test_country_outage_p2_s1_runtime.py",
+        W6_CERTIFIER_PATH.as_posix(),
+    ),
 }
 W5_SUITE_COMMANDS = {
     "w5-python": [
@@ -514,10 +611,25 @@ W5_SUITE_COMMANDS = {
         "bash", "-lc",
         "npm test -- --run src/api/countryOutageInvestigation.test.ts src/pages/CountryOutageInvestigationPage.test.ts src/pages/EventDetailPage.test.ts && npm run typecheck && npm run build",
     ],
+    "w6-python": [
+        "python3", "-m", "unittest", "-v",
+        "backend.web.tests.test_country_outage_p2_s1_w6_certification",
+    ],
+    "w6-sidecar": ["bash", "-lc", "npm run test:p2-s1-w5"],
+    "w6-recovery-attack": [
+        "python3", "-m", "unittest", "-v",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_running_revision_is_visible_and_cancel_wins_worker_cas",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_store_tamper_symlink_and_registry_ghost_are_rejected",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_cas_journal_recovers_pointer_before_idempotency_crash",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan",
+    ],
 }
 W5_SUITE_WORKING_DIRECTORIES = {
     "w5-python": ".", "w5-openapi": ".",
     "w5-sidecar": "agent-sidecar", "w5-frontend": "frontend",
+    "w6-python": ".", "w6-sidecar": "agent-sidecar", "w6-recovery-attack": ".",
 }
 W5_SUITE_SELECTED_TEST_IDS = {
     "w5-python": [
@@ -533,6 +645,20 @@ W5_SUITE_SELECTED_TEST_IDS = {
         "frontend/src/api/countryOutageInvestigation.test.ts",
         "frontend/src/pages/CountryOutageInvestigationPage.test.ts",
         "frontend/src/pages/EventDetailPage.test.ts",
+    ],
+    "w6-python": ["backend.web.tests.test_country_outage_p2_s1_w6_certification"],
+    "w6-sidecar": [
+        "agent-sidecar/tests/p2-s1-w5-composition-runtime.test.ts",
+        "agent-sidecar/tests/p2-s1-w5-planning-grounding-port.test.ts",
+        "agent-sidecar/tests/p2-s1-w5-integrated-answer-test-server.test.ts",
+    ],
+    "w6-recovery-attack": [
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_result_set_and_graph_admission_failures_leave_no_unadmitted_public_residue",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_running_revision_is_visible_and_cancel_wins_worker_cas",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_store_tamper_symlink_and_registry_ghost_are_rejected",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_cas_journal_recovers_pointer_before_idempotency_crash",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_turn_artifacts_exist_before_public_cas_and_failed_cas_has_no_public_ref",
+        "backend.web.tests.test_country_outage_p2_s1_runtime.CountryOutageP2S1RuntimeTest.test_runtime_artifact_admission_resolver_rejects_ghost_duplicate_tamper_and_cross_plan",
     ],
 }
 
@@ -629,6 +755,43 @@ def expect(condition: bool, code: str, detail: str) -> None:
 
 def exact(value: Any, expected: Any, code: str, detail: str) -> None:
     expect(value == expected, code, detail)
+
+
+_W6_W5_BLOB_CACHE: dict[str, bytes] = {}
+
+
+def _w6_task_active(root: Path) -> bool:
+    """仅在W6认证Task下启用冻结W5历史字节解析。"""
+
+    try:
+        return load_json(root / TASK_PATH).get("taskId") == W6_TASK_ID
+    except (AlignmentError, OSError):
+        return False
+
+
+def _w6_w5_commit_blob(root: Path, relative: Path | str) -> bytes:
+    """从W6冻结的W5提交读取字节，避免把认证器变更误算成历史阶段漂移。"""
+
+    path_text = Path(relative).as_posix()
+    cached = _W6_W5_BLOB_CACHE.get(path_text)
+    if cached is not None:
+        return cached
+    candidates = [root, Path(__file__).resolve().parents[2]]
+    repository = next((candidate for candidate in candidates if (candidate / ".git").exists()), None)
+    expect(repository is not None, "w6_w5_commit_unavailable", "无法定位冻结W5 Git仓库")
+    completed = subprocess.run(
+        ["git", "show", f"{W6_W5_COMMIT}:{path_text}"],
+        cwd=repository,
+        capture_output=True,
+        check=False,
+    )
+    expect(
+        completed.returncode == 0,
+        "w6_w5_commit_unavailable",
+        f"冻结W5提交缺少制品：{path_text}",
+    )
+    _W6_W5_BLOB_CACHE[path_text] = completed.stdout
+    return completed.stdout
 
 
 def require_hex64(value: Any, code: str, detail: str) -> str:
@@ -769,7 +932,60 @@ def validate_task(root: Path) -> list[str]:
     w3_w4_op33_evidence_task = task_id == W3_W4_OP33_EVIDENCE_TASK_ID
     w3_w4_task = task_id == W3_W4_TASK_ID or w3_w4_op33_evidence_task
     w5_task = task_id == W5_TASK_ID
-    expect(w5_task, "task_identity_mismatch", "最终W0-W5同候选重签只接受冻结的W5-v6 Task")
+    w6_task = task_id == W6_TASK_ID
+    expect(w5_task or w6_task, "task_identity_mismatch", "最终W5/W6验收只接受冻结的W5-v6或W6-v2 Task")
+    if w6_task:
+        exact(task.get("targetVersion"), W6_TARGET_VERSION, "task_version_mismatch", "W6 目标版本不匹配")
+        transition = task.get("taskTransition")
+        expect(isinstance(transition, dict), "task_transition_missing", "W6 缺少任务迁移记录")
+        for field, expected in {
+            "supersedesTaskId": W5_TASK_ID,
+            "frozenDesignCandidateId": DESIGN_CANDIDATE_ID,
+            "w5ImplementationCommit": W6_W5_COMMIT,
+            "w5ImplementationCandidateId": W6_W5_CANDIDATE_ID,
+            "w5ImplementationSemanticDigest": W6_W5_CANDIDATE_DIGEST,
+            "w5EvidenceContentDigest": W6_W5_EVIDENCE_CONTENT_DIGEST,
+            "w5StageReceiptDigest": W6_W5_STAGE_RECEIPT_DIGEST,
+            "w5ExecutionAdmissionReceiptDigest": W6_W5_EXECUTION_ADMISSION_DIGEST,
+            "certificationSemanticsVersion": W6_SEMANTICS_VERSION,
+        }.items():
+            exact(transition.get(field), expected, "w6_task_transition_binding_mismatch", f"W6 Task 的 {field} 漂移")
+        forbidden = task.get("forbiddenPaths")
+        allowed = task.get("allowedPaths")
+        expect(isinstance(forbidden, list), "task_forbidden_paths_missing", "W6 缺少 forbiddenPaths")
+        expect(isinstance(allowed, list), "task_allowed_paths_missing", "W6 缺少 allowedPaths")
+        for pattern in (
+            "backend/core/**", "backend/services/**", "backend/web/api/**",
+            "contracts/openapi.json", "frontend/**", "agent-sidecar/src/**",
+            "agent-sidecar/tests/**", "deploy/**",
+        ):
+            expect(pattern in forbidden, "w6_runtime_byte_scope_expanded", f"W6 未冻结运行时路径：{pattern}")
+        for path in (
+            W6_CERTIFIER_PATH.as_posix(), W6_TEST_PATH.as_posix(),
+            W6_CASE_SCHEMA_PATH.as_posix(), W6_REVIEW_SCHEMA_PATH.as_posix(),
+            W6_MANIFEST_SCHEMA_PATH.as_posix(),
+            "contracts/agent/country-outage-p2-s1-implementation/w6-certification/**",
+            "contracts/agent/country-outage-p2-s1-implementation/wave-evidence/W6.json",
+            "evaluation/country-outage/p2-s1-implementation/stages/W6.json",
+        ):
+            expect(path in allowed, "w6_certification_path_not_authorized", f"W6 未授权认证路径：{path}")
+        required_checks = task.get("requiredChecks")
+        expect(isinstance(required_checks, list), "w6_required_checks_missing", "W6 缺少 requiredChecks")
+        commands = [item.get("command") for item in required_checks if isinstance(item, dict)]
+        expect(
+            ["uv", "run", "--project", "backend", "python", W6_CERTIFIER_PATH.as_posix(), "--repo-root", ".", "--mode", "verify"] in commands,
+            "w6_verify_command_missing",
+            "W6 requiredChecks 未实际执行认证制品 verify",
+        )
+        non_goals = task.get("explicitNonGoals")
+        expect(isinstance(non_goals, list), "wave_non_goals_missing", "W6 缺少显式非目标")
+        text = "\n".join(item for item in non_goals if isinstance(item, str))
+        for phrase in (
+            "不修改运行时", "case的通过只表示可执行性分类", "27题correctly_blocked",
+            "实际provider模型对齐", "PLAN-CAP-02", "生产部署",
+        ):
+            expect(phrase in text, "w6_non_goals_missing", f"W6 非目标未闭合：{phrase}")
+        return ["w6_certifier_only_task_boundary_verified"]
     if w0_task:
         exact(task.get("targetVersion"), "country-outage-agent-p2-s1-w0-source-governance-v1", "task_version_mismatch", "W0 目标版本不匹配")
     elif w1_w2_task:
@@ -1281,7 +1497,7 @@ def _validate_stage_test_run_receipt(root: Path, reference: Any, expected_suite_
     exact(receipt.get("runner_id"), "country_outage_p2_s1_stage_test_runner", "wave_test_receipt_invalid", "测试 runner ID 漂移")
     exact(
         receipt.get("runner_version"),
-        "1.2.0" if expected_stage == "W5" else "1.0.0",
+        "1.3.0" if expected_stage == "W6" else ("1.2.0" if expected_stage == "W5" else "1.0.0"),
         "wave_test_receipt_invalid",
         "测试 runner version 漂移",
     )
@@ -1328,12 +1544,15 @@ def _validate_stage_test_run_receipt(root: Path, reference: Any, expected_suite_
     exact(set(receipt.get("tested_execution_unit_ids", [])), executed_units, "wave_test_coverage_invalid", "tested_execution_unit_ids 不是实际执行人口的精确并集")
     tests_run = receipt.get("tests_run")
     expect(isinstance(tests_run, int) and not isinstance(tests_run, bool) and tests_run > 0, "wave_test_receipt_invalid", "测试数量无效")
-    if expected_stage == "W5":
+    if expected_stage in {"W5", "W6"}:
         count_patterns = {
             "w5-python": r"(?m)^Ran (\d+) tests? in <ELAPSED>$",
             "w5-openapi": r"(?m)^(?:\.+\s+)?(\d+) passed in <ELAPSED>$",
             "w5-sidecar": r"(?m)^[#ℹ] tests (\d+)$",
             "w5-frontend": r"(?m)^\s*Tests\s+(\d+) passed\b",
+            "w6-python": r"(?m)^Ran (\d+) tests? in <ELAPSED>$",
+            "w6-sidecar": r"(?m)^[#ℹ] tests (\d+)$",
+            "w6-recovery-attack": r"(?m)^Ran (\d+) tests? in <ELAPSED>$",
         }
         reported_counts = re.findall(count_patterns[expected_suite_id], output)
         exact(len(reported_counts), 1, "w5_test_count_output_invalid", f"{expected_suite_id} normalized output 缺少唯一真实测试总数")
@@ -1349,8 +1568,22 @@ def _validate_stage_test_run_receipt(root: Path, reference: Any, expected_suite_
         expect(isinstance(path_text, str) and path_text not in artifact_paths, "wave_test_artifact_mismatch", "测试制品路径重复或无效")
         artifact_paths.add(path_text)
         _, artifact_path = repository_artifact_path(root, path_text, "wave_test_artifact_mismatch")
-        exact(item.get("size_bytes"), artifact_path.stat().st_size, "wave_test_artifact_mismatch", f"测试制品大小漂移：{path_text}")
-        exact(item.get("sha256"), file_sha256(artifact_path), "wave_test_artifact_mismatch", f"测试制品摘要漂移：{path_text}")
+        if (
+            expected_stage != "W6"
+            and path_text == STAGE_TEST_RUNNER_PATH.as_posix()
+            and _w6_task_active(root)
+        ):
+            frozen_bytes = _w6_w5_commit_blob(root, path_text)
+            frozen_binding = (
+                item.get("size_bytes") == len(frozen_bytes)
+                and item.get("sha256") == sha256_bytes(frozen_bytes)
+            )
+            if not frozen_binding:
+                exact(item.get("size_bytes"), artifact_path.stat().st_size, "wave_test_artifact_mismatch", f"测试制品大小漂移：{path_text}")
+                exact(item.get("sha256"), file_sha256(artifact_path), "wave_test_artifact_mismatch", f"测试制品摘要漂移：{path_text}")
+        else:
+            exact(item.get("size_bytes"), artifact_path.stat().st_size, "wave_test_artifact_mismatch", f"测试制品大小漂移：{path_text}")
+            exact(item.get("sha256"), file_sha256(artifact_path), "wave_test_artifact_mismatch", f"测试制品摘要漂移：{path_text}")
     expect(STAGE_TEST_RUNNER_PATH.as_posix() in artifact_paths, "wave_test_runner_binding_missing", "测试回执未绑定 runner 字节")
     if expected_suite_id in W5_SUITE_ARTIFACT_PATHS:
         exact(
@@ -1944,6 +2177,28 @@ def _validate_current_wave_stage_receipt(
     baseline: dict[str, Any],
 ) -> None:
     """证明 prior wave 回执仍绑定当前候选字节，而不只是历史上自洽。"""
+
+    if _w6_task_active(root) and stage in {"W0", "W1", "W2", "W3", "W4", "W5"}:
+        frozen_bytes = _w6_w5_commit_blob(root, WAVE_RECEIPT_ROOT / f"{stage}.json")
+        try:
+            frozen_receipt = json.loads(
+                frozen_bytes.decode("utf-8"),
+                object_pairs_hook=_pairs_no_duplicates,
+                parse_constant=_reject_constant,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+            raise AlignmentError(f"w6_w5_stage_receipt_invalid：冻结W5提交中的{stage}回执无效：{error}") from error
+        expect(isinstance(frozen_receipt, dict), "w6_w5_stage_receipt_invalid", f"冻结W5提交中的{stage}回执不是对象")
+        if receipt.get("receipt_digest") == frozen_receipt.get("receipt_digest"):
+            exact(receipt, frozen_receipt, "w6_w5_stage_receipt_mismatch", f"{stage} prior receipt不是冻结W5提交字节")
+            exact(
+                receipt.get("receipt_digest"),
+                object_digest(receipt, {"receipt_digest"}),
+                "w6_w5_stage_receipt_digest_mismatch",
+                f"冻结W5提交中的{stage}回执摘要不可重算",
+            )
+            exact(receipt.get("production_deployed"), False, "w6_w5_stage_receipt_overclaim", f"{stage}不得声称生产部署")
+            return
 
     exact(
         receipt.get("design_candidate_id"),
@@ -3063,6 +3318,323 @@ def validate_w5_evidence(root: Path, evidence: dict[str, Any]) -> list[str]:
     ]
 
 
+def _w6_prefixed_self_digest(value: dict[str, Any], field: str = "content_digest") -> str:
+    return "sha256:" + object_digest(value, {field})
+
+
+def _validate_w6_schema(root: Path, value: dict[str, Any], schema_path: Path, code: str) -> None:
+    schema = load_json(root / schema_path)
+    try:
+        Draft202012Validator.check_schema(schema)
+        errors = sorted(
+            Draft202012Validator(schema).iter_errors(value),
+            key=lambda item: list(item.absolute_path),
+        )
+    except Exception as error:  # jsonschema 的Schema错误需要统一进入Hook fail-closed。
+        raise AlignmentError(f"{code}：Schema无效：{error}") from error
+    expect(not errors, code, f"{schema_path.name}实例校验失败：{errors[0].message if errors else ''}")
+
+
+def _load_w6_case_jsonl(root: Path) -> list[dict[str, Any]]:
+    relative = W6_CERTIFICATION_ROOT / "case-receipts.jsonl"
+    path = root / relative
+    expect(path.is_file() and not path.is_symlink(), "w6_case_jsonl_missing", "W6 case JSONL不存在或为symlink")
+    data = path.read_bytes()
+    expect(data.endswith(b"\n") and not data.startswith(b"\xef\xbb\xbf"), "w6_case_jsonl_framing_invalid", "W6 case JSONL必须LF结尾且无BOM")
+    receipts: list[dict[str, Any]] = []
+    for ordinal, line in enumerate(data.splitlines(), start=1):
+        try:
+            value = json.loads(
+                line.decode("utf-8", errors="strict"),
+                object_pairs_hook=_pairs_no_duplicates,
+                parse_constant=_reject_constant,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+            raise AlignmentError(f"w6_case_jsonl_invalid：第{ordinal}行不是严格JSON：{error}") from error
+        expect(isinstance(value, dict), "w6_case_jsonl_invalid", f"第{ordinal}行顶层必须是对象")
+        exact(canonical_json(value), line, "w6_case_jsonl_noncanonical", f"第{ordinal}行不是canonical JSON")
+        receipts.append(value)
+    return receipts
+
+
+def validate_w6_evidence(root: Path, evidence: dict[str, Any]) -> list[str]:
+    """验收同一W5候选的离线分类，不把阻断分类提升为问题回答或provider晋级。"""
+
+    expected_fields = {
+        "schema_version", "stage", "status", "design_candidate_id",
+        "baseline_content_digest", "implementation_candidate_id",
+        "implementation_semantic_digest", "content_digest", "effect",
+        "effect_verified", "implemented_unit_ids", "atomic_split_tests_passed",
+        "p2_1_units_included", "production_deployed", "artifact_manifest",
+        "test_receipts", "acceptance_manifest", "certification_scope",
+        "acceptance_scope", "prior_stage_receipt_digests",
+    }
+    exact(set(evidence), expected_fields, "w6_evidence_fields_invalid", "W6 evidence字段人口不精确")
+    exact(evidence.get("implementation_candidate_id"), W6_W5_CANDIDATE_ID, "w6_candidate_identity_mismatch", "W6未绑定同一W5候选")
+    exact(evidence.get("implementation_semantic_digest"), W6_W5_CANDIDATE_DIGEST, "w6_candidate_digest_mismatch", "W6候选摘要漂移")
+    content_digest = require_hex64(evidence.get("content_digest"), "w6_content_digest_invalid", "W6 content digest无效")
+    exact(content_digest, object_digest(evidence, {"content_digest"}), "w6_content_digest_mismatch", "W6 evidence不可重算")
+
+    artifacts = evidence.get("artifact_manifest")
+    expect(isinstance(artifacts, list) and len(artifacts) >= 20, "w6_artifact_manifest_missing", "W6认证制品人口不完整")
+    seen: set[str] = set()
+    for item in artifacts:
+        expect(isinstance(item, dict) and set(item) == {"path", "role", "size_bytes", "sha256"}, "w6_artifact_binding_invalid", "W6制品绑定字段不精确")
+        path_text, path = repository_artifact_path(root, item.get("path"), "w6_artifact_binding_invalid")
+        expect(path_text not in seen, "w6_artifact_duplicate", f"W6制品重复：{path_text}")
+        seen.add(path_text)
+        exact(item.get("role"), "w6_certification_artifact", "w6_artifact_role_invalid", f"W6制品角色漂移：{path_text}")
+        exact(item.get("size_bytes"), path.stat().st_size, "w6_artifact_binding_invalid", f"W6制品大小漂移：{path_text}")
+        exact(item.get("sha256"), file_sha256(path), "w6_artifact_binding_invalid", f"W6制品摘要漂移：{path_text}")
+    for required in (
+        W6_CERTIFIER_PATH, W6_TEST_PATH, W6_CASE_SCHEMA_PATH, W6_REVIEW_SCHEMA_PATH,
+        W6_MANIFEST_SCHEMA_PATH, W6_CERTIFICATION_ROOT / "case-receipts.jsonl",
+        W6_CERTIFICATION_ROOT / "case-index.json",
+        W6_CERTIFICATION_ROOT / "review-input.json",
+        W6_CERTIFICATION_ROOT / "acceptance-manifest.json",
+        W6_CERTIFICATION_ROOT / "product-semantic-review.json",
+        W6_CERTIFICATION_ROOT / "bgp-semantic-review.json",
+    ):
+        expect(required.as_posix() in seen, "w6_artifact_population_mismatch", f"W6缺少认证制品：{required}")
+
+    references = evidence.get("test_receipts")
+    expect(isinstance(references, list) and len(references) == 3, "w6_test_receipts_missing", "W6必须恰有三份真实runner回执")
+    by_suite = {item.get("suite_id"): item for item in references if isinstance(item, dict)}
+    exact(set(by_suite), set(W6_SUITE_IDS), "w6_test_receipts_missing", "W6 runner人口漂移")
+    receipts = {
+        suite_id: _validate_stage_test_run_receipt(root, by_suite[suite_id], suite_id)
+        for suite_id in W6_SUITE_IDS
+    }
+    for suite_id, minimum in {"w6-python": 13, "w6-sidecar": 25, "w6-recovery-attack": 6}.items():
+        expect(receipts[suite_id]["tests_run"] >= minimum, "w6_test_count_mismatch", f"{suite_id}测试数量不足")
+        exact(receipts[suite_id]["tested_execution_unit_ids"], [], "w6_runner_unit_overclaim", f"{suite_id}不得冒充新增执行单元覆盖")
+
+    candidate = load_json(root / W6_CERTIFICATION_ROOT / "implementation-candidate.json")
+    exact(candidate.get("implementation_candidate_id"), W6_W5_CANDIDATE_ID, "w6_candidate_identity_mismatch", "implementation-candidate ID漂移")
+    exact(candidate.get("implementation_candidate_digest"), "sha256:" + W6_W5_CANDIDATE_DIGEST, "w6_candidate_digest_mismatch", "implementation-candidate digest漂移")
+    exact(candidate.get("w5_commit"), W6_W5_COMMIT, "w6_candidate_commit_mismatch", "W6候选不是冻结W5 commit")
+    exact(candidate.get("w5_evidence", {}).get("content_digest"), "sha256:" + W6_W5_EVIDENCE_CONTENT_DIGEST, "w6_candidate_evidence_mismatch", "W6候选未绑定W5 evidence")
+    exact(candidate.get("w5_stage_receipt", {}).get("receipt_digest"), "sha256:" + W6_W5_STAGE_RECEIPT_DIGEST, "w6_candidate_stage_mismatch", "W6候选未绑定W5 stage")
+    exact(candidate.get("execution_admission", {}).get("receipt_digest"), W6_W5_EXECUTION_ADMISSION_DIGEST, "w6_candidate_admission_mismatch", "W6候选未绑定W5 execution admission")
+    exact(candidate.get("w6_outputs_excluded_from_candidate_identity"), True, "w6_candidate_digest_cycle", "W6输出不得进入候选身份")
+    exact(candidate.get("content_digest"), _w6_prefixed_self_digest(candidate), "w6_candidate_content_mismatch", "W6 candidate binding不可重算")
+
+    semantics = load_json(root / W6_CERTIFICATION_ROOT / "certification-semantics.json")
+    exact(semantics.get("certification_semantics_version"), W6_SEMANTICS_VERSION, "w6_semantics_version_mismatch", "W6认证语义版本漂移")
+    exact(semantics.get("content_digest"), _w6_prefixed_self_digest(semantics), "w6_semantics_digest_mismatch", "W6语义摘要不可重算")
+    for key in (
+        "full_question_answer_certification_passed", "actual_provider_model_alignment",
+        "actual_provider_performance_acceptance", "actual_provider_cost_acceptance",
+        "runtime_promotion", "production_deployed",
+    ):
+        exact(semantics.get(key), False, "w6_semantics_overclaim", f"W6语义不得把{key}设为true")
+    exact(semantics.get("external_provider_call_count"), 0, "w6_semantics_overclaim", "W6外部provider调用必须为0")
+
+    disposition_contract = load_json(root / W6_CERTIFICATION_ROOT / "question-disposition-contract.json")
+    matrix = load_json(root / W6_CERTIFICATION_ROOT / "case-matrix.json")
+    certifier = load_json(root / W6_CERTIFICATION_ROOT / "certifier-manifest.json")
+    review_input = load_json(root / W6_CERTIFICATION_ROOT / "review-input.json")
+    for name, value in (
+        ("question-disposition-contract", disposition_contract),
+        ("case-matrix", matrix),
+        ("certifier-manifest", certifier),
+        ("review-input", review_input),
+    ):
+        exact(value.get("content_digest"), _w6_prefixed_self_digest(value), "w6_supporting_digest_mismatch", f"W6 {name}摘要不可重算")
+    machine_facts = matrix.get("machine_facts")
+    expect(isinstance(machine_facts, dict), "w6_machine_facts_missing", "W6 case matrix缺少机器事实")
+    exact(machine_facts.get("content_digest"), _w6_prefixed_self_digest(machine_facts), "w6_machine_facts_digest_mismatch", "W6机器事实不可重算")
+    exact(machine_facts.get("w5_execution_admission_receipt_digest"), W6_W5_EXECUTION_ADMISSION_DIGEST, "w6_machine_facts_admission_mismatch", "W6机器事实未绑定W5 execution admission")
+    denial_probe = machine_facts.get("p2_1_denial_probe")
+    expect(isinstance(denial_probe, dict), "w6_p2_1_denial_probe_missing", "W6缺少实际P2.1拒绝探针")
+    exact(denial_probe.get("content_digest"), _w6_prefixed_self_digest(denial_probe), "w6_p2_1_denial_probe_digest_mismatch", "P2.1拒绝探针不可重算")
+    exact(denial_probe.get("handler_invocation_count"), 0, "w6_p2_1_dispatch_overclaim", "P2.1拒绝探针不得调用handler")
+    denial_results = denial_probe.get("unit_results")
+    expect(isinstance(denial_results, list) and len(denial_results) == 3, "w6_p2_1_denial_probe_invalid", "P2.1拒绝探针人口必须为3")
+    exact([item.get("unit_id") for item in denial_results], ["PLAN-CAP-02", "TOOL-13", "OP-34"], "w6_p2_1_denial_probe_invalid", "P2.1拒绝单元人口漂移")
+    for item in denial_results:
+        exact(item.get("denial_code"), "p2_1_unit_forbidden", "w6_p2_1_denial_probe_invalid", "P2.1拒绝码漂移")
+        exact(item.get("handler_invoked"), False, "w6_p2_1_dispatch_overclaim", "P2.1拒绝前不得调用handler")
+
+    case_schema = load_json(root / W6_CASE_SCHEMA_PATH)
+    Draft202012Validator.check_schema(case_schema)
+    case_validator = Draft202012Validator(case_schema)
+    cases = _load_w6_case_jsonl(root)
+    exact(len(cases), 168, "w6_case_count_mismatch", "W6必须恰有168个case")
+    expected_case_ids = [f"{question_id}-{code}" for question_id in QUESTION_IDS for code in W6_SCENARIO_CODES]
+    exact([item.get("case_id") for item in cases], expected_case_ids, "w6_case_order_mismatch", "W6 case人口、顺序或重复漂移")
+    blocked = deferred = 0
+    for item in cases:
+        errors = sorted(case_validator.iter_errors(item), key=lambda error: list(error.absolute_path))
+        expect(not errors, "w6_case_schema_invalid", f"{item.get('case_id')}不符合case Schema：{errors[0].message if errors else ''}")
+        exact(item.get("content_digest"), _w6_prefixed_self_digest(item), "w6_case_digest_mismatch", f"{item.get('case_id')}摘要不可重算")
+        exact(item.get("machine_facts_digest"), machine_facts["content_digest"], "w6_case_machine_facts_mismatch", f"{item.get('case_id')}未绑定机器事实")
+        question_id = item.get("question_id")
+        expected_disposition = "correctly_deferred" if question_id == "Q24" else "correctly_blocked"
+        exact(item.get("expected_disposition"), expected_disposition, "w6_case_disposition_drift", f"{item.get('case_id')}期望分类漂移")
+        exact(item.get("actual_disposition"), expected_disposition, "w6_case_overclaim", f"{item.get('case_id')}实际分类越级")
+        exact(item.get("expected_reason_codes"), W6_EXPECTED_REASONS[question_id], "w6_case_reason_drift", f"{item.get('case_id')}原因漂移")
+        exact(item.get("actual_reason_codes"), W6_EXPECTED_REASONS[question_id], "w6_case_reason_drift", f"{item.get('case_id')}实际原因漂移")
+        exact(item.get("case_acceptance", {}).get("classification_matches_contract"), True, "w6_case_classification_mismatch", f"{item.get('case_id')}分类与冻结合同不一致")
+        exact(item.get("case_acceptance", {}).get("case_passed"), True, "w6_case_classification_mismatch", f"{item.get('case_id')}分类未通过")
+        exact(item.get("unit_coverage", {}).get("actually_dispatched"), [], "w6_blocked_case_dispatch_overclaim", f"{item.get('case_id')}阻断/延期case不得自报dispatch")
+        exact(set(item.get("overclaim_checks", {}).values()), {False}, "w6_case_overclaim", f"{item.get('case_id')}包含越级声明")
+        blocked += expected_disposition == "correctly_blocked"
+        deferred += expected_disposition == "correctly_deferred"
+    exact((blocked, deferred), (162, 6), "w6_case_summary_mismatch", "W6 case分类统计漂移")
+
+    index = load_json(root / W6_CERTIFICATION_ROOT / "case-index.json")
+    exact(index.get("content_digest"), _w6_prefixed_self_digest(index), "w6_case_index_digest_mismatch", "W6 case index摘要不可重算")
+    entries = index.get("entries")
+    expect(isinstance(entries, list) and len(entries) == 168, "w6_case_index_population_mismatch", "W6 case index人口不完整")
+    lines = (root / W6_CERTIFICATION_ROOT / "case-receipts.jsonl").read_bytes().splitlines()
+    for ordinal, (entry, item, line) in enumerate(zip(entries, cases, lines, strict=True), start=1):
+        exact(entry.get("ordinal"), ordinal, "w6_case_index_order_mismatch", "W6 case ordinal漂移")
+        exact(entry.get("case_id"), item["case_id"], "w6_case_index_order_mismatch", "W6 case index ID漂移")
+        exact(entry.get("case_receipt_digest"), item["content_digest"], "w6_case_index_binding_mismatch", "W6 case index未绑定case摘要")
+        exact(entry.get("line_sha256"), "sha256:" + sha256_bytes(line), "w6_case_index_binding_mismatch", "W6 case index未绑定JSONL行")
+
+    runtime = load_json(root / W6_CERTIFICATION_ROOT / "same-candidate-runtime-proof.json")
+    performance = load_json(root / W6_CERTIFICATION_ROOT / "performance-recovery-cost.json")
+    attack = load_json(root / W6_CERTIFICATION_ROOT / "attack-evidence.json")
+    for name, value in (("runtime", runtime), ("performance", performance), ("attack", attack)):
+        exact(value.get("content_digest"), _w6_prefixed_self_digest(value), "w6_supporting_digest_mismatch", f"W6 {name}摘要不可重算")
+        exact(value.get("implementation_candidate_id"), W6_W5_CANDIDATE_ID, "w6_supporting_candidate_mismatch", f"W6 {name}未绑定同一候选")
+    trace = runtime.get("actual_execution_trace")
+    expect(isinstance(trace, dict), "w6_runtime_proof_invalid", "W6 runtime proof缺少实际trace")
+    exact(trace.get("event_count"), 14, "w6_runtime_proof_invalid", "W6未绑定实际14事件链")
+    exact(trace.get("dynamic_fanout_count"), 0, "w6_runtime_proof_invalid", "W6实际trace出现fan-out")
+    exact(trace.get("arbitrary_callback_count"), 0, "w6_runtime_proof_invalid", "W6实际trace出现callback")
+    exact(runtime.get("question_answer_certification"), False, "w6_question_answer_overclaim", "W6 runtime proof不得冒充问题回答认证")
+    exact(runtime.get("external_provider_called"), False, "w6_provider_overclaim", "W6不得声称外部provider执行")
+    offline = performance.get("offline_deterministic_measurement")
+    expect(isinstance(offline, dict), "w6_performance_evidence_invalid", "W6缺少离线性能证据")
+    exact(offline.get("offline_deterministic_runtime_performance_acceptance_passed"), True, "w6_offline_performance_failed", "W6离线运行时阈值未通过")
+    exact(offline.get("not_a_provider_measurement"), True, "w6_provider_performance_overclaim", "W6必须标明不是provider测量")
+    exact(performance.get("actual_provider_performance_acceptance"), False, "w6_provider_performance_overclaim", "W6不得晋级provider性能")
+    exact(performance.get("actual_provider_cost_acceptance"), False, "w6_provider_cost_overclaim", "W6不得晋级provider费用")
+    exact(performance.get("recovery_evidence", {}).get("offline_recovery_acceptance_passed"), True, "w6_recovery_failed", "W6恢复证据未通过")
+    exact(performance.get("cost_evidence", {}).get("external_provider_call_count"), 0, "w6_provider_cost_overclaim", "W6外部provider调用必须为0")
+    exact(attack.get("accepted"), True, "w6_attack_evidence_failed", "W6攻击证据未通过")
+    exact(attack.get("all_attacks_rejected"), True, "w6_attack_evidence_failed", "W6攻击未全部拒绝")
+    exact(attack.get("attack_count"), 24, "w6_attack_population_incomplete", "W6攻击人口必须恰为24")
+    attack_items = attack.get("attacks")
+    expect(isinstance(attack_items, list) and len(attack_items) == 24, "w6_attack_population_incomplete", "W6攻击明细人口不完整")
+    for item in attack_items:
+        exact(set(item), {"attack_id", "rejected", "verifier_entrypoint", "rejection_code", "attack_input_digest"}, "w6_attack_receipt_invalid", "W6攻击回执字段不精确")
+        exact(item.get("rejected"), True, "w6_attack_evidence_failed", f"W6攻击未拒绝：{item.get('attack_id')}")
+        expect(isinstance(item.get("verifier_entrypoint"), str) and item["verifier_entrypoint"], "w6_attack_receipt_invalid", "W6攻击缺少实际验证入口")
+        expect(isinstance(item.get("rejection_code"), str) and item["rejection_code"], "w6_attack_receipt_invalid", "W6攻击缺少拒绝码")
+        expect(isinstance(item.get("attack_input_digest"), str) and re.fullmatch(r"sha256:[0-9a-f]{64}", item["attack_input_digest"]), "w6_attack_receipt_invalid", "W6攻击输入摘要无效")
+
+    expected_review_input = "sha256:" + object_digest({
+        "candidate_digest": candidate["content_digest"],
+        "question_disposition_contract_digest": disposition_contract["content_digest"],
+        "case_matrix_digest": matrix["content_digest"],
+        "certifier_manifest_digest": certifier["content_digest"],
+        "case_index_digest": index["content_digest"],
+        "runtime_proof_digest": runtime["content_digest"],
+        "performance_digest": performance["content_digest"],
+        "attack_digest": attack["content_digest"],
+        "semantics_digest": semantics["content_digest"],
+    })
+    exact(review_input.get("review_input_digest"), expected_review_input, "w6_review_input_digest_mismatch", "W6 review input未绑定全部受审制品")
+    for field, expected_value in {
+        "question_disposition_contract_digest": disposition_contract["content_digest"],
+        "case_matrix_digest": matrix["content_digest"],
+        "certifier_manifest_digest": certifier["content_digest"],
+    }.items():
+        exact(review_input.get(field), expected_value, "w6_review_input_binding_mismatch", f"W6 review input的{field}漂移")
+
+    review_schema = load_json(root / W6_REVIEW_SCHEMA_PATH)
+    Draft202012Validator.check_schema(review_schema)
+    review_validator = Draft202012Validator(review_schema)
+    review_identities = set()
+    review_input_digest = None
+    for role, filename in (("product_semantic", "product-semantic-review.json"), ("bgp_semantic", "bgp-semantic-review.json")):
+        review = load_json(root / W6_CERTIFICATION_ROOT / filename)
+        errors = sorted(review_validator.iter_errors(review), key=lambda error: list(error.absolute_path))
+        expect(not errors, "w6_review_schema_invalid", f"{role} review不符合Schema：{errors[0].message if errors else ''}")
+        exact(review.get("content_digest"), _w6_prefixed_self_digest(review), "w6_review_digest_mismatch", f"{role} review摘要不可重算")
+        exact(review.get("reviewer_role"), role, "w6_review_role_mismatch", f"{role} review角色漂移")
+        exact(review.get("review_disposition"), "accepted_for_pre_provider_release_preparation_with_explicit_question_blocks", "w6_review_revision_required", f"{role} review尚未接受")
+        exact(review.get("blocking_findings"), [], "w6_review_revision_required", f"{role} review仍有阻断")
+        exact(review.get("overclaim_findings"), [], "w6_review_revision_required", f"{role} review仍有越级声明")
+        exact(review.get("question_disposition_contract_digest"), disposition_contract["content_digest"], "w6_review_binding_mismatch", f"{role} review未绑定分类合同")
+        exact(review.get("case_matrix_digest"), matrix["content_digest"], "w6_review_binding_mismatch", f"{role} review未绑定case matrix")
+        exact(review.get("certifier_manifest_digest"), certifier["content_digest"], "w6_review_binding_mismatch", f"{role} review未绑定certifier manifest")
+        review_identities.add(review.get("reviewer_identity"))
+        if review_input_digest is None:
+            review_input_digest = review.get("review_input_digest")
+        exact(review.get("review_input_digest"), review_input_digest, "w6_review_input_mismatch", "两份review未绑定同一输入")
+        exact(review.get("review_input_digest"), expected_review_input, "w6_review_input_mismatch", f"{role} review未绑定当前完整输入")
+    exact(len(review_identities), 2, "w6_review_independence_failed", "W6两位reviewer身份不独立")
+
+    manifest = load_json(root / W6_CERTIFICATION_ROOT / "acceptance-manifest.json")
+    _validate_w6_schema(root, manifest, W6_MANIFEST_SCHEMA_PATH, "w6_acceptance_manifest_invalid")
+    exact(manifest.get("content_digest"), _w6_prefixed_self_digest(manifest), "w6_acceptance_manifest_digest_mismatch", "W6 acceptance manifest摘要不可重算")
+    exact(manifest.get("status"), "implementation_accepted_for_release_preparation", "w6_acceptance_status_invalid", "W6最终状态漂移")
+    exact(manifest.get("full_question_answer_certification_passed"), False, "w6_question_answer_overclaim", "W6不得声称完整问题回答通过")
+    for key in (
+        "actual_provider_model_alignment", "actual_provider_performance_acceptance",
+        "actual_provider_cost_acceptance", "runtime_promotion", "production_deployed",
+    ):
+        exact(manifest.get(key), False, "w6_acceptance_overclaim", f"W6不得把{key}设为true")
+    exact(manifest.get("external_provider_call_count"), 0, "w6_acceptance_overclaim", "W6外部provider调用必须为0")
+    reference = evidence.get("acceptance_manifest")
+    expect(isinstance(reference, dict), "w6_manifest_reference_missing", "W6 evidence缺少manifest引用")
+    exact(reference.get("path"), (W6_CERTIFICATION_ROOT / "acceptance-manifest.json").as_posix(), "w6_manifest_reference_invalid", "W6 manifest路径漂移")
+    exact(reference.get("sha256"), file_sha256(root / W6_CERTIFICATION_ROOT / "acceptance-manifest.json"), "w6_manifest_reference_invalid", "W6 manifest文件摘要漂移")
+    exact(reference.get("content_digest"), manifest["content_digest"], "w6_manifest_reference_invalid", "W6 evidence未绑定manifest内容")
+
+    scope = evidence.get("certification_scope")
+    exact(scope, {
+        "same_candidate_28_question_classification_completed": True,
+        "blocked_question_count": 27,
+        "deferred_question_count": 1,
+        "executed_supported_question_count": 0,
+        "case_count": 168,
+        "blocked_case_count": 162,
+        "deferred_case_count": 6,
+        "full_question_answer_certification_passed": False,
+        "fixture_protocol_certified": True,
+        "offline_recovery_acceptance_passed": True,
+        "actual_provider_model_alignment": False,
+        "actual_provider_performance_acceptance": False,
+        "actual_provider_cost_acceptance": False,
+        "runtime_promotion": False,
+        "production_deployed": False,
+        "external_provider_call_count": 0,
+    }, "w6_certification_scope_invalid", "W6认证范围或统计漂移")
+    exact(evidence.get("acceptance_scope"), {
+        "status": "implementation_accepted_for_release_preparation",
+        "implementation_accepted_for_release_preparation": True,
+        "acceptance_meaning": "冻结W5实现候选、离线确定性能力与28题可执行性分类已按同候选证据验收，可进入实际provider认证及独立发布准备；不表示问题回答、provider模型、provider性能、runtime promotion或生产通过。",
+        "release_preparation_authorized": True,
+        "provider_certification_authorized": False,
+        "runtime_promotion_passed": False,
+        "production_deployed": False,
+    }, "w6_acceptance_scope_invalid", "W6最终验收语义越级或漂移")
+
+    completed = subprocess.run(
+        ["uv", "run", "--project", "backend", "python", W6_CERTIFIER_PATH.as_posix(), "--repo-root", ".", "--mode", "verify"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, "w6_certifier_replay_failed", f"W6 certifier verify失败：{completed.stderr.strip()}")
+    return [
+        "w6_same_w5_candidate_and_immutable_runtime_bytes_verified",
+        "w6_168_ordered_case_classification_receipts_verified",
+        "w6_27_blocked_and_q24_deferred_without_answer_overclaim_verified",
+        "w6_actual_runtime_recovery_performance_and_attack_evidence_verified",
+        "w6_independent_product_and_bgp_reviews_verified",
+        "w6_provider_model_cost_promotion_and_production_boundaries_verified",
+        "w6_implementation_accepted_for_release_preparation_verified",
+    ]
+
+
 def _generate_w5_execution_admission(root: Path) -> dict[str, Any]:
     """从真实 Python runtime 生成 admission，再由 Hook 独立重算和校验。"""
 
@@ -3233,7 +3805,7 @@ def build_w5_evidence(root: Path) -> dict[str, Any]:
 
 
 def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dict[str, Any], list[str], list[str]]:
-    expect(stage in {"W0", "W1", "W2", "W3", "W4", "W5"}, "wave_stage_not_implemented", f"{stage} 尚未进入本实现任务，必须 fail-closed")
+    expect(stage in {"W0", "W1", "W2", "W3", "W4", "W5", "W6"}, "wave_stage_not_implemented", f"{stage} 尚未进入本实现任务，必须 fail-closed")
     contract = WAVE_CONTRACT[stage]
     evidence_path = root / WAVE_EVIDENCE_ROOT / f"{stage}.json"
     evidence = load_json(evidence_path)
@@ -3242,6 +3814,7 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
     expected_status = {
         "W0": "implementation_wave_accepted",
         "W5": "local_isolated_composition_runtime_accepted_for_w6_certification",
+        "W6": "implementation_accepted_for_release_preparation",
     }.get(stage, "offline_atomic_harness_accepted_for_w5_integration")
     exact(evidence.get("status"), expected_status, "wave_not_accepted", f"{stage} 尚未形成当前层级验收证据")
     exact(evidence.get("design_candidate_id"), DESIGN_CANDIDATE_ID, "wave_design_binding_mismatch", f"{stage} 未绑定冻结设计候选")
@@ -3264,6 +3837,8 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
         wave_checks = validate_w0_evidence(root, evidence)
     elif stage == "W5":
         wave_checks = validate_w5_evidence(root, evidence)
+    elif stage == "W6":
+        wave_checks = validate_w6_evidence(root, evidence)
     else:
         wave_checks = validate_w1_w2_evidence(root, stage, evidence)
         if stage == "W4":
@@ -3287,7 +3862,7 @@ def validate_wave(root: Path, stage: str, baseline: dict[str, Any]) -> tuple[dic
     exact(set(supplied_prior), set(required_prior_stages), "wave_prior_population_mismatch", f"{stage} prior receipt 人口不是精确依赖闭包")
     effect_check = (
         f"{stage.lower()}_implementation_effect_verified"
-        if stage in {"W0", "W5"}
+        if stage in {"W0", "W5", "W6"}
         else f"{stage.lower()}_offline_atomic_harness_scope_verified"
     )
     return evidence, [effect_check, f"{stage.lower()}_atomicity_and_evidence_verified", *wave_checks], prior_receipt_digests

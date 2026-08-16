@@ -1,0 +1,182 @@
+{
+  "acceptance_meaning": "listed_certification_overclaim_and_integrity_attacks_rejected",
+  "accepted": true,
+  "all_attacks_rejected": true,
+  "attack_count": 24,
+  "attacks": [
+    {
+      "attack_id": "167_cases",
+      "attack_input_digest": "sha256:cd28cd3a56d4d01ccf781790faca97a251a0e1f318164c399529b21a90becc45",
+      "rejected": true,
+      "rejection_code": "case_count_mismatch",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "169_cases",
+      "attack_input_digest": "sha256:087af6920358dd4e0dade238fb24e06fc0cc480b4961e24ebfbf56c9567db6e8",
+      "rejected": true,
+      "rejection_code": "case_count_mismatch",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "duplicate_case",
+      "attack_input_digest": "sha256:8c1f83afcaf3d94f7f5128d58180ac506f8c60e42abea15f523b2f9b7b870093",
+      "rejected": true,
+      "rejection_code": "case_order_population_or_duplicate_invalid",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "reordered_case",
+      "attack_input_digest": "sha256:63b7d0650b32a839500ca7c477cb4c4b507b5b1af0e3d98d9ca0b82cd310f064",
+      "rejected": true,
+      "rejection_code": "case_order_population_or_duplicate_invalid",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "blocked_forged_as_executed",
+      "attack_input_digest": "sha256:2fe9a95c25a16d2c93db9e823b34477769de35ee7d0946bb328a1567a4643b36",
+      "rejected": true,
+      "rejection_code": "case_actual_classification_not_recomputed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "provider_overclaim",
+      "attack_input_digest": "sha256:1ea9ddb1eca5abdc688ae78a9f7184782f0bbaf9783d5aa4e3bd06deb4a406d0",
+      "rejected": true,
+      "rejection_code": "schema_validation_failed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "cross_candidate_splice",
+      "attack_input_digest": "sha256:bfd0f9d9fa1186e7184c4ff879e596d83e3b8bb700e4b02353ce17df728a74e3",
+      "rejected": true,
+      "rejection_code": "case_candidate_binding_mismatch",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "deferred_subgoal_forged_as_whole_question",
+      "attack_input_digest": "sha256:b993506647301108d20d75e97cd689502656714aa17b0cad77c7d21ac1143c71",
+      "rejected": true,
+      "rejection_code": "schema_validation_failed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "duplicate_json_key",
+      "attack_input_digest": "sha256:1c53ee0df7b12fd4d65b976120c7fa6b847dc41dffd7f0331c3237a1ceab1756",
+      "rejected": true,
+      "rejection_code": "duplicate_json_key",
+      "verifier_entrypoint": "strict_json_bytes"
+    },
+    {
+      "attack_id": "nan",
+      "attack_input_digest": "sha256:0ce896293703c00486a61416514acc94d2919f4bd42141dedcca7ddfb97ec422",
+      "rejected": true,
+      "rejection_code": "non_finite_json_number",
+      "verifier_entrypoint": "strict_json_bytes"
+    },
+    {
+      "attack_id": "infinity",
+      "attack_input_digest": "sha256:02c7562cb7c8ca861c2534a206877f2e085e3ff3ce60362735791b0c1b4582b4",
+      "rejected": true,
+      "rejection_code": "non_finite_json_number",
+      "verifier_entrypoint": "strict_json_bytes"
+    },
+    {
+      "attack_id": "bom",
+      "attack_input_digest": "sha256:e3170108e7583c4ad52e05763a606c1dceef76c81a8e1503dde511b5ca764f81",
+      "rejected": true,
+      "rejection_code": "json_bom_forbidden",
+      "verifier_entrypoint": "strict_json_bytes"
+    },
+    {
+      "attack_id": "noncanonical_jsonl",
+      "attack_input_digest": "sha256:5d65d374fe7df1accad8f03d1669756fd75c8ff68ab90242b5460b81961cc9e7",
+      "rejected": true,
+      "rejection_code": "jsonl_noncanonical",
+      "verifier_entrypoint": "verify_jsonl_bytes"
+    },
+    {
+      "attack_id": "oracle_question_splice",
+      "attack_input_digest": "sha256:fa354357fefd1573a7e34f0a46ecb9e440fc66779c3b4c7f8dc0e5a4cdafc040",
+      "rejected": true,
+      "rejection_code": "case_oracle_binding_mismatch",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "stale_w5_artifact_digest",
+      "attack_input_digest": "sha256:6a6cf8cb69604dd3dd0e7d35fc0c26f520916536e36608467c79486ddd386dc0",
+      "rejected": true,
+      "rejection_code": "candidate_binding_not_recomputed",
+      "verifier_entrypoint": "verify_candidate_binding"
+    },
+    {
+      "attack_id": "generic_boundary_forged_as_question_specific",
+      "attack_input_digest": "sha256:be6e4dd813e215ae707da55acdc59c1b5ba9c3cb83ff183b3ce597e566df30d5",
+      "rejected": true,
+      "rejection_code": "case_actual_classification_not_recomputed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "missing_plan_result_graph_admission",
+      "attack_input_digest": "sha256:05180ba5d91bded08497e37a55bd7a39a14a25ceb01f899384ba003d6e251a95",
+      "rejected": true,
+      "rejection_code": "runtime_proof_not_recomputed",
+      "verifier_entrypoint": "verify_runtime_proof"
+    },
+    {
+      "attack_id": "legacy_value_copy_without_bridge_receipt",
+      "attack_input_digest": "sha256:ffa0b5259fb81f194265020d1e04647d3f7003ffaf83fa9946655d56aeb41f16",
+      "rejected": true,
+      "rejection_code": "schema_validation_failed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "hidden_fanout_or_p2_1_smuggling",
+      "attack_input_digest": "sha256:719c2f73645f9356b53129e77a0a3f74c917f1333379757dd632286b8e3a1a3c",
+      "rejected": true,
+      "rejection_code": "schema_validation_failed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "cross_publication_registry_binding",
+      "attack_input_digest": "sha256:c128e2aad18ad6fd7aa963f0c33d27c5506d564f6bb2c27a7d7de04e537308da",
+      "rejected": true,
+      "rejection_code": "schema_validation_failed",
+      "verifier_entrypoint": "verify_case_population"
+    },
+    {
+      "attack_id": "monotonic_measurement_in_semantic_identity",
+      "attack_input_digest": "sha256:bab23fb4718d034f60862efee364b8aced9e85dccd41d87944621ba2084b4570",
+      "rejected": true,
+      "rejection_code": "candidate_binding_not_recomputed",
+      "verifier_entrypoint": "verify_candidate_binding"
+    },
+    {
+      "attack_id": "symlink_or_path_escape",
+      "attack_input_digest": "sha256:9d41d0b25b8a5b78f2d4cc450b50aa3e1babe5d2b6497e8cdd84ec84036bfe1c",
+      "rejected": true,
+      "rejection_code": "unsafe_repo_path",
+      "verifier_entrypoint": "safe_repo_path"
+    },
+    {
+      "attack_id": "review_self_or_mutual_reference",
+      "attack_input_digest": "sha256:30467ced2d3245da4741b3a0a21c88a6b209bab1073e1f4bc6302f14c9287e1d",
+      "rejected": true,
+      "rejection_code": "review_cycle_or_mutual_reference",
+      "verifier_entrypoint": "assert_no_review_cycles"
+    },
+    {
+      "attack_id": "acceptance_digest_cycle",
+      "attack_input_digest": "sha256:a625eb831261e43aee6ae835fede154906eff6b59aeb1f3810d3ea832b0f3f17",
+      "rejected": true,
+      "rejection_code": "acceptance_digest_cycle",
+      "verifier_entrypoint": "assert_no_acceptance_cycles"
+    }
+  ],
+  "candidate_binding_digest": "sha256:71787dfdaba1ec1c62b2897c1c7df08af85c7f7157108bf58c33234fca7283df",
+  "case_index_digest": "sha256:e82caebbb6385ac3a7c634fb3033a60ddbbb8eb51c5d82ae322ec62356f2a0ee",
+  "content_digest": "sha256:45b5eee251f1e7f3df6fea4a6bee1a3238cb2868906f04e4317fda2b06760cef",
+  "implementation_candidate_digest": "sha256:49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c",
+  "implementation_candidate_id": "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6",
+  "schema_version": "country_outage_p2_s1_w6_attack_evidence_v2"
+}

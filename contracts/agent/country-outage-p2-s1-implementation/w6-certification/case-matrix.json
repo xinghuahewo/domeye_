@@ -1,0 +1,3004 @@
+{
+  "cases": [
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q01-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 1,
+      "question_id": "Q01",
+      "scenario_expectation_digest": "sha256:b873f502f3ca8a2ef2ed18ed30b541732fc8de8809a4b9e95a4ead6f9673ea44",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q01-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 2,
+      "question_id": "Q01",
+      "scenario_expectation_digest": "sha256:6c3a448f7521709c6a4cbda7f5b86281d436a8ad37da7bebed35280e4eb6df3a",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q01-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 3,
+      "question_id": "Q01",
+      "scenario_expectation_digest": "sha256:82597349590dd9f4c402496ac5895c035412787464b2e56cfe1ee509b8ef9959",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q01-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 4,
+      "question_id": "Q01",
+      "scenario_expectation_digest": "sha256:331382a621854c3bbfc863215d794d9c153b45229a4271c150ea95891d451180",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q01-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 5,
+      "question_id": "Q01",
+      "scenario_expectation_digest": "sha256:bfd31d19596b0ca54b11e50c75e5a036ef164288e3ffb3b2270b1c4c2e0d8cc0",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q01-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 6,
+      "question_id": "Q01",
+      "scenario_expectation_digest": "sha256:168b781b5107cc2f051dde895c588c0df86c8a3dced767c098bd9636a25bddd0",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q02-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 7,
+      "question_id": "Q02",
+      "scenario_expectation_digest": "sha256:300f8d6836e1da76f81d8fda210ee7df0f68ab453714609480801e629b1845bc",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q02-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 8,
+      "question_id": "Q02",
+      "scenario_expectation_digest": "sha256:3b586081ab5ae4dace33772b15eb07c3abc9eec8bb6c067efa0993e0ea10db57",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q02-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 9,
+      "question_id": "Q02",
+      "scenario_expectation_digest": "sha256:f2ad08a9b60d2f821b6c945345f1d3bc509e7ed2a6fb41ea13e8d04aa988a129",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q02-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 10,
+      "question_id": "Q02",
+      "scenario_expectation_digest": "sha256:f1f512cf1f3c9737f0168446d0251d7150072665a613b4ca45f1b347bea0454b",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q02-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 11,
+      "question_id": "Q02",
+      "scenario_expectation_digest": "sha256:21531d2ba10a4d66cf7c88213be8fd7bdaf29db418cfdcabdc52bb55050d9b83",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "case_id": "Q02-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher"
+      ],
+      "ordinal": 12,
+      "question_id": "Q02",
+      "scenario_expectation_digest": "sha256:6c4b9aa0fd836c97f1482598e546916ee3c192d32ad36e057b446ee18cf727e0",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "case_id": "Q03-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "ordinal": 13,
+      "question_id": "Q03",
+      "scenario_expectation_digest": "sha256:fd81a856583a367089ca9050fb31ee5c7a75856aa13a7d8176cc07eefc3df919",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "case_id": "Q03-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "ordinal": 14,
+      "question_id": "Q03",
+      "scenario_expectation_digest": "sha256:f725d9735bfe576eef67fdab107441f59c82e78c9439f5ee9f9a7658811df77e",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "case_id": "Q03-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "ordinal": 15,
+      "question_id": "Q03",
+      "scenario_expectation_digest": "sha256:ea0fe0dee4c001c4b7d2b60e7d020bf15aab7b67c7c1eb68acf453c7c5179c12",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "case_id": "Q03-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "ordinal": 16,
+      "question_id": "Q03",
+      "scenario_expectation_digest": "sha256:68b58d72094220e7429f0eac88e9febb15ca77aa741c231c9d075d3b07593fae",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "case_id": "Q03-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "ordinal": 17,
+      "question_id": "Q03",
+      "scenario_expectation_digest": "sha256:c56bfa97a235f7c79a421689765222e0a325c0e41fd88c75b6f61d6f37a23cd4",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "case_id": "Q03-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_adapter_missing"
+      ],
+      "ordinal": 18,
+      "question_id": "Q03",
+      "scenario_expectation_digest": "sha256:b902a341d5de51b7445d41d2c72e17d40c0d0f18e01e647b212c148f68240f38",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "case_id": "Q04-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "ordinal": 19,
+      "question_id": "Q04",
+      "scenario_expectation_digest": "sha256:c794f95f2959e7abf9383ba6afcfb4009ca49ceecebe7cbf5851c2b043d14c04",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "case_id": "Q04-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "ordinal": 20,
+      "question_id": "Q04",
+      "scenario_expectation_digest": "sha256:b379ba0fa48752868c7dcc976e6dde6192f0b2d6919dff760e05e8a7c378c5e0",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "case_id": "Q04-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "ordinal": 21,
+      "question_id": "Q04",
+      "scenario_expectation_digest": "sha256:6b9c58df3b45ac0e6972e9f8b915ed47bddb0a73144bad90a6721a1cfcb18e98",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "case_id": "Q04-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "ordinal": 22,
+      "question_id": "Q04",
+      "scenario_expectation_digest": "sha256:6aca3c365810ce73ae117ed6fc0e71c8e5aa9915812dddb32dbfaf273bc134d0",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "case_id": "Q04-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "ordinal": 23,
+      "question_id": "Q04",
+      "scenario_expectation_digest": "sha256:58aa659dda8417cc4eaa68cb3c837cd5f441a387ee718309b306725401079352",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "case_id": "Q04-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "fixture_population_insufficient_for_ranking"
+      ],
+      "ordinal": 24,
+      "question_id": "Q04",
+      "scenario_expectation_digest": "sha256:680fc6af84d2bea054e6cccccf263b20c4fb8edfac3f881a9791f9107f2bab96",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q05-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 25,
+      "question_id": "Q05",
+      "scenario_expectation_digest": "sha256:c1c83c7cfee2175a6b9430c5fbbf883b50ee0f73f161c0679c672d6eedb28005",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q05-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 26,
+      "question_id": "Q05",
+      "scenario_expectation_digest": "sha256:88492e0853804492ffdfcf7ca005f7859a70e56605ec4f602d5be8b8c9093533",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q05-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 27,
+      "question_id": "Q05",
+      "scenario_expectation_digest": "sha256:f0d6ebbc6fa32135e75f7310a8ca2b98da4ebe299158307f4504b1af36207f4b",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q05-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 28,
+      "question_id": "Q05",
+      "scenario_expectation_digest": "sha256:736a8d61ca555c300b5cce0ce5467f6fbc6c469e7299051696f0848b748cb3ac",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q05-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 29,
+      "question_id": "Q05",
+      "scenario_expectation_digest": "sha256:7bb39f0a7aa657123fa0cc453e8586735d1a0cef02b1f06e1fc2c1d0a8a1eac4",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q05-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_population_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 30,
+      "question_id": "Q05",
+      "scenario_expectation_digest": "sha256:edc488c7cca08b8b29e238e5e0d9d123d4ff3022d372fb56db62e2cf77293db1",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "case_id": "Q06-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "ordinal": 31,
+      "question_id": "Q06",
+      "scenario_expectation_digest": "sha256:3bbec94c797e3c052f60dd8fe1d0302265d2155a71f697f053f324c7b692eeec",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "case_id": "Q06-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "ordinal": 32,
+      "question_id": "Q06",
+      "scenario_expectation_digest": "sha256:5840fc686bda07438ef99b90008d1275d827aedd409e1a34002953c5f19dd909",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "case_id": "Q06-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "ordinal": 33,
+      "question_id": "Q06",
+      "scenario_expectation_digest": "sha256:ca897dd50025f4dbd12e23725d105e8807af834253d3ce0a608ecc7107e24c9c",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "case_id": "Q06-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "ordinal": 34,
+      "question_id": "Q06",
+      "scenario_expectation_digest": "sha256:2ee725255d0844023c885c4e0c4277e1b7709936eea3508c21dce24635ba87dc",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "case_id": "Q06-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "ordinal": 35,
+      "question_id": "Q06",
+      "scenario_expectation_digest": "sha256:ef7c17dd94120df589d20e86dfafc2f19a4bdad14bfb95e00341d286c3a746c1",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "case_id": "Q06-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_population_join_adapter_missing"
+      ],
+      "ordinal": 36,
+      "question_id": "Q06",
+      "scenario_expectation_digest": "sha256:4d178eec1089136c29c93f475e3a3f423e942826ad23911719da9941c178b499",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q07-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 37,
+      "question_id": "Q07",
+      "scenario_expectation_digest": "sha256:da3551df302ba4839fdf7cadbc35e9ff7c436cf3868865fabe4948f61e7b8749",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q07-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 38,
+      "question_id": "Q07",
+      "scenario_expectation_digest": "sha256:98bf00af3f100dbab98c012072f204fbbe9b345bd07abd5b3d460c766f929277",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q07-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 39,
+      "question_id": "Q07",
+      "scenario_expectation_digest": "sha256:5c7bc6514af7cdd26fbe68846c1ad72af034854af8eb58964149998811386c1f",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q07-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 40,
+      "question_id": "Q07",
+      "scenario_expectation_digest": "sha256:755971fc16af8b043ad1621ba8e11093f25d167ccb06011a730b6066386f2bdc",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q07-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 41,
+      "question_id": "Q07",
+      "scenario_expectation_digest": "sha256:a9492f87f9d6305830aa60c27c8e02f0cfd2ca051152f6a2530fb7254550e17e",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q07-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "plan_cap_01_scalar_only",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 42,
+      "question_id": "Q07",
+      "scenario_expectation_digest": "sha256:d3c20d5029ca2d46535092ce57aeb92f1cc3097ba305823fc9328b3ef83fde62",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "case_id": "Q08-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "ordinal": 43,
+      "question_id": "Q08",
+      "scenario_expectation_digest": "sha256:52248670005dbe76286bbe71bde8f551190b466c1a6b08eba615b82dfc46075f",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "case_id": "Q08-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "ordinal": 44,
+      "question_id": "Q08",
+      "scenario_expectation_digest": "sha256:c161cc91ff1da902c08c0c715869e76b96b5593418b6bd6700c5e8e7ef5b3ce6",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "case_id": "Q08-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "ordinal": 45,
+      "question_id": "Q08",
+      "scenario_expectation_digest": "sha256:37e8d2692bdefecb44d6abe339a691148ddb128749de25053727cfe377f8bc3b",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "case_id": "Q08-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "ordinal": 46,
+      "question_id": "Q08",
+      "scenario_expectation_digest": "sha256:4f405789e408feb53d9dc3eefeb9fa3f99098f61cc9690443646242c3ecd927f",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "case_id": "Q08-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "ordinal": 47,
+      "question_id": "Q08",
+      "scenario_expectation_digest": "sha256:ae65dd56d5a2ffb27b1af0c8f945bec7ad1f7396caa499246f790c493f112547",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "case_id": "Q08-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "population_binding_and_asn_bound_receipts_missing"
+      ],
+      "ordinal": 48,
+      "question_id": "Q08",
+      "scenario_expectation_digest": "sha256:13fac62164f4c816dc504fbbf7259ddba88088e70d63b38e320915df02836a10",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "case_id": "Q09-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "ordinal": 49,
+      "question_id": "Q09",
+      "scenario_expectation_digest": "sha256:df9371ffcebcde0d098c03223bcfea26181970ee0abfe27f78faea3bda72a241",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "case_id": "Q09-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "ordinal": 50,
+      "question_id": "Q09",
+      "scenario_expectation_digest": "sha256:21ab536bc0925a2ee549501f578850dd6005abf570230e3619ed60ccbbc33a05",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "case_id": "Q09-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "ordinal": 51,
+      "question_id": "Q09",
+      "scenario_expectation_digest": "sha256:a782a249f96f6f197a6220a69454ebe2d34ac841a07dee421b91f8db27af53ab",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "case_id": "Q09-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "ordinal": 52,
+      "question_id": "Q09",
+      "scenario_expectation_digest": "sha256:456b6f4ba500932044fc9245885b53b2bba85dfe68a730e3ba28e67eb5bc94eb",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "case_id": "Q09-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "ordinal": 53,
+      "question_id": "Q09",
+      "scenario_expectation_digest": "sha256:bcbcaaef111bd855270eae519861861f12d000d40ecd0a8fed59155c16d3c77b",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "case_id": "Q09-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_population_structural_adapter_missing"
+      ],
+      "ordinal": 54,
+      "question_id": "Q09",
+      "scenario_expectation_digest": "sha256:086202ecd58a61574556d4d497d48d72a99a8ab9b7efc5fd349b574c7d140ce3",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "case_id": "Q10-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "ordinal": 55,
+      "question_id": "Q10",
+      "scenario_expectation_digest": "sha256:dfac890c6ea9316c6e47f64c132607d4f1eb3b7bb20e537b2b65ba13d79d0cb0",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "case_id": "Q10-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "ordinal": 56,
+      "question_id": "Q10",
+      "scenario_expectation_digest": "sha256:45aed22f9ae1099f18552bab897ecb92084ef36ff5b773a1d48d04b877265455",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "case_id": "Q10-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "ordinal": 57,
+      "question_id": "Q10",
+      "scenario_expectation_digest": "sha256:b84abd883aea1b0d506016e1b92e3a33037e730edde064eb88da5e7baec238f0",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "case_id": "Q10-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "ordinal": 58,
+      "question_id": "Q10",
+      "scenario_expectation_digest": "sha256:24b05101ef5188cec70aa9d26f8769882fe0553525b60ea122fd517dfb38cdba",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "case_id": "Q10-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "ordinal": 59,
+      "question_id": "Q10",
+      "scenario_expectation_digest": "sha256:4dc096c7c542fc55b5feefb506499d3aeca824be106cc29d3aee2467498c35e7",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "case_id": "Q10-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "question_specific_boundary_disposition_missing"
+      ],
+      "ordinal": 60,
+      "question_id": "Q10",
+      "scenario_expectation_digest": "sha256:629a00e82cd34e5c1242acbb598fe2cfd54af7bceece8baae379090882f415e2",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "case_id": "Q13-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "ordinal": 61,
+      "question_id": "Q13",
+      "scenario_expectation_digest": "sha256:904a1c417572717bfbf58b6e09a29c0a0cc2f487894a4f33e0b05b5050910853",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "case_id": "Q13-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "ordinal": 62,
+      "question_id": "Q13",
+      "scenario_expectation_digest": "sha256:c172ec2950a22a35e60d738ab24e2a06ee47694e6690674de9193aacdb748beb",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "case_id": "Q13-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "ordinal": 63,
+      "question_id": "Q13",
+      "scenario_expectation_digest": "sha256:af84a25af202eb4ca5e7583ccb8d3b194bb5e671882baf7203f0719a27133cee",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "case_id": "Q13-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "ordinal": 64,
+      "question_id": "Q13",
+      "scenario_expectation_digest": "sha256:3226869ae0872f3bad7e0a588b6d4b0f718815e1531f1f9975e7e6a3dfb2cbe3",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "case_id": "Q13-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "ordinal": 65,
+      "question_id": "Q13",
+      "scenario_expectation_digest": "sha256:bad9cf74ce4865b945118dda08ed599ca986df164dfa4f43396511360b4c37bf",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "case_id": "Q13-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_peak_to_plan_cap_bridge_missing"
+      ],
+      "ordinal": 66,
+      "question_id": "Q13",
+      "scenario_expectation_digest": "sha256:4d178eec1089136c29c93f475e3a3f423e942826ad23911719da9941c178b499",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q14-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 67,
+      "question_id": "Q14",
+      "scenario_expectation_digest": "sha256:ab155f1d88417eee6beb2ed2bbe953b9f2be8cf074e6f1cfe0c7aa71b5b6efa8",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q14-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 68,
+      "question_id": "Q14",
+      "scenario_expectation_digest": "sha256:9b26113e579b126ee478df7e4342f0e7fd1acf0262b8ba6342e9233584f5bdba",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q14-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 69,
+      "question_id": "Q14",
+      "scenario_expectation_digest": "sha256:8805d258640ddd94efa99cc1cfa86867e220e3e16f7fd9c235af894cb6e18252",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q14-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 70,
+      "question_id": "Q14",
+      "scenario_expectation_digest": "sha256:227906b1d75fadb039f9728024634364f05a4ab92ab3235adb9ebd4fa007ce4e",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q14-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 71,
+      "question_id": "Q14",
+      "scenario_expectation_digest": "sha256:74174fd1b13fe764c337ce389000f71716470019971d6607e8d1c1f5824dec3f",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "case_id": "Q14-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing",
+        "member_fanout_not_admitted"
+      ],
+      "ordinal": 72,
+      "question_id": "Q14",
+      "scenario_expectation_digest": "sha256:c6743a783e3a23805bc926374c83e90b3da9bc7e38b702835a767d2756432de9",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "case_id": "Q16-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "ordinal": 73,
+      "question_id": "Q16",
+      "scenario_expectation_digest": "sha256:c45cff8d23beca2473ea7938a62c64eb9861b7cf1b088a3dd5027903770747ec",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "case_id": "Q16-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "ordinal": 74,
+      "question_id": "Q16",
+      "scenario_expectation_digest": "sha256:575a45ba18e788922241963a130c45c4e2e4dca617dafafc2312f50b02d73f76",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "case_id": "Q16-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "ordinal": 75,
+      "question_id": "Q16",
+      "scenario_expectation_digest": "sha256:a79341f137124bc882b68c584bb0c0b66f32b7a0c37e1a11eb5ce1097aa3844a",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "case_id": "Q16-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "ordinal": 76,
+      "question_id": "Q16",
+      "scenario_expectation_digest": "sha256:2c9621d450d348b9ebed26f42f9ef0b69746f418bb1eea3891a828c339a041ae",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "case_id": "Q16-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "ordinal": 77,
+      "question_id": "Q16",
+      "scenario_expectation_digest": "sha256:7e5b4a8ed21c27514102e2e47f0856d54695769ee43c7edd6760825105ed0f11",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "case_id": "Q16-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_op33_population_binding_missing"
+      ],
+      "ordinal": 78,
+      "question_id": "Q16",
+      "scenario_expectation_digest": "sha256:aa56021d5c75157ee892945de1d5e537dc8703005d576e174c03b145ba8dea44",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "case_id": "Q17-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "ordinal": 79,
+      "question_id": "Q17",
+      "scenario_expectation_digest": "sha256:8721db0bd8d05e5795e92d771dd05a55841764b114a8b5c14af2942f804c8851",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "case_id": "Q17-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "ordinal": 80,
+      "question_id": "Q17",
+      "scenario_expectation_digest": "sha256:554f97335c522aa876444bc0b90f626304abf279368c0d1fb7ccbf27e70a9322",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "case_id": "Q17-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "ordinal": 81,
+      "question_id": "Q17",
+      "scenario_expectation_digest": "sha256:62e78a2ebd4aebbff71bab5580964ecbaf9a0dc975474312b5a1bffd0a96c8e3",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "case_id": "Q17-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "ordinal": 82,
+      "question_id": "Q17",
+      "scenario_expectation_digest": "sha256:fafafb97b415e187e52b7af922daf94fe96be55d2a6bde3c5fff650d871c2611",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "case_id": "Q17-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "ordinal": 83,
+      "question_id": "Q17",
+      "scenario_expectation_digest": "sha256:5707a4227d367dbed14b84b568aeef47d0c99b1c6932cff63e8d7c606e496f42",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "case_id": "Q17-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_boundary_disposition_missing",
+        "formal_planning_allowlist_incomplete"
+      ],
+      "ordinal": 84,
+      "question_id": "Q17",
+      "scenario_expectation_digest": "sha256:168b781b5107cc2f051dde895c588c0df86c8a3dced767c098bd9636a25bddd0",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "case_id": "Q18-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "ordinal": 85,
+      "question_id": "Q18",
+      "scenario_expectation_digest": "sha256:fbba53cdadfab33a62accdb2836309a4eda8056dcffb3ec196dd801e0f7e7ca9",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "case_id": "Q18-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "ordinal": 86,
+      "question_id": "Q18",
+      "scenario_expectation_digest": "sha256:bb6340dd42e634d4445d8e735f4e72143f2ff8bbfbeb88084ff2361f648c934d",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "case_id": "Q18-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "ordinal": 87,
+      "question_id": "Q18",
+      "scenario_expectation_digest": "sha256:7f51c983bae1d426d7459b77a65765a9d278c4d6598b7247ea82d5b6b061b727",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "case_id": "Q18-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "ordinal": 88,
+      "question_id": "Q18",
+      "scenario_expectation_digest": "sha256:90f0639db1e7b17034a3f58a84fc7ffb798b38a4871d7cde8707c2cd6566c95b",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "case_id": "Q18-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "ordinal": 89,
+      "question_id": "Q18",
+      "scenario_expectation_digest": "sha256:7ac336098795391108350f6ca27a7e73f24e8fd5c9b7e8f43b5d7fb6dd338b3d",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "case_id": "Q18-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_to_vp_operator_adapter_missing"
+      ],
+      "ordinal": 90,
+      "question_id": "Q18",
+      "scenario_expectation_digest": "sha256:83b4826693e7ae152e67dc3cc9e2f43fb29bc88b9ff7d7717ba39927593bee1c",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "case_id": "Q19-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "ordinal": 91,
+      "question_id": "Q19",
+      "scenario_expectation_digest": "sha256:fc4e3bd78581ec332587fe844c7aad1cf19b605aaf07ed118c24e0944280d7db",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "case_id": "Q19-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "ordinal": 92,
+      "question_id": "Q19",
+      "scenario_expectation_digest": "sha256:24be065a91c4b31bdf9430bab948d72517e3780b735843be6230105d413f906e",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "case_id": "Q19-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "ordinal": 93,
+      "question_id": "Q19",
+      "scenario_expectation_digest": "sha256:402557fb127faff88dbd86d018333098ae11e6106642d87a1a5140ed2af68664",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "case_id": "Q19-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "ordinal": 94,
+      "question_id": "Q19",
+      "scenario_expectation_digest": "sha256:5c139c671be3f42eb1afa786c3a9a89a4722977e4bb29dd30809b7beb3fca89d",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "case_id": "Q19-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "ordinal": 95,
+      "question_id": "Q19",
+      "scenario_expectation_digest": "sha256:ecd22f89c56b38f9b10b5a7aee2b005621a4af4128f36bec4d5e14132f3239be",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "case_id": "Q19-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "per_path_fanout_not_admitted",
+        "fixture_has_fewer_than_five_path_samples"
+      ],
+      "ordinal": 96,
+      "question_id": "Q19",
+      "scenario_expectation_digest": "sha256:78f126d67b3b1fd4b6958424a4efd3d1045a00b5001d7597e0a323ecee90b7ff",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q20-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 97,
+      "question_id": "Q20",
+      "scenario_expectation_digest": "sha256:6093a313b63ecf59510755cda898680c877373df79858f8e693f63d17a924b34",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q20-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 98,
+      "question_id": "Q20",
+      "scenario_expectation_digest": "sha256:a037cdb5200cd16edd1df3af2ad744297b463263702335993fc5f5b05ac06524",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q20-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 99,
+      "question_id": "Q20",
+      "scenario_expectation_digest": "sha256:fa14ded9312f72897e7a88e42da5ce7471b348906c516c86ab5cc643ec04306e",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q20-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 100,
+      "question_id": "Q20",
+      "scenario_expectation_digest": "sha256:10d020650b0cbbafe3a779b9cc931543885ca3bc218c79daa15e1c8cebb1f467",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q20-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 101,
+      "question_id": "Q20",
+      "scenario_expectation_digest": "sha256:509ec22240de7be7ab31a049fd090bf426a29e364e9452600dc6cbeaaf903750",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q20-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 102,
+      "question_id": "Q20",
+      "scenario_expectation_digest": "sha256:3edc40ba52324a7de05cdcf7cd08c3c92d289eb161d012f2717d0e71a5f41b18",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "case_id": "Q21-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "ordinal": 103,
+      "question_id": "Q21",
+      "scenario_expectation_digest": "sha256:d7273ec0ad2888e1777cbe139feeb14f8411bbb0754c2f90465a94ac3b100b69",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "case_id": "Q21-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "ordinal": 104,
+      "question_id": "Q21",
+      "scenario_expectation_digest": "sha256:c74b7b5559c916c230784b52dd7c7305ca76c100df80a1fc10d693dff3e06228",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "case_id": "Q21-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "ordinal": 105,
+      "question_id": "Q21",
+      "scenario_expectation_digest": "sha256:b310dc37599861350c20f8784529865d0456fa8d638e1cdfe4a0b4c55943034c",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "case_id": "Q21-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "ordinal": 106,
+      "question_id": "Q21",
+      "scenario_expectation_digest": "sha256:223b084f38d1c9d9453e7f08ebb5b10ec26e9bb078fb26da500737f49eb4a340",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "case_id": "Q21-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "ordinal": 107,
+      "question_id": "Q21",
+      "scenario_expectation_digest": "sha256:09ab8b81bcd52414692155fe3547b92fa93d6f4f40ab17027b36cb193614bc3d",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "case_id": "Q21-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "per_path_fanout_not_admitted"
+      ],
+      "ordinal": 108,
+      "question_id": "Q21",
+      "scenario_expectation_digest": "sha256:90f4fc5c1b9445be17b3b2fd8caf6e6e960369db3624af311d93ad481e700596",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "case_id": "Q22-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "ordinal": 109,
+      "question_id": "Q22",
+      "scenario_expectation_digest": "sha256:804e881bab7244d5844f5afd59b90fb0435046a2415c9c22c6558d0d405ee23f",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "case_id": "Q22-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "ordinal": 110,
+      "question_id": "Q22",
+      "scenario_expectation_digest": "sha256:d456b94a4f32049172c64d6a8fe1bc7994a7b8ce0ecd58797ef3595f4975fe54",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "case_id": "Q22-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "ordinal": 111,
+      "question_id": "Q22",
+      "scenario_expectation_digest": "sha256:b2a470a4ec7f7498e9e30e243026fd870903eb4d1e4dd8fd745ab2f421cbfb72",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "case_id": "Q22-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "ordinal": 112,
+      "question_id": "Q22",
+      "scenario_expectation_digest": "sha256:893f7c24ca6c9c93a1b35695de76bc1220af93013ebdf0f3817d16bf7d8f991b",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "case_id": "Q22-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "ordinal": 113,
+      "question_id": "Q22",
+      "scenario_expectation_digest": "sha256:68987d2cd0dd82db10e478f1aba4b0c670f977a171fd42a18da9217b330bffff",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "case_id": "Q22-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "result_set_projection_adapter_missing"
+      ],
+      "ordinal": 114,
+      "question_id": "Q22",
+      "scenario_expectation_digest": "sha256:2e17cd6931b31b218858715d3f55e5e68c208b660bdffb6ba96985512198c385",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q23-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 115,
+      "question_id": "Q23",
+      "scenario_expectation_digest": "sha256:97d5889c8fb6378942ecb6e0853d1518352d307ffc159fe25d0c5f759a5ec4e1",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q23-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 116,
+      "question_id": "Q23",
+      "scenario_expectation_digest": "sha256:fc96212e8e6e75a612d7ed8b31032cec8082851c0a283651a0db14631d11f3db",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q23-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 117,
+      "question_id": "Q23",
+      "scenario_expectation_digest": "sha256:aa33f33848be230193adab8c7e1353780c1355d13cc8a308bf0040df6d3c2386",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q23-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 118,
+      "question_id": "Q23",
+      "scenario_expectation_digest": "sha256:378c4619f2c6376c5c4079405a2dd1b24d5ebe33b21439dbf48038f0c289c85f",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q23-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 119,
+      "question_id": "Q23",
+      "scenario_expectation_digest": "sha256:db8b3c41ec542234e9bdcba6bafb174dfafb29b1f63c12867dc2253727a98f35",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q23-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 120,
+      "question_id": "Q23",
+      "scenario_expectation_digest": "sha256:3276504d1345bc096afb7d418f997ba123a0d2ce7e59444236a61ae8dede57da",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_deferred",
+      "actual_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "case_id": "Q24-N",
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "ordinal": 121,
+      "question_id": "Q24",
+      "scenario_expectation_digest": "sha256:cb91f4554c098dc463184efe0a9e4240ebb12eeed1febff5e13631fe13811204",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_deferred",
+      "actual_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "case_id": "Q24-E",
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "ordinal": 122,
+      "question_id": "Q24",
+      "scenario_expectation_digest": "sha256:36ef2198c0c1af963ff9f4a987b8db9c94ddda510314f4c470a44d1222a19f25",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_deferred",
+      "actual_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "case_id": "Q24-M",
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "ordinal": 123,
+      "question_id": "Q24",
+      "scenario_expectation_digest": "sha256:b3646220feec2113daba5aea2e852eea5b0d929c22d7a6111e1bca3fa643a1e2",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_deferred",
+      "actual_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "case_id": "Q24-I",
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "ordinal": 124,
+      "question_id": "Q24",
+      "scenario_expectation_digest": "sha256:d80e4a34c7003bb36d6aed42c0ac65c82ca0d5868f986611bcce3c7b0c192190",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_deferred",
+      "actual_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "case_id": "Q24-B",
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "ordinal": 125,
+      "question_id": "Q24",
+      "scenario_expectation_digest": "sha256:003fbf5883feffd1081a9dcf5edef411797f40b96afaa6e1528a26ff5d60fea7",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_deferred",
+      "actual_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "case_id": "Q24-L",
+      "expected_disposition": "correctly_deferred",
+      "expected_reason_codes": [
+        "tool_13_deferred",
+        "op_34_deferred"
+      ],
+      "ordinal": 126,
+      "question_id": "Q24",
+      "scenario_expectation_digest": "sha256:168b781b5107cc2f051dde895c588c0df86c8a3dced767c098bd9636a25bddd0",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q26-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 127,
+      "question_id": "Q26",
+      "scenario_expectation_digest": "sha256:c0d4ca0d79f9c58043af1c72dbac00afe8dd90941150796cc9569f2b2cf37ba2",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q26-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 128,
+      "question_id": "Q26",
+      "scenario_expectation_digest": "sha256:1a9b975b9ba15f8079a5f485e7c9c02c82eb8c894fbc42b617c67062f1b1be50",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q26-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 129,
+      "question_id": "Q26",
+      "scenario_expectation_digest": "sha256:91cd00004e4ed835588657f15bae6ce89564e74082395d9a49c43fb1c994751f",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q26-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 130,
+      "question_id": "Q26",
+      "scenario_expectation_digest": "sha256:bb2667bbdf0b6385353f78c858820629f2e745dd181428d1d308f831ed3ed264",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q26-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 131,
+      "question_id": "Q26",
+      "scenario_expectation_digest": "sha256:00cdbdc548203ac781534e7e6a68a9c2965d12117f4d1773506d9e48284ea5cb",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "case_id": "Q26-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "result_set_projection_adapter_missing",
+        "p2_1_subgoal_deferred_plan_cap_02"
+      ],
+      "ordinal": 132,
+      "question_id": "Q26",
+      "scenario_expectation_digest": "sha256:afde1c29561fa8d6d9f6dd8f4744d2280d71fa160ea3db7268b92cf1d4be12e3",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "case_id": "Q27-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "ordinal": 133,
+      "question_id": "Q27",
+      "scenario_expectation_digest": "sha256:b5b4f040c58a0a5957495c293db3cd5edc40c7d975d1b75606986f9537178b02",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "case_id": "Q27-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "ordinal": 134,
+      "question_id": "Q27",
+      "scenario_expectation_digest": "sha256:570c3aeb910f464cd21c68a691cd48d62b2cb31347e8345d5b731dc452216bd2",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "case_id": "Q27-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "ordinal": 135,
+      "question_id": "Q27",
+      "scenario_expectation_digest": "sha256:00c43372580452d7cea27f9b4a48d8ebf0cddb3355e5924f1c021732a6d44afe",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "case_id": "Q27-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "ordinal": 136,
+      "question_id": "Q27",
+      "scenario_expectation_digest": "sha256:f842ce7143f5059926ba02d17ed8882cf70589ec5f043aaf0b86b3c056c2dfc3",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "case_id": "Q27-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "ordinal": 137,
+      "question_id": "Q27",
+      "scenario_expectation_digest": "sha256:52565d0404deb8ab250c1a10d11bdbc4c502fd0afb0e9cd9511a2d1ab35ef580",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "case_id": "Q27-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "multi_result_set_binding_missing",
+        "variable_member_fanout_not_admitted"
+      ],
+      "ordinal": 138,
+      "question_id": "Q27",
+      "scenario_expectation_digest": "sha256:daeed878f31acfa46ab0e0f2b4a80b1d51aad7e180a4fb7c3c48243a8d6f207c",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "case_id": "Q29-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "ordinal": 139,
+      "question_id": "Q29",
+      "scenario_expectation_digest": "sha256:7c26f11e2360f0459175cbbf755d87e61facea2116422b28e99160a98e03ce47",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "case_id": "Q29-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "ordinal": 140,
+      "question_id": "Q29",
+      "scenario_expectation_digest": "sha256:a991dd5cf6cc50112dcc5e95b4c81119c118db2aa935ff57c6e24eb8b74833fe",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "case_id": "Q29-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "ordinal": 141,
+      "question_id": "Q29",
+      "scenario_expectation_digest": "sha256:0dcd4bb0a787644f7345e14074ca42930e192a08d0db634ed124b660c0cc16a0",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "case_id": "Q29-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "ordinal": 142,
+      "question_id": "Q29",
+      "scenario_expectation_digest": "sha256:b1331012f2593516366c75f4ddbca2201ee13bc0e9b68c6c52cf6640f6ea2bf9",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "case_id": "Q29-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "ordinal": 143,
+      "question_id": "Q29",
+      "scenario_expectation_digest": "sha256:5707a4227d367dbed14b84b568aeef47d0c99b1c6932cff63e8d7c606e496f42",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "case_id": "Q29-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_external_evidence_boundary_disposition_missing"
+      ],
+      "ordinal": 144,
+      "question_id": "Q29",
+      "scenario_expectation_digest": "sha256:6fac0168c5c742fff607c49e312ca25f9aaf87ea1e617b0da766970288309d63",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "case_id": "Q30-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "ordinal": 145,
+      "question_id": "Q30",
+      "scenario_expectation_digest": "sha256:cecef721302fe0ae58eaa9dee097ee766ca62ffe124fc21785189a2653ebd2dd",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "case_id": "Q30-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "ordinal": 146,
+      "question_id": "Q30",
+      "scenario_expectation_digest": "sha256:bcc5e84f248ef789e9882007fdfc8d47fa7dec3bcde5a4efdf9a64bd92b6b757",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "case_id": "Q30-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "ordinal": 147,
+      "question_id": "Q30",
+      "scenario_expectation_digest": "sha256:fe18e22fc90cec2b6c3b69b1865cb912e7abe75f81fe19671687abff8fa7483b",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "case_id": "Q30-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "ordinal": 148,
+      "question_id": "Q30",
+      "scenario_expectation_digest": "sha256:67ba54accb0a1bd502b106d6871a19aafc746dc27ae03f8644e440415a510cb3",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "case_id": "Q30-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "ordinal": 149,
+      "question_id": "Q30",
+      "scenario_expectation_digest": "sha256:5707a4227d367dbed14b84b568aeef47d0c99b1c6932cff63e8d7c606e496f42",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "case_id": "Q30-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "question_specific_commercial_relationship_boundary_disposition_missing"
+      ],
+      "ordinal": 150,
+      "question_id": "Q30",
+      "scenario_expectation_digest": "sha256:168b781b5107cc2f051dde895c588c0df86c8a3dced767c098bd9636a25bddd0",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "case_id": "Q31-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "ordinal": 151,
+      "question_id": "Q31",
+      "scenario_expectation_digest": "sha256:fe95fe90f4ec41198417db1937803891ee1313ee6e293ff26fdb97a81e535adc",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "case_id": "Q31-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "ordinal": 152,
+      "question_id": "Q31",
+      "scenario_expectation_digest": "sha256:4408021e0fcc63dbc9badc79e53a5555912c76f776784a4c9b4d9ad43ff4a52c",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "case_id": "Q31-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "ordinal": 153,
+      "question_id": "Q31",
+      "scenario_expectation_digest": "sha256:600fbadaecdb3dbed5c7d637f77485ee26e5686ecfbf162f15fe472e40d0633a",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "case_id": "Q31-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "ordinal": 154,
+      "question_id": "Q31",
+      "scenario_expectation_digest": "sha256:939dd65c4d614632bca707185beea8b55c74f618cf9136faea710227fb7837e5",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "case_id": "Q31-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "ordinal": 155,
+      "question_id": "Q31",
+      "scenario_expectation_digest": "sha256:e7764d3b83423554ef9f096c53d66d49673f456cacfe526631e1c2b7cf29be97",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "case_id": "Q31-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing"
+      ],
+      "ordinal": 156,
+      "question_id": "Q31",
+      "scenario_expectation_digest": "sha256:c060ea4dbee6e59eae7b4ec885c7f4a74f8c1aecb87f9e8ce779a21dfbb0c2bd",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "case_id": "Q32-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "ordinal": 157,
+      "question_id": "Q32",
+      "scenario_expectation_digest": "sha256:76db27c534a1b2f9d46525b9a6d8c1950a51badb62f7c99cf84e5fff0f4da7af",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "case_id": "Q32-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "ordinal": 158,
+      "question_id": "Q32",
+      "scenario_expectation_digest": "sha256:ff8415b888eb7e10c444ad48067ff00e7a29285234c76ce009c707be07833a20",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "case_id": "Q32-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "ordinal": 159,
+      "question_id": "Q32",
+      "scenario_expectation_digest": "sha256:971292697da8824ef67014c4c3c8d7f922255146d8c35b8191d831a792b1cb67",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "case_id": "Q32-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "ordinal": 160,
+      "question_id": "Q32",
+      "scenario_expectation_digest": "sha256:d3bcc974b8da158a91fc2f3f9a87ffb76297ce45622e6b56d3772aa267620ac3",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "case_id": "Q32-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "ordinal": 161,
+      "question_id": "Q32",
+      "scenario_expectation_digest": "sha256:cf02aebc9bff2e2213f431f2d32d84a18bdc825173128fff0b0188de922f5ec0",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "case_id": "Q32-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "legacy_fact_to_op29_op37_adapter_missing",
+        "question_specific_conflict_gate_missing"
+      ],
+      "ordinal": 162,
+      "question_id": "Q32",
+      "scenario_expectation_digest": "sha256:168b781b5107cc2f051dde895c588c0df86c8a3dced767c098bd9636a25bddd0",
+      "scenario_ordinal": 6
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "case_id": "Q33-N",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "ordinal": 163,
+      "question_id": "Q33",
+      "scenario_expectation_digest": "sha256:a10f50f0a6b74bd8793b24dd50dad67862d5499aca2a69186bc8ac3cb9c1f876",
+      "scenario_ordinal": 1
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "case_id": "Q33-E",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "ordinal": 164,
+      "question_id": "Q33",
+      "scenario_expectation_digest": "sha256:d5c999418648c03f3c0a698e20a30b91f7240d31d20dd4f39ead6510cd916f8a",
+      "scenario_ordinal": 2
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "case_id": "Q33-M",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "ordinal": 165,
+      "question_id": "Q33",
+      "scenario_expectation_digest": "sha256:514f79c6c342490fc3c75d0b507fa36879e920370da3e4c7099c12374e59993f",
+      "scenario_ordinal": 3
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "case_id": "Q33-I",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "ordinal": 166,
+      "question_id": "Q33",
+      "scenario_expectation_digest": "sha256:84432f536a33af6be069a4bf10b03de64bb6fa44ebeebcbc83312d4aebcdae21",
+      "scenario_ordinal": 4
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "case_id": "Q33-B",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "ordinal": 167,
+      "question_id": "Q33",
+      "scenario_expectation_digest": "sha256:5707a4227d367dbed14b84b568aeef47d0c99b1c6932cff63e8d7c606e496f42",
+      "scenario_ordinal": 5
+    },
+    {
+      "actual_disposition": "correctly_blocked",
+      "actual_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "case_id": "Q33-L",
+      "expected_disposition": "correctly_blocked",
+      "expected_reason_codes": [
+        "legacy_p1_units_not_in_w5_dispatcher",
+        "exhaustive_unsupported_boundary_response_missing"
+      ],
+      "ordinal": 168,
+      "question_id": "Q33",
+      "scenario_expectation_digest": "sha256:168b781b5107cc2f051dde895c588c0df86c8a3dced767c098bd9636a25bddd0",
+      "scenario_ordinal": 6
+    }
+  ],
+  "certification_semantics_version": "country_outage_p2_s1_w6_offline_deterministic_implementation_acceptance_v2",
+  "content_digest": "sha256:b1fdc872db72249c10656fc26ff5f1e4a0876891d9c6a994c218cf4afd3750f5",
+  "implementation_candidate_digest": "sha256:49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c",
+  "implementation_candidate_id": "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6",
+  "machine_facts": {
+    "adapter_contract_facts": {
+      "adapter_contract_probes": {
+        "exhaustive_unsupported_boundary_response": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_exhaustive_unsupported_boundary_response_v1"
+        },
+        "legacy_fact_to_op29_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_legacy_fact_to_op29_adapter_v1"
+        },
+        "legacy_fact_to_op29_op37_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_legacy_fact_op29_op37_adapter_v1"
+        },
+        "legacy_p1_execution_bridge": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_legacy_p1_execution_bridge_v1"
+        },
+        "legacy_peak_to_plan_cap_bridge": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_legacy_peak_plan_cap_bridge_v1"
+        },
+        "multi_population_structural_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_multi_population_structural_adapter_v1"
+        },
+        "multi_result_set_binding": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_multi_result_set_binding_v1"
+        },
+        "per_path_fanout_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_per_path_fanout_adapter_v1"
+        },
+        "population_binding_and_asn_bound_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_population_binding_asn_bound_adapter_v1"
+        },
+        "question_specific_boundary_disposition": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_question_specific_boundary_disposition_v1"
+        },
+        "question_specific_conflict_gate": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_question_specific_conflict_gate_v1"
+        },
+        "result_set_population_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_result_set_population_adapter_v1"
+        },
+        "result_set_population_join_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_result_set_population_join_adapter_v1"
+        },
+        "result_set_projection_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_result_set_projection_adapter_v1"
+        },
+        "result_set_to_op33_population_binding": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_result_set_op33_population_binding_v1"
+        },
+        "result_set_to_vp_operator_adapter": {
+          "present": false,
+          "required_contract_marker": "country_outage_p2_s1_result_set_vp_operator_adapter_v1"
+        }
+      },
+      "probe_kind": "required_versioned_contract_symbol_presence",
+      "source_files": {
+        "agent-sidecar/src/chat/p2-s1-planning-grounding-port.ts": "sha256:fa55a6835148dc4684d281b084ae38ca592114ad0508fb6dec66369f65c53413",
+        "backend/services/country_outage_p2_s1_investigation_runtime.py": "sha256:6c1a38eb84fe10f9a74c8603349122481218208cddeffd4b9115e1babaa237fa",
+        "backend/services/country_outage_p2_s1_registry_dispatcher.py": "sha256:d51be468e2d7814903d5f956ce4729a8ee9473ab1303030aa5af08520abbca2d"
+      }
+    },
+    "candidate_input_count": 1,
+    "content_digest": "sha256:8c4565169f9bced4eff589287ca1c21cddd23e48f554c533d491eb3a41c4837b",
+    "deferred_scope_facts": {
+      "baseline_file_sha256": "sha256:6214638dd21c8659ee464a82cf038849edf1c8fa5d706944c50890a171f3bd47",
+      "deferred_unit_ids": [
+        "OP-34",
+        "PLAN-CAP-02",
+        "TOOL-13"
+      ],
+      "dynamic_fanout_question_ids": [
+        "Q20",
+        "Q23",
+        "Q26"
+      ],
+      "dynamic_fanout_subgoals_digest": "sha256:9538d550b15d50c11a97aa703ee8f1c5adf6fb1e2837cc9a73469f970c5b41a6"
+    },
+    "formal_planning_allowlist_unit_ids": [
+      "BOUNDARY-01",
+      "GATE-01",
+      "GATE-02",
+      "GATE-03",
+      "OP-29",
+      "OP-37",
+      "TOOL-07",
+      "TOOL-11"
+    ],
+    "implementation_candidate_digest": "sha256:49686c17e811063dad6fe2e687202c7031add0b4db105d1e304bce94c3a9289c",
+    "implementation_candidate_id": "country-outage-p2-s1-w5-49686c17e811063dad6fe2e6",
+    "p2_1_denial_probe": {
+      "content_digest": "sha256:504381579f8141a2709990d3c67d0f4cffcb11d3df8aacd20ba07d09c5769e50",
+      "dispatcher_file_sha256": "sha256:d51be468e2d7814903d5f956ce4729a8ee9473ab1303030aa5af08520abbca2d",
+      "dispatcher_path": "backend/services/country_outage_p2_s1_registry_dispatcher.py",
+      "execution_attempt_count": 3,
+      "handler_invocation_count": 0,
+      "probe_store_created": false,
+      "public_graph_count": 0,
+      "public_result_set_count": 0,
+      "schema_version": "country_outage_p2_s1_w6_p2_1_denial_probe_v2",
+      "unit_results": [
+        {
+          "denial_code": "p2_1_unit_forbidden",
+          "handler_invoked": false,
+          "status_code": 403,
+          "unit_id": "PLAN-CAP-02"
+        },
+        {
+          "denial_code": "p2_1_unit_forbidden",
+          "handler_invoked": false,
+          "status_code": 403,
+          "unit_id": "TOOL-13"
+        },
+        {
+          "denial_code": "p2_1_unit_forbidden",
+          "handler_invoked": false,
+          "status_code": 403,
+          "unit_id": "OP-34"
+        }
+      ]
+    },
+    "plan_cap_01_scalar_only": true,
+    "schema_version": "country_outage_p2_s1_w6_machine_facts_v2",
+    "source_population_facts": {
+      "distinct_asn_count": 1,
+      "manifest_content_sha256": "e98cb1e68f34f576d5d709a07597136236e28d9d79daa49d27b6ebce43e2ba8e",
+      "manifest_file_sha256": "1b250d9fdb0e2f5665b9160d164d8c7cc0e86c06d8f0dbdd606de7c37491bf0e",
+      "row_counts": {
+        "asn_state_rows": 2,
+        "fixed_cohort_member_rows": 1,
+        "materialized_route_state_rows_at_exact_time": 2,
+        "new_prefix_state_rows": 2,
+        "prefix_state_rows": 2,
+        "window_path_association_evidence_rows": 1
+      }
+    },
+    "w5_execution_admission_receipt_digest": "sha256:9c05bf1bb86c1c726827e1fe0c66df186a96546f899cd099a5bb3d7e5aa80a46",
+    "w5_registry_admitted_unit_ids": [
+      "BOUNDARY-01",
+      "DELIVERY-01",
+      "GATE-01",
+      "GATE-02",
+      "GATE-03",
+      "GATE-04",
+      "GATE-05",
+      "OP-05",
+      "OP-06",
+      "OP-07",
+      "OP-08",
+      "OP-09",
+      "OP-10",
+      "OP-11",
+      "OP-12",
+      "OP-13",
+      "OP-14",
+      "OP-15",
+      "OP-16",
+      "OP-17",
+      "OP-18",
+      "OP-19",
+      "OP-20",
+      "OP-21",
+      "OP-22",
+      "OP-23",
+      "OP-24",
+      "OP-25",
+      "OP-26",
+      "OP-27",
+      "OP-28",
+      "OP-29",
+      "OP-30",
+      "OP-31",
+      "OP-32",
+      "OP-33",
+      "OP-35",
+      "OP-36",
+      "OP-37",
+      "OP-38",
+      "OP-39",
+      "PLAN-CAP-01",
+      "RENDERER-01",
+      "RENDERER-02",
+      "RENDERER-03",
+      "TOOL-07",
+      "TOOL-08",
+      "TOOL-09",
+      "TOOL-10",
+      "TOOL-11",
+      "TOOL-12"
+    ],
+    "w5_registry_snapshot_digest": "sha256:71582efe938a0c3c4d8d0e88e2cecea498f1935384cf665ffcca1f189050b600",
+    "w5_registry_snapshot_id": "registry-snapshot-sha256:71582efe938a0c3c4d8d0e88e2cecea498f1935384cf665ffcca1f189050b600"
+  },
+  "oracle_sources": {
+    "capability_map_digest": "sha256:65602e1609a7bf0d8558fbb0f136cb22acc74517d6b6d68f84df82f70f886902",
+    "oracle_digest": "sha256:92cc8248497d1f545b9104092cd8aab0c3c063a536312ee049cfd7ad8b826d1b",
+    "seed_digest": "sha256:c4d3c9899d24631f848c48eb73900d791ddfb0dd51fa3ba8415cdf72d59e9497"
+  },
+  "schema_version": "country_outage_p2_s1_w6_case_matrix_v2"
+}
