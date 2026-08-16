@@ -79,10 +79,48 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
 
         errors = module.validate_document_texts(
             config,
-            acceptance.replace("### P0-BE-09：", "### P0-BE-10：", 1),
+            acceptance.replace("P0 将三类真值分开维护", "P0 混合维护所有真值", 1),
             plan,
         )
-        self.assertTrue(any("P0-BE-01 至 P0-BE-09" in error for error in errors))
+        self.assertTrue(
+            any("P0 将三类真值分开维护" in error for error in errors)
+        )
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace(
+                "当前系统能力边界是 P0 的实测出口，不是预先成立的入口",
+                "当前系统能力边界默认成立",
+                1,
+            ),
+            plan,
+        )
+        self.assertTrue(
+            any("当前系统能力边界是 P0 的实测出口" in error for error in errors)
+        )
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace("Capability Discovery Ledger", "能力清单"),
+            plan,
+        )
+        self.assertTrue(any("Capability Discovery Ledger" in error for error in errors))
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance,
+            plan.replace("不要求先实现全部未来工具", "必须先实现全部未来工具", 1),
+        )
+        self.assertTrue(
+            any("不要求先实现全部未来工具" in error for error in errors)
+        )
+
+        errors = module.validate_document_texts(
+            config,
+            acceptance.replace("### P0-BE-11：", "### P0-BE-12：", 1),
+            plan,
+        )
+        self.assertTrue(any("P0-BE-01 至 P0-BE-11" in error for error in errors))
 
     def test_every_p0_stage_emits_review_without_claiming_effect_acceptance(self) -> None:
         for stage in (f"S{index}" for index in range(4)):
@@ -141,7 +179,7 @@ class CountryOutageAgentProgramHookTest(unittest.TestCase):
         reason = payload.get("reason", "")
         self.assertIn("P0-FE-03", reason)
         self.assertIn(
-            "P0-BE-03、P0-BE-04、P0-BE-05、P0-BE-06、P0-BE-07",
+            "P0-BE-01、P0-BE-02、P0-BE-03、P0-BE-04、P0-BE-05、P0-BE-06、P0-BE-07、P0-BE-08、P0-BE-10、P0-BE-11",
             reason,
         )
         self.assertIn("Hook 机检只覆盖", reason)
