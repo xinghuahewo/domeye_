@@ -5,11 +5,16 @@ M0/M1 不以架构层、文件或 Issue 数量衡量进度。
 
 ## 阅读顺序
 
-1. [首个纵向切片锚点合同](Domeye_First_Vertical_Slice_Anchor_v1.0.md)：M0/M1 的权威问题、身份、执行链、J1–J5 与 DG1 门槛。
-2. [Capability Map](capability-map.md)：按可观察能力查看建设范围和成熟度。
-3. [目标架构](target-architecture.md)：理解 Pi、Host、Tool、Operator、Finding 和回答安全链的职责边界。
+1. [当前代码基线](Domeye_Current_Code_Baseline_2026-08-16.md)：确认 `main@6a4bbd4…` 的真实起点，不把设计当实现。
+2. [产品、数据与 Claim 边界 v1.1](Domeye_Product_Data_Claim_Boundary_v1.1.md)：确认产品主名称、当前数据范围和禁止结论。
+3. [首个纵向切片锚点合同](Domeye_First_Vertical_Slice_Anchor_v1.0.md)：确认 M0/M1 的固定问题、身份、执行链、J1–J5 与 DG1 门槛。
+4. [目标架构 v1.1](Domeye_Agent_Target_Architecture_v1.1.md)：理解长期职责和迁移方向，不将其当作当前建设清单。
+5. [M0/M1 目标架构摘要](target-architecture.md)：只看首片直接涉及的 Pi、Host、Tool、Operator、Finding 和回答安全链。
+6. [Capability Map](capability-map.md)：按可观察能力查看建设范围和成熟度。
 
-发生冲突时，以首个纵向切片锚点合同为准。合同目前为 `Designed`；文档存在不代表能力已经实现、验证或发布。
+产品定义冲突看产品边界；首片固定身份、执行链和验收冲突看锚点合同；代码行为冲突看
+对应 Candidate 的测试、机器合同和代码。合同目前为 `Designed`；文档存在不代表能力已经
+实现、验证或发布。
 
 ## 当前 M0/M1 边界
 

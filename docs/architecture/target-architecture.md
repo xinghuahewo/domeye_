@@ -4,7 +4,8 @@
 [首个纵向切片锚点合同](Domeye_First_Vertical_Slice_Anchor_v1.0.md)为准；能力范围见
 [Capability Map](capability-map.md)。
 
-当前产品展示名称固定为 **RRC25 BGP 控制面证据调查**。
+产品主名称固定为 **Domeye 国家网络中断调查 Agent**；当前能力说明是
+**当前已接入证据能力：RRC25 BGP 控制面**。产品名不改变首片的单 RRC25 事实边界。
 
 ## 1. 当前执行循环
 

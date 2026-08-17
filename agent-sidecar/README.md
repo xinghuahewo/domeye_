@@ -1,8 +1,9 @@
 # Agent Sidecar 目录说明
 
 本目录承载内部 `country_outage` Agent 的 Node.js Sidecar 实现、测试、运行资源与少量
-辅助脚本；当前产品名是 **RRC25 BGP 控制面证据调查**。它是实现工作区，不是产品能力
-清单，也不是生产状态证明。当前 M0/M1 的产品和执行边界先看
+辅助脚本；产品主名称是 **Domeye 国家网络中断调查 Agent**，当前首片只接入 RRC25 BGP
+控制面证据能力。它是实现工作区，不是产品能力清单，也不是生产状态证明。当前 M0/M1
+的产品和执行边界先看
 [首个纵向切片锚点合同](../docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)。
 
 ## 状态说明

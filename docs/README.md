@@ -9,10 +9,11 @@
 |---:|---|---|
 | 1 | 当前任务允许改什么、必须检查什么 | 当前 Worktree 的 `.codex/TASK.json` 与 [AGENTS.md](../AGENTS.md) |
 | 2 | 代码现在实际做什么 | 当前测试、机器合同和代码；文档不能覆盖运行事实 |
-| 3 | M0/M1 产品边界、冻结身份、执行链、J1–J5 与 DG1 | [首个纵向切片锚点合同](architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md) |
-| 4 | 能力拆分和当前建设路线 | [Capability Map](architecture/capability-map.md)、[Epics](roadmap/epics.md)、[Feature Breakdown](roadmap/feature-breakdown.md) |
-| 5 | GitHub、主干、发布和状态管理 | [GitHub 管理规则](governance/Domeye_GitHub_Management_Rules_v1.0.md)、[主干治理规范](主干开发与发布归一治理规范.md) |
-| 6 | 旧设计、旧计划和历史 Evidence | 只能解释过去，不能覆盖前五项或证明当前 Candidate |
+| 3 | 产品主名称、数据范围和对外事实强度 | [产品、数据与 Claim 边界 v1.1](architecture/Domeye_Product_Data_Claim_Boundary_v1.1.md) |
+| 4 | M0/M1 冻结身份、执行链、J1–J5 与 DG1 | [首个纵向切片锚点合同](architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md) |
+| 5 | 长期职责、R01–R22 完整性和阶段顺序 | [目标架构 v1.1](architecture/Domeye_Agent_Target_Architecture_v1.1.md)、[审计对应表](requirements/Domeye_Adversarial_Review_22_Items_Traceability_v1.1.md)、[阶段计划](roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md) |
+| 6 | GitHub、主干、发布和状态管理 | [GitHub 治理套件](governance/README.md)、[主干治理规范](主干开发与发布归一治理规范.md) |
+| 7 | 旧设计、旧计划和历史 Evidence | 只能解释过去，不能覆盖前六项或证明当前 Candidate |
 
 同一级发生冲突时，机器合同优先于说明文档；后发布且明确替代旧语义的合同优先。文件名
 中的“最终验收”“已认证”或“生产”只描述该文件绑定的历史对象，不能跨 Candidate 继承。
@@ -24,22 +25,27 @@
 
 ### Agent 重构
 
-- [首个纵向切片锚点合同 v1.0](architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)：
-  M0/M1 最高优先级产品与验收合同；当前状态为 `Designed`。
-- [Capability Map](architecture/capability-map.md)：按可观察能力说明 Agent、Host、
-  Execution、Answer Safety、Evidence、Evaluation 与 Domain 边界。
-- [架构导航](architecture/README.md)与[目标架构](architecture/target-architecture.md)：
-  说明滚动下一 Action、逐 Action Host 准入和 Finding-first 回答链。
-- [Architecture Refactor Epics](roadmap/epics.md)：当前能力域。
-- [Agent Feature Breakdown](roadmap/feature-breakdown.md)：当前 Feature 结果和自检规则。
-- [Roadmap 导航](roadmap/README.md)、[Roadmap 视图](roadmap/roadmap-view.md)与
-  [进度可视化规则](roadmap/progress-visualization.md)：按 M0/M1、J1–J5、Evidence 和
-  DG1 查看进展，不按架构层完成率计算能力。
-- [GitHub 管理与任务收尾同步规则](governance/Domeye_GitHub_Management_Rules_v1.0.md)：
-  Issue、Project、Candidate、Evidence 和状态轴的管理合同。
-- [ADR-001：使用 Pi 作为 Agent Runtime](adr/ADR-001-pi-as-agent-runtime.md)：Pi 选型
-  仍适用；其中旧 Claim Publication 用语已由首切片的
-  `Typed Finding → Answer Context → Renderer → Response Guard` 边界修订。
+七份核心交接文档按以下顺序阅读：
+
+| 顺序 | 文档 | 地位 |
+|---:|---|---|
+| 1 | [当前代码基线](architecture/Domeye_Current_Code_Baseline_2026-08-16.md) | 固定 `main@6a4bbd4…` 的观察事实；不会自动代表后续提交 |
+| 2 | [产品、数据与 Claim 边界 v1.1](architecture/Domeye_Product_Data_Claim_Boundary_v1.1.md) | 产品主名称、当前数据范围与禁止陈述 |
+| 3 | [首个纵向切片锚点合同 v1.0](architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md) | 当前唯一 M0/M1 交付、J1–J5 与 DG1；状态为 `Designed` |
+| 4 | [目标架构 v1.1](architecture/Domeye_Agent_Target_Architecture_v1.1.md) | 长期职责与禁止路径；不是 M0/M1 建设清单 |
+| 5 | [22 项整改审计对应表 v1.1](requirements/Domeye_Adversarial_Review_22_Items_Traceability_v1.1.md) | 按 R01–R22 原顺序防遗漏 |
+| 6 | [22 项开发优先级与阶段计划 v1.1](roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md) | 按依赖、风险和 Decision Gate 排序 |
+| 7 | [Domeye GitHub 治理套件 v1.0](governance/README.md) | 管理 Issue、Project、Candidate、Evidence 和状态同步 |
+
+专项导航仍保留：[架构导航](architecture/README.md)、[M0/M1 架构摘要](architecture/target-architecture.md)、
+[Capability Map](architecture/capability-map.md)、[Architecture Refactor Epics](roadmap/epics.md)、
+[Agent Feature Breakdown](roadmap/feature-breakdown.md)、[Roadmap 导航](roadmap/README.md)、
+[Roadmap 视图](roadmap/roadmap-view.md)和[进度可视化规则](roadmap/progress-visualization.md)。
+它们解释具体工作，但不能覆盖七份核心文档。
+
+[ADR-001：使用 Pi 作为 Agent Runtime](adr/ADR-001-pi-as-agent-runtime.md)的 Pi 选型仍适用；
+其中旧 Claim Publication 用语已由首切片的
+`Typed Finding → Answer Context → Renderer → Response Guard` 边界修订。
 
 ### Domeye Core 现有运行时
 

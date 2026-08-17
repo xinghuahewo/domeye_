@@ -224,10 +224,14 @@ Gate Record 还必须绑定 Milestone node ID、退出合同 digest、最终 Gat
 |---|---|
 | 稳定路径 | `docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md` |
 | 合同版本 | `domeye.first-vertical-slice/v1.0` |
-| SHA-256 | `4ddb3ab7aa58bb3d5dafd3c272fc3aba12e0e5e654d1c5a3399c15dae25fe7b8` |
+| SHA-256 | `fa42124446d335ce9bb2636476787566417044bda160939ab8efa2315e97473c` |
 
 摘要按该文件最终 UTF-8/LF 字节计算。路径、版本或摘要任一不一致时，旧 Candidate
 Evidence 和 Gate 决定不得继续适用。
+
+本摘要因产品主名称与当前 RRC25 能力分层修订而取代旧 `4ddb3ab7…fe7b8` 摘要。本次
+仓库任务不写 GitHub；Issue #11 和 Completion Packet 只有在后续获得精确授权并完成
+写后读回时才能同步新摘要。
 
 M0 / M1 的真实进度以锚点合同的 J1–J5 为核心，不用 L1–L7 卡片完成率代替：
 
