@@ -23,4 +23,4 @@
 - 当前首片目标与边界分别以[锚点合同](../architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)
   和[产品、数据与 Claim 边界](../architecture/Domeye_Product_Data_Claim_Boundary_v1.1.md)为准。
 
-本次仓库整理没有执行任何 GitHub 写入，也没有验证 Projects v2 写权限或生产环境。
+文档目录整理只调整文档路径和导航，不修改 GitHub Issues、Projects、Milestones 或生产环境；这些对象是否同步仍按本套规则和独立授权处理。

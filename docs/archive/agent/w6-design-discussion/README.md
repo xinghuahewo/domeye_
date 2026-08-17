@@ -10,11 +10,11 @@ Tool / Operator / Registry / ResultSet 资产，以及解释为什么需要当�
 
 当前开发先读：
 
-1. [目标架构 v1.1](../../architecture/Domeye_Agent_Target_Architecture_v1.1.md)
-2. [产品、数据与 Claim 边界 v1.1](../../architecture/Domeye_Product_Data_Claim_Boundary_v1.1.md)
-3. [首个纵向切片锚点合同 v1.0](../../architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)
-4. [当前代码基线](../../architecture/Domeye_Current_Code_Baseline_2026-08-16.md)
-5. [总文档导航](../../README.md)
+1. [目标架构 v1.1](../../../architecture/Domeye_Agent_Target_Architecture_v1.1.md)
+2. [产品、数据与 Claim 边界 v1.1](../../../architecture/Domeye_Product_Data_Claim_Boundary_v1.1.md)
+3. [首个纵向切片锚点合同 v1.0](../../../architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)
+4. [当前代码基线](../../../architecture/Domeye_Current_Code_Baseline_2026-08-16.md)
+5. [总文档导航](../../../README.md)
 
 ## 1. 本次归档的文件组成
 

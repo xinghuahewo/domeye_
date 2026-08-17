@@ -33,7 +33,7 @@ Operator、Typed Finding 和回答边界，到安全答案。它不是新产品�
 | 6 | [22 项开发优先级与阶段计划 v1.1](docs/roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md) | 哪些问题先处理、哪些必须由真实证据触发后再建设 |
 | 7 | [Domeye GitHub 治理套件 v1.0](docs/governance/README.md) | 上述工作如何进入 Issue、Project、Candidate、Evidence 和状态同步 |
 
-旧 W6 讨论包、旧 P0–P2 计划和历史 Evidence 继续保留，但不能覆盖这套交接主线；旧讨论包及其 docs 之外的过渡资产统一从[归档索引](docs/agent/legacy-design/README.md)进入。
+旧 W6 讨论包、旧 P0–P2 计划和历史 Evidence 继续保留，但不能覆盖这套交接主线；所有旧文档统一从[文档归档索引](docs/archive/README.md)进入。
 
 ## 现有 Core 能力概览
 
@@ -45,8 +45,8 @@ Operator、Typed Finding 和回答边界，到安全答案。它不是新产品�
 
 ## 按目的开始阅读
 
-- 运行或修改现有 Core：先读[二三月固定开发模式](docs/二三月固定开发模式.md)、
-  [开发与验收流水线](docs/开发与验收流水线.md)、[后端说明](backend/README.md)和
+- 运行或修改现有 Core：先读[二三月固定开发模式](docs/core/二三月固定开发模式.md)、
+  [开发与验收流水线](docs/core/开发与验收流水线.md)、[后端说明](backend/README.md)和
   [部署说明](deploy/README.md)。
 - 参与 Agent 重构：先读上面的七份核心交接文档，再按当前任务进入
   [Capability Map](docs/architecture/capability-map.md)、[Epics](docs/roadmap/epics.md)或
@@ -86,7 +86,8 @@ Candidate 身份。
 | `contracts/` | API、数据、Tool、Operator、Registry 和历史评测使用的机器可读合同 |
 | `deploy/` | 候选验收、制品、数据库、运行管理、Nginx、治理 Hook、发布与回滚工具 |
 | `dev/` | 本地开发入口、快速检查、固定夹具、数据质量研究和开发数据库/API 工具 |
-| `docs/` | 当前权威文档、冻结旧设计、历史 Evidence 说明和模板；分类见文档导航 |
+| `docs/` | 当前权威文档、Core 运行约束和归档入口；分类见文档导航 |
+| `docs/archive/` | 旧 Agent 设计、旧 Core 产品/页面、旧数据计划和历史 Evidence；只作追溯与迁移输入 |
 | `evaluation/` | 各历史 Candidate 的案例、轨迹、回执和评测制品；只证明其自身绑定的对象 |
 | `frontend/` | Vue 3 + TypeScript 页面、组件、API 客户端和前端测试 |
 | `openspec/` | 研究或变更提案、设计、规格与任务记录，不自动代表已经实现 |
@@ -120,7 +121,7 @@ make codex-postflight
 
 `check-*` 命令无生产副作用。数据库候选准备、生产激活和回滚是单独的 `release-*`
 流程，不能把本地检查、HTTP 200、PR 合并或页面可见当成生产验证；具体边界见
-[开发与验收流水线](docs/开发与验收流水线.md)。
+[开发与验收流水线](docs/core/开发与验收流水线.md)。
 
 ## 当前硬边界
 
@@ -146,4 +147,4 @@ Docker Compose v2、Python `>=3.10,<3.11`、PostgreSQL `12.16`、TimescaleDB `2.
 具体路径、镜像和操作步骤以[部署说明](deploy/README.md)为准。
 
 生产拓扑、制品、发布、回滚和环境要求统一留在[部署说明](deploy/README.md)及
-[主干开发与发布归一治理规范](docs/主干开发与发布归一治理规范.md)，首页不再重复维护。
+[主干开发与发布归一治理规范](docs/governance/主干开发与发布归一治理规范.md)，首页不再重复维护。
