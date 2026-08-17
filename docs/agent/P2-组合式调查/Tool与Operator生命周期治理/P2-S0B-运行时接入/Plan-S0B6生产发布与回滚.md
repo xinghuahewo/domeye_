@@ -16,7 +16,7 @@
 ## 二、入口真值
 
 - 当前生产活动 release、进程、端口、readiness 和回滚点必须在部署前现场读取；
-- `codex/prod` 必须是活动 release 源提交，S0A/S0B 提交必须是其线性后继；
+- `main` 必须是活动 release 源提交，S0A/S0B 提交必须是其线性后继；
 - S0B shadow candidate、Snapshot、同候选测试、独立 Reviewer 和 final Hook 必须有效；
 - 发布必须从最终提交生成一个源码归档，候选和生产使用同一不可变 Sidecar 制品；
 - 远端 `/home/bgpdata/Domeye-Core` 若为脏检出，只允许读取，不得作为源码来源或清理目标。
@@ -67,7 +67,7 @@ prod34 不删除摘要门，也不把旧 P1 模型认证改写成覆盖新执行
 1. 重建 S0B shadow candidate 与同候选证据；
 2. 运行 Python、Sidecar 全量测试、生产依赖审计、发布夹具、Reviewer、final Hook 和 core 摘要；
 3. 提交发布适配并完成 postflight；
-4. 快进整合到 `codex/prod`，创建不可改写 annotated tag；
+4. 快进整合到 `main`，创建不可改写 annotated tag；
 5. 从该提交只生成一次源码归档并记录 SHA-256。
 
 ### 4.2 Prepare
@@ -123,7 +123,7 @@ Prepare 不停止当前进程，不改变 `current`。
 只有下列身份完全一致才可写成生产 verified：
 
 ```text
-core-work HEAD = origin/codex/prod = annotated tag commit
+core-work HEAD = origin/main = annotated tag commit
 = source archive commit = release manifest source commit
 current release = active state = running process release
 readiness P2 candidate/Snapshot = release manifest P2 candidate/Snapshot

@@ -34,7 +34,7 @@ write_approval() {
     local target="${APPROVALS}/${commit}.json"
     local temporary="${target}.new"
     jq -n --arg commit "${commit}" \
-        '{schema_version:"domeye_codex_prod_approval_v1",commit:$commit,review:{status:"approved",evidence:"fixture-review"},ci:{status:"passed",evidence:"fixture-ci"},approved_at:"2026-08-05T00:00:00Z"}' \
+        '{schema_version:"domeye_main_approval_v1",commit:$commit,review:{status:"approved",evidence:"fixture-review"},ci:{status:"passed",evidence:"fixture-ci"},approved_at:"2026-08-05T00:00:00Z"}' \
         >"${temporary}"
     chmod 0600 "${temporary}"
     mv "${temporary}" "${target}"
@@ -65,7 +65,7 @@ git -C "${WORK}" add fixture.txt
 git -C "${WORK}" commit -q -m 'fixture: base'
 base_commit="$(git -C "${WORK}" rev-parse HEAD)"
 write_approval "${base_commit}"
-git -C "${WORK}" push -q origin HEAD:refs/heads/codex/prod
+git -C "${WORK}" push -q origin HEAD:refs/heads/main
 
 printf 'task\n' >>"${WORK}/fixture.txt"
 git -C "${WORK}" commit -qam 'fixture: task branch'
@@ -73,9 +73,9 @@ git -C "${WORK}" push -q origin HEAD:refs/heads/codex/fixture-task
 
 second_commit="$(git -C "${WORK}" rev-parse HEAD)"
 expect_reject '缺少审批的主干更新' \
-    git -C "${WORK}" push origin HEAD:refs/heads/codex/prod
+    git -C "${WORK}" push origin HEAD:refs/heads/main
 write_approval "${second_commit}"
-git -C "${WORK}" push -q origin HEAD:refs/heads/codex/prod
+git -C "${WORK}" push -q origin HEAD:refs/heads/main
 
 lightweight_tag='20260805T000001Z-fixture-lightweight'
 git -C "${WORK}" tag "${lightweight_tag}"
@@ -90,14 +90,14 @@ expect_reject '正式 tag 删除' \
     git -C "${WORK}" push origin ":refs/tags/${annotated_tag}"
 
 expect_reject '生产主干非快进' \
-    git -C "${WORK}" push origin "+${base_commit}:refs/heads/codex/prod"
+    git -C "${WORK}" push origin "+${base_commit}:refs/heads/main"
 
 invalid_output="$("${SCRIPT_ROOT}/check-release-normalization.sh" invalid 2>&1 || true)"
 grep -F 'release-id 格式无效' <<<"${invalid_output}" >/dev/null \
     || fail '归一检查没有拒绝无效 release-id'
 
 for required_text in \
-    'refs/heads/codex/prod' \
+    'refs/heads/main' \
     'source.archive_sha256' \
     'BACKEND-SOURCE-BINDING.json' \
     'FRONTEND-MANIFEST.json' \

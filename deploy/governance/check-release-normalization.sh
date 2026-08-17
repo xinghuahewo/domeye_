@@ -90,8 +90,8 @@ jq -e --arg release_id "${RELEASE_ID}" --arg commit "${COMMIT}" \
     "${VERIFICATION}" >/dev/null \
     || die '生产验证证据与统一候选不一致'
 
-[[ "$(git -C "${REPOSITORY}" rev-parse refs/heads/codex/prod)" == "${COMMIT}" ]] \
-    || die 'codex/prod 与候选 commit 不一致'
+[[ "$(git -C "${REPOSITORY}" rev-parse refs/heads/main)" == "${COMMIT}" ]] \
+    || die 'main 与候选 commit 不一致'
 [[ "$(git -C "${REPOSITORY}" cat-file -t "${TAG}")" == 'tag' ]] \
     || die '发布 tag 不是 annotated tag'
 [[ "$(git -C "${REPOSITORY}" rev-parse "${TAG}^{}")" == "${COMMIT}" ]] \

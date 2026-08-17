@@ -1,16 +1,19 @@
 # Domeye Architecture Refactor Epics
 
+Roadmap 以用户旅程和已证实风险为主，不按层数或组件数计算完成度。M0/M1 的当前
+权威锚点是 `docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md`。
+
 ## E0 Governance and Product Management
 
 Goal:
 
-Create capability-driven development management.
+Keep architecture, Roadmap, GitHub state and Candidate evidence consistent.
 
 Outputs:
 
-- Capability Map
-- Requirement Traceability Matrix
-- Roadmap
+- Capability Map and requirement traceability
+- First vertical slice anchor and digest
+- Candidate-bound GitHub governance and decision records
 
 ---
 
@@ -18,14 +21,14 @@ Outputs:
 
 Goal:
 
-Use Pi as cognitive runtime.
+Use Pi as the cognitive runtime for a rolling observe-and-decide loop.
 
 Scope:
 
-- Agent loop
-- Context management
-- Capability view
-- Tool interaction
+- User intent and context projection
+- One next Action at a time
+- Observe Tool / Operator result before the next decision
+- Clarify, reselect or stop on failure
 
 ---
 
@@ -37,25 +40,25 @@ Make Host the trusted business control layer.
 
 Scope:
 
-- Identity
-- Policy
-- Admission
-- Transactions
-- Claims
+- Domain and Candidate identity
+- Per-Action policy, admission and budget
+- Trusted receipts and state transitions
+- Credential and data-access boundaries
 
 ---
 
-## E3 Plan and Workflow
+## E3 Rolling Interaction and Action State
 
 Goal:
 
-Unify planning semantics.
+Make each interactive Action explicit, observable and recoverable without requiring a universal plan IR.
 
 Scope:
 
-- Goal model
-- Common Plan IR
-- Execution workflow
+- Proposed, admitted, executing and terminal Action states
+- Result observation and next-action decision
+- Stop, clarify and reselect branches
+- Durable workflow only when a proven long-running use case requires it
 
 ---
 
@@ -63,29 +66,31 @@ Scope:
 
 Goal:
 
-Unify Registry and execution.
+Resolve admitted capabilities to versioned, auditable execution units.
 
 Scope:
 
-- Capability Registry
-- Execution Registry
-- Dispatcher
-- Tool/Operator protocol
+- Capability Registry and Execution Unit Registry
+- Dispatcher and structured failures
+- Atomic Tool contracts
+- Deterministic Operator contracts
 
 ---
 
-## E5 Artifact and Evidence
+## E5 Artifact, Finding and Answer Safety
 
 Goal:
 
-Create trusted evidence chain.
+Turn execution results into traceable domain findings and bounded user answers.
 
 Scope:
 
-- ResultSet
-- Evidence
-- Claim
-- Publication gate
+- Immutable Artifact and ResultSet
+- Execution provenance, data lineage and Domain Evidence
+- Typed Finding and minimal Answer Context
+- Renderer, deterministic Response Guard and safe fallback
+
+M0/M1 does not build a general natural-language fact-candidate validation and publication subsystem.
 
 ---
 
@@ -93,13 +98,14 @@ Scope:
 
 Goal:
 
-Prove Agent reliability.
+Prove real Agent reliability and prevent control or answer-boundary bypass.
 
 Scope:
 
-- Agent evaluation
-- Security testing
-- Regression
+- J1–J5 real-agent evaluation
+- Pass@1 and Pass³ stability
+- Admission, prompt-injection and Tool-output security
+- Same-Candidate regression and independent acceptance
 
 ---
 
@@ -107,10 +113,11 @@ Scope:
 
 Goal:
 
-Expand BGP investigation capability safely.
+Expand BGP investigation capability without exceeding evidence boundaries.
 
 Scope:
 
-- BGP semantics
-- Observation limits
-- Impact interpretation
+- BGP semantics and observer limits
+- Population and unit definitions
+- Allowed and forbidden external statements
+- Evidence-backed capability expansion after DG1

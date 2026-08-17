@@ -86,18 +86,18 @@ Domeye-Core/
 
 ## 协作与发布主线
 
-`codex/prod` 是唯一长期生产主干，`core-work` 是该分支的永久独立 clone。普通功能、
+`main` 是唯一长期生产主干，`core-work` 是该分支的永久独立 clone。普通功能、
 修复、研究和文档任务使用独立短生命周期分支及 Worktree；通过验收的是提交和制品，
 不是 Worktree 目录。任务 Worktree 不得直接部署，也不得通过复制兄弟 Worktree 的
 未提交文件完成整合。
 
-服务器端保护 Hook 要求 `codex/prod` 只能快进到具有评审和 CI 证明的提交，并保护
+服务器端保护 Hook 要求 `main` 只能快进到具有评审和 CI 证明的提交，并保护
 正式 tag 不被改写。正式发布遵循“一次构建、逐级晋级”：候选、金丝雀与生产使用
 同一份不可变制品。发布完成必须证明：
 
 ```text
 core-work HEAD
-= origin/codex/prod
+= origin/main
 = release tag commit
 = source archive commit
 = Backend、Sidecar、Frontend runtime commit
@@ -106,6 +106,13 @@ core-work HEAD
 还必须核对实际进程、活动指针、Nginx 和数据库身份。测试通过、提交、评审、合并、
 tag、构建、认证、部署和生产验证是不同状态，不能相互替代。版本化 Hook、归一检查
 和安装说明见 [治理发布工具](deploy/governance/README.md)。
+
+GitHub Issue、Milestone、Project、Candidate 与 Evidence 的状态同步规则见
+[Domeye GitHub 管理与任务收尾同步规则](docs/governance/Domeye_GitHub_Management_Rules_v1.0.md)。
+M0/M1 当前唯一的用户旅程与回答边界见
+[首个纵向切片锚点合同](docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)。
+合同落位只表示 Designed；同一 Candidate 的 J1–J5、独立验收和 DG1 决定才可推进
+Implemented 或 Verified。
 
 ## 本地快速开发
 

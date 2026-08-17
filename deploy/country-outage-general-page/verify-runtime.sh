@@ -67,7 +67,7 @@ sidecar_path="$(jq -er '.protected_runtime.sidecar_path' "${CANDIDATE}")"
 sidecar_release="$(jq -er '.protected_runtime.sidecar_release_id' "${CANDIDATE}")"
 sidecar_manifest_sha="$(jq -er '.protected_runtime.sidecar_manifest_sha256' "${CANDIDATE}")"
 
-[[ "$(git -C /home/bgpdata/Domeye-Core rev-parse refs/heads/codex/prod)" == "${source_commit}" ]] || {
+[[ "$(git -C /home/bgpdata/Domeye-Core rev-parse refs/heads/main)" == "${source_commit}" ]] || {
     error '生产主干与候选提交不一致'
     exit 1
 }

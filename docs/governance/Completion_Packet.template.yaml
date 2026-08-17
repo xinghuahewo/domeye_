@@ -1,0 +1,158 @@
+schema_version: "domeye.github-closeout/v1"
+packet_id: "REQUIRED-STABLE-PACKET-ID"
+idempotency_key: "REQUIRED-STABLE-KEY"
+packet_digest: "REQUIRED-SHA256"  # 除本字段外，整包数据按 RFC 8785 规范化 JSON 后计算
+intent: "progress"  # progress | complete | cancel | duplicate | reopen
+
+authorization:
+  github_metadata_write: false  # 必须由任务授权明确改为 true
+  authorized_scope:
+    - "issue_comment"
+    # - "project_fields"
+    # - "issue_state"
+    # - "milestone_assignment"
+    # - "milestone_admin_close"
+
+repository:
+  full_name: "xinghuahewo/domeye_"
+  node_id: "REQUIRED-REPOSITORY-NODE-ID"
+  authoritative_branch: "main"
+  baseline_sha: "REQUIRED-FULL-SHA"
+
+# v1 一份 Packet 只处理一个 Primary Issue。
+primary_issue:
+  number: 0
+  node_id: "REQUIRED-ISSUE-NODE-ID"
+  expected_title: "REQUIRED"
+  from_state: "open"
+  to_state: "open"              # complete/cancel/duplicate=closed；reopen=open
+  state_reason: null             # completed | not_planned | duplicate | reopened | null
+  issue_contract_ref: "REQUIRED-STABLE-REF"
+  issue_contract_digest: "REQUIRED-DIGEST"
+  duplicate_of:                  # intent=duplicate 时三项均必填
+    number: null
+    node_id: null
+    database_id: null            # GitHub duplicate_issue_id
+  administrative_decision_ref: null  # cancel / duplicate 时必填
+  administrative_decision_digest: null
+
+# Project item 可选；存在时只能绑定一个精确 item。
+project:
+  present: false
+  owner: null
+  number: null
+  node_id: null
+  item_node_id: null
+  transitions: []
+  # present=true 时，每个 transition 填：
+  # semantic, field_name, field_node_id, from_value, from_option_id, to_value, to_option_id
+
+# Milestone 可选；v1 至多一个。
+milestone:
+  present: false
+  number: null
+  node_id: null
+  expected_title: null
+  from_state: null
+  to_state: null
+  requested_action: "none"  # none | assign | close_completed | close_stopped
+  exit_contract_ref: null
+  exit_contract_digest: null
+  final_gate_issue_number: null
+  final_gate_issue_node_id: null
+
+# PR 可选，只用于核对候选，不授权 merge。
+pull_request:
+  present: false
+  number: null
+  node_id: null
+  expected_head_sha: null
+  expected_base_branch: null
+  expected_state: null
+  expected_merged: null
+
+candidate:
+  kind: "none"  # main_commit | pr_head | candidate_manifest | artifact_revision | none
+  # git:<owner/repo>@<40-hex-sha> | manifest:sha256:<64-hex> | artifact:sha256:<64-hex> | null
+  candidate_id: null
+  immutable_digest: null
+  commit_sha: null
+  expected_reachable_from_main: false
+  base_main_sha: null
+  manifest_ref: null
+  manifest_digest: null
+  artifact_ref: null
+  artifact_digest: null
+
+scope:
+  task_id: "REQUIRED-STABLE-TASK-ID"
+  task_contract_ref: "REQUIRED"
+  task_contract_digest: "REQUIRED-DIGEST"
+  anchor_contract_ref: null     # anchor_journeys 非空时必填稳定引用
+  anchor_contract_digest: null  # anchor_journeys 非空时必填
+  changed_paths: []
+  out_of_scope: []
+  review_ids: []       # 例如 ["R03", "R14"]
+  anchor_journeys: []  # J1 / J2 / J3 / J4 / J5 / Non-anchor
+
+# complete、Verified、Released 时必须引用独立 Acceptance Record。
+# github_closeout 只核对字段绑定，不重新做验收判断。
+acceptance_record:
+  required: false
+  ref: null
+  digest: null
+  issue_node_id: null
+  candidate_kind: null
+  candidate_id: null
+  candidate_digest: null
+  issue_contract_digest: null
+  decision: null       # Accepted | Rejected
+  accepted_by: null
+  accepted_at: null
+  criteria: []         # required=true 时逐项填写 criterion_id、result 与 evidence_refs
+
+# progress 可以为空；complete 或请求 Accepted / Verified / Released 时，必须列出被 Acceptance Record 引用且状态为 Accepted 的证据。
+evidence: []
+# 启用时每项填：ref, digest, candidate_kind, candidate_id, candidate_digest, status
+# status: Present | Accepted | Rejected | Superseded
+
+gate:
+  applicable: false
+  gate_issue_number: null
+  gate_issue_node_id: null
+  milestone_node_id: null       # Milestone 终态操作时必填
+  exit_contract_digest: null    # Milestone 终态操作时必填
+  candidate_kind: null          # GO / REPAIR / STOP 时以下 Candidate 三项必填
+  candidate_id: null
+  candidate_digest: null
+  decision: "Not Applicable"  # Not Applicable | Pending | GO | REPAIR | STOP
+  decision_ref: null
+  decision_digest: null
+
+completion:
+  completed_outcomes: []
+  explicitly_not_completed:
+    - "Primary Issue progress does not imply Feature Verified"
+    - "GitHub sync does not imply Released or Deployed"
+
+sync:
+  # 评论 marker 由子代理从 packet_id、idempotency_key、packet_digest 派生，调用方不得自定义。
+  # Issue 上的唯一幂等同步记录是同步状态权威，不要求 Project 新建专用字段。
+  expected_receipt_state: "Not Synced"  # Not Synced | Pending | Partial | Synced | Blocked
+  require_full_readback: true
+
+# 填写规则：
+# 1. 必填区段，或 present=true / required=true / applicable=true / 对应 intent 激活的条件区段中，存在 REQUIRED、0、占位值或不唯一目标时，子代理必须零写入。未启用区段的 payload 字段保持 null/空列表；判别与哨兵值保留 false、Gate Not Applicable、Milestone none，且不参与目标解析。
+# 2. v1 不支持一个 Packet 批量处理多个 Issue / Project item；请拆成多个 Packet。
+# 3. intent=progress 时 acceptance_record 可以为空，只能做非终态同步。
+# 4. intent=complete 时 acceptance_record 必须 Accepted 并精确绑定 Issue、Candidate 和合同摘要。
+# 5. 代码或文档类 complete 必须使用可从 main 到达的 main_commit。
+# 6. intent=cancel / duplicate 不推进 Delivery Maturity；必须有 administrative_decision_ref 与 digest。
+# 7. Verified / Released、Evidence Accepted 和 Gate GO / REPAIR / STOP 必须绑定同一 Candidate。
+# 8. Gate 决定不得由 github_closeout 推断或生成。
+# 9. anchor_journeys 非空时，anchor_contract_ref 与 anchor_contract_digest 必填。
+# 10. cancel / duplicate / reopen 可以使用 candidate.kind=none；此时其余 Candidate 身份字段、Evidence 必须为空，Gate 必须 Not Applicable。
+# 11. main_commit / pr_head 的 candidate_id 必须从仓库名和完整 SHA 派生；manifest / artifact 必须从 sha256 派生。main 可达性由代理独立核验。
+# 12. 同步状态只写入 Primary Issue 的幂等回执；Project transitions 只包含真实业务/治理字段变化。
+# 13. Issue 状态必须映射为 progress=open→open/null；complete=open→closed/completed；cancel=open→closed/not_planned；duplicate=open→closed/duplicate；reopen=closed→open/reopened。
+# 14. duplicate 工具必须能写入并读回 duplicate_of.database_id 对应的 canonical relation；不能时零写入，不得降级为 not_planned。

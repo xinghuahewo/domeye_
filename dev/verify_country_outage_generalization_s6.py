@@ -43,7 +43,7 @@ jq -n \
     --arg release_id "${release_id}" \
     --arg commit "${commit}" \
     --arg tag "${tag}" \
-    --arg prod_commit "$(git -C /home/bgpdata/Domeye-Core rev-parse refs/heads/codex/prod)" \
+    --arg main_commit "$(git -C /home/bgpdata/Domeye-Core rev-parse refs/heads/main)" \
     --arg tag_type "$(git -C /home/bgpdata/Domeye-Core cat-file -t "${tag}")" \
     --arg tag_target "$(git -C /home/bgpdata/Domeye-Core rev-parse "${tag}^{}")" \
     --arg backend "${backend}" \
@@ -73,7 +73,7 @@ jq -n \
     --argjson rollback "${rollback_json}" \
     '{
       release_id:$release_id,
-      source:{expected_commit:$commit,prod_commit:$prod_commit,tag:$tag,tag_type:$tag_type,tag_target:$tag_target},
+      source:{expected_commit:$commit,main_commit:$main_commit,tag:$tag,tag_type:$tag_type,tag_target:$tag_target},
       backend:{path:$backend,binding_commit:$binding_commit,binding_tag:$binding_tag,process_cwd:$process_cwd,process_release:$process_release,general_root:$process_general_root},
       frontend:{release_id:$frontend_release,expected_release_id:$expected_frontend_release,tree_sha256:$frontend_tree,expected_tree_sha256:$expected_frontend_tree,path:$frontend_path},
       data:{general_manifest_sha256:$general_manifest_sha,expected_general_manifest_sha256:$expected_general_manifest_sha},
@@ -141,7 +141,7 @@ def validate_remote(payload: dict[str, Any], release_id: str, commit: str, tag: 
     require(payload["release_id"] == release_id, "生产 release-id 冲突")
     require(source == {
         "expected_commit": commit,
-        "prod_commit": commit,
+        "main_commit": commit,
         "tag": tag,
         "tag_type": "tag",
         "tag_target": commit,

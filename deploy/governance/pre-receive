@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 readonly ZERO_SHA='0000000000000000000000000000000000000000'
-readonly PROTECTED_REF='refs/heads/codex/prod'
+readonly PROTECTED_REF='refs/heads/main'
 readonly DEFAULT_APPROVAL_ROOT='/home/bgpdata/Domeye-Core-governance/approvals'
 
 die() {
@@ -30,7 +30,7 @@ require_approval() {
     local mode uid
 
     [[ -f "${approval}" && ! -L "${approval}" ]] \
-        || die "codex/prod 的目标提交缺少评审与 CI 证明：${commit}"
+        || die "main 的目标提交缺少评审与 CI 证明：${commit}"
     uid="$(stat -c '%u' -- "${approval}" 2>/dev/null \
         || stat -f '%u' "${approval}")"
     mode="$(stat -c '%a' -- "${approval}" 2>/dev/null \
@@ -40,7 +40,7 @@ require_approval() {
     (( (8#${mode} & 8#022) == 0 )) \
         || die "评审与 CI 证明不得被组或其他用户写入：${approval}"
     jq -e --arg commit "${commit}" '
-        .schema_version == "domeye_codex_prod_approval_v1"
+        .schema_version == "domeye_main_approval_v1"
         and .commit == $commit
         and .review.status == "approved"
         and (.review.evidence | type == "string" and length > 0)
@@ -55,12 +55,12 @@ readonly INPUT_FILE="$(mktemp "${TMPDIR:-/tmp}/domeye-pre-receive.XXXXXX")"
 trap 'rm -f -- "${INPUT_FILE}"' EXIT
 cat >"${INPUT_FILE}"
 
-incoming_prod=''
+incoming_main=''
 while read -r old_sha new_sha ref_name; do
     [[ -n "${old_sha}" && -n "${new_sha}" && -n "${ref_name}" ]] \
         || die '收到格式无效的引用更新'
     if [[ "${ref_name}" == "${PROTECTED_REF}" ]]; then
-        incoming_prod="${new_sha}"
+        incoming_main="${new_sha}"
     fi
 done <"${INPUT_FILE}"
 
@@ -68,12 +68,12 @@ while read -r old_sha new_sha ref_name; do
     case "${ref_name}" in
         "${PROTECTED_REF}")
             [[ "${new_sha}" != "${ZERO_SHA}" ]] \
-                || die 'codex/prod 禁止删除'
+                || die 'main 禁止删除'
             [[ "$(git cat-file -t "${new_sha}")" == 'commit' ]] \
-                || die 'codex/prod 只能指向 commit'
+                || die 'main 只能指向 commit'
             if [[ "${old_sha}" != "${ZERO_SHA}" ]]; then
                 git merge-base --is-ancestor "${old_sha}" "${new_sha}" \
-                    || die 'codex/prod 禁止非快进或强推'
+                    || die 'main 禁止非快进或强推'
             fi
             require_approval "${new_sha}"
             ;;
@@ -86,12 +86,12 @@ while read -r old_sha new_sha ref_name; do
                 [[ "$(git cat-file -t "${new_sha}")" == 'tag' ]] \
                     || die "正式发布 tag 必须是 annotated tag：${ref_name#refs/tags/}"
                 target_commit="$(git rev-parse "${new_sha}^{}")"
-                prod_target="${incoming_prod}"
-                if [[ -z "${prod_target}" || "${prod_target}" == "${ZERO_SHA}" ]]; then
-                    prod_target="$(git rev-parse "${PROTECTED_REF}")"
+                main_target="${incoming_main}"
+                if [[ -z "${main_target}" || "${main_target}" == "${ZERO_SHA}" ]]; then
+                    main_target="$(git rev-parse "${PROTECTED_REF}")"
                 fi
-                git merge-base --is-ancestor "${target_commit}" "${prod_target}" \
-                    || die "正式发布 tag 目标必须进入 codex/prod：${ref_name#refs/tags/}"
+                git merge-base --is-ancestor "${target_commit}" "${main_target}" \
+                    || die "正式发布 tag 目标必须进入 main：${ref_name#refs/tags/}"
             fi
             ;;
     esac
