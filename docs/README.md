@@ -66,6 +66,7 @@
 | 文档或集合 | 当前用途 |
 |---|---|
 | [旧国家中断 Agent 建设总纲](agent/国家中断Agent建设总纲.md) | 保留 P0–P5 历史工程语境；不再定义当前 M0/M1 建设清单 |
+| [W6 旧 Agent 设计讨论包归档](agent/legacy-design/README.md) | 保留 8 份编号设计文档、旧 README 和缺失的 S06 说明；仅作迁移输入与历史追溯 |
 | [旧 P0–P2 Agent 计划与合同目录](agent/) | 兼容旧实现、定位旧 Candidate 与追溯设计来源 |
 | [22 项旧追踪矩阵](requirements/adversarial-review-tracking.md) | 保留 Review ID；旧 Claim Verification 等映射不能替代当前 Epics/Features |
 | [旧需求追踪格式](requirements/requirements-traceability.md) | 仅作字段参考；状态值不得覆盖当前五轴治理规则 |

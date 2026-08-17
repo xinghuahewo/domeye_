@@ -33,7 +33,7 @@ Operator、Typed Finding 和回答边界，到安全答案。它不是新产品�
 | 6 | [22 项开发优先级与阶段计划 v1.1](docs/roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md) | 哪些问题先处理、哪些必须由真实证据触发后再建设 |
 | 7 | [Domeye GitHub 治理套件 v1.0](docs/governance/README.md) | 上述工作如何进入 Issue、Project、Candidate、Evidence 和状态同步 |
 
-旧 W6 讨论包、旧 P0–P2 计划和历史 Evidence 继续保留，但不能覆盖这套交接主线。
+旧 W6 讨论包、旧 P0–P2 计划和历史 Evidence 继续保留，但不能覆盖这套交接主线；旧讨论包及其 docs 之外的过渡资产统一从[归档索引](docs/agent/legacy-design/README.md)进入。
 
 ## 现有 Core 能力概览
 
