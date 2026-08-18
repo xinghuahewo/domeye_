@@ -171,8 +171,40 @@
         "path": "/home/bgpdata/Domeye-Core-dev-data/research-inputs"
       },
       {
-        "name": "overlays",
-        "path": "/home/bgpdata/Domeye-Core-dev-data/overlays"
+        "name": "overlay",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/overlay"
+      },
+      {
+        "name": "api",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/api"
+      },
+      {
+        "name": "p0_candidates",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/p0-candidates"
+      },
+      {
+        "name": "research_builds",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/research-builds"
+      },
+      {
+        "name": "code_releases",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/code-releases"
+      },
+      {
+        "name": "research_tools",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/research-tools"
+      },
+      {
+        "name": "p0_d6",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/p0-d6"
+      },
+      {
+        "name": "p0_audits",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/p0-audits"
+      },
+      {
+        "name": "tmp",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/tmp"
       }
     ]
   },

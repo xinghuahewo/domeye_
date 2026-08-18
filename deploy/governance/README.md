@@ -58,6 +58,26 @@ executable，不读取命令行参数或环境变量。任何 finding 或保护�
 另有精确批次清单、空间估算、恢复路径和用户授权才可进入 `quarantine_planned`；删除
 还须在隔离观察 14 天后再次单独授权。
 
+策略必须逐一列出服务器实际存在的开发数据顶层目录。每个顶层目录下的子目录才是可被
+单独观察的对象；顶层直接文件和符号链接会被记录为 `rootNonDirectoryEntries`，默认保护，
+不会成为隔离候选。这避免把未纳入清单的叠加层、接口环境、构建物或临时材料误当成可清理
+数据。
+
+S5 的单次盘点只能标记 `metadata_only_not_proven`，不能据此搬动开发数据。需要确认
+“观测期间没有被运行中的系统使用”时，才显式传入观察秒数。审计会在间隔前后各做一次
+不读取文件内容的进程、挂载、活动锁和目录清单检查，并只输出两次清单摘要与数量：
+
+```bash
+python3 deploy/governance/audit-server-runtime-governance.py \
+  --reference-observation-seconds 60 --compact
+```
+
+只有结果为 `observed_no_live_reference`，且原有保留状态也是
+`future_quarantine_candidate` 的对象，才会计入
+`s5ReferenceProofEligibleCandidateCount`。这只表示该观察窗口内没有发现正在使用的迹象；
+它不表示数据永远不会再需要，也不授权隔离、移动或删除。共用文件、清单不完整、活动锁、
+挂载、进程引用或两次清单变化，都会失败关闭为不可处理。
+
 对 runtime release，审计器还会读取策略列出的、大小受限的 release manifest，并只输出
 其摘要、声明的 rollback release ID 和“已接受证据”布尔结论，不输出 manifest 原文。活动
 release 声明的 rollback，以及声明自身通过全部 `passed`/`verified` 检查的 release，均必须
