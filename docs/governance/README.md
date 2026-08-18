@@ -14,6 +14,7 @@
 | [服务器目录治理计划](Domeye_Server_Directory_Governance_Plan_v1.0.md) | 定义旧 Domeye 保护边界、只读盘点、隔离、保留和删除 Gate | `Designed`；只读工具在任务分支实现 |
 | [服务器目录治理 S0 只读基线](evidence/server-directory-baseline-2026-08-18.md) | 记录目录、进程、活动指针、磁盘和风险的带时间戳观察 | `Observed`；Gate=`BLOCK_MUTATION` |
 | [服务器 checkout S2 预检](evidence/server-checkout-normalization-2026-08-18-preflight.json) | 冻结合并后 `main`、脏 checkout 与活动指针的再审计 | `Observed`；尚不授权服务器写入 |
+| [S2 bundle 替代路径](evidence/server-checkout-normalization-2026-08-18-bundle.md) | 记录公开 HTTPS 出站失败后的受控 Git bundle 归一条件 | `Designed`；待独立运行回执 |
 
 ## 使用边界
 

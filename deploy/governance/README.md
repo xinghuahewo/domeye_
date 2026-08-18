@@ -51,6 +51,13 @@ GitHub remote。默认只读预检；只有明确给出 `--apply` 才会创建 a
 系统隔离、SHA 漂移或带凭证的 remote。clone 或读回失败时会把原 checkout 恢复到原精确
 路径；它不修改 GitHub 账号凭证、运行指针、生产配置、服务或旧 Domeye。
 
+若服务器到公开 GitHub HTTPS 的无凭证连接已明确失败，可传入受管
+`--bundle-path /home/bgpdata/Domeye-Core-artifacts/incoming/<operation-id>.bundle`。bundle
+只能由本机从冻结的 GitHub `main` 生成并经 SSH 传入；脚本会 clone 该 bundle 后把新
+checkout 的 `origin` 固定为公开 HTTPS URL，读回 HEAD、`origin/main`、分支和 clean
+状态。bundle SHA-256 与原 checkout archive 一同保留在本次 quarantine 回执中。此替代
+不证明服务器已恢复 GitHub HTTPS 出站能力。
+
 脚本必须先从已合入 `main` 的不可变提交运行，并由独立 S2 任务冻结 operation ID 与两个
 预期 SHA。生产服务器不安装该脚本；经审批后可通过标准输入运行，避免新增服务器脚本文件。
 
