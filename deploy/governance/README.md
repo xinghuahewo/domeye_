@@ -73,6 +73,26 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
 
 输出 schema 为 `domeye.server-runtime-governance-discovery/v1`。
 
+## S3 脱敏进程与凭证表面核验
+
+`audit-server-credential-surface.py` 只读取四个受控配置文件的元数据（类型、所有者、组和
+权限），不读取配置内容；它会暂时读取受管进程的 `/proc/<pid>/cmdline` 与 `environ`，但只
+输出 PID、`comm`、固定路径/端口身份信号和布尔结论，绝不输出、哈希或落盘任何实参、环境
+变量值或凭证。它也拒绝策略把旧 `/home/bgpdata/Domeye` 纳入配置、活动指针或 release 根。
+
+从最终 `main` 的不可变来源执行：
+
+```bash
+python3 deploy/governance/audit-server-credential-surface.py \
+  --policy deploy/governance/server-directory-policy.json
+```
+
+Backend 以活动 release 下 cwd/executable 绑定；旧 Agent 还必须绑定 28474；P1 Chat 必须
+同时绑定 28475 和活动 release 路径实参。若 P1 的 cwd 在 release 外、命令行为空、监听器
+不可读或任一配置不是 `root:root 0600`，输出必须为 `not_verified` 和 `BLOCK_MUTATION`。这
+是防止把“没有可见凭证实参”误称为已完成凭证迁移；它本身不授权重启、Screen 迁移、配置
+写入、release 切换或任何凭证修改。
+
 ## S6 定时只读审计
 
 `install-server-directory-audit-schedule.py` 是唯一允许写入 S6 自身治理目录和四个

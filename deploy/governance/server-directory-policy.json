@@ -163,6 +163,60 @@
       }
     ]
   },
+  "credentialGovernance": {
+    "schemaVersion": "domeye.server-s3-credential-governance/v1",
+    "requiredConfigUid": 0,
+    "requiredConfigGid": 0,
+    "requiredConfigMode": "0600",
+    "configFiles": [
+      {
+        "id": "backend_database_env",
+        "path": "/home/bgpdata/Domeye-Core-data/config/database.env"
+      },
+      {
+        "id": "country_outage_agent_env",
+        "path": "/home/bgpdata/Domeye-Core-runtime/config/country-outage-agent.env"
+      },
+      {
+        "id": "country_outage_p1_chat_env",
+        "path": "/home/bgpdata/Domeye-Core-runtime/config/country-outage-p1-chat.env"
+      },
+      {
+        "id": "country_outage_pi_auth",
+        "path": "/home/bgpdata/Domeye-Core-runtime/config/country-outage-pi-auth.json"
+      }
+    ],
+    "components": [
+      {
+        "name": "backend",
+        "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/current",
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/releases",
+        "listenerPort": null,
+        "requiredIdentitySignals": ["cwd_or_executable"],
+        "configFileIds": [
+          "backend_database_env",
+          "country_outage_agent_env",
+          "country_outage_p1_chat_env"
+        ]
+      },
+      {
+        "name": "legacy_agent_sidecar",
+        "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/current",
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases",
+        "listenerPort": 28474,
+        "requiredIdentitySignals": ["cwd_or_executable", "listener_port"],
+        "configFileIds": ["country_outage_agent_env", "country_outage_pi_auth"]
+      },
+      {
+        "name": "p1_chat_sidecar",
+        "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current",
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases",
+        "listenerPort": 28475,
+        "requiredIdentitySignals": ["listener_port", "active_release_argument"],
+        "configFileIds": ["country_outage_p1_chat_env", "country_outage_pi_auth"]
+      }
+    ]
+  },
   "mutationPolicy": {
     "auditWritesServer": false,
     "deleteEnabled": false,
