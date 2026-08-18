@@ -117,6 +117,52 @@
       "unknown"
     ]
   },
+  "runtimeGovernance": {
+    "mountInfoPath": "/proc/self/mountinfo",
+    "maxEntriesPerObject": 50000,
+    "maxManifestBytes": 4194304,
+    "manifestFileNames": [
+      "IDENTITY-EQUATION.json",
+      "identity-equation.json",
+      "release-manifest.json",
+      "manifest.json"
+    ],
+    "releaseComponents": [
+      {
+        "name": "backend",
+        "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/current",
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/releases"
+      },
+      {
+        "name": "legacy_agent_sidecar",
+        "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/current",
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases"
+      },
+      {
+        "name": "p1_chat_sidecar",
+        "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current",
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases"
+      }
+    ],
+    "developmentDataRoots": [
+      {
+        "name": "research_runs",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/research-runs"
+      },
+      {
+        "name": "research_worktrees",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/research-worktrees"
+      },
+      {
+        "name": "research_inputs",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/research-inputs"
+      },
+      {
+        "name": "overlays",
+        "path": "/home/bgpdata/Domeye-Core-dev-data/overlays"
+      }
+    ]
+  },
   "mutationPolicy": {
     "auditWritesServer": false,
     "deleteEnabled": false,
