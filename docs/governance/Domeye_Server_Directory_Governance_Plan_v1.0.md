@@ -149,7 +149,13 @@ inventory → classified → quarantine_planned → quarantined
 - 每月复核五版本保留策略和回滚可用性。
 
 S6 的定时执行必须从最终 `main` 的不可变来源以独立安装任务设置，并产生安装回执。
-定时任务只允许调用只读发现器；不得因磁盘阈值或候选数量自动移动、删除、重启或切换。
+安装器只允许在 `buptserver16` 的干净 `Domeye-Core/main` 与冻结 SHA 一致时，把版本化
+审计来源复制到 `Domeye-Core-governance/directory-audit/releases/<operation-id>`，原子更新
+`current`，并安装一个 systemd service template 及 daily/weekly/monthly 三个 timer。安装后
+必须读回三个 timer 的 enabled、active 和下一次触发时间；回执须保留原 wrapper、指针、
+unit 的内容和权限，以便仅在当前版本仍匹配时停止 timer 并恢复。定时任务只允许调用只读
+发现器；不得因磁盘阈值或候选数量自动移动、删除、重启或切换，也不得迁移 Screen、修改
+GitHub 凭证或触及旧 Domeye。
 
 ## 四、当前只读执行方式
 

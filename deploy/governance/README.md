@@ -13,6 +13,7 @@
 | `server-directory-policy.json` | 固定服务器受管根、保护根、磁盘阈值和零写入策略 |
 | `audit-server-layout.py` | 只读盘点目录、Git、活动指针、权限和进程 cwd，不读取秘密 |
 | `audit-server-runtime-governance.py` | S3--S6 只读发现运行身份、release/开发数据引用、挂载、锁与硬链接风险 |
+| `install-server-directory-audit-schedule.py` | S6：从冻结 `main` 安装、读回或回滚只读审计 systemd timer |
 | `normalize-server-checkout.py` | 对指定脏 checkout 执行带归档、自动恢复和身份读回的 S2 归一 |
 | `tests/run-fixtures.sh` | 覆盖主干审批、非快进、正式 tag 和归一合同的正反夹具 |
 | `tests/check-doc-links.sh` | 检查治理涉及文档的相对链接 |
@@ -70,8 +71,43 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
   < deploy/governance/audit-server-runtime-governance.py
 ```
 
-输出 schema 为 `domeye.server-runtime-governance-discovery/v1`。每日、每周和每月的
-S6 复核仍是待独立安装的只读流程；本脚本本身不等于服务器已安装巡检。
+输出 schema 为 `domeye.server-runtime-governance-discovery/v1`。
+
+## S6 定时只读审计
+
+`install-server-directory-audit-schedule.py` 是唯一允许写入 S6 自身治理目录和四个
+systemd unit 的安装器。它只接受 `buptserver16` 上干净且与冻结 SHA 一致的
+`/home/bgpdata/Domeye-Core` 的 `main`；不会读取配置内容、命令行或环境变量，也不会
+迁移 Screen、重启业务服务、切换 release、移动/删除运行或开发数据，更不会修改 GitHub
+凭证或旧 `/home/bgpdata/Domeye`。
+
+经独立审批后，从服务器 checkout 的最终 `main` 执行预检和安装：
+
+```bash
+cd /home/bgpdata/Domeye-Core
+python3 deploy/governance/install-server-directory-audit-schedule.py \
+  --operation-id <冻结操作ID> --expected-main <40位main提交SHA>
+sudo python3 deploy/governance/install-server-directory-audit-schedule.py \
+  --operation-id <冻结操作ID> --expected-main <40位main提交SHA> --apply
+```
+
+安装器会在 `/home/bgpdata/Domeye-Core-governance/directory-audit/releases/` 保留版本化
+审计来源，将 `current` 原子指向本次来源，安装一个 service template 和 daily/weekly/monthly
+三个 timer，并以 `enable --now` 后的 `is-enabled`、`is-active` 和下一次触发时间读回为成功
+条件。报告仅写入 root-only 的 `directory-audit/reports/<频率>/`：每日执行目录布局审计，
+每周和每月执行运行身份/保留策略发现；所有报告仍是只读观察，绝不触发处置。
+
+安装回执会保留旧 wrapper、`current` 指针和四个 unit 的内容、权限及恢复材料。只有当前
+S6 wrapper、unit 和版本指针仍精确等于该回执时，才允许停止三个 timer 并回滚；这避免覆盖
+后续安装：
+
+```bash
+sudo python3 deploy/governance/install-server-directory-audit-schedule.py \
+  --operation-id <原安装操作ID> --rollback
+```
+
+回滚同样不接触业务服务、release、数据目录、旧 Domeye 或 GitHub 凭证，并生成独立
+root-only 回滚回执。安装或回滚均不能代替 S3 凭证迁移、S4/S5 单批隔离授权。
 
 ## S2 checkout 可恢复归一
 
