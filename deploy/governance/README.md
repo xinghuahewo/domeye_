@@ -12,6 +12,7 @@
 | `install.sh` | 备份旧版本、原子安装两项服务器治理脚本并生成回执 |
 | `server-directory-policy.json` | 固定服务器受管根、保护根、磁盘阈值和零写入策略 |
 | `audit-server-layout.py` | 只读盘点目录、Git、活动指针、权限和进程 cwd，不读取秘密 |
+| `normalize-server-checkout.py` | 对指定脏 checkout 执行带归档、自动恢复和身份读回的 S2 归一 |
 | `tests/run-fixtures.sh` | 覆盖主干审批、非快进、正式 tag 和归一合同的正反夹具 |
 | `tests/check-doc-links.sh` | 检查治理涉及文档的相对链接 |
 
@@ -37,6 +38,21 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
 审计只读取配置文件名、权限和属主，不读取配置内容；进程只读取 PID、`comm`、cwd 和
 executable，不读取命令行参数或环境变量。任何 finding 或保护进程都会令 Gate 保持
 `BLOCK_MUTATION`。
+
+## S2 checkout 可恢复归一
+
+`normalize-server-checkout.py` 只接受固定的 `buptserver16`、
+`/home/bgpdata/Domeye-Core`、`/home/bgpdata/Domeye-Core-artifacts` 与公开 HTTPS
+GitHub remote。默认只读预检；只有明确给出 `--apply` 才会创建 archive、把原 checkout
+原子移动到 `Domeye-Core-artifacts/quarantine/checkouts/<operation-id>/`、clone 干净
+`main` 并写入 root-only 回执。
+
+该脚本会拒绝进程 cwd/exe/fd 引用、挂载、Git 锁、活动指针引用源码 checkout、跨文件
+系统隔离、SHA 漂移或带凭证的 remote。clone 或读回失败时会把原 checkout 恢复到原精确
+路径；它不修改 GitHub 账号凭证、运行指针、生产配置、服务或旧 Domeye。
+
+脚本必须先从已合入 `main` 的不可变提交运行，并由独立 S2 任务冻结 operation ID 与两个
+预期 SHA。生产服务器不安装该脚本；经审批后可通过标准输入运行，避免新增服务器脚本文件。
 
 本目录中的目标引用、审批 schema 和夹具统一指向 `main`，只表示仓库定义已经迁移。
 生产服务器现有 Hook 不会随 Git 提交自动更新；只有 `install.sh` 的不可变来源、安装

@@ -13,6 +13,7 @@
 | [根 AGENTS 规则](../../AGENTS.md) | 固定 `main`、任务隔离和收尾调用边界 | 已纳入当前分支历史 |
 | [服务器目录治理计划](Domeye_Server_Directory_Governance_Plan_v1.0.md) | 定义旧 Domeye 保护边界、只读盘点、隔离、保留和删除 Gate | `Designed`；只读工具在任务分支实现 |
 | [服务器目录治理 S0 只读基线](evidence/server-directory-baseline-2026-08-18.md) | 记录目录、进程、活动指针、磁盘和风险的带时间戳观察 | `Observed`；Gate=`BLOCK_MUTATION` |
+| [服务器 checkout S2 预检](evidence/server-checkout-normalization-2026-08-18-preflight.json) | 冻结合并后 `main`、脏 checkout 与活动指针的再审计 | `Observed`；尚不授权服务器写入 |
 
 ## 使用边界
 
