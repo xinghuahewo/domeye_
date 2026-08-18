@@ -14,6 +14,7 @@ from pathlib import Path
 import socket
 import stat
 import sys
+import time
 from typing import Any
 
 
@@ -151,6 +152,12 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def json_sha256(value: Any) -> str:
+    """为只读清单生成稳定摘要，不输出原始目录内容。"""
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def safe_release_id(value: Any) -> str | None:
@@ -406,6 +413,7 @@ def inventory_object(
             "namedLockPaths": [],
             "activeLockPaths": [],
             "externalHardLinkCount": 0,
+            "metadataSha256": None,
         }
     )
     if not path.is_dir() or path.is_symlink():
@@ -414,6 +422,7 @@ def inventory_object(
         return result
     seen_inodes: dict[tuple[int, int], dict[str, int]] = {}
     manifest_candidates: list[Path] = []
+    metadata_digest = hashlib.sha256()
     try:
         for current, directory_names, file_names in os.walk(path, topdown=True, followlinks=False):
             current_path = Path(current)
@@ -452,6 +461,21 @@ def inventory_object(
                     continue
                 if not stat.S_ISREG(info.st_mode):
                     continue
+                metadata_digest.update(
+                    json.dumps(
+                        [
+                            str(child.relative_to(path)),
+                            info.st_dev,
+                            info.st_ino,
+                            info.st_size,
+                            info.st_mtime_ns,
+                            stat.S_IMODE(info.st_mode),
+                            info.st_nlink,
+                        ],
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                )
                 result["regularFileCount"] += 1
                 result["logicalBytes"] += info.st_size
                 result["allocatedBytesApproximate"] += info.st_blocks * 512
@@ -472,6 +496,7 @@ def inventory_object(
         result["walkError"] = type(error).__name__
     if result["coverageComplete"]:
         result["externalHardLinkCount"] = sum(max(item["nlink"] - item["observed"], 0) for item in seen_inodes.values())
+        result["metadataSha256"] = metadata_digest.hexdigest()
     for manifest in sorted(manifest_candidates):
         try:
             size = manifest.stat().st_size
@@ -714,10 +739,14 @@ def development_data_discovery(
 ) -> dict[str, Any]:
     runtime = policy["runtimeGovernance"]
     root = Path(item["path"])
-    result: dict[str, Any] = {"name": item["name"], "path": str(root), "exists": root.is_dir(), "objects": []}
+    result: dict[str, Any] = {"name": item["name"], "path": str(root), "exists": root.is_dir(), "objects": [], "rootNonDirectoryEntries": []}
     if not root.is_dir():
         return result
-    for entry in sorted((child for child in root.iterdir() if child.is_dir() and not child.is_symlink()), key=lambda child: child.name):
+    entries = sorted(root.iterdir(), key=lambda child: child.name)
+    for entry in entries:
+        if not entry.is_dir() or entry.is_symlink():
+            result["rootNonDirectoryEntries"].append(path_metadata(entry))
+            continue
         inventory = inventory_object(
             entry,
             set(runtime["manifestFileNames"]),
@@ -756,7 +785,144 @@ def development_data_discovery(
     return result
 
 
-def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
+def reference_proof(
+    initial_inventory: dict[str, Any],
+    final_inventory: dict[str, Any] | None,
+    initial_references: list[dict[str, Any]],
+    final_references: list[dict[str, Any]] | None,
+    initial_mounts: list[str],
+    final_mounts: list[str] | None,
+    *,
+    observation_seconds: int,
+    coverage_complete: bool,
+) -> dict[str, Any]:
+    """将两次不读取内容的观察收敛为 S5 的保守结论。
+
+    结论只能说明观测窗口内未见运行时引用，不能说明该数据永远不会再被需要；
+    所以它绝不授权移动或删除。
+    """
+    initial_digest = json_sha256(initial_inventory)
+    result: dict[str, Any] = {
+        "observationSeconds": observation_seconds,
+        "initialInventorySha256": initial_digest,
+        "finalInventorySha256": None,
+        "inventoryStable": None,
+        "initialProcessReferenceCount": len(initial_references),
+        "finalProcessReferenceCount": None,
+        "initialMountCount": len(initial_mounts),
+        "finalMountCount": None,
+        "initialActiveLockCount": len(initial_inventory["activeLockPaths"]),
+        "finalActiveLockCount": None,
+        "coverageComplete": coverage_complete,
+    }
+    if final_inventory is None or final_references is None or final_mounts is None:
+        result["state"] = "not_requested"
+        return result
+
+    final_digest = json_sha256(final_inventory)
+    result.update(
+        {
+            "finalInventorySha256": final_digest,
+            "inventoryStable": initial_digest == final_digest,
+            "finalProcessReferenceCount": len(final_references),
+            "finalMountCount": len(final_mounts),
+            "finalActiveLockCount": len(final_inventory["activeLockPaths"]),
+        }
+    )
+    if not coverage_complete:
+        result["state"] = "coverage_incomplete"
+    elif (
+        initial_references
+        or final_references
+        or initial_mounts
+        or final_mounts
+        or initial_inventory["activeLockPaths"]
+        or final_inventory["activeLockPaths"]
+        or not result["inventoryStable"]
+    ):
+        result["state"] = "reference_or_change_observed"
+    else:
+        result["state"] = "observed_no_live_reference"
+    return result
+
+
+def attach_development_reference_proofs(
+    data_results: list[dict[str, Any]],
+    policy: dict[str, Any],
+    *,
+    observation_seconds: int,
+    initial_process_snapshot: dict[str, Any],
+    initial_mount_snapshot: dict[str, Any],
+    initial_lock_snapshot: dict[str, Any],
+    final_process_snapshot: dict[str, Any] | None,
+    final_mount_snapshot: dict[str, Any] | None,
+    final_lock_snapshot: dict[str, Any] | None,
+) -> int:
+    """为开发数据补充第二次只读观察；返回可进入人工批次确认的数量。"""
+    runtime = policy["runtimeGovernance"]
+    proof_eligible_count = 0
+    for root in data_results:
+        for item in root["objects"]:
+            initial_inventory = item["inventory"]
+            initial_references = item["processReferences"]
+            initial_mounts = item["mountPoints"]
+            final_inventory: dict[str, Any] | None = None
+            final_references: list[dict[str, Any]] | None = None
+            final_mounts: list[str] | None = None
+            coverage_complete = bool(
+                initial_inventory["coverageComplete"]
+                and initial_inventory["manifestEvidenceCoverageComplete"]
+                and initial_process_snapshot["coverageComplete"]
+                and initial_mount_snapshot["coverageComplete"]
+                and initial_lock_snapshot["coverageComplete"]
+            )
+            if final_process_snapshot is not None and final_mount_snapshot is not None and final_lock_snapshot is not None:
+                path = Path(initial_inventory["path"])
+                final_inventory = inventory_object(
+                    path,
+                    set(runtime["manifestFileNames"]),
+                    runtime["maxEntriesPerObject"],
+                    runtime["maxManifestBytes"],
+                    final_lock_snapshot,
+                )
+                final_references = references_for(path, final_process_snapshot)
+                final_mounts = mounts_for(path, final_mount_snapshot)
+                coverage_complete = bool(
+                    coverage_complete
+                    and final_inventory["coverageComplete"]
+                    and final_inventory["manifestEvidenceCoverageComplete"]
+                    and final_process_snapshot["coverageComplete"]
+                    and final_mount_snapshot["coverageComplete"]
+                    and final_lock_snapshot["coverageComplete"]
+                )
+            proof = reference_proof(
+                initial_inventory,
+                final_inventory,
+                initial_references,
+                final_references,
+                initial_mounts,
+                final_mounts,
+                observation_seconds=observation_seconds,
+                coverage_complete=coverage_complete,
+            )
+            item["referenceProof"] = proof
+            item["candidateReferenceInspection"] = proof["state"]
+            if item["retentionState"] == "future_quarantine_candidate" and proof["state"] == "observed_no_live_reference":
+                proof_eligible_count += 1
+    return proof_eligible_count
+
+
+def observation_seconds(value: str) -> int:
+    try:
+        seconds = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("观察秒数必须是整数") from error
+    if seconds < 0 or seconds > 3600:
+        raise argparse.ArgumentTypeError("观察秒数必须在 0 到 3600 之间")
+    return seconds
+
+
+def build_discovery(policy: dict[str, Any], *, reference_observation_seconds: int = 0) -> dict[str, Any]:
     runtime = policy["runtimeGovernance"]
     components = runtime["releaseComponents"]
     development_roots = runtime["developmentDataRoots"]
@@ -766,9 +932,28 @@ def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
     lock_snapshot = parse_kernel_locks(Path(policy["processRoot"]) / "locks")
     component_results = [component_discovery(item, policy, process_snapshot, mount_snapshot, lock_snapshot) for item in components]
     data_results = [development_data_discovery(item, policy, process_snapshot, mount_snapshot, lock_snapshot) for item in development_roots]
+    final_process_snapshot: dict[str, Any] | None = None
+    final_mount_snapshot: dict[str, Any] | None = None
+    final_lock_snapshot: dict[str, Any] | None = None
+    if reference_observation_seconds:
+        time.sleep(reference_observation_seconds)
+        final_process_snapshot = process_path_snapshot(Path(policy["processRoot"]), scan_roots)
+        final_mount_snapshot = parse_mounts(Path(runtime["mountInfoPath"]))
+        final_lock_snapshot = parse_kernel_locks(Path(policy["processRoot"]) / "locks")
+    s5_reference_proof_eligible_count = attach_development_reference_proofs(
+        data_results,
+        policy,
+        observation_seconds=reference_observation_seconds,
+        initial_process_snapshot=process_snapshot,
+        initial_mount_snapshot=mount_snapshot,
+        initial_lock_snapshot=lock_snapshot,
+        final_process_snapshot=final_process_snapshot,
+        final_mount_snapshot=final_mount_snapshot,
+        final_lock_snapshot=final_lock_snapshot,
+    )
     config = config_metadata(Path(policy["configDirectory"]), policy["requiredConfigMode"])
     p1 = next((item for item in component_results if item["name"] == "p1_chat_sidecar"), None)
-    identity_gap = bool(p1 and not p1["identityEquation"]["actualProcessCwdBound"])
+    identity_gap = bool(p1 and p1["identityEquation"].get("actualProcessCwdBound") is not True)
     candidate_count = sum(1 for component in component_results for release in component["releases"] if release["retentionState"] == "future_quarantine_candidate")
     findings: list[dict[str, str]] = [
         {"severity": "block", "code": "read_only_discovery", "message": "本输出只提供 S3--S6 发现证据，不授权迁移、隔离、删除、重启或切换。"},
@@ -802,6 +987,7 @@ def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
         "runtimeComponents": component_results,
         "developmentData": data_results,
         "futureQuarantineCandidateCount": candidate_count,
+        "s5ReferenceProofEligibleCandidateCount": s5_reference_proof_eligible_count,
         "continuousGovernance": {
             "installationState": "not_installed",
             "dailyAudit": "required_read_only",
@@ -818,13 +1004,19 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy", type=Path, help="策略 JSON；省略时读取同目录默认策略")
     parser.add_argument("--compact", action="store_true", help="输出单行 JSON")
+    parser.add_argument(
+        "--reference-observation-seconds",
+        type=observation_seconds,
+        default=0,
+        help="S5 专用：间隔后第二次只读检查开发数据引用；0 表示不执行二次观察",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     arguments = parse_arguments()
     try:
-        result = build_discovery(load_policy(arguments.policy))
+        result = build_discovery(load_policy(arguments.policy), reference_observation_seconds=arguments.reference_observation_seconds)
     except (DiscoveryError, OSError) as error:
         print(f"S3--S6 只读发现失败：{error}", file=sys.stderr)
         return 2

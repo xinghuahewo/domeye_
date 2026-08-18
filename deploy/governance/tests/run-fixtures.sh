@@ -51,6 +51,8 @@ bash -n \
     "${SCRIPT_ROOT}/install.sh" \
     "${SCRIPT_ROOT}/tests/check-doc-links.sh"
 
+python3 "${SCRIPT_ROOT}/tests/test-audit-server-runtime-governance.py"
+
 git init --bare -q "${REMOTE}"
 git init -q "${WORK}"
 git -C "${WORK}" config user.name 'Domeye Governance Fixture'
