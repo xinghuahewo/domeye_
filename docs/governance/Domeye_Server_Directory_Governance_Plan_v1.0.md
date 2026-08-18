@@ -80,6 +80,11 @@ GitHub `xinghuahewo/domeye_@main` 是源码权威。服务器 checkout、目录�
 5. 读回 `HEAD == origin/main`、分支、remote、clean=true 和治理 Hook 摘要；
 6. 任一步失败时恢复原精确路径，不触碰旧 `/home/bgpdata/Domeye`。
 
+实现约束：归一器默认只读预检，`--apply` 才能写入；它固定拒绝保护根、进程 cwd/exe/fd
+引用、挂载、Git 锁、跨文件系统移动、活动指针引用源码 checkout、SHA 漂移和带凭证
+remote。它先创建可校验 archive，再同文件系统隔离旧 checkout；clone 或读回失败时自动
+恢复原精确路径。S2 完成不代表生产发布或业务验证完成。
+
 ### S3：运行身份与凭证治理
 
 - 只治理 Domeye-Core Backend、旧 Agent Sidecar 和 P1 Chat Sidecar；

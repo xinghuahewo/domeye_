@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "domeye.server-checkout-normalization-preflight-evidence/v1",
+  "observedAt": "2026-08-18T12:00:28.917339Z",
+  "mode": "read_only",
+  "host": "buptserver16",
+  "githubMain": "1206515e03420581cf78417bd12183c88cd28194",
+  "operationContract": {
+    "operationId": "20260818T120000Z-domeye-core-checkout-main-1206515",
+    "sourceCheckout": "/home/bgpdata/Domeye-Core",
+    "artifactRoot": "/home/bgpdata/Domeye-Core-artifacts",
+    "targetRemote": "https://github.com/xinghuahewo/domeye_.git",
+    "targetBranch": "main"
+  },
+  "sourceCheckout": {
+    "head": "db230634a31a289d3d2ba6aa27a862117c04ade0",
+    "branch": "main",
+    "remoteCount": 0,
+    "clean": false,
+    "modifiedCount": 48,
+    "untrackedCount": 51,
+    "changeCount": 99
+  },
+  "activeLinks": [
+    {
+      "name": "backend",
+      "resolvedTarget": "/home/bgpdata/Domeye-Core-runtime/releases/20260811T021506Z-country-outage-p1-chat-prod31-backend"
+    },
+    {
+      "name": "legacy_agent_sidecar",
+      "resolvedTarget": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases/20260807T072925Z-country-outage-agent-core-data-layer-prod21"
+    },
+    {
+      "name": "p1_chat_sidecar",
+      "resolvedTarget": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases/20260811T123503Z-country-outage-p1-chat-prod34"
+    }
+  ],
+  "managedProcessReferences": [
+    {
+      "pid": 622634,
+      "classification": "development_data"
+    },
+    {
+      "pid": 710378,
+      "classification": "runtime_release"
+    },
+    {
+      "pid": 1662659,
+      "classification": "runtime_release"
+    }
+  ],
+  "protectedOldDomeyeProcessReferenceCount": 7,
+  "filesystem": {
+    "usedPercent": 84.1,
+    "availableBytes": 1875108249600,
+    "level": "warning"
+  },
+  "gate": {
+    "decision": "S2_PRECONDITIONS_PENDING",
+    "reason": "仍须从已合入 main 的归一器完成 cwd/exe/fd、挂载、锁、同文件系统与冻结 SHA 的一次性预检。"
+  },
+  "serverWriteCount": 0,
+  "oldDomeyeTouched": false,
+  "limitations": [
+    "本文件是审计器摘要，不替代 S2 归一器的严格一次性预检。",
+    "未读取配置内容、进程命令行参数或环境变量。",
+    "未移动、删除、重启、安装、发布或切换任何服务器对象。"
+  ]
+}
