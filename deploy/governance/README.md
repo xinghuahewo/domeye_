@@ -64,6 +64,11 @@ release 声明的 rollback，以及声明自身通过全部 `passed`/`verified` 
 标为 `protected_or_unknown`。活动 manifest 缺失、不可解析或指向不存在的 rollback 时，全部
 候选失败关闭为 `unknown`；不得以“最多保留五套”覆盖正式回滚或验收证据。
 
+对 Agent/P1 这类生命周期管理组件，策略还必须列出 root-only `state/active.json` 与
+`state/rollback.json`。审计器只提取其中的 release ID/previous release ID，不输出状态原文；
+文件不是普通 `root:root 0600` JSON、过大、不可解析，或其中 ID 不在同一 release 根时，
+该组件的候选同样全部失败关闭。状态声明的任一历史 release 都获得 `rollback` 保护。
+
 文件名以 `.lock` 结尾只作为命名信号，不等于活动锁；只有内核锁表中的 inode 对应到
 该对象时才标记 `locked`。内核线程常没有可解析 executable，但其 cwd 和 fd 可完整
 检查时不降低进程引用覆盖率；cwd 或 fd 本身不可读时仍失败关闭为 `unknown`。

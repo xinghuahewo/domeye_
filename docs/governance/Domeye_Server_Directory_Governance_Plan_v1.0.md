@@ -132,6 +132,11 @@ rollback release ID 与已接受证据布尔结论。活动 manifest 声明的 r
 的 release 必须获得 `accepted_evidence` 保护。manifest 缺失、解析失败、过大或 rollback
 指向不存在对象时，候选一律归为 `unknown`，不得隔离。
 
+对有生命周期状态的 Sidecar，策略须显式列出 `state/active.json` 和 `state/rollback.json`，
+并要求它们是同一受管根内的 `root:root 0600` 小型 JSON。发现器只输出其中的 release ID/
+previous release ID；任一 ID 都必须获得 `rollback` 保护。状态文件缺失、权限漂移、过大、
+无法解析或引用同根外对象时，该组件所有候选均归为 `unknown`，不得隔离。
+
 这里的“锁定”仅指能由内核锁表回读到对象 inode 的活动锁；`Pipfile.lock` 等静态依赖
 文件名本身不是活动锁证据。若 cwd 或 fd 路径引用扫描不完整，仍必须归入 `unknown`。
 

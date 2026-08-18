@@ -101,6 +101,11 @@ def validate_policy(policy: dict[str, Any]) -> None:
     for name in ("maxEntriesPerObject", "maxManifestBytes"):
         if not isinstance(runtime.get(name), int) or runtime[name] <= 0:
             raise DiscoveryError(f"runtimeGovernance.{name} 必须是正整数")
+    for name in ("rollbackStateRequiredUid", "rollbackStateRequiredGid"):
+        if not isinstance(runtime.get(name), int) or runtime[name] < 0:
+            raise DiscoveryError(f"runtimeGovernance.{name} 必须是非负整数")
+    if runtime.get("rollbackStateRequiredMode") != "0600":
+        raise DiscoveryError("runtimeGovernance.rollbackStateRequiredMode 必须固定为 0600")
     manifest_names = runtime.get("manifestFileNames")
     if not isinstance(manifest_names, list) or not manifest_names or any(
         not isinstance(item, str) or not item or "/" in item for item in manifest_names
@@ -124,6 +129,13 @@ def validate_policy(policy: dict[str, Any]) -> None:
         release_root = require_path(item.get("releaseRoot"), f"releaseComponents[{index}].releaseRoot")
         if not any(is_within(canonical(release_root), canonical(root)) for root in managed_paths):
             raise DiscoveryError(f"release root 必须位于受管根：{release_root}")
+        state_paths = item.get("rollbackStatePaths", [])
+        if not isinstance(state_paths, list):
+            raise DiscoveryError(f"releaseComponents[{index}].rollbackStatePaths 必须是数组")
+        for state_index, state_path in enumerate(state_paths):
+            state = require_path(state_path, f"releaseComponents[{index}].rollbackStatePaths[{state_index}]")
+            if not any(is_within(canonical(state), canonical(root)) for root in managed_paths):
+                raise DiscoveryError(f"rollback state 必须位于受管根：{state}")
     for index, item in enumerate(data_roots):
         if not isinstance(item, dict):
             raise DiscoveryError(f"developmentDataRoots[{index}] 必须是对象")
@@ -497,6 +509,57 @@ def has_accepted_evidence(inventory: dict[str, Any]) -> bool:
     )
 
 
+def rollback_state_evidence(paths: list[Path], runtime: dict[str, Any]) -> dict[str, Any]:
+    """读取 root-only 生命周期状态中的 release ID，不输出状态原文。"""
+    result: dict[str, Any] = {"coverageComplete": True, "stateFiles": [], "rollbackReleaseIds": []}
+    release_ids: set[str] = set()
+    expected_mode = runtime["rollbackStateRequiredMode"]
+    for path in paths:
+        item: dict[str, Any] = {"path": str(path), "exists": path.exists() or path.is_symlink()}
+        if not item["exists"]:
+            item["parseState"] = "missing"
+            result["coverageComplete"] = False
+            result["stateFiles"].append(item)
+            continue
+        try:
+            metadata = path.lstat()
+            mode = format(stat.S_IMODE(metadata.st_mode), "04o")
+            regular = stat.S_ISREG(metadata.st_mode) and not path.is_symlink()
+            item.update({"regularFile": regular, "mode": mode, "uid": metadata.st_uid, "gid": metadata.st_gid})
+            if not regular or mode != expected_mode or metadata.st_uid != runtime["rollbackStateRequiredUid"] or metadata.st_gid != runtime["rollbackStateRequiredGid"]:
+                item["parseState"] = "unsafe_metadata"
+                result["coverageComplete"] = False
+                result["stateFiles"].append(item)
+                continue
+            if metadata.st_size > runtime["maxManifestBytes"]:
+                item["parseState"] = "skipped_too_large"
+                result["coverageComplete"] = False
+                result["stateFiles"].append(item)
+                continue
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            item["parseState"] = type(error).__name__
+            result["coverageComplete"] = False
+            result["stateFiles"].append(item)
+            continue
+        if not isinstance(document, dict):
+            item["parseState"] = "not_object"
+            result["coverageComplete"] = False
+            result["stateFiles"].append(item)
+            continue
+        item["parseState"] = "parsed"
+        declared: set[str] = set()
+        for key in ("release_id", "releaseId", "previous_release_id", "previousReleaseId"):
+            value = safe_release_id(document.get(key))
+            if value:
+                declared.add(value)
+        item["releaseIds"] = sorted(declared)
+        release_ids.update(declared)
+        result["stateFiles"].append(item)
+    result["rollbackReleaseIds"] = sorted(release_ids)
+    return result
+
+
 def retention_state(
     inventory: dict[str, Any],
     active: bool,
@@ -589,14 +652,17 @@ def component_discovery(
                 "processReferences": references,
                 "mountPoints": mounts,
             }
-        )
+    )
     active_release = next((item for item in discovered if item["active"]), None)
     active_rollback_ids = declared_rollback_ids(active_release["inventory"]) if active_release else set()
+    state_evidence = rollback_state_evidence([Path(path) for path in component.get("rollbackStatePaths", [])], runtime)
+    active_rollback_ids.update(state_evidence["rollbackReleaseIds"])
     known_release_ids = {item["releaseId"] for item in discovered}
     rollback_reference_coverage_complete = bool(
         active_release
         and active_release["inventory"]["manifestFiles"]
         and active_release["inventory"]["manifestEvidenceCoverageComplete"]
+        and state_evidence["coverageComplete"]
         and active_rollback_ids <= known_release_ids
     )
     for item in discovered:
@@ -624,6 +690,7 @@ def component_discovery(
         )
     result["activeRollbackReleaseIds"] = sorted(active_rollback_ids)
     result["rollbackReferenceCoverageComplete"] = rollback_reference_coverage_complete
+    result["rollbackStateEvidence"] = state_evidence
     active_release = next((item for item in result["releases"] if item["active"]), None)
     process_cwd_bound = bool(active_release and any("cwd" in item["referenceKinds"] for item in active_release["processReferences"]))
     manifest_bound = bool(active_release and active_release["inventory"]["manifestFiles"])
