@@ -58,6 +58,12 @@ executable，不读取命令行参数或环境变量。任何 finding 或保护�
 另有精确批次清单、空间估算、恢复路径和用户授权才可进入 `quarantine_planned`；删除
 还须在隔离观察 14 天后再次单独授权。
 
+对 runtime release，审计器还会读取策略列出的、大小受限的 release manifest，并只输出
+其摘要、声明的 rollback release ID 和“已接受证据”布尔结论，不输出 manifest 原文。活动
+release 声明的 rollback，以及声明自身通过全部 `passed`/`verified` 检查的 release，均必须
+标为 `protected_or_unknown`。活动 manifest 缺失、不可解析或指向不存在的 rollback 时，全部
+候选失败关闭为 `unknown`；不得以“最多保留五套”覆盖正式回滚或验收证据。
+
 文件名以 `.lock` 结尾只作为命名信号，不等于活动锁；只有内核锁表中的 inode 对应到
 该对象时才标记 `locked`。内核线程常没有可解析 executable，但其 cwd 和 fd 可完整
 检查时不降低进程引用覆盖率；cwd 或 fd 本身不可读时仍失败关闭为 `unknown`。

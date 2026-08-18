@@ -21,6 +21,7 @@ SCHEMA = "domeye.server-runtime-governance-discovery/v1"
 POLICY_SCHEMA = "domeye.server-directory-policy/v1"
 DEFAULT_POLICY = Path(__file__).with_name("server-directory-policy.json")
 POLICY_ENV = "DOMEYE_SERVER_GOVERNANCE_POLICY_B64"
+ACCEPTED_CHECK_VALUES = {"passed", "verified"}
 
 
 class DiscoveryError(RuntimeError):
@@ -138,6 +139,49 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def safe_release_id(value: Any) -> str | None:
+    if not isinstance(value, str) or not value or "\x00" in value or "/" in value:
+        return None
+    return value
+
+
+def manifest_evidence(path: Path, object_id: str, max_bytes: int) -> dict[str, Any]:
+    """从小型 release manifest 提取保留关系，不输出原始内容或校验值。"""
+    result: dict[str, Any] = {"path": str(path), "parseState": "not_attempted", "rollbackReleaseIds": [], "acceptedEvidence": False}
+    try:
+        if path.stat().st_size > max_bytes:
+            result["parseState"] = "skipped_too_large"
+            return result
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        result["parseState"] = type(error).__name__
+        return result
+    if not isinstance(document, dict):
+        result["parseState"] = "not_object"
+        return result
+    result["parseState"] = "parsed"
+    declared = safe_release_id(document.get("release_id", document.get("releaseId")))
+    result["declaredReleaseMatchesObject"] = declared == object_id
+    rollback_ids: set[str] = set()
+    rollback = document.get("rollback")
+    if isinstance(rollback, dict):
+        release_id = safe_release_id(rollback.get("release_id", rollback.get("releaseId")))
+        if release_id:
+            rollback_ids.add(release_id)
+    direct_rollback = safe_release_id(document.get("rollback_release_id", document.get("rollbackReleaseId")))
+    if direct_rollback:
+        rollback_ids.add(direct_rollback)
+    result["rollbackReleaseIds"] = sorted(rollback_ids)
+    checks = document.get("checks")
+    result["acceptedEvidence"] = bool(
+        result["declaredReleaseMatchesObject"]
+        and isinstance(checks, dict)
+        and checks
+        and all(isinstance(value, str) and value in ACCEPTED_CHECK_VALUES for value in checks.values())
+    )
+    return result
 
 
 def path_metadata(path: Path) -> dict[str, Any]:
@@ -346,6 +390,7 @@ def inventory_object(
             "logicalBytes": 0,
             "allocatedBytesApproximate": 0,
             "manifestFiles": [],
+            "manifestEvidenceCoverageComplete": True,
             "namedLockPaths": [],
             "activeLockPaths": [],
             "externalHardLinkCount": 0,
@@ -421,8 +466,12 @@ def inventory_object(
             item: dict[str, Any] = {"path": str(manifest), "bytes": size}
             if size <= max_manifest_bytes:
                 item["sha256"] = file_sha256(manifest)
+                item["evidence"] = manifest_evidence(manifest, path.name, max_manifest_bytes)
+                if item["evidence"]["parseState"] != "parsed":
+                    result["manifestEvidenceCoverageComplete"] = False
             else:
                 item["hashStatus"] = "skipped_too_large"
+                result["manifestEvidenceCoverageComplete"] = False
             result["manifestFiles"].append(item)
         except (FileNotFoundError, PermissionError, OSError) as error:
             result["coverageComplete"] = False
@@ -432,19 +481,48 @@ def inventory_object(
     return result
 
 
+def declared_rollback_ids(inventory: dict[str, Any]) -> set[str]:
+    values: set[str] = set()
+    for item in inventory.get("manifestFiles", []):
+        evidence = item.get("evidence")
+        if isinstance(evidence, dict):
+            values.update(value for value in evidence.get("rollbackReleaseIds", []) if isinstance(value, str))
+    return values
+
+
+def has_accepted_evidence(inventory: dict[str, Any]) -> bool:
+    return any(
+        isinstance(item.get("evidence"), dict) and item["evidence"].get("acceptedEvidence") is True
+        for item in inventory.get("manifestFiles", [])
+    )
+
+
 def retention_state(
-    inventory: dict[str, Any], active: bool, references: list[dict[str, Any]], mounts: list[str], process_coverage_complete: bool, mount_coverage_complete: bool, lock_coverage_complete: bool
+    inventory: dict[str, Any],
+    active: bool,
+    rollback: bool,
+    accepted_evidence: bool,
+    references: list[dict[str, Any]],
+    mounts: list[str],
+    process_coverage_complete: bool,
+    mount_coverage_complete: bool,
+    lock_coverage_complete: bool,
+    rollback_reference_coverage_complete: bool,
 ) -> tuple[str, list[str]]:
     protected: list[str] = []
     if active:
         protected.append("active")
+    if rollback:
+        protected.append("rollback")
+    if accepted_evidence:
+        protected.append("accepted_evidence")
     if references:
         protected.append("process_referenced")
     if mounts:
         protected.append("mounted")
     if inventory["activeLockPaths"]:
         protected.append("locked")
-    if not inventory["coverageComplete"] or not process_coverage_complete or not mount_coverage_complete or not lock_coverage_complete:
+    if not inventory["coverageComplete"] or not inventory["manifestEvidenceCoverageComplete"] or not process_coverage_complete or not mount_coverage_complete or not lock_coverage_complete or not rollback_reference_coverage_complete:
         protected.append("unknown")
     if inventory["externalHardLinkCount"]:
         protected.append("unknown")
@@ -490,6 +568,7 @@ def component_discovery(
     result["releaseRootExists"] = True
     active_target = canonical(Path(link["resolvedTarget"])) if link.get("valid") else None
     entries = sorted((entry for entry in release_root.iterdir() if entry.is_dir() and not entry.is_symlink()), key=lambda entry: entry.name)
+    discovered: list[dict[str, Any]] = []
     for entry in entries:
         inventory = inventory_object(
             entry,
@@ -501,16 +580,7 @@ def component_discovery(
         references = references_for(entry, process_snapshot)
         mounts = mounts_for(entry, mount_snapshot)
         is_active = active_target == canonical(entry)
-        state, protected_classes = retention_state(
-            inventory,
-            is_active,
-            references,
-            mounts,
-            process_snapshot["coverageComplete"],
-            mount_snapshot["coverageComplete"],
-            lock_snapshot["coverageComplete"],
-        )
-        result["releases"].append(
+        discovered.append(
             {
                 "releaseId": entry.name,
                 "hidden": entry.name.startswith("."),
@@ -518,6 +588,33 @@ def component_discovery(
                 "inventory": inventory,
                 "processReferences": references,
                 "mountPoints": mounts,
+            }
+        )
+    active_release = next((item for item in discovered if item["active"]), None)
+    active_rollback_ids = declared_rollback_ids(active_release["inventory"]) if active_release else set()
+    known_release_ids = {item["releaseId"] for item in discovered}
+    rollback_reference_coverage_complete = bool(
+        active_release
+        and active_release["inventory"]["manifestFiles"]
+        and active_release["inventory"]["manifestEvidenceCoverageComplete"]
+        and active_rollback_ids <= known_release_ids
+    )
+    for item in discovered:
+        state, protected_classes = retention_state(
+            item["inventory"],
+            item["active"],
+            item["releaseId"] in active_rollback_ids,
+            has_accepted_evidence(item["inventory"]),
+            item["processReferences"],
+            item["mountPoints"],
+            process_snapshot["coverageComplete"],
+            mount_snapshot["coverageComplete"],
+            lock_snapshot["coverageComplete"],
+            rollback_reference_coverage_complete,
+        )
+        result["releases"].append(
+            {
+                **item,
                 "retentionState": state,
                 "protectedClasses": protected_classes,
                 "quarantineState": "inventory",
@@ -525,6 +622,8 @@ def component_discovery(
                 "deleteAuthorized": False,
             }
         )
+    result["activeRollbackReleaseIds"] = sorted(active_rollback_ids)
+    result["rollbackReferenceCoverageComplete"] = rollback_reference_coverage_complete
     active_release = next((item for item in result["releases"] if item["active"]), None)
     process_cwd_bound = bool(active_release and any("cwd" in item["referenceKinds"] for item in active_release["processReferences"]))
     manifest_bound = bool(active_release and active_release["inventory"]["manifestFiles"])
@@ -564,11 +663,14 @@ def development_data_discovery(
         state, protected_classes = retention_state(
             inventory,
             False,
+            False,
+            False,
             references,
             mounts,
             process_snapshot["coverageComplete"],
             mount_snapshot["coverageComplete"],
             lock_snapshot["coverageComplete"],
+            True,
         )
         result["objects"].append(
             {
