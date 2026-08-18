@@ -93,6 +93,12 @@ remote。它先创建可校验 archive，再同文件系统隔离旧 checkout；
 新 checkout 的 `origin` 仍固定为公开 GitHub URL；该替代不写入 GitHub 凭证，也不表示
 服务器已经具备后续 fetch 能力。bundle 必须随本批 quarantine 长期保留。
 
+首次归一完成后，若 GitHub `main` 前进而服务器 checkout 仍干净、无运行引用，则必须
+使用独立 Gate 的可恢复 refresh 流程追平。refresh 只接受受管本机 bundle，冻结刷新前/
+目标 SHA 与 bundle SHA-256，在 checkout 本地保留刷新前 rollback ref，并在 HEAD、
+`origin/main`、branch、clean 和活动指针读回一致后才成功；失败时恢复刷新前 SHA。它
+不修改 GitHub 凭证、运行 release、服务或旧 Domeye。
+
 ### S3：运行身份与凭证治理
 
 - 只治理 Domeye-Core Backend、旧 Agent Sidecar 和 P1 Chat Sidecar；
