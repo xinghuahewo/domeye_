@@ -150,6 +150,12 @@ inventory → classified → quarantine_planned → quarantined
 没有精确路径、清单摘要、预计释放空间、恢复路径和单批用户授权时，不得进入
 `delete_authorized`。Manifest、checksum、验收记录和正式 tag 长期保留。
 
+S4 的可恢复隔离执行器只能消费 `domeye.runtime-release-quarantine-batch/v1` 精确清单；
+每一对象须绑定当前策略 SHA-256 与路径无关 inventory SHA-256。它在移动前重新执行只读
+发现，复核候选状态、进程/挂载/活动锁/回滚覆盖、目标为空和同文件系统条件；移动后复核
+清单摘要与引用。任一失败均按逆序恢复已移动对象，禁止删除。批次清单必须写入本批
+`userAuthorization` 原文，不得以通用计划或历史授权替代。
+
 ### S5：开发数据治理
 
 `Domeye-Core-dev-data` 单独治理：
