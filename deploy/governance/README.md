@@ -10,11 +10,33 @@
 | `pre-receive` | 保护 `main` 和正式发布时间戳 tag |
 | `check-release-normalization.sh` | 核对统一发布证据、组件制品与实际生产身份 |
 | `install.sh` | 备份旧版本、原子安装两项服务器治理脚本并生成回执 |
+| `server-directory-policy.json` | 固定服务器受管根、保护根、磁盘阈值和零写入策略 |
+| `audit-server-layout.py` | 只读盘点目录、Git、活动指针、权限和进程 cwd，不读取秘密 |
 | `tests/run-fixtures.sh` | 覆盖主干审批、非快进、正式 tag 和归一合同的正反夹具 |
 | `tests/check-doc-links.sh` | 检查治理涉及文档的相对链接 |
 
 完整规则见
-[主干开发与发布归一治理规范](../../docs/主干开发与发布归一治理规范.md)。
+[主干开发与发布归一治理规范](../../docs/governance/主干开发与发布归一治理规范.md)。
+
+服务器目录的保护边界、阶段 Gate 和隔离/删除授权见
+[服务器目录治理计划](../../docs/governance/Domeye_Server_Directory_Governance_Plan_v1.0.md)。
+
+## 服务器目录只读审计
+
+审计器不提供删除、移动、重启、安装或生产切换参数。它只输出
+`domeye.server-directory-audit/v1` JSON，默认读取同目录策略。也可以把非秘密策略以
+base64 环境变量传给远端标准输入执行，避免在服务器落盘：
+
+```bash
+policy_b64="$(base64 < deploy/governance/server-directory-policy.json | tr -d '\n')"
+ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
+  "DOMEYE_SERVER_GOVERNANCE_POLICY_B64='${policy_b64}' python3 -" \
+  < deploy/governance/audit-server-layout.py
+```
+
+审计只读取配置文件名、权限和属主，不读取配置内容；进程只读取 PID、`comm`、cwd 和
+executable，不读取命令行参数或环境变量。任何 finding 或保护进程都会令 Gate 保持
+`BLOCK_MUTATION`。
 
 本目录中的目标引用、审批 schema 和夹具统一指向 `main`，只表示仓库定义已经迁移。
 生产服务器现有 Hook 不会随 Git 提交自动更新；只有 `install.sh` 的不可变来源、安装

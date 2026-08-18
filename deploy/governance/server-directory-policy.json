@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "domeye.server-directory-policy/v1",
+  "expectedHost": "buptserver16",
+  "filesystemPath": "/home/bgpdata",
+  "processRoot": "/proc",
+  "screenSessionsEnabled": true,
+  "diskThresholdPercent": {
+    "warning": 80,
+    "critical": 85,
+    "stopNewBuilds": 90
+  },
+  "protectedRoots": [
+    {
+      "path": "/home/bgpdata/Domeye",
+      "reason": "旧 Domeye 项目及其运行进程，用户明确要求不得改动"
+    },
+    {
+      "path": "/home/bgpdata/data",
+      "reason": "可能由旧 Domeye 或其他业务共享，归属确认前不得改动"
+    },
+    {
+      "path": "/home/bgpdata/AS402425",
+      "reason": "非本治理任务范围"
+    },
+    {
+      "path": "/home/bgpdata/zhongxin",
+      "reason": "非本治理任务范围"
+    },
+    {
+      "path": "/home/bgpdata/Domeye-Info-Migration",
+      "reason": "归属与依赖尚未冻结，确认前不得改动"
+    }
+  ],
+  "managedRoots": [
+    {
+      "name": "source_checkout",
+      "path": "/home/bgpdata/Domeye-Core",
+      "mode": "normalize_after_separate_gate"
+    },
+    {
+      "name": "runtime",
+      "path": "/home/bgpdata/Domeye-Core-runtime",
+      "mode": "audit_then_quarantine"
+    },
+    {
+      "name": "artifacts",
+      "path": "/home/bgpdata/Domeye-Core-artifacts",
+      "mode": "audit_then_quarantine"
+    },
+    {
+      "name": "production_data",
+      "path": "/home/bgpdata/Domeye-Core-data",
+      "mode": "audit_only"
+    },
+    {
+      "name": "development_data",
+      "path": "/home/bgpdata/Domeye-Core-dev-data",
+      "mode": "audit_then_explicit_approval"
+    },
+    {
+      "name": "governance",
+      "path": "/home/bgpdata/Domeye-Core-governance",
+      "mode": "audit_only"
+    }
+  ],
+  "sourceCheckout": "/home/bgpdata/Domeye-Core",
+  "runtimeRoot": "/home/bgpdata/Domeye-Core-runtime",
+  "configDirectory": "/home/bgpdata/Domeye-Core-runtime/config",
+  "requiredConfigMode": "0600",
+  "activeLinks": [
+    {
+      "name": "backend",
+      "path": "/home/bgpdata/Domeye-Core-runtime/current",
+      "allowedTargetPrefix": "/home/bgpdata/Domeye-Core-runtime/releases"
+    },
+    {
+      "name": "legacy_agent_sidecar",
+      "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/current",
+      "allowedTargetPrefix": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases"
+    },
+    {
+      "name": "p1_chat_sidecar",
+      "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current",
+      "allowedTargetPrefix": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases"
+    }
+  ],
+  "releaseRoots": [
+    {
+      "name": "core_component_releases",
+      "path": "/home/bgpdata/Domeye-Core-runtime/releases"
+    },
+    {
+      "name": "unified_release_records",
+      "path": "/home/bgpdata/Domeye-Core-runtime/unified-releases"
+    },
+    {
+      "name": "legacy_agent_releases",
+      "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases"
+    },
+    {
+      "name": "p1_chat_releases",
+      "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases"
+    }
+  ],
+  "retention": {
+    "maximumRetainedPerComponent": 5,
+    "quarantineDays": 14,
+    "ordinaryLogDays": 30,
+    "acceptanceAndIncidentLogDays": 90,
+    "requiredProtectedClasses": [
+      "active",
+      "rollback",
+      "accepted_evidence",
+      "process_referenced",
+      "mounted",
+      "locked",
+      "unknown"
+    ]
+  },
+  "mutationPolicy": {
+    "auditWritesServer": false,
+    "deleteEnabled": false,
+    "moveEnabled": false,
+    "restartEnabled": false,
+    "productionSwitchEnabled": false,
+    "requiresSeparateTaskForMutation": true
+  }
+}

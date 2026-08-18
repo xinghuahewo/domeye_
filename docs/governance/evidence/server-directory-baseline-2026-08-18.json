@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "domeye.server-directory-baseline-evidence/v1",
+  "observedAt": "2026-08-18T11:05:08.329561Z",
+  "host": "buptserver16",
+  "mode": "read_only",
+  "mutationAuthorized": false,
+  "source": {
+    "repository": "xinghuahewo/domeye_",
+    "mainBaseline": "e3790075c12ec64228444d15c7d25c76b469a0d4",
+    "taskBranch": "codex/server-governance-s0-s1",
+    "auditToolSha256": "5c2987b017677e7cd48b42ba330330531a076d81a27a4a3aff5ef8bccd04bd7f",
+    "policyFileSha256": "bca752347e32fd2624ee658e75ecaad062a8dc55cd31d34a5266f08c3d6085d5",
+    "policyCanonicalSha256": "c7dc276248ef49add2e90ed323ae79f81c9a07f497e6ddfce6f920f25922ab8c"
+  },
+  "filesystem": {
+    "path": "/home/bgpdata",
+    "totalBytes": 11796046868480,
+    "usedBytes": 9920879607808,
+    "availableBytes": 1875167260672,
+    "usedPercent": 84.1,
+    "level": "warning"
+  },
+  "sourceCheckout": {
+    "path": "/home/bgpdata/Domeye-Core",
+    "branch": "main",
+    "head": "db230634a31a289d3d2ba6aa27a862117c04ade0",
+    "remoteCount": 0,
+    "clean": false,
+    "modifiedCount": 48,
+    "untrackedCount": 51,
+    "changeCount": 99
+  },
+  "managedRoots": [
+    {"name": "source_checkout", "path": "/home/bgpdata/Domeye-Core", "allocatedBytes": 601878528},
+    {"name": "runtime", "path": "/home/bgpdata/Domeye-Core-runtime", "allocatedBytes": 15269625856},
+    {"name": "artifacts", "path": "/home/bgpdata/Domeye-Core-artifacts", "allocatedBytes": 6242611200},
+    {"name": "production_data", "path": "/home/bgpdata/Domeye-Core-data", "allocatedBytes": 89214435328},
+    {"name": "development_data", "path": "/home/bgpdata/Domeye-Core-dev-data", "allocatedBytes": 648933453824},
+    {"name": "governance", "path": "/home/bgpdata/Domeye-Core-governance", "allocatedBytes": 163840}
+  ],
+  "protectedBoundary": {
+    "roots": [
+      "/home/bgpdata/Domeye",
+      "/home/bgpdata/data",
+      "/home/bgpdata/AS402425",
+      "/home/bgpdata/zhongxin",
+      "/home/bgpdata/Domeye-Info-Migration"
+    ],
+    "protectedProcessReferenceCount": 7,
+    "oldDomeyeProcessReferenceCount": 7,
+    "serverWriteCount": 0,
+    "processSignalsSent": 0
+  },
+  "topLevelClassification": {
+    "managedCount": 6,
+    "protectedCount": 5,
+    "unclassifiedCount": 5,
+    "unclassified": [
+      "/home/bgpdata/.cache",
+      "/home/bgpdata/.local",
+      "/home/bgpdata/Domeye-Core-country-outage-candidate.QulMGS",
+      "/home/bgpdata/backfill_rrc25.log",
+      "/home/bgpdata/backfill_rrc25.sh"
+    ]
+  },
+  "activeLinks": [
+    {
+      "name": "backend",
+      "releaseId": "20260811T021506Z-country-outage-p1-chat-prod31-backend",
+      "valid": true
+    },
+    {
+      "name": "legacy_agent_sidecar",
+      "releaseId": "20260807T072925Z-country-outage-agent-core-data-layer-prod21",
+      "valid": true
+    },
+    {
+      "name": "p1_chat_sidecar",
+      "releaseId": "20260811T123503Z-country-outage-p1-chat-prod34",
+      "valid": true
+    }
+  ],
+  "releaseRoots": [
+    {
+      "name": "core_component_releases",
+      "visibleDirectoryCount": 78,
+      "hiddenDirectoryCount": 2,
+      "allocatedBytes": 7914676224
+    },
+    {
+      "name": "unified_release_records",
+      "visibleDirectoryCount": 16,
+      "hiddenDirectoryCount": 0,
+      "allocatedBytes": 8433664
+    },
+    {
+      "name": "legacy_agent_releases",
+      "visibleDirectoryCount": 16,
+      "hiddenDirectoryCount": 0,
+      "allocatedBytes": 4257902592
+    },
+    {
+      "name": "p1_chat_releases",
+      "visibleDirectoryCount": 4,
+      "hiddenDirectoryCount": 6,
+      "allocatedBytes": 1977561088
+    }
+  ],
+  "screenSessions": [
+    "domeye_bgpdetection",
+    "domeye_country_outage_p1_chat",
+    "domeye_core_app",
+    "domeye",
+    "domeye_country_outage_agent"
+  ],
+  "configPermissions": {
+    "requiredMode": "0600",
+    "allCompliant": true,
+    "fileCount": 3,
+    "contentsRead": false
+  },
+  "findings": [
+    {"severity": "warning", "code": "source_checkout_dirty"},
+    {"severity": "warning", "code": "hidden_release_directories"},
+    {"severity": "warning", "code": "disk_usage_threshold"},
+    {"severity": "warning", "code": "unclassified_top_level_entries"}
+  ],
+  "gate": {
+    "decision": "BLOCK_MUTATION",
+    "reason": "存在风险项和旧 Domeye 保护进程；当前证据只授权继续设计和只读复核。"
+  },
+  "limitations": [
+    "未读取配置内容、进程命令行参数或环境变量。",
+    "未移动、删除、重启、安装、发布或切换任何服务器对象。",
+    "本证据不证明应用健康、业务效果、release 完整性或可删除性。",
+    "目录大小和进程状态是带时间戳的观察，后续批次必须重新采集。"
+  ]
+}
