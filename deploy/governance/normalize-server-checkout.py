@@ -267,9 +267,19 @@ def preflight(source: Path, artifact_root: Path, expected_source_head: str) -> d
     }
 
 
-def clone_clean_checkout(source: Path, expected_main: str) -> dict[str, Any]:
+def validate_bundle_path(operation_id: str, artifact_root: Path, bundle_path: Path) -> Path:
+    expected = artifact_root / "incoming" / f"{operation_id}.bundle"
+    if canonical(bundle_path) != canonical(expected) or bundle_path.is_symlink() or not bundle_path.is_file():
+        raise NormalizationError(f"bundle 必须是受管输入文件：{expected}")
+    return bundle_path
+
+
+def clone_clean_checkout(
+    source: Path, expected_main: str, bundle_path: Path | None = None
+) -> dict[str, Any]:
+    clone_source = str(bundle_path) if bundle_path is not None else EXPECTED_REMOTE
     completed = subprocess.run(
-        ["git", "-c", "credential.helper=", "clone", "--branch", EXPECTED_BRANCH, "--single-branch", "--origin", "origin", EXPECTED_REMOTE, str(source)],
+        ["git", "-c", "credential.helper=", "clone", "--branch", EXPECTED_BRANCH, "--single-branch", "--origin", "origin", clone_source, str(source)],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -277,7 +287,12 @@ def clone_clean_checkout(source: Path, expected_main: str) -> dict[str, Any]:
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
     )
     if completed.returncode != 0:
-        raise NormalizationError(completed.stderr.strip() or "公开 HTTPS clone 失败")
+        origin = "本机 Git bundle" if bundle_path is not None else "公开 HTTPS"
+        raise NormalizationError(completed.stderr.strip() or f"{origin} clone 失败")
+    if bundle_path is not None:
+        remote_update = run(["git", "remote", "set-url", "origin", EXPECTED_REMOTE], cwd=source)
+        if remote_update.returncode != 0:
+            raise NormalizationError(remote_update.stderr.strip() or "无法固定 checkout 的 origin")
     head = git_value(source, "rev-parse", "HEAD")
     origin_main = git_value(source, "rev-parse", "origin/main")
     branch = git_value(source, "branch", "--show-current")
@@ -288,13 +303,20 @@ def clone_clean_checkout(source: Path, expected_main: str) -> dict[str, Any]:
     return {"path": str(source), "head": head, "originMain": origin_main, "branch": branch, "remote": remote, "clean": True}
 
 
-def normalize(operation_id: str, expected_source_head: str, expected_main: str) -> dict[str, Any]:
+def normalize(
+    operation_id: str,
+    expected_source_head: str,
+    expected_main: str,
+    bundle_path: Path | None = None,
+) -> dict[str, Any]:
     source = EXPECTED_SOURCE
     artifact_root = EXPECTED_ARTIFACT_ROOT
     validate_scope(socket.gethostname(), source, artifact_root, EXPECTED_REMOTE)
     safe_operation_id(operation_id)
     if len(expected_source_head) != 40 or len(expected_main) != 40:
         raise NormalizationError("expected SHA 必须是完整 40 位提交 SHA")
+    if bundle_path is not None:
+        bundle_path = validate_bundle_path(operation_id, artifact_root, bundle_path)
     before = preflight(source, artifact_root, expected_source_head)
     operation_root = artifact_root / "quarantine" / "checkouts" / operation_id
     original = operation_root / "original-Domeye-Core"
@@ -313,13 +335,18 @@ def normalize(operation_id: str, expected_source_head: str, expected_main: str) 
         archive_sha256 = sha256_file(archive)
         os.rename(source, original)
         source_quarantined = True
-        after_checkout = clone_clean_checkout(source, expected_main)
+        bundle_sha256 = sha256_file(bundle_path) if bundle_path is not None else None
+        after_checkout = clone_clean_checkout(source, expected_main, bundle_path)
         after_links = active_link_snapshot()
         if before["activeLinks"] != after_links:
             raise NormalizationError("活动 release 指针在归一期间漂移；保留原 checkout 与新 checkout 供人工处置")
         after_references = source_process_references(source)
         if after_references:
             raise NormalizationError("新 checkout 被进程意外引用：" + json.dumps(after_references, ensure_ascii=False))
+        retained_bundle = None
+        if bundle_path is not None:
+            retained_bundle = operation_root / "source-main.bundle"
+            os.rename(bundle_path, retained_bundle)
         result = {
             "schemaVersion": "domeye.server-checkout-normalization/v1",
             "operationId": operation_id,
@@ -327,12 +354,18 @@ def normalize(operation_id: str, expected_source_head: str, expected_main: str) 
             "host": socket.gethostname(),
             "sourceBefore": before,
             "archive": {"path": str(archive), "sha256": archive_sha256, "bytes": archive.stat().st_size},
+            "inputBundle": (
+                {"path": str(retained_bundle), "sha256": bundle_sha256, "bytes": retained_bundle.stat().st_size}
+                if retained_bundle is not None
+                else None
+            ),
             "quarantine": {"path": str(original), "state": "retained"},
             "newCheckout": after_checkout,
             "activeLinksBefore": before["activeLinks"],
             "activeLinksAfter": after_links,
             "oldDomeyeTouched": False,
             "serverGitHubCredentialsChanged": False,
+            "checkoutAcquisition": "local_immutable_git_bundle" if bundle_path is not None else "public_https",
             "productionSwitchPerformed": False,
         }
         write_json(receipt, result)
@@ -360,6 +393,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--operation-id", required=True)
     parser.add_argument("--expected-source-head", required=True)
     parser.add_argument("--expected-main", required=True)
+    parser.add_argument("--bundle-path", type=Path, help="受管输入 Git bundle；省略时使用公开 HTTPS")
     parser.add_argument("--apply", action="store_true", help="执行归档、隔离、clone 与回执写入；默认只读预检")
     return parser.parse_args()
 
@@ -369,8 +403,15 @@ def main() -> int:
     try:
         validate_scope(socket.gethostname(), EXPECTED_SOURCE, EXPECTED_ARTIFACT_ROOT, EXPECTED_REMOTE)
         safe_operation_id(arguments.operation_id)
+        if arguments.bundle_path is not None:
+            validate_bundle_path(arguments.operation_id, EXPECTED_ARTIFACT_ROOT, arguments.bundle_path)
         if arguments.apply:
-            result = normalize(arguments.operation_id, arguments.expected_source_head, arguments.expected_main)
+            result = normalize(
+                arguments.operation_id,
+                arguments.expected_source_head,
+                arguments.expected_main,
+                arguments.bundle_path,
+            )
         else:
             result = {
                 "schemaVersion": "domeye.server-checkout-normalization-preflight/v1",
@@ -378,6 +419,7 @@ def main() -> int:
                 "mode": "read_only",
                 "preflight": preflight(EXPECTED_SOURCE, EXPECTED_ARTIFACT_ROOT, arguments.expected_source_head),
                 "expectedMain": arguments.expected_main,
+                "bundlePath": str(arguments.bundle_path) if arguments.bundle_path is not None else None,
             }
         print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
         return 0

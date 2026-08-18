@@ -85,6 +85,11 @@ GitHub `xinghuahewo/domeye_@main` 是源码权威。服务器 checkout、目录�
 remote。它先创建可校验 archive，再同文件系统隔离旧 checkout；clone 或读回失败时自动
 恢复原精确路径。S2 完成不代表生产发布或业务验证完成。
 
+若无凭证公开 HTTPS 连接经受限时读测确认不可用，才允许本机从冻结 GitHub `main` 生成
+完整 Git bundle、记录 bundle SHA-256、经现有 SSH 传入受管制品根并由同一归一器 clone。
+新 checkout 的 `origin` 仍固定为公开 GitHub URL；该替代不写入 GitHub 凭证，也不表示
+服务器已经具备后续 fetch 能力。bundle 必须随本批 quarantine 长期保留。
+
 ### S3：运行身份与凭证治理
 
 - 只治理 Domeye-Core Backend、旧 Agent Sidecar 和 P1 Chat Sidecar；

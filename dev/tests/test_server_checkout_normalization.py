@@ -103,6 +103,39 @@ class ServerCheckoutNormalizationTest(unittest.TestCase):
         self.assertEqual(snapshot["sourceCheckout"]["remoteNames"], [])
         self.assertFalse((artifact_root / "quarantine").exists())
 
+    def test_bundle_clone_keeps_public_origin_without_network_fetch(self):
+        source_repository = self.root / "source-repository"
+        source_repository.mkdir()
+        run(["git", "init", "-b", "main"], source_repository)
+        run(["git", "config", "user.email", "fixture@example.invalid"], source_repository)
+        run(["git", "config", "user.name", "Fixture"], source_repository)
+        (source_repository / "tracked.txt").write_text("bundle\n", encoding="utf-8")
+        run(["git", "add", "tracked.txt"], source_repository)
+        run(["git", "commit", "-m", "bundle"], source_repository)
+        expected_head = run(["git", "rev-parse", "HEAD"], source_repository)
+        bundle = self.root / "main.bundle"
+        run(["git", "bundle", "create", str(bundle), "main"], source_repository)
+
+        checkout = self.root / "checkout"
+        result = NORMALIZER.clone_clean_checkout(checkout, expected_head, bundle)
+
+        self.assertTrue(result["clean"])
+        self.assertEqual(result["head"], expected_head)
+        self.assertEqual(result["remote"], NORMALIZER.EXPECTED_REMOTE)
+
+    def test_bundle_path_must_be_exact_managed_input(self):
+        artifact_root = self.root / "artifacts"
+        incoming = artifact_root / "incoming"
+        incoming.mkdir(parents=True)
+        bundle = incoming / "operation.bundle"
+        bundle.write_bytes(b"fixture")
+
+        self.assertEqual(
+            NORMALIZER.validate_bundle_path("operation", artifact_root, bundle), bundle
+        )
+        with self.assertRaisesRegex(NORMALIZER.NormalizationError, "受管输入文件"):
+            NORMALIZER.validate_bundle_path("operation", artifact_root, self.root / "other.bundle")
+
 
 if __name__ == "__main__":
     unittest.main()
