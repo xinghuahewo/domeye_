@@ -112,6 +112,15 @@ S3 的发现器只读取配置文件名、权限和属主，以及进程 `comm`�
 迁移任务中的脱敏检查、回滚与同一 release 的健康证据证明，不能从文件权限或本计划
 推导。
 
+S3 的独立脱敏检查器可以暂时读取受管 PID 的 `cmdline` 和 `environ`，但结果只允许包含
+PID、`comm`、活动 release/监听端口绑定和布尔结论；不得输出、哈希或落盘实参、环境变量
+值或凭证。它必须同时验证四个受控配置对象均为 `root:root 0600`。Backend 以活动 release
+下 cwd/executable 绑定；旧 Agent 还须绑定 28474；P1 Chat 还须绑定 28475 与活动 release
+路径实参。缺少任一信号（例如 P1 cwd 在 release 外或命令行为空）即为 `not_verified`，不
+得据“未发现”声称凭证迁移完成。检查器永久拒绝把旧 Domeye 纳入 S3 范围，且始终输出
+`BLOCK_MUTATION`；只有独立变更任务的脱敏证据、可恢复发布和同一 release 健康证据才能
+解除相应迁移 Gate。
+
 ### S4：Runtime release 与备份治理
 
 每个组件最多保留五套：活动版本、正式回滚版本和最近三个已验证历史版本。以下对象
