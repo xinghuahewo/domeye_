@@ -64,11 +64,12 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.process_root = self.root / "proc"
         self.add_process(123, self.backend_active, {"8": self.run_in_use / "manifest.json"})
         self.add_process(124, self.root, {}, executable="missing-executable")
+        self.add_process(125, self.root, {"9": self.root / "outside-disappeared"})
         self.mount_info = self.root / "mountinfo"
         self.mount_info.write_text("", encoding="utf-8")
         active_lock = self.run_locked / "active.lock"
         lock_stat = active_lock.stat()
-        self.lock_info = self.root / "locks"
+        self.lock_info = self.process_root / "locks"
         self.lock_info.write_text(
             f"1: POSIX ADVISORY WRITE 123 {os.major(lock_stat.st_dev):02x}:{os.minor(lock_stat.st_dev):02x}:{lock_stat.st_ino} 0 EOF\\n",
             encoding="utf-8",
@@ -169,6 +170,17 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.assertIn("unknown", shared["protectedClasses"])
         self.assertEqual(shared["inventory"]["externalHardLinkCount"], 1)
         self.assertEqual(in_use["candidateReferenceInspection"], "metadata_only_not_proven")
+
+    def test_unresolved_fd_inside_managed_root_blocks_coverage(self):
+        self.add_process(126, self.root, {"10": self.backend_old / "missing-in-managed-root"})
+
+        snapshot = AUDIT.process_path_snapshot(
+            self.process_root,
+            [self.backend_root, self.agent_root, self.p1_root, self.research_runs],
+        )
+
+        self.assertFalse(snapshot["coverageComplete"])
+        self.assertIn(126, snapshot["unreadablePids"])
 
     def test_never_emits_config_contents_or_process_arguments(self):
         encoded = json.dumps(AUDIT.build_discovery(self.policy), ensure_ascii=False)

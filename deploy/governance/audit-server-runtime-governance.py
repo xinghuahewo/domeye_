@@ -199,6 +199,13 @@ def is_nonfilesystem_descriptor(raw_target: str) -> bool:
     return raw_target.startswith(("socket:[", "pipe:[", "anon_inode:", "memfd:"))
 
 
+def raw_target_is_within(raw_target: str, roots: list[Path]) -> bool:
+    if not raw_target.startswith("/"):
+        return False
+    path = Path(raw_target.removesuffix(" (deleted)"))
+    return any(is_within(canonical(path), root) for root in roots)
+
+
 def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, Any]:
     canonical_roots = [canonical(root) for root in roots]
     result: dict[str, Any] = {
@@ -218,7 +225,15 @@ def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, An
         try:
             cwd = (process / "cwd").resolve(strict=True)
         except FileNotFoundError:
-            incomplete = process.is_dir()
+            try:
+                raw_cwd = os.readlink(process / "cwd")
+            except FileNotFoundError:
+                raw_cwd = ""
+            except (PermissionError, OSError):
+                incomplete = process.is_dir()
+                raw_cwd = ""
+            if raw_target_is_within(raw_cwd, canonical_roots):
+                incomplete = True
         except (PermissionError, OSError):
             incomplete = True
         else:
@@ -243,7 +258,9 @@ def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, An
         for descriptor in descriptor_list:
             try:
                 raw_target = os.readlink(descriptor)
-            except (FileNotFoundError, PermissionError, OSError):
+            except FileNotFoundError:
+                continue
+            except (PermissionError, OSError):
                 incomplete = True
                 continue
             if is_nonfilesystem_descriptor(raw_target):
@@ -251,7 +268,8 @@ def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, An
             try:
                 target = descriptor.resolve(strict=True)
             except FileNotFoundError:
-                incomplete = True
+                if raw_target_is_within(raw_target, canonical_roots):
+                    incomplete = True
                 continue
             except (PermissionError, OSError):
                 incomplete = True
@@ -576,7 +594,7 @@ def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
     scan_roots = [Path(item["releaseRoot"]) for item in components] + [Path(item["path"]) for item in development_roots]
     process_snapshot = process_path_snapshot(Path(policy["processRoot"]), scan_roots)
     mount_snapshot = parse_mounts(Path(runtime["mountInfoPath"]))
-    lock_snapshot = parse_kernel_locks(Path(policy["processRoot"]).parent / "locks")
+    lock_snapshot = parse_kernel_locks(Path(policy["processRoot"]) / "locks")
     component_results = [component_discovery(item, policy, process_snapshot, mount_snapshot, lock_snapshot) for item in components]
     data_results = [development_data_discovery(item, policy, process_snapshot, mount_snapshot, lock_snapshot) for item in development_roots]
     config = config_metadata(Path(policy["configDirectory"]), policy["requiredConfigMode"])
