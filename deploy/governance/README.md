@@ -12,6 +12,7 @@
 | `install.sh` | 备份旧版本、原子安装两项服务器治理脚本并生成回执 |
 | `server-directory-policy.json` | 固定服务器受管根、保护根、磁盘阈值和零写入策略 |
 | `audit-server-layout.py` | 只读盘点目录、Git、活动指针、权限和进程 cwd，不读取秘密 |
+| `audit-server-runtime-governance.py` | S3--S6 只读发现运行身份、release/开发数据引用、挂载、锁与硬链接风险 |
 | `normalize-server-checkout.py` | 对指定脏 checkout 执行带归档、自动恢复和身份读回的 S2 归一 |
 | `tests/run-fixtures.sh` | 覆盖主干审批、非快进、正式 tag 和归一合同的正反夹具 |
 | `tests/check-doc-links.sh` | 检查治理涉及文档的相对链接 |
@@ -38,6 +39,35 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
 审计只读取配置文件名、权限和属主，不读取配置内容；进程只读取 PID、`comm`、cwd 和
 executable，不读取命令行参数或环境变量。任何 finding 或保护进程都会令 Gate 保持
 `BLOCK_MUTATION`。
+
+## S3--S6 只读发现
+
+`audit-server-runtime-governance.py` 只能以同一份非秘密策略运行；它不安装定时任务，
+不创建隔离目录，也没有迁移、删除、重启、切换或健康接口参数。它读取的范围仅限：
+
+- active link、release/开发数据目录元数据、命名为 manifest 的小文件摘要；
+- 进程 `comm`、cwd、executable 和 fd 指向的路径；
+- 挂载点、锁文件名与硬链接计数。
+
+它不读取配置内容、进程实参或进程环境；因此它会明确把“实参中是否仍有凭证”标为
+`not_performed_by_contract`，不能把配置权限合规误报为凭证迁移完成。P1 Chat 当前
+没有以 cwd 绑定到活动 release 时，同样只能报告 `not_verified`。
+
+它对每个对象只输出 `inventory` 状态。即使对象暂无进程、挂载、锁或硬链接引用，仍须
+另有精确批次清单、空间估算、恢复路径和用户授权才可进入 `quarantine_planned`；删除
+还须在隔离观察 14 天后再次单独授权。
+
+从最终合入 `main` 的不可变源码目录可按以下只读方式运行，不在服务器落盘：
+
+```bash
+policy_b64="$(base64 < deploy/governance/server-directory-policy.json | tr -d '\n')"
+ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
+  "DOMEYE_SERVER_GOVERNANCE_POLICY_B64='${policy_b64}' python3 -" \
+  < deploy/governance/audit-server-runtime-governance.py
+```
+
+输出 schema 为 `domeye.server-runtime-governance-discovery/v1`。每日、每周和每月的
+S6 复核仍是待独立安装的只读流程；本脚本本身不等于服务器已安装巡检。
 
 ## S2 checkout 可恢复归一
 
