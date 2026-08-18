@@ -182,6 +182,66 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.assertFalse(snapshot["coverageComplete"])
         self.assertIn(126, snapshot["unreadablePids"])
 
+    def test_active_release_manifest_protects_rollback_and_accepted_evidence(self):
+        rollback = self.create_release(self.p1_root, "p1-rollback")
+        (self.p1_active / "RELEASE-MANIFEST.json").write_text(
+            json.dumps(
+                {
+                    "release_id": "p1-active",
+                    "rollback": {"release_id": "p1-rollback"},
+                    "checks": {"release": "verified"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (rollback / "RELEASE-MANIFEST.json").write_text(
+            json.dumps({"release_id": "p1-rollback", "checks": {"release": "passed"}}),
+            encoding="utf-8",
+        )
+        self.policy["runtimeGovernance"]["manifestFileNames"].append("RELEASE-MANIFEST.json")
+
+        result = AUDIT.build_discovery(self.policy)
+        p1 = next(item for item in result["runtimeComponents"] if item["name"] == "p1_chat_sidecar")
+        rollback_release = next(item for item in p1["releases"] if item["releaseId"] == "p1-rollback")
+
+        self.assertEqual(p1["activeRollbackReleaseIds"], ["p1-rollback"])
+        self.assertTrue(p1["rollbackReferenceCoverageComplete"])
+        self.assertEqual(rollback_release["retentionState"], "protected_or_unknown")
+        self.assertIn("rollback", rollback_release["protectedClasses"])
+        self.assertIn("accepted_evidence", rollback_release["protectedClasses"])
+
+    def test_missing_declared_rollback_fails_closed_for_component_candidates(self):
+        (self.backend_active / "RELEASE-MANIFEST.json").write_text(
+            json.dumps(
+                {
+                    "release_id": "backend-active",
+                    "rollback": {"release_id": "missing-rollback"},
+                    "checks": {"release": "verified"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.policy["runtimeGovernance"]["manifestFileNames"].append("RELEASE-MANIFEST.json")
+
+        result = AUDIT.build_discovery(self.policy)
+        backend = next(item for item in result["runtimeComponents"] if item["name"] == "backend")
+        old_release = next(item for item in backend["releases"] if item["releaseId"] == "backend-old")
+
+        self.assertFalse(backend["rollbackReferenceCoverageComplete"])
+        self.assertIn("unknown", old_release["protectedClasses"])
+        self.assertEqual(old_release["retentionState"], "protected_or_unknown")
+
+    def test_unparseable_manifest_fails_closed_without_emitting_contents(self):
+        (self.backend_old / "manifest.json").write_text("SECRET_MARKER_NOT_EMITTED", encoding="utf-8")
+
+        result = AUDIT.build_discovery(self.policy)
+        backend = next(item for item in result["runtimeComponents"] if item["name"] == "backend")
+        old_release = next(item for item in backend["releases"] if item["releaseId"] == "backend-old")
+        encoded = json.dumps(result, ensure_ascii=False)
+
+        self.assertIn("unknown", old_release["protectedClasses"])
+        self.assertNotIn("SECRET_MARKER_NOT_EMITTED", encoded)
+
     def test_never_emits_config_contents_or_process_arguments(self):
         encoded = json.dumps(AUDIT.build_discovery(self.policy), ensure_ascii=False)
 

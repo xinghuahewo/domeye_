@@ -124,6 +124,7 @@
     "manifestFileNames": [
       "IDENTITY-EQUATION.json",
       "identity-equation.json",
+      "RELEASE-MANIFEST.json",
       "release-manifest.json",
       "manifest.json"
     ],

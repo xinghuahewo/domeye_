@@ -126,6 +126,12 @@ PID、`comm`、活动 release/监听端口绑定和布尔结论；不得输出�
 每个组件最多保留五套：活动版本、正式回滚版本和最近三个已验证历史版本。以下对象
 不受数量上限自动清理：活动、回滚、已接受证据、进程引用、挂载、锁定和 `unknown`。
 
+只读发现器必须纳入 `RELEASE-MANIFEST.json` 等策略列出的受限大小 manifest，并仅输出摘要、
+rollback release ID 与已接受证据布尔结论。活动 manifest 声明的 rollback ID 必须存在于同一
+组件 release 根并获得 `rollback` 保护；声明自身 release ID 且所有检查为 `passed`/`verified`
+的 release 必须获得 `accepted_evidence` 保护。manifest 缺失、解析失败、过大或 rollback
+指向不存在对象时，候选一律归为 `unknown`，不得隔离。
+
 这里的“锁定”仅指能由内核锁表回读到对象 inode 的活动锁；`Pipfile.lock` 等静态依赖
 文件名本身不是活动锁证据。若 cwd 或 fd 路径引用扫描不完整，仍必须归入 `unknown`。
 
