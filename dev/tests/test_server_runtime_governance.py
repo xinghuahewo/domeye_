@@ -93,6 +93,9 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
                 "mountInfoPath": str(self.mount_info),
                 "maxEntriesPerObject": 200,
                 "maxManifestBytes": 1024,
+                "rollbackStateRequiredUid": os.getuid(),
+                "rollbackStateRequiredGid": os.getgid(),
+                "rollbackStateRequiredMode": "0600",
                 "manifestFileNames": ["manifest.json"],
                 "releaseComponents": [
                     {"name": "backend", "activeLinkPath": str(self.runtime / "current"), "releaseRoot": str(self.backend_root)},
@@ -241,6 +244,28 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
 
         self.assertIn("unknown", old_release["protectedClasses"])
         self.assertNotIn("SECRET_MARKER_NOT_EMITTED", encoded)
+
+    def test_root_only_lifecycle_state_protects_declared_rollback(self):
+        rollback = self.create_release(self.agent_root, "agent-rollback")
+        state_directory = self.runtime / "country-outage-agent" / "state"
+        state_directory.mkdir(parents=True)
+        active_state = state_directory / "active.json"
+        rollback_state = state_directory / "rollback.json"
+        active_state.write_text(json.dumps({"release_id": "agent-active", "previous_release_id": "agent-rollback"}), encoding="utf-8")
+        rollback_state.write_text(json.dumps({"release_id": "agent-rollback"}), encoding="utf-8")
+        active_state.chmod(0o600)
+        rollback_state.chmod(0o600)
+        agent_component = self.policy["runtimeGovernance"]["releaseComponents"][1]
+        agent_component["rollbackStatePaths"] = [str(active_state), str(rollback_state)]
+
+        result = AUDIT.build_discovery(self.policy)
+        agent = next(item for item in result["runtimeComponents"] if item["name"] == "legacy_agent_sidecar")
+        rollback_release = next(item for item in agent["releases"] if item["releaseId"] == "agent-rollback")
+
+        self.assertTrue(agent["rollbackStateEvidence"]["coverageComplete"])
+        self.assertIn("agent-rollback", agent["activeRollbackReleaseIds"])
+        self.assertTrue(agent["rollbackReferenceCoverageComplete"])
+        self.assertIn("rollback", rollback_release["protectedClasses"])
 
     def test_never_emits_config_contents_or_process_arguments(self):
         encoded = json.dumps(AUDIT.build_discovery(self.policy), ensure_ascii=False)

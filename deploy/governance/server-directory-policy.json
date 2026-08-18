@@ -121,6 +121,9 @@
     "mountInfoPath": "/proc/self/mountinfo",
     "maxEntriesPerObject": 50000,
     "maxManifestBytes": 4194304,
+    "rollbackStateRequiredUid": 0,
+    "rollbackStateRequiredGid": 0,
+    "rollbackStateRequiredMode": "0600",
     "manifestFileNames": [
       "IDENTITY-EQUATION.json",
       "identity-equation.json",
@@ -132,17 +135,26 @@
       {
         "name": "backend",
         "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/current",
-        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/releases"
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/releases",
+        "rollbackStatePaths": []
       },
       {
         "name": "legacy_agent_sidecar",
         "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/current",
-        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases"
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases",
+        "rollbackStatePaths": [
+          "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/state/active.json",
+          "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/state/rollback.json"
+        ]
       },
       {
         "name": "p1_chat_sidecar",
         "activeLinkPath": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current",
-        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases"
+        "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases",
+        "rollbackStatePaths": [
+          "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/state/active.json",
+          "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/state/rollback.json"
+        ]
       }
     ],
     "developmentDataRoots": [
