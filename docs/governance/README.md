@@ -11,6 +11,8 @@
 | [Completion Packet 模板](Completion_Packet.template.yaml) | 为一次受权的收尾同步绑定 Primary Issue、Candidate、Evidence 和精确动作 | 模板已入库 |
 | [项目级收尾代理](../../.codex/agents/github-closeout.toml) | 按 Completion Packet 做预检、写入与读回 | 配置已入库；须在新运行中另行验证发现和权限 |
 | [根 AGENTS 规则](../../AGENTS.md) | 固定 `main`、任务隔离和收尾调用边界 | 已纳入当前分支历史 |
+| [服务器目录治理计划](Domeye_Server_Directory_Governance_Plan_v1.0.md) | 定义旧 Domeye 保护边界、只读盘点、隔离、保留和删除 Gate | `Designed`；只读工具在任务分支实现 |
+| [服务器目录治理 S0 只读基线](evidence/server-directory-baseline-2026-08-18.md) | 记录目录、进程、活动指针、磁盘和风险的带时间戳观察 | `Observed`；Gate=`BLOCK_MUTATION` |
 
 ## 使用边界
 
