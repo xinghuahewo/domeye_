@@ -104,6 +104,46 @@ Backend 以活动 release 下 cwd/executable 绑定；旧 Agent 还必须绑定 
 是防止把“没有可见凭证实参”误称为已完成凭证迁移；它本身不授权重启、Screen 迁移、配置
 写入、release 切换或任何凭证修改。
 
+## S4 Runtime release 可恢复隔离
+
+`quarantine-runtime-releases.py` 是 S4 的单批执行器。它只管理策略列出的三个
+Runtime release 根；固定把对象移动到同文件系统的
+`Domeye-Core-artifacts/quarantine/runtime-releases/<operation-id>/`。它永不删除对象，
+不触碰旧 `/home/bgpdata/Domeye`、生产数据、服务、Screen、活动指针或 GitHub 凭证。
+
+每批先用当前只读发现器生成**精确**清单。清单必须包含本批用户授权原文、策略 SHA-256、
+组件、release ID 与路径无关的 inventory SHA-256；生成命令仅输出 JSON，不写服务器：
+
+```bash
+cd /home/bgpdata/Domeye-Core
+python3 deploy/governance/quarantine-runtime-releases.py \
+  --plan-component backend \
+  --plan-release <release-id> \
+  --plan-operation-id <operation-id> \
+  --user-authorization '<本批精确用户授权原文>'
+```
+
+将该输出以 `root:root 0600` 的普通 JSON 文件保存到治理目录后，先做第二次只读预检：
+
+```bash
+python3 deploy/governance/quarantine-runtime-releases.py \
+  --batch-manifest /home/bgpdata/Domeye-Core-governance/quarantine-batches/<operation-id>.json
+```
+
+只有同一精确批次已经获得用户授权，且二次预检仍同时满足候选状态、进程/挂载/活动锁/回滚
+扫描完整、inventory SHA-256 未漂移、隔离目标为空及同文件系统移动时，才可显式执行：
+
+```bash
+sudo python3 deploy/governance/quarantine-runtime-releases.py \
+  --batch-manifest /home/bgpdata/Domeye-Core-governance/quarantine-batches/<operation-id>.json \
+  --apply
+```
+
+执行器在每次移动前后写入 root-only 回执；若任何后续移动或读回失败，会按逆序自动恢复
+已移动对象到原精确路径。成功只意味着 `quarantined`：移动后路径、清单摘要、进程引用、
+挂载、活动锁和硬链接读回一致，且回执明确 `deleteAuthorized=false`。14 天观察和另一次
+显式用户授权之前，禁止删除或覆盖隔离对象。
+
 ## S6 定时只读审计
 
 `install-server-directory-audit-schedule.py` 是唯一允许写入 S6 自身治理目录和四个
