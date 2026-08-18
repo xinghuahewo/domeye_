@@ -33,6 +33,7 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.p1_root = self.runtime / "country-outage-p1-chat" / "releases"
         self.backend_active = self.create_release(self.backend_root, "backend-active")
         self.backend_old = self.create_release(self.backend_root, "backend-old")
+        (self.backend_old / "Pipfile.lock").write_text("static dependency lock\n", encoding="utf-8")
         self.agent_active = self.create_release(self.agent_root, "agent-active")
         self.p1_active = self.create_release(self.p1_root, "p1-active")
         self.link(self.runtime / "current", self.backend_active)
@@ -62,8 +63,16 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
 
         self.process_root = self.root / "proc"
         self.add_process(123, self.backend_active, {"8": self.run_in_use / "manifest.json"})
+        self.add_process(124, self.root, {}, executable="missing-executable")
         self.mount_info = self.root / "mountinfo"
         self.mount_info.write_text("", encoding="utf-8")
+        active_lock = self.run_locked / "active.lock"
+        lock_stat = active_lock.stat()
+        self.lock_info = self.root / "locks"
+        self.lock_info.write_text(
+            f"1: POSIX ADVISORY WRITE 123 {os.major(lock_stat.st_dev):02x}:{os.minor(lock_stat.st_dev):02x}:{lock_stat.st_ino} 0 EOF\\n",
+            encoding="utf-8",
+        )
         self.policy = {
             "schemaVersion": AUDIT.POLICY_SCHEMA,
             "expectedHost": socket.gethostname(),
@@ -118,11 +127,11 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         link.parent.mkdir(parents=True, exist_ok=True)
         link.symlink_to(target)
 
-    def add_process(self, pid, cwd, descriptors):
+    def add_process(self, pid, cwd, descriptors, executable="/bin/sh"):
         process = self.process_root / str(pid)
         (process / "fd").mkdir(parents=True)
         (process / "cwd").symlink_to(cwd)
-        (process / "exe").symlink_to("/bin/sh")
+        (process / "exe").symlink_to(executable)
         (process / "comm").write_text("fixture-service\n", encoding="utf-8")
         for number, target in descriptors.items():
             (process / "fd" / number).symlink_to(target)
@@ -134,6 +143,8 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.assertFalse(result["serverWrites"])
         self.assertFalse(result["mutationAuthorized"])
         self.assertEqual(result["gate"]["decision"], "BLOCK_MUTATION")
+        self.assertTrue(result["processPathCoverage"]["coverageComplete"])
+        self.assertIn(124, result["processPathCoverage"]["executableUnavailablePids"])
         backend = next(item for item in result["runtimeComponents"] if item["name"] == "backend")
         self.assertTrue(backend["identityEquation"]["activeLinkValid"])
         self.assertTrue(backend["identityEquation"]["actualProcessCwdBound"])
@@ -154,6 +165,7 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
 
         self.assertIn("process_referenced", in_use["protectedClasses"])
         self.assertIn("locked", locked["protectedClasses"])
+        self.assertIn(str(self.run_locked / "active.lock"), locked["inventory"]["activeLockPaths"])
         self.assertIn("unknown", shared["protectedClasses"])
         self.assertEqual(shared["inventory"]["externalHardLinkCount"], 1)
         self.assertEqual(in_use["candidateReferenceInspection"], "metadata_only_not_proven")

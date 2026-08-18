@@ -47,7 +47,7 @@ executable，不读取命令行参数或环境变量。任何 finding 或保护�
 
 - active link、release/开发数据目录元数据、命名为 manifest 的小文件摘要；
 - 进程 `comm`、cwd、executable 和 fd 指向的路径；
-- 挂载点、锁文件名与硬链接计数。
+- 挂载点、`/proc/locks` 中的活动 inode 锁、锁文件名与硬链接计数。
 
 它不读取配置内容、进程实参或进程环境；因此它会明确把“实参中是否仍有凭证”标为
 `not_performed_by_contract`，不能把配置权限合规误报为凭证迁移完成。P1 Chat 当前
@@ -56,6 +56,10 @@ executable，不读取命令行参数或环境变量。任何 finding 或保护�
 它对每个对象只输出 `inventory` 状态。即使对象暂无进程、挂载、锁或硬链接引用，仍须
 另有精确批次清单、空间估算、恢复路径和用户授权才可进入 `quarantine_planned`；删除
 还须在隔离观察 14 天后再次单独授权。
+
+文件名以 `.lock` 结尾只作为命名信号，不等于活动锁；只有内核锁表中的 inode 对应到
+该对象时才标记 `locked`。内核线程常没有可解析 executable，但其 cwd 和 fd 可完整
+检查时不降低进程引用覆盖率；cwd 或 fd 本身不可读时仍失败关闭为 `unknown`。
 
 从最终合入 `main` 的不可变源码目录可按以下只读方式运行，不在服务器落盘：
 

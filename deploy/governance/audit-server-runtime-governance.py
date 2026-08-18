@@ -195,9 +195,19 @@ def parse_mounts(path: Path) -> dict[str, Any]:
     return result
 
 
+def is_nonfilesystem_descriptor(raw_target: str) -> bool:
+    return raw_target.startswith(("socket:[", "pipe:[", "anon_inode:", "memfd:"))
+
+
 def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, Any]:
     canonical_roots = [canonical(root) for root in roots]
-    result: dict[str, Any] = {"coverageComplete": True, "scannedPids": 0, "unreadablePids": [], "processes": []}
+    result: dict[str, Any] = {
+        "coverageComplete": True,
+        "scannedPids": 0,
+        "unreadablePids": [],
+        "executableUnavailablePids": [],
+        "processes": [],
+    }
     if not process_root.is_dir():
         result.update({"coverageComplete": False, "error": "process_root_missing"})
         return result
@@ -205,27 +215,39 @@ def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, An
         result["scannedPids"] += 1
         references: dict[str, str] = {}
         incomplete = False
-        for field in ("cwd", "exe"):
-            try:
-                target = (process / field).resolve(strict=True)
-            except FileNotFoundError:
-                incomplete = True
-                continue
-            except (PermissionError, OSError):
-                incomplete = True
-                continue
-            if any(is_within(target, root) for root in canonical_roots):
-                references[field] = str(target)
+        try:
+            cwd = (process / "cwd").resolve(strict=True)
+        except FileNotFoundError:
+            incomplete = process.is_dir()
+        except (PermissionError, OSError):
+            incomplete = True
+        else:
+            if any(is_within(cwd, root) for root in canonical_roots):
+                references["cwd"] = str(cwd)
+        try:
+            executable = (process / "exe").resolve(strict=True)
+        except (FileNotFoundError, PermissionError, OSError):
+            result["executableUnavailablePids"].append(int(process.name))
+        else:
+            if any(is_within(executable, root) for root in canonical_roots):
+                references["exe"] = str(executable)
         descriptors = process / "fd"
         try:
             descriptor_list = sorted(descriptors.iterdir(), key=lambda item: item.name)
         except FileNotFoundError:
             descriptor_list = []
-            incomplete = True
+            incomplete = process.is_dir()
         except (PermissionError, OSError):
             descriptor_list = []
             incomplete = True
         for descriptor in descriptor_list:
+            try:
+                raw_target = os.readlink(descriptor)
+            except (FileNotFoundError, PermissionError, OSError):
+                incomplete = True
+                continue
+            if is_nonfilesystem_descriptor(raw_target):
+                continue
             try:
                 target = descriptor.resolve(strict=True)
             except FileNotFoundError:
@@ -249,6 +271,31 @@ def process_path_snapshot(process_root: Path, roots: list[Path]) -> dict[str, An
     return result
 
 
+def parse_kernel_locks(path: Path) -> dict[str, Any]:
+    result: dict[str, Any] = {"source": str(path), "coverageComplete": False, "lockedInodeCount": 0, "_lockedInodes": {}}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        result["error"] = type(error).__name__
+        return result
+    for line in lines:
+        fields = line.split()
+        if len(fields) < 6:
+            result["malformedLines"] = result.get("malformedLines", 0) + 1
+            continue
+        try:
+            major_hex, minor_hex, inode_text = fields[5].split(":", 2)
+            key = (int(major_hex, 16), int(minor_hex, 16), int(inode_text))
+            holder = int(fields[4])
+        except ValueError:
+            result["malformedLines"] = result.get("malformedLines", 0) + 1
+            continue
+        result["_lockedInodes"].setdefault(key, []).append(holder)
+    result["coverageComplete"] = not result.get("malformedLines")
+    result["lockedInodeCount"] = len(result["_lockedInodes"])
+    return result
+
+
 def references_for(path: Path, process_snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     path = canonical(path)
     matches: list[dict[str, Any]] = []
@@ -264,7 +311,13 @@ def mounts_for(path: Path, mount_snapshot: dict[str, Any]) -> list[str]:
     return sorted(point for point in mount_snapshot["mountPoints"] if is_within(canonical(Path(point)), root))
 
 
-def inventory_object(path: Path, manifest_names: set[str], max_entries: int, max_manifest_bytes: int) -> dict[str, Any]:
+def inventory_object(
+    path: Path,
+    manifest_names: set[str],
+    max_entries: int,
+    max_manifest_bytes: int,
+    lock_snapshot: dict[str, Any],
+) -> dict[str, Any]:
     result = path_metadata(path)
     result.update(
         {
@@ -275,7 +328,8 @@ def inventory_object(path: Path, manifest_names: set[str], max_entries: int, max
             "logicalBytes": 0,
             "allocatedBytesApproximate": 0,
             "manifestFiles": [],
-            "lockPaths": [],
+            "namedLockPaths": [],
+            "activeLockPaths": [],
             "externalHardLinkCount": 0,
         }
     )
@@ -330,7 +384,10 @@ def inventory_object(path: Path, manifest_names: set[str], max_entries: int, max
                 observed = seen_inodes.setdefault(key, {"observed": 0, "nlink": info.st_nlink})
                 observed["observed"] += 1
                 if name == ".lock" or name.endswith(".lock"):
-                    result["lockPaths"].append(str(child))
+                    result["namedLockPaths"].append(str(child))
+                lock_key = (os.major(info.st_dev), os.minor(info.st_dev), info.st_ino)
+                if lock_key in lock_snapshot["_lockedInodes"]:
+                    result["activeLockPaths"].append(str(child))
                 if name in manifest_names:
                     manifest_candidates.append(child)
             if not result["coverageComplete"]:
@@ -352,12 +409,13 @@ def inventory_object(path: Path, manifest_names: set[str], max_entries: int, max
         except (FileNotFoundError, PermissionError, OSError) as error:
             result["coverageComplete"] = False
             result["manifestError"] = type(error).__name__
-    result["lockPaths"] = sorted(result["lockPaths"])
+    result["namedLockPaths"] = sorted(result["namedLockPaths"])
+    result["activeLockPaths"] = sorted(result["activeLockPaths"])
     return result
 
 
 def retention_state(
-    inventory: dict[str, Any], active: bool, references: list[dict[str, Any]], mounts: list[str], process_coverage_complete: bool, mount_coverage_complete: bool
+    inventory: dict[str, Any], active: bool, references: list[dict[str, Any]], mounts: list[str], process_coverage_complete: bool, mount_coverage_complete: bool, lock_coverage_complete: bool
 ) -> tuple[str, list[str]]:
     protected: list[str] = []
     if active:
@@ -366,9 +424,9 @@ def retention_state(
         protected.append("process_referenced")
     if mounts:
         protected.append("mounted")
-    if inventory["lockPaths"]:
+    if inventory["activeLockPaths"]:
         protected.append("locked")
-    if not inventory["coverageComplete"] or not process_coverage_complete or not mount_coverage_complete:
+    if not inventory["coverageComplete"] or not process_coverage_complete or not mount_coverage_complete or not lock_coverage_complete:
         protected.append("unknown")
     if inventory["externalHardLinkCount"]:
         protected.append("unknown")
@@ -396,7 +454,13 @@ def config_metadata(directory: Path, required_mode: str) -> dict[str, Any]:
     return result
 
 
-def component_discovery(component: dict[str, Any], policy: dict[str, Any], process_snapshot: dict[str, Any], mount_snapshot: dict[str, Any]) -> dict[str, Any]:
+def component_discovery(
+    component: dict[str, Any],
+    policy: dict[str, Any],
+    process_snapshot: dict[str, Any],
+    mount_snapshot: dict[str, Any],
+    lock_snapshot: dict[str, Any],
+) -> dict[str, Any]:
     runtime = policy["runtimeGovernance"]
     release_root = Path(component["releaseRoot"])
     link = active_link(Path(component["activeLinkPath"]), release_root)
@@ -409,11 +473,25 @@ def component_discovery(component: dict[str, Any], policy: dict[str, Any], proce
     active_target = canonical(Path(link["resolvedTarget"])) if link.get("valid") else None
     entries = sorted((entry for entry in release_root.iterdir() if entry.is_dir() and not entry.is_symlink()), key=lambda entry: entry.name)
     for entry in entries:
-        inventory = inventory_object(entry, set(runtime["manifestFileNames"]), runtime["maxEntriesPerObject"], runtime["maxManifestBytes"])
+        inventory = inventory_object(
+            entry,
+            set(runtime["manifestFileNames"]),
+            runtime["maxEntriesPerObject"],
+            runtime["maxManifestBytes"],
+            lock_snapshot,
+        )
         references = references_for(entry, process_snapshot)
         mounts = mounts_for(entry, mount_snapshot)
         is_active = active_target == canonical(entry)
-        state, protected_classes = retention_state(inventory, is_active, references, mounts, process_snapshot["coverageComplete"], mount_snapshot["coverageComplete"])
+        state, protected_classes = retention_state(
+            inventory,
+            is_active,
+            references,
+            mounts,
+            process_snapshot["coverageComplete"],
+            mount_snapshot["coverageComplete"],
+            lock_snapshot["coverageComplete"],
+        )
         result["releases"].append(
             {
                 "releaseId": entry.name,
@@ -443,17 +521,37 @@ def component_discovery(component: dict[str, Any], policy: dict[str, Any], proce
     return result
 
 
-def development_data_discovery(item: dict[str, Any], policy: dict[str, Any], process_snapshot: dict[str, Any], mount_snapshot: dict[str, Any]) -> dict[str, Any]:
+def development_data_discovery(
+    item: dict[str, Any],
+    policy: dict[str, Any],
+    process_snapshot: dict[str, Any],
+    mount_snapshot: dict[str, Any],
+    lock_snapshot: dict[str, Any],
+) -> dict[str, Any]:
     runtime = policy["runtimeGovernance"]
     root = Path(item["path"])
     result: dict[str, Any] = {"name": item["name"], "path": str(root), "exists": root.is_dir(), "objects": []}
     if not root.is_dir():
         return result
     for entry in sorted((child for child in root.iterdir() if child.is_dir() and not child.is_symlink()), key=lambda child: child.name):
-        inventory = inventory_object(entry, set(runtime["manifestFileNames"]), runtime["maxEntriesPerObject"], runtime["maxManifestBytes"])
+        inventory = inventory_object(
+            entry,
+            set(runtime["manifestFileNames"]),
+            runtime["maxEntriesPerObject"],
+            runtime["maxManifestBytes"],
+            lock_snapshot,
+        )
         references = references_for(entry, process_snapshot)
         mounts = mounts_for(entry, mount_snapshot)
-        state, protected_classes = retention_state(inventory, False, references, mounts, process_snapshot["coverageComplete"], mount_snapshot["coverageComplete"])
+        state, protected_classes = retention_state(
+            inventory,
+            False,
+            references,
+            mounts,
+            process_snapshot["coverageComplete"],
+            mount_snapshot["coverageComplete"],
+            lock_snapshot["coverageComplete"],
+        )
         result["objects"].append(
             {
                 "objectId": entry.name,
@@ -478,8 +576,9 @@ def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
     scan_roots = [Path(item["releaseRoot"]) for item in components] + [Path(item["path"]) for item in development_roots]
     process_snapshot = process_path_snapshot(Path(policy["processRoot"]), scan_roots)
     mount_snapshot = parse_mounts(Path(runtime["mountInfoPath"]))
-    component_results = [component_discovery(item, policy, process_snapshot, mount_snapshot) for item in components]
-    data_results = [development_data_discovery(item, policy, process_snapshot, mount_snapshot) for item in development_roots]
+    lock_snapshot = parse_kernel_locks(Path(policy["processRoot"]).parent / "locks")
+    component_results = [component_discovery(item, policy, process_snapshot, mount_snapshot, lock_snapshot) for item in components]
+    data_results = [development_data_discovery(item, policy, process_snapshot, mount_snapshot, lock_snapshot) for item in development_roots]
     config = config_metadata(Path(policy["configDirectory"]), policy["requiredConfigMode"])
     p1 = next((item for item in component_results if item["name"] == "p1_chat_sidecar"), None)
     identity_gap = bool(p1 and not p1["identityEquation"]["actualProcessCwdBound"])
@@ -494,6 +593,8 @@ def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
         findings.append({"severity": "block", "code": "process_reference_coverage_incomplete", "message": "进程路径引用扫描不完整，所有隔离候选保持 unknown。"})
     if not mount_snapshot["coverageComplete"]:
         findings.append({"severity": "block", "code": "mount_reference_coverage_incomplete", "message": "挂载扫描不完整，所有隔离候选保持 unknown。"})
+    if not lock_snapshot["coverageComplete"]:
+        findings.append({"severity": "block", "code": "active_lock_coverage_incomplete", "message": "活动文件锁扫描不完整，所有隔离候选保持 unknown。"})
     return {
         "schemaVersion": SCHEMA,
         "observedAt": utc_now(),
@@ -504,6 +605,7 @@ def build_discovery(policy: dict[str, Any]) -> dict[str, Any]:
         "policySha256": hashlib.sha256(json.dumps(policy, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
         "processPathCoverage": process_snapshot,
         "mountCoverage": mount_snapshot,
+        "activeFileLockCoverage": {key: value for key, value in lock_snapshot.items() if key != "_lockedInodes"},
         "credentialSurface": {
             "configMetadata": config,
             "processArgumentInspection": "not_performed_by_contract",
