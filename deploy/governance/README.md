@@ -92,6 +92,18 @@ checkout 的 `origin` 固定为公开 HTTPS URL，读回 HEAD、`origin/main`、
 状态。bundle SHA-256 与原 checkout archive 一同保留在本次 quarantine 回执中。此替代
 不证明服务器已恢复 GitHub HTTPS 出站能力。
 
+## S2 后续 checkout 刷新
+
+首次归一后，GitHub `main` 可以继续前进；服务器 checkout 不得因此长期停留在旧 SHA。
+`refresh-server-checkout.py` 只允许在现有 checkout 为干净 `main`、唯一 remote 为固定公开
+HTTPS `origin`，且没有 cwd/exe/fd、挂载、Git 锁或活动指针引用时运行。它只接受本机从
+冻结 `main` 制作、先传至 `Domeye-Core-artifacts/incoming/<operation-id>.bundle` 的 bundle。
+
+刷新时它保留输入 bundle，在 `.git/refs/domeye-governance/checkout-refresh/` 建立刷新前
+commit 的 rollback ref，导入 bundle、更新本地 `origin/main` 跟踪引用并硬重置到冻结目标。
+任一读回失败会把 checkout 与 `origin/main` 恢复到刷新前 SHA。该操作不接触运行 release、
+服务、旧 Domeye 或 GitHub 凭证，也不证明服务器具备 GitHub HTTPS 出站能力。
+
 脚本必须先从已合入 `main` 的不可变提交运行，并由独立 S2 任务冻结 operation ID 与两个
 预期 SHA。生产服务器不安装该脚本；经审批后可通过标准输入运行，避免新增服务器脚本文件。
 
