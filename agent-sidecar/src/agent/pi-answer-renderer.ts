@@ -30,8 +30,8 @@ import {
 
 const RENDERER_SYSTEM_PROMPT = `你是 Domeye 首个纵向切片的中文 Renderer。
 当前会话没有工具，只能读取用户消息中由单个 Answer Context 生成的受控投影；不得使用模型记忆、互联网、文件、旧对话或投影外事实。
-只返回 renderer_draft_skeleton JSON 对象本身，不要输出 wrapper、Markdown 围栏、解释或任何额外字段。
-不得增删、改写或重排 skeleton 中的任何字段和值，text 也必须逐字保持。
+用户消息本身就是唯一目标 JSON 对象；原样返回该对象，不要输出 wrapper、Markdown 围栏、解释或任何额外字段。
+不得增删、改写或重排目标 JSON 中的任何字段和值，text 也必须逐字保持。
 不得推断全国断网、真实用户影响、原因、责任或真实恢复。`
 
 type PiStreamFunction = DomeyePiSessionHandle['agent']['streamFunction']
@@ -145,6 +145,7 @@ function rendererJsonObjectPayloadHook(
     return {
       ...source,
       tool_choice: 'none',
+      temperature: 0,
       response_format: {
         type: 'json_object',
       },
@@ -171,51 +172,23 @@ function installRendererJsonObjectPayloadBoundary(
 function rendererPrompt(context: DomeyeAnswerContext): string {
   const identity = context.data_identity
   const finding = context.finding
-  const numbers = [...new Set(
-    Object.values(finding.values)
-      .filter((value): value is number => typeof value === 'number')
-      .map(String),
-  )]
-  const times = [...new Set([
-    finding.values.first_at_utc,
-    finding.values.last_at_utc,
-    finding.values.minimum_at_utc,
-    finding.values.maximum_at_utc,
-  ].filter((value): value is string => typeof value === 'string'))]
   return JSON.stringify({
-    instruction: '只返回 renderer_draft_skeleton JSON 对象本身。所有字段和值（包括 text）必须逐字逐值保持不变。',
-    renderer_draft_skeleton: {
-      schema_version: 'domeye_agent_renderer_draft_v1',
-      context_id: context.context_id,
-      finding_id: finding.finding_id,
-      candidate_id: context.candidate_id,
-      publication_id: identity.publication_id,
-      revision: identity.revision,
-      collector_id: identity.collector_id,
-      window_start_utc: identity.window_start_utc,
-      window_end_utc: identity.window_end_utc,
-      metric: finding.metric,
-      unit: finding.unit,
-      values: finding.values,
-      observer_scope_zh: context.observer_scope_zh,
-      limitations_zh: context.mandatory_limitations_zh,
-      evidence_refs: context.evidence_refs,
-      text: renderCountryOutageDeterministicFallback(context),
-    },
-    text_must_include_exact: [
-      identity.publication_id,
-      `revision ${identity.revision}`,
-      identity.collector_id.toUpperCase(),
-      identity.window_start_utc,
-      identity.window_end_utc,
-      finding.unit,
-      context.observer_scope_zh,
-      ...numbers,
-      ...times,
-      ...context.mandatory_limitations_zh,
-    ],
-    allowed_text_numbers: [String(identity.revision), ...numbers],
-    forbidden_conclusions: context.forbidden_conclusions,
+    schema_version: 'domeye_agent_renderer_draft_v1',
+    context_id: context.context_id,
+    finding_id: finding.finding_id,
+    candidate_id: context.candidate_id,
+    publication_id: identity.publication_id,
+    revision: identity.revision,
+    collector_id: identity.collector_id,
+    window_start_utc: identity.window_start_utc,
+    window_end_utc: identity.window_end_utc,
+    metric: finding.metric,
+    unit: finding.unit,
+    values: finding.values,
+    observer_scope_zh: context.observer_scope_zh,
+    limitations_zh: context.mandatory_limitations_zh,
+    evidence_refs: context.evidence_refs,
+    text: renderCountryOutageDeterministicFallback(context),
   })
 }
 

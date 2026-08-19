@@ -288,15 +288,9 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
   assert.equal(accounting.audit().estimated_cost_usd, 0.01)
   assert.equal(prompts.length, 1)
   assert.equal('answer_context' in prompts[0]!, false)
-  assert.match(prompts[0]?.instruction as string, /JSON 对象/u)
-  assert.deepEqual(
-    Object.keys(prompts[0]?.renderer_draft_skeleton as object),
-    Object.keys(draft()),
-  )
-  assert.ok(
-    (prompts[0]?.text_must_include_exact as string[])
-      .includes(context.data_identity.publication_id),
-  )
+  assert.equal('instruction' in prompts[0]!, false)
+  assert.equal('renderer_draft_skeleton' in prompts[0]!, false)
+  assert.deepEqual(prompts[0], draft())
 })
 
 test('Renderer 将 DeepSeek JSON object 约束传到底层且保留既有 payload hook', async () => {
@@ -323,6 +317,7 @@ test('Renderer 将 DeepSeek JSON object 约束传到底层且保留既有 payloa
           ...(payload as Record<string, unknown>),
           existing_hook_preserved: true,
           tool_choice: 'auto',
+          temperature: 1,
           response_format: { type: 'legacy-value' },
         }
       },
@@ -339,6 +334,7 @@ test('Renderer 将 DeepSeek JSON object 约束传到底层且保留既有 payloa
     stream: true,
     existing_hook_preserved: true,
     tool_choice: 'none',
+    temperature: 0,
     response_format: { type: 'json_object' },
   })
 })
@@ -416,10 +412,14 @@ test('Renderer 继续拒绝 fenced、非 JSON、Schema 非法与 Guard 不通过
     ...draft(),
     text: `${draft().text}\n事件已经恢复。`,
   }
+  const wrappedDraft = {
+    renderer_draft_skeleton: draft(),
+  }
   const cases = [
     { name: 'fenced', output: `\`\`\`json\n${JSON.stringify(draft())}\n\`\`\`` },
     { name: '空文本', output: '' },
     { name: '非 JSON', output: 'not-json' },
+    { name: '外层 wrapper', output: JSON.stringify(wrappedDraft) },
     { name: 'Schema 非法', output: JSON.stringify(invalidSchema) },
     { name: 'Guard 不通过', output: JSON.stringify(guardRejected) },
   ]

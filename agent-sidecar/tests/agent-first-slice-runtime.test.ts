@@ -409,15 +409,11 @@ function rendererSessionFactory(options: {
         for await (const _event of stream) {
           // 只消费一次 Renderer 供应方调用；不进行内部重试。
         }
-        const input = JSON.parse(text) as {
-          renderer_draft_skeleton: DomeyeRendererDraft
-          text_must_include_exact: string[]
-        }
+        const input = JSON.parse(text) as DomeyeRendererDraft
         options.contexts.push({
-          context_id: input.renderer_draft_skeleton.context_id,
+          context_id: input.context_id,
         })
-        const draft = input.renderer_draft_skeleton
-        lastText = JSON.stringify(options.mutate?.(draft) ?? draft)
+        lastText = JSON.stringify(options.mutate?.(input) ?? input)
       },
       async abort() {},
       getSessionStats: () => sessionStats('renderer-session', options.calls.value),
