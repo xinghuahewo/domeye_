@@ -19,17 +19,20 @@
       "candidate_canonical_digest_verified",
       "candidate_parent_chain_verified",
       "candidate_source_closure_verified",
+      "no_source_drift",
       "evaluator_hashes_verified",
       "evidence_jsonl_closure_verified",
       "renderer_30_of_30_verified",
+      "renderer_only_completion_verified",
       "ordered_triples_10_of_10_verified",
       "adversarial_safety_verified",
       "zero_tolerance_gate_verified",
+      "zero_tolerance_gate_passed",
       "non_success_completion_absent",
       "legacy_rebind_route_absent"
     ],
     "reviewed_at_utc": "2026-08-19T16:19:32.000Z",
-    "review_digest": "sha256:026bf6ea5c1aff78217ea58dc6908412a2333e33dc05b2d9ef95d76016b2f461"
+    "review_digest": "sha256:ccf72a898e5f5a2d371bbbf6af883970699894da5758b2c3e78aea60f356485d"
   },
   "reporting": {
     "workflow_answer_success": {
@@ -58,5 +61,5 @@
     "production_verified": false,
     "dg1_decided": true
   },
-  "acceptance_record_id": "acceptance-record-sha256:0ffaba43e5decdb1f06ab77a97877af57ec4b6d0bf77e1f9d0412103ed9ff3e2"
+  "acceptance_record_id": "acceptance-record-sha256:b1150c837c40adf0f0dd46bed6f454c68bbd7c25f6db80c7536b1c6572f1ed6e"
 }
