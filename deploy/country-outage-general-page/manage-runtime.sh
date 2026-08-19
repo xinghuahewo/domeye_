@@ -10,16 +10,23 @@ readonly DATABASE_CONFIG='/home/bgpdata/Domeye-Core-data/config/database.env'
 readonly DATABASE_STATE='/home/bgpdata/Domeye-Core-dev-data/state.json'
 readonly AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-agent.env'
 readonly INTERACTIVE_AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-interactive-agent.env'
+readonly INTERACTIVE_AGENT_RUNTIME_ROOT='/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent'
+readonly INTERACTIVE_AGENT_RELEASE_ROOT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/releases"
+readonly INTERACTIVE_AGENT_CURRENT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/current"
+readonly INTERACTIVE_AGENT_ACTIVE="${INTERACTIVE_AGENT_RUNTIME_ROOT}/state/active.json"
+readonly INTERACTIVE_AGENT_MANAGER="${RUNTIME_ROOT}/deploy/country-outage-agent/p1-chat/manage.sh"
+readonly FIRST_SLICE_CANDIDATE="${RUNTIME_ROOT}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json"
 readonly INFO_DIR='/home/bgpdata/Domeye-Core-dev-data/api/info'
 readonly P0_DATA_DIR='/home/bgpdata/Domeye-Core-artifacts/releases/20260720T160000Z-p0-legacy/data-quality/api-candidate'
 readonly RUNTIME_PATH='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin:/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+INTERACTIVE_AGENT_STATUS_JSON='{}'
 
 error() {
     printf '国家中断通用观测运行时错误：%s\n' "$*" >&2
 }
 
 sha256_file() {
-    sha256sum "$1" | awk '{print $1}'
+    sha256sum -- "$1" | awk '{print $1}'
 }
 
 read_config_value() {
@@ -85,9 +92,287 @@ validate_runtime_root() {
     }
 }
 
+verify_interactive_agent_binding() {
+    local binding="${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json"
+    local unified_release_id unified_candidate ia_binding source_authority
+    if ! unified_release_id="$(jq -er '.unified_candidate.release_id' \
+        "${binding}")" \
+        || ! unified_candidate="$(jq -er '.unified_candidate.manifest_path' \
+            "${binding}")" \
+        || ! ia_binding="$(jq -ce '.interactive_agent' "${binding}")" \
+        || ! source_authority="$(jq -ce '.source_authority' "${binding}")"; then
+        error '无法读取 Backend 的统一 Candidate/Interactive Agent 绑定'
+        return 1
+    fi
+    [[ "${unified_release_id}" =~ ^[0-9]{8}T[0-9]{6}Z-[a-z0-9][a-z0-9._-]{0,47}$ \
+        && "${unified_candidate}" == "/home/bgpdata/Domeye-Core-runtime/unified-releases/${unified_release_id}/CANDIDATE-MANIFEST.json" \
+        && -f "${unified_candidate}" && ! -L "${unified_candidate}" ]] || {
+        error '统一 Candidate 路径或 release-id 无效'
+        return 1
+    }
+
+    local backend_binding_sha backend_sums_sha
+    if ! backend_binding_sha="$(sha256_file "${binding}")" \
+        || ! backend_sums_sha="$(sha256_file "${RUNTIME_ROOT}/SHA256SUMS")"; then
+        error '无法计算 Backend 绑定或全制品摘要'
+        return 1
+    fi
+    if ! jq -e \
+        --arg release_id "${unified_release_id}" \
+        --arg runtime_root "${RUNTIME_ROOT}" \
+        --arg binding_sha "${backend_binding_sha}" \
+        --arg sums_sha "${backend_sums_sha}" \
+        --argjson interactive_agent "${ia_binding}" \
+        --argjson source_authority "${source_authority}" '
+          .schema_version == "domeye_country_outage_general_release_candidate_v2"
+          and .release_id == $release_id
+          and .status == "built"
+          and .source.annotated_tag == $release_id
+          and .source.authority == $source_authority
+          and .source.commit == $source_authority.commit
+          and .source.annotated_tag == $source_authority.annotated_tag
+          and .source.archive_sha256 == $source_authority.archive_sha256
+          and .source.authority.mode == "interactive_agent_release"
+          and .source.authority.release_id == $release_id
+          and .source.authority.equality_verified == true
+          and .components.backend.path == $runtime_root
+          and .components.backend.binding_sha256 == $binding_sha
+          and .components.backend.sha256sums_sha256 == $sums_sha
+          and .interactive_agent == $interactive_agent
+          and .interactive_agent.release_id == $release_id
+          and .cutover_baseline.purpose == "pre_cutover_identity_and_stop_only"
+          and .cutover_baseline.restorable == false
+          and .build_boundaries.model_calls_during_prepare == 0
+          and .rollback == {mode:"fail_closed",previous_release_id:null}
+        ' "${unified_candidate}" >/dev/null; then
+        error '统一 Candidate 未精确绑定 Backend/Source/Interactive Agent 或失败关闭合同'
+        return 1
+    fi
+
+    local source_archive source_archive_sha
+    if ! source_archive="$(jq -er '.source.archive_path' \
+        "${unified_candidate}")" \
+        || ! source_archive_sha="$(sha256_file "${source_archive}")"; then
+        error '无法读取或计算统一 Candidate Source 归档摘要'
+        return 1
+    fi
+    [[ -f "${source_archive}" && ! -L "${source_archive}" \
+        && "sha256:${source_archive_sha}" \
+            == "$(jq -er '.source.archive_sha256' "${unified_candidate}")" ]] || {
+        error '统一 Candidate Source 归档摘要漂移'
+        return 1
+    }
+
+    local ia_release_id ia_path ia_release_manifest ia_release_sha
+    local ia_active ia_active_sha ia_candidate_id ia_candidate ia_candidate_sha
+    local ia_readiness_sha ia_url ia_attempt_limit ia_cost_policy
+    if ! ia_release_id="$(jq -er '.interactive_agent.release_id' "${binding}")" \
+        || ! ia_path="$(jq -er '.interactive_agent.path' "${binding}")" \
+        || ! ia_release_manifest="$(jq -er \
+            '.interactive_agent.release_manifest_path' "${binding}")" \
+        || ! ia_release_sha="$(jq -er \
+            '.interactive_agent.release_manifest_sha256' "${binding}")" \
+        || ! ia_active="$(jq -er \
+            '.interactive_agent.active_state_path' "${binding}")" \
+        || ! ia_active_sha="$(jq -er \
+            '.interactive_agent.active_state_sha256' "${binding}")" \
+        || ! ia_candidate_id="$(jq -er \
+            '.interactive_agent.candidate_id' "${binding}")" \
+        || ! ia_candidate="$(jq -er \
+            '.interactive_agent.candidate_manifest_path' "${binding}")" \
+        || ! ia_candidate_sha="$(jq -er \
+            '.interactive_agent.candidate_manifest_sha256' "${binding}")" \
+        || ! ia_readiness_sha="$(jq -er \
+            '.interactive_agent.readiness_identity_sha256' "${binding}")" \
+        || ! ia_url="$(jq -er '.interactive_agent.endpoint.url' \
+            "${binding}")" \
+        || ! ia_attempt_limit="$(jq -er \
+            '.interactive_agent.interactive_answer_attempt_limit' \
+            "${binding}")" \
+        || ! ia_cost_policy="$(jq -er \
+            '.interactive_agent.cost_policy' "${binding}")"; then
+        error 'Interactive Agent 绑定字段不完整'
+        return 1
+    fi
+    [[ "${ia_release_id}" == "${unified_release_id}" \
+        && "${ia_path}" == "${INTERACTIVE_AGENT_RELEASE_ROOT}/${ia_release_id}" \
+        && "${ia_release_manifest}" == "${ia_path}/RELEASE-MANIFEST.json" \
+        && "${ia_active}" == "${INTERACTIVE_AGENT_ACTIVE}" \
+        && "${ia_candidate}" == "${ia_path}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json" \
+        && "${ia_url}" == 'http://127.0.0.1:28476' \
+        && "${ia_attempt_limit}" == '10' \
+        && "${ia_cost_policy}" == 'audit_only' ]] || {
+        error 'Interactive Agent release/路径/端点绑定漂移'
+        return 1
+    }
+    local file
+    for file in \
+        "${ia_release_manifest}" \
+        "${ia_active}" \
+        "${ia_candidate}" \
+        "${FIRST_SLICE_CANDIDATE}"; do
+        [[ -f "${file}" && ! -L "${file}" ]] || {
+            error "Interactive Agent 绑定文件不是普通文件：${file}"
+            return 1
+        }
+    done
+    [[ -L "${INTERACTIVE_AGENT_CURRENT}" \
+        && "$(readlink -f -- "${INTERACTIVE_AGENT_CURRENT}")" == "${ia_path}" ]] || {
+        error 'Interactive Agent current 未指向绑定 release'
+        return 1
+    }
+
+    local actual_release_sha actual_active_sha actual_candidate_sha
+    if ! actual_release_sha="$(sha256_file "${ia_release_manifest}")" \
+        || ! actual_active_sha="$(sha256_file "${ia_active}")" \
+        || ! actual_candidate_sha="$(sha256_file "${ia_candidate}")"; then
+        error '无法计算 Interactive Agent 绑定摘要'
+        return 1
+    fi
+    [[ "sha256:${actual_release_sha}" == "${ia_release_sha}" \
+        && "sha256:${actual_active_sha}" == "${ia_active_sha}" \
+        && "sha256:${actual_candidate_sha}" == "${ia_candidate_sha}" ]] || {
+        error 'Interactive Agent release/active/Candidate 摘要漂移'
+        return 1
+    }
+    if ! cmp -s "${FIRST_SLICE_CANDIDATE}" "${ia_candidate}"; then
+        error 'Backend Source Candidate 与已部署 Interactive Agent Candidate 不一致'
+        return 1
+    fi
+    if ! jq -e \
+        --argjson attempt_limit "${ia_attempt_limit}" \
+        --arg cost_policy "${ia_cost_policy}" '
+          .payload.budget_policy.model_api_attempt_limit == $attempt_limit
+          and .payload.budget_policy.cost_policy == $cost_policy
+          and .payload.budget_policy.monetary_limit_usd == null
+        ' "${ia_candidate}" >/dev/null; then
+        error 'Interactive Agent 尝试次数或仅审计费用策略漂移'
+        return 1
+    fi
+    local source_commit source_tag source_archive_bound
+    if ! source_commit="$(jq -er '.source_commit' "${binding}")" \
+        || ! source_tag="$(jq -er '.source_tag' "${binding}")" \
+        || ! source_archive_bound="$(jq -er \
+            '.source_archive_sha256' "${binding}")"; then
+        error '无法读取 General Source 权威等式'
+        return 1
+    fi
+    [[ "${source_tag}" == "${unified_release_id}" \
+        && "${unified_release_id}" == "${ia_release_id}" ]] || {
+        error '统一 release-id、annotated tag 与 Interactive Agent release-id 不相等'
+        return 1
+    }
+    if ! jq -e \
+        --arg release_id "${ia_release_id}" \
+        --arg release_sha "${ia_release_sha}" \
+        --arg candidate_id "${ia_candidate_id}" \
+        --arg candidate_sha "${ia_candidate_sha}" \
+        --arg source_commit "${source_commit}" \
+        --arg source_tag "${source_tag}" \
+        --arg source_archive_sha "${source_archive_bound}" '
+          .schema_version == "domeye_interactive_agent_release_manifest_v1"
+          and .release_id == $release_id
+          and .source.commit == $source_commit
+          and .source.annotated_tag == $source_tag
+          and .source.archive_sha256 == $source_archive_sha
+          and .candidate.candidate_id == $candidate_id
+          and .candidate.manifest_sha256 == $candidate_sha
+          and .runtime.host == "127.0.0.1"
+          and .runtime.port == 28476
+          and .runtime.base_path == "/country-outage/chat"
+        ' "${ia_release_manifest}" >/dev/null; then
+        error 'Interactive Agent RELEASE-MANIFEST 与 General Source 等式漂移'
+        return 1
+    fi
+    if ! jq -e \
+        --arg release_id "${ia_release_id}" \
+        --arg release_sha "${ia_release_sha}" \
+        --arg candidate_id "${ia_candidate_id}" '
+          .schema_version == "domeye_interactive_agent_active_v1"
+          and .deployment_state == "deployed"
+          and .release_id == $release_id
+          and .release_manifest_sha256 == $release_sha
+          and .candidate_id == $candidate_id
+          and .runtime.host == "127.0.0.1"
+          and .runtime.port == 28476
+          and .runtime.base_path == "/country-outage/chat"
+        ' "${ia_active}" >/dev/null; then
+        error 'Interactive Agent active.json 身份漂移'
+        return 1
+    fi
+
+    [[ -x "${INTERACTIVE_AGENT_MANAGER}" && ! -L "${INTERACTIVE_AGENT_MANAGER}" ]] || {
+        error 'Backend release 内新 Interactive Agent manager 无效'
+        return 1
+    }
+    local immutable_manager="${ia_path}/project/deploy/country-outage-agent/p1-chat/manage.sh"
+    [[ -f "${immutable_manager}" && ! -L "${immutable_manager}" ]] || {
+        error 'Interactive Agent release 缺少不可变 manager 源文件'
+        return 1
+    }
+    if ! cmp -s "${INTERACTIVE_AGENT_MANAGER}" "${immutable_manager}"; then
+        error 'Backend release manager 与 Interactive Agent 不可变 Source 不一致'
+        return 1
+    fi
+    if ! "${INTERACTIVE_AGENT_MANAGER}" verify-release \
+        "${ia_release_id}" >/dev/null; then
+        error 'Interactive Agent release 未通过绑定 manager 校验'
+        return 1
+    fi
+    local status readiness_identity actual_readiness_sha
+    if ! status="$("${INTERACTIVE_AGENT_MANAGER}" status)"; then
+        error 'Interactive Agent 未通过绑定 manager status 组合校验'
+        return 1
+    fi
+    if ! jq -e \
+        --arg release_id "${ia_release_id}" \
+        --arg release_sha "${ia_release_sha}" \
+        --arg candidate_id "${ia_candidate_id}" '
+          .schema_version == "domeye_interactive_agent_release_probe_v1"
+          and .ready == true
+          and .component == "domeye_interactive_agent_sidecar"
+          and (.lifecycle_state == "deployed" or .lifecycle_state == "verified")
+          and .release_id == $release_id
+          and .release_manifest_sha256 == $release_sha
+          and .candidate_id == $candidate_id
+          and .candidate_activation_scope == "local_evaluation_only"
+          and .candidate_production_deployed == false
+          and .current_target_matches == true
+          and .deployment_active == true
+          and (
+            (.lifecycle_state == "deployed"
+             and .promotion_state == "absent"
+             and .production_verified == false)
+            or
+            (.lifecycle_state == "verified"
+             and .promotion_state == "verified"
+             and .production_verified == true)
+          )
+        ' <<<"${status}" >/dev/null; then
+        error 'Interactive Agent manager status 不代表 deployed/verified 身份闭包'
+        return 1
+    fi
+    if ! readiness_identity="$(jq -cS '{
+      schema_version,ready,component,release_id,release_manifest_sha256,
+      candidate_id,candidate_activation_scope,candidate_production_deployed
+    }' <<<"${status}")" \
+        || ! actual_readiness_sha="$(printf '%s' "${readiness_identity}" \
+            | sha256sum | awk '{print $1}')"; then
+        error '无法重算 Interactive Agent readiness 身份摘要'
+        return 1
+    fi
+    [[ "sha256:${actual_readiness_sha}" == "${ia_readiness_sha}" ]] || {
+        error 'Interactive Agent readiness 身份摘要漂移'
+        return 1
+    }
+    INTERACTIVE_AGENT_STATUS_JSON="${status}"
+}
+
 validate_runtime() {
-    validate_runtime_root
-    for command_name in awk curl jq pgrep readlink screen sha256sum ss stat tr; do
+    if ! validate_runtime_root; then
+        return 1
+    fi
+    for command_name in awk cmp curl jq pgrep readlink screen sha256sum ss stat tr; do
         command -v "${command_name}" >/dev/null 2>&1 || {
             error "缺少命令：${command_name}"
             return 1
@@ -95,8 +380,10 @@ validate_runtime() {
     done
     for file in \
         "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" \
+        "${RUNTIME_ROOT}/SHA256SUMS" \
         "${RUNTIME_ROOT}/backend/core.sha256" \
         "${RUNTIME_ROOT}/backend/run.py" \
+        "${FIRST_SLICE_CANDIDATE}" \
         "${RUNTIME_ROOT}/data-layer/PRODUCTION-SELECTION.json" \
         "${RUNTIME_ROOT}/country-outage-registry.json" \
         "${DATABASE_STATE}"; do
@@ -109,48 +396,75 @@ validate_runtime() {
         error '运行时 Python 不可执行'
         return 1
     }
-    jq -e --arg runtime_root "${RUNTIME_ROOT}" \
+    if ! (
+        cd -- "${RUNTIME_ROOT}"
+        sha256sum -c SHA256SUMS >/dev/null
+    ); then
+        error 'Backend release 全制品摘要不一致'
+        return 1
+    fi
+    if ! jq -e --arg runtime_root "${RUNTIME_ROOT}" \
         '(.release_id | type == "string" and endswith("-backend"))
          and (.source_commit | test("^[0-9a-f]{40}$"))
          and (.source_tag | type == "string" and length > 0)
+         and (.source_archive_sha256 | test("^sha256:[a-f0-9]{64}$"))
+         and .schema_version == "domeye_country_outage_general_backend_binding_v2"
+         and .runtime_root == $runtime_root
+         and .unified_candidate.release_id == .source_tag
+         and .source_authority == {
+           mode:"interactive_agent_release",
+           release_id:.source_tag,
+           commit:.source_commit,
+           annotated_tag:.source_tag,
+           archive_sha256:.source_archive_sha256,
+           equality_verified:true
+         }
+         and .interactive_agent.release_id == .source_tag
+         and .interactive_agent.readiness_schema_version == "domeye_interactive_agent_release_probe_v1"
+         and .interactive_agent.interactive_answer_attempt_limit == 10
+         and .interactive_agent.cost_policy == "audit_only"
+         and .interactive_agent.endpoint == {url:"http://127.0.0.1:28476",host:"127.0.0.1",port:28476,base_path:"/country-outage/chat"}
+         and .interactive_agent.activation_scope == "local_evaluation_only"
+         and .interactive_agent.candidate_production_deployed == false
          and .boundaries.collector == "rrc25"
          and .boundaries.database_changed == false
-         and (
-           (.schema_version == "domeye_country_outage_general_backend_binding_v1"
-            and .runtime_root == $runtime_root
-            and .boundaries.window_start_utc == "2026-02-24T00:00:00Z"
-            and .boundaries.window_end_exclusive_utc == "2026-03-11T00:00:00Z")
-           or
-           (.schema_version == "domeye_backend_source_binding_v2"
-            and .data_layer.window_start_utc == "2026-02-24T00:00:00Z"
-            and .data_layer.window_end_exclusive_utc == "2026-03-11T00:00:00Z")
-         )' \
-        "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" >/dev/null || {
+         and .boundaries.nginx_changed == false
+         and .boundaries.interactive_agent_bound == true
+         and .boundaries.model_calls_during_prepare == 0
+         and .boundaries.window_start_utc == "2026-02-24T00:00:00Z"
+         and .boundaries.window_end_exclusive_utc == "2026-03-11T00:00:00Z"' \
+        "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" >/dev/null; then
         error 'Backend 来源绑定无效'
         return 1
-    }
-    [[ "$(sha256_file "${DATABASE_STATE}")" \
-        == "$(jq -er '.database_state_sha256' "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")" ]] || {
+    fi
+    local database_state_sha bound_database_state_sha
+    if ! database_state_sha="$(sha256_file "${DATABASE_STATE}")" \
+        || ! bound_database_state_sha="$(jq -er '.database_state_sha256' \
+            "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")"; then
+        error '无法计算或读取固定数据库状态摘要'
+        return 1
+    fi
+    [[ "${database_state_sha}" == "${bound_database_state_sha}" ]] || {
         error '固定数据库状态摘要与 Backend 绑定不一致'
         return 1
     }
-    jq -e '
+    if ! jq -e '
         .schema_version == 2
         and .phase == "verified"
         and .port == 31627
         and .data_start == "2026-02-01 00:00:00"
         and .data_end_exclusive == "2026-04-01 00:00:00"
-    ' "${DATABASE_STATE}" >/dev/null || {
+    ' "${DATABASE_STATE}" >/dev/null; then
         error '固定数据库状态不是已验真的二三月只读档'
         return 1
-    }
-    (
+    fi
+    if ! (
         cd -- "${RUNTIME_ROOT}/backend"
         sha256sum -c core.sha256 >/dev/null
-    ) || {
+    ); then
         error '冻结 Core 摘要不一致'
         return 1
-    }
+    fi
     if [[ -e "${RUNTIME_ROOT}/general-read-model" || -L "${RUNTIME_ROOT}/general-read-model" ]]; then
         [[ -d "${RUNTIME_ROOT}/general-read-model" \
             && ! -L "${RUNTIME_ROOT}/general-read-model" \
@@ -166,8 +480,26 @@ validate_runtime() {
             return 1
         }
     fi
-    require_secure_config "${DATABASE_CONFIG}"
-    require_secure_config "${AGENT_CONFIG}"
+    if ! require_secure_config "${DATABASE_CONFIG}" \
+        || ! require_secure_config "${AGENT_CONFIG}" \
+        || ! require_secure_config "${INTERACTIVE_AGENT_CONFIG}"; then
+        return 1
+    fi
+    local report_agent_url interactive_agent_url
+    if ! report_agent_url="$(read_config_value \
+        "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
+        || ! interactive_agent_url="$(read_config_value \
+            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)"; then
+        return 1
+    fi
+    [[ "${report_agent_url}" == 'http://127.0.0.1:28474' ]] || {
+        error '报告 Agent 仅允许保留在固定 127.0.0.1:28474，不得成为聊天回退'
+        return 1
+    }
+    [[ "${interactive_agent_url}" == 'http://127.0.0.1:28476' ]] || {
+        error 'Interactive Agent Sidecar URL 必须固定为 127.0.0.1:28476'
+        return 1
+    }
 }
 
 case "${MODE}" in
@@ -201,13 +533,10 @@ release_id() {
 
 session_process() {
     local session="$1"
-    local expected_release binding_schema legacy_runtime_compatible
-    expected_release="$(release_id)"
-    binding_schema="$(jq -er '.schema_version' "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")"
-    legacy_runtime_compatible=false
-    if [[ "${binding_schema}" == domeye_backend_source_binding_v2 \
-        && "${RUNTIME_MODE}" == production ]]; then
-        legacy_runtime_compatible=true
+    local expected_release expected_agent_config_sha
+    if ! expected_release="$(release_id)" \
+        || ! expected_agent_config_sha="$(sha256_file "${AGENT_CONFIG}")"; then
+        return 1
     fi
     local root_pid="${session%%.*}"
     local pid
@@ -219,19 +548,18 @@ session_process() {
                 -v release="${expected_release}" \
                 -v mode="${RUNTIME_MODE}" \
                 -v port="${API_PORT}" \
-                -v legacy_runtime_compatible="${legacy_runtime_compatible}" '
+                -v report_agent_url="http://127.0.0.1:28474" \
+                -v interactive_agent_url="http://127.0.0.1:28476" \
+                -v agent_config_sha="${expected_agent_config_sha}" '
                     $1 == "DOMEYE_P0_PRODUCTION_RELEASE_ID" && $2 == release { a=1 }
-                    $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" {
-                        general_mode_seen=1
-                        if ($2 == mode) b=1
-                    }
+                    $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" && $2 == mode { b=1 }
                     $1 == "PORT" && $2 == port { c=1 }
                     $1 == "DOMEYE_P0_RUNTIME_MODE" && $2 == mode { d=1 }
+                    $1 == "COUNTRY_OUTAGE_AGENT_URL" && $2 == report_agent_url { e=1 }
+                    $1 == "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL" && $2 == interactive_agent_url { f=1 }
+                    $1 == "DOMEYE_COUNTRY_OUTAGE_AGENT_CONFIG_SHA256" && $2 == agent_config_sha { g=1 }
                     END {
-                        if (legacy_runtime_compatible == "true") {
-                            exit(a && c && d && (!general_mode_seen || b) ? 0 : 1)
-                        }
-                        exit(a && b && c ? 0 : 1)
+                        exit(a && b && c && d && e && f && g ? 0 : 1)
                     }
                 '; then
             printf '%s\n' "${pid}"
@@ -241,26 +569,143 @@ session_process() {
     return 1
 }
 
+listener_output_matches_runtime() {
+    local pid="$1"
+    local sockets="$2"
+    [[ "${pid}" =~ ^[1-9][0-9]*$ ]] || return 1
+    awk -v address="127.0.0.1:${API_PORT}" -v marker="pid=${pid}," '
+      NF {
+        count += 1
+        if ($4 == address && index($0, marker) > 0) matched += 1
+      }
+      END { exit !(count == 1 && matched == 1) }
+    ' <<<"${sockets}"
+}
+
+assert_runtime_listener() {
+    local session="$1"
+    local pid sockets
+    pid="$(session_process "${session}")" || {
+        error "运行时进程身份不匹配：${session}"
+        return 1
+    }
+    if ! sockets="$(ss -H -ltnp "sport = :${API_PORT}")"; then
+        error "无法查询 ${API_PORT} 监听进程"
+        return 1
+    fi
+    if ! listener_output_matches_runtime "${pid}" "${sockets}"; then
+        error "${API_PORT} 唯一回环监听与 Backend 入口 PID 不一致"
+        return 1
+    fi
+    printf '%s\n' "${pid}"
+}
+
+assert_runtime_port_closed() {
+    local sockets
+    if ! sockets="$(ss -H -ltn "sport = :${API_PORT}")"; then
+        error "无法查询 ${API_PORT} 关闭状态"
+        return 1
+    fi
+    [[ -z "${sockets}" ]] || {
+        error "Screen 已停止但 ${API_PORT} 仍有孤儿监听"
+        return 1
+    }
+}
+
+workflow_completion_state() {
+    local unified_candidate unified_root deployment evidence state
+    local evidence_sha selected_release
+    unified_candidate="$(jq -er '.unified_candidate.manifest_path' \
+        "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")" || return 1
+    case "${unified_candidate}" in
+        */CANDIDATE-MANIFEST.json) ;;
+        *) return 1 ;;
+    esac
+    unified_root="${unified_candidate%/CANDIDATE-MANIFEST.json}"
+    deployment="${unified_root}/DEPLOYMENT.json"
+    evidence="${unified_root}/PRODUCTION-VERIFICATION.json"
+    state="${unified_root}/ACTIVATION-STATE.json"
+    [[ -f "${deployment}" && ! -L "${deployment}" \
+        && -f "${evidence}" && ! -L "${evidence}" \
+        && -f "${state}" && ! -L "${state}" ]] || {
+        printf 'pending\n'
+        return 0
+    }
+    evidence_sha="$(sha256_file "${evidence}")" || return 1
+    selected_release="$(jq -er '.unified_candidate.release_id' \
+        "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")" || return 1
+    if jq -e --arg release_id "${selected_release}" \
+        --arg evidence_sha "sha256:${evidence_sha}" \
+        --slurpfile state "${state}" \
+        --slurpfile evidence "${evidence}" '
+      .schema_version == "domeye_country_outage_general_deployment_v2"
+      and .release_id == $release_id
+      and .status == "production_verified"
+      and .production_verified == true
+      and .verification == {
+        path:"PRODUCTION-VERIFICATION.json",
+        sha256:$evidence_sha
+      }
+      and $state[0].release_id == $release_id
+      and $state[0].phase == "production_verified"
+      and $state[0].status == "passed"
+      and $evidence[0].schema_version
+        == "domeye_country_outage_general_runtime_verification_v2"
+      and $evidence[0].release_id == $release_id
+      and $evidence[0].mode == "production"
+      and $evidence[0].status == "production_verified"
+      and $evidence[0].interactive_answer.production_verified == true
+      and $evidence[0].interactive_answer.answer_source == "renderer"
+      and $evidence[0].interactive_answer.guard_decision == "pass"
+      and $evidence[0].interactive_answer.public_answer_present == true
+      and $evidence[0].interactive_answer.fallback_or_rejection_present == false
+    ' "${deployment}" >/dev/null; then
+        printf 'verified\n'
+    else
+        printf 'pending\n'
+    fi
+}
+
 serve_runtime() {
-    validate_runtime
+    if ! validate_runtime; then
+        return 1
+    fi
+    if ! verify_interactive_agent_binding; then
+        return 1
+    fi
     local db_name db_port db_user db_password secret_key
     local agent_url agent_token agent_identity agent_user agent_config_sha
     local interactive_agent_url interactive_agent_token
-    db_name="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)"
+    if ! db_name="$(read_config_value \
+        "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)" \
+        || ! db_user="$(read_config_value \
+            "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_USER)" \
+        || ! db_password="$(read_config_value \
+            "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_PASSWORD)" \
+        || ! secret_key="$(read_config_value \
+            "${DATABASE_CONFIG}" DOMEYE_CORE_SECRET_KEY)" \
+        || ! agent_url="$(read_config_value \
+            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
+        || ! agent_token="$(read_config_value \
+            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)" \
+        || ! agent_identity="$(read_config_value \
+            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_IDENTITY_MODE)" \
+        || ! agent_user="$(read_config_value \
+            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID)" \
+        || ! agent_config_sha="$(sha256_file "${AGENT_CONFIG}")" \
+        || ! interactive_agent_url="$(read_config_value \
+            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
+        || ! interactive_agent_token="$(read_config_value \
+            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)"; then
+        error '无法读取 Backend 固定运行配置'
+        return 1
+    fi
     # database.env 仍保留历史 29429；当前 feb-mar-2026 数据档的权威端口只来自
     # 已由 Backend 绑定摘要保护的 state.json，禁止把旧配置漂移带入候选运行时。
-    db_port="$(jq -er '.port' "${DATABASE_STATE}")"
-    db_user="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_USER)"
-    db_password="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_PASSWORD)"
-    secret_key="$(read_config_value "${DATABASE_CONFIG}" DOMEYE_CORE_SECRET_KEY)"
-    agent_url="$(read_config_value "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)"
-    agent_token="$(read_config_value "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)"
-    agent_identity="$(read_config_value "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_IDENTITY_MODE)"
-    agent_user="$(read_config_value "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID)"
-    agent_config_sha="$(sha256_file "${AGENT_CONFIG}")"
-    require_secure_config "${INTERACTIVE_AGENT_CONFIG}"
-    interactive_agent_url="$(read_config_value "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)"
-    interactive_agent_token="$(read_config_value "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)"
+    if ! db_port="$(jq -er '.port' "${DATABASE_STATE}")"; then
+        error '无法读取固定二三月数据库端口'
+        return 1
+    fi
     [[ "${interactive_agent_url}" == 'http://127.0.0.1:28476' ]] || {
         error 'Interactive Agent Sidecar URL 必须固定为 127.0.0.1:28476'
         return 1
@@ -270,9 +715,15 @@ serve_runtime() {
         return 1
     }
     local selected_release log_root general_read_model
-    selected_release="$(release_id)"
+    if ! selected_release="$(release_id)"; then
+        error '无法读取 Backend release-id'
+        return 1
+    fi
     log_root="/home/bgpdata/Domeye-Core-runtime/log/${selected_release}/${RUNTIME_MODE}"
-    install -d -o 0 -g 0 -m 0750 "${log_root}" "${log_root}/app"
+    if ! install -d -o 0 -g 0 -m 0750 "${log_root}" "${log_root}/app"; then
+        error '无法创建 Backend 日志目录'
+        return 1
+    fi
     general_read_model=''
     if [[ -d "${RUNTIME_ROOT}/general-read-model" ]]; then
         general_read_model="${RUNTIME_ROOT}/general-read-model"
@@ -285,7 +736,7 @@ serve_runtime() {
         return 1
     }
 
-    exec env -i \
+    if ! exec env -i \
             HOME=/home/bgpdata \
             USER=root \
             LOGNAME=root \
@@ -337,30 +788,45 @@ serve_runtime() {
             PYTHONDONTWRITEBYTECODE=1 \
             VIRTUAL_ENV="${RUNTIME_ROOT}/venv" \
             bash -c 'cd -- "$1" && exec "$2" run.py' \
-                _ "${RUNTIME_ROOT}/backend" "${RUNTIME_ROOT}/venv/bin/python"
+                _ "${RUNTIME_ROOT}/backend" "${RUNTIME_ROOT}/venv/bin/python"; then
+        error '无法 exec Backend 运行入口'
+        return 1
+    fi
 }
 
 start_runtime() {
-    validate_runtime
+    if ! validate_runtime; then
+        return 1
+    fi
+    if ! verify_interactive_agent_binding; then
+        return 1
+    fi
     mapfile -t sessions < <(list_sessions)
     if (( ${#sessions[@]} > 1 )); then
         error "发现多个同名会话：${sessions[*]}"
         return 1
     fi
     if (( ${#sessions[@]} == 1 )); then
-        session_process "${sessions[0]}" >/dev/null || {
-            error "既有会话身份不匹配：${sessions[0]}"
+        assert_runtime_listener "${sessions[0]}" >/dev/null || {
+            error "既有会话或 ${API_PORT} 监听身份不匹配：${sessions[0]}"
             return 1
         }
-        printf '运行时已启动：%s\n' "${sessions[0]}"
+        printf '运行时进程已就绪（流程完成仍需 Renderer + Guard 正确回答）：%s\n' \
+            "${sessions[0]}"
         return 0
     fi
 
     local selected_release log_root
-    selected_release="$(release_id)"
+    if ! selected_release="$(release_id)"; then
+        error '无法读取 Backend release-id'
+        return 1
+    fi
     log_root="/home/bgpdata/Domeye-Core-runtime/log/${selected_release}/${RUNTIME_MODE}"
-    install -d -o 0 -g 0 -m 0750 "${log_root}" "${log_root}/app"
-    screen -L -Logfile "${log_root}/screen.log" -dmS "${SCREEN_NAME}" \
+    if ! install -d -o 0 -g 0 -m 0750 "${log_root}" "${log_root}/app"; then
+        error '无法创建 Backend 启动日志目录'
+        return 1
+    fi
+    if ! screen -L -Logfile "${log_root}/screen.log" -dmS "${SCREEN_NAME}" \
         env -i \
             HOME=/home/bgpdata \
             USER=root \
@@ -370,16 +836,24 @@ start_runtime() {
             PATH="${RUNTIME_PATH}" \
             DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE="${MODE}" \
             DOMEYE_COUNTRY_OUTAGE_RUNTIME_ROOT_OVERRIDE="${RUNTIME_ROOT}" \
-            "${SCRIPT_DIR}/manage-runtime.sh" _serve
+            "${SCRIPT_DIR}/manage-runtime.sh" _serve; then
+        error '无法创建 Backend Screen 会话'
+        return 1
+    fi
 
     local attempt
     for (( attempt = 1; attempt <= 60; attempt++ )); do
         mapfile -t sessions < <(list_sessions)
         if (( ${#sessions[@]} == 1 )) \
-            && session_process "${sessions[0]}" >/dev/null \
+            && assert_runtime_listener "${sessions[0]}" >/dev/null \
             && curl -fsS --max-time 2 \
                 "http://127.0.0.1:${API_PORT}/api/v1/healthz" >/dev/null 2>&1; then
-            printf '运行时启动成功：%s / %s\n' "${sessions[0]}" "${selected_release}"
+            if ! verify_interactive_agent_binding; then
+                error 'Backend 就绪后 Interactive Agent 身份发生漂移'
+                return 1
+            fi
+            printf '运行时进程已就绪（流程完成仍需 Renderer + Guard 正确回答）：%s / %s\n' \
+                "${sessions[0]}" "${selected_release}"
             return 0
         fi
         sleep 0.5
@@ -390,9 +864,32 @@ start_runtime() {
 }
 
 stop_runtime() {
-    validate_runtime
+    if ! validate_runtime_root; then
+        return 1
+    fi
+    for command_name in awk grep jq pgrep readlink screen tr; do
+        command -v "${command_name}" >/dev/null 2>&1 || {
+            error "停止运行时缺少命令：${command_name}"
+            return 1
+        }
+    done
+    [[ -f "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" \
+        && ! -L "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" ]] || {
+        error '停止目标缺少 Backend 身份绑定'
+        return 1
+    }
+    if ! jq -e '
+      .schema_version == "domeye_country_outage_general_backend_binding_v2"
+      and (.release_id | type == "string" and endswith("-backend"))
+    ' "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json" >/dev/null; then
+        error '停止目标 Backend 身份绑定无效'
+        return 1
+    fi
     mapfile -t sessions < <(list_sessions)
     if (( ${#sessions[@]} == 0 )); then
+        if ! assert_runtime_port_closed; then
+            return 1
+        fi
         printf '运行时未启动：%s\n' "$(release_id)"
         return 0
     fi
@@ -404,12 +901,17 @@ stop_runtime() {
         error "拒绝停止身份不匹配的会话：${sessions[0]}"
         return 1
     }
-    screen -S "${sessions[0]}" -X quit
+    if ! screen -S "${sessions[0]}" -X quit; then
+        error "无法请求停止 Backend 会话：${sessions[0]}"
+        return 1
+    fi
     local attempt
     for (( attempt = 1; attempt <= 40; attempt++ )); do
         if ! list_sessions | grep -Fxq "${sessions[0]}"; then
-            printf '运行时已停止：%s\n' "$(release_id)"
-            return 0
+            if assert_runtime_port_closed; then
+                printf '运行时已停止：%s\n' "$(release_id)"
+                return 0
+            fi
         fi
         sleep 0.25
     done
@@ -418,28 +920,44 @@ stop_runtime() {
 }
 
 status_runtime() {
-    validate_runtime
+    if ! validate_runtime; then
+        return 1
+    fi
+    if ! verify_interactive_agent_binding; then
+        return 1
+    fi
     mapfile -t sessions < <(list_sessions)
     (( ${#sessions[@]} == 1 )) || {
         error "运行时会话数量不是 1：${#sessions[@]}"
         return 1
     }
     local pid
-    pid="$(session_process "${sessions[0]}")" || {
-        error "运行时进程身份不匹配：${sessions[0]}"
+    pid="$(assert_runtime_listener "${sessions[0]}")" || {
+        error "运行时进程或 ${API_PORT} 监听身份不匹配：${sessions[0]}"
         return 1
     }
-    curl -fsS --max-time 5 "http://127.0.0.1:${API_PORT}/api/v1/healthz" \
-        | jq -e '.status == "ok" and .service == "domeye-core"' >/dev/null
+    if ! curl -fsS --max-time 5 \
+        "http://127.0.0.1:${API_PORT}/api/v1/healthz" \
+        | jq -e '.status == "ok" and .service == "domeye-core"' >/dev/null; then
+        error 'Backend 健康检查失败'
+        return 1
+    fi
+    local completion_state
+    completion_state="$(workflow_completion_state)" || {
+        error '无法重算公共回答完成状态'
+        return 1
+    }
     jq -n \
-        --arg status active \
+        --arg status running \
         --arg mode "${RUNTIME_MODE}" \
         --arg release_id "$(release_id)" \
         --arg runtime_root "${RUNTIME_ROOT}" \
         --arg session "${sessions[0]}" \
         --argjson pid "${pid}" \
         --argjson port "${API_PORT}" \
-        '{status:$status,mode:$mode,release_id:$release_id,runtime_root:$runtime_root,session:$session,pid:$pid,port:$port}'
+        --arg completion_state "${completion_state}" \
+        --argjson interactive_agent "${INTERACTIVE_AGENT_STATUS_JSON}" \
+        '{status:$status,mode:$mode,release_id:$release_id,runtime_root:$runtime_root,session:$session,pid:$pid,port:$port,interactive_agent:$interactive_agent,workflow_completion:{state:$completion_state,requires_renderer_guard_correct_answer:true,requires_general_production_evidence:true,health_check_is_completion:false}}'
 }
 
 if (( $# != 1 )); then
