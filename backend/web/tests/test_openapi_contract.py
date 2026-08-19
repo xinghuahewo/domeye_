@@ -37,7 +37,6 @@ def test_openapi_only_allows_explicit_agent_state_machine_post_operations():
         '/api/v2/country-outage/runs/{run_id}/abort',
         '/api/v2/country-outage/chat/conversations',
         '/api/v2/country-outage/chat/conversations/{conversation_id}/turns',
-        '/api/v2/country-outage/chat/conversations/{conversation_id}/rebind',
         (
             '/api/v2/country-outage/chat/conversations/{conversation_id}/turns/'
             '{turn_id}/cancel'

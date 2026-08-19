@@ -25,7 +25,6 @@ from .country_outage_chat_proxy import (
     CountryOutageChatCancelResource,
     CountryOutageChatConversationCollectionResource,
     CountryOutageChatConversationResource,
-    CountryOutageChatRebindResource,
     CountryOutageChatTurnCollectionResource,
 )
 from .country_outage_investigations import (
@@ -116,10 +115,6 @@ api.add_resource(
 api.add_resource(
     CountryOutageChatTurnCollectionResource,
     "/country-outage/chat/conversations/<conversation_id>/turns",
-)
-api.add_resource(
-    CountryOutageChatRebindResource,
-    "/country-outage/chat/conversations/<conversation_id>/rebind",
 )
 api.add_resource(
     CountryOutageChatCancelResource,

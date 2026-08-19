@@ -158,25 +158,5 @@ class CountryOutageChatProxyTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(calls, [])
 
-    def test_rebind_route_is_removed_without_upstream_call(self):
-        calls = []
-        with patch.object(
-            chat_proxy,
-            "_request_interactive_agent",
-            lambda *args, **kwargs: calls.append((args, kwargs)),
-        ):
-            response = self.client.post(
-                "/api/v2/country-outage/chat/conversations/"
-                "conversation_test/rebind",
-                json=binding_request(),
-            )
-
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(
-            response.get_json()["error"]["code"], "route_not_found"
-        )
-        self.assertEqual(calls, [])
-
-
 if __name__ == "__main__":
     unittest.main()

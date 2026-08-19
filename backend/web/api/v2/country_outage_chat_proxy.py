@@ -193,16 +193,6 @@ class CountryOutageChatTurnCollectionResource(Resource):
         )
 
 
-class CountryOutageChatRebindResource(Resource):
-    def post(self, conversation_id: str):
-        del conversation_id
-        return _error(
-            404,
-            "route_not_found",
-            "会话重新绑定已移除；数据身份变化时必须新建会话",
-        )
-
-
 class CountryOutageChatCancelResource(Resource):
     def post(self, conversation_id: str, turn_id: str):
         try:
