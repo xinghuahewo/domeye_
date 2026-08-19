@@ -1,0 +1,25 @@
+{
+  "schema_version": "domeye_first_slice_independent_review_v1",
+  "reviewer_actor_id": "codex-renderer-final-independent-reviewer-20260820",
+  "reviewer_role": "independent_acceptance_reviewer",
+  "independent_from_execution": true,
+  "candidate_id": "manifest:sha256:7832af0f9b9ac9a693672def36822a2a7779fa170adc5ea3367787ac89a0fad0",
+  "summary_digest": "sha256:005431a0ba244ed00bf8d46741d5131759a149fc14b3913d985f830e870469ec",
+  "evidence_jsonl_sha256": "sha256:b3e58c4e0c90b0ab07fc11ca10f6156527968d23078255e62d00bbc17a58d447",
+  "decision": "accepted",
+  "dg1_decision": "GO",
+  "rationale_codes": [
+    "candidate_canonical_digest_verified",
+    "candidate_parent_chain_verified",
+    "candidate_source_closure_verified",
+    "evaluator_hashes_verified",
+    "evidence_jsonl_closure_verified",
+    "renderer_30_of_30_verified",
+    "ordered_triples_10_of_10_verified",
+    "adversarial_safety_verified",
+    "zero_tolerance_gate_verified",
+    "non_success_completion_absent",
+    "legacy_rebind_route_absent"
+  ],
+  "reviewed_at_utc": "2026-08-19T16:19:32.000Z"
+}
