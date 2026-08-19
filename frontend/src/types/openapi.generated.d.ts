@@ -1205,7 +1205,7 @@ export interface components {
             answerability: "supported" | "clarification_required" | "stopped";
             answer_text: string;
             /** @enum {string} */
-            answer_source: "renderer" | "deterministic_fallback" | "none";
+            answer_source: "renderer" | "none";
             candidate_id: string;
             data_identity: components["schemas"]["CountryOutageInteractiveDataIdentity"];
             finding: components["schemas"]["CountryOutageInteractiveFinding"] | null;
@@ -1238,7 +1238,7 @@ export interface components {
             /** @constant */
             completeness_state: "complete";
         };
-        CountryOutageInteractiveSuccessfulTurnAnswer: (components["schemas"]["CountryOutageInteractiveTurnAnswer"] & {
+        CountryOutageInteractiveSuccessfulTurnAnswer: components["schemas"]["CountryOutageInteractiveTurnAnswer"] & {
             /** @constant */
             answerability: "supported";
             answer_text: string;
@@ -1254,23 +1254,7 @@ export interface components {
                     reason_codes: unknown[];
                 };
             };
-        }) | (components["schemas"]["CountryOutageInteractiveTurnAnswer"] & {
-            /** @constant */
-            answerability: "supported";
-            answer_text: string;
-            /** @constant */
-            answer_source: "deterministic_fallback";
-            finding: components["schemas"]["CountryOutageInteractiveSuccessfulFinding"];
-            evidence: components["schemas"]["CountryOutageInteractiveEvidence"][];
-            limitations: string[];
-            trace: components["schemas"]["CountryOutageInteractiveSuccessfulTrace"] & {
-                response_guard: components["schemas"]["CountryOutageInteractiveResponseGuardSummary"] & {
-                    /** @constant */
-                    decision: "block";
-                    reason_codes: string[];
-                };
-            };
-        });
+        };
         CountryOutageInteractiveTurnError: {
             code: string;
             message: string;

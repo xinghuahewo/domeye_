@@ -116,6 +116,7 @@ describe('首个纵向切片交互式 Agent API', () => {
       CompletedTurn['answer'],
       { answer_source: 'deterministic_fallback' }
     >
+    type CompletedTrace = CompletedTurn['answer']['trace']
     type StoppedFallback = Extract<
       StoppedTurn['answer'],
       { answer_source: 'deterministic_fallback' }
@@ -124,7 +125,11 @@ describe('首个纵向切片交互式 Agent API', () => {
     expectTypeOf<CompletedTurn>().toMatchTypeOf<{
       answer_success: true
       workflow_completed: true
-      answer: { answerability: 'supported' }
+      answer: {
+        answerability: 'supported'
+        answer_source: 'renderer'
+        trace: { response_guard: { decision: 'pass' } }
+      }
     }>()
     expectTypeOf<StoppedTurn>().toMatchTypeOf<{
       answer_success: false
@@ -135,11 +140,19 @@ describe('首个纵向切片交互式 Agent API', () => {
       answer_success: false
       workflow_completed: false
     }>()
-    expectTypeOf<CompletedFallback>().toMatchTypeOf<{
-      answerability: 'supported'
-      answer_source: 'deterministic_fallback'
-      trace: { response_guard: { decision: 'block' } }
-    }>()
+    expectTypeOf<CompletedFallback>().toEqualTypeOf<never>()
     expectTypeOf<StoppedFallback>().toEqualTypeOf<never>()
+    expectTypeOf<CompletedTrace['goal_state_revision']>().toEqualTypeOf<4>()
+    expectTypeOf<CompletedTrace['disposition']>()
+      .toEqualTypeOf<'goal_satisfied'>()
+    expectTypeOf<CompletedTrace['admission_receipts']['length']>()
+      .toEqualTypeOf<2>()
+    expectTypeOf<CompletedTrace['action_receipts']['length']>()
+      .toEqualTypeOf<2>()
+    expectTypeOf<CompletedTrace['artifacts']['length']>().toEqualTypeOf<2>()
+    expectTypeOf<CompletedTrace['observations']['length']>()
+      .toEqualTypeOf<2>()
+    expectTypeOf<CompletedTrace['response_guard']['reason_codes']>()
+      .toMatchTypeOf<[]>()
   })
 })

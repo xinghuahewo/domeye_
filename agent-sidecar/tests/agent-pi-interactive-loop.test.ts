@@ -442,7 +442,7 @@ test('真实交互顺序为 CAP-006 Observation 后才提出 CAP-016', async () 
   ], readModel, networkCalls)
 
   const result = await runtime.run(goal, initialState)
-  assert.equal(result.goal_state.status, 'satisfied')
+  assert.equal(result.goal_state.status, 'answer_pending')
   assert.deepEqual(
     result.action_receipts.map((item) => item.capability_id),
     ['CAP-006', 'CAP-016'],
@@ -495,7 +495,7 @@ test('Finding 输入 ready 后拒绝澄清、停止与错误成功原因，并�
   ], readModel, networkCalls)
 
   const result = await runtime.run(goal, initialState)
-  assert.equal(result.goal_state.status, 'satisfied')
+  assert.equal(result.goal_state.status, 'answer_pending')
   assert.equal(result.disposition.reason_code, 'finding_input_ready')
   assert.equal(result.action_receipts.length, 2)
   assert.deepEqual(

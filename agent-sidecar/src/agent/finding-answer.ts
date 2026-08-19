@@ -69,22 +69,41 @@ export interface DomeyeAnswerRenderer {
   ): Promise<DomeyeRendererDraft>
 }
 
-export type DomeyeComposedAnswer = Readonly<{
-  answer: string
-  source: 'renderer' | 'deterministic_fallback'
-  guard_result: DomeyeResponseGuardDecision
-  render_attempt:
-    | Readonly<{
-        status: 'completed'
-        draft: DomeyeRendererDraft
-        failure_code: null
-      }>
-    | Readonly<{
-        status: 'failed'
-        draft: null
-        failure_code: 'renderer_failed_or_invalid'
-      }>
+type DomeyeCompletedRenderAttempt = Readonly<{
+  status: 'completed'
+  draft: DomeyeRendererDraft
+  failure_code: null
 }>
+
+type DomeyeFailedRenderAttempt = Readonly<{
+  status: 'failed'
+  draft: null
+  failure_code: 'renderer_failed_or_invalid'
+}>
+
+export type DomeyeAcceptedAnswer = Readonly<{
+  answer: string
+  source: 'renderer'
+  guard_result: Extract<
+    DomeyeResponseGuardDecision,
+    { readonly decision: 'pass' }
+  >
+  render_attempt: DomeyeCompletedRenderAttempt
+}>
+
+export type DomeyeFallbackAnswer = Readonly<{
+  answer: string
+  source: 'deterministic_fallback'
+  guard_result: Extract<
+    DomeyeResponseGuardDecision,
+    { readonly decision: 'block' }
+  >
+  render_attempt: DomeyeCompletedRenderAttempt | DomeyeFailedRenderAttempt
+}>
+
+export type DomeyeComposedAnswer =
+  | DomeyeAcceptedAnswer
+  | DomeyeFallbackAnswer
 
 function digest(value: unknown): string {
   return `sha256:${canonicalJsonSha256(value)}`
@@ -707,7 +726,7 @@ export async function composeCountryOutageAnswer(
       render_attempt: {
         status: 'failed',
         draft: null,
-        failure_code: 'renderer_failed_or_invalid',
+        failure_code: 'renderer_failed_or_invalid' as const,
       },
     })
   }

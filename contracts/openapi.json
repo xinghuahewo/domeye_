@@ -1143,7 +1143,7 @@
           "schema_version": {"type": "string", "const": "domeye_interactive_agent_turn_answer_v1"},
           "answerability": {"type": "string", "enum": ["supported", "clarification_required", "stopped"]},
           "answer_text": {"type": "string"},
-          "answer_source": {"type": "string", "enum": ["renderer", "deterministic_fallback", "none"]},
+          "answer_source": {"type": "string", "enum": ["renderer", "none"]},
           "candidate_id": {"type": "string", "pattern": "^manifest:sha256:[a-f0-9]{64}$"},
           "data_identity": {"$ref": "#/components/schemas/CountryOutageInteractiveDataIdentity"},
           "finding": {"anyOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveFinding"}, {"type": "null"}]},
@@ -1185,74 +1185,36 @@
         ]
       },
       "CountryOutageInteractiveSuccessfulTurnAnswer": {
-        "oneOf": [
+        "allOf": [
+          {"$ref": "#/components/schemas/CountryOutageInteractiveTurnAnswer"},
           {
-            "allOf": [
-              {"$ref": "#/components/schemas/CountryOutageInteractiveTurnAnswer"},
-              {
-                "type": "object",
-                "required": ["answerability", "answer_text", "answer_source", "finding", "evidence", "limitations", "trace"],
-                "properties": {
-                  "answerability": {"type": "string", "const": "supported"},
-                  "answer_text": {"type": "string", "minLength": 1},
-                  "answer_source": {"type": "string", "const": "renderer"},
-                  "finding": {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulFinding"},
-                  "evidence": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveEvidence"}},
-                  "limitations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-                  "trace": {
-                    "allOf": [
-                      {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulTrace"},
-                      {
-                        "type": "object",
-                        "required": ["response_guard"],
-                        "properties": {
-                          "response_guard": {
-                            "allOf": [
-                              {"$ref": "#/components/schemas/CountryOutageInteractiveResponseGuardSummary"},
-                              {"type": "object", "required": ["decision", "reason_codes"], "properties": {"decision": {"type": "string", "const": "pass"}, "reason_codes": {"type": "array", "maxItems": 0}}}
-                            ]
-                          }
-                        }
+            "type": "object",
+            "required": ["answerability", "answer_text", "answer_source", "finding", "evidence", "limitations", "trace"],
+            "properties": {
+              "answerability": {"type": "string", "const": "supported"},
+              "answer_text": {"type": "string", "minLength": 1},
+              "answer_source": {"type": "string", "const": "renderer"},
+              "finding": {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulFinding"},
+              "evidence": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveEvidence"}},
+              "limitations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+              "trace": {
+                "allOf": [
+                  {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulTrace"},
+                  {
+                    "type": "object",
+                    "required": ["response_guard"],
+                    "properties": {
+                      "response_guard": {
+                        "allOf": [
+                          {"$ref": "#/components/schemas/CountryOutageInteractiveResponseGuardSummary"},
+                          {"type": "object", "required": ["decision", "reason_codes"], "properties": {"decision": {"type": "string", "const": "pass"}, "reason_codes": {"type": "array", "maxItems": 0}}}
+                        ]
                       }
-                    ]
+                    }
                   }
-                }
+                ]
               }
-            ]
-          },
-          {
-            "allOf": [
-              {"$ref": "#/components/schemas/CountryOutageInteractiveTurnAnswer"},
-              {
-                "type": "object",
-                "required": ["answerability", "answer_text", "answer_source", "finding", "evidence", "limitations", "trace"],
-                "properties": {
-                  "answerability": {"type": "string", "const": "supported"},
-                  "answer_text": {"type": "string", "minLength": 1},
-                  "answer_source": {"type": "string", "const": "deterministic_fallback"},
-                  "finding": {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulFinding"},
-                  "evidence": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveEvidence"}},
-                  "limitations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-                  "trace": {
-                    "allOf": [
-                      {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulTrace"},
-                      {
-                        "type": "object",
-                        "required": ["response_guard"],
-                        "properties": {
-                          "response_guard": {
-                            "allOf": [
-                              {"$ref": "#/components/schemas/CountryOutageInteractiveResponseGuardSummary"},
-                              {"type": "object", "required": ["decision", "reason_codes"], "properties": {"decision": {"type": "string", "const": "block"}, "reason_codes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}}
-                            ]
-                          }
-                        }
-                      }
-                    ]
-                  }
-                }
-              }
-            ]
+            }
           }
         ]
       },

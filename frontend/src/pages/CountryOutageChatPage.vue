@@ -121,7 +121,6 @@ function statusLabel(value: string): string {
 function sourceLabel(value: string): string {
   return ({
     renderer: '模型渲染 · Guard 通过',
-    deterministic_fallback: '确定性回退',
     none: '未形成答案',
   } as Record<string, string>)[value] || value
 }
@@ -720,7 +719,6 @@ onBeforeUnmount(() => {
 .answer-mark { padding: 4px 6px; color: #fff; background: #176b86; font: 800 7px/1 var(--mono); letter-spacing: .08em; }
 .agent-answer > header b { color: #405762; font-size: 9px; }
 .agent-answer > header em { padding: 4px 6px; color: #386256; background: #e7f2ee; font: normal 750 7px/1 var(--mono); }
-.agent-answer > header em.source-deterministic_fallback { color: #855126; background: #fff0df; }
 .agent-answer > header small { color: #829099; font: 650 8px/1 var(--mono); }
 .answer-copy { padding: 19px 20px; border-left: 3px solid var(--success); }
 .answer-copy p { margin: 0; color: #2e4652; font-size: 12px; line-height: 1.9; white-space: pre-line; }

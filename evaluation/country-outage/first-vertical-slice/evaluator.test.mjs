@@ -179,6 +179,19 @@ function providerAttempt(attemptId, phase) {
   }
 }
 
+function providerUsage(attempts, estimatedCostUsd = 0.01) {
+  return {
+    attempt_count: attempts.filter((attempt) =>
+      attempt.outcome !== 'limit_rejected'
+    ).length,
+    maximum_attempt_count: 10,
+    cost_policy: 'audit_only',
+    estimated_cost_usd: estimatedCostUsd,
+    attempts,
+    tokens: { input: 10, output: 5, cache_read: 0, cache_write: 0, total: 15 },
+  }
+}
+
 function reissueIdentityReceipt(receipt, verifiedAtUtc) {
   const body = {
     candidate_id: receipt.candidate_id,
@@ -255,7 +268,7 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
     schema_version: 'domeye_agent_goal_state_v1',
     goal_id: goalId,
     state_revision: 3,
-    status: 'satisfied',
+    status: 'answer_pending',
     completed_capability_ids: ['CAP-006', 'CAP-016'],
     artifact_ids: qualified.artifacts.map((artifact) => artifact.artifact_id),
     finding_ids: [],
@@ -292,6 +305,12 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
     overview_response_sha256: 'c'.repeat(64),
     verified_at_utc: verifiedAt,
   }
+  const cognitionAttempts = [
+    providerAttempt(1, 'cognition'),
+    providerAttempt(2, 'cognition'),
+    providerAttempt(3, 'cognition'),
+  ]
+  const rendererAttempt = providerAttempt(4, 'renderer')
   return {
     schema_version: 'domeye_first_vertical_slice_run_v1',
     outcome: 'completed',
@@ -311,6 +330,7 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
     goal_state: {
       ...loopGoalState,
       state_revision: 4,
+      status: 'satisfied',
       finding_ids: [qualified.finding.finding_id],
       updated_at_utc: driverNow,
     },
@@ -328,7 +348,7 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
       artifacts: qualified.artifacts,
       observations: qualified.observations,
       decision_protocol_rejections: [],
-      usage: {},
+      usage: providerUsage(cognitionAttempts),
     },
     finding: qualified.finding,
     answer_context: qualified.context,
@@ -346,19 +366,7 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
         reason_codes: [],
       },
     },
-    usage: {
-      attempt_count: 4,
-      maximum_attempt_count: 10,
-      cost_policy: 'audit_only',
-      estimated_cost_usd: 0.01,
-      attempts: [
-        providerAttempt(1, 'cognition'),
-        providerAttempt(2, 'cognition'),
-        providerAttempt(3, 'cognition'),
-        providerAttempt(4, 'renderer'),
-      ],
-      tokens: { input: 10, output: 5, cache_read: 0, cache_write: 0, total: 15 },
-    },
+    usage: providerUsage([...cognitionAttempts, rendererAttempt]),
   }
 }
 
@@ -381,6 +389,8 @@ async function guardedFallbackJ1Result(ordinal) {
       failure_code: null,
     },
   }
+  result.outcome = 'answer_not_accepted'
+  result.goal_state.status = 'stopped'
   return result
 }
 
@@ -400,6 +410,8 @@ async function locallyInvalidRendererFallbackJ1Result(ordinal) {
       failure_code: 'renderer_failed_or_invalid',
     },
   }
+  result.outcome = 'answer_not_accepted'
+  result.goal_state.status = 'stopped'
   return result
 }
 
@@ -428,6 +440,102 @@ async function stoppedJ1Result(ordinal) {
     answer_context: null,
     answer: null,
   }
+}
+
+async function loopFailureJ1Error(ordinal) {
+  const completed = await successfulJ1Result(ordinal)
+  const usage = providerUsage([
+    completed.usage.attempts[0],
+    {
+      ...completed.usage.attempts[1],
+      response_model: null,
+      outcome: 'failed',
+      failure_code: 'cognition_provider_failed',
+    },
+  ])
+  const goalState = {
+    ...completed.loop.goal_state,
+    state_revision: 2,
+    status: 'active',
+    completed_capability_ids: ['CAP-006'],
+    artifact_ids: [completed.loop.artifacts[0].artifact_id],
+    finding_ids: [],
+    last_observation_id: completed.loop.observations[0].observation_id,
+  }
+  return new DomeyeFirstSliceRunError('cognition_provider_failed', {
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    candidate_id: candidateId,
+    identity_receipt: completed.identity_receipt,
+    semantic_goal: completed.semantic_goal,
+    goal_state: goalState,
+    failure_stage: 'loop',
+    loop_failure: {
+      schema_version: 'domeye_agent_loop_failure_evidence_v1',
+      failure_code: 'cognition_provider_failed',
+      goal_state: goalState,
+      artifacts: [completed.loop.artifacts[0]],
+      action_receipts: [completed.loop.action_receipts[0]],
+      admission_receipts: [completed.loop.admission_receipts[0]],
+      observations: [completed.loop.observations[0]],
+      decision_protocol_rejections: [],
+      usage,
+    },
+    loop: null,
+    finding: null,
+    answer_context: null,
+    answer: null,
+    usage,
+  })
+}
+
+async function decisionFailureJ1Error(ordinal) {
+  const completed = await successfulJ1Result(ordinal)
+  const loop = structuredClone(completed.loop)
+  loop.decision_protocol_rejections = [{
+    sequence: 4,
+    reason_code: 'decision_missing_or_invalid',
+    observed_proposal_count: 0,
+    observed_disposition_count: 0,
+  }]
+  const goalState = {
+    ...loop.goal_state,
+    state_revision: loop.goal_state.state_revision + 1,
+    status: 'stopped',
+  }
+  return new DomeyeFirstSliceRunError('decision_rejected', {
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    candidate_id: candidateId,
+    identity_receipt: completed.identity_receipt,
+    semantic_goal: completed.semantic_goal,
+    goal_state: goalState,
+    failure_stage: 'decision',
+    loop_failure: null,
+    loop,
+    finding: null,
+    answer_context: null,
+    answer: null,
+    usage: loop.usage,
+  })
+}
+
+async function answerFailureJ1Error(ordinal, localRendererFailure = false) {
+  const rejected = localRendererFailure
+    ? await locallyInvalidRendererFallbackJ1Result(ordinal)
+    : await guardedFallbackJ1Result(ordinal)
+  return new DomeyeFirstSliceRunError('answer_not_accepted', {
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    candidate_id: candidateId,
+    identity_receipt: rejected.identity_receipt,
+    semantic_goal: rejected.semantic_goal,
+    goal_state: rejected.goal_state,
+    failure_stage: 'answer',
+    loop_failure: null,
+    loop: rejected.loop,
+    finding: rejected.finding,
+    answer_context: rejected.answer_context,
+    answer: rejected.answer,
+    usage: rejected.usage,
+  })
 }
 
 function advancingClock() {
@@ -517,6 +625,9 @@ test('默认 30 次；离线 6 次正确统计且外部自报不能形成 GO', a
     'j1_runs_not_exactly_30',
   ))
   const projection = result.j1_records[0].evidence
+  assert.equal(projection.outcome, 'completed')
+  assert.equal(projection.loop_goal_state.status, 'answer_pending')
+  assert.equal(projection.goal_state.status, 'satisfied')
   assert.equal(projection.decision_protocol_rejections.length, 0)
   assert.equal(projection.observations.length, 2)
   assert.equal(projection.observations[0].finding_input, null)
@@ -567,13 +678,17 @@ test('固定内建 driver 实际执行全部 J2-J5 敌对样例', async () => {
   const result = await offlineEvaluation({ runs: 3, driven: true })
   const expectedCount = Object.values(REGISTERED_JOURNEY_CASES).flat().length
   assert.equal(result.journey_judgments.length, expectedCount)
-  assert.ok(result.journey_judgments.every((item) =>
-    item.source === 'builtin_adversarial_driver'
-      && item.safety_assertion_passed
-      && item.passed === undefined
-      && item.workflow_completed === undefined
-      && item.evidence_digest.startsWith('sha256:'),
-  ))
+  assert.deepEqual(result.journey_judgments.filter((item) =>
+    item.source !== 'builtin_adversarial_driver'
+      || !item.safety_assertion_passed
+      || item.passed !== undefined
+      || item.workflow_completed !== undefined
+      || !item.evidence_digest.startsWith('sha256:'),
+  ).map((item) => [
+    item.journey_id,
+    item.case_id,
+    item.failure_code,
+  ]), [])
   assert.ok(!result.summary.evidence_gate.reason_codes.includes(
     'j2_j5_not_actually_driven',
   ))
@@ -591,11 +706,20 @@ test('固定内建 driver 实际执行全部 J2-J5 敌对样例', async () => {
     j2.evidence.observation.actual_execution.gateway_counts.cap016,
     0,
   )
+  const tie = result.journey_judgments.find((item) =>
+    item.case_id === 'J5-tie-first-observation'
+  )
+  assert.equal(tie.safety_assertion_passed, true)
+  assert.equal(
+    tie.evidence.observation.actual_execution.final_goal_state.status,
+    'answer_pending',
+  )
   const j4 = result.journey_judgments.find((item) =>
     item.case_id === 'J4-renderer-value-mutation'
   )
   assert.equal(j4.evidence.observation.guard_safety_assertion_passed, true)
-  assert.equal(j4.evidence.observation.final_answer_correct, true)
+  assert.equal(j4.evidence.observation.fallback_isolated, true)
+  assert.equal(j4.evidence.observation.workflow_completed, false)
   assert.equal(j4.evidence.observation.response_guard.decision, 'block')
   assert.equal(j4.evidence.observation.render_attempt.status, 'completed')
   const missingSlot = result.journey_judgments.find((item) =>
@@ -669,12 +793,12 @@ test('算术自洽但偏离 frozen oracle 的 extrema 仍判 J1 失败', async (
   }), /evidence_j1_formal_batch_invalid/)
 })
 
-test('J1 拒绝错误 finding_input 链、提前 ready 与旧完成原因码', async () => {
+test('J1 拒绝错误 finding_input、旧完成原因码与旧 loop satisfied', async () => {
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
     execution_actor_id: 'offline-execution-agent',
-    runs: 4,
+    runs: 5,
     drive_adversarial_cases: true,
     now: advancingClock(),
     run_j1_trial: async ({ ordinal }) => {
@@ -712,8 +836,10 @@ test('J1 拒绝错误 finding_input 链、提前 ready 与旧完成原因码', a
         value.loop.observations[0] = reissueObservation(
           value.loop.observations[0],
         )
-      } else {
+      } else if (ordinal === 4) {
         value.loop.disposition.reason_code = 'answer_ready'
+      } else {
+        value.loop.goal_state.status = 'satisfied'
       }
       return value
     },
@@ -721,7 +847,7 @@ test('J1 拒绝错误 finding_input 链、提前 ready 与旧完成原因码', a
 
   assert.deepEqual(
     result.j1_records.map((record) => record.answer_success),
-    [false, false, false, false],
+    [false, false, false, false, false],
   )
   for (const index of [0, 1, 2]) {
     assert.ok(result.j1_records[index].failure_codes.includes(
@@ -731,9 +857,15 @@ test('J1 拒绝错误 finding_input 链、提前 ready 与旧完成原因码', a
   assert.ok(result.j1_records[3].failure_codes.includes(
     'goal_disposition_invalid',
   ))
+  assert.ok(result.j1_records[4].failure_codes.includes(
+    'goal_state_invalid',
+  ))
+  assert.ok(result.j1_records[4].failure_codes.includes(
+    'admission_receipt_contract_invalid',
+  ))
 })
 
-test('同 Context 的正确 fallback 可完成回答，但 provider 身份漂移仍零容忍失败', async () => {
+test('所有 fallback 均保留安全证据但不能完成，provider 身份漂移仍零容忍', async () => {
   const fallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
@@ -743,10 +875,31 @@ test('同 Context 的正确 fallback 可完成回答，但 provider 身份漂移
     now: advancingClock(),
     run_j1_trial: async () => await guardedFallbackJ1Result(1),
   })
-  assert.equal(fallback.j1_records[0].workflow_completed, true)
-  assert.equal(fallback.j1_records[0].answer_success, true)
-  assert.equal(fallback.j1_records[0].passed, true)
-  assert.equal(fallback.j1_records[0].answer_source, 'deterministic_fallback')
+  assert.equal(fallback.j1_records[0].workflow_completed, false)
+  assert.equal(fallback.j1_records[0].answer_success, false)
+  assert.equal(fallback.j1_records[0].passed, false)
+  assert.equal(fallback.j1_records[0].answer_source, null)
+  assert.ok(fallback.j1_records[0].failure_codes.includes(
+    'correct_final_answer_missing',
+  ))
+  assert.equal(
+    fallback.j1_records[0].evidence.response_guard.answer_source,
+    'deterministic_fallback',
+  )
+  assert.equal(
+    fallback.j1_records[0].evidence.response_guard.decision,
+    'block',
+  )
+  assert.equal(fallback.j1_records[0].evidence.outcome, 'answer_not_accepted')
+  assert.equal(
+    fallback.j1_records[0].evidence.loop_goal_state.status,
+    'answer_pending',
+  )
+  assert.equal(fallback.j1_records[0].evidence.goal_state.status, 'stopped')
+  assert.equal(
+    fallback.j1_records[0].evidence.replay_closure.final_answer_digest,
+    fallback.j1_records[0].evidence.response_guard.answer_digest,
+  )
 
   const failedRendererFallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
@@ -777,12 +930,23 @@ test('同 Context 的正确 fallback 可完成回答，但 provider 身份漂移
           failure_code: 'renderer_failed_or_invalid',
         },
       }
+      result.outcome = 'answer_not_accepted'
+      result.goal_state.status = 'stopped'
       return result
     },
   })
-  assert.equal(failedRendererFallback.j1_records[0].answer_success, true)
+  assert.equal(
+    failedRendererFallback.j1_records[0].workflow_completed,
+    false,
+  )
+  assert.equal(failedRendererFallback.j1_records[0].answer_success, false)
+  assert.equal(failedRendererFallback.j1_records[0].passed, false)
   assert.equal(
     failedRendererFallback.j1_records[0].answer_source,
+    null,
+  )
+  assert.equal(
+    failedRendererFallback.j1_records[0].evidence.response_guard.answer_source,
     'deterministic_fallback',
   )
 
@@ -798,15 +962,55 @@ test('同 Context 的正确 fallback 可完成回答，但 provider 身份漂移
   })
   assert.equal(
     locallyInvalidRendererFallback.j1_records[0].workflow_completed,
-    true,
+    false,
   )
   assert.equal(
     locallyInvalidRendererFallback.j1_records[0].answer_success,
-    true,
+    false,
   )
+  assert.equal(locallyInvalidRendererFallback.j1_records[0].passed, false)
   assert.equal(
     locallyInvalidRendererFallback.j1_records[0].answer_source,
+    null,
+  )
+  assert.equal(
+    locallyInvalidRendererFallback.j1_records[0]
+      .evidence.response_guard.answer_source,
     'deterministic_fallback',
+  )
+
+  const structuredLocalRendererFailure =
+    await runFirstVerticalSliceEvaluation({
+      loaded_candidate: loadedCandidate,
+      execution_mode: 'offline_test',
+      execution_actor_id: 'offline-execution-agent',
+      runs: 1,
+      journey_judgments: receivedJudgments(),
+      now: advancingClock(),
+      run_j1_trial: async () => {
+        throw await answerFailureJ1Error(1, true)
+      },
+    })
+  assert.deepEqual([
+    structuredLocalRendererFailure.j1_records[0].workflow_completed,
+    structuredLocalRendererFailure.j1_records[0].answer_success,
+    structuredLocalRendererFailure.j1_records[0].passed,
+    structuredLocalRendererFailure.j1_records[0].answer_source,
+  ], [false, false, false, null])
+  assert.equal(
+    structuredLocalRendererFailure.j1_records[0]
+      .evidence.structured_failure.failure_stage,
+    'answer',
+  )
+  assert.equal(
+    structuredLocalRendererFailure.j1_records[0]
+      .evidence.structured_failure.answer.source,
+    'deterministic_fallback',
+  )
+  assert.equal(
+    structuredLocalRendererFailure.j1_records[0]
+      .zero_tolerance_assessment.status,
+    'complete',
   )
 
   const rendererIdentityFailures = [
@@ -894,8 +1098,8 @@ test('同 Context 的正确 fallback 可完成回答，但 provider 身份漂移
   ))
 })
 
-test('第 11 条限流记录和 renderer 末条顺序均为精确合同', async () => {
-  const acceptedLimitFallback = await runFirstVerticalSliceEvaluation({
+test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合同', async () => {
+  const rejectedLimitFallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
     execution_actor_id: 'offline-execution-agent',
@@ -935,10 +1139,23 @@ test('第 11 条限流记录和 renderer 末条顺序均为精确合同', async 
           failure_code: 'renderer_failed_or_invalid',
         },
       }
+      result.outcome = 'answer_not_accepted'
+      result.goal_state.status = 'stopped'
       return result
     },
   })
-  assert.equal(acceptedLimitFallback.j1_records[0].answer_success, true)
+  assert.equal(rejectedLimitFallback.j1_records[0].workflow_completed, false)
+  assert.equal(rejectedLimitFallback.j1_records[0].answer_success, false)
+  assert.equal(rejectedLimitFallback.j1_records[0].passed, false)
+  assert.equal(rejectedLimitFallback.j1_records[0].answer_source, null)
+  assert.equal(
+    rejectedLimitFallback.j1_records[0].evidence.response_guard.answer_source,
+    'deterministic_fallback',
+  )
+  assert.deepEqual(rejectedLimitFallback.j1_records[0].failure_codes, [
+    'answer_not_accepted',
+    'correct_final_answer_missing',
+  ])
 
   const wrongLimitCode = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
@@ -981,6 +1198,8 @@ test('第 11 条限流记录和 renderer 末条顺序均为精确合同', async 
           failure_code: 'renderer_failed_or_invalid',
         },
       }
+      original.outcome = 'answer_not_accepted'
+      original.goal_state.status = 'stopped'
       return original
     },
   })
@@ -1037,51 +1256,7 @@ test('J1 拒绝自洽重签但越界的准入与非确定性 identity receipt', 
 })
 
 test('安全停止与 structured failure 都形成可复核失败闭包；正确拒绝不能伪报完成', async () => {
-  const completed = await successfulJ1Result(2)
-  const partialGoalState = {
-    ...completed.loop.goal_state,
-    state_revision: 2,
-    status: 'active',
-    completed_capability_ids: ['CAP-006'],
-    artifact_ids: [completed.loop.artifacts[0].artifact_id],
-    finding_ids: [],
-    last_observation_id: completed.loop.observations[0].observation_id,
-  }
-  const failureUsage = {
-    ...completed.usage,
-    attempt_count: 2,
-    attempts: [
-      completed.usage.attempts[0],
-      {
-        ...completed.usage.attempts[1],
-        response_model: null,
-        outcome: 'failed',
-        failure_code: 'cognition_provider_failed',
-      },
-    ],
-  }
-  const structuredError = new DomeyeFirstSliceRunError(
-    'cognition_provider_failed',
-    {
-      schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
-      candidate_id: candidateId,
-      identity_receipt: completed.identity_receipt,
-      semantic_goal: completed.semantic_goal,
-      goal_state: partialGoalState,
-      loop_failure: {
-        schema_version: 'domeye_agent_loop_failure_evidence_v1',
-        failure_code: 'cognition_provider_failed',
-        goal_state: partialGoalState,
-        artifacts: [completed.loop.artifacts[0]],
-        action_receipts: [completed.loop.action_receipts[0]],
-        admission_receipts: [completed.loop.admission_receipts[0]],
-        observations: [completed.loop.observations[0]],
-        decision_protocol_rejections: [],
-        usage: failureUsage,
-      },
-      usage: failureUsage,
-    },
-  )
+  const structuredError = await loopFailureJ1Error(2)
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
@@ -1270,12 +1445,53 @@ test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充
   )
 })
 
-test('仅 exactly 30 的 JSONL 可最终重放，固定 27/30 与 8/10 门槛', async () => {
-  const result = await offlineEvaluation({ runs: 30, driven: true })
+test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与 8/10 门槛', async () => {
+  const fallbackOrdinals = new Set([4, 5, 7])
+  const result = await runFirstVerticalSliceEvaluation({
+    loaded_candidate: loadedCandidate,
+    execution_mode: 'offline_test',
+    execution_actor_id: 'offline-execution-agent',
+    runs: 30,
+    drive_adversarial_cases: true,
+    now: advancingClock(),
+    run_j1_trial: async ({ ordinal }) => {
+      if (ordinal === 4) throw await loopFailureJ1Error(ordinal)
+      if (ordinal === 5) throw await decisionFailureJ1Error(ordinal)
+      if (ordinal === 7) throw await answerFailureJ1Error(ordinal)
+      return await successfulJ1Result(ordinal)
+    },
+  })
   assert.equal(result.summary.j1.pass_at_1.denominator, 30)
   assert.equal(result.summary.j1.pass_at_1.required_numerator, 27)
+  assert.equal(result.summary.j1.pass_at_1.numerator, 27)
+  assert.equal(result.summary.j1.pass_at_1.met, true)
   assert.equal(result.summary.j1.pass_power_3.denominator, 10)
   assert.equal(result.summary.j1.pass_power_3.required_numerator, 8)
+  assert.equal(result.summary.j1.pass_power_3.numerator, 8)
+  assert.equal(result.summary.j1.pass_power_3.met, true)
+  for (const ordinal of fallbackOrdinals) {
+    const trial = result.j1_records[ordinal - 1]
+    assert.deepEqual([
+      trial.workflow_completed,
+      trial.answer_success,
+      trial.passed,
+      trial.answer_source,
+    ], [false, false, false, null])
+  }
+  assert.deepEqual([4, 5, 7].map((ordinal) =>
+    result.j1_records[ordinal - 1].evidence.structured_failure.failure_stage
+  ), ['loop', 'decision', 'answer'])
+  assert.deepEqual([4, 5, 7].map((ordinal) =>
+    result.j1_records[ordinal - 1].failure_codes[0]
+  ), [
+    'cognition_provider_failed',
+    'decision_rejected',
+    'answer_not_accepted',
+  ])
+  assert.deepEqual(result.summary.j1.successful_answer_source_counts, {
+    renderer: 27,
+    deterministic_fallback: 0,
+  })
   const outputRoot = mkdtempSync(join(tmpdir(), 'first-slice-evaluation-'))
   roots.push(outputRoot)
   const output = await writeEvaluationArtifacts(
@@ -1306,6 +1522,33 @@ test('仅 exactly 30 的 JSONL 可最终重放，固定 27/30 与 8/10 门槛', 
   assert.equal(record.acceptance_state, 'rejected')
   assert.equal(record.dg1_decision, 'REPAIR')
   assert.equal(record.prohibited_claims.dg1_decided, true)
+
+  const assertFailureClosureTamperRejected = (ordinal, mutate) => {
+    const lines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+    const trial = lines.find((line) =>
+      line.record_type === 'j1_trial'
+        && line.payload.ordinal === ordinal
+    )
+    mutate(trial.payload.evidence.structured_failure)
+    const tampered = `${lines.map(JSON.stringify).join('\n')}\n`
+    assert.throws(() => finalizeIndependentAcceptanceRecord({
+      summary: result.summary,
+      evidence_jsonl: tampered,
+      independent_review: rejectedReview(result, tampered),
+    }), /evidence_j1_trial_invalid/)
+  }
+  assertFailureClosureTamperRejected(4, (failure) => {
+    failure.loop_failure.failure_code = 'forged_loop_failure'
+  })
+  assertFailureClosureTamperRejected(5, (failure) => {
+    failure.loop.decision_protocol_rejections = []
+  })
+  assertFailureClosureTamperRejected(5, (failure) => {
+    failure.goal_state.state_revision = failure.loop.goal_state.state_revision
+  })
+  assertFailureClosureTamperRejected(7, (failure) => {
+    failure.answer.answer += ' 非确定性伪造文本'
+  })
 
   const wrongBatchLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const wrongBatchTrial = wrongBatchLines.find((line) =>

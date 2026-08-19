@@ -41,6 +41,7 @@ export const DomeyeGoalStateSchema = Type.Object({
   state_revision: Type.Integer({ minimum: 1 }),
   status: Type.Union([
     Type.Literal('active'),
+    Type.Literal('answer_pending'),
     Type.Literal('satisfied'),
     Type.Literal('clarification_required'),
     Type.Literal('stopped'),

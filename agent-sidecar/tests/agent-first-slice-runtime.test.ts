@@ -262,6 +262,7 @@ function cognitionSessionFactory(options: {
   readonly prompts: Record<string, unknown>[]
   readonly empty_disposition: 'stopped' | 'clarification_required'
   readonly provider_error?: string
+  readonly reject_first_proposal?: boolean
 }): DomeyePiSessionFactory {
   return async (sessionOptions) => {
     let lastText: string | undefined
@@ -299,7 +300,32 @@ function cognitionSessionFactory(options: {
           (tool) => tool.name === DOMEYE_GOAL_DISPOSITION_TOOL,
         ) as ToolDefinition | undefined
         const index = options.prompts.length - 1
-        if (index === 0) {
+        if (options.reject_first_proposal && index === 0) {
+          const goal = prompt.semantic_goal as { goal_id: string }
+          const state = prompt.goal_state as DomeyeGoalState
+          await proposalTool?.execute(
+            'proposal-rejected-cap-016',
+            {
+              schema_version: 'domeye_agent_capability_proposal_v1',
+              goal_id: goal.goal_id,
+              goal_state_revision: state.state_revision,
+              rationale: '故意引用不存在的源 Artifact 以验证门禁拒绝。',
+              capability_id: 'CAP-016',
+              input: {
+                metric: 'fixed_visible_ipv4_address_count',
+                source_artifact_id: 'artifact-missing-for-rejection-test',
+                tie_policy: 'first_observed_occurrence',
+              },
+            },
+            undefined,
+            undefined,
+            {} as never,
+          )
+          lastText = undefined
+          return
+        }
+        const decisionIndex = index - (options.reject_first_proposal ? 1 : 0)
+        if (decisionIndex === 0) {
           await proposalTool?.execute(
             'proposal-cap-006',
             capabilityProposal(prompt, 'CAP-006'),
@@ -310,7 +336,7 @@ function cognitionSessionFactory(options: {
           lastText = undefined
           return
         }
-        if (index === 1) {
+        if (decisionIndex === 1) {
           await proposalTool?.execute(
             'proposal-cap-016',
             capabilityProposal(prompt, 'CAP-016'),
@@ -321,7 +347,7 @@ function cognitionSessionFactory(options: {
           lastText = undefined
           return
         }
-        if (index !== 2) throw new Error('unexpected_cognition_prompt')
+        if (decisionIndex !== 2) throw new Error('unexpected_cognition_prompt')
         const goal = prompt.semantic_goal as { goal_id: string }
         const state = prompt.goal_state as DomeyeGoalState
         const observation = prompt.observation as {
@@ -484,6 +510,7 @@ function runtime(options: {
   readonly empty_disposition?: 'stopped' | 'clarification_required'
   readonly mutate_draft?: (draft: DomeyeRendererDraft) => DomeyeRendererDraft
   readonly cognition_provider_error?: string
+  readonly reject_first_proposal?: boolean
 }): DomeyeFirstSliceRuntime {
   return new DomeyeFirstSliceRuntime({
     candidate: CANDIDATE,
@@ -501,6 +528,9 @@ function runtime(options: {
       empty_disposition: options.empty_disposition ?? 'stopped',
       ...(options.cognition_provider_error
         ? { provider_error: options.cognition_provider_error }
+        : {}),
+      ...(options.reject_first_proposal
+        ? { reject_first_proposal: true }
         : {}),
     }),
     renderer_session_factory: rendererSessionFactory({
@@ -547,6 +577,8 @@ test('同一 Candidate 完成 Observation 后再规划 CAP-016，并经 Finding�
 
   assert.equal(result.outcome, 'completed')
   if (result.outcome !== 'completed') return
+  assert.equal(result.goal_state.status, 'satisfied')
+  assert.equal(result.loop.goal_state.status, 'answer_pending')
   assert.equal(observed.identity_calls.value, 1)
   assert.equal(observed.read_calls.value, 1)
   assert.equal(observed.cognition_calls.value, 3)
@@ -628,36 +660,102 @@ test('全 null 保留 empty_observed_set，不生成 0 或调用 Renderer', asyn
 
 test('Renderer 草稿被 Guard 阻断后只用同一 Context 回退且不重试模型', async () => {
   const observed = counters()
-  const result = await runtime({
-    ...observed,
-    values: [10_156_800, 9_577_728, 10_069_760],
-    mutate_draft: (draft) => ({
-      ...draft,
-      values: {
-        ...draft.values,
-        minimum: (draft.values.minimum ?? 0) + 1,
-      },
-    }),
-  }).run(runRequest())
-
-  assert.equal(result.outcome, 'completed')
-  if (result.outcome !== 'completed') return
-  assert.equal(result.answer.source, 'deterministic_fallback')
-  assert.equal(result.answer.guard_result.decision, 'block')
-  assert.ok(result.answer.guard_result.reason_codes.includes('number_mismatch'))
-  assert.equal(
-    result.answer.answer,
-    renderCountryOutageDeterministicFallback(result.answer_context),
+  await assert.rejects(
+    () => runtime({
+      ...observed,
+      values: [10_156_800, 9_577_728, 10_069_760],
+      mutate_draft: (draft) => ({
+        ...draft,
+        values: {
+          ...draft.values,
+          minimum: (draft.values.minimum ?? 0) + 1,
+        },
+      }),
+    }).run(runRequest()),
+    (error: unknown) => {
+      assert.ok(error instanceof DomeyeFirstSliceRunError)
+      assert.equal(error.code, 'answer_not_accepted')
+      assert.equal(error.evidence.failure_stage, 'answer')
+      if (error.evidence.failure_stage !== 'answer') return false
+      assert.equal(error.evidence.goal_state.status, 'stopped')
+      assert.equal(error.evidence.loop.goal_state.status, 'answer_pending')
+      assert.equal(error.evidence.answer.source, 'deterministic_fallback')
+      assert.equal(error.evidence.answer.guard_result.decision, 'block')
+      assert.ok(
+        error.evidence.answer.guard_result.reason_codes.includes(
+          'number_mismatch',
+        ),
+      )
+      assert.equal(
+        error.evidence.answer.answer,
+        renderCountryOutageDeterministicFallback(
+          error.evidence.answer_context,
+        ),
+      )
+      assert.equal(
+        error.evidence.finding.finding_id,
+        error.evidence.answer_context.finding.finding_id,
+      )
+      assert.equal(observed.contexts.length, 1)
+      assert.equal(
+        observed.contexts[0]?.context_id,
+        error.evidence.answer_context.context_id,
+      )
+      assert.equal(error.evidence.usage.attempt_count, 4)
+      assert.equal(
+        error.evidence.usage.attempts.filter(
+          (attempt) => attempt.phase === 'renderer',
+        ).length,
+        1,
+      )
+      return true
+    },
   )
-  assert.equal(observed.contexts.length, 1)
-  assert.equal(observed.contexts[0]?.context_id, result.answer_context.context_id)
   assert.equal(observed.renderer_calls.value, 1)
   assert.equal(observed.cognition_calls.value, 3)
-  assert.equal(result.usage.attempt_count, 4)
-  assert.equal(
-    result.usage.attempts.filter((attempt) => attempt.phase === 'renderer').length,
-    1,
+})
+
+test('任一门禁拒绝都结构化失败，后续证据就绪也不调用 Renderer', async () => {
+  const observed = counters()
+  await assert.rejects(
+    () => runtime({
+      ...observed,
+      values: [10_156_800, 9_577_728, 10_069_760],
+      reject_first_proposal: true,
+    }).run(runRequest()),
+    (error: unknown) => {
+      assert.ok(error instanceof DomeyeFirstSliceRunError)
+      assert.equal(error.code, 'decision_rejected')
+      assert.equal(error.evidence.failure_stage, 'decision')
+      if (error.evidence.failure_stage !== 'decision') return false
+      assert.equal(error.evidence.goal_state.status, 'stopped')
+      assert.equal(error.evidence.loop.goal_state.status, 'answer_pending')
+      assert.ok(
+        error.evidence.loop.admission_receipts.some(
+          (receipt) => receipt.decision === 'rejected',
+        ),
+      )
+      assert.ok(
+        error.evidence.loop.observations.some(
+          (observation) => observation.status === 'rejected',
+        ),
+      )
+      assert.deepEqual(
+        error.evidence.loop.action_receipts.map(
+          (receipt) => receipt.capability_id,
+        ),
+        ['CAP-006', 'CAP-016'],
+      )
+      assert.equal(error.evidence.finding, null)
+      assert.equal(error.evidence.answer_context, null)
+      assert.equal(error.evidence.answer, null)
+      assert.equal(error.evidence.usage.attempt_count, 4)
+      return true
+    },
   )
+  assert.equal(observed.cognition_calls.value, 4)
+  assert.equal(observed.read_calls.value, 1)
+  assert.equal(observed.renderer_calls.value, 0)
 })
 
 test('供应方失败携带同一 Candidate 的部分执行证据与共享调用账本', async () => {
@@ -672,6 +770,8 @@ test('供应方失败携带同一 Candidate 的部分执行证据与共享调用
       assert.ok(error instanceof DomeyeFirstSliceRunError)
       assert.equal(error.code, 'cognition_provider_failed')
       assert.equal(error.evidence.candidate_id, CANDIDATE_ID)
+      assert.equal(error.evidence.failure_stage, 'loop')
+      if (error.evidence.failure_stage !== 'loop') return false
       assert.equal(error.evidence.usage.attempt_count, 1)
       assert.equal(error.evidence.usage.attempts[0]?.outcome, 'failed')
       assert.equal(

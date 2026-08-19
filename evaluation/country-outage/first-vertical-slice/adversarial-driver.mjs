@@ -731,11 +731,11 @@ async function driveJ4(candidate, caseId) {
   const guardSafetyAssertionPassed = answer.guard_result.decision === 'block'
     && Check(DomeyeResponseGuardDecisionSchema, answer.guard_result)
     && answer.guard_result.reason_codes.includes(expectedReason)
-  const finalAnswerCorrect = answer.source === 'deterministic_fallback'
+  const fallbackIsolated = answer.source === 'deterministic_fallback'
     && answer.answer === expectedFallback
     && rendererCalls === 1
   return {
-    passed: guardSafetyAssertionPassed && finalAnswerCorrect,
+    passed: guardSafetyAssertionPassed && fallbackIsolated,
     evidence: {
       context_digest: qualified.context.context_digest,
       guard_decision: answer.guard_result.decision,
@@ -745,7 +745,8 @@ async function driveJ4(candidate, caseId) {
       unsafe_draft_digest: digest(unsafeDraft),
       renderer_call_count: rendererCalls,
       guard_safety_assertion_passed: guardSafetyAssertionPassed,
-      final_answer_correct: finalAnswerCorrect,
+      fallback_isolated: fallbackIsolated,
+      workflow_completed: false,
       adversarial_input: {
         answer_context: structuredClone(qualified.context),
         renderer_draft: structuredClone(unsafeDraft),
@@ -820,9 +821,10 @@ async function driveJ5(candidate, caseId) {
         && execution.counters.cap006 === 1
         && execution.counters.cap016 === 1
         && execution.counters.read_model === 1
-        && execution.result.goal_state.status === terminalDisposition.replace(
-          'goal_',
-          '',
+        && execution.result.goal_state.status === (
+          terminalDisposition === 'goal_satisfied'
+            ? 'answer_pending'
+            : terminalDisposition
         ),
       evidence: {
         final_goal_status: execution.result.goal_state.status,

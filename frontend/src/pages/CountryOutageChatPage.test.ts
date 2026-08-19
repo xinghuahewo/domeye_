@@ -39,6 +39,7 @@ describe('国家中断首片调查工作台', () => {
       'answer.usage',
       'Provider usage',
     ]) expect(pageSource).toContain(anchor)
+    expect(pageSource).not.toContain('deterministic_fallback')
   })
 
   it('只推荐合同固定问题，同时允许直接输入并展示合同外拒绝', () => {

@@ -21,7 +21,9 @@ import type {
 } from '../src/agent/country-outage-read-model.js'
 import {
   DOMEYE_FIRST_SLICE_QUESTION,
+  DomeyeFirstSliceRunError,
   type DomeyeFirstSliceCandidateBinding,
+  type DomeyeFirstSliceRunFailureEvidence,
   type DomeyeFirstSliceRunRequest,
   type DomeyeFirstSliceRunResult,
   DomeyeFirstSliceRuntime,
@@ -29,6 +31,9 @@ import {
 import {
   DomeyeConversationError,
   DomeyeInteractiveConversationService,
+  type DomeyeConversationTurn,
+  type DomeyeInteractiveNonSuccessfulTurnAnswer,
+  type DomeyeInteractiveSuccessfulTurnAnswer,
 } from '../src/agent/interactive-conversation-service.js'
 import {
   buildCountryOutageAnswerContext,
@@ -58,6 +63,61 @@ const PRINCIPAL = {
   userId: 'user-1',
   authorizationScope: 'country_outage_event_read:IR',
 }
+
+function assertPublicCompletionTypeContract(
+  successfulAnswer: DomeyeInteractiveSuccessfulTurnAnswer,
+  nonSuccessfulAnswer: DomeyeInteractiveNonSuccessfulTurnAnswer,
+): void {
+  const supported: 'supported' = successfulAnswer.answerability
+  const renderer: 'renderer' = successfulAnswer.answer_source
+  const successfulFinding: DomeyeTypedFinding = successfulAnswer.finding
+  const guardPass: 'pass' = successfulAnswer.trace.response_guard.decision
+  const guardReasonCodes: readonly [] =
+    successfulAnswer.trace.response_guard.reason_codes
+  const disposition: 'goal_satisfied' = successfulAnswer.trace.disposition
+  const usageAttemptCount: number = successfulAnswer.usage.attempt_count
+  const completedAnswer: Extract<
+    DomeyeConversationTurn,
+    { state: 'completed' }
+  >['answer'] = successfulAnswer
+  const fallbackAnswer = {
+    ...successfulAnswer,
+    answer_source: 'deterministic_fallback' as const,
+  }
+  const guardBlockAnswer = {
+    ...successfulAnswer,
+    trace: {
+      ...successfulAnswer.trace,
+      response_guard: {
+        decision: 'block' as const,
+        reason_codes: ['number_mismatch'] as const,
+      },
+    },
+  }
+
+  // @ts-expect-error completed turn 不能接受 fallback answer
+  const completedFallback: typeof completedAnswer = fallbackAnswer
+  // @ts-expect-error completed turn 不能接受 Guard block answer
+  const completedGuardBlock: typeof completedAnswer = guardBlockAnswer
+  // @ts-expect-error completed turn 不能接受 answer_source=none 的非成功 answer
+  const completedNone: typeof completedAnswer = nonSuccessfulAnswer
+
+  void [
+    supported,
+    renderer,
+    successfulFinding,
+    guardPass,
+    guardReasonCodes,
+    disposition,
+    usageAttemptCount,
+    completedAnswer,
+    completedFallback,
+    completedGuardBlock,
+    completedNone,
+  ]
+}
+
+void assertPublicCompletionTypeContract
 
 const IDENTITY: DomeyeDataIdentity = {
   event_type: 'country_outage',
@@ -641,7 +701,7 @@ async function buildCompletedResult(
   const loopState = goalState({
     goalId,
     revision: 3,
-    status: 'satisfied',
+    status: 'answer_pending',
     completed: ['CAP-006', 'CAP-016'],
     artifactIds: artifacts.map((artifact) => artifact.artifact_id),
     lastObservationId: second.observation.observation_id,
@@ -744,7 +804,10 @@ async function buildCompletedResult(
           },
         },
     usage: usage(allAttempts),
-  }
+  } as unknown as Extract<
+    DomeyeFirstSliceRunResult,
+    { outcome: 'completed' }
+  >
 }
 
 const SUCCESSFUL_RESULT = await buildCompletedResult([10, null, 5, 10])
@@ -827,6 +890,7 @@ function knownFallbackResult(): DomeyeFirstSliceRunResult {
   assert.equal(blockedGuard.decision, 'block')
   return {
     ...result,
+    outcome: 'completed',
     answer: {
       ...result.answer,
       source: 'deterministic_fallback',
@@ -837,7 +901,7 @@ function knownFallbackResult(): DomeyeFirstSliceRunResult {
         failure_code: null,
       },
     },
-  }
+  } as unknown as DomeyeFirstSliceRunResult
 }
 
 function tenCognitionThenLocalLimitFallback(): DomeyeFirstSliceRunResult {
@@ -887,7 +951,29 @@ function tenCognitionThenLocalLimitFallback(): DomeyeFirstSliceRunResult {
       usage: usage(cognitionAttempts),
     },
     usage: usage([...cognitionAttempts, limitRejected]),
-  }
+  } as unknown as DomeyeFirstSliceRunResult
+}
+
+function answerFailure(
+  result: DomeyeFirstSliceRunResult = knownFallbackResult(),
+): DomeyeFirstSliceRunError {
+  assert.equal(result.outcome, 'completed')
+  if (result.outcome !== 'completed') throw new Error('expected forged fallback')
+  const evidence = {
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    failure_stage: 'answer',
+    candidate_id: result.candidate_id,
+    identity_receipt: result.identity_receipt,
+    semantic_goal: result.semantic_goal,
+    goal_state: { ...result.goal_state, status: 'stopped' },
+    loop_failure: null,
+    loop: result.loop,
+    finding: result.finding,
+    answer_context: result.answer_context,
+    answer: result.answer,
+    usage: result.usage,
+  } as unknown as DomeyeFirstSliceRunFailureEvidence
+  return new DomeyeFirstSliceRunError('answer_not_accepted', evidence)
 }
 
 function preActionProtocolRetryResult(): DomeyeFirstSliceRunResult {
@@ -954,6 +1040,7 @@ function localRendererInvalidAfterCompletedProvider(): DomeyeFirstSliceRunResult
   assert.equal(result.outcome, 'completed')
   return {
     ...result,
+    outcome: 'completed',
     answer: {
       answer: renderCountryOutageDeterministicFallback(result.answer_context),
       source: 'deterministic_fallback',
@@ -968,7 +1055,7 @@ function localRendererInvalidAfterCompletedProvider(): DomeyeFirstSliceRunResult
         failure_code: 'renderer_failed_or_invalid',
       },
     },
-  }
+  } as unknown as DomeyeFirstSliceRunResult
 }
 
 function selfConsistentWrongFindingValue(): DomeyeFirstSliceRunResult {
@@ -1228,13 +1315,21 @@ test('turn 异步启动并在完成后发布结构化答案', async () => {
     PRINCIPAL,
     conversation.conversation_id,
   )
-  assert.equal(completed.turns[0]?.state, 'completed')
-  assert.equal(completed.turns[0]?.answer_success, true)
-  assert.equal(completed.turns[0]?.workflow_completed, true)
-  assert.equal(completed.turns[0]?.answer?.answerability, 'supported')
-  assert.equal(completed.turns[0]?.answer?.trace.response_guard?.decision, 'pass')
+  const completedTurn = completed.turns[0]
+  assert.equal(completedTurn?.state, 'completed')
+  if (completedTurn?.state !== 'completed') {
+    throw new Error('expected completed turn')
+  }
+  const successfulAnswer: DomeyeInteractiveSuccessfulTurnAnswer =
+    completedTurn.answer
+  assert.equal(completedTurn.answer_success, true)
+  assert.equal(completedTurn.workflow_completed, true)
+  assert.equal(successfulAnswer.answerability, 'supported')
+  assert.equal(successfulAnswer.answer_source, 'renderer')
+  assert.equal(successfulAnswer.trace.disposition, 'goal_satisfied')
+  assert.equal(successfulAnswer.trace.response_guard.decision, 'pass')
   assert.deepEqual(
-    completed.turns[0]?.answer?.trace.authorization_derivation,
+    successfulAnswer.trace.authorization_derivation,
     {
       schema_version: 'domeye_authorization_derivation_v1',
       rule_id: 'country_outage_event_read_to_country_outage_read_v1',
@@ -1244,12 +1339,12 @@ test('turn 异步启动并在完成后发布结构化答案', async () => {
       derived_scope: 'country_outage:read',
     },
   )
-  const publishedFindingId = completed.turns[0]?.answer?.finding?.finding_id
+  const publishedFindingId = successfulAnswer.finding.finding_id
   assert.ok(publishedFindingId)
-  assert.equal(completed.turns[0]?.answer?.finding?.observed_point_count, 3)
-  assert.equal(completed.turns[0]?.answer?.finding?.null_point_count, 1)
+  assert.equal(successfulAnswer.finding.observed_point_count, 3)
+  assert.equal(successfulAnswer.finding.null_point_count, 1)
   assert.deepEqual(
-    completed.turns[0]?.answer?.evidence.map((item) => item.evidence_ref),
+    successfulAnswer.evidence.map((item) => item.evidence_ref),
     ['first', 'last', 'minimum', 'maximum', 'difference', 'net_change']
       .map((field) => `${publishedFindingId}#/values/${field}`),
   )
@@ -1318,7 +1413,37 @@ test('澄清与空观测都不伪装成完成或成功回答', async () => {
   }
 })
 
-test('已知完整 Finding 的确定性 fallback 在 Guard block 后仍是正确完成', async () => {
+test('结构化 answer failure 不发布 fallback，并进入 failed', async () => {
+  const conversationService = service(
+    identityReceipt(),
+    new RuntimeDouble(async () => { throw answerFailure() }),
+  )
+  const { conversation } = await createConversation(conversationService)
+  const started = await conversationService.createTurn(
+    PRINCIPAL,
+    conversation.conversation_id,
+    {
+      question: DOMEYE_FIRST_SLICE_QUESTION,
+      idempotency_key: 'turn-answer-failure',
+    },
+  )
+  await conversationService.waitForTurn(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  const final = (await conversationService.getConversation(
+    PRINCIPAL,
+    conversation.conversation_id,
+  )).turns[0]
+  assert.equal(final?.state, 'failed')
+  assert.equal(final?.answer_success, false)
+  assert.equal(final?.workflow_completed, false)
+  assert.ok(final)
+  assert.equal('answer' in final, false)
+  assert.equal('error' in final ? final.error.code : null, 'answer_not_accepted')
+})
+
+test('伪造 completed 的 Guard block fallback 也被公开门禁停止', async () => {
   const conversationService = service(
     identityReceipt(),
     new RuntimeDouble(async () => knownFallbackResult()),
@@ -1337,16 +1462,16 @@ test('已知完整 Finding 的确定性 fallback 在 Guard block 后仍是正确
     PRINCIPAL,
     conversation.conversation_id,
   )).turns[0]
-  assert.equal(final?.state, 'completed')
-  assert.equal(final?.answer_success, true)
-  assert.equal(final?.workflow_completed, true)
-  if (final?.state === 'completed') {
-    assert.equal(final.answer.answer_source, 'deterministic_fallback')
+  assert.equal(final?.state, 'stopped')
+  assert.equal(final?.answer_success, false)
+  assert.equal(final?.workflow_completed, false)
+  if (final?.state === 'stopped') {
+    assert.equal(final.answer.answer_source, 'none')
     assert.equal(final.answer.trace.response_guard?.decision, 'block')
   }
 })
 
-test('Renderer 调用成功但本地解析失败时，精确 fallback 仍是正确完成', async () => {
+test('Renderer 调用成功但本地解析失败时，精确 fallback 仍不算完成', async () => {
   const conversationService = service(
     identityReceipt(),
     new RuntimeDouble(async () => localRendererInvalidAfterCompletedProvider()),
@@ -1368,17 +1493,17 @@ test('Renderer 调用成功但本地解析失败时，精确 fallback 仍是正�
     PRINCIPAL,
     conversation.conversation_id,
   )).turns[0]
-  assert.equal(final?.state, 'completed')
-  assert.equal(final?.answer_success, true)
-  assert.equal(final?.workflow_completed, true)
-  if (final?.state === 'completed') {
-    assert.equal(final.answer.answer_source, 'deterministic_fallback')
+  assert.equal(final?.state, 'stopped')
+  assert.equal(final?.answer_success, false)
+  assert.equal(final?.workflow_completed, false)
+  if (final?.state === 'stopped') {
+    assert.equal(final.answer.answer_source, 'none')
     assert.equal(final.answer.trace.response_guard?.decision, 'block')
     assert.equal(final.answer.usage.attempts.at(-1)?.outcome, 'completed')
   }
 })
 
-test('前置协议拒绝后同一完整链仍按实际 cognition cycle 完成', async () => {
+test('前置协议拒绝即使后续链完整也不能完成', async () => {
   const conversationService = service(
     identityReceipt(),
     new RuntimeDouble(async () => preActionProtocolRetryResult()),
@@ -1397,15 +1522,18 @@ test('前置协议拒绝后同一完整链仍按实际 cognition cycle 完成', 
     PRINCIPAL,
     conversation.conversation_id,
   )).turns[0]
-  assert.equal(final?.state, 'completed')
-  assert.equal(final?.answer_success, true)
+  assert.equal(final?.state, 'stopped')
+  assert.equal(final?.answer_success, false)
+  assert.equal(final?.workflow_completed, false)
   assert.equal(final?.answer?.usage.attempt_count, 5)
 })
 
-test('第 10 次 cognition 后 Renderer 本地限流可用同 Context fallback 完成', async () => {
+test('第 10 次 cognition 后 Renderer 本地限流与 fallback 都不算完成', async () => {
   const conversationService = service(
     identityReceipt(),
-    new RuntimeDouble(async () => tenCognitionThenLocalLimitFallback()),
+    new RuntimeDouble(async () => {
+      throw answerFailure(tenCognitionThenLocalLimitFallback())
+    }),
   )
   const { conversation } = await createConversation(conversationService)
   const started = await conversationService.createTurn(
@@ -1421,14 +1549,12 @@ test('第 10 次 cognition 后 Renderer 本地限流可用同 Context fallback �
     PRINCIPAL,
     conversation.conversation_id,
   )).turns[0]
-  assert.equal(final?.state, 'completed')
-  assert.equal(final?.answer_success, true)
-  if (final?.state === 'completed') {
-    assert.equal(final.answer.answer_source, 'deterministic_fallback')
-    assert.equal(final.answer.usage.attempt_count, 10)
-    assert.equal(final.answer.usage.attempts.length, 11)
-    assert.equal(final.answer.usage.attempts[10]?.outcome, 'limit_rejected')
-  }
+  assert.equal(final?.state, 'failed')
+  assert.equal(final?.answer_success, false)
+  assert.equal(final?.workflow_completed, false)
+  assert.ok(final)
+  assert.equal('answer' in final, false)
+  assert.equal('error' in final ? final.error.code : null, 'answer_not_accepted')
 })
 
 test('自报 pass、模型身份漂移或伪造执行链都不能发布事实或标记完成', async () => {

@@ -1,4 +1,5 @@
 import { apiV2Get, resolveApiTimeout } from './client'
+import type { components as OpenApiComponents } from '../types/openapi.generated'
 
 export const COUNTRY_OUTAGE_FIRST_SLICE_QUESTION =
   '在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？' as const
@@ -215,7 +216,7 @@ export interface CountryOutageChatTurnAnswer {
   schema_version: 'domeye_interactive_agent_turn_answer_v1'
   answerability: 'supported' | 'clarification_required' | 'stopped'
   answer_text: string
-  answer_source: 'renderer' | 'deterministic_fallback' | 'none'
+  answer_source: 'renderer' | 'none'
   candidate_id: string
   data_identity: CountryOutageChatDataIdentity
   finding: CountryOutageChatFinding | null
@@ -255,24 +256,19 @@ type CountryOutageChatSuccessfulAnswerCommon = Omit<
   finding: CountryOutageChatSuccessfulFinding
 }
 
-export type CountryOutageChatSuccessfulTurnAnswer =
-  | CountryOutageChatSuccessfulAnswerCommon & {
-    answer_source: 'renderer'
-    trace: Omit<CountryOutageChatTrace, 'response_guard'> & {
-      response_guard: {
-        decision: 'pass'
-        reason_codes: string[]
-      }
-    }
+type CountryOutageChatSuccessfulTrace = OpenApiComponents['schemas'][
+  'CountryOutageInteractiveSuccessfulTrace'
+] & {
+  response_guard: {
+    decision: 'pass'
+    reason_codes: []
   }
-  | CountryOutageChatSuccessfulAnswerCommon & {
-    answer_source: 'deterministic_fallback'
-    trace: Omit<CountryOutageChatTrace, 'response_guard'> & {
-      response_guard: {
-        decision: 'block'
-        reason_codes: string[]
-      }
-    }
+}
+
+export type CountryOutageChatSuccessfulTurnAnswer =
+  CountryOutageChatSuccessfulAnswerCommon & {
+    answer_source: 'renderer'
+    trace: CountryOutageChatSuccessfulTrace
   }
 
 type CountryOutageChatNonSuccessAnswer = Omit<

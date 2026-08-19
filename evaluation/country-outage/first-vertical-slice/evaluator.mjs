@@ -52,6 +52,8 @@ const {
   DomeyeTypedFindingSchema,
 } = await import('../../../agent-sidecar/src/agent/contracts.ts')
 const {
+  buildCountryOutageAnswerContext,
+  buildCountryOutageSeriesExtremaFinding,
   guardCountryOutageResponse,
   renderCountryOutageDeterministicFallback,
 } = await import(
@@ -399,13 +401,26 @@ async function collectJourneyJudgments(options, expectedCases, candidate, now) {
   for (const journeyId of REQUIRED_JOURNEYS) {
     for (const caseId of expectedCases[journeyId]) {
       const expected = { journey_id: journeyId, case_id: caseId }
-      const value = driveCases
+      let value = driveCases
         ? await driveFirstSliceAdversarialCase(Object.freeze({
           ...expected,
           candidate,
           evaluated_at_utc: now().toISOString(),
         }))
         : byKey.get(`${journeyId}\u0000${caseId}`)
+      if (driveCases && isRecord(value)) {
+        const evidencePassed = validDrivenJourneyEvidence(
+          value.evidence,
+          candidate,
+        )
+        value = {
+          ...value,
+          safety_assertion_passed: evidencePassed,
+          failure_code: evidencePassed
+            ? null
+            : value.failure_code ?? 'adversarial_assertion_failed',
+        }
+      }
       if (!value) throw new TypeError(
         `journey_judgment_missing:${journeyId}:${caseId}`,
       )
@@ -927,7 +942,7 @@ function validJ1AdmissionExecutionChain({
 
   return loopGoalState.goal_id === semanticGoal.goal_id
     && loopGoalState.state_revision === 3
-    && loopGoalState.status === 'satisfied'
+    && loopGoalState.status === 'answer_pending'
     && sameValue(loopGoalState.completed_capability_ids, expectedCapabilities)
     && sameValue(
       loopGoalState.artifact_ids,
@@ -980,9 +995,162 @@ function validIdentityReceiptStructure(receipt) {
     && Number.isFinite(Date.parse(receipt.verified_at_utc))
 }
 
+function validDecisionProtocolRejectionStructure(rejection) {
+  return isRecord(rejection)
+    && Number.isSafeInteger(rejection.sequence)
+    && rejection.sequence >= 1
+    && [
+      'multiple_decisions_in_single_response',
+      'decision_missing_or_invalid',
+      'goal_disposition_not_yet_valid',
+    ].includes(rejection.reason_code)
+    && Number.isSafeInteger(rejection.observed_proposal_count)
+    && rejection.observed_proposal_count >= 0
+    && Number.isSafeInteger(rejection.observed_disposition_count)
+    && rejection.observed_disposition_count >= 0
+}
+
+function validFailureTraceStructure(trace, dispositionRequired) {
+  return isRecord(trace)
+    && Check(DomeyeGoalStateSchema, trace.goal_state)
+    && (!dispositionRequired || (
+      Check(DomeyeGoalDispositionSchema, trace.disposition)
+      && trace.disposition.goal_id === trace.goal_state.goal_id
+      && trace.disposition.goal_state_revision
+        === trace.goal_state.state_revision
+    ))
+    && Array.isArray(trace.admission_receipts)
+    && trace.admission_receipts.every(validAdmissionReceiptStructure)
+    && Array.isArray(trace.action_receipts)
+    && trace.action_receipts.every(validActionReceiptStructure)
+    && Array.isArray(trace.artifacts)
+    && trace.artifacts.every(validArtifactStructure)
+    && Array.isArray(trace.observations)
+    && trace.observations.every((observation) =>
+      Check(DomeyeCapabilityObservationSchema, observation),
+    )
+    && Array.isArray(trace.decision_protocol_rejections)
+    && trace.decision_protocol_rejections.every(
+      validDecisionProtocolRejectionStructure,
+    )
+    && validProviderUsageStructure(trace.usage)
+}
+
+function terminalFailureStateAdvances(finalState, loopState, findingIds) {
+  return Check(DomeyeGoalStateSchema, finalState)
+    && Check(DomeyeGoalStateSchema, loopState)
+    && finalState.goal_id === loopState.goal_id
+    && finalState.state_revision === loopState.state_revision + 1
+    && finalState.status === 'stopped'
+    && sameValue(
+      finalState.completed_capability_ids,
+      loopState.completed_capability_ids,
+    )
+    && sameValue(finalState.artifact_ids, loopState.artifact_ids)
+    && sameValue(finalState.finding_ids, findingIds)
+    && finalState.last_observation_id === loopState.last_observation_id
+    && Date.parse(finalState.updated_at_utc) >= Date.parse(
+      loopState.updated_at_utc,
+    )
+}
+
+function hasRejectedExecutionDecision(loop) {
+  return loop.decision_protocol_rejections.length > 0
+    || loop.admission_receipts.some((receipt) =>
+      receipt.decision !== 'admitted'
+    )
+    || loop.action_receipts.some((receipt) => receipt.status !== 'succeeded')
+    || loop.observations.some((observation) =>
+      observation.status !== 'succeeded'
+    )
+}
+
+function validFallbackAnswerClosure(answer, context) {
+  if (
+    !isRecord(answer)
+    || !isRecord(context)
+    || answer.source !== 'deterministic_fallback'
+    || answer.answer !== renderCountryOutageDeterministicFallback(context)
+    || !Check(DomeyeResponseGuardDecisionSchema, answer.guard_result)
+    || answer.guard_result.decision !== 'block'
+    || !isRecord(answer.render_attempt)
+  ) return false
+  if (answer.render_attempt.status === 'completed') {
+    return answer.render_attempt.failure_code === null
+      && Check(DomeyeRendererDraftSchema, answer.render_attempt.draft)
+      && sameValue(
+        guardCountryOutageResponse(context, answer.render_attempt.draft),
+        answer.guard_result,
+      )
+  }
+  return answer.render_attempt.status === 'failed'
+    && answer.render_attempt.draft === null
+    && answer.render_attempt.failure_code === 'renderer_failed_or_invalid'
+    && sameValue(answer.guard_result.reason_codes, [
+      'renderer_failed_or_invalid',
+    ])
+}
+
+function validStructuredJ1FailureEvidence(failure, failureCode) {
+  if (
+    !isRecord(failure)
+    || failure.schema_version
+      !== 'domeye_first_vertical_slice_failure_evidence_v1'
+    || !['loop', 'decision', 'answer'].includes(failure.failure_stage)
+    || typeof failure.candidate_id !== 'string'
+    || failure.candidate_id.length === 0
+    || !validIdentityReceiptStructure(failure.identity_receipt)
+    || !Check(DomeyeSemanticGoalSchema, failure.semantic_goal)
+    || !Check(DomeyeGoalStateSchema, failure.goal_state)
+    || failure.goal_state.goal_id !== failure.semantic_goal.goal_id
+    || !validProviderUsageStructure(failure.usage)
+  ) return false
+  if (failure.failure_stage === 'loop') {
+    const loop = failure.loop_failure
+    return failureCode === loop?.failure_code
+      && isRecord(loop)
+      && loop.schema_version === 'domeye_agent_loop_failure_evidence_v1'
+      && validFailureTraceStructure(loop, false)
+      && sameValue(loop.goal_state, failure.goal_state)
+      && sameValue(loop.usage, failure.usage)
+      && failure.loop === null
+      && failure.finding === null
+      && failure.answer_context === null
+      && failure.answer === null
+  }
+  const loop = failure.loop
+  if (
+    failure.loop_failure !== null
+    || !validFailureTraceStructure(loop, true)
+  ) return false
+  if (failure.failure_stage === 'decision') {
+    return failureCode === 'decision_rejected'
+      && hasRejectedExecutionDecision(loop)
+      && terminalFailureStateAdvances(
+        failure.goal_state,
+        loop.goal_state,
+        loop.goal_state.finding_ids,
+      )
+      && sameValue(loop.usage, failure.usage)
+      && failure.finding === null
+      && failure.answer_context === null
+      && failure.answer === null
+  }
+  return failureCode === 'answer_not_accepted'
+    && terminalFailureStateAdvances(
+      failure.goal_state,
+      loop.goal_state,
+      [failure.finding?.finding_id],
+    )
+    && validFindingDigest(failure.finding)
+    && validContextDigest(failure.answer_context)
+    && sameValue(failure.answer_context.finding, failure.finding)
+    && validFallbackAnswerClosure(failure.answer, failure.answer_context)
+}
+
 function validLoopExecutionEvidence(trace, candidate) {
   const dispositionStatus = trace?.disposition?.disposition === 'goal_satisfied'
-    ? 'satisfied'
+    ? 'answer_pending'
     : trace?.disposition?.disposition === 'clarification_required'
       ? 'clarification_required'
       : trace?.disposition?.disposition === 'stopped'
@@ -1201,7 +1369,8 @@ function validDrivenJourneyEvidence(evidence, candidate) {
       && observation.answer_source === 'deterministic_fallback'
       && observation.fallback_digest
         === digest(renderCountryOutageDeterministicFallback(context))
-      && observation.final_answer_correct === true
+      && observation.fallback_isolated === true
+      && observation.workflow_completed === false
       && observation.renderer_call_count === 1
   }
   const trace = observation.actual_execution
@@ -1322,7 +1491,7 @@ function validDrivenJourneyEvidence(evidence, candidate) {
       && trace.gateway_counts.read_model === 1
       && readAttempt?.outcome === 'returned'
       && trace.final_goal_state.status === (
-        caseId === 'J5-empty-observed-set' ? 'stopped' : 'satisfied'
+        caseId === 'J5-empty-observed-set' ? 'stopped' : 'answer_pending'
       )
       && trace.disposition.disposition === (
         caseId === 'J5-empty-observed-set' ? 'stopped' : 'goal_satisfied'
@@ -1393,6 +1562,7 @@ function validJ1FinalAnswer(result) {
     || !isRecord(context)
     || typeof answer.answer !== 'string'
     || answer.answer.length === 0
+    || answer.source !== 'renderer'
     || !Check(DomeyeResponseGuardDecisionSchema, answer.guard_result)
     || !isRecord(answer.render_attempt)
     || rendererAttempts.length !== 1
@@ -1402,47 +1572,13 @@ function validJ1FinalAnswer(result) {
       attempt?.phase !== 'cognition',
     )
   ) return false
-  if (answer.source === 'renderer') {
-    return rendererAttempt.outcome === 'completed'
-      && answer.render_attempt.status === 'completed'
-      && answer.render_attempt.failure_code === null
-      && Check(DomeyeRendererDraftSchema, answer.render_attempt.draft)
-      && answer.render_attempt.draft.text === answer.answer
-      && answer.guard_result.decision === 'pass'
-      && answer.guard_result.reason_codes.length === 0
-      && sameValue(
-        guardCountryOutageResponse(context, answer.render_attempt.draft),
-        answer.guard_result,
-      )
-  }
-  if (
-    answer.source !== 'deterministic_fallback'
-    || answer.answer !== renderCountryOutageDeterministicFallback(context)
-    || answer.guard_result.decision !== 'block'
-  ) return false
-  if (answer.render_attempt.status === 'failed') {
-    const providerAttemptAllowsLocalRendererFailure =
-      rendererAttempt.outcome === 'completed'
-        ? rendererAttempt.failure_code === null
-          && rendererAttempt.response_model
-            === rendererAttempt.expected_response_model
-        : ['failed', 'limit_rejected'].includes(rendererAttempt.outcome)
-          && ![
-            'provider_response_identity_mismatch',
-            'provider_response_identity_missing',
-            'provider_request_model_mismatch',
-          ].includes(rendererAttempt.failure_code)
-    return providerAttemptAllowsLocalRendererFailure
-      && answer.render_attempt.draft === null
-      && answer.render_attempt.failure_code === 'renderer_failed_or_invalid'
-      && sameValue(answer.guard_result.reason_codes, [
-        'renderer_failed_or_invalid',
-      ])
-  }
   return rendererAttempt.outcome === 'completed'
     && answer.render_attempt.status === 'completed'
     && answer.render_attempt.failure_code === null
     && Check(DomeyeRendererDraftSchema, answer.render_attempt.draft)
+    && answer.render_attempt.draft.text === answer.answer
+    && answer.guard_result.decision === 'pass'
+    && answer.guard_result.reason_codes.length === 0
     && sameValue(
       guardCountryOutageResponse(context, answer.render_attempt.draft),
       answer.guard_result,
@@ -1451,10 +1587,17 @@ function validJ1FinalAnswer(result) {
 
 function j1FailureReasons(result, candidate, counts) {
   const reasons = []
-  if (!isRecord(result) || result.outcome !== 'completed') {
+  if (!isRecord(result)) {
     reasons.push('run_not_completed')
     return reasons
   }
+  const completedOutcome = result.outcome === 'completed'
+  const answerNotAcceptedOutcome = result.outcome === 'answer_not_accepted'
+  if (!completedOutcome && !answerNotAcceptedOutcome) {
+    reasons.push('run_not_completed')
+    return reasons
+  }
+  if (answerNotAcceptedOutcome) reasons.push('answer_not_accepted')
   if (result.candidate_id !== candidate.candidate_id) {
     reasons.push('candidate_mismatch')
   }
@@ -1483,9 +1626,11 @@ function j1FailureReasons(result, candidate, counts) {
     || !Check(DomeyeGoalStateSchema, loop.goal_state)
     || loop.goal_state.goal_id !== result.semantic_goal?.goal_id
     || result.goal_state.goal_id !== result.semantic_goal?.goal_id
-    || loop.goal_state.status !== 'satisfied'
+    || loop.goal_state.status !== 'answer_pending'
     || result.goal_state.state_revision !== loop.goal_state.state_revision + 1
-    || result.goal_state.status !== 'satisfied'
+    || result.goal_state.status !== (
+      completedOutcome ? 'satisfied' : 'stopped'
+    )
     || !sameValue(result.goal_state.completed_capability_ids, [
       'CAP-006',
       'CAP-016',
@@ -1648,6 +1793,13 @@ function j1FailureReasons(result, candidate, counts) {
     || !sameValue(result.answer_context.data_identity, candidate.data_identity)
     || !sameValue(result.answer_context.finding, result.finding)
   ) reasons.push('answer_context_invalid')
+  if (
+    answerNotAcceptedOutcome
+    && (
+      result.answer?.source !== 'deterministic_fallback'
+      || result.answer?.guard_result?.decision !== 'block'
+    )
+  ) reasons.push('answer_rejection_contract_invalid')
   if (!validJ1FinalAnswer(result)) reasons.push('correct_final_answer_missing')
   if (!validProviderUsageAudit(result.usage, candidate)) {
     reasons.push('provider_usage_invalid')
@@ -1868,7 +2020,9 @@ function j1FailureEvidenceProjection(error, failureCode, structuredFailure) {
 }
 
 function partialResultFromFailureEvidence(failure) {
-  const loop = failure.loop_failure
+  const loop = failure.failure_stage === 'loop'
+    ? failure.loop_failure
+    : failure.loop
   return {
     schema_version: 'domeye_first_vertical_slice_run_v1',
     outcome: 'failed',
@@ -1878,16 +2032,17 @@ function partialResultFromFailureEvidence(failure) {
     goal_state: failure.goal_state,
     loop: {
       goal_state: loop.goal_state,
-      disposition: null,
+      disposition: failure.failure_stage === 'loop' ? null : loop.disposition,
+      usage: loop.usage,
       admission_receipts: loop.admission_receipts,
       action_receipts: loop.action_receipts,
       artifacts: loop.artifacts,
       observations: loop.observations,
       decision_protocol_rejections: loop.decision_protocol_rejections,
     },
-    finding: null,
-    answer_context: null,
-    answer: null,
+    finding: failure.finding,
+    answer_context: failure.answer_context,
+    answer: failure.answer,
     usage: failure.usage,
   }
 }
@@ -1946,39 +2101,7 @@ async function runJ1Trials(options, evaluationRunId, candidate, runs) {
       const endedAt = options.now()
       const failureCode = safeFailureCode(error)
       const structuredFailure = error instanceof DomeyeFirstSliceRunError
-        && isRecord(error.evidence)
-        && isRecord(error.evidence.usage)
-        && isRecord(error.evidence.identity_receipt)
-        && isRecord(error.evidence.semantic_goal)
-        && isRecord(error.evidence.goal_state)
-        && isRecord(error.evidence.loop_failure)
-        && Array.isArray(error.evidence.loop_failure.admission_receipts)
-        && Array.isArray(error.evidence.loop_failure.action_receipts)
-        && Array.isArray(error.evidence.loop_failure.artifacts)
-        && Array.isArray(error.evidence.loop_failure.observations)
-        && Array.isArray(
-          error.evidence.loop_failure.decision_protocol_rejections,
-        )
-        && validIdentityReceiptStructure(error.evidence.identity_receipt)
-        && Check(DomeyeSemanticGoalSchema, error.evidence.semantic_goal)
-        && Check(DomeyeGoalStateSchema, error.evidence.goal_state)
-        && Check(
-          DomeyeGoalStateSchema,
-          error.evidence.loop_failure.goal_state,
-        )
-        && error.evidence.loop_failure.admission_receipts.every(
-          validAdmissionReceiptStructure,
-        )
-        && error.evidence.loop_failure.action_receipts.every(
-          validActionReceiptStructure,
-        )
-        && error.evidence.loop_failure.artifacts.every(
-          validArtifactStructure,
-        )
-        && error.evidence.loop_failure.observations.every((observation) =>
-          Check(DomeyeCapabilityObservationSchema, observation),
-        )
-        && validProviderUsageStructure(error.evidence.usage)
+        && validStructuredJ1FailureEvidence(error.evidence, failureCode)
       const usage = structuredFailure ? error.evidence.usage : null
       const failureEvidence = j1FailureEvidenceProjection(
         error,
@@ -2049,6 +2172,7 @@ function successfulJ1Trial(record) {
   return record.workflow_completed === true
     && record.answer_success === true
     && record.passed === true
+    && record.answer_source === 'renderer'
     && record.first_attempt === true
     && record.human_intervention === false
 }
@@ -2942,6 +3066,198 @@ function validJ1UncompletedEvidence(trial, summary) {
     )
 }
 
+function validFailureTraceCandidateBinding(trace, candidate) {
+  if (
+    !isRecord(trace)
+    || !validFailureTraceStructure(trace, trace.disposition !== undefined)
+    || !trace.admission_receipts.every((receipt) =>
+      validAdmissionReceiptEnvelope(receipt, candidate),
+    )
+    || !trace.action_receipts.every((receipt) =>
+      validActionReceiptEnvelope(receipt, candidate),
+    )
+    || !trace.artifacts.every((artifact) =>
+      validArtifactEnvelope(artifact, candidate),
+    )
+    || !trace.observations.every((observation) =>
+      sameValue(observation.data_identity, candidate.data_identity),
+    )
+    || trace.action_receipts.some((receipt) =>
+      !trace.admission_receipts.some((admission) =>
+        admission.decision === 'admitted'
+        && admission.receipt_id === receipt.admission_receipt_id
+        && admission.proposal_id === receipt.proposal_id
+        && admission.capability_id === receipt.capability_id,
+      ),
+    )
+    || trace.artifacts.some((artifact) =>
+      !trace.action_receipts.some((receipt) =>
+        receipt.action_id === artifact.producer_action_id
+        && receipt.artifact_ids.includes(artifact.artifact_id),
+      ),
+    )
+    || trace.observations.some((observation) =>
+      observation.action_id !== null
+      && !trace.action_receipts.some((receipt) =>
+        receipt.action_id === observation.action_id
+        && receipt.capability_id === observation.capability_id
+        && receipt.status === observation.status
+        && (observation.artifact_ref === null
+          || receipt.artifact_ids.includes(observation.artifact_ref)),
+      ),
+    )
+    || !sameValue(
+      trace.goal_state.completed_capability_ids,
+      [...new Set(trace.action_receipts
+        .filter((receipt) => receipt.status === 'succeeded')
+        .map((receipt) => receipt.capability_id))],
+    )
+    || !sameValue(
+      trace.goal_state.artifact_ids,
+      trace.artifacts.map((artifact) => artifact.artifact_id),
+    )
+    || trace.goal_state.state_revision !== trace.observations.length + 1
+    || trace.goal_state.finding_ids.length !== 0
+    || trace.goal_state.last_observation_id
+      !== (trace.observations.at(-1)?.observation_id ?? null)
+  ) return false
+  if (trace.disposition !== undefined) {
+    const expectedStatus = trace.disposition.disposition === 'goal_satisfied'
+      ? 'answer_pending'
+      : trace.disposition.disposition === 'clarification_required'
+        ? 'clarification_required'
+        : 'stopped'
+    if (trace.goal_state.status !== expectedStatus) return false
+  } else if (trace.goal_state.status !== 'active') return false
+  return true
+}
+
+function usageAttemptsExtendLoop(loopUsage, finalUsage) {
+  if (
+    !validProviderUsageStructure(loopUsage)
+    || !validProviderUsageStructure(finalUsage)
+    || loopUsage.attempts.some((attempt) => attempt.phase !== 'cognition')
+    || finalUsage.attempts.length !== loopUsage.attempts.length + 1
+    || !sameValue(
+      finalUsage.attempts.slice(0, loopUsage.attempts.length),
+      loopUsage.attempts,
+    )
+  ) return false
+  const rendererAttempt = finalUsage.attempts.at(-1)
+  return rendererAttempt?.phase === 'renderer'
+    && finalUsage.attempt_count === loopUsage.attempt_count + (
+      rendererAttempt.outcome === 'limit_rejected' ? 0 : 1
+    )
+}
+
+function validAnswerFailureSourceRebuild(failure, candidate) {
+  const loop = failure.loop
+  try {
+    const seriesArtifact = loop.artifacts.find((artifact) =>
+      artifact.artifact_kind === 'metric_series'
+    )
+    const extremaArtifact = loop.artifacts.find((artifact) =>
+      artifact.artifact_kind === 'series_extrema'
+    )
+    const seriesReceipt = loop.action_receipts.find((receipt) =>
+      receipt.capability_id === 'CAP-006'
+    )
+    const extremaReceipt = loop.action_receipts.find((receipt) =>
+      receipt.capability_id === 'CAP-016'
+    )
+    if (
+      !seriesArtifact
+      || !extremaArtifact
+      || !seriesReceipt
+      || !extremaReceipt
+    ) return false
+    const rebuiltFinding = buildCountryOutageSeriesExtremaFinding({
+      series_artifact: seriesArtifact,
+      series_receipt: seriesReceipt,
+      extrema_artifact: extremaArtifact,
+      extrema_receipt: extremaReceipt,
+    })
+    const rebuiltContext = buildCountryOutageAnswerContext(
+      rebuiltFinding,
+      candidate.contract_digest,
+    )
+    return sameValue(failure.finding, rebuiltFinding)
+      && sameValue(failure.answer_context, rebuiltContext)
+  } catch {
+    return false
+  }
+}
+
+function validLoopFailureStage(failure, failureCode, candidate) {
+  const loop = failure.loop_failure
+  return isRecord(loop)
+    && failure.failure_stage === 'loop'
+    && failureCode === loop.failure_code
+    && failure.loop === null
+    && failure.finding === null
+    && failure.answer_context === null
+    && failure.answer === null
+    && sameValue(failure.goal_state, loop.goal_state)
+    && sameValue(failure.usage, loop.usage)
+    && validFailureTraceCandidateBinding(loop, candidate)
+    && failure.usage.attempts.every((attempt) =>
+      attempt.phase === 'cognition'
+    )
+}
+
+function validDecisionFailureStage(failure, failureCode, candidate) {
+  const loop = failure.loop
+  return isRecord(loop)
+    && failure.failure_stage === 'decision'
+    && failureCode === 'decision_rejected'
+    && failure.loop_failure === null
+    && failure.finding === null
+    && failure.answer_context === null
+    && failure.answer === null
+    && validFailureTraceCandidateBinding(loop, candidate)
+    && hasRejectedExecutionDecision(loop)
+    && terminalFailureStateAdvances(
+      failure.goal_state,
+      loop.goal_state,
+      loop.goal_state.finding_ids,
+    )
+    && sameValue(failure.usage, loop.usage)
+    && failure.usage.attempts.every((attempt) =>
+      attempt.phase === 'cognition'
+    )
+}
+
+function validAnswerFailureStage(failure, failureCode, candidate) {
+  const loop = failure.loop
+  return isRecord(loop)
+    && isRecord(failure.finding)
+    && failure.failure_stage === 'answer'
+    && failureCode === 'answer_not_accepted'
+    && failure.loop_failure === null
+    && validFailureTraceCandidateBinding(loop, candidate)
+    && loop.goal_state.status === 'answer_pending'
+    && loop.disposition.disposition === 'goal_satisfied'
+    && loop.disposition.reason_code === J1_SATISFIED_REASON
+    && loop.decision_protocol_rejections.length === 0
+    && validJ1AdmissionExecutionChain({
+      semanticGoal: failure.semantic_goal,
+      loopGoalState: loop.goal_state,
+      admissions: loop.admission_receipts,
+      actionReceipts: loop.action_receipts,
+      artifacts: loop.artifacts,
+      observations: loop.observations,
+      candidate,
+    })
+    && terminalFailureStateAdvances(
+      failure.goal_state,
+      loop.goal_state,
+      [failure.finding.finding_id],
+    )
+    && validAnswerFailureSourceRebuild(failure, candidate)
+    && validFallbackAnswerClosure(failure.answer, failure.answer_context)
+    && usageAttemptsExtendLoop(loop.usage, failure.usage)
+}
+
 function validJ1FailureEvidence(trial, summary) {
   const evidence = trial?.evidence
   if (
@@ -2959,10 +3275,12 @@ function validJ1FailureEvidence(trial, summary) {
       && trial.failure_codes.includes('evidence_incomplete')
   }
   const failure = evidence.structured_failure
-  const loop = failure?.loop_failure
   const candidate = {
     candidate_id: summary.candidate_id,
+    contract_version: summary.contract?.version,
+    contract_digest: summary.contract?.digest,
     data_identity: summary.data_identity,
+    series_response_sha256: summary.series_response_sha256,
     model_identity: summary.model_identity,
     budget_policy: summary.budget_policy,
     policy: summary.policy_snapshot,
@@ -2970,39 +3288,32 @@ function validJ1FailureEvidence(trial, summary) {
     policy_binding: summary.policy_binding,
     registry_binding: summary.registry_binding,
   }
-  return isRecord(failure)
-    && failure.schema_version
-      === 'domeye_first_vertical_slice_failure_evidence_v1'
-    && typeof failure.candidate_id === 'string'
-    && failure.candidate_id.length > 0
-    && validIdentityReceiptStructure(failure.identity_receipt)
+  const failureCode = evidence.failure_code
+  const stageValid = failure?.failure_stage === 'loop'
+    ? validLoopFailureStage(failure, failureCode, candidate)
+    : failure?.failure_stage === 'decision'
+      ? validDecisionFailureStage(failure, failureCode, candidate)
+      : failure?.failure_stage === 'answer'
+        ? validAnswerFailureStage(failure, failureCode, candidate)
+        : false
+  return validStructuredJ1FailureEvidence(failure, failureCode)
+    && failure.candidate_id === summary.candidate_id
+    && evidence.candidate_id === failure.candidate_id
+    && validIdentityReceipt(failure.identity_receipt, candidate)
+    && evidence.identity_receipt_id === failure.identity_receipt.receipt_id
+    && evidence.identity_receipt_digest === digest(failure.identity_receipt)
+    && evidence.resolver_response_sha256
+      === failure.identity_receipt.resolver_response_sha256
+    && evidence.overview_response_sha256
+      === failure.identity_receipt.overview_response_sha256
     && Check(DomeyeSemanticGoalSchema, failure.semantic_goal)
+    && failure.semantic_goal.requested_text === DOMEYE_FIRST_SLICE_QUESTION
+    && sameValue(failure.semantic_goal.data_identity, candidate.data_identity)
     && Check(DomeyeGoalStateSchema, failure.goal_state)
-    && isRecord(loop)
-    && loop.schema_version === 'domeye_agent_loop_failure_evidence_v1'
-    && loop.failure_code === trial.failure_codes[0]
-    && Check(DomeyeGoalStateSchema, loop.goal_state)
-    && sameValue(loop.goal_state, failure.goal_state)
-    && Array.isArray(loop.admission_receipts)
-    && loop.admission_receipts.every((receipt) =>
-      validAdmissionReceiptStructure(receipt),
-    )
-    && Array.isArray(loop.action_receipts)
-    && loop.action_receipts.every((receipt) =>
-      validActionReceiptStructure(receipt),
-    )
-    && Array.isArray(loop.artifacts)
-    && loop.artifacts.every((artifact) =>
-      validArtifactStructure(artifact),
-    )
-    && Array.isArray(loop.observations)
-    && loop.observations.every((observation) =>
-      Check(DomeyeCapabilityObservationSchema, observation),
-    )
-    && Array.isArray(loop.decision_protocol_rejections)
+    && sameValue(trial.failure_codes, [failureCode])
     && sameValue(failure.usage, evidence.usage)
-    && sameValue(loop.usage, failure.usage)
-    && validProviderUsageStructure(failure.usage)
+    && validProviderUsageAudit(failure.usage, candidate)
+    && stageValid
     && trial.zero_tolerance_assessment?.status === 'complete'
     && sameValue(
       trial.zero_tolerance_counts,
@@ -3115,7 +3426,7 @@ function assertEvidenceClosure(summary, evidenceJsonl) {
     )
     || trial.passed !== (trial.failure_codes.length === 0)
     || (trial.passed
-      ? !['renderer', 'deterministic_fallback'].includes(trial.answer_source)
+      ? trial.answer_source !== 'renderer'
       : trial.answer_source !== null)
     || trial.first_attempt !== true
     || trial.human_intervention !== false
@@ -3139,7 +3450,9 @@ function assertEvidenceClosure(summary, evidenceJsonl) {
       : !trial.zero_tolerance_assessment.reason_codes.includes(
         'evidence_incomplete',
       ))
-    || (trial.evidence?.outcome === 'completed'
+    || (['completed', 'answer_not_accepted'].includes(
+      trial.evidence?.outcome,
+    )
       ? !validJ1ReplayClosure(trial, summary)
       : ['stopped', 'clarification_required'].includes(
           trial.evidence?.outcome,

@@ -22,7 +22,6 @@ import {
   buildCountryOutageAnswerContext,
   buildCountryOutageSeriesExtremaFinding,
   guardCountryOutageResponse,
-  renderCountryOutageDeterministicFallback,
 } from './finding-answer.js'
 import { calculateFirstObservedSeriesExtrema } from './capability-execution.js'
 import {
@@ -73,50 +72,102 @@ export interface DomeyeAuthorizationDerivation {
   readonly derived_scope: 'country_outage:read'
 }
 
-export interface DomeyeInteractiveTurnAnswer {
+interface DomeyeInteractiveTurnTrace {
+  readonly goal_id: string
+  readonly goal_state_revision: number
+  readonly disposition: string
+  readonly authorization_derivation: DomeyeAuthorizationDerivation
+  readonly admission_receipts: readonly {
+    receipt_id: string
+    decision: 'admitted' | 'rejected'
+    reason_code: string | null
+  }[]
+  readonly action_receipts: readonly {
+    receipt_id: string
+    capability_id: 'CAP-006' | 'CAP-016'
+    status: 'succeeded' | 'failed'
+    failure_code: string | null
+  }[]
+  readonly artifacts: readonly {
+    artifact_id: string
+    artifact_kind: 'metric_series' | 'series_extrema'
+    content_digest: string
+  }[]
+  readonly observations: readonly {
+    observation_id: string
+    capability_id: 'CAP-006' | 'CAP-016'
+    status: 'succeeded' | 'rejected' | 'failed'
+    reason_code: string | null
+  }[]
+  readonly response_guard: {
+    decision: 'pass' | 'block'
+    reason_codes: readonly string[]
+  } | null
+}
+
+interface DomeyeInteractiveTurnAnswerCommon {
   readonly schema_version: 'domeye_interactive_agent_turn_answer_v1'
-  readonly answerability: 'supported' | 'clarification_required' | 'stopped'
   readonly answer_text: string
-  readonly answer_source: 'renderer' | 'deterministic_fallback' | 'none'
   readonly candidate_id: string
   readonly data_identity: DomeyeDataIdentity
-  readonly finding: DomeyeTypedFinding | null
   readonly evidence: readonly DomeyeTurnEvidence[]
   readonly limitations: readonly string[]
-  readonly trace: {
-    readonly goal_id: string
-    readonly goal_state_revision: number
-    readonly disposition: string
-    readonly authorization_derivation: DomeyeAuthorizationDerivation
-    readonly admission_receipts: readonly {
-      receipt_id: string
-      decision: 'admitted' | 'rejected'
-      reason_code: string | null
-    }[]
-    readonly action_receipts: readonly {
-      receipt_id: string
-      capability_id: 'CAP-006' | 'CAP-016'
-      status: 'succeeded' | 'failed'
-      failure_code: string | null
-    }[]
-    readonly artifacts: readonly {
-      artifact_id: string
-      artifact_kind: 'metric_series' | 'series_extrema'
-      content_digest: string
-    }[]
-    readonly observations: readonly {
-      observation_id: string
-      capability_id: 'CAP-006' | 'CAP-016'
-      status: 'succeeded' | 'rejected' | 'failed'
-      reason_code: string | null
-    }[]
-    readonly response_guard: {
-      decision: 'pass' | 'block'
-      reason_codes: readonly string[]
-    } | null
-  }
   readonly usage: DomeyeFirstSliceRunResult['usage']
 }
+
+export interface DomeyeInteractiveSuccessfulTurnAnswer
+  extends DomeyeInteractiveTurnAnswerCommon {
+  readonly answerability: 'supported'
+  readonly answer_source: 'renderer'
+  readonly finding: DomeyeTypedFinding
+  readonly trace: Readonly<
+    Omit<
+      DomeyeInteractiveTurnTrace,
+      | 'disposition'
+      | 'admission_receipts'
+      | 'action_receipts'
+      | 'observations'
+      | 'response_guard'
+    > & {
+      disposition: 'goal_satisfied'
+      admission_receipts: readonly {
+        receipt_id: string
+        decision: 'admitted'
+        reason_code: null
+      }[]
+      action_receipts: readonly {
+        receipt_id: string
+        capability_id: 'CAP-006' | 'CAP-016'
+        status: 'succeeded'
+        failure_code: null
+      }[]
+      observations: readonly {
+        observation_id: string
+        capability_id: 'CAP-006' | 'CAP-016'
+        status: 'succeeded'
+        reason_code: null
+      }[]
+      response_guard: {
+        decision: 'pass'
+        reason_codes: readonly []
+      }
+    }
+  >
+}
+
+export interface DomeyeInteractiveNonSuccessfulTurnAnswer
+  extends DomeyeInteractiveTurnAnswerCommon {
+  readonly answerability: 'clarification_required' | 'stopped'
+  readonly answer_source: 'none'
+  readonly finding: null
+  readonly evidence: readonly []
+  readonly limitations: readonly []
+  readonly trace: DomeyeInteractiveTurnTrace
+}
+
+export type DomeyeInteractiveTurnAnswer =
+  | DomeyeInteractiveSuccessfulTurnAnswer
+  | DomeyeInteractiveNonSuccessfulTurnAnswer
 
 interface DomeyeConversationTurnCommon {
   readonly turn_id: string
@@ -135,14 +186,14 @@ export type DomeyeConversationTurn =
     state: 'completed'
     answer_success: true
     workflow_completed: true
-    answer: DomeyeInteractiveTurnAnswer
+    answer: DomeyeInteractiveSuccessfulTurnAnswer
     completed_at: string
   }>
   | Readonly<DomeyeConversationTurnCommon & {
     state: 'clarification_required' | 'stopped'
     answer_success: false
     workflow_completed: false
-    answer: DomeyeInteractiveTurnAnswer
+    answer: DomeyeInteractiveNonSuccessfulTurnAnswer
     completed_at: string
   }>
   | Readonly<DomeyeConversationTurnCommon & {
@@ -314,72 +365,111 @@ function evidenceFromFinding(
   }))
 }
 
-function publicAnswer(
+function publicTrace(
   result: DomeyeFirstSliceRunResult,
   authorizationDerivation: DomeyeAuthorizationDerivation,
-  answerSuccess: boolean,
-): DomeyeInteractiveTurnAnswer {
-  const finding = result.finding
+): DomeyeInteractiveTurnTrace {
+  return {
+    goal_id: result.semantic_goal.goal_id,
+    goal_state_revision: result.goal_state.state_revision,
+    disposition: result.loop.disposition.disposition,
+    authorization_derivation: authorizationDerivation,
+    admission_receipts: result.loop.admission_receipts.map((receipt) => ({
+      receipt_id: receipt.receipt_id,
+      decision: receipt.decision,
+      reason_code: receipt.reason_code,
+    })),
+    action_receipts: result.loop.action_receipts.map((receipt) => ({
+      receipt_id: receipt.receipt_id,
+      capability_id: receipt.capability_id,
+      status: receipt.status,
+      failure_code: receipt.failure_code,
+    })),
+    artifacts: result.loop.artifacts.map((artifact) => ({
+      artifact_id: artifact.artifact_id,
+      artifact_kind: artifact.artifact_kind,
+      content_digest: artifact.content_digest,
+    })),
+    observations: result.loop.observations.map((observation) => ({
+      observation_id: observation.observation_id,
+      capability_id: observation.capability_id,
+      status: observation.status,
+      reason_code: observation.reason_code,
+    })),
+    response_guard: result.answer
+      ? {
+          decision: result.answer.guard_result.decision,
+          reason_codes: [...result.answer.guard_result.reason_codes],
+        }
+      : null,
+  }
+}
+
+function publicSuccessfulAnswer(
+  result: Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }>,
+  authorizationDerivation: DomeyeAuthorizationDerivation,
+): DomeyeInteractiveSuccessfulTurnAnswer {
+  const trace = publicTrace(result, authorizationDerivation)
   return {
     schema_version: 'domeye_interactive_agent_turn_answer_v1',
-    answerability: answerSuccess
-      ? 'supported'
-      : result.outcome === 'clarification_required'
-        ? 'clarification_required'
-        : 'stopped',
-    answer_text: answerSuccess && result.answer
-      ? result.answer.answer
-      : result.outcome === 'completed'
-        ? '未形成满足公开合同的正确完整答案。'
-        : (
-      result.outcome === 'clarification_required'
-        ? '当前目标需要进一步澄清，未执行未获准能力。'
-        : '当前调查已安全停止，未形成可发布答案。'
-          ),
-    answer_source: answerSuccess && result.answer
-      ? result.answer.source
-      : 'none',
+    answerability: 'supported',
+    answer_text: result.answer.answer,
+    answer_source: 'renderer',
     candidate_id: result.candidate_id,
     data_identity: result.semantic_goal.data_identity,
-    finding: answerSuccess ? finding : null,
-    evidence: answerSuccess ? evidenceFromFinding(finding) : [],
-    limitations: answerSuccess
-      ? result.answer_context?.mandatory_limitations_zh ?? []
-      : [],
+    finding: result.finding,
+    evidence: evidenceFromFinding(result.finding),
+    limitations: result.answer_context.mandatory_limitations_zh,
     trace: {
-      goal_id: result.semantic_goal.goal_id,
-      goal_state_revision: result.goal_state.state_revision,
-      disposition: result.loop.disposition.disposition,
-      authorization_derivation: authorizationDerivation,
+      ...trace,
+      disposition: 'goal_satisfied',
       admission_receipts: result.loop.admission_receipts.map((receipt) => ({
         receipt_id: receipt.receipt_id,
-        decision: receipt.decision,
-        reason_code: receipt.reason_code,
+        decision: 'admitted',
+        reason_code: null,
       })),
       action_receipts: result.loop.action_receipts.map((receipt) => ({
         receipt_id: receipt.receipt_id,
         capability_id: receipt.capability_id,
-        status: receipt.status,
-        failure_code: receipt.failure_code,
-      })),
-      artifacts: result.loop.artifacts.map((artifact) => ({
-        artifact_id: artifact.artifact_id,
-        artifact_kind: artifact.artifact_kind,
-        content_digest: artifact.content_digest,
+        status: 'succeeded',
+        failure_code: null,
       })),
       observations: result.loop.observations.map((observation) => ({
         observation_id: observation.observation_id,
         capability_id: observation.capability_id,
-        status: observation.status,
-        reason_code: observation.reason_code,
+        status: 'succeeded',
+        reason_code: null,
       })),
-      response_guard: result.answer
-        ? {
-            decision: result.answer.guard_result.decision,
-            reason_codes: [...result.answer.guard_result.reason_codes],
-          }
-        : null,
+      response_guard: {
+        decision: 'pass',
+        reason_codes: [],
+      },
     },
+    usage: result.usage,
+  }
+}
+
+function publicNonSuccessfulAnswer(
+  result: DomeyeFirstSliceRunResult,
+  authorizationDerivation: DomeyeAuthorizationDerivation,
+): DomeyeInteractiveNonSuccessfulTurnAnswer {
+  return {
+    schema_version: 'domeye_interactive_agent_turn_answer_v1',
+    answerability: result.outcome === 'clarification_required'
+      ? 'clarification_required'
+      : 'stopped',
+    answer_text: result.outcome === 'completed'
+      ? '未形成满足公开合同的正确完整答案。'
+      : result.outcome === 'clarification_required'
+        ? '当前目标需要进一步澄清，未执行未获准能力。'
+        : '当前调查已安全停止，未形成可发布答案。',
+    answer_source: 'none',
+    candidate_id: result.candidate_id,
+    data_identity: result.semantic_goal.data_identity,
+    finding: null,
+    evidence: [],
+    limitations: [],
+    trace: publicTrace(result, authorizationDerivation),
     usage: result.usage,
   }
 }
@@ -441,52 +531,13 @@ function isUtcTimestamp(value: unknown): value is string {
   return new Date(parsed).toISOString() === normalized
 }
 
-function hasValidProtocolRejections(
+function hasNoProtocolRejections(
   result: Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }>,
   cognitionAttemptCount: number,
 ): boolean {
   const rejections = result.loop.decision_protocol_rejections
-  if (
-    cognitionAttemptCount !== result.loop.admission_receipts.length
-      + rejections.length + 1
-  ) return false
-  const sequences = new Set<number>()
-  for (const rejection of rejections) {
-    const decisionCount = rejection.observed_proposal_count
-      + rejection.observed_disposition_count
-    if (
-      !Number.isSafeInteger(rejection.sequence)
-      || rejection.sequence < 1
-      || rejection.sequence > cognitionAttemptCount
-      || sequences.has(rejection.sequence)
-      || !Number.isSafeInteger(rejection.observed_proposal_count)
-      || rejection.observed_proposal_count < 0
-      || !Number.isSafeInteger(rejection.observed_disposition_count)
-      || rejection.observed_disposition_count < 0
-      || ![
-        'multiple_decisions_in_single_response',
-        'decision_missing_or_invalid',
-        'goal_disposition_not_yet_valid',
-      ].includes(rejection.reason_code)
-      || (
-        rejection.reason_code === 'multiple_decisions_in_single_response'
-        && decisionCount <= 1
-      )
-      || (
-        rejection.reason_code === 'decision_missing_or_invalid'
-        && decisionCount !== 0
-      )
-      || (
-        rejection.reason_code === 'goal_disposition_not_yet_valid'
-        && (
-          rejection.observed_proposal_count !== 0
-          || rejection.observed_disposition_count !== 1
-        )
-      )
-    ) return false
-    sequences.add(rejection.sequence)
-  }
-  return true
+  return rejections.length === 0
+    && cognitionAttemptCount === result.loop.admission_receipts.length + 1
 }
 
 function hasValidProviderUsage(
@@ -521,8 +572,11 @@ function hasValidProviderUsage(
     || attempts.at(-1)?.phase !== 'renderer'
     || cognitionAttempts.length !== attempts.length - 1
     || cognitionAttempts.some((attempt) => attempt.outcome !== 'completed')
-    || limitAttempts.length > 1
-    || !hasValidProtocolRejections(result, cognitionAttempts.length)
+    || limitAttempts.length !== 0
+    || result.answer.source !== 'renderer'
+    || result.answer.render_attempt.status !== 'completed'
+    || usage.attempt_count !== cognitionAttempts.length + 1
+    || !hasNoProtocolRejections(result, cognitionAttempts.length)
     || result.loop.usage.maximum_attempt_count !== 10
     || result.loop.usage.cost_policy !== 'audit_only'
     || result.loop.usage.attempt_count !== cognitionAttempts.length
@@ -539,27 +593,8 @@ function hasValidProviderUsage(
     || !Number.isFinite(usage.estimated_cost_usd)
     || usage.estimated_cost_usd < 0
   ) return false
-  if (limitAttempts.length === 1) {
-    const rejected = limitAttempts[0]!
-    if (
-      rejected !== attempts.at(-1)
-      || rejected.phase !== 'renderer'
-      || cognitionAttempts.length !== 10
-      || usage.attempt_count !== 10
-      || result.answer.source !== 'deterministic_fallback'
-      || result.answer.render_attempt.status !== 'failed'
-    ) return false
-  } else if (usage.attempt_count !== cognitionAttempts.length + 1) {
-    return false
-  }
   const rendererAttempt = rendererAttempts[0]!
-  if (
-    (
-      result.answer.source === 'renderer'
-      || result.answer.render_attempt.status === 'completed'
-    )
-    && rendererAttempt.outcome !== 'completed'
-  ) return false
+  if (rendererAttempt.outcome !== 'completed') return false
   return !attempts.some((attempt, index) => {
     const endedAt = attempt.ended_at_utc
     const startedMs = Date.parse(attempt.started_at_utc)
@@ -649,7 +684,7 @@ function hasCompleteExecutionChain(
     || result.loop.disposition.reason_code !== 'finding_input_ready'
     || result.goal_state.goal_id !== result.semantic_goal.goal_id
     || result.goal_state.status !== 'satisfied'
-    || result.loop.goal_state.status !== 'satisfied'
+    || result.loop.goal_state.status !== 'answer_pending'
     || result.loop.goal_state.state_revision !== 3
     || result.goal_state.state_revision !== 4
     || admissions.length !== 2
@@ -1033,46 +1068,20 @@ function hasSuccessfulFinalAnswerUnchecked(
     return false
   }
   try {
-    if (result.answer.source === 'renderer') {
-      if (
-        result.answer.render_attempt.status !== 'completed'
-        || !Check(
-          DomeyeRendererDraftSchema,
-          result.answer.render_attempt.draft,
-        )
-        || result.answer.answer !== result.answer.render_attempt.draft.text
-      ) return false
-      const recomputedGuard = guardCountryOutageResponse(
-        result.answer_context,
+    if (
+      result.answer.source !== 'renderer'
+      || result.answer.render_attempt.status !== 'completed'
+      || !Check(
+        DomeyeRendererDraftSchema,
         result.answer.render_attempt.draft,
       )
-      return recomputedGuard.decision === 'pass'
-        && canonicalJsonSha256(recomputedGuard)
-          === canonicalJsonSha256(result.answer.guard_result)
-    }
-    if (
-      result.answer.source !== 'deterministic_fallback'
-      || result.answer.guard_result.decision !== 'block'
-      || result.answer.answer !== renderCountryOutageDeterministicFallback(
-        result.answer_context,
-      )
+      || result.answer.answer !== result.answer.render_attempt.draft.text
     ) return false
-    if (result.answer.render_attempt.status === 'failed') {
-      return result.answer.render_attempt.draft === null
-        && result.answer.render_attempt.failure_code
-          === 'renderer_failed_or_invalid'
-        && result.answer.guard_result.reason_codes.length === 1
-        && result.answer.guard_result.reason_codes[0]
-          === 'renderer_failed_or_invalid'
-    }
-    if (!Check(DomeyeRendererDraftSchema, result.answer.render_attempt.draft)) {
-      return false
-    }
     const recomputedGuard = guardCountryOutageResponse(
       result.answer_context,
       result.answer.render_attempt.draft,
     )
-    return recomputedGuard.decision === 'block'
+    return recomputedGuard.decision === 'pass'
       && canonicalJsonSha256(recomputedGuard)
         === canonicalJsonSha256(result.answer.guard_result)
   } catch {
@@ -1085,7 +1094,7 @@ function hasSuccessfulFinalAnswer(
   candidate: DomeyeFirstSliceCandidateBinding,
   identityReceipt: DomeyeVerifiedIdentityReceipt,
   expectedPrincipalId: string,
-): boolean {
+): result is Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }> {
   try {
     return hasSuccessfulFinalAnswerUnchecked(
       result,
@@ -1329,12 +1338,11 @@ export class DomeyeInteractiveConversationService {
         stored.identityReceipt,
         stored.ownerId,
       )
-      const answer = publicAnswer(
-        result,
-        stored.authorizationDerivation,
-        answerSuccess,
-      )
       if (answerSuccess) {
+        const answer = publicSuccessfulAnswer(
+          result,
+          stored.authorizationDerivation,
+        )
         this.#replaceTurn(stored, turnId, (turn) => ({
           turn_id: turn.turn_id,
           turn_number: turn.turn_number,
@@ -1347,6 +1355,10 @@ export class DomeyeInteractiveConversationService {
           completed_at: this.#now().toISOString(),
         }))
       } else {
+        const answer = publicNonSuccessfulAnswer(
+          result,
+          stored.authorizationDerivation,
+        )
         const state = result.outcome === 'clarification_required'
           ? 'clarification_required' as const
           : 'stopped' as const

@@ -369,7 +369,7 @@ function finalState(
   now: string,
 ): DomeyeGoalState {
   const status = disposition.disposition === 'goal_satisfied'
-    ? 'satisfied' as const
+    ? 'answer_pending' as const
     : disposition.disposition === 'clarification_required'
       ? 'clarification_required' as const
       : 'stopped' as const

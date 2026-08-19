@@ -16,8 +16,9 @@ import {
   buildCountryOutageAnswerContext,
   buildCountryOutageSeriesExtremaFinding,
   composeCountryOutageAnswer,
+  type DomeyeAcceptedAnswer,
   type DomeyeAnswerRenderer,
-  type DomeyeComposedAnswer,
+  type DomeyeFallbackAnswer,
 } from './finding-answer.js'
 import {
   PiAnswerRenderer,
@@ -91,7 +92,7 @@ export type DomeyeFirstSliceRunResult =
       outcome: 'completed'
       finding: DomeyeTypedFinding
       answer_context: DomeyeAnswerContext
-      answer: DomeyeComposedAnswer
+      answer: DomeyeAcceptedAnswer
     }>
   | Readonly<ResultCommon & {
       outcome: 'clarification_required' | 'stopped'
@@ -100,15 +101,40 @@ export type DomeyeFirstSliceRunResult =
       answer: null
     }>
 
-export type DomeyeFirstSliceRunFailureEvidence = Readonly<{
+interface FailureEvidenceCommon {
   schema_version: 'domeye_first_vertical_slice_failure_evidence_v1'
-  candidate_id: string
-  identity_receipt: DomeyeVerifiedIdentityReceipt
-  semantic_goal: DomeyeSemanticGoal
-  goal_state: DomeyeGoalState
-  loop_failure: PiInteractiveAgentLoopFailureEvidence
-  usage: DomeyeProviderUsageAudit
-}>
+  readonly candidate_id: string
+  readonly identity_receipt: DomeyeVerifiedIdentityReceipt
+  readonly semantic_goal: DomeyeSemanticGoal
+  readonly goal_state: DomeyeGoalState
+  readonly usage: DomeyeProviderUsageAudit
+}
+
+export type DomeyeFirstSliceRunFailureEvidence =
+  | Readonly<FailureEvidenceCommon & {
+      failure_stage: 'loop'
+      loop_failure: PiInteractiveAgentLoopFailureEvidence
+      loop: null
+      finding: null
+      answer_context: null
+      answer: null
+    }>
+  | Readonly<FailureEvidenceCommon & {
+      failure_stage: 'decision'
+      loop_failure: null
+      loop: PiInteractiveAgentLoopResult
+      finding: null
+      answer_context: null
+      answer: null
+    }>
+  | Readonly<FailureEvidenceCommon & {
+      failure_stage: 'answer'
+      loop_failure: null
+      loop: PiInteractiveAgentLoopResult
+      finding: DomeyeTypedFinding
+      answer_context: DomeyeAnswerContext
+      answer: DomeyeFallbackAnswer
+    }>
 
 export class DomeyeFirstSliceRunError extends Error {
   constructor(
@@ -157,6 +183,31 @@ function deepFreeze<T>(value: T): Readonly<T> {
     Object.freeze(value)
   }
   return value
+}
+
+function stoppedGoalState(
+  state: DomeyeGoalState,
+  updatedAtUtc: string,
+  findingIds: readonly string[] = state.finding_ids,
+): DomeyeGoalState {
+  return deepFreeze({
+    ...state,
+    state_revision: state.state_revision + 1,
+    status: 'stopped',
+    finding_ids: [...findingIds],
+    updated_at_utc: updatedAtUtc,
+  }) as DomeyeGoalState
+}
+
+function hasRejectedDecision(loop: PiInteractiveAgentLoopResult): boolean {
+  return loop.decision_protocol_rejections.length > 0
+    || loop.admission_receipts.some((receipt) =>
+      receipt.decision !== 'admitted'
+    )
+    || loop.action_receipts.some((receipt) => receipt.status !== 'succeeded')
+    || loop.observations.some((observation) =>
+      observation.status !== 'succeeded'
+    )
 }
 
 export class DomeyeFirstSliceRuntime {
@@ -275,8 +326,36 @@ export class DomeyeFirstSliceRuntime {
           identity_receipt: identityReceipt,
           semantic_goal: semanticGoal,
           goal_state: caught.evidence.goal_state,
+          failure_stage: 'loop',
           loop_failure: caught.evidence,
+          loop: null,
+          finding: null,
+          answer_context: null,
+          answer: null,
           usage: caught.evidence.usage,
+        }),
+      )
+    }
+    if (hasRejectedDecision(loopResult)) {
+      const failureGoalState = stoppedGoalState(
+        loopResult.goal_state,
+        this.#now().toISOString(),
+      )
+      throw new DomeyeFirstSliceRunError(
+        'decision_rejected',
+        deepFreeze({
+          schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+          candidate_id: candidate.candidate_id,
+          identity_receipt: identityReceipt,
+          semantic_goal: semanticGoal,
+          goal_state: failureGoalState,
+          failure_stage: 'decision',
+          loop_failure: null,
+          loop: loopResult,
+          finding: null,
+          answer_context: null,
+          answer: null,
+          usage: accounting.audit(),
         }),
       )
     }
@@ -342,9 +421,34 @@ export class DomeyeFirstSliceRuntime {
           : {}),
       })
     const answer = await composeCountryOutageAnswer(answerContext, renderer)
+    if (answer.source === 'deterministic_fallback') {
+      const failureGoalState = stoppedGoalState(
+        loopResult.goal_state,
+        this.#now().toISOString(),
+        [finding.finding_id],
+      )
+      throw new DomeyeFirstSliceRunError(
+        'answer_not_accepted',
+        deepFreeze({
+          schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+          candidate_id: candidate.candidate_id,
+          identity_receipt: identityReceipt,
+          semantic_goal: semanticGoal,
+          goal_state: failureGoalState,
+          failure_stage: 'answer',
+          loop_failure: null,
+          loop: loopResult,
+          finding,
+          answer_context: answerContext,
+          answer,
+          usage: accounting.audit(),
+        }),
+      )
+    }
     const finalGoalState: DomeyeGoalState = deepFreeze({
       ...loopResult.goal_state,
       state_revision: loopResult.goal_state.state_revision + 1,
+      status: 'satisfied',
       finding_ids: [finding.finding_id],
       updated_at_utc: this.#now().toISOString(),
     })
