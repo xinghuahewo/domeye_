@@ -1,11 +1,11 @@
 {
-  "candidate_id": "manifest:sha256:58fbf16777130ff7fa8d1cdb6c9a2aacccfb125e90baeaeb29bece1d87338439",
+  "candidate_id": "manifest:sha256:4236c3a8c94cc9bc4c01df8791139961bc84bda01b61fc7e07eaeed07772044d",
   "payload": {
     "schema_version": "domeye_first_slice_candidate_manifest_v1",
-    "base_commit": "f8c2ee0e078cbeac07f5e79c2f3b74538dc2aaa3",
+    "base_commit": "a27920aa2a7eaf05ce46e9f9ab70828ecd6e20dd",
     "contract": {
       "version": "domeye.first-vertical-slice/v1.0",
-      "digest": "sha256:fa42124446d335ce9bb2636476787566417044bda160939ab8efa2315e97473c"
+      "digest": "sha256:f14b3ad2c860fd97b3fc3e23d9db3b1609df3191631fe3b701caf7c8c88a396f"
     },
     "data_identity": {
       "event_type": "country_outage",
@@ -51,8 +51,8 @@
       ]
     },
     "registry": {
-      "registry_snapshot_id": "registry-snapshot-sha256:d685bc1584810bf7057bc4768e12d257e941e2130f99a70d4fcaa70878462db9",
-      "registry_digest": "sha256:d685bc1584810bf7057bc4768e12d257e941e2130f99a70d4fcaa70878462db9",
+      "registry_snapshot_id": "registry-snapshot-sha256:854955de5f4627dfc02926488ad75f60036c2814ecabd43514d7ef481d4691d2",
+      "registry_digest": "sha256:854955de5f4627dfc02926488ad75f60036c2814ecabd43514d7ef481d4691d2",
       "state": "active",
       "capabilities": [
         {
@@ -62,7 +62,7 @@
             "execution_unit_id": "TOOL-03",
             "execution_unit_name": "read_metric_series",
             "execution_unit_version": "1.0.0",
-            "contract_digest": "sha256:18e49b8aa933e5a1917b16d818444bf8ac5c21270cecdd2a051332b6e13ed927",
+            "contract_digest": "sha256:020470873521add79a90cf325ec51eeec1146087b2af2618ef7d4968e1ce9a25",
             "implementation_digest": "sha256:93bfa51cc8fbe17f33866293981136d1dc184ec8491e28baf4487d65dff9e1ad",
             "semantic_digest": "sha256:813809e190a657df487be7d705f77c7bf6012523aa10ebac86da2d4c89e6be91"
           }
@@ -74,7 +74,7 @@
             "execution_unit_id": "OP-01",
             "execution_unit_name": "series_extrema",
             "execution_unit_version": "1.0.0",
-            "contract_digest": "sha256:18e49b8aa933e5a1917b16d818444bf8ac5c21270cecdd2a051332b6e13ed927",
+            "contract_digest": "sha256:020470873521add79a90cf325ec51eeec1146087b2af2618ef7d4968e1ce9a25",
             "implementation_digest": "sha256:93bfa51cc8fbe17f33866293981136d1dc184ec8491e28baf4487d65dff9e1ad",
             "semantic_digest": "sha256:0907a80f913e9e86e65e493362674aa637369f80de4a90077bf6e0c17d969fe1"
           }
@@ -92,7 +92,7 @@
       },
       {
         "path": "agent-sidecar/dist/src/agent/contracts.js",
-        "sha256": "sha256:447b8c11e1d398fdd1936e25d775c049c6375729a7536ad8b0f301c56db63bf8"
+        "sha256": "sha256:0082e5fcd24dfb46557b8e821f574b00a7057aa43815566fedf1f905f12d83e9"
       },
       {
         "path": "agent-sidecar/dist/src/agent/country-outage-read-model.js",
@@ -104,11 +104,11 @@
       },
       {
         "path": "agent-sidecar/dist/src/agent/first-slice-runtime.js",
-        "sha256": "sha256:6baa1b8fdd1ad92bb29bae7f808fd87170b8669b51f30f7f4510654d4358530b"
+        "sha256": "sha256:9c3de723c28d08a8cdac19230193ee40e2cbd3c09e68e70fc4f4a7d8711bcfc3"
       },
       {
         "path": "agent-sidecar/dist/src/agent/interactive-conversation-service.js",
-        "sha256": "sha256:9c431096dfcb4a4d90ab5823eb3a3800c61482752c6b15b476f5cd015d4200a5"
+        "sha256": "sha256:a548a2d9b873a0ece05621c390ae53fa404c5c1a5c2df58f5e4d02eaf82e57d2"
       },
       {
         "path": "agent-sidecar/dist/src/agent/interactive-http-handler.js",
@@ -124,7 +124,7 @@
       },
       {
         "path": "agent-sidecar/dist/src/agent/pi-interactive-agent-loop.js",
-        "sha256": "sha256:6968c21d849ec29c220795a24aac746607eb371a26af9bb4b95d2282ec50ce68"
+        "sha256": "sha256:ff16412cca5ec3f0ec60e6a3d925706d2237e6d4caea64dcedc5835945ab4933"
       },
       {
         "path": "agent-sidecar/dist/src/agent/pi-runtime-boundary.js",
@@ -200,7 +200,7 @@
       },
       {
         "path": "agent-sidecar/src/agent/contracts.ts",
-        "sha256": "sha256:18e49b8aa933e5a1917b16d818444bf8ac5c21270cecdd2a051332b6e13ed927"
+        "sha256": "sha256:020470873521add79a90cf325ec51eeec1146087b2af2618ef7d4968e1ce9a25"
       },
       {
         "path": "agent-sidecar/src/agent/country-outage-read-model.ts",
@@ -208,15 +208,15 @@
       },
       {
         "path": "agent-sidecar/src/agent/finding-answer.ts",
-        "sha256": "sha256:854e8d276f5db03a7ae7c1a5345603c22c26683670d19d00506f710c6f7d9fb8"
+        "sha256": "sha256:eeba34eab028cc6a14571f543404e7adac77c8feeacc6398d8a70ee6a092e444"
       },
       {
         "path": "agent-sidecar/src/agent/first-slice-runtime.ts",
-        "sha256": "sha256:b46fc5c3ee24a4ad792363054fc0e9a3ade89511689e4d6b10994820a1216eca"
+        "sha256": "sha256:bd4ea3df39b2f6b0532623b4d03d0c8b6012091ac206c5a3f08f59a107e613ac"
       },
       {
         "path": "agent-sidecar/src/agent/interactive-conversation-service.ts",
-        "sha256": "sha256:a4dcbbd5d816ce28a4e8755716f77f582b25c3b8c58a72250729bfa7cc40637e"
+        "sha256": "sha256:391e20845502598b6c9c322153255f42e602840587bc23cc5dce0832ea830497"
       },
       {
         "path": "agent-sidecar/src/agent/interactive-http-handler.ts",
@@ -232,7 +232,7 @@
       },
       {
         "path": "agent-sidecar/src/agent/pi-interactive-agent-loop.ts",
-        "sha256": "sha256:c5d7ecc7b9b8c07d8fe77a91cef5e63e74cc52c74d4dea9ff424a0c42343b5db"
+        "sha256": "sha256:6d6f152d02102f0c90c15e5b2a622ff8566ca6a008c75a7c2689f8b65522a9fc"
       },
       {
         "path": "agent-sidecar/src/agent/pi-runtime-boundary.ts",
@@ -288,7 +288,7 @@
       },
       {
         "path": "docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md",
-        "sha256": "sha256:fa42124446d335ce9bb2636476787566417044bda160939ab8efa2315e97473c"
+        "sha256": "sha256:f14b3ad2c860fd97b3fc3e23d9db3b1609df3191631fe3b701caf7c8c88a396f"
       }
     ],
     "activation": {
