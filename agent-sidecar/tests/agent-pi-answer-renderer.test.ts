@@ -129,7 +129,7 @@ const model = {
   id: 'renderer-model',
   name: 'renderer-model',
   api: 'openai-completions',
-  provider: 'renderer-provider',
+  provider: 'deepseek',
   baseUrl: 'https://provider.invalid',
   reasoning: false,
   input: ['text'],
@@ -156,11 +156,30 @@ function sessionFactory(
   output: string,
   networkCalls: { value: number },
   prompts: Record<string, unknown>[],
+  forwardedPayloads: unknown[] = [],
+  existingPayloadHook?: NonNullable<
+    NonNullable<
+      Parameters<DomeyePiSessionHandle['agent']['streamFunction']>[2]
+    >['onPayload']
+  >,
+  rawPayload: unknown = {
+    model: model.id,
+    messages: [],
+    stream: true,
+  },
 ): DomeyePiSessionFactory {
   return async () => {
     let lastText: string | undefined
-    const rawStream = () => {
-      networkCalls.value += 1
+    const rawStream = (
+      _streamModel: typeof model,
+      _context: unknown,
+      options?: {
+        onPayload?: (
+          payload: unknown,
+          streamModel: typeof model,
+        ) => unknown
+      },
+    ) => {
       const message = {
         role: 'assistant' as const,
         content: [],
@@ -181,6 +200,9 @@ function sessionFactory(
       }
       return {
         async *[Symbol.asyncIterator]() {
+          const transformed = await options?.onPayload?.(rawPayload, model)
+          forwardedPayloads.push(transformed ?? rawPayload)
+          networkCalls.value += 1
           yield { type: 'done', reason: 'stop', message }
         },
         async result() { return message },
@@ -193,7 +215,13 @@ function sessionFactory(
       messages: [],
       async prompt(text) {
         prompts.push(JSON.parse(text) as Record<string, unknown>)
-        const stream = await session.agent.streamFunction(model, { messages: [] })
+        const stream = await session.agent.streamFunction(
+          model,
+          { messages: [] },
+          existingPayloadHook
+            ? { onPayload: existingPayloadHook }
+            : undefined,
+        )
         for await (const _event of stream) {
           // 消费一次真实供应方尝试。
         }
@@ -213,6 +241,13 @@ function renderer(
   accounting: DomeyeTurnProviderAccounting,
   networkCalls: { value: number },
   prompts: Record<string, unknown>[] = [],
+  forwardedPayloads: unknown[] = [],
+  existingPayloadHook?: NonNullable<
+    NonNullable<
+      Parameters<DomeyePiSessionHandle['agent']['streamFunction']>[2]
+    >['onPayload']
+  >,
+  rawPayload?: unknown,
 ): PiAnswerRenderer {
   return new PiAnswerRenderer({
     model_binding: {
@@ -227,7 +262,14 @@ function renderer(
       thinking_level: 'off',
     },
     accounting,
-    session_factory: sessionFactory(output, networkCalls, prompts),
+    session_factory: sessionFactory(
+      output,
+      networkCalls,
+      prompts,
+      forwardedPayloads,
+      existingPayloadHook,
+      rawPayload,
+    ),
   })
 }
 
@@ -246,6 +288,7 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
   assert.equal(accounting.audit().estimated_cost_usd, 0.01)
   assert.equal(prompts.length, 1)
   assert.equal('answer_context' in prompts[0]!, false)
+  assert.match(prompts[0]?.instruction as string, /JSON 对象/u)
   assert.deepEqual(
     Object.keys(prompts[0]?.renderer_draft_skeleton as object),
     Object.keys(draft()),
@@ -254,6 +297,99 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
     (prompts[0]?.text_must_include_exact as string[])
       .includes(context.data_identity.publication_id),
   )
+})
+
+test('Renderer 将 DeepSeek JSON object 约束传到底层且保留既有 payload hook', async () => {
+  const accounting = new DomeyeTurnProviderAccounting()
+  const networkCalls = { value: 0 }
+  const forwardedPayloads: unknown[] = []
+  let existingHookCalls = 0
+  const result = await composeCountryOutageAnswer(
+    context,
+    renderer(
+      JSON.stringify(draft()),
+      accounting,
+      networkCalls,
+      [],
+      forwardedPayloads,
+      async (payload) => {
+        existingHookCalls += 1
+        assert.ok(
+          payload !== null
+          && typeof payload === 'object'
+          && !Array.isArray(payload),
+        )
+        return {
+          ...(payload as Record<string, unknown>),
+          existing_hook_preserved: true,
+          tool_choice: 'auto',
+          response_format: { type: 'legacy-value' },
+        }
+      },
+    ),
+  )
+
+  assert.equal(result.source, 'renderer')
+  assert.equal(existingHookCalls, 1)
+  assert.equal(networkCalls.value, 1)
+  assert.equal(forwardedPayloads.length, 1)
+  assert.deepEqual(forwardedPayloads[0], {
+    model: model.id,
+    messages: [],
+    stream: true,
+    existing_hook_preserved: true,
+    tool_choice: 'none',
+    response_format: { type: 'json_object' },
+  })
+})
+
+test('Renderer 对非普通 payload 或非普通既有 hook 结果失败关闭', async () => {
+  const cases = [
+    {
+      name: '非普通输入',
+      rawPayload: new Date('2026-08-19T00:00:00Z'),
+      existingPayloadHook: undefined,
+    },
+    {
+      name: '非普通既有 hook 结果',
+      rawPayload: {
+        model: model.id,
+        messages: [],
+        stream: true,
+      },
+      existingPayloadHook: async () => new Date('2026-08-19T00:00:00Z'),
+    },
+  ] as const
+
+  for (const item of cases) {
+    const accounting = new DomeyeTurnProviderAccounting()
+    const networkCalls = { value: 0 }
+    const forwardedPayloads: unknown[] = []
+    const result = await composeCountryOutageAnswer(
+      context,
+      renderer(
+        JSON.stringify(draft()),
+        accounting,
+        networkCalls,
+        [],
+        forwardedPayloads,
+        item.existingPayloadHook,
+        item.rawPayload,
+      ),
+    )
+
+    assert.equal(result.source, 'deterministic_fallback', item.name)
+    assert.equal(result.guard_result.decision, 'block', item.name)
+    assert.deepEqual(
+      result.guard_result.reason_codes,
+      ['renderer_failed_or_invalid'],
+      item.name,
+    )
+    assert.equal(networkCalls.value, 0, item.name)
+    assert.equal(forwardedPayloads.length, 0, item.name)
+    assert.equal(accounting.audit().attempt_count, 1, item.name)
+    assert.equal(accounting.audit().attempts[0]?.outcome, 'failed', item.name)
+  }
 })
 
 test('Renderer 非法输出不重试模型，直接使用同 Context 确定性回退', async () => {
@@ -269,6 +405,53 @@ test('Renderer 非法输出不重试模型，直接使用同 Context 确定性�
   assert.deepEqual(result.guard_result.reason_codes, ['renderer_failed_or_invalid'])
   assert.equal(networkCalls.value, 1)
   assert.equal(accounting.audit().attempt_count, 1)
+})
+
+test('Renderer 继续拒绝 fenced、非 JSON、Schema 非法与 Guard 不通过输出', async () => {
+  const invalidSchema = {
+    ...draft(),
+    unexpected_field: true,
+  }
+  const guardRejected = {
+    ...draft(),
+    text: `${draft().text}\n事件已经恢复。`,
+  }
+  const cases = [
+    { name: 'fenced', output: `\`\`\`json\n${JSON.stringify(draft())}\n\`\`\`` },
+    { name: '空文本', output: '' },
+    { name: '非 JSON', output: 'not-json' },
+    { name: 'Schema 非法', output: JSON.stringify(invalidSchema) },
+    { name: 'Guard 不通过', output: JSON.stringify(guardRejected) },
+  ]
+
+  for (const item of cases) {
+    const accounting = new DomeyeTurnProviderAccounting()
+    const networkCalls = { value: 0 }
+    const result = await composeCountryOutageAnswer(
+      context,
+      renderer(item.output, accounting, networkCalls),
+    )
+
+    assert.equal(result.source, 'deterministic_fallback', item.name)
+    assert.equal(result.guard_result.decision, 'block', item.name)
+    assert.equal(networkCalls.value, 1, item.name)
+    assert.equal(accounting.audit().attempt_count, 1, item.name)
+    if (item.name === 'Guard 不通过') {
+      assert.equal(result.render_attempt.status, 'completed')
+      assert.ok(
+        result.guard_result.reason_codes.includes(
+          'forbidden_recovery_claim',
+        ),
+      )
+    } else {
+      assert.deepEqual(
+        result.guard_result.reason_codes,
+        ['renderer_failed_or_invalid'],
+        item.name,
+      )
+      assert.equal(result.render_attempt.status, 'failed', item.name)
+    }
+  }
 })
 
 test('Renderer 未消费完供应方流时关闭未决账本并使用确定性回退', async () => {

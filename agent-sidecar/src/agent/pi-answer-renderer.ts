@@ -30,9 +30,15 @@ import {
 
 const RENDERER_SYSTEM_PROMPT = `你是 Domeye 首个纵向切片的中文 Renderer。
 当前会话没有工具，只能读取用户消息中由单个 Answer Context 生成的受控投影；不得使用模型记忆、互联网、文件、旧对话或投影外事实。
-只返回 renderer_draft_skeleton 对象本身，不要输出 wrapper、Markdown 围栏、解释或任何额外字段。
+只返回 renderer_draft_skeleton JSON 对象本身，不要输出 wrapper、Markdown 围栏、解释或任何额外字段。
 不得增删、改写或重排 skeleton 中的任何字段和值，text 也必须逐字保持。
 不得推断全国断网、真实用户影响、原因、责任或真实恢复。`
+
+type PiStreamFunction = DomeyePiSessionHandle['agent']['streamFunction']
+type PiStreamOptions = Parameters<PiStreamFunction>[2]
+type PiPayloadHook = NonNullable<
+  NonNullable<PiStreamOptions>['onPayload']
+>
 
 export class DomeyeRendererError extends Error {
   constructor(
@@ -102,6 +108,66 @@ function safeStats(session: DomeyePiSessionHandle): SessionStats | undefined {
   }
 }
 
+function isPlainJsonObject(
+  value: unknown,
+): value is Record<string, unknown> {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || Array.isArray(value)
+  ) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+function rendererJsonObjectPayloadHook(
+  existingHook: PiPayloadHook | undefined,
+): PiPayloadHook {
+  return async (payload, model) => {
+    if (!isPlainJsonObject(payload)) {
+      throw new Error('renderer_provider_payload_invalid')
+    }
+    const existingResult = await existingHook?.(payload, model)
+    if (
+      existingResult !== undefined
+      && !isPlainJsonObject(existingResult)
+    ) {
+      throw new Error('renderer_provider_payload_invalid')
+    }
+    const source = existingResult ?? payload
+    if (
+      typeof source.model !== 'string'
+      || !Array.isArray(source.messages)
+      || source.stream !== true
+    ) {
+      throw new Error('renderer_provider_payload_invalid')
+    }
+    return {
+      ...source,
+      tool_choice: 'none',
+      response_format: {
+        type: 'json_object',
+      },
+    }
+  }
+}
+
+function installRendererJsonObjectPayloadBoundary(
+  session: DomeyePiSessionHandle,
+): void {
+  const original = session.agent.streamFunction
+  session.agent.streamFunction = (model, context, options) => {
+    if (
+      model.provider !== 'deepseek'
+      || model.api !== 'openai-completions'
+    ) return original(model, context, options)
+    return original(model, context, {
+      ...(options ?? {}),
+      onPayload: rendererJsonObjectPayloadHook(options?.onPayload),
+    })
+  }
+}
+
 function rendererPrompt(context: DomeyeAnswerContext): string {
   const identity = context.data_identity
   const finding = context.finding
@@ -117,7 +183,7 @@ function rendererPrompt(context: DomeyeAnswerContext): string {
     finding.values.maximum_at_utc,
   ].filter((value): value is string => typeof value === 'string'))]
   return JSON.stringify({
-    instruction: '只返回 renderer_draft_skeleton 对象本身。所有字段和值（包括 text）必须逐字逐值保持不变。',
+    instruction: '只返回 renderer_draft_skeleton JSON 对象本身。所有字段和值（包括 text）必须逐字逐值保持不变。',
     renderer_draft_skeleton: {
       schema_version: 'domeye_agent_renderer_draft_v1',
       context_id: context.context_id,
@@ -206,6 +272,7 @@ export class PiAnswerRenderer implements DomeyeAnswerRenderer {
         'renderer',
         this.#options.model_binding.identity,
       )
+      installRendererJsonObjectPayloadBoundary(session)
       const attemptOffset = this.#options.accounting.budget.snapshot().length
       let timer: ReturnType<typeof setTimeout> | undefined
       let timedOut = false
