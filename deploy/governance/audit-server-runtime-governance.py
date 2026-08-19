@@ -648,7 +648,15 @@ def component_discovery(
     runtime = policy["runtimeGovernance"]
     release_root = Path(component["releaseRoot"])
     link = active_link(Path(component["activeLinkPath"]), release_root)
-    result: dict[str, Any] = {"name": component["name"], "activeLink": link, "releaseRoot": str(release_root), "releases": []}
+    result: dict[str, Any] = {
+        "name": component["name"],
+        "activeLink": link,
+        "releaseRoot": str(release_root),
+        "releases": [],
+    }
+    for field in ("routingState", "governanceMode"):
+        if field in component:
+            result[field] = component[field]
     if not release_root.is_dir():
         result["releaseRootExists"] = False
         result["identityEquation"] = {"state": "not_verified", "reason": "release_root_missing"}
@@ -952,15 +960,27 @@ def build_discovery(policy: dict[str, Any], *, reference_observation_seconds: in
         final_lock_snapshot=final_lock_snapshot,
     )
     config = config_metadata(Path(policy["configDirectory"]), policy["requiredConfigMode"])
-    p1 = next((item for item in component_results if item["name"] == "p1_chat_sidecar"), None)
-    identity_gap = bool(p1 and p1["identityEquation"].get("actualProcessCwdBound") is not True)
+    interactive_agent = next(
+        (item for item in component_results if item["name"] == "interactive_agent_sidecar"),
+        None,
+    )
+    identity_gap = bool(
+        interactive_agent
+        and interactive_agent["identityEquation"].get("actualProcessCwdBound") is not True
+    )
     candidate_count = sum(1 for component in component_results for release in component["releases"] if release["retentionState"] == "future_quarantine_candidate")
     findings: list[dict[str, str]] = [
         {"severity": "block", "code": "read_only_discovery", "message": "本输出只提供 S3--S6 发现证据，不授权迁移、隔离、删除、重启或切换。"},
         {"severity": "warning", "code": "credential_argument_not_inspected", "message": "为避免读取秘密，未检查进程实参或环境；凭证迁移 Gate 仍未满足。"},
     ]
     if identity_gap:
-        findings.append({"severity": "warning", "code": "p1_runtime_identity_unbound", "message": "P1 Chat 活动链接未与实际进程 cwd 绑定，不能声明运行时身份等式成立。"})
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "interactive_agent_runtime_identity_unbound",
+                "message": "Interactive Agent 活动链接未与实际进程 cwd 绑定，不能声明运行时身份等式成立。",
+            }
+        )
     if not process_snapshot["coverageComplete"]:
         findings.append({"severity": "block", "code": "process_reference_coverage_incomplete", "message": "进程路径引用扫描不完整，所有隔离候选保持 unknown。"})
     if not mount_snapshot["coverageComplete"]:

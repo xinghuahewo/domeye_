@@ -30,15 +30,28 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
 
         self.backend_root = self.runtime / "releases"
         self.agent_root = self.runtime / "country-outage-agent" / "releases"
-        self.p1_root = self.runtime / "country-outage-p1-chat" / "releases"
+        self.interactive_agent_root = self.runtime / "country-outage-interactive-agent" / "releases"
+        self.legacy_p1_chat_root = self.runtime / "country-outage-p1-chat" / "releases"
         self.backend_active = self.create_release(self.backend_root, "backend-active")
         self.backend_old = self.create_release(self.backend_root, "backend-old")
         (self.backend_old / "Pipfile.lock").write_text("static dependency lock\n", encoding="utf-8")
         self.agent_active = self.create_release(self.agent_root, "agent-active")
-        self.p1_active = self.create_release(self.p1_root, "p1-active")
+        self.interactive_agent_active = self.create_release(
+            self.interactive_agent_root, "interactive-agent-active"
+        )
+        self.legacy_p1_chat_active = self.create_release(
+            self.legacy_p1_chat_root, "legacy-p1-chat-active"
+        )
         self.link(self.runtime / "current", self.backend_active)
         self.link(self.runtime / "country-outage-agent" / "current", self.agent_active)
-        self.link(self.runtime / "country-outage-p1-chat" / "current", self.p1_active)
+        self.link(
+            self.runtime / "country-outage-interactive-agent" / "current",
+            self.interactive_agent_active,
+        )
+        self.link(
+            self.runtime / "country-outage-p1-chat" / "current",
+            self.legacy_p1_chat_active,
+        )
 
         self.research_runs = self.dev_data / "research-runs"
         self.worktrees = self.dev_data / "research-worktrees"
@@ -100,7 +113,22 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
                 "releaseComponents": [
                     {"name": "backend", "activeLinkPath": str(self.runtime / "current"), "releaseRoot": str(self.backend_root)},
                     {"name": "legacy_agent_sidecar", "activeLinkPath": str(self.runtime / "country-outage-agent" / "current"), "releaseRoot": str(self.agent_root)},
-                    {"name": "p1_chat_sidecar", "activeLinkPath": str(self.runtime / "country-outage-p1-chat" / "current"), "releaseRoot": str(self.p1_root)},
+                    {
+                        "name": "interactive_agent_sidecar",
+                        "activeLinkPath": str(
+                            self.runtime / "country-outage-interactive-agent" / "current"
+                        ),
+                        "releaseRoot": str(self.interactive_agent_root),
+                    },
+                    {
+                        "name": "legacy_p1_chat_sidecar",
+                        "activeLinkPath": str(
+                            self.runtime / "country-outage-p1-chat" / "current"
+                        ),
+                        "releaseRoot": str(self.legacy_p1_chat_root),
+                        "routingState": "retained_not_routed",
+                        "governanceMode": "read_only",
+                    },
                 ],
                 "developmentDataRoots": [
                     {"name": "research_runs", "path": str(self.research_runs)},
@@ -153,8 +181,26 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.assertTrue(backend["identityEquation"]["activeLinkValid"])
         self.assertTrue(backend["identityEquation"]["actualProcessCwdBound"])
         self.assertTrue(backend["identityEquation"]["releaseManifestDigestBound"])
-        p1 = next(item for item in result["runtimeComponents"] if item["name"] == "p1_chat_sidecar")
-        self.assertFalse(p1["identityEquation"]["actualProcessCwdBound"])
+        interactive_agent = next(
+            item
+            for item in result["runtimeComponents"]
+            if item["name"] == "interactive_agent_sidecar"
+        )
+        self.assertFalse(interactive_agent["identityEquation"]["actualProcessCwdBound"])
+        legacy_p1_chat = next(
+            item
+            for item in result["runtimeComponents"]
+            if item["name"] == "legacy_p1_chat_sidecar"
+        )
+        self.assertEqual(legacy_p1_chat["routingState"], "retained_not_routed")
+        self.assertEqual(legacy_p1_chat["governanceMode"], "read_only")
+        legacy_active = next(
+            item
+            for item in legacy_p1_chat["releases"]
+            if item["releaseId"] == "legacy-p1-chat-active"
+        )
+        self.assertEqual(legacy_active["retentionState"], "protected_or_unknown")
+        self.assertIn("active", legacy_active["protectedClasses"])
         old_release = next(item for item in backend["releases"] if item["releaseId"] == "backend-old")
         self.assertEqual(old_release["retentionState"], "future_quarantine_candidate")
         self.assertFalse(old_release["quarantineAuthorized"])
@@ -172,43 +218,65 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.assertIn(str(self.run_locked / "active.lock"), locked["inventory"]["activeLockPaths"])
         self.assertIn("unknown", shared["protectedClasses"])
         self.assertEqual(shared["inventory"]["externalHardLinkCount"], 1)
-        self.assertEqual(in_use["candidateReferenceInspection"], "metadata_only_not_proven")
+        # 未请求第二次观察时，S5 明确保持 not_requested。
+        self.assertEqual(in_use["candidateReferenceInspection"], "not_requested")
 
     def test_unresolved_fd_inside_managed_root_blocks_coverage(self):
         self.add_process(126, self.root, {"10": self.backend_old / "missing-in-managed-root"})
 
         snapshot = AUDIT.process_path_snapshot(
             self.process_root,
-            [self.backend_root, self.agent_root, self.p1_root, self.research_runs],
+            [
+                self.backend_root,
+                self.agent_root,
+                self.interactive_agent_root,
+                self.legacy_p1_chat_root,
+                self.research_runs,
+            ],
         )
 
         self.assertFalse(snapshot["coverageComplete"])
         self.assertIn(126, snapshot["unreadablePids"])
 
     def test_active_release_manifest_protects_rollback_and_accepted_evidence(self):
-        rollback = self.create_release(self.p1_root, "p1-rollback")
-        (self.p1_active / "RELEASE-MANIFEST.json").write_text(
+        rollback = self.create_release(self.interactive_agent_root, "interactive-agent-rollback")
+        (self.interactive_agent_active / "RELEASE-MANIFEST.json").write_text(
             json.dumps(
                 {
-                    "release_id": "p1-active",
-                    "rollback": {"release_id": "p1-rollback"},
+                    "release_id": "interactive-agent-active",
+                    "rollback": {"release_id": "interactive-agent-rollback"},
                     "checks": {"release": "verified"},
                 }
             ),
             encoding="utf-8",
         )
         (rollback / "RELEASE-MANIFEST.json").write_text(
-            json.dumps({"release_id": "p1-rollback", "checks": {"release": "passed"}}),
+            json.dumps(
+                {
+                    "release_id": "interactive-agent-rollback",
+                    "checks": {"release": "passed"},
+                }
+            ),
             encoding="utf-8",
         )
         self.policy["runtimeGovernance"]["manifestFileNames"].append("RELEASE-MANIFEST.json")
 
         result = AUDIT.build_discovery(self.policy)
-        p1 = next(item for item in result["runtimeComponents"] if item["name"] == "p1_chat_sidecar")
-        rollback_release = next(item for item in p1["releases"] if item["releaseId"] == "p1-rollback")
+        interactive_agent = next(
+            item
+            for item in result["runtimeComponents"]
+            if item["name"] == "interactive_agent_sidecar"
+        )
+        rollback_release = next(
+            item
+            for item in interactive_agent["releases"]
+            if item["releaseId"] == "interactive-agent-rollback"
+        )
 
-        self.assertEqual(p1["activeRollbackReleaseIds"], ["p1-rollback"])
-        self.assertTrue(p1["rollbackReferenceCoverageComplete"])
+        self.assertEqual(
+            interactive_agent["activeRollbackReleaseIds"], ["interactive-agent-rollback"]
+        )
+        self.assertTrue(interactive_agent["rollbackReferenceCoverageComplete"])
         self.assertEqual(rollback_release["retentionState"], "protected_or_unknown")
         self.assertIn("rollback", rollback_release["protectedClasses"])
         self.assertIn("accepted_evidence", rollback_release["protectedClasses"])

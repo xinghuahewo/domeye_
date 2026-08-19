@@ -51,8 +51,10 @@ executable，不读取命令行参数或环境变量。任何 finding 或保护�
 - 挂载点、`/proc/locks` 中的活动 inode 锁、锁文件名与硬链接计数。
 
 它不读取配置内容、进程实参或进程环境；因此它会明确把“实参中是否仍有凭证”标为
-`not_performed_by_contract`，不能把配置权限合规误报为凭证迁移完成。P1 Chat 当前
-没有以 cwd 绑定到活动 release 时，同样只能报告 `not_verified`。
+`not_performed_by_contract`，不能把配置权限合规误报为凭证迁移完成。Interactive Agent 当前
+没有以 cwd 绑定到活动 release 时，同样只能报告 `not_verified`。线上旧 P1 Chat 以
+`retained_not_routed`、`read_only` 身份保留在库存中；这只保护其活动指针、release、进程和
+凭证表面不从治理视野消失，不允许它重新成为路由、启动、回退或发布选择。
 
 它对每个对象只输出 `inventory` 状态。即使对象暂无进程、挂载、锁或硬链接引用，仍须
 另有精确批次清单、空间估算、恢复路径和用户授权才可进入 `quarantine_planned`；删除
@@ -84,8 +86,9 @@ release 声明的 rollback，以及声明自身通过全部 `passed`/`verified` 
 标为 `protected_or_unknown`。活动 manifest 缺失、不可解析或指向不存在的 rollback 时，全部
 候选失败关闭为 `unknown`；不得以“最多保留五套”覆盖正式回滚或验收证据。
 
-对 Agent/P1 这类生命周期管理组件，策略还必须列出 root-only `state/active.json` 与
-`state/rollback.json`。审计器只提取其中的 release ID/previous release ID，不输出状态原文；
+对旧报告 Agent、Interactive Agent 和只读保留的旧 P1 Chat 这类生命周期管理组件，策略还必须列出
+root-only `state/active.json` 与 `state/rollback.json`。审计器只提取其中的 release ID/previous
+release ID，不输出状态原文；
 文件不是普通 `root:root 0600` JSON、过大、不可解析，或其中 ID 不在同一 release 根时，
 该组件的候选同样全部失败关闭。状态声明的任一历史 release 都获得 `rollback` 保护。
 
@@ -106,7 +109,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 root@10.99.8.16 \
 
 ## S3 脱敏进程与凭证表面核验
 
-`audit-server-credential-surface.py` 只读取四个受控配置文件的元数据（类型、所有者、组和
+`audit-server-credential-surface.py` 只读取五个受控配置文件的元数据（类型、所有者、组和
 权限），不读取配置内容；它会暂时读取受管进程的 `/proc/<pid>/cmdline` 与 `environ`，但只
 输出 PID、`comm`、固定路径/端口身份信号和布尔结论，绝不输出、哈希或落盘任何实参、环境
 变量值或凭证。它也拒绝策略把旧 `/home/bgpdata/Domeye` 纳入配置、活动指针或 release 根。
@@ -118,15 +121,17 @@ python3 deploy/governance/audit-server-credential-surface.py \
   --policy deploy/governance/server-directory-policy.json
 ```
 
-Backend 以活动 release 下 cwd/executable 绑定；旧 Agent 还必须绑定 28474；P1 Chat 必须
-同时绑定 28475 和活动 release 路径实参。若 P1 的 cwd 在 release 外、命令行为空、监听器
+Backend 以活动 release 下 cwd/executable 绑定；旧报告 Agent 仍绑定 28474；Interactive Agent 必须
+同时绑定 28476 和活动 release 路径实参。只读旧 P1 Chat 库存继续观察 28475、活动 release 实参和
+`country-outage-p1-chat.env`，但保持 `retained_not_routed`，不参与路由或启动选择。若任一受管组件的
+cwd 在 release 外、命令行为空、监听器
 不可读或任一配置不是 `root:root 0600`，输出必须为 `not_verified` 和 `BLOCK_MUTATION`。这
 是防止把“没有可见凭证实参”误称为已完成凭证迁移；它本身不授权重启、Screen 迁移、配置
 写入、release 切换或任何凭证修改。
 
 ## S4 Runtime release 可恢复隔离
 
-`quarantine-runtime-releases.py` 是 S4 的单批执行器。它只管理策略列出的三个
+`quarantine-runtime-releases.py` 是 S4 的单批执行器。它只管理策略列出的四个
 Runtime release 根；固定把对象移动到同文件系统的
 `Domeye-Core-artifacts/quarantine/runtime-releases/<operation-id>/`。它永不删除对象，
 不触碰旧 `/home/bgpdata/Domeye`、生产数据、服务、Screen、活动指针或 GitHub 凭证。

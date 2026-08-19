@@ -29,6 +29,7 @@ PROTECTED_ROOTS = (
 ACTIVE_LINKS = (
     Path("/home/bgpdata/Domeye-Core-runtime/current"),
     Path("/home/bgpdata/Domeye-Core-runtime/country-outage-agent/current"),
+    Path("/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent/current"),
     Path("/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current"),
 )
 SCHEMA = "domeye.server-checkout-refresh/v1"

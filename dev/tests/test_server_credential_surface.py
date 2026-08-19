@@ -29,17 +29,36 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
         self.releases = {
             "backend": self.create_release(self.runtime / "releases", "backend-active"),
             "legacy_agent_sidecar": self.create_release(self.runtime / "country-outage-agent" / "releases", "agent-active"),
-            "p1_chat_sidecar": self.create_release(self.runtime / "country-outage-p1-chat" / "releases", "p1-active"),
+            "interactive_agent_sidecar": self.create_release(
+                self.runtime / "country-outage-interactive-agent" / "releases",
+                "interactive-agent-active",
+            ),
+            "legacy_p1_chat_sidecar": self.create_release(
+                self.runtime / "country-outage-p1-chat" / "releases",
+                "legacy-p1-chat-active",
+            ),
         }
         self.links = {
             "backend": self.link(self.runtime / "current", self.releases["backend"]),
             "legacy_agent_sidecar": self.link(self.runtime / "country-outage-agent" / "current", self.releases["legacy_agent_sidecar"]),
-            "p1_chat_sidecar": self.link(self.runtime / "country-outage-p1-chat" / "current", self.releases["p1_chat_sidecar"]),
+            "interactive_agent_sidecar": self.link(
+                self.runtime / "country-outage-interactive-agent" / "current",
+                self.releases["interactive_agent_sidecar"],
+            ),
+            "legacy_p1_chat_sidecar": self.link(
+                self.runtime / "country-outage-p1-chat" / "current",
+                self.releases["legacy_p1_chat_sidecar"],
+            ),
         }
         self.config_paths = {
             "backend_database_env": self.data / "config" / "database.env",
             "country_outage_agent_env": self.runtime / "config" / "country-outage-agent.env",
-            "country_outage_p1_chat_env": self.runtime / "config" / "country-outage-p1-chat.env",
+            "country_outage_interactive_agent_env": self.runtime
+            / "config"
+            / "country-outage-interactive-agent.env",
+            "country_outage_p1_chat_env": self.runtime
+            / "config"
+            / "country-outage-p1-chat.env",
             "country_outage_pi_auth": self.runtime / "config" / "country-outage-pi-auth.json",
         }
         for path in self.config_paths.values():
@@ -49,6 +68,17 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
         self.add_process(101, self.releases["backend"], b"/usr/bin/python\x00run.py\x00", b"PATH=/bin\x00")
         self.add_process(102, self.releases["legacy_agent_sidecar"], b"/usr/bin/node\x00serve.js\x00", b"COUNTRY_OUTAGE_AGENT_SHARED_TOKEN=fixture-secret-must-not-appear\x00")
         self.add_process(103, self.root, b"", b"PATH=/bin\x00")
+        legacy_p1_entry = str(
+            self.releases["legacy_p1_chat_sidecar"].resolve()
+            / "dist"
+            / "legacy-p1-read-only-inventory.js"
+        ).encode("utf-8")
+        self.add_process(
+            104,
+            self.root,
+            b"/usr/bin/node\x00" + legacy_p1_entry + b"\x00",
+            b"PATH=/bin\x00",
+        )
         self.policy = self.build_policy()
         self.original_run = S3.readonly_run
         S3.readonly_run = self.fake_run
@@ -121,12 +151,35 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
                         "configFileIds": ["country_outage_agent_env", "country_outage_pi_auth"],
                     },
                     {
-                        "name": "p1_chat_sidecar",
-                        "activeLinkPath": str(self.links["p1_chat_sidecar"]),
-                        "releaseRoot": str(self.runtime / "country-outage-p1-chat" / "releases"),
-                        "listenerPort": 28475,
+                        "name": "interactive_agent_sidecar",
+                        "activeLinkPath": str(self.links["interactive_agent_sidecar"]),
+                        "releaseRoot": str(
+                            self.runtime / "country-outage-interactive-agent" / "releases"
+                        ),
+                        "listenerPort": 28476,
                         "requiredIdentitySignals": ["listener_port", "active_release_argument"],
-                        "configFileIds": ["country_outage_p1_chat_env", "country_outage_pi_auth"],
+                        "configFileIds": [
+                            "country_outage_interactive_agent_env",
+                            "country_outage_pi_auth",
+                        ],
+                    },
+                    {
+                        "name": "legacy_p1_chat_sidecar",
+                        "activeLinkPath": str(self.links["legacy_p1_chat_sidecar"]),
+                        "releaseRoot": str(
+                            self.runtime / "country-outage-p1-chat" / "releases"
+                        ),
+                        "listenerPort": 28475,
+                        "requiredIdentitySignals": [
+                            "listener_port",
+                            "active_release_argument",
+                        ],
+                        "configFileIds": [
+                            "country_outage_p1_chat_env",
+                            "country_outage_pi_auth",
+                        ],
+                        "routingState": "retained_not_routed",
+                        "governanceMode": "read_only",
                     },
                 ],
             },
@@ -134,11 +187,19 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
 
     def fake_run(self, arguments):
         port = arguments[-1]
-        pid = 102 if port.endswith("28474") else 103 if port.endswith("28475") else None
+        pid = (
+            102
+            if port.endswith("28474")
+            else 103
+            if port.endswith("28476")
+            else 104
+            if port.endswith("28475")
+            else None
+        )
         stdout = f'LISTEN 0 1 127.0.0.1:* users:(("node",pid={pid},fd=24))\n' if pid else ""
         return subprocess.CompletedProcess(arguments, 0, stdout, "")
 
-    def test_reports_safe_surface_and_fails_closed_for_unbound_p1(self):
+    def test_reports_safe_surface_and_fails_closed_for_unbound_interactive_agent(self):
         report = S3.build_report(self.policy)
         encoded = json.dumps(report, ensure_ascii=False)
 
@@ -148,15 +209,27 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
         self.assertFalse(report["environmentValuesEmitted"])
         self.assertFalse(report["configurationContentsRead"])
         self.assertNotIn("fixture-secret-must-not-appear", encoded)
-        backend, agent, p1 = report["components"]
+        backend, agent, interactive_agent, legacy_p1_chat = report["components"]
         self.assertEqual(backend["identityState"], "verified")
         self.assertEqual(agent["identityState"], "verified")
         self.assertEqual(agent["commandLineCredentialState"], "verified_no_credential_like_arguments")
         self.assertTrue(agent["processes"][0]["credentialLikeEnvironmentKeyPresent"])
-        self.assertEqual(p1["identityState"], "not_verified")
-        self.assertEqual(p1["commandLineCredentialState"], "not_verified")
+        self.assertEqual(interactive_agent["identityState"], "not_verified")
+        self.assertEqual(interactive_agent["commandLineCredentialState"], "not_verified")
+        self.assertEqual(legacy_p1_chat["identityState"], "verified")
+        self.assertEqual(legacy_p1_chat["listener"]["port"], 28475)
+        self.assertIn(
+            "country_outage_p1_chat_env",
+            legacy_p1_chat["referencedConfigFiles"],
+        )
+        legacy_policy = self.policy["credentialGovernance"]["components"][3]
+        self.assertEqual(legacy_policy["routingState"], "retained_not_routed")
+        self.assertEqual(legacy_policy["governanceMode"], "read_only")
         self.assertEqual(report["gate"]["decision"], "BLOCK_MUTATION")
-        self.assertIn("p1_chat_sidecar:process_identity_not_verified", report["gate"]["reasons"])
+        self.assertIn(
+            "interactive_agent_sidecar:process_identity_not_verified",
+            report["gate"]["reasons"],
+        )
 
     def test_detects_credential_like_argument_without_emitting_value(self):
         (self.process_root / "101" / "cmdline").write_bytes(b"/usr/bin/python\x00--api-key=fixture-secret-must-not-appear\x00")

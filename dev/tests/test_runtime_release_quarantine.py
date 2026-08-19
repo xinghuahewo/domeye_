@@ -40,15 +40,28 @@ class RuntimeReleaseQuarantineTest(unittest.TestCase):
 
         self.backend_root = self.runtime / "releases"
         self.agent_root = self.runtime / "country-outage-agent" / "releases"
-        self.p1_root = self.runtime / "country-outage-p1-chat" / "releases"
+        self.interactive_agent_root = self.runtime / "country-outage-interactive-agent" / "releases"
+        self.legacy_p1_chat_root = self.runtime / "country-outage-p1-chat" / "releases"
         self.backend_active = self.create_release(self.backend_root, "backend-active", accepted=True)
         self.backend_old = self.create_release(self.backend_root, "backend-old")
         self.backend_old_second = self.create_release(self.backend_root, "backend-old-second")
         self.agent_active = self.create_release(self.agent_root, "agent-active", accepted=True)
-        self.p1_active = self.create_release(self.p1_root, "p1-active", accepted=True)
+        self.interactive_agent_active = self.create_release(
+            self.interactive_agent_root, "interactive-agent-active", accepted=True
+        )
+        self.legacy_p1_chat_active = self.create_release(
+            self.legacy_p1_chat_root, "legacy-p1-chat-active", accepted=True
+        )
         self.link(self.runtime / "current", self.backend_active)
         self.link(self.runtime / "country-outage-agent" / "current", self.agent_active)
-        self.link(self.runtime / "country-outage-p1-chat" / "current", self.p1_active)
+        self.link(
+            self.runtime / "country-outage-interactive-agent" / "current",
+            self.interactive_agent_active,
+        )
+        self.link(
+            self.runtime / "country-outage-p1-chat" / "current",
+            self.legacy_p1_chat_active,
+        )
 
         development_roots = []
         for name in ("research-runs", "research-worktrees", "research-inputs", "overlays"):
@@ -81,7 +94,24 @@ class RuntimeReleaseQuarantineTest(unittest.TestCase):
                 "releaseComponents": [
                     {"name": "backend", "activeLinkPath": str(self.runtime / "current"), "releaseRoot": str(self.backend_root), "rollbackStatePaths": []},
                     {"name": "legacy_agent_sidecar", "activeLinkPath": str(self.runtime / "country-outage-agent" / "current"), "releaseRoot": str(self.agent_root), "rollbackStatePaths": []},
-                    {"name": "p1_chat_sidecar", "activeLinkPath": str(self.runtime / "country-outage-p1-chat" / "current"), "releaseRoot": str(self.p1_root), "rollbackStatePaths": []},
+                    {
+                        "name": "interactive_agent_sidecar",
+                        "activeLinkPath": str(
+                            self.runtime / "country-outage-interactive-agent" / "current"
+                        ),
+                        "releaseRoot": str(self.interactive_agent_root),
+                        "rollbackStatePaths": [],
+                    },
+                    {
+                        "name": "legacy_p1_chat_sidecar",
+                        "activeLinkPath": str(
+                            self.runtime / "country-outage-p1-chat" / "current"
+                        ),
+                        "releaseRoot": str(self.legacy_p1_chat_root),
+                        "rollbackStatePaths": [],
+                        "routingState": "retained_not_routed",
+                        "governanceMode": "read_only",
+                    },
                 ],
                 "developmentDataRoots": development_roots,
             },
@@ -161,6 +191,14 @@ class RuntimeReleaseQuarantineTest(unittest.TestCase):
     def test_plan_refuses_active_or_protected_release(self):
         with self.assertRaisesRegex(EXECUTOR.QuarantineError, "不是当前可隔离候选"):
             self.batch(releases=["backend-active"])
+        with self.assertRaisesRegex(EXECUTOR.QuarantineError, "不是当前可隔离候选"):
+            EXECUTOR.build_batch_plan(
+                self.policy,
+                "legacy_p1_chat_sidecar",
+                ["legacy-p1-chat-active"],
+                "s4-legacy-p1-read-only-001",
+                "只验证旧 P1 Chat 活动 release 保持只读保护，不执行隔离。",
+            )
 
     def test_apply_automatically_restores_earlier_moves_on_later_move_error(self):
         batch = self.batch("s4-fixture-batch-002", ["backend-old", "backend-old-second"])

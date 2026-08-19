@@ -61,7 +61,16 @@ class ServerDirectoryGovernanceTest(unittest.TestCase):
         release_specs = (
             ("releases", "prod-backend", "current"),
             ("country-outage-agent/releases", "prod-agent", "country-outage-agent/current"),
-            ("country-outage-p1-chat/releases", "prod-p1", "country-outage-p1-chat/current"),
+            (
+                "country-outage-interactive-agent/releases",
+                "prod-interactive-agent",
+                "country-outage-interactive-agent/current",
+            ),
+            (
+                "country-outage-p1-chat/releases",
+                "legacy-p1-chat-retained-not-routed",
+                "country-outage-p1-chat/current",
+            ),
         )
         self.active_links = []
         for release_root, release_id, link_path in release_specs:
@@ -125,8 +134,16 @@ class ServerDirectoryGovernanceTest(unittest.TestCase):
                     "path": str(self.runtime / "country-outage-agent/releases"),
                 },
                 {
-                    "name": "p1",
+                    "name": "interactive_agent",
+                    "path": str(
+                        self.runtime / "country-outage-interactive-agent/releases"
+                    ),
+                },
+                {
+                    "name": "legacy_p1_chat",
                     "path": str(self.runtime / "country-outage-p1-chat/releases"),
+                    "routingState": "retained_not_routed",
+                    "governanceMode": "read_only",
                 },
             ],
             "retention": {
@@ -156,6 +173,10 @@ class ServerDirectoryGovernanceTest(unittest.TestCase):
         self.assertEqual(audit["sourceCheckout"]["modifiedCount"], 1)
         self.assertEqual(audit["sourceCheckout"]["untrackedCount"], 1)
         self.assertTrue(all(item["valid"] for item in audit["activeLinks"]))
+        self.assertIn(
+            "legacy-p1-chat-retained-not-routed",
+            {item["name"] for item in audit["activeLinks"]},
+        )
         self.assertTrue(audit["configPermissions"]["allCompliant"])
         self.assertEqual(len(audit["protectedProcessReferences"]), 1)
         self.assertEqual(
