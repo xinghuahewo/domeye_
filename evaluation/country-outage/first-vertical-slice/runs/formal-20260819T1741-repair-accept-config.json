@@ -1,0 +1,7 @@
+{
+  "schema_version": "domeye_first_slice_accept_config_v1",
+  "summary_path": "formal-20260819T1741/summary.json",
+  "evidence_jsonl_path": "formal-20260819T1741/evidence.jsonl",
+  "independent_review_path": "formal-20260819T1741/independent-review.json",
+  "output_path": "formal-20260819T1741/acceptance-record-repair.json"
+}

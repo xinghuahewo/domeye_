@@ -1,0 +1,19 @@
+{
+  "schema_version": "domeye_first_slice_evaluation_run_config_v1",
+  "target": {
+    "project_root": "/Users/botongwu/Documents/domeye/agent-first-slice-runtime-work",
+    "manifest_path": "contracts/agent/domeye-first-vertical-slice/v1/candidate.json",
+    "model_auth_path": "/Users/botongwu/.config/domeye/secrets/country-outage-pi-auth.json",
+    "api_base_url": "http://10.99.8.16:28471/api/v2/",
+    "api_timeout_ms": 15000,
+    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "principal_id": "domeye-first-slice-evaluator",
+    "authorization_scopes": [
+      "country_outage:read"
+    ]
+  },
+  "execution_actor_id": "codex-first-slice-pilot-20260819",
+  "runs": 1,
+  "drive_adversarial_cases": true,
+  "output_directory": "pilot-20260819T1710"
+}

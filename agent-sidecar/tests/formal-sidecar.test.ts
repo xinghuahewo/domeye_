@@ -227,7 +227,12 @@ test('正式 Sidecar 按模型预检、Pi 叙述器、服务和 HTTP 监听顺�
   const holder = fakeServer(order)
 
   const sidecar = await startFormalCountryOutageSidecar(
-    validEnvironment(),
+    {
+      ...validEnvironment(),
+      // 旧开关和旧超时值即使残留在部署环境中，也不得恢复聊天装配。
+      COUNTRY_OUTAGE_P1_CHAT_ENABLED: 'true',
+      COUNTRY_OUTAGE_P1_API_TIMEOUT_MS: 'not-an-integer',
+    },
     {
       securityAttestationNow: () => new Date('2026-08-01T00:00:00Z'),
       bindingFactory: async () => {
@@ -261,6 +266,7 @@ test('正式 Sidecar 按模型预检、Pi 叙述器、服务和 HTTP 监听顺�
   assert.ok(sidecar.core)
   assert.equal(sidecar.manager, sidecar.orchestrator)
   assert.equal(typeof holder.listeners.request, 'function')
+  assert.equal(holder.server.requestTimeout, 125_000)
   assert.deepEqual(
     sidecar.externalEvidenceCapability,
     FORMAL_EXTERNAL_EVIDENCE_CAPABILITY,
@@ -303,6 +309,27 @@ test('正式 Sidecar 按模型预检、Pi 叙述器、服务和 HTTP 监听顺�
     sidecar.reportServiceIdentity.skillBundleSha256,
     sidecar.narrator.skillBundleSha256,
   )
+})
+
+test('报告 handler 与报告 CLI 不再包含旧聊天装配或路由', () => {
+  const forbiddenAssembly =
+    /COUNTRY_OUTAGE_P1_CHAT_ENABLED|P1RuntimeV2ConversationService|chatService|chatReadiness/
+  const sources = [
+    'src/server/http-handler.ts',
+    'src/cli/formal-sidecar.ts',
+    'src/cli/serve-acceptance.ts',
+  ]
+
+  for (const sourcePath of sources) {
+    const source = readFileSync(resolve(process.cwd(), sourcePath), 'utf8')
+    assert.doesNotMatch(source, forbiddenAssembly, sourcePath)
+  }
+
+  const reportHandler = readFileSync(
+    resolve(process.cwd(), 'src/server/http-handler.ts'),
+    'utf8',
+  )
+  assert.doesNotMatch(reportHandler, /\/chat\//)
 })
 
 test('正式入口拒绝 deterministic-acceptance 且不会开始模型预检或创建 Server', async () => {

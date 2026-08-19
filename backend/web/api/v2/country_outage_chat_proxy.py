@@ -1,4 +1,4 @@
-"""P1 页面能力聊天的窄只读控制面代理。"""
+"""首个纵向切片交互式 Agent 的窄只读控制面代理。"""
 
 from __future__ import annotations
 
@@ -28,14 +28,16 @@ _JSON_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
 _CONNECT_TIMEOUT_SECONDS = 3
 _READ_TIMEOUT_SECONDS = 120
 
-_CHAT_SIDECAR_HTTP = requests.Session()
-_CHAT_SIDECAR_HTTP.trust_env = False
+_INTERACTIVE_AGENT_HTTP = requests.Session()
+_INTERACTIVE_AGENT_HTTP.trust_env = False
 
 
-def _chat_sidecar_base_url() -> str:
-    raw = os.environ.get("COUNTRY_OUTAGE_P1_CHAT_SIDECAR_URL", "").strip()
+def _interactive_agent_base_url() -> str:
+    raw = os.environ.get(
+        "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL", ""
+    ).strip()
     if not raw:
-        raise RuntimeError("国家中断 P1 Chat Sidecar 尚未配置")
+        raise RuntimeError("国家中断交互式 Agent Sidecar 尚未配置")
     parsed = urlparse(raw)
     if (
         parsed.scheme not in {"http", "https"}
@@ -45,23 +47,27 @@ def _chat_sidecar_base_url() -> str:
         or parsed.query
         or parsed.fragment
     ):
-        raise RuntimeError("P1 Chat Sidecar 地址必须是无凭据的本机 HTTP/HTTPS")
+        raise RuntimeError(
+            "交互式 Agent Sidecar 地址必须是无凭据的本机 HTTP/HTTPS"
+        )
     return raw.rstrip("/")
 
 
-def _request_chat_sidecar(method: str, path: str, **kwargs):
-    return _CHAT_SIDECAR_HTTP.request(
+def _request_interactive_agent(method: str, path: str, **kwargs):
+    return _INTERACTIVE_AGENT_HTTP.request(
         method,
-        f"{_chat_sidecar_base_url()}{path}",
+        f"{_interactive_agent_base_url()}{path}",
         timeout=(_CONNECT_TIMEOUT_SECONDS, _READ_TIMEOUT_SECONDS),
         allow_redirects=False,
         **kwargs,
     )
 
 
-def _json_chat_proxy(method: str, path: str, body: dict | None = None):
+def _json_interactive_agent_proxy(
+    method: str, path: str, body: dict | None = None
+):
     try:
-        upstream = _request_chat_sidecar(
+        upstream = _request_interactive_agent(
             method,
             path,
             headers=_request_headers(
@@ -80,14 +86,18 @@ def _json_chat_proxy(method: str, path: str, body: dict | None = None):
     except (requests.RequestException, RuntimeError) as error:
         return _error(
             503,
-            "p1_chat_unavailable",
+            "interactive_agent_unavailable",
             str(error),
             retryable=True,
-            next_action="确认本机 P1 Chat Sidecar 配置与运行状态后重试",
+            next_action="确认本机交互式 Agent Sidecar 配置与运行状态后重试",
         )
     content = upstream.content
     if len(content) > _JSON_RESPONSE_MAX_BYTES:
-        return _error(502, "p1_chat_response_too_large", "P1 响应超过 2 MiB")
+        return _error(
+            502,
+            "interactive_agent_response_too_large",
+            "交互式 Agent 响应超过 2 MiB",
+        )
     response = Response(
         content,
         status=upstream.status_code,
@@ -149,7 +159,9 @@ class CountryOutageChatConversationCollectionResource(Resource):
             body = _binding_request(_read_json_body())
         except ValueError as error:
             return _error(400, "invalid_chat_request", str(error))
-        return _json_chat_proxy("POST", "/country-outage/chat/conversations", body)
+        return _json_interactive_agent_proxy(
+            "POST", "/country-outage/chat/conversations", body
+        )
 
 
 class CountryOutageChatConversationResource(Resource):
@@ -160,7 +172,7 @@ class CountryOutageChatConversationResource(Resource):
             )
         except ValueError as error:
             return _error(400, "invalid_chat_request", str(error))
-        return _json_chat_proxy(
+        return _json_interactive_agent_proxy(
             "GET", f"/country-outage/chat/conversations/{conversation_id}"
         )
 
@@ -174,7 +186,7 @@ class CountryOutageChatTurnCollectionResource(Resource):
             body = _turn_request(_read_json_body())
         except ValueError as error:
             return _error(400, "invalid_chat_request", str(error))
-        return _json_chat_proxy(
+        return _json_interactive_agent_proxy(
             "POST",
             f"/country-outage/chat/conversations/{conversation_id}/turns",
             body,
@@ -183,17 +195,11 @@ class CountryOutageChatTurnCollectionResource(Resource):
 
 class CountryOutageChatRebindResource(Resource):
     def post(self, conversation_id: str):
-        try:
-            conversation_id = _safe_identifier(
-                conversation_id, "conversation_id"
-            )
-            body = _binding_request(_read_json_body())
-        except ValueError as error:
-            return _error(400, "invalid_chat_request", str(error))
-        return _json_chat_proxy(
-            "POST",
-            f"/country-outage/chat/conversations/{conversation_id}/rebind",
-            body,
+        del conversation_id
+        return _error(
+            404,
+            "route_not_found",
+            "会话重新绑定已移除；数据身份变化时必须新建会话",
         )
 
 
@@ -209,7 +215,7 @@ class CountryOutageChatCancelResource(Resource):
                 raise ValueError("取消请求不接受额外字段")
         except ValueError as error:
             return _error(400, "invalid_chat_request", str(error))
-        return _json_chat_proxy(
+        return _json_interactive_agent_proxy(
             "POST",
             (
                 f"/country-outage/chat/conversations/{conversation_id}/turns/"

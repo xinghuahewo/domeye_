@@ -1,131 +1,167 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
-import type { Server } from 'node:http'
+import { spawnSync } from 'node:child_process'
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import {
   createFormalP1Sidecar,
+  FORMAL_P1_SIDECAR_RETIREMENT_CODE,
+  FormalP1SidecarRetiredError,
+  startFormalP1Sidecar,
+} from '../src/cli/formal-p1-sidecar.js'
+import {
   FORMAL_P1_CERTIFIED_INPUT_SCOPE,
   FORMAL_P1_CERTIFIED_SCENARIO_SET_ID,
-} from '../src/cli/formal-p1-sidecar.js'
-import type { FormalPiModelBinding } from '../src/pi/index.js'
+} from '../src/cli/retired-p1-semantic-certification.js'
 
-function binding(): FormalPiModelBinding {
-  const profile = {
-    id: 'p1-model-test',
-    status: 'certified' as const,
-    provider: 'deepseek',
-    model: 'deepseek-v4-flash',
-    modelVersion: 'deepseek-v4-flash',
-    expectedResponseModel: 'deepseek-v4-flash',
-    thinkingLevel: 'off' as const,
-    piVersion: '0.84.1' as const,
-    certificationEvidenceId: 'evidence:p1-semantic-certification:test',
-    certifiedAt: '2026-08-11T00:00:00Z',
-    modelRevisionKind: 'mutable_alias' as const,
-    immutableRevisionAvailable: false as const,
-    limitation: '供应方未提供不可变权重 revision；deepseek-v4-flash 是可变别名，可能无痕变化。' as const,
-    certificationValidUntil: '2026-08-18T00:00:00Z',
-    certifiedScenarioSetId: FORMAL_P1_CERTIFIED_SCENARIO_SET_ID,
-    certifiedInputScope: FORMAL_P1_CERTIFIED_INPUT_SCOPE,
+const packageJsonPath = new URL('../../package.json', import.meta.url)
+const formalSidecarSourcePath = new URL(
+  '../../src/cli/formal-p1-sidecar.ts',
+  import.meta.url,
+)
+const serveFormalP1SourcePath = new URL(
+  '../../src/cli/serve-formal-p1.ts',
+  import.meta.url,
+)
+const certifySourcePath = new URL(
+  '../../src/cli/certify-p1-semantic-model-candidate.ts',
+  import.meta.url,
+)
+const promoteSourcePath = new URL(
+  '../../src/cli/promote-p1-semantic-model-candidate.ts',
+  import.meta.url,
+)
+const certifyDistPath = new URL(
+  '../src/cli/certify-p1-semantic-model-candidate.js',
+  import.meta.url,
+)
+const promoteDistPath = new URL(
+  '../src/cli/promote-p1-semantic-model-candidate.js',
+  import.meta.url,
+)
+
+test('旧正式 P1 Sidecar 的构造与启动入口均显式失败关闭', async () => {
+  const assertRetired = (error: unknown): boolean => {
+    assert.ok(error instanceof FormalP1SidecarRetiredError)
+    assert.equal(error.code, FORMAL_P1_SIDECAR_RETIREMENT_CODE)
+    return true
   }
-  return {
-    modelRuntime: {} as FormalPiModelBinding['modelRuntime'],
-    model: {
-      id: profile.model,
-      name: profile.model,
-      api: 'openai-completions',
-      provider: profile.provider,
-      baseUrl: 'https://api.deepseek.com',
-      reasoning: true,
-      input: ['text'],
-      contextWindow: 1_000_000,
-      maxTokens: 16_384,
-      cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
-    } as FormalPiModelBinding['model'],
-    certification: {
-      registryVersion: 'p1-test-registry-v1',
-      profile,
-    },
-    runSelection: {
-      runtimeIdentity: 'formal',
-      registryVersion: 'p1-test-registry-v1',
-      profile,
-    },
-    preflight: {
-      schemaVersion: 'country_outage_pi_model_preflight_v1',
-      registryVersion: 'p1-test-registry-v1',
-      profileId: profile.id,
-      provider: profile.provider,
-      model: profile.model,
-      modelVersion: profile.modelVersion,
-      expectedResponseModel: profile.expectedResponseModel,
-      thinkingLevel: profile.thinkingLevel,
-      piVersion: profile.piVersion,
-      certificationEvidenceId: profile.certificationEvidenceId,
-      modelRevisionKind: profile.modelRevisionKind,
-      immutableRevisionAvailable: false,
-      limitation: profile.limitation,
-      certificationValidUntil: profile.certificationValidUntil,
-      certifiedScenarioSetId: profile.certifiedScenarioSetId,
-      certifiedInputScope: profile.certifiedInputScope,
-      maximumOutputTokens: 16_384,
-      auth: { configured: true, source: 'stored' },
-      available: true,
-    },
+
+  await assert.rejects(createFormalP1Sidecar(), assertRetired)
+  await assert.rejects(startFormalP1Sidecar(), assertRetired)
+})
+
+test('旧 P1 独立聊天及语义认证晋级命令不再是 package 活跃入口', () => {
+  const packageJson = JSON.parse(
+    readFileSync(packageJsonPath, 'utf8'),
+  ) as { scripts?: Record<string, string> }
+  const scripts = packageJson.scripts ?? {}
+
+  assert.equal('start:formal:p1' in scripts, false)
+  assert.equal('certify:model:p1-semantic' in scripts, false)
+  assert.equal('promote:model:p1-semantic' in scripts, false)
+})
+
+test('退役启动文件不再构造旧路由或监听端口', () => {
+  const formalSidecarSource = readFileSync(formalSidecarSourcePath, 'utf8')
+  const serveFormalP1Source = readFileSync(serveFormalP1SourcePath, 'utf8')
+
+  assert.doesNotMatch(formalSidecarSource, /\.\.\/chat|\.\.\/server/)
+  assert.doesNotMatch(formalSidecarSource, /createServer|createCountryOutageAgentHttpHandler/)
+  assert.doesNotMatch(formalSidecarSource, /\.listen\s*\(/)
+  assert.doesNotMatch(serveFormalP1Source, /startFormalP1Sidecar|\.listen\s*\(/)
+  assert.match(serveFormalP1Source, /country_outage_formal_p1_sidecar_retired/)
+})
+
+test('历史认证常量仅供旧制品识别', () => {
+  assert.equal(
+    FORMAL_P1_CERTIFIED_SCENARIO_SET_ID,
+    'country-outage-p1-page-coverage-s2-v1',
+  )
+  assert.equal(
+    FORMAL_P1_CERTIFIED_INPUT_SCOPE,
+    'country_outage_p1_rrc25_event_bound_chat_v1',
+  )
+})
+
+test('旧 P1 认证与晋级源码不再导入模型、计划、Grounding 或文件写入路径', () => {
+  const sources = [
+    readFileSync(certifySourcePath, 'utf8'),
+    readFileSync(promoteSourcePath, 'utf8'),
+  ]
+
+  for (const source of sources) {
+    assert.doesNotMatch(source, /\bfrom\s+['"][^'"]+['"]/)
+    assert.doesNotMatch(
+      source,
+      /P1ModelUserGoalPlanner|P1PiSemanticModel|P1RuntimeV2Grounder|loadPiModelCandidate|createCandidatePiModelBinding/,
+    )
+    assert.doesNotMatch(
+      source,
+      /writeFileSync|mkdirSync|appendFileSync|createWriteStream/,
+    )
+    assert.match(source, /process\.exitCode\s*=\s*1/)
+  }
+})
+
+function assertRetiredCli(
+  distPath: URL,
+  expectedEvent: string,
+  expectedCode: string,
+  expectedMessage: string,
+): void {
+  const workingDirectory = mkdtempSync(join(tmpdir(), 'domeye-retired-p1-cli-'))
+  try {
+    const result = spawnSync(process.execPath, [fileURLToPath(distPath)], {
+      cwd: workingDirectory,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        COUNTRY_OUTAGE_P1_PROJECT_ROOT: workingDirectory,
+        COUNTRY_OUTAGE_P1_SEMANTIC_CERTIFICATION_DIRECTORY: join(
+          workingDirectory,
+          'certification',
+        ),
+        COUNTRY_OUTAGE_P1_CERTIFIED_REGISTRY_OUTPUT: join(
+          workingDirectory,
+          'registry.json',
+        ),
+      },
+    })
+
+    assert.equal(result.signal, null)
+    assert.equal(result.status, 1)
+    assert.equal(result.stdout, '')
+    assert.deepEqual(JSON.parse(result.stderr.trim()), {
+      event: expectedEvent,
+      code: expectedCode,
+      message: expectedMessage,
+    })
+    assert.deepEqual(readdirSync(workingDirectory), [])
+  } finally {
+    rmSync(workingDirectory, { recursive: true, force: true })
   }
 }
 
-test('正式 P1 Sidecar 只接线聊天并冻结Registry、资源观测和报告关闭边界', async () => {
-  const auditDirectory = realpathSync(
-    mkdtempSync(join(tmpdir(), 'domeye-p1-audit-')),
+test('旧 P1 认证与晋级 dist CLI 均以固定机器事件失败关闭且不写文件', () => {
+  assertRetiredCli(
+    certifyDistPath,
+    'country_outage_p1_semantic_model_certification_retired',
+    'p1_semantic_certification_retired',
+    '旧 P1 语义模型认证命令已退役',
   )
-  chmodSync(auditDirectory, 0o700)
-  const server = {
-    requestTimeout: 0,
-    headersTimeout: 0,
-    keepAliveTimeout: 0,
-  } as Server
-  try {
-    const sidecar = await createFormalP1Sidecar(
-      {
-        COUNTRY_OUTAGE_AGENT_HOST: '127.0.0.1',
-        COUNTRY_OUTAGE_AGENT_PORT: '28475',
-        COUNTRY_OUTAGE_AGENT_SHARED_TOKEN:
-          'test-p1-shared-token-abcdefghijklmnopqrstuvwxyz',
-        DOMEYE_API_BASE_URL: 'http://127.0.0.1:28473/api/v2/',
-        COUNTRY_OUTAGE_PI_AUDIT_DIRECTORY: auditDirectory,
-      },
-      {
-        bindingFactory: async () => binding(),
-        httpServerFactory: () => server,
-      },
-    )
-    assert.equal(sidecar.port, 28475)
-    assert.equal(sidecar.runtime.collector, 'rrc25')
-    assert.equal(sidecar.runtime.maximumProviderRequestCountPerTurn, 1)
-    assert.equal(sidecar.runtime.businessCostLimit, null)
-    assert.equal(sidecar.runtime.reportCapability, 'disabled')
-    assert.deepEqual(sidecar.runtime.eventWindowTrendOperator, {
-      executionUnit: 'OP-04',
-      capabilityId: 'CAP-TREND-001',
-      operatorId: 'event-window-trend',
-      operatorVersion: '1.2.0',
-      modelDependency: 'none',
-    })
-    assert.equal(sidecar.runtime.toolOperatorRegistry.activationScope, 'runtime_candidate_shadow_only')
-    assert.equal(sidecar.runtime.toolOperatorRegistry.runtimeIntegration, 'implemented_not_deployed')
-    assert.equal(sidecar.runtime.toolOperatorRegistry.productionDeployed, false)
-    assert.match(sidecar.runtime.toolOperatorRegistry.candidateId, /^p2-s0b-[a-f0-9]{16}$/)
-    assert.match(
-      sidecar.runtime.toolOperatorRegistry.registrySnapshotId,
-      /^registry-snapshot-sha256:[a-f0-9]{64}$/,
-    )
-    assert.match(sidecar.modelIdentity, /p1-user-goal-plan-v1$/)
-    assert.equal(server.requestTimeout, 125_000)
-  } finally {
-    rmSync(auditDirectory, { recursive: true, force: true })
-  }
+  assertRetiredCli(
+    promoteDistPath,
+    'country_outage_p1_semantic_model_promotion_retired',
+    'p1_semantic_promotion_retired',
+    '旧 P1 语义模型晋级命令已退役',
+  )
 })

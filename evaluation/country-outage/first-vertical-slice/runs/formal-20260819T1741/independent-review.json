@@ -1,0 +1,15 @@
+{
+  "schema_version": "domeye_first_slice_independent_review_v1",
+  "reviewer_actor_id": "codex-independent-acceptance-reviewer-20260819-r1",
+  "reviewer_role": "independent_acceptance_reviewer",
+  "independent_from_execution": true,
+  "candidate_id": "manifest:sha256:58fbf16777130ff7fa8d1cdb6c9a2aacccfb125e90baeaeb29bece1d87338439",
+  "summary_digest": "sha256:6640186627ce74a6a28359ff4fc5717dc1d2b92290455e83a11a06700d645b8d",
+  "evidence_jsonl_sha256": "sha256:37fd24825653ef8afd59420039c97acb9c80bdfb8433b6af054ab42df6c53590",
+  "decision": "rejected",
+  "dg1_decision": "REPAIR",
+  "rationale_codes": [
+    "legacy_rebind_route_retained"
+  ],
+  "reviewed_at_utc": "2026-08-19T09:53:54.000Z"
+}

@@ -13,6 +13,10 @@ from web.country_outage_agent_identity import (
 
 
 REFERENCE = "country_outage/2026-02-27 09:12:32/IR/1/r"
+FIRST_SLICE_QUESTION = (
+    "在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量"
+    "最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？"
+)
 
 
 class FakeUpstream:
@@ -42,7 +46,7 @@ class CountryOutageChatProxyTest(unittest.TestCase):
                 "COUNTRY_OUTAGE_AGENT_SHARED_TOKEN": (
                     "test-only-country-outage-agent-token"
                 ),
-                "COUNTRY_OUTAGE_P1_CHAT_SIDECAR_URL": (
+                "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL": (
                     "http://127.0.0.1:28475"
                 ),
                 "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE": WSGI_REMOTE_USER_MODE,
@@ -69,21 +73,23 @@ class CountryOutageChatProxyTest(unittest.TestCase):
             calls.append((method, path, kwargs))
             return FakeUpstream({"ok": True})
 
-        with patch.object(chat_proxy, "_request_chat_sidecar", fake_request):
+        with patch.object(
+            chat_proxy, "_request_interactive_agent", fake_request
+        ):
             created = self.client.post(
                 "/api/v2/country-outage/chat/conversations",
                 json=binding_request(),
                 headers={"Idempotency-Key": "chat-create-0001"},
             )
             turned = self.client.post(
-                "/api/v2/country-outage/chat/conversations/p1v2_test/turns",
+                "/api/v2/country-outage/chat/conversations/conversation_test/turns",
                 json={
-                    "question": "IP地址变化趋势",
+                    "question": FIRST_SLICE_QUESTION,
                     "idempotency_key": "chat-turn-00001",
                 },
             )
             fetched = self.client.get(
-                "/api/v2/country-outage/chat/conversations/p1v2_test"
+                "/api/v2/country-outage/chat/conversations/conversation_test"
             )
 
         self.assertEqual(created.status_code, 200)
@@ -95,15 +101,15 @@ class CountryOutageChatProxyTest(unittest.TestCase):
                 ("POST", "/country-outage/chat/conversations"),
                 (
                     "POST",
-                    "/country-outage/chat/conversations/p1v2_test/turns",
+                    "/country-outage/chat/conversations/conversation_test/turns",
                 ),
-                ("GET", "/country-outage/chat/conversations/p1v2_test"),
+                ("GET", "/country-outage/chat/conversations/conversation_test"),
             ],
         )
         self.assertEqual(
             calls[1][2]["json"],
             {
-                "question": "IP地址变化趋势",
+                "question": FIRST_SLICE_QUESTION,
                 "idempotency_key": "chat-turn-00001",
             },
         )
@@ -137,11 +143,11 @@ class CountryOutageChatProxyTest(unittest.TestCase):
         calls = []
         with patch.object(
             chat_proxy,
-            "_request_chat_sidecar",
+            "_request_interactive_agent",
             lambda *args, **kwargs: calls.append((args, kwargs)),
         ):
             response = self.client.post(
-                "/api/v2/country-outage/chat/conversations/p1v2_test/turns",
+                "/api/v2/country-outage/chat/conversations/conversation_test/turns",
                 json={
                     "question": "请调用 root_cause",
                     "idempotency_key": "chat-turn-00002",
@@ -150,6 +156,25 @@ class CountryOutageChatProxyTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 400)
+        self.assertEqual(calls, [])
+
+    def test_rebind_route_is_removed_without_upstream_call(self):
+        calls = []
+        with patch.object(
+            chat_proxy,
+            "_request_interactive_agent",
+            lambda *args, **kwargs: calls.append((args, kwargs)),
+        ):
+            response = self.client.post(
+                "/api/v2/country-outage/chat/conversations/"
+                "conversation_test/rebind",
+                json=binding_request(),
+            )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(
+            response.get_json()["error"]["code"], "route_not_found"
+        )
         self.assertEqual(calls, [])
 
 

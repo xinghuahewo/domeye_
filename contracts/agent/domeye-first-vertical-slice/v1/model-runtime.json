@@ -1,0 +1,19 @@
+{
+  "schema_version": "domeye_first_slice_model_runtime_v1",
+  "candidate_id": "deepseek-v4-flash-pi-0.84.1-first-slice-v1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "model_version": "deepseek-v4-flash",
+  "expected_response_model": "deepseek-v4-flash",
+  "api": "openai-completions",
+  "base_url": "https://api.deepseek.com",
+  "maximum_output_tokens": 16384,
+  "thinking_level": "off",
+  "pi_version": "0.84.1",
+  "provider_retry_attempts": 0,
+  "model_api_attempt_limit": 10,
+  "cost_policy": "audit_only",
+  "monetary_limit_usd": null,
+  "model_revision_kind": "mutable_alias",
+  "limitation_zh": "供应方未提供不可变权重 revision；该模型别名可能变化，所有真实评测必须绑定运行时间与响应模型身份。"
+}

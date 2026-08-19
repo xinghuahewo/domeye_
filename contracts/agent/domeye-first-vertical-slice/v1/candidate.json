@@ -1,0 +1,299 @@
+{
+  "candidate_id": "manifest:sha256:58fbf16777130ff7fa8d1cdb6c9a2aacccfb125e90baeaeb29bece1d87338439",
+  "payload": {
+    "schema_version": "domeye_first_slice_candidate_manifest_v1",
+    "base_commit": "f8c2ee0e078cbeac07f5e79c2f3b74538dc2aaa3",
+    "contract": {
+      "version": "domeye.first-vertical-slice/v1.0",
+      "digest": "sha256:fa42124446d335ce9bb2636476787566417044bda160939ab8efa2315e97473c"
+    },
+    "data_identity": {
+      "event_type": "country_outage",
+      "incident_id": "incident_go_v1_a1de26f854831330c616a72af21597eb",
+      "publication_id": "country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f",
+      "revision": 1,
+      "collector_id": "rrc25",
+      "cohort_id": "country_event_cohort_v1_1e04abfc6430776bef20403fac528698",
+      "country_code": "IR",
+      "window_start_utc": "2026-02-27T00:10:00Z",
+      "window_end_utc": "2026-03-11T00:00:00Z",
+      "data_through": "2026-03-11T00:00:00Z",
+      "is_final_in_data_range": false,
+      "lifecycle_state": "event_end_unknown"
+    },
+    "series_response_sha256": "sha256:45700171b9cef9c41eeaa6e124c1f0920b57dd544be7e00d45b3c7c0706925d6",
+    "model": {
+      "candidate_id": "deepseek-v4-flash-pi-0.84.1-first-slice-v1",
+      "resource_sha256": "sha256:b886671ac2ed4c2724d8c6ace1989011e4a7384ff6960f8ca795b5920029186c",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "model_version": "deepseek-v4-flash",
+      "expected_response_model": "deepseek-v4-flash",
+      "api": "openai-completions",
+      "base_url": "https://api.deepseek.com",
+      "maximum_output_tokens": 16384,
+      "thinking_level": "off",
+      "pi_version": "0.84.1"
+    },
+    "budget_policy": {
+      "model_api_attempt_limit": 10,
+      "approved_action_limit": 2,
+      "cost_policy": "audit_only",
+      "monetary_limit_usd": null
+    },
+    "policy": {
+      "policy_id": "policy-sha256:e689ac6d3e98150b4f500cac88cb861b8001cffa7d135fc41c6eafb9b75d9537",
+      "policy_digest": "sha256:e689ac6d3e98150b4f500cac88cb861b8001cffa7d135fc41c6eafb9b75d9537",
+      "state": "active",
+      "allowed_capability_ids": [
+        "CAP-006",
+        "CAP-016"
+      ]
+    },
+    "registry": {
+      "registry_snapshot_id": "registry-snapshot-sha256:d685bc1584810bf7057bc4768e12d257e941e2130f99a70d4fcaa70878462db9",
+      "registry_digest": "sha256:d685bc1584810bf7057bc4768e12d257e941e2130f99a70d4fcaa70878462db9",
+      "state": "active",
+      "capabilities": [
+        {
+          "capability_id": "CAP-006",
+          "state": "active",
+          "execution_binding": {
+            "execution_unit_id": "TOOL-03",
+            "execution_unit_name": "read_metric_series",
+            "execution_unit_version": "1.0.0",
+            "contract_digest": "sha256:18e49b8aa933e5a1917b16d818444bf8ac5c21270cecdd2a051332b6e13ed927",
+            "implementation_digest": "sha256:93bfa51cc8fbe17f33866293981136d1dc184ec8491e28baf4487d65dff9e1ad",
+            "semantic_digest": "sha256:813809e190a657df487be7d705f77c7bf6012523aa10ebac86da2d4c89e6be91"
+          }
+        },
+        {
+          "capability_id": "CAP-016",
+          "state": "active",
+          "execution_binding": {
+            "execution_unit_id": "OP-01",
+            "execution_unit_name": "series_extrema",
+            "execution_unit_version": "1.0.0",
+            "contract_digest": "sha256:18e49b8aa933e5a1917b16d818444bf8ac5c21270cecdd2a051332b6e13ed927",
+            "implementation_digest": "sha256:93bfa51cc8fbe17f33866293981136d1dc184ec8491e28baf4487d65dff9e1ad",
+            "semantic_digest": "sha256:0907a80f913e9e86e65e493362674aa637369f80de4a90077bf6e0c17d969fe1"
+          }
+        }
+      ]
+    },
+    "source_files": [
+      {
+        "path": "agent-sidecar/dist/src/agent/candidate-manifest.js",
+        "sha256": "sha256:9a4c523e70d46de4eb0362e49a6ea4f9040ae7f9f83c40ec3505c2e20f70a68e"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/capability-execution.js",
+        "sha256": "sha256:626746c89cd632078a99760c045ca8483561320b1ac960e99c496ffb981b0e8a"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/contracts.js",
+        "sha256": "sha256:447b8c11e1d398fdd1936e25d775c049c6375729a7536ad8b0f301c56db63bf8"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/country-outage-read-model.js",
+        "sha256": "sha256:14b2fb5bd2b2a87031c52c5534aa05cd9f026af3d28f400240db308d7f3ef360"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/finding-answer.js",
+        "sha256": "sha256:c36eca5db1504b83ead411461331617fccdc0fad79f9d56f6e40913ac487aa6e"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/first-slice-runtime.js",
+        "sha256": "sha256:6baa1b8fdd1ad92bb29bae7f808fd87170b8669b51f30f7f4510654d4358530b"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/interactive-conversation-service.js",
+        "sha256": "sha256:9c431096dfcb4a4d90ab5823eb3a3800c61482752c6b15b476f5cd015d4200a5"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/interactive-http-handler.js",
+        "sha256": "sha256:42309d7cd5732743735c3f85642f4f0dabc1239ef412d504811b7b94a2b41108"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/model-binding.js",
+        "sha256": "sha256:ffe3661bcaef9d08b21ef1433f5ed1c1729cccfb1bb7d206d97850370ea1dea1"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/pi-answer-renderer.js",
+        "sha256": "sha256:0637782f043f2fc67bd4d02f3d0755c229bbc44f0402a0b9d0ccd4c75748bc72"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/pi-interactive-agent-loop.js",
+        "sha256": "sha256:6968c21d849ec29c220795a24aac746607eb371a26af9bb4b95d2282ec50ce68"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/pi-runtime-boundary.js",
+        "sha256": "sha256:67fc7a1dfd1e203e2333f1b50eca1d8913e63489d2b94142c7ce4505172b5b18"
+      },
+      {
+        "path": "agent-sidecar/dist/src/agent/trust-kernel.js",
+        "sha256": "sha256:efbceea0dec08cd342b3242955a17fa6e890b3f36455f9ba64fbf5ce045042ad"
+      },
+      {
+        "path": "agent-sidecar/dist/src/cli/interactive-agent-sidecar.js",
+        "sha256": "sha256:13d8a331f31eaa599ef7da5edb765fc4821c326458c3a2c50dbceddb63baed86"
+      },
+      {
+        "path": "agent-sidecar/dist/src/cli/serve-interactive-agent.js",
+        "sha256": "sha256:1e8f7d95f18b0c5f936360308fe36724385e6ad86f2e3de91c1db5a9add465ef"
+      },
+      {
+        "path": "agent-sidecar/dist/src/cli/sidecar-security.js",
+        "sha256": "sha256:fc77069150da34baa99f5db3dcc4f184e6ef343234792e6699f26a2114a6009b"
+      },
+      {
+        "path": "agent-sidecar/dist/src/formal-runtime-limits.js",
+        "sha256": "sha256:040ed028ad1b52e89cfc36996b6ef97db8bebefd3f373e892a5f779b70d56eb2"
+      },
+      {
+        "path": "agent-sidecar/dist/src/pi/country-outage-skill-bundle.js",
+        "sha256": "sha256:0f7617e0e750fb42a19d2feaccfc5d223cb998f4dd69bcf84dea8f353213b442"
+      },
+      {
+        "path": "agent-sidecar/dist/src/pi/formal-model-runtime.js",
+        "sha256": "sha256:f4e9d551525b81d2d8397d9236817f9fab5799fc7bb60877b53b52f1f980da9d"
+      },
+      {
+        "path": "agent-sidecar/dist/src/pi/static-resource-loader.js",
+        "sha256": "sha256:86782b45a2c0e2370d1311dd66e5a0831d076278679f06e6f5c32c0c4981d648"
+      },
+      {
+        "path": "agent-sidecar/dist/src/shared/deterministic-json.js",
+        "sha256": "sha256:d7577fa6bcc1a0fbd91f985cca62ce3a630473d1d0dc38db8920e7a41198633f"
+      },
+      {
+        "path": "agent-sidecar/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js",
+        "sha256": "sha256:9bb5badc07dc1f073e094743acf4b81390601ae5bead8c35f15c54f7f0bc0504"
+      },
+      {
+        "path": "agent-sidecar/package-lock.json",
+        "sha256": "sha256:eb63baab11ae6714b447273501de76ad4b1e3e8c7a8de2f0c60402ea22d90cf6"
+      },
+      {
+        "path": "agent-sidecar/package.json",
+        "sha256": "sha256:35ec14f669869dec6091b5e1634868146a85738563e5a53b02d6570ece79b04b"
+      },
+      {
+        "path": "agent-sidecar/resources/vendor-patches/pi-ai-openai-completions-response-model-v1.json",
+        "sha256": "sha256:ba5f5bceae09c868285926d0b63c562f88168211284c52036aa62d8346bab1ad"
+      },
+      {
+        "path": "agent-sidecar/scripts/apply_pi_response_model_patch.mjs",
+        "sha256": "sha256:f17e9dfe4118fc44648b2e84e3cade1bb8d95b43b7d05d4b6db8e9d4ca5e30bf"
+      },
+      {
+        "path": "agent-sidecar/scripts/generate_first_slice_candidate_manifest.mjs",
+        "sha256": "sha256:b1317920e60c243a3aac9f62bd612ac32cc7d314e4826eb0163ef765b430c5f9"
+      },
+      {
+        "path": "agent-sidecar/src/agent/candidate-manifest.ts",
+        "sha256": "sha256:d8f7b6dd8f6dd1fd86eac86ca3a4eb5b65d1c48b8a68d718f69b2e75d841f852"
+      },
+      {
+        "path": "agent-sidecar/src/agent/capability-execution.ts",
+        "sha256": "sha256:93bfa51cc8fbe17f33866293981136d1dc184ec8491e28baf4487d65dff9e1ad"
+      },
+      {
+        "path": "agent-sidecar/src/agent/contracts.ts",
+        "sha256": "sha256:18e49b8aa933e5a1917b16d818444bf8ac5c21270cecdd2a051332b6e13ed927"
+      },
+      {
+        "path": "agent-sidecar/src/agent/country-outage-read-model.ts",
+        "sha256": "sha256:99885dc820fa146248c39e9fd171f382814c10e5b1936ac6cea6a45d2139a638"
+      },
+      {
+        "path": "agent-sidecar/src/agent/finding-answer.ts",
+        "sha256": "sha256:854e8d276f5db03a7ae7c1a5345603c22c26683670d19d00506f710c6f7d9fb8"
+      },
+      {
+        "path": "agent-sidecar/src/agent/first-slice-runtime.ts",
+        "sha256": "sha256:b46fc5c3ee24a4ad792363054fc0e9a3ade89511689e4d6b10994820a1216eca"
+      },
+      {
+        "path": "agent-sidecar/src/agent/interactive-conversation-service.ts",
+        "sha256": "sha256:a4dcbbd5d816ce28a4e8755716f77f582b25c3b8c58a72250729bfa7cc40637e"
+      },
+      {
+        "path": "agent-sidecar/src/agent/interactive-http-handler.ts",
+        "sha256": "sha256:f07b37d55eabb3a990ac6ccffc677e83a379fcc701360b918be406bdd3191a3e"
+      },
+      {
+        "path": "agent-sidecar/src/agent/model-binding.ts",
+        "sha256": "sha256:549ec60df95368c14923f87d347b6f873b8255cd6e39f4f3e1642a4959aabf34"
+      },
+      {
+        "path": "agent-sidecar/src/agent/pi-answer-renderer.ts",
+        "sha256": "sha256:f0e3bb160c4c86f2bfdb46dea0780682a8d8401fcd89cdd25711476bb7da8d3a"
+      },
+      {
+        "path": "agent-sidecar/src/agent/pi-interactive-agent-loop.ts",
+        "sha256": "sha256:c5d7ecc7b9b8c07d8fe77a91cef5e63e74cc52c74d4dea9ff424a0c42343b5db"
+      },
+      {
+        "path": "agent-sidecar/src/agent/pi-runtime-boundary.ts",
+        "sha256": "sha256:d94f313331e932969523ab3aa75ffe39a5f18ef6f1f68049c299f6aeb4bce754"
+      },
+      {
+        "path": "agent-sidecar/src/agent/trust-kernel.ts",
+        "sha256": "sha256:fc59aa64aa70202c7614d112dd1b146df9238be908372eb046c7b18b80be56b4"
+      },
+      {
+        "path": "agent-sidecar/src/cli/interactive-agent-sidecar.ts",
+        "sha256": "sha256:edc4d129cb13e5e2ec53ed22f29eb01e3768b13b7be8461549ae854e560f80f8"
+      },
+      {
+        "path": "agent-sidecar/src/cli/serve-interactive-agent.ts",
+        "sha256": "sha256:abd83716c1d88e33169b8d699571b46c9cf578bebac76de9f595c0f52e9d5244"
+      },
+      {
+        "path": "agent-sidecar/src/cli/sidecar-security.ts",
+        "sha256": "sha256:7dea974854517b610690d77d145caa9544f035992793ffa52108cd7f551bf1b4"
+      },
+      {
+        "path": "agent-sidecar/src/formal-runtime-limits.ts",
+        "sha256": "sha256:a01f49d4a9276b3eb13eb3b64e12951ea3707146c4a9ee382e55e15aa1a35007"
+      },
+      {
+        "path": "agent-sidecar/src/pi/country-outage-skill-bundle.ts",
+        "sha256": "sha256:924b57293005b123cbaaede68ea8ed75f973f56cd6a537a70a9865f1fde3a89a"
+      },
+      {
+        "path": "agent-sidecar/src/pi/formal-model-runtime.ts",
+        "sha256": "sha256:d5d0e69b0067456d8acf3a83d719d213a4a51575babadbcff5b26f1c6633997b"
+      },
+      {
+        "path": "agent-sidecar/src/pi/static-resource-loader.ts",
+        "sha256": "sha256:29d7eac426df88442ae1c0c4fc55b3ab8038e88dd920cd4c4595e50c37b6c2f5"
+      },
+      {
+        "path": "agent-sidecar/src/shared/deterministic-json.ts",
+        "sha256": "sha256:bbf0962a77916bb00d8a7aef297a959721a96b6f93da60de2019ae2e1543926b"
+      },
+      {
+        "path": "agent-sidecar/tsconfig.json",
+        "sha256": "sha256:0cbffe42a34be0d2ba5e7f725c062604c555d787927861c4ceed0f6c45578b1f"
+      },
+      {
+        "path": "agent-sidecar/vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch",
+        "sha256": "sha256:a7e89d8dae4ddb8a3aa2548153c2e0e68f57fd7b8102bdde10ecc8d297836c28"
+      },
+      {
+        "path": "contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json",
+        "sha256": "sha256:b886671ac2ed4c2724d8c6ace1989011e4a7384ff6960f8ca795b5920029186c"
+      },
+      {
+        "path": "docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md",
+        "sha256": "sha256:fa42124446d335ce9bb2636476787566417044bda160939ab8efa2315e97473c"
+      }
+    ],
+    "activation": {
+      "scope": "local_evaluation_only",
+      "production_deployed": false
+    }
+  }
+}
