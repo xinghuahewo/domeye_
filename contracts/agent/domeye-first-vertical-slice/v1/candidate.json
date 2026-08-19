@@ -1,8 +1,8 @@
 {
-  "candidate_id": "manifest:sha256:4236c3a8c94cc9bc4c01df8791139961bc84bda01b61fc7e07eaeed07772044d",
+  "candidate_id": "manifest:sha256:1ff1bba6fcdfd4bc37ce1abe2b4cdec8fc5bd3dc8e36bfccae4f15065830bc70",
   "payload": {
     "schema_version": "domeye_first_slice_candidate_manifest_v1",
-    "base_commit": "a27920aa2a7eaf05ce46e9f9ab70828ecd6e20dd",
+    "base_commit": "f534b47386a56c78bbb0a8acc661893ca02f5481",
     "contract": {
       "version": "domeye.first-vertical-slice/v1.0",
       "digest": "sha256:f14b3ad2c860fd97b3fc3e23d9db3b1609df3191631fe3b701caf7c8c88a396f"
@@ -120,7 +120,7 @@
       },
       {
         "path": "agent-sidecar/dist/src/agent/pi-answer-renderer.js",
-        "sha256": "sha256:0637782f043f2fc67bd4d02f3d0755c229bbc44f0402a0b9d0ccd4c75748bc72"
+        "sha256": "sha256:b6e23f4b748e7cd055afc2dc78dfb164a89be36fe17ca7588a20c1d37865425b"
       },
       {
         "path": "agent-sidecar/dist/src/agent/pi-interactive-agent-loop.js",
@@ -228,7 +228,7 @@
       },
       {
         "path": "agent-sidecar/src/agent/pi-answer-renderer.ts",
-        "sha256": "sha256:f0e3bb160c4c86f2bfdb46dea0780682a8d8401fcd89cdd25711476bb7da8d3a"
+        "sha256": "sha256:3caf37c22b4e6edbe9dec1b7c7a7b122b2a00d182200bcca43b54687e5a76d78"
       },
       {
         "path": "agent-sidecar/src/agent/pi-interactive-agent-loop.ts",
