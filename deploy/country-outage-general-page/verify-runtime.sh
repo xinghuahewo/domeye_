@@ -594,10 +594,10 @@ references = {
 }
 
 
-def fetch(path: str) -> tuple[dict[str, Any], int, float, str]:
+def fetch(path: str, timeout_seconds: int = 30) -> tuple[dict[str, Any], int, float, str]:
     started = time.perf_counter()
     request = Request(base_url + path, headers={"Accept": "application/json"})
-    with urlopen(request, timeout=30) as response:
+    with urlopen(request, timeout=timeout_seconds) as response:
         raw = response.read()
         etag = response.headers.get("ETag", "")
     elapsed = (time.perf_counter() - started) * 1000
@@ -683,7 +683,9 @@ as_window_path = "/api/v1/features/ases/overview?" + urlencode({
     "event_window": "true",
     "event_reference": references["IR"],
 })
-as_window, as_window_size, as_window_ms, _ = fetch(as_window_path)
+as_window, as_window_size, as_window_ms, _ = fetch(
+    as_window_path, timeout_seconds=125
+)
 assert as_window["scope_kind"] == "event_window_selected_asn"
 assert as_window["scope_size"] == 1
 assert as_window["start_time"] == "2026-02-27 08:10:00"

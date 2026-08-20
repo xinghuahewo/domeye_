@@ -202,6 +202,21 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "max_response_bytes",
         ):
             self.assertIn(phrase, embedded_python)
+        self.assertIn(
+            "def fetch(path: str, timeout_seconds: int = 30)",
+            embedded_python,
+        )
+        self.assertIn(
+            "with urlopen(request, timeout=timeout_seconds)",
+            embedded_python,
+        )
+        self.assertEqual(embedded_python.count("timeout_seconds=125"), 1)
+        self.assertEqual(
+            embedded_python.count(
+                "as_window_path, timeout_seconds=125"
+            ),
+            1,
+        )
 
     def test_production_completion_requires_verified_promotion(self) -> None:
         verify = script("verify-runtime.sh")
