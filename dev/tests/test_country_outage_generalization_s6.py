@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import subprocess
 import unittest
 
@@ -458,14 +459,102 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "if ! prepare_fail_closed_evidence",
             "if ! write_failed_closed_deployment false ''",
             "if ! write_failed_closed_state fail_closing in_progress",
-            "if ! publish_fail_closed_evidence",
             "if ! write_failed_closed_state failed_closed failed_closed",
             'if ! write_failed_closed_deployment true "${FAIL_CLOSED_SHA}"',
+            'if ! verify_failed_closed_closure "${FAIL_CLOSED_TEMP}"',
+            "if ! publish_fail_closed_evidence",
+            "if ! verify_failed_closed_closure; then",
         )
         positions = [execute.index(item) for item in ordered]
         self.assertEqual(positions, sorted(positions))
         self.assertIn(".production_verified = false", text)
         self.assertIn(".was_production_verified = true", text)
+
+    def test_fail_closed_receipt_binds_and_preserves_pre_rollback_v2_evidence(
+        self,
+    ) -> None:
+        text = script("rollback-runtime.sh")
+        for phrase in (
+            'readonly CANARY_EVIDENCE="${UNIFIED_ROOT}/CANARY-VERIFICATION.json"',
+            'readonly PRODUCTION_EVIDENCE="${UNIFIED_ROOT}/PRODUCTION-VERIFICATION.json"',
+            "freeze_pre_rollback_evidence",
+            "frozen_pre_rollback_evidence_is_unchanged",
+            "verify_failed_closed_closure",
+            'verify_failed_closed_closure "${FAIL_CLOSED_TEMP}"',
+            '.workflow_completion.state == "verified"',
+            '.schema_version == "domeye_country_outage_general_activation_v2"',
+            '.schema_version == "domeye_country_outage_general_deployment_v2"',
+            "domeye_country_outage_general_fail_closed_v2",
+            "pre_rollback_evidence",
+            "general_candidate",
+            "candidate_manifest_sha256",
+            "acceptance_record_id",
+            "acceptance_record_sha256",
+            "acceptance_replay_receipt_sha256",
+            'canary:{path:"CANARY-VERIFICATION.json",sha256:$canary_sha}',
+            'production:{path:"PRODUCTION-VERIFICATION.json",sha256:$production_sha}',
+            "INTERACTIVE_AGENT_CURRENT",
+            "INTERACTIVE_AGENT_ACTIVE",
+            '.candidate.backend.release_id == $backend_release_id',
+            '.candidate.frontend.release_id == $frontend_release_id',
+            '.components.backend.release_id == $backend_release_id',
+            '.components.frontend.release_id == $frontend_release_id',
+        ):
+            self.assertIn(phrase, text)
+
+        execute = text.split("--execute)", 1)[1]
+        self.assertLess(
+            execute.index("if ! frozen_pre_rollback_evidence_is_unchanged"),
+            execute.index("if ! prepare_fail_closed_evidence"),
+        )
+        self.assertLess(
+            execute.index('if ! verify_failed_closed_closure "${FAIL_CLOSED_TEMP}"'),
+            execute.index("if ! publish_fail_closed_evidence"),
+        )
+        self.assertLess(
+            execute.index("if ! publish_fail_closed_evidence"),
+            execute.index("if ! verify_failed_closed_closure; then"),
+        )
+        self.assertLess(
+            execute.index("if ! verify_failed_closed_closure; then"),
+            execute.index("生产已失败关闭且未恢复任何旧路由"),
+        )
+        self.assertEqual(
+            text.count("curl --disable --noproxy '*' --proto '=http' --max-redirs 0"),
+            2,
+        )
+        for evidence in ("CANDIDATE", "CANARY_EVIDENCE", "PRODUCTION_EVIDENCE"):
+            self.assertNotIn(f'unlink "${{{evidence}}}"', text)
+            self.assertNotIn(f'mv -T -- "${{{evidence}}}"', text)
+
+        for input_name in ("CANDIDATE", "STATE", "DEPLOYMENT"):
+            marker = f"' \"${{{input_name}}}\" >/dev/null; then"
+            jq_block = text.split(marker, 1)[0].rsplit("if ! jq -e", 1)[1]
+            used = set(re.findall(r"\$([a-z][a-z0-9_]*)", jq_block))
+            bound = set(
+                re.findall(r"--arg(?:json)?\s+([a-z][a-z0-9_]*)", jq_block)
+            )
+            self.assertEqual(
+                used - bound,
+                set(),
+                f"{input_name} jq 使用了未绑定变量：{sorted(used - bound)}",
+            )
+            jq_filter = jq_block.split("'", 1)[1]
+            command = ["jq", "-n"]
+            for name in sorted(used):
+                command.extend(("--arg", name, "fixture"))
+            command.append(jq_filter)
+            compiled = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                compiled.returncode,
+                0,
+                f"{input_name} jq 无法编译：{compiled.stderr}",
+            )
 
     def test_general_release_consumers_have_no_v1_interactive_contracts(self) -> None:
         combined = "\n".join(

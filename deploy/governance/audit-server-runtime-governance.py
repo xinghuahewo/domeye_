@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import stat
 import sys
@@ -23,6 +24,8 @@ POLICY_SCHEMA = "domeye.server-directory-policy/v1"
 DEFAULT_POLICY = Path(__file__).with_name("server-directory-policy.json")
 POLICY_ENV = "DOMEYE_SERVER_GOVERNANCE_POLICY_B64"
 ACCEPTED_CHECK_VALUES = {"passed", "verified"}
+ACCEPTANCE_RECORD_ID_RE = re.compile(r"^acceptance-record-sha256:[a-f0-9]{64}$")
+SHA256_DIGEST_RE = re.compile(r"^sha256:[a-f0-9]{64}$")
 
 
 class DiscoveryError(RuntimeError):
@@ -166,6 +169,19 @@ def safe_release_id(value: Any) -> str | None:
     return value
 
 
+def valid_v2_rollback(value: Any, current_release_id: str | None) -> bool:
+    if not isinstance(value, dict) or set(value) != {"mode", "previous_release_id"}:
+        return False
+    mode = value.get("mode")
+    previous = value.get("previous_release_id")
+    if mode == "fail_closed":
+        return previous is None
+    if mode != "same_schema_only":
+        return False
+    previous_id = safe_release_id(previous)
+    return previous_id is not None and previous_id != current_release_id
+
+
 def manifest_evidence(path: Path, object_id: str, max_bytes: int) -> dict[str, Any]:
     """从小型 release manifest 提取保留关系，不输出原始内容或校验值。"""
     result: dict[str, Any] = {"path": str(path), "parseState": "not_attempted", "rollbackReleaseIds": [], "acceptedEvidence": False}
@@ -183,22 +199,62 @@ def manifest_evidence(path: Path, object_id: str, max_bytes: int) -> dict[str, A
     result["parseState"] = "parsed"
     declared = safe_release_id(document.get("release_id", document.get("releaseId")))
     result["declaredReleaseMatchesObject"] = declared == object_id
+    result["releaseIdentityContractComplete"] = bool(
+        document.get("schema_version")
+        != "domeye_interactive_agent_release_manifest_v2"
+        or result["declaredReleaseMatchesObject"]
+    )
+    result["rollbackContractComplete"] = bool(
+        document.get("schema_version")
+        != "domeye_interactive_agent_release_manifest_v2"
+        or valid_v2_rollback(document.get("rollback"), declared)
+    )
     rollback_ids: set[str] = set()
     rollback = document.get("rollback")
     if isinstance(rollback, dict):
-        release_id = safe_release_id(rollback.get("release_id", rollback.get("releaseId")))
-        if release_id:
-            rollback_ids.add(release_id)
+        for key in (
+            "release_id",
+            "releaseId",
+            "previous_release_id",
+            "previousReleaseId",
+        ):
+            release_id = safe_release_id(rollback.get(key))
+            if release_id:
+                rollback_ids.add(release_id)
     direct_rollback = safe_release_id(document.get("rollback_release_id", document.get("rollbackReleaseId")))
     if direct_rollback:
         rollback_ids.add(direct_rollback)
     result["rollbackReleaseIds"] = sorted(rollback_ids)
     checks = document.get("checks")
-    result["acceptedEvidence"] = bool(
-        result["declaredReleaseMatchesObject"]
-        and isinstance(checks, dict)
+    legacy_accepted = bool(
+        isinstance(checks, dict)
         and checks
-        and all(isinstance(value, str) and value in ACCEPTED_CHECK_VALUES for value in checks.values())
+        and all(
+            isinstance(value, str) and value in ACCEPTED_CHECK_VALUES
+            for value in checks.values()
+        )
+    )
+    acceptance = document.get("acceptance")
+    v2_accepted = bool(
+        document.get("schema_version")
+        == "domeye_interactive_agent_release_manifest_v2"
+        and isinstance(acceptance, dict)
+        and acceptance.get("evaluation_phase") == "formal"
+        and acceptance.get("acceptance_state") == "accepted"
+        and acceptance.get("dg1_decision") == "GO"
+        and isinstance(acceptance.get("record_id"), str)
+        and ACCEPTANCE_RECORD_ID_RE.fullmatch(acceptance["record_id"])
+        and isinstance(acceptance.get("record_sha256"), str)
+        and SHA256_DIGEST_RE.fullmatch(acceptance["record_sha256"])
+    )
+    accepted = (
+        v2_accepted
+        if document.get("schema_version")
+        == "domeye_interactive_agent_release_manifest_v2"
+        else legacy_accepted
+    )
+    result["acceptedEvidence"] = bool(
+        result["declaredReleaseMatchesObject"] and accepted
     )
     return result
 
@@ -504,7 +560,13 @@ def inventory_object(
             if size <= max_manifest_bytes:
                 item["sha256"] = file_sha256(manifest)
                 item["evidence"] = manifest_evidence(manifest, path.name, max_manifest_bytes)
-                if item["evidence"]["parseState"] != "parsed":
+                if (
+                    item["evidence"]["parseState"] != "parsed"
+                    or not item["evidence"].get(
+                        "releaseIdentityContractComplete", True
+                    )
+                    or not item["evidence"].get("rollbackContractComplete", True)
+                ):
                     result["manifestEvidenceCoverageComplete"] = False
             else:
                 item["hashStatus"] = "skipped_too_large"
@@ -573,11 +635,32 @@ def rollback_state_evidence(paths: list[Path], runtime: dict[str, Any]) -> dict[
             result["stateFiles"].append(item)
             continue
         item["parseState"] = "parsed"
+        if (
+            document.get("schema_version") == "domeye_interactive_agent_active_v1"
+            and not valid_v2_rollback(
+                document.get("rollback"), safe_release_id(document.get("release_id"))
+            )
+        ):
+            item["rollbackContractComplete"] = False
+            result["coverageComplete"] = False
+        else:
+            item["rollbackContractComplete"] = True
         declared: set[str] = set()
         for key in ("release_id", "releaseId", "previous_release_id", "previousReleaseId"):
             value = safe_release_id(document.get(key))
             if value:
                 declared.add(value)
+        rollback = document.get("rollback")
+        if isinstance(rollback, dict):
+            for key in (
+                "release_id",
+                "releaseId",
+                "previous_release_id",
+                "previousReleaseId",
+            ):
+                value = safe_release_id(rollback.get(key))
+                if value:
+                    declared.add(value)
         item["releaseIds"] = sorted(declared)
         release_ids.update(declared)
         result["stateFiles"].append(item)

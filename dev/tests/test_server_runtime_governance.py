@@ -281,6 +281,243 @@ class ServerRuntimeGovernanceTest(unittest.TestCase):
         self.assertIn("rollback", rollback_release["protectedClasses"])
         self.assertIn("accepted_evidence", rollback_release["protectedClasses"])
 
+    def test_v2_manifest_protects_nested_previous_and_accepted_evidence(self):
+        previous_id = "interactive-agent-v2-previous"
+        previous = self.create_release(self.interactive_agent_root, previous_id)
+        accepted = {
+            "evaluation_phase": "formal",
+            "acceptance_state": "accepted",
+            "dg1_decision": "GO",
+            "record_id": f"acceptance-record-sha256:{'a' * 64}",
+            "record_sha256": f"sha256:{'b' * 64}",
+        }
+        (self.interactive_agent_active / "RELEASE-MANIFEST.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "domeye_interactive_agent_release_manifest_v2",
+                    "release_id": "interactive-agent-active",
+                    "acceptance": accepted,
+                    "rollback": {
+                        "mode": "same_schema_only",
+                        "previous_release_id": previous_id,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        (previous / "RELEASE-MANIFEST.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "domeye_interactive_agent_release_manifest_v2",
+                    "release_id": previous_id,
+                    "acceptance": accepted,
+                    "rollback": {
+                        "mode": "fail_closed",
+                        "previous_release_id": None,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.policy["runtimeGovernance"]["manifestFileNames"].append(
+            "RELEASE-MANIFEST.json"
+        )
+
+        result = AUDIT.build_discovery(self.policy)
+        interactive_agent = next(
+            item
+            for item in result["runtimeComponents"]
+            if item["name"] == "interactive_agent_sidecar"
+        )
+        previous_release = next(
+            item
+            for item in interactive_agent["releases"]
+            if item["releaseId"] == previous_id
+        )
+
+        self.assertIn(previous_id, interactive_agent["activeRollbackReleaseIds"])
+        self.assertTrue(interactive_agent["rollbackReferenceCoverageComplete"])
+        self.assertIn("rollback", previous_release["protectedClasses"])
+        self.assertIn("accepted_evidence", previous_release["protectedClasses"])
+
+    def test_v2_state_protects_nested_previous_release_id(self):
+        previous_id = "interactive-agent-v2-state-previous"
+        previous = self.create_release(self.interactive_agent_root, previous_id)
+        state_directory = self.runtime / "country-outage-interactive-agent" / "state"
+        state_directory.mkdir(parents=True)
+        active_state = state_directory / "active.json"
+        rollback_state = state_directory / "rollback.json"
+        active_state.write_text(
+            json.dumps(
+                {
+                    "schema_version": "domeye_interactive_agent_active_v1",
+                    "component": "domeye_interactive_agent_sidecar",
+                    "release_id": "interactive-agent-active",
+                    "deployment_state": "deployed",
+                    "activated_at_utc": "2026-08-21T00:00:00.000Z",
+                    "release_manifest_sha256": f"sha256:{'a' * 64}",
+                    "candidate_id": f"manifest:sha256:{'b' * 64}",
+                    "runtime": {
+                        "screen_name": "domeye_interactive_agent_sidecar",
+                        "pid": 123,
+                        "entrypoint": "agent-sidecar/dist/src/cli/serve-interactive-agent.js",
+                        "host": "127.0.0.1",
+                        "port": 28476,
+                        "base_path": "/country-outage/chat",
+                    },
+                    "rollback": {
+                        "mode": "same_schema_only",
+                        "previous_release_id": previous_id,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        rollback_state.write_text(
+            active_state.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        active_state.chmod(0o600)
+        rollback_state.chmod(0o600)
+        component = self.policy["runtimeGovernance"]["releaseComponents"][2]
+        component["rollbackStatePaths"] = [str(active_state), str(rollback_state)]
+
+        result = AUDIT.build_discovery(self.policy)
+        interactive_agent = next(
+            item
+            for item in result["runtimeComponents"]
+            if item["name"] == "interactive_agent_sidecar"
+        )
+        previous_release = next(
+            item
+            for item in interactive_agent["releases"]
+            if item["releaseId"] == previous.name
+        )
+
+        self.assertIn(previous_id, interactive_agent["activeRollbackReleaseIds"])
+        self.assertTrue(interactive_agent["rollbackReferenceCoverageComplete"])
+        self.assertIn("rollback", previous_release["protectedClasses"])
+
+    def test_known_v2_manifest_or_state_with_invalid_rollback_is_unknown(self):
+        self.policy["runtimeGovernance"]["manifestFileNames"].append(
+            "RELEASE-MANIFEST.json"
+        )
+        manifest = self.interactive_agent_active / "RELEASE-MANIFEST.json"
+        manifest.write_text(
+            json.dumps(
+                {
+                    "schema_version": "domeye_interactive_agent_release_manifest_v2",
+                    "release_id": "interactive-agent-active",
+                    "acceptance": {
+                        "evaluation_phase": "formal",
+                        "acceptance_state": "accepted",
+                        "dg1_decision": "GO",
+                        "record_id": f"acceptance-record-sha256:{'a' * 64}",
+                        "record_sha256": f"sha256:{'b' * 64}",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        state_directory = self.runtime / "country-outage-interactive-agent" / "state"
+        state_directory.mkdir(parents=True)
+        active_state = state_directory / "active.json"
+        active_state.write_text(
+            json.dumps(
+                {
+                    "schema_version": "domeye_interactive_agent_active_v1",
+                    "release_id": "interactive-agent-active",
+                    "rollback": "invalid",
+                }
+            ),
+            encoding="utf-8",
+        )
+        active_state.chmod(0o600)
+        component = self.policy["runtimeGovernance"]["releaseComponents"][2]
+        component["rollbackStatePaths"] = [str(active_state)]
+
+        result = AUDIT.build_discovery(self.policy)
+        interactive_agent = next(
+            item
+            for item in result["runtimeComponents"]
+            if item["name"] == "interactive_agent_sidecar"
+        )
+        active_release = next(
+            item for item in interactive_agent["releases"] if item["active"]
+        )
+
+        self.assertFalse(
+            active_release["inventory"]["manifestEvidenceCoverageComplete"]
+        )
+        self.assertFalse(interactive_agent["rollbackReferenceCoverageComplete"])
+        self.assertIn("unknown", active_release["protectedClasses"])
+        self.assertEqual(active_release["retentionState"], "protected_or_unknown")
+
+        for declared_release_id in (None, "different-release"):
+            with self.subTest(declared_release_id=declared_release_id):
+                identity_manifest = {
+                    "schema_version": "domeye_interactive_agent_release_manifest_v2",
+                    "rollback": {
+                        "mode": "fail_closed",
+                        "previous_release_id": None,
+                    },
+                }
+                if declared_release_id is not None:
+                    identity_manifest["release_id"] = declared_release_id
+                manifest.write_text(
+                    json.dumps(identity_manifest),
+                    encoding="utf-8",
+                )
+                evidence = AUDIT.manifest_evidence(
+                    manifest, "interactive-agent-active", 4096
+                )
+                self.assertFalse(evidence["declaredReleaseMatchesObject"])
+                self.assertFalse(evidence["releaseIdentityContractComplete"])
+
+    def test_v2_rejected_or_incomplete_acceptance_is_not_accepted_evidence(self):
+        base = {
+            "schema_version": "domeye_interactive_agent_release_manifest_v2",
+            "release_id": "fixture-v2",
+            "rollback": {"mode": "fail_closed", "previous_release_id": None},
+            "checks": {"release": "verified"},
+        }
+        invalid_acceptances = (
+            {
+                "evaluation_phase": "pilot",
+                "acceptance_state": "accepted",
+                "dg1_decision": "GO",
+                "record_id": f"acceptance-record-sha256:{'a' * 64}",
+                "record_sha256": f"sha256:{'b' * 64}",
+            },
+            {
+                "evaluation_phase": "formal",
+                "acceptance_state": "rejected",
+                "dg1_decision": "REPAIR",
+                "record_id": f"acceptance-record-sha256:{'a' * 64}",
+                "record_sha256": f"sha256:{'b' * 64}",
+            },
+            {
+                "evaluation_phase": "formal",
+                "acceptance_state": "accepted",
+                "dg1_decision": "GO",
+                "record_id": "acceptance-record-sha256:invalid",
+                "record_sha256": f"sha256:{'b' * 64}",
+            },
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "RELEASE-MANIFEST.json"
+            for acceptance in invalid_acceptances:
+                with self.subTest(acceptance=acceptance):
+                    manifest.write_text(
+                        json.dumps({**base, "acceptance": acceptance}),
+                        encoding="utf-8",
+                    )
+                    evidence = AUDIT.manifest_evidence(manifest, "fixture-v2", 4096)
+                    self.assertFalse(evidence["acceptedEvidence"])
+            manifest.write_text(json.dumps(base), encoding="utf-8")
+            evidence = AUDIT.manifest_evidence(manifest, "fixture-v2", 4096)
+            self.assertFalse(evidence["acceptedEvidence"])
+
     def test_missing_declared_rollback_fails_closed_for_component_candidates(self):
         (self.backend_active / "RELEASE-MANIFEST.json").write_text(
             json.dumps(
