@@ -214,18 +214,9 @@ export const DomeyeFirstSliceCandidateManifestPayloadSchema = Type.Object({
   }, { additionalProperties: false }),
 }, { additionalProperties: false })
 
-type StrictDomeyeFirstSliceCandidateManifestPayload = Static<
+export type DomeyeFirstSliceCandidateManifestPayload = Static<
   typeof DomeyeFirstSliceCandidateManifestPayloadSchema
 >
-
-// 旧的纯内存测试夹具只把该类型用作 Runtime binding 输入；磁盘 Manifest
-// 仍由上面的精确 schema 强制要求 attestation_policy。
-export type DomeyeFirstSliceCandidateManifestPayload = Omit<
-  StrictDomeyeFirstSliceCandidateManifestPayload,
-  'attestation_policy'
-> & {
-  readonly attestation_policy?: DomeyeFirstSliceAttestationPolicy
-}
 
 export const DomeyeFirstSliceCandidateManifestSchema = Type.Object({
   candidate_id: Type.String({

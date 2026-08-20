@@ -116,6 +116,34 @@ const manifestPayload: DomeyeFirstSliceCandidateManifestPayload = {
       },
     ],
   },
+  attestation_policy: {
+    schema_version: 'domeye_first_slice_attestation_policy_v1',
+    algorithm: 'ed25519',
+    canonicalization: 'domeye_unicode_codepoint_canonical_json_v1',
+    signature_domains: {
+      execution_evidence:
+        'domeye.first-slice.evaluation-attestation/execution/v1',
+      independent_review:
+        'domeye.first-slice.evaluation-attestation/independent-review/v1',
+    },
+    release_eligible: true,
+    execution_evidence: {
+      role: 'execution_evidence',
+      actor_id: 'domeye-first-slice-real-runtime-attestor-v1',
+      key_id:
+        'ed25519-spki-sha256:77b6cf4878e19aa98161ed06d4076bbeeffd47f086d02f65e91961dc000fc53d',
+      public_key_spki_der_base64:
+        'MCowBQYDK2VwAyEAamxMc7yzmYMTNH7iCH0jrcgOod/9/Wj5xsCjjLsMzQM=',
+    },
+    independent_review: {
+      role: 'independent_review',
+      actor_id: 'domeye-first-slice-independent-reviewer-v1',
+      key_id:
+        'ed25519-spki-sha256:785c71f709a61cd74a4801b0ce163c8614859ec367f9657b813caa458d2ebbdf',
+      public_key_spki_der_base64:
+        'MCowBQYDK2VwAyEAzzCysI/7F/LIc5UcVtawEwEN1yjkzvgrPvSDRUW8Qls=',
+    },
+  },
   source_files: [
     { path: 'src/reader.ts', sha256: readerBinding.implementation_digest },
     { path: 'src/extrema.ts', sha256: extremaBinding.implementation_digest },
