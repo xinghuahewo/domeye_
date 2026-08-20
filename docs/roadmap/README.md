@@ -13,6 +13,13 @@ Roadmap 用用户旅程、风险和同一 Candidate 的证据管理进度，不�
 7. [Roadmap 视图](roadmap-view.md)：M0、M1 和 DG1 的推进关系。
 8. [进度可视化](progress-visualization.md)：如何区分工作进展、能力成熟度和 Gate 决定。
 
+## 回答体验专项
+
+- [回答风格开发与验收计划 v1.0](Domeye_Agent_Answer_Style_Development_and_Acceptance_Plan_v1.0.md)：先实现用户回答与内部证据分离，再冻结新 Candidate，依次完成 3/3、30/30 和生产收口。
+- 目标效果以[用户回答与内部证据边界 v1.0](../architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)为准。
+
+该专项不改变 22 项总路线，也不把文档完成、前端隐藏或旧 Candidate 验收写成新回答风格已经完成。
+
 ## 辅助材料
 
 - [Capability Roadmap 模板](capability-roadmap.md)

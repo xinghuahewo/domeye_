@@ -12,6 +12,9 @@ Agent 当前开发只按以下顺序进入：
 4. [当前代码基线](../architecture/Domeye_Current_Code_Baseline_2026-08-16.md)
 5. [22 项整改审计对应表](../requirements/Domeye_Adversarial_Review_22_Items_Traceability_v1.1.md)
 6. [22 项开发优先级与阶段计划](../roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md)
+7. [用户回答与内部证据边界 v1.0](../architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)
+
+回答风格的实施顺序和 Candidate 边界见[回答风格开发与验收计划 v1.0](../roadmap/Domeye_Agent_Answer_Style_Development_and_Acceptance_Plan_v1.0.md)。两份文档当前都只证明 `Designed`。
 
 当前产品主名称是 **Domeye 国家网络中断调查 Agent**；当前首片只提供已绑定事件、publication、revision、单一 RRC25 和冻结时间窗内的 **RRC25 BGP 控制面证据调查**。产品名不能扩大当前事实边界。
 
