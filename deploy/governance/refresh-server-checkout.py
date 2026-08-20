@@ -32,6 +32,9 @@ ACTIVE_LINKS = (
     Path("/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent/current"),
     Path("/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current"),
 )
+BOOTSTRAP_ABSENT_ACTIVE_LINK = Path(
+    "/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent/current"
+)
 SCHEMA = "domeye.server-checkout-refresh/v1"
 
 
@@ -140,6 +143,11 @@ def git_locks(source: Path) -> list[str]:
 def active_links() -> list[dict[str, str]]:
     snapshot: list[dict[str, str]] = []
     for link in ACTIVE_LINKS:
+        if not os.path.lexists(link):
+            if link != BOOTSTRAP_ABSENT_ACTIVE_LINK:
+                raise RefreshError(f"活动指针不存在：{link}")
+            snapshot.append({"path": str(link), "state": "absent"})
+            continue
         if not link.is_symlink():
             raise RefreshError(f"活动指针不是软链接：{link}")
         target = canonical(link)
@@ -147,7 +155,7 @@ def active_links() -> list[dict[str, str]]:
             raise RefreshError(f"活动指针目标不存在：{link}")
         if is_within(target, canonical(EXPECTED_SOURCE)):
             raise RefreshError(f"活动指针错误引用源码 checkout：{link}")
-        snapshot.append({"path": str(link), "rawTarget": os.readlink(link), "resolvedTarget": str(target)})
+        snapshot.append({"path": str(link), "state": "symlink", "rawTarget": os.readlink(link), "resolvedTarget": str(target)})
     return snapshot
 
 
