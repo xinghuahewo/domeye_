@@ -236,6 +236,33 @@ if grep -F 'Finding receipt_refs/artifact_refs' \
     fail 'stopped Turn 被误报为 Finding 引用不闭合'
 fi
 
+# 正式 Guard 重放包含内部 schema_version；公开 trace 合同只包含
+# decision/reason_codes。发布门必须先做精确公开投影，再比较两个公开字段。
+jq -n '{
+  schema_version:"domeye_agent_response_guard_v1",
+  decision:"pass",
+  reason_codes:[]
+}' > "${FIXTURE_ROOT}/response-guard-internal.json"
+jq -n '{decision:"pass",reason_codes:[]}' \
+    > "${FIXTURE_ROOT}/response-guard-public.json"
+verifier _test-response-guard-projection \
+    "${FIXTURE_ROOT}/response-guard-internal.json" \
+    "${FIXTURE_ROOT}/response-guard-public.json" \
+    || fail '内部 Guard 未能投影为精确公开合同'
+jq '.decision="block"' "${FIXTURE_ROOT}/response-guard-public.json" \
+    > "${FIXTURE_ROOT}/response-guard-decision-drift.json"
+assert_fails '公开 Guard decision 漂移' \
+    verifier _test-response-guard-projection \
+    "${FIXTURE_ROOT}/response-guard-internal.json" \
+    "${FIXTURE_ROOT}/response-guard-decision-drift.json"
+jq '.reason_codes=["guard_projection_fixture_drift"]' \
+    "${FIXTURE_ROOT}/response-guard-public.json" \
+    > "${FIXTURE_ROOT}/response-guard-reason-codes-drift.json"
+assert_fails '公开 Guard reason_codes 漂移' \
+    verifier _test-response-guard-projection \
+    "${FIXTURE_ROOT}/response-guard-internal.json" \
+    "${FIXTURE_ROOT}/response-guard-reason-codes-drift.json"
+
 # 发布级 raw evidence 必须 30 条逐条通过共享公开完成门；单条自报 false
 # 即使其余 Renderer/Guard 字段为成功，也不能通过。
 jq -n --arg candidate_id "${FORMAL_GATE_CANDIDATE_ID}" '

@@ -81,6 +81,13 @@ function sameValue(left, right) {
   return canonical(left) === canonical(right)
 }
 
+function projectPublicResponseGuard(guard) {
+  return {
+    decision: guard.decision,
+    reason_codes: [...guard.reason_codes],
+  }
+}
+
 function exactKeys(value, keys) {
   return value
     && typeof value === 'object'
@@ -1236,6 +1243,9 @@ async function verifyPromotion(
     answer,
     verified.candidate,
   )
+  const replayedPublicGuard = projectPublicResponseGuard(
+    replayedAnswer.guard,
+  )
   const serialized = canonical(turn)
   if (
     !/^conversation_sha256_[a-f0-9]{64}$/.test(conversation?.conversation_id)
@@ -1257,7 +1267,7 @@ async function verifyPromotion(
     || !Array.isArray(answer.limitations)
     || answer.limitations.length === 0
     || answer.trace?.disposition !== 'goal_satisfied'
-    || !sameValue(answer.trace?.response_guard, replayedAnswer.guard)
+    || !sameValue(answer.trace?.response_guard, replayedPublicGuard)
     || answer.trace?.response_guard?.decision !== 'pass'
     || !Array.isArray(answer.trace.response_guard.reason_codes)
     || answer.trace.response_guard.reason_codes.length !== 0
@@ -1353,6 +1363,17 @@ if (args[0] === '_test-promotion-binding') {
   const answer = readJson(fixtureFile(root, args[1]))
   const candidate = readJson(fixtureFile(root, args[2]))
   verifySuccessfulProviderUsage(answer, candidate.payload)
+} else if (args[0] === '_test-response-guard-projection') {
+  if (args.length !== 3) {
+    fail('用法：verify-release.mjs _test-response-guard-projection <internal-guard.json> <public-guard.json>')
+  }
+  const root = fixtureRoot()
+  const internalGuard = readJson(fixtureFile(root, args[1]))
+  const publicGuard = readJson(fixtureFile(root, args[2]))
+  if (!sameValue(
+    publicGuard,
+    projectPublicResponseGuard(internalGuard),
+  )) fail('公开 Response Guard 与内部 Guard 重放投影不一致')
 } else if (args[0] === '_test-formal-public-completion-trials') {
   if (args.length !== 3) {
     fail('用法：verify-release.mjs _test-formal-public-completion-trials <trials.json> <candidate-id>')
