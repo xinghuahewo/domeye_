@@ -485,7 +485,7 @@ jq -n \
     --arg tag "${SOURCE_TAG}" \
     --arg tree_sha256 "${frontend_tree_sha}" \
     --arg created_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '{schema_version:$schema_version,release_id:$release_id,source:{commit:$commit,annotated_tag:$tag},tree_sha256:$tree_sha256,created_at:$created_at,tests:{frontend:211,typecheck:"passed",build:"passed"}}' \
+    '{schema_version:$schema_version,release_id:$release_id,source:{commit:$commit,annotated_tag:$tag},tree_sha256:$tree_sha256,created_at:$created_at,tests:{status:"passed",command:"npm test -- --run",typecheck:"passed",build:"passed"}}' \
     > "${frontend_candidate}/FRONTEND-MANIFEST.json"
 (
     cd -- "${frontend_candidate}"
@@ -583,7 +583,7 @@ jq -n \
       source:{commit:$commit,annotated_tag:$tag,archive_path:$archive_path,archive_sha256:$archive_sha256,path:$source_path,manifest_sha256:$source_manifest_sha256,authority:{mode:"interactive_agent_release",release_id:$interactive_agent_release_id,commit:$commit,annotated_tag:$tag,archive_sha256:$archive_sha256,equality_verified:true}},
       components:{
         backend:{release_id:$backend_release_id,path:$backend_path,binding_sha256:$backend_binding_sha256,sha256sums_sha256:$backend_sha256sums_sha256,tests:"core and affected backend passed"},
-        frontend:{release_id:$frontend_release_id,path:$frontend_path,manifest_sha256:$frontend_manifest_sha256,tree_sha256:$frontend_tree_sha256,sha256sums_sha256:$frontend_sha256sums_sha256,tests:211,typecheck:"passed",build:"passed"}
+        frontend:{release_id:$frontend_release_id,path:$frontend_path,manifest_sha256:$frontend_manifest_sha256,tree_sha256:$frontend_tree_sha256,sha256sums_sha256:$frontend_sha256sums_sha256,tests:{status:"passed",command:"npm test -- --run"},typecheck:"passed",build:"passed"}
       },
       frozen_data:{
         production_selection_sha256:$data_selection_sha256,

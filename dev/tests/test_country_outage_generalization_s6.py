@@ -80,6 +80,18 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
         self.assertNotIn("paid_model_calls", text)
         self.assertNotIn("rm -rf", text)
 
+    def test_prepare_records_frontend_test_command_without_stale_count(self) -> None:
+        text = script("prepare-runtime-release.sh")
+        self.assertEqual(
+            text.count('tests:{status:"passed",command:"npm test -- --run"'),
+            2,
+        )
+        self.assertNotRegex(text, r"tests\s*:\s*\d+")
+        self.assertNotRegex(
+            text,
+            r"tests\s*:\s*\{\s*frontend\s*:\s*\d+",
+        )
+
     def test_manager_replays_bound_interactive_agent_identity(self) -> None:
         text = script("manage-runtime.sh")
         for phrase in (
