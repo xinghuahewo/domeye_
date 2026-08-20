@@ -24,6 +24,7 @@ import type { DomeyePiModelBinding } from '../agent/pi-interactive-agent-loop.js
 import {
   assertCountryOutageLoopbackHost,
   createCountryOutageInternalAuthenticator,
+  createCountryOutageVerifierAuthenticator,
   positiveIntegerEnvironmentValue,
   requiredEnvironmentValue,
   type SidecarEnvironment,
@@ -54,7 +55,7 @@ function configuration(env: DomeyeInteractiveAgentEnvironment) {
   const port = positiveIntegerEnvironmentValue(
     env,
     'COUNTRY_OUTAGE_AGENT_PORT',
-    28_475,
+    28_476,
   )
   if (port > 65_535) throw new Error('COUNTRY_OUTAGE_AGENT_PORT 无效')
   const sharedToken = requiredEnvironmentValue(
@@ -63,6 +64,16 @@ function configuration(env: DomeyeInteractiveAgentEnvironment) {
   )
   if (sharedToken.length < 24) {
     throw new Error('COUNTRY_OUTAGE_AGENT_SHARED_TOKEN 至少需要 24 字符')
+  }
+  const verifierToken = requiredEnvironmentValue(
+    env,
+    'COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN',
+  )
+  if (verifierToken.length < 24) {
+    throw new Error('COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN 至少需要 24 字符')
+  }
+  if (verifierToken === sharedToken) {
+    throw new Error('验证器 Token 必须与普通访问 Token 分离')
   }
   const projectRoot = resolve(requiredEnvironmentValue(
     env,
@@ -91,6 +102,7 @@ function configuration(env: DomeyeInteractiveAgentEnvironment) {
     host,
     port,
     sharedToken,
+    verifierToken,
     projectRoot,
     manifestPath: requiredEnvironmentValue(
       env,
@@ -156,6 +168,8 @@ export async function createDomeyeInteractiveAgentSidecar(
     activation_scope: manifest.payload.activation.scope,
     production_deployed: manifest.payload.activation.production_deployed,
     contract: manifest.payload.contract,
+    answer_presentation_contract:
+      manifest.payload.answer_presentation_contract,
     data_identity: manifest.payload.data_identity,
     model_identity: manifest.payload.model,
     budget_policy: manifest.payload.budget_policy,
@@ -174,6 +188,9 @@ export async function createDomeyeInteractiveAgentSidecar(
   const listener = createDomeyeInteractiveAgentHttpHandler({
     service,
     authenticate: createCountryOutageInternalAuthenticator(config.sharedToken),
+    authenticate_verifier: createCountryOutageVerifierAuthenticator(
+      config.verifierToken,
+    ),
     readiness: () => readiness,
   })
   const server = (

@@ -54,6 +54,9 @@ export interface DomeyeFirstSliceCandidateBinding {
   readonly candidate_id: string
   readonly contract_version: 'domeye.first-vertical-slice/v1.0'
   readonly contract_digest: string
+  readonly answer_presentation_contract_version:
+    'domeye.first-vertical-slice.answer-presentation/v1.0'
+  readonly answer_presentation_contract_digest: string
   readonly data_identity: DomeyeDataIdentity
   readonly series_response_sha256: string
   readonly model_identity: DomeyePiModelIdentity
@@ -78,8 +81,13 @@ export interface DomeyeFirstSliceRunRequest {
 }
 
 interface ResultCommon {
-  readonly schema_version: 'domeye_first_vertical_slice_run_v1'
+  readonly schema_version: 'domeye_first_vertical_slice_run_v2'
   readonly candidate_id: string
+  readonly contract_version: 'domeye.first-vertical-slice/v1.0'
+  readonly contract_digest: string
+  readonly answer_presentation_contract_version:
+    'domeye.first-vertical-slice.answer-presentation/v1.0'
+  readonly answer_presentation_contract_digest: string
   readonly identity_receipt: DomeyeVerifiedIdentityReceipt
   readonly semantic_goal: DomeyeSemanticGoal
   readonly goal_state: DomeyeGoalState
@@ -92,18 +100,25 @@ export type DomeyeFirstSliceRunResult =
       outcome: 'completed'
       finding: DomeyeTypedFinding
       answer_context: DomeyeAnswerContext
+      answer_context_digest: string
       answer: DomeyeAcceptedAnswer
     }>
   | Readonly<ResultCommon & {
       outcome: 'clarification_required' | 'stopped'
       finding: null
       answer_context: null
+      answer_context_digest: null
       answer: null
     }>
 
 interface FailureEvidenceCommon {
-  schema_version: 'domeye_first_vertical_slice_failure_evidence_v1'
+  schema_version: 'domeye_first_vertical_slice_failure_evidence_v2'
   readonly candidate_id: string
+  readonly contract_version: 'domeye.first-vertical-slice/v1.0'
+  readonly contract_digest: string
+  readonly answer_presentation_contract_version:
+    'domeye.first-vertical-slice.answer-presentation/v1.0'
+  readonly answer_presentation_contract_digest: string
   readonly identity_receipt: DomeyeVerifiedIdentityReceipt
   readonly semantic_goal: DomeyeSemanticGoal
   readonly goal_state: DomeyeGoalState
@@ -117,6 +132,7 @@ export type DomeyeFirstSliceRunFailureEvidence =
       loop: null
       finding: null
       answer_context: null
+      answer_context_digest: null
       answer: null
     }>
   | Readonly<FailureEvidenceCommon & {
@@ -125,6 +141,7 @@ export type DomeyeFirstSliceRunFailureEvidence =
       loop: PiInteractiveAgentLoopResult
       finding: null
       answer_context: null
+      answer_context_digest: null
       answer: null
     }>
   | Readonly<FailureEvidenceCommon & {
@@ -133,6 +150,7 @@ export type DomeyeFirstSliceRunFailureEvidence =
       loop: PiInteractiveAgentLoopResult
       finding: DomeyeTypedFinding
       answer_context: DomeyeAnswerContext
+      answer_context_digest: string
       answer: DomeyeFallbackAnswer
     }>
 
@@ -173,6 +191,19 @@ function sameIdentity(
   right: DomeyeDataIdentity,
 ): boolean {
   return canonicalJsonSha256(left) === canonicalJsonSha256(right)
+}
+
+function candidateContractBinding(
+  candidate: DomeyeFirstSliceCandidateBinding,
+) {
+  return {
+    contract_version: candidate.contract_version,
+    contract_digest: candidate.contract_digest,
+    answer_presentation_contract_version:
+      candidate.answer_presentation_contract_version,
+    answer_presentation_contract_digest:
+      candidate.answer_presentation_contract_digest,
+  }
 }
 
 function deepFreeze<T>(value: T): Readonly<T> {
@@ -220,6 +251,11 @@ export class DomeyeFirstSliceRuntime {
       || options.candidate.contract_version
         !== 'domeye.first-vertical-slice/v1.0'
       || !/^sha256:[a-f0-9]{64}$/.test(options.candidate.contract_digest)
+      || options.candidate.answer_presentation_contract_version
+        !== 'domeye.first-vertical-slice.answer-presentation/v1.0'
+      || !/^sha256:[a-f0-9]{64}$/.test(
+        options.candidate.answer_presentation_contract_digest,
+      )
       || !/^sha256:[a-f0-9]{64}$/.test(
         options.candidate.series_response_sha256,
       )
@@ -321,8 +357,9 @@ export class DomeyeFirstSliceRuntime {
       throw new DomeyeFirstSliceRunError(
         caught.code,
         deepFreeze({
-          schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+          schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
           candidate_id: candidate.candidate_id,
+          ...candidateContractBinding(candidate),
           identity_receipt: identityReceipt,
           semantic_goal: semanticGoal,
           goal_state: caught.evidence.goal_state,
@@ -331,6 +368,7 @@ export class DomeyeFirstSliceRuntime {
           loop: null,
           finding: null,
           answer_context: null,
+          answer_context_digest: null,
           answer: null,
           usage: caught.evidence.usage,
         }),
@@ -344,8 +382,9 @@ export class DomeyeFirstSliceRuntime {
       throw new DomeyeFirstSliceRunError(
         'decision_rejected',
         deepFreeze({
-          schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+          schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
           candidate_id: candidate.candidate_id,
+          ...candidateContractBinding(candidate),
           identity_receipt: identityReceipt,
           semantic_goal: semanticGoal,
           goal_state: failureGoalState,
@@ -354,6 +393,7 @@ export class DomeyeFirstSliceRuntime {
           loop: loopResult,
           finding: null,
           answer_context: null,
+          answer_context_digest: null,
           answer: null,
           usage: accounting.audit(),
         }),
@@ -361,17 +401,19 @@ export class DomeyeFirstSliceRuntime {
     }
     if (loopResult.disposition.disposition !== 'goal_satisfied') {
       return deepFreeze({
-        schema_version: 'domeye_first_vertical_slice_run_v1',
+        schema_version: 'domeye_first_vertical_slice_run_v2',
         outcome: loopResult.disposition.disposition === 'clarification_required'
           ? 'clarification_required'
           : 'stopped',
         candidate_id: candidate.candidate_id,
+        ...candidateContractBinding(candidate),
         identity_receipt: identityReceipt,
         semantic_goal: semanticGoal,
         goal_state: loopResult.goal_state,
         loop: loopResult,
         finding: null,
         answer_context: null,
+        answer_context_digest: null,
         answer: null,
         usage: accounting.audit(),
       })
@@ -405,10 +447,7 @@ export class DomeyeFirstSliceRuntime {
       extrema_artifact: extremaArtifact,
       extrema_receipt: extremaReceipt,
     })
-    const answerContext = buildCountryOutageAnswerContext(
-      finding,
-      candidate.contract_digest,
-    )
+    const answerContext = buildCountryOutageAnswerContext(finding)
     const renderer = this.#options.renderer_factory?.(accounting)
       ?? new PiAnswerRenderer({
         model_binding: this.#options.model_binding,
@@ -430,8 +469,9 @@ export class DomeyeFirstSliceRuntime {
       throw new DomeyeFirstSliceRunError(
         'answer_not_accepted',
         deepFreeze({
-          schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+          schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
           candidate_id: candidate.candidate_id,
+          ...candidateContractBinding(candidate),
           identity_receipt: identityReceipt,
           semantic_goal: semanticGoal,
           goal_state: failureGoalState,
@@ -440,6 +480,7 @@ export class DomeyeFirstSliceRuntime {
           loop: loopResult,
           finding,
           answer_context: answerContext,
+          answer_context_digest: digest(answerContext),
           answer,
           usage: accounting.audit(),
         }),
@@ -453,15 +494,17 @@ export class DomeyeFirstSliceRuntime {
       updated_at_utc: this.#now().toISOString(),
     })
     return deepFreeze({
-      schema_version: 'domeye_first_vertical_slice_run_v1',
+      schema_version: 'domeye_first_vertical_slice_run_v2',
       outcome: 'completed',
       candidate_id: candidate.candidate_id,
+      ...candidateContractBinding(candidate),
       identity_receipt: identityReceipt,
       semantic_goal: semanticGoal,
       goal_state: finalGoalState,
       loop: loopResult,
       finding,
       answer_context: answerContext,
+      answer_context_digest: digest(answerContext),
       answer,
       usage: accounting.audit(),
     })

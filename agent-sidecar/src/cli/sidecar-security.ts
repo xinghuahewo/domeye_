@@ -86,6 +86,27 @@ export function createCountryOutageInternalAuthenticator(
   }
 }
 
+export function createCountryOutageVerifierAuthenticator(
+  verifierToken: string,
+): (request: IncomingMessage) => boolean {
+  if (verifierToken.length < 24) {
+    throw new Error('COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN 至少需要 24 字符')
+  }
+  const expected = `Bearer ${verifierToken}`
+  return (request: IncomingMessage): boolean =>
+    isCountryOutageLoopbackRequest(request)
+    && safeEqual(header(request, 'authorization'), expected)
+}
+
+export function isCountryOutageLoopbackRequest(
+  request: IncomingMessage,
+): boolean {
+  const address = request.socket.remoteAddress ?? ''
+  return address === '::1'
+    || address.startsWith('127.')
+    || address.startsWith('::ffff:127.')
+}
+
 export function countryOutageScopeAllowsEvent(
   principal: CountryOutagePrincipal,
   eventReference: string,

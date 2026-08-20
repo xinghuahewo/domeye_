@@ -19,9 +19,10 @@
 ## 回答体验专项
 
 - [用户回答与内部证据边界 v1.0](architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)：定义用户最终看到什么、哪些证据只留在内部，以及成功、澄清、拒绝和失败的表达边界。
+- [首个纵向切片回答呈现附加合同 v1.0](architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md)：保留锚点 v1.0 的事实与执行合同，单独版本化 Answer Context、Renderer Draft、Host 拼接和 Guard 呈现边界。
 - [回答风格开发与验收计划 v1.0](roadmap/Domeye_Agent_Answer_Style_Development_and_Acceptance_Plan_v1.0.md)：把实现、新 Candidate、真实评测和生产收口拆成独立阶段。
 
-这两份是横切回答合同和专项计划，不替代上面的七份核心文档，也不表示新风格已经实现或发布。
+这三份是横切回答合同、首片附加合同和专项计划，不替代上面的七份核心文档，也不表示新风格已经完成真实评测或发布。
 
 ## Current 入口
 

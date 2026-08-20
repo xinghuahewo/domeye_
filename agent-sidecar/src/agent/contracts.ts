@@ -489,17 +489,60 @@ export const DomeyeTypedFindingSchema = Type.Object({
 
 export type DomeyeTypedFinding = Static<typeof DomeyeTypedFindingSchema>
 
+export const DomeyeAnswerFactKeySchema = Type.Union([
+  Type.Literal('minimum'),
+  Type.Literal('minimum_at_utc'),
+  Type.Literal('first'),
+  Type.Literal('last'),
+  Type.Literal('maximum'),
+  Type.Literal('difference'),
+])
+
+export type DomeyeAnswerFactKey = Static<typeof DomeyeAnswerFactKeySchema>
+
+export const DomeyeAnswerBoundaryCodeSchema = Type.Union([
+  Type.Literal('fixed_prefix_population_not_users'),
+  Type.Literal('rrc25_control_plane_observation_only'),
+  Type.Literal(
+    'no_national_or_user_impact_cause_responsibility_recovery',
+  ),
+])
+
+export type DomeyeAnswerBoundaryCode = Static<
+  typeof DomeyeAnswerBoundaryCodeSchema
+>
+
+const NumericAnswerFactSchema = Type.Object({
+  value: Type.Integer({ minimum: 0 }),
+  display_zh: Type.String({ minLength: 1, maxLength: 64 }),
+}, { additionalProperties: false })
+
+const TimestampAnswerFactSchema = Type.Object({
+  value: Timestamp,
+  display_zh: Type.String({ minLength: 1, maxLength: 64 }),
+}, { additionalProperties: false })
+
 export const DomeyeAnswerContextSchema = Type.Object({
-  schema_version: Type.Literal('domeye_agent_answer_context_v1'),
-  context_id: Identifier,
-  candidate_id: Identifier,
-  contract_version: Type.Literal('domeye.first-vertical-slice/v1.0'),
-  contract_digest: Sha256,
-  data_identity: DomeyeDataIdentitySchema,
-  finding: DomeyeTypedFindingSchema,
-  observer_scope_zh: Type.Literal('RRC25 单一观察点的 BGP 控制面观测'),
-  mandatory_limitations_zh: Type.Array(Type.String({ minLength: 1 }), {
-    minItems: 4,
+  schema_version: Type.Literal('domeye_agent_answer_context_v2'),
+  question_zh: Type.Literal(
+    '在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？',
+  ),
+  metric_zh: Type.Literal('固定前缀可见 IPv4 地址量'),
+  unit_zh: Type.Literal('个唯一 IPv4 地址'),
+  facts: Type.Object({
+    minimum: NumericAnswerFactSchema,
+    minimum_at_utc: TimestampAnswerFactSchema,
+    first: NumericAnswerFactSchema,
+    last: NumericAnswerFactSchema,
+    maximum: NumericAnswerFactSchema,
+    difference: NumericAnswerFactSchema,
+  }, { additionalProperties: false }),
+  required_boundaries: Type.Array(Type.Object({
+    code: DomeyeAnswerBoundaryCodeSchema,
+    meaning_zh: Type.String({ minLength: 1, maxLength: 160 }),
+  }, { additionalProperties: false }), {
+    minItems: 3,
+    maxItems: 3,
     uniqueItems: true,
   }),
   forbidden_conclusions: Type.Array(Type.Union([
@@ -509,43 +552,131 @@ export const DomeyeAnswerContextSchema = Type.Object({
     Type.Literal('responsibility'),
     Type.Literal('real_recovery'),
   ]), { minItems: 5, maxItems: 5, uniqueItems: true }),
-  evidence_refs: Type.Array(Identifier, { minItems: 1, uniqueItems: true }),
-  context_digest: Sha256,
+  style_constraints: Type.Object({
+    max_lead_graphemes: Type.Literal(90),
+    max_fact_blocks: Type.Literal(3),
+    required_boundary_blocks: Type.Literal(1),
+    max_total_graphemes: Type.Literal(360),
+    max_sentences: Type.Literal(6),
+  }, { additionalProperties: false }),
 }, { additionalProperties: false })
 
 export type DomeyeAnswerContext = Static<typeof DomeyeAnswerContextSchema>
 
+const DomeyeRendererExpressionBlockSchema = Type.Object({
+  fact_keys: Type.Array(DomeyeAnswerFactKeySchema, {
+    minItems: 1,
+    maxItems: 6,
+    uniqueItems: true,
+  }),
+  text: Type.String({ minLength: 1, maxLength: 360 }),
+}, { additionalProperties: false })
+
 export const DomeyeRendererDraftSchema = Type.Object({
-  schema_version: Type.Literal('domeye_agent_renderer_draft_v1'),
-  context_id: Identifier,
-  finding_id: Identifier,
-  candidate_id: Identifier,
-  publication_id: Identifier,
-  revision: Type.Integer({ minimum: 1 }),
-  collector_id: Type.Literal('rrc25'),
-  window_start_utc: Timestamp,
-  window_end_utc: Timestamp,
-  metric: Type.Literal('fixed_visible_ipv4_address_count'),
-  unit: Type.Literal('unique_ipv4_address'),
-  values: DomeyeTypedFindingSchema.properties.values,
-  observer_scope_zh: Type.String({ minLength: 1 }),
-  limitations_zh: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
-  evidence_refs: Type.Array(Identifier, { minItems: 1, uniqueItems: true }),
-  text: Type.String({ minLength: 1, maxLength: 4_000 }),
+  schema_version: Type.Literal('domeye_agent_renderer_draft_v2'),
+  lead: DomeyeRendererExpressionBlockSchema,
+  fact_blocks: Type.Array(DomeyeRendererExpressionBlockSchema, {
+    minItems: 1,
+    maxItems: 3,
+  }),
+  boundary: Type.Object({
+    boundary_codes: Type.Array(DomeyeAnswerBoundaryCodeSchema, {
+      minItems: 3,
+      maxItems: 3,
+      uniqueItems: true,
+    }),
+    text: Type.String({ minLength: 1, maxLength: 360 }),
+  }, { additionalProperties: false }),
+  next_step: Type.Null(),
 }, { additionalProperties: false })
 
 export type DomeyeRendererDraft = Static<typeof DomeyeRendererDraftSchema>
 
+const DomeyeAnswerStyleAssessmentCommon = {
+  schema_version: Type.Literal('domeye_agent_answer_style_assessment_v1'),
+  policy_id: Type.Literal('domeye.answer-style.compact-first-slice/v1.0'),
+  policy_digest: Sha256,
+  normalization_algorithm_id: Type.Literal(
+    'unicode-nfc-collapse-whitespace-intl-segmenter-zh-v1',
+  ),
+  final_text_digest: Sha256,
+  counts: Type.Object({
+    lead_graphemes: Type.Integer({ minimum: 0 }),
+    total_graphemes: Type.Integer({ minimum: 0 }),
+    sentence_count: Type.Integer({ minimum: 0 }),
+    fact_block_count: Type.Integer({ minimum: 0 }),
+    boundary_block_count: Type.Integer({ minimum: 0 }),
+  }, { additionalProperties: false }),
+  realized_fact_keys: Type.Array(DomeyeAnswerFactKeySchema, {
+    uniqueItems: true,
+  }),
+  missing_fact_keys: Type.Array(DomeyeAnswerFactKeySchema, {
+    uniqueItems: true,
+  }),
+  duplicate_fact_keys: Type.Array(DomeyeAnswerFactKeySchema, {
+    uniqueItems: true,
+  }),
+  realized_boundary_codes: Type.Array(DomeyeAnswerBoundaryCodeSchema, {
+    uniqueItems: true,
+  }),
+  missing_boundary_codes: Type.Array(DomeyeAnswerBoundaryCodeSchema, {
+    uniqueItems: true,
+  }),
+  duplicate_boundary_codes: Type.Array(DomeyeAnswerBoundaryCodeSchema, {
+    uniqueItems: true,
+  }),
+  leak_codes: Type.Array(Identifier, { uniqueItems: true }),
+  outside_context_codes: Type.Array(Identifier, { uniqueItems: true }),
+}
+
+const DomeyePassingAnswerStyleAssessmentSchema = Type.Object({
+  ...DomeyeAnswerStyleAssessmentCommon,
+  passed: Type.Literal(true),
+  reason_codes: Type.Array(Identifier, { maxItems: 0 }),
+}, { additionalProperties: false })
+
+const DomeyeBlockingAnswerStyleAssessmentSchema = Type.Object({
+  ...DomeyeAnswerStyleAssessmentCommon,
+  passed: Type.Literal(false),
+  reason_codes: Type.Array(Identifier, { minItems: 1, uniqueItems: true }),
+}, { additionalProperties: false })
+
+export const DomeyeAnswerStyleAssessmentSchema = Type.Union([
+  DomeyePassingAnswerStyleAssessmentSchema,
+  DomeyeBlockingAnswerStyleAssessmentSchema,
+])
+
+export type DomeyeAnswerStyleAssessment = Static<
+  typeof DomeyeAnswerStyleAssessmentSchema
+>
+
+const ResponseGuardCommon = {
+  schema_version: Type.Literal('domeye_agent_response_guard_v2'),
+  guarded_text: Type.String({ minLength: 1, maxLength: 4_000 }),
+  guarded_text_digest: Sha256,
+}
+
 export const DomeyeResponseGuardDecisionSchema = Type.Union([
   Type.Object({
-    schema_version: Type.Literal('domeye_agent_response_guard_v1'),
+    ...ResponseGuardCommon,
     decision: Type.Literal('pass'),
     reason_codes: Type.Array(Identifier, { maxItems: 0 }),
+    assessment_status: Type.Literal('evaluated'),
+    style_assessment: DomeyePassingAnswerStyleAssessmentSchema,
   }, { additionalProperties: false }),
   Type.Object({
-    schema_version: Type.Literal('domeye_agent_response_guard_v1'),
+    ...ResponseGuardCommon,
     decision: Type.Literal('block'),
     reason_codes: Type.Array(Identifier, { minItems: 1, uniqueItems: true }),
+    assessment_status: Type.Literal('evaluated'),
+    style_assessment: DomeyeBlockingAnswerStyleAssessmentSchema,
+  }, { additionalProperties: false }),
+  Type.Object({
+    ...ResponseGuardCommon,
+    decision: Type.Literal('block'),
+    reason_codes: Type.Array(Identifier, { minItems: 1, uniqueItems: true }),
+    assessment_status: Type.Literal('not_evaluated'),
+    style_assessment: Type.Null(),
   }, { additionalProperties: false }),
 ])
 

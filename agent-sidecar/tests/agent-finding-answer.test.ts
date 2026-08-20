@@ -4,6 +4,8 @@ import { Check } from 'typebox/value'
 
 import {
   DomeyeAnswerContextSchema,
+  DomeyeAnswerStyleAssessmentSchema,
+  DomeyeRendererDraftSchema,
   DomeyeResponseGuardDecisionSchema,
   DomeyeTypedFindingSchema,
   type DomeyeActionReceipt,
@@ -18,9 +20,12 @@ import {
  */
 import {
   COUNTRY_OUTAGE_MANDATORY_LIMITATIONS,
+  COUNTRY_OUTAGE_REQUIRED_ANSWER_BOUNDARIES,
+  assessCountryOutageAnswerStyle,
   buildCountryOutageAnswerContext,
   buildCountryOutageSeriesExtremaFinding,
   composeCountryOutageAnswer,
+  composeCountryOutageRendererDraftText,
   guardCountryOutageResponse,
   renderCountryOutageDeterministicFallback,
   type DomeyeAnswerRenderer,
@@ -203,28 +208,32 @@ function fixture(): {
 
 function acceptedContext() {
   const finding = buildCountryOutageSeriesExtremaFinding(fixture())
-  return buildCountryOutageAnswerContext(finding, SHA_F)
+  return buildCountryOutageAnswerContext(finding)
 }
 
 function acceptedDraft(): DomeyeRendererDraft {
   const context = acceptedContext()
   return {
-    schema_version: 'domeye_agent_renderer_draft_v1',
-    context_id: context.context_id,
-    finding_id: context.finding.finding_id,
-    candidate_id: context.candidate_id,
-    publication_id: context.data_identity.publication_id,
-    revision: context.data_identity.revision,
-    collector_id: context.data_identity.collector_id,
-    window_start_utc: context.data_identity.window_start_utc,
-    window_end_utc: context.data_identity.window_end_utc,
-    metric: context.finding.metric,
-    unit: context.finding.unit,
-    values: context.finding.values,
-    observer_scope_zh: context.observer_scope_zh,
-    limitations_zh: context.mandatory_limitations_zh,
-    evidence_refs: context.evidence_refs,
-    text: renderCountryOutageDeterministicFallback(context),
+    schema_version: 'domeye_agent_renderer_draft_v2',
+    lead: {
+      fact_keys: ['minimum', 'minimum_at_utc'],
+      text: `最低值为 ${context.facts.minimum.display_zh} ${context.unit_zh}，首次观测于 ${context.facts.minimum_at_utc.display_zh}。`,
+    },
+    fact_blocks: [
+      {
+        fact_keys: ['first', 'last'],
+        text: `首值为 ${context.facts.first.display_zh}，末值为 ${context.facts.last.display_zh}。`,
+      },
+      {
+        fact_keys: ['maximum', 'difference'],
+        text: `最大值为 ${context.facts.maximum.display_zh}，极差为 ${context.facts.difference.display_zh}。`,
+      },
+    ],
+    boundary: {
+      boundary_codes: context.required_boundaries.map((item) => item.code),
+      text: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数；结果只表示 RRC25 的 BGP 控制面观测，不能据此判断全国状态、用户影响、原因、责任或恢复。',
+    },
+    next_step: null,
   }
 }
 
@@ -263,15 +272,33 @@ test('合格 TOOL-03/OP-01 Artifact 与 Receipt 确定性形成最小 Finding �
   ])
   assert.ok(Object.isFrozen(finding))
 
-  const context = buildCountryOutageAnswerContext(finding, SHA_F)
+  const context = buildCountryOutageAnswerContext(finding)
   assert.equal(Check(DomeyeAnswerContextSchema, context), true)
-  assert.equal(context.finding.finding_id, finding.finding_id)
-  assert.equal(context.observer_scope_zh,
-    'RRC25 单一观察点的 BGP 控制面观测')
-  assert.equal(context.mandatory_limitations_zh.length, 4)
-  assert.deepEqual(context.mandatory_limitations_zh,
-    COUNTRY_OUTAGE_MANDATORY_LIMITATIONS.map((item) => item.text))
-  assert.deepEqual(context.evidence_refs, finding.evidence_refs)
+  assert.equal(context.schema_version, 'domeye_agent_answer_context_v2')
+  assert.deepEqual(context.facts, {
+    minimum: { value: 9_577_728, display_zh: '9,577,728' },
+    minimum_at_utc: {
+      value: '2026-02-28T14:35:00Z',
+      display_zh: '2026 年 2 月 28 日 14:35 UTC',
+    },
+    first: { value: 10_156_800, display_zh: '10,156,800' },
+    last: { value: 10_069_760, display_zh: '10,069,760' },
+    maximum: { value: 10_156_800, display_zh: '10,156,800' },
+    difference: { value: 579_072, display_zh: '579,072' },
+  })
+  assert.deepEqual(
+    context.required_boundaries,
+    COUNTRY_OUTAGE_REQUIRED_ANSWER_BOUNDARIES,
+  )
+  const serialized = JSON.stringify(context)
+  assert.doesNotMatch(
+    serialized,
+    /candidate|finding_id|context_id|digest|sha256|receipt|artifact|evidence|path|usage/iu,
+  )
+  assert.deepEqual(
+    finding.limitation_codes,
+    COUNTRY_OUTAGE_MANDATORY_LIMITATIONS.map((item) => item.code),
+  )
   assert.ok(Object.isFrozen(context))
 })
 
@@ -300,14 +327,33 @@ test('不合格或跨身份 OP-01 Artifact 不能形成 Finding', () => {
 test('正常 Renderer 草稿通过确定性 Guard', async () => {
   const context = acceptedContext()
   const draft = acceptedDraft()
-  assert.deepEqual(guardCountryOutageResponse(context, draft), {
-    schema_version: 'domeye_agent_response_guard_v1',
-    decision: 'pass',
-    reason_codes: [],
-  })
+  assert.equal(Check(DomeyeRendererDraftSchema, draft), true)
+  const assessment = assessCountryOutageAnswerStyle(context, draft)
+  assert.equal(Check(DomeyeAnswerStyleAssessmentSchema, assessment), true)
+  assert.equal(assessment.passed, true)
+  assert.equal(
+    assessment.normalization_algorithm_id,
+    'unicode-nfc-collapse-whitespace-intl-segmenter-zh-v1',
+  )
+  assert.deepEqual(assessment.realized_fact_keys, [
+    'minimum',
+    'minimum_at_utc',
+    'first',
+    'last',
+    'maximum',
+    'difference',
+  ])
+  assert.equal(assessment.counts.fact_block_count, 2)
+  assert.equal(assessment.counts.boundary_block_count, 1)
+  const decision = guardCountryOutageResponse(context, draft)
+  assert.equal(decision.decision, 'pass')
+  assert.equal(decision.assessment_status, 'evaluated')
+  assert.equal(decision.guarded_text,
+    composeCountryOutageRendererDraftText(draft))
+  assert.equal(decision.style_assessment.passed, true)
   assert.equal(Check(
     DomeyeResponseGuardDecisionSchema,
-    guardCountryOutageResponse(context, draft),
+    decision,
   ), true)
   let calls = 0
   const renderer: DomeyeAnswerRenderer = {
@@ -319,10 +365,34 @@ test('正常 Renderer 草稿通过确定性 Guard', async () => {
   const result = await composeCountryOutageAnswer(context, renderer)
   assert.equal(calls, 1)
   assert.equal(result.source, 'renderer')
-  assert.equal(result.answer, draft.text)
+  assert.equal(result.answer, composeCountryOutageRendererDraftText(draft))
+  assert.equal(result.answer_digest, decision.guarded_text_digest)
 })
 
-test('J4：改值、改单位、漏限制、越界结论和敏感信息全部 fail closed', () => {
+test('有限 grammar 允许非固定整段表达，但仍只消费合同事实和边界', () => {
+  const context = acceptedContext()
+  const draft: DomeyeRendererDraft = {
+    schema_version: 'domeye_agent_renderer_draft_v2',
+    lead: {
+      fact_keys: ['minimum', 'minimum_at_utc'],
+      text: `最小值是 ${context.facts.minimum.display_zh} ${context.unit_zh}；首次出现在 ${context.facts.minimum_at_utc.display_zh}。`,
+    },
+    fact_blocks: [{
+      fact_keys: ['first', 'last', 'maximum', 'difference'],
+      text: `首值是 ${context.facts.first.display_zh}；末值是 ${context.facts.last.display_zh}；最大点是 ${context.facts.maximum.display_zh}；极差是 ${context.facts.difference.display_zh}。`,
+    }],
+    boundary: {
+      boundary_codes: context.required_boundaries.map((item) => item.code),
+      text: '该地址量仅是固定前缀的 IPv4 唯一地址并集，并非真实用户数；上述结果仅反映 RRC25 控制面观测，也无法据此说明全国互联网状态、真实用户影响、原因、责任与真实恢复。',
+    },
+    next_step: null,
+  }
+  const decision = guardCountryOutageResponse(context, draft)
+  assert.equal(decision.decision, 'pass')
+  assert.equal(decision.style_assessment.passed, true)
+})
+
+test('J4：六事实、边界、篇幅、越界结论和内部泄露全部 fail closed', () => {
   const context = acceptedContext()
   const base = acceptedDraft()
   const cases: Array<{
@@ -333,99 +403,341 @@ test('J4：改值、改单位、漏限制、越界结论和敏感信息全部 fa
     {
       name: '改值',
       draft: adversarialDraft({
-        values: { ...base.values, minimum: base.values.minimum! + 1 },
+        lead: {
+          ...base.lead,
+          text: base.lead.text.replace('9,577,728', '9,577,729'),
+        },
       }),
-      reason: 'number_mismatch',
+      reason: 'visible_fact_missing',
     },
     {
-      name: '改单位',
-      draft: adversarialDraft({ unit: 'user' }),
-      reason: 'unit_mismatch',
-    },
-    {
-      name: '漏 limitation',
+      name: '漏单位',
       draft: adversarialDraft({
-        limitations_zh: base.limitations_zh.slice(1),
-        text: base.text.replace(base.limitations_zh[0]!, ''),
+        lead: {
+          ...base.lead,
+          text: base.lead.text.replace(` ${context.unit_zh}`, ''),
+        },
       }),
-      reason: 'mandatory_limitation_missing',
+      reason: 'unit_missing_or_duplicate',
+    },
+    {
+      name: '漏事实 key',
+      draft: adversarialDraft({
+        fact_blocks: [
+          base.fact_blocks[0]!,
+          {
+            ...base.fact_blocks[1]!,
+            fact_keys: ['maximum'],
+            text: `最大值为 ${context.facts.maximum.display_zh}。`,
+          },
+        ],
+      }),
+      reason: 'required_fact_missing',
+    },
+    {
+      name: '重复事实',
+      draft: adversarialDraft({
+        fact_blocks: [
+          base.fact_blocks[0]!,
+          base.fact_blocks[1]!,
+          {
+            fact_keys: ['first'],
+            text: `首值仍为 ${context.facts.first.display_zh}。`,
+          },
+        ],
+      }),
+      reason: 'duplicate_fact',
+    },
+    {
+      name: '首值与末值标签值互换',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `首值为 ${context.facts.last.display_zh}，末值为 ${context.facts.first.display_zh}。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '最低值与最低时刻标签值互换',
+      draft: adversarialDraft({
+        lead: {
+          ...base.lead,
+          text: `最低值为 ${context.facts.minimum_at_utc.display_zh} ${context.unit_zh}，首次观测于 ${context.facts.minimum.display_zh}。`,
+        },
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '最大值与极差标签值互换',
+      draft: adversarialDraft({
+        fact_blocks: [base.fact_blocks[0]!, {
+          ...base.fact_blocks[1]!,
+          text: `最大值为 ${context.facts.difference.display_zh}，极差为 ${context.facts.maximum.display_zh}。`,
+        }],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '漏必要边界',
+      draft: adversarialDraft({
+        boundary: {
+          boundary_codes: base.boundary.boundary_codes.slice(1),
+          text: '以上仅是 RRC25 的 BGP 控制面观测，不能据此判断全国状态、用户影响、原因、责任与恢复。',
+        },
+      }),
+      reason: 'required_boundary_missing',
     },
     {
       name: '扩大观察范围',
       draft: adversarialDraft({
-        observer_scope_zh: '全国互联网事实',
-        text: `${base.text}\n全国网络已经中断。`,
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 全国网络已经中断。`,
+        }, base.fact_blocks[1]!],
       }),
       reason: 'forbidden_national_outage_claim',
     },
     {
       name: '用户影响',
       draft: adversarialDraft({
-        text: `${base.text}\n大量用户受影响。`,
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 大量用户受影响。`,
+        }, base.fact_blocks[1]!],
       }),
       reason: 'forbidden_user_impact_claim',
     },
     {
-      name: '原因',
+      name: '原因与责任',
       draft: adversarialDraft({
-        text: `${base.text}\n事件原因是运营商故障。`,
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 事件原因是运营商故障，责任在于运营商。`,
+        }, base.fact_blocks[1]!],
       }),
       reason: 'forbidden_cause_claim',
     },
     {
-      name: '责任',
-      draft: adversarialDraft({
-        text: `${base.text}\n责任在于运营商。`,
-      }),
-      reason: 'forbidden_responsibility_claim',
-    },
-    {
       name: '恢复',
       draft: adversarialDraft({
-        text: `${base.text}\n事件已经恢复。`,
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 事件已经恢复。`,
+        }, base.fact_blocks[1]!],
       }),
       reason: 'forbidden_recovery_claim',
     },
     {
-      name: '观测时间冒充事件时间',
+      name: '边界块夹带反转结论',
       draft: adversarialDraft({
-        text: `${base.text}\n事件实际发生于 ${base.values.minimum_at_utc}。`,
+        boundary: {
+          ...base.boundary,
+          text: `${base.boundary.text.slice(0, -1)}，但全国网络已经中断。`,
+        },
       }),
-      reason: 'observed_time_overstated',
+      reason: 'boundary_contains_contrast_claim',
     },
     {
-      name: '内部 endpoint',
+      name: '内部对象与摘要',
       draft: adversarialDraft({
-        text: `${base.text}\nhttp://10.0.0.1:9999/api/private`,
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} Evidence：Candidate sha256:${'a'.repeat(64)}。`,
+        }, base.fact_blocks[1]!],
       }),
-      reason: 'sensitive_endpoint_detected',
+      reason: 'internal_information_leak',
     },
     {
-      name: '凭据',
+      name: '路径与 endpoint',
       draft: adversarialDraft({
-        text: `${base.text}\nBearer supersecret`,
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} /home/domeye/a.ts，http://10.0.0.1:9999/api/private。`,
+        }, base.fact_blocks[1]!],
       }),
-      reason: 'sensitive_credential_detected',
+      reason: 'internal_information_leak',
     },
     {
       name: 'Context 外数字',
-      draft: adversarialDraft({ text: `${base.text}\n附加值 11。` }),
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 附加值 11。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'content_outside_answer_context',
+    },
+    {
+      name: '紧邻中文的 Context 外数字',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 另列11项。`,
+        }, base.fact_blocks[1]!],
+      }),
       reason: 'content_outside_answer_context',
     },
     {
       name: 'Context 外无数字事实',
-      draft: adversarialDraft({ text: `${base.text}\n数据中心发生火灾。` }),
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 数据中心发生火灾。`,
+        }, base.fact_blocks[1]!],
+      }),
       reason: 'content_outside_answer_context',
     },
     {
-      name: 'publication 身份变化',
-      draft: adversarialDraft({ publication_id: 'other-publication' }),
-      reason: 'data_identity_mismatch',
+      name: '额外结论：事件已经结束',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 事件已经结束。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '额外结论：网络状态正常',
+      draft: adversarialDraft({
+        boundary: {
+          ...base.boundary,
+          text: `${base.boundary.text.slice(0, -1)}，网络状态正常。`,
+        },
+      }),
+      reason: 'boundary_outside_contract_grammar',
+    },
+    {
+      name: '额外结论：观测结果可靠',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 观测结果可靠。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '额外结论：趋势已稳定',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 趋势已稳定。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '额外结论：可见性大幅下降',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 可见性大幅下降。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '额外结论：情况严重',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 情况严重。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '一般未知句子',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 这值得继续关注。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'expression_outside_contract_grammar',
+    },
+    {
+      name: '中文约数或倍数换算',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 约三倍、百分之十，影响数百万。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'content_outside_answer_context',
+    },
+    {
+      name: 'Context 外中文数词',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 另列三项。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'content_outside_answer_context',
+    },
+    {
+      name: '已知事实被改成不确定判断',
+      draft: adversarialDraft({
+        lead: {
+          ...base.lead,
+          text: `最低值可能为 ${context.facts.minimum.display_zh} ${context.unit_zh}，首次观测于 ${context.facts.minimum_at_utc.display_zh}。`,
+        },
+      }),
+      reason: 'content_outside_answer_context',
+    },
+    {
+      name: 'lead 过长',
+      draft: adversarialDraft({
+        lead: { ...base.lead, text: `${base.lead.text}${'说明'.repeat(50)}` },
+      }),
+      reason: 'lead_too_long',
+    },
+    {
+      name: '事实块超过三个',
+      draft: adversarialDraft({
+        fact_blocks: [
+          ...base.fact_blocks,
+          {
+            fact_keys: ['first'],
+            text: `首值为 ${context.facts.first.display_zh}。`,
+          },
+          {
+            fact_keys: ['last'],
+            text: `末值为 ${context.facts.last.display_zh}。`,
+          },
+        ],
+      }),
+      reason: 'too_many_fact_blocks',
+    },
+    {
+      name: '全文超过 360 grapheme',
+      draft: adversarialDraft({
+        boundary: {
+          ...base.boundary,
+          text: `${base.boundary.text}${'边界说明'.repeat(100)}`,
+        },
+      }),
+      reason: 'answer_too_long',
+    },
+    {
+      name: '句数过多',
+      draft: adversarialDraft({
+        fact_blocks: [{
+          ...base.fact_blocks[0]!,
+          text: `${base.fact_blocks[0]!.text} 一。二。三。四。五。六。`,
+        }, base.fact_blocks[1]!],
+      }),
+      reason: 'too_many_sentences',
     },
   ]
   for (const item of cases) {
     const result = guardCountryOutageResponse(context, item.draft)
     assert.equal(result.decision, 'block', item.name)
+    assert.equal(Check(DomeyeResponseGuardDecisionSchema, result), true,
+      `${item.name}: Guard 决策必须满足 v2 Schema`)
     assert.ok(result.reason_codes.includes(item.reason),
       `${item.name}: ${result.reason_codes.join(',')}`)
   }
@@ -433,12 +745,18 @@ test('J4：改值、改单位、漏限制、越界结论和敏感信息全部 fa
 
 test('J4：Guard block 后丢弃原草稿，同一 Context 回退且不再次调用 Renderer', async () => {
   const context = acceptedContext()
-  const unsafeText = `${acceptedDraft().text}\n事件已经恢复。Bearer supersecret`
+  const draft = acceptedDraft()
+  const unsafeDraft = adversarialDraft({
+    fact_blocks: [{
+      ...draft.fact_blocks[0]!,
+      text: `${draft.fact_blocks[0]!.text} 事件已经恢复。Bearer supersecret`,
+    }, draft.fact_blocks[1]!],
+  })
   let calls = 0
   const renderer: DomeyeAnswerRenderer = {
     async render() {
       calls += 1
-      return adversarialDraft({ text: unsafeText })
+      return unsafeDraft
     },
   }
   const result = await composeCountryOutageAnswer(context, renderer)
@@ -446,10 +764,8 @@ test('J4：Guard block 后丢弃原草稿，同一 Context 回退且不再次调
   assert.equal(result.source, 'deterministic_fallback')
   assert.equal(result.answer, renderCountryOutageDeterministicFallback(context))
   assert.doesNotMatch(result.answer, /Bearer|事件已经恢复。/)
+  assert.notEqual(result.answer, composeCountryOutageRendererDraftText(unsafeDraft))
   assert.equal(result.guard_result.decision, 'block')
-  assert.deepEqual(Object.keys(result.guard_result).sort(), [
-    'decision',
-    'reason_codes',
-    'schema_version',
-  ])
+  assert.equal(result.guard_result.assessment_status, 'evaluated')
+  assert.equal(result.guard_result.style_assessment?.passed, false)
 })

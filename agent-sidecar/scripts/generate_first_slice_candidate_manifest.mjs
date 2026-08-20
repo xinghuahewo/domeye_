@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import {
   dirname,
   isAbsolute,
@@ -17,7 +17,7 @@ const dryRun = process.argv.includes('--dry-run')
 const sidecarRoot = resolve(projectRoot, 'agent-sidecar')
 const outputPath = resolve(
   projectRoot,
-  'contracts/agent/domeye-first-vertical-slice/v1/candidate.json',
+  'contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json',
 )
 
 const sourceEntryPaths = [
@@ -31,6 +31,7 @@ const requiredRuntimeSourcePaths = [
 ]
 const fixedSourcePaths = [
   'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md',
+  'docs/architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md',
   'contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json',
   'agent-sidecar/package.json',
   'agent-sidecar/package-lock.json',
@@ -288,6 +289,9 @@ const modelResource = JSON.parse(await readFile(
 const contractDigest = sourceDigest.get(
   'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md',
 )
+const answerPresentationContractDigest = sourceDigest.get(
+  'docs/architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md',
+)
 const machineContractDigest = sourceDigest.get(
   'agent-sidecar/src/agent/contracts.ts',
 )
@@ -300,6 +304,7 @@ const modelResourceDigest = sourceDigest.get(
 if (
   typeof task.baseCommit !== 'string'
   || !contractDigest
+  || !answerPresentationContractDigest
   || !machineContractDigest
   || !implementationDigest
   || !modelResourceDigest
@@ -353,11 +358,15 @@ const capabilities = [
 ]
 const registryHash = canonicalDigest({ capabilities })
 const payload = {
-  schema_version: 'domeye_first_slice_candidate_manifest_v1',
+  schema_version: 'domeye_first_slice_candidate_manifest_v2',
   base_commit: task.baseCommit,
   contract: {
     version: 'domeye.first-vertical-slice/v1.0',
     digest: contractDigest,
+  },
+  answer_presentation_contract: {
+    version: 'domeye.first-vertical-slice.answer-presentation/v1.0',
+    digest: answerPresentationContractDigest,
   },
   data_identity: {
     event_type: 'country_outage',
@@ -416,6 +425,7 @@ const manifest = {
   payload,
 }
 if (!dryRun) {
+  await mkdir(dirname(outputPath), { recursive: true })
   await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, {
     encoding: 'utf8',
     mode: 0o644,

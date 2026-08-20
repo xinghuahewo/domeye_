@@ -16,6 +16,7 @@ import type {
 import {
   DomeyeAnswerContextSchema,
   DomeyeTypedFindingSchema,
+  type DomeyeAnswerContext,
   type DomeyeCapabilityProposal,
   type DomeyeDataIdentity,
   type DomeyeGoalState,
@@ -82,6 +83,9 @@ const CANDIDATE: DomeyeFirstSliceCandidateBinding = {
   candidate_id: CANDIDATE_ID,
   contract_version: 'domeye.first-vertical-slice/v1.0',
   contract_digest: `sha256:${'f'.repeat(64)}`,
+  answer_presentation_contract_version:
+    'domeye.first-vertical-slice.answer-presentation/v1.0',
+  answer_presentation_contract_digest: `sha256:${'e'.repeat(64)}`,
   data_identity: IDENTITY,
   series_response_sha256: SERIES_DIGEST,
   model_identity: MODEL_IDENTITY,
@@ -389,7 +393,7 @@ function cognitionSessionFactory(options: {
 
 function rendererSessionFactory(options: {
   readonly calls: { value: number }
-  readonly contexts: { context_id: string }[]
+  readonly contexts: DomeyeAnswerContext[]
   readonly mutate?: (draft: DomeyeRendererDraft) => DomeyeRendererDraft
 }): DomeyePiSessionFactory {
   return async () => {
@@ -409,11 +413,33 @@ function rendererSessionFactory(options: {
         for await (const _event of stream) {
           // 只消费一次 Renderer 供应方调用；不进行内部重试。
         }
-        const input = JSON.parse(text) as DomeyeRendererDraft
-        options.contexts.push({
-          context_id: input.context_id,
-        })
-        lastText = JSON.stringify(options.mutate?.(input) ?? input)
+        const input = JSON.parse(text) as DomeyeAnswerContext
+        options.contexts.push(input)
+        const draft: DomeyeRendererDraft = {
+          schema_version: 'domeye_agent_renderer_draft_v2',
+          lead: {
+            fact_keys: ['minimum', 'minimum_at_utc'],
+            text: `最低值为 ${input.facts.minimum.display_zh} ${input.unit_zh}，首次观测于 ${input.facts.minimum_at_utc.display_zh}。`,
+          },
+          fact_blocks: [
+            {
+              fact_keys: ['first', 'last'],
+              text: `首值为 ${input.facts.first.display_zh}，末值为 ${input.facts.last.display_zh}。`,
+            },
+            {
+              fact_keys: ['maximum', 'difference'],
+              text: `最大值为 ${input.facts.maximum.display_zh}，极差为 ${input.facts.difference.display_zh}。`,
+            },
+          ],
+          boundary: {
+            boundary_codes: input.required_boundaries.map(
+              (item) => item.code,
+            ),
+            text: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数；结果只表示 RRC25 的 BGP 控制面观测，不能据此判断全国状态、用户影响、原因、责任或恢复。',
+          },
+          next_step: null,
+        }
+        lastText = JSON.stringify(options.mutate?.(draft) ?? draft)
       },
       async abort() {},
       getSessionStats: () => sessionStats('renderer-session', options.calls.value),
@@ -502,7 +528,7 @@ function runtime(options: {
   readonly read_calls: { value: number }
   readonly identity_calls: { value: number }
   readonly prompts: Record<string, unknown>[]
-  readonly contexts: { context_id: string }[]
+  readonly contexts: DomeyeAnswerContext[]
   readonly empty_disposition?: 'stopped' | 'clarification_required'
   readonly mutate_draft?: (draft: DomeyeRendererDraft) => DomeyeRendererDraft
   readonly cognition_provider_error?: string
@@ -560,7 +586,7 @@ function counters() {
     read_calls: { value: 0 },
     identity_calls: { value: 0 },
     prompts: [] as Record<string, unknown>[],
-    contexts: [] as { context_id: string }[],
+    contexts: [] as DomeyeAnswerContext[],
   }
 }
 
@@ -600,8 +626,12 @@ test('同一 Candidate 完成 Observation 后再规划 CAP-016，并经 Finding�
   )
   assert.equal(result.candidate_id, CANDIDATE_ID)
   assert.equal(result.finding.candidate_id, CANDIDATE_ID)
-  assert.equal(result.answer_context.candidate_id, CANDIDATE_ID)
-  assert.equal(result.answer_context.context_id, observed.contexts[0]?.context_id)
+  assert.equal(result.schema_version, 'domeye_first_vertical_slice_run_v2')
+  assert.equal(
+    result.answer_presentation_contract_version,
+    'domeye.first-vertical-slice.answer-presentation/v1.0',
+  )
+  assert.deepEqual(result.answer_context, observed.contexts[0])
   assert.equal(Check(DomeyeTypedFindingSchema, result.finding), true)
   assert.equal(Check(DomeyeAnswerContextSchema, result.answer_context), true)
   assert.equal(result.finding.values.minimum, 9_577_728)
@@ -654,7 +684,7 @@ test('全 null 保留 empty_observed_set，不生成 0 或调用 Renderer', asyn
   )
 })
 
-test('Renderer 草稿被 Guard 阻断后只用同一 Context 回退且不重试模型', async () => {
+test('Renderer 标签值配对被篡改时 public completion gate 拒绝且不重试模型', async () => {
   const observed = counters()
   await assert.rejects(
     () => runtime({
@@ -662,10 +692,10 @@ test('Renderer 草稿被 Guard 阻断后只用同一 Context 回退且不重试�
       values: [10_156_800, 9_577_728, 10_069_760],
       mutate_draft: (draft) => ({
         ...draft,
-        values: {
-          ...draft.values,
-          minimum: (draft.values.minimum ?? 0) + 1,
-        },
+        fact_blocks: [{
+          ...draft.fact_blocks[0]!,
+          text: '首值为 10,069,760，末值为 10,156,800。',
+        }, draft.fact_blocks[1]!],
       }),
     }).run(runRequest()),
     (error: unknown) => {
@@ -679,7 +709,7 @@ test('Renderer 草稿被 Guard 阻断后只用同一 Context 回退且不重试�
       assert.equal(error.evidence.answer.guard_result.decision, 'block')
       assert.ok(
         error.evidence.answer.guard_result.reason_codes.includes(
-          'number_mismatch',
+          'expression_outside_contract_grammar',
         ),
       )
       assert.equal(
@@ -689,14 +719,11 @@ test('Renderer 草稿被 Guard 阻断后只用同一 Context 回退且不重试�
         ),
       )
       assert.equal(
-        error.evidence.finding.finding_id,
-        error.evidence.answer_context.finding.finding_id,
+        error.evidence.answer_context.facts.minimum.value,
+        error.evidence.finding.values.minimum,
       )
       assert.equal(observed.contexts.length, 1)
-      assert.equal(
-        observed.contexts[0]?.context_id,
-        error.evidence.answer_context.context_id,
-      )
+      assert.deepEqual(observed.contexts[0], error.evidence.answer_context)
       assert.equal(error.evidence.usage.attempt_count, 4)
       assert.equal(
         error.evidence.usage.attempts.filter(

@@ -11,13 +11,14 @@ import type {
 } from '../src/agent/interactive-conversation-service.js'
 
 const AUTHORIZATION = 'Bearer first-slice-test'
+const VERIFIER_AUTHORIZATION = 'Bearer first-slice-verifier-test'
 const REFERENCE =
   'country_outage/2026-02-27 00:10:00/IR/1/first-slice'
 const PUBLICATION =
   'country_outage_publication_v1_989f698fb6f6c32579eebe7bb2bc833f'
 
 interface ServiceCall {
-  readonly operation: 'create' | 'get' | 'turn' | 'cancel'
+  readonly operation: 'create' | 'get' | 'turn' | 'cancel' | 'internal'
   readonly principal: unknown
   readonly conversation_id?: string
   readonly turn_id?: string
@@ -34,15 +35,13 @@ async function withServer(
   const calls: ServiceCall[] = []
   const readinessCalls = { count: 0 }
   const conversation = {
-    schema_version: 'domeye_interactive_agent_conversation_v1',
+    schema_version: 'domeye_interactive_agent_conversation_v2',
     conversation_id: 'conversation-first-slice',
     binding: {
       event_reference: REFERENCE,
       publication_id: PUBLICATION,
       revision: 1,
     },
-    identity_receipt_id: 'identity-receipt-1',
-    candidate_id: 'candidate-first-slice',
     turns: [],
   }
   const service = {
@@ -93,6 +92,21 @@ async function withServer(
       })
       return { turn_id: turnId, state: 'cancel_requested' as const }
     },
+    getTurnInternalRecord(conversationId: string, turnId: string) {
+      calls.push({
+        operation: 'internal',
+        principal: null,
+        conversation_id: conversationId,
+        turn_id: turnId,
+      })
+      return {
+        schema_version: 'domeye_interactive_agent_turn_internal_record_v1',
+        record_id: 'turn-internal-record-sha256:test',
+        record_digest: 'sha256:test',
+        conversation_id: conversationId,
+        turn_id: turnId,
+      }
+    },
   } as unknown as DomeyeInteractiveConversationService
   const server = createServer(createDomeyeInteractiveAgentHttpHandler({
     service,
@@ -102,6 +116,8 @@ async function withServer(
           authorizationScope: 'country_outage_event_read:IR',
         }
       : null,
+    authenticate_verifier: (request) =>
+      request.headers.authorization === VERIFIER_AUTHORIZATION,
     readiness: () => {
       readinessCalls.count += 1
       return {
@@ -230,6 +246,35 @@ test('HTTP 窄入口只调用交互会话服务完成 readiness、create、get�
   })
 })
 
+test('内部记录只允许独立验证器 Token 读取', async () => {
+  await withServer(async (baseUrl, calls) => {
+    const path = `${baseUrl}/country-outage/chat/internal/conversations/conversation-first-slice/turns/turn-first-slice`
+    for (const authorization of [undefined, AUTHORIZATION]) {
+      const response = await fetch(path, {
+        headers: authorization ? { Authorization: authorization } : {},
+      })
+      assert.equal(response.status, 403)
+    }
+    assert.equal(calls.length, 0)
+
+    const verified = await fetch(path, {
+      headers: { Authorization: VERIFIER_AUTHORIZATION },
+    })
+    assert.equal(verified.status, 200)
+    assert.equal(
+      (await verified.json() as { record: { turn_id: string } })
+        .record.turn_id,
+      'turn-first-slice',
+    )
+    assert.deepEqual(calls, [{
+      operation: 'internal',
+      principal: null,
+      conversation_id: 'conversation-first-slice',
+      turn_id: 'turn-first-slice',
+    }])
+  })
+})
+
 test('HTTP 窄入口在认证与精确字段边界失败关闭', async () => {
   await withServer(async (baseUrl, calls, readinessCalls) => {
     const unauthorizedReadiness = await fetch(
@@ -264,7 +309,7 @@ test('HTTP 窄入口在认证与精确字段边界失败关闭', async () => {
     assert.equal(extraCreateField.status, 400)
     assert.equal(
       (await extraCreateField.json() as { error: { code: string } }).error.code,
-      'goal_outside_first_slice_contract',
+      'invalid_request',
     )
 
     const conflictingKey = await fetch(

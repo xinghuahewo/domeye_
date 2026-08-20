@@ -7,11 +7,10 @@ import {
   createCountryOutageChatTurn,
   getCountryOutageChatConversation,
   type CountryOutageChatTurn,
+  type CountryOutageChatSuccessfulTurnAnswer,
 } from './countryOutageChat'
-import { apiV2Get } from './client'
 
 vi.mock('./client', () => ({
-  apiV2Get: vi.fn(),
   resolveApiTimeout: vi.fn(() => 60_000),
 }))
 
@@ -71,11 +70,11 @@ describe('首个纵向切片交互式 Agent API', () => {
   })
 
   it('读取会话和取消轮次均使用编码后的稳定路径', async () => {
-    vi.mocked(apiV2Get).mockResolvedValue({ conversation: {} })
     await getCountryOutageChatConversation('conversation/1')
     await cancelCountryOutageChatTurn('conversation/1', 'turn/1')
-    expect(apiV2Get).toHaveBeenCalledWith(
-      'country-outage/chat/conversations/conversation%2F1',
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v2/country-outage/chat/conversations/conversation%2F1',
+      expect.objectContaining({ method: 'GET' }),
     )
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v2/country-outage/chat/conversations/conversation%2F1/turns/turn%2F1/cancel',
@@ -83,14 +82,37 @@ describe('首个纵向切片交互式 Agent API', () => {
     )
   })
 
-  it('把合同外问题的服务拒绝原因原样交给工作台', async () => {
+  it('读取会话失败时只交付稳定的中文说明', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: vi.fn().mockResolvedValue({
+        error: {
+          code: 'answer_temporarily_unavailable',
+          message: '回答暂时不可用，请稍后再试',
+          retryable: true,
+        },
+      }),
+    })
+
+    await expect(
+      getCountryOutageChatConversation('conversation-test'),
+    ).rejects.toMatchObject({
+      status: 503,
+      code: 'answer_temporarily_unavailable',
+      message: '回答暂时不可用，请稍后再试',
+      retryable: true,
+    })
+  })
+
+  it('把公开且稳定的失败说明交给页面', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 400,
       json: vi.fn().mockResolvedValue({
         error: {
-          code: 'goal_outside_first_slice_contract',
-          message: '当前 Candidate 只实现首个纵向切片固定问题',
+          code: 'invalid_request',
+          message: '当前请求超出此回答功能支持的范围',
           retryable: false,
         },
       }),
@@ -102,24 +124,63 @@ describe('首个纵向切片交互式 Agent API', () => {
       'chat-turn-00002',
     )).rejects.toMatchObject({
       status: 400,
-      code: 'goal_outside_first_slice_contract',
-      message: '当前 Candidate 只实现首个纵向切片固定问题',
+      code: 'invalid_request',
+      message: '当前请求超出此回答功能支持的范围',
       retryable: false,
     })
   })
 
-  it('用六态判别联合区分正确完成与安全停止', () => {
+  it('不改变公开回答中的空格、换行或措辞', async () => {
+    const answerText = '  最低值为 9,577,728。\n边界说明保持原样。  '
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        turn: {
+          answer: { answer_text: answerText },
+        },
+        deduplicated: false,
+      }),
+    })
+
+    const response = await createCountryOutageChatTurn(
+      'conversation-test',
+      COUNTRY_OUTAGE_FIRST_SLICE_QUESTION,
+      'chat-turn-00003',
+    )
+    expect(
+      'answer' in response.turn ? response.turn.answer.answer_text : null,
+    ).toBe(answerText)
+  })
+
+  it('用六态判别联合区分公开完成与非完成', () => {
     type CompletedTurn = Extract<CountryOutageChatTurn, { state: 'completed' }>
     type StoppedTurn = Extract<CountryOutageChatTurn, { state: 'stopped' }>
     type ExecutingTurn = Extract<CountryOutageChatTurn, { state: 'executing' }>
+    type FailedTurn = Extract<CountryOutageChatTurn, { state: 'failed' }>
     type CompletedFallback = Extract<
       CompletedTurn['answer'],
       { answer_source: 'deterministic_fallback' }
     >
-    type CompletedTrace = CompletedTurn['answer']['trace']
     type StoppedFallback = Extract<
       StoppedTurn['answer'],
       { answer_source: 'deterministic_fallback' }
+    >
+    type InternalAnswerKeys = Extract<
+      keyof CountryOutageChatSuccessfulTurnAnswer,
+      | 'candidate_id'
+      | 'finding'
+      | 'evidence'
+      | 'trace'
+      | 'usage'
+    >
+    type RetryableTurnError = Extract<
+      FailedTurn['error'],
+      { code: 'answer_temporarily_unavailable' }
+    >
+    type InvalidTurnErrorCombination = Extract<
+      FailedTurn['error'],
+      { code: 'answer_not_published'; retryable: true }
     >
 
     expectTypeOf<CompletedTurn>().toMatchTypeOf<{
@@ -128,7 +189,14 @@ describe('首个纵向切片交互式 Agent API', () => {
       answer: {
         answerability: 'supported'
         answer_source: 'renderer'
-        trace: { response_guard: { decision: 'pass' } }
+        answer_text: string
+        basis: {
+          source_label_zh: string
+          observed_object_zh: string
+          window_start_utc: string
+          window_end_utc: string
+          important_boundary_zh: string
+        }
       }
     }>()
     expectTypeOf<StoppedTurn>().toMatchTypeOf<{
@@ -142,17 +210,12 @@ describe('首个纵向切片交互式 Agent API', () => {
     }>()
     expectTypeOf<CompletedFallback>().toEqualTypeOf<never>()
     expectTypeOf<StoppedFallback>().toEqualTypeOf<never>()
-    expectTypeOf<CompletedTrace['goal_state_revision']>().toEqualTypeOf<4>()
-    expectTypeOf<CompletedTrace['disposition']>()
-      .toEqualTypeOf<'goal_satisfied'>()
-    expectTypeOf<CompletedTrace['admission_receipts']['length']>()
-      .toEqualTypeOf<2>()
-    expectTypeOf<CompletedTrace['action_receipts']['length']>()
-      .toEqualTypeOf<2>()
-    expectTypeOf<CompletedTrace['artifacts']['length']>().toEqualTypeOf<2>()
-    expectTypeOf<CompletedTrace['observations']['length']>()
-      .toEqualTypeOf<2>()
-    expectTypeOf<CompletedTrace['response_guard']['reason_codes']>()
-      .toMatchTypeOf<[]>()
+    expectTypeOf<InternalAnswerKeys>().toEqualTypeOf<never>()
+    expectTypeOf<RetryableTurnError>().toEqualTypeOf<{
+      code: 'answer_temporarily_unavailable'
+      message: '这次没有形成可靠答案，临时服务异常。请稍后重试。'
+      retryable: true
+    }>()
+    expectTypeOf<InvalidTurnErrorCombination>().toEqualTypeOf<never>()
   })
 })

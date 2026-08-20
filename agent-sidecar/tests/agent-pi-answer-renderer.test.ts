@@ -12,6 +12,7 @@ import type {
 } from '../src/agent/contracts.js'
 import {
   composeCountryOutageAnswer,
+  composeCountryOutageRendererDraftText,
   renderCountryOutageDeterministicFallback,
 } from '../src/agent/finding-answer.js'
 import { PiAnswerRenderer } from '../src/agent/pi-answer-renderer.js'
@@ -21,78 +22,37 @@ import {
   type DomeyePiSessionHandle,
 } from '../src/agent/pi-runtime-boundary.js'
 
-const identity = {
-  event_type: 'country_outage' as const,
-  incident_id: 'incident-go',
-  publication_id: 'publication-go',
-  revision: 1,
-  collector_id: 'rrc25' as const,
-  cohort_id: 'cohort-go',
-  country_code: 'IR',
-  window_start_utc: '2026-02-27T00:10:00Z',
-  window_end_utc: '2026-03-11T00:00:00Z',
-  data_through: '2026-03-11T00:00:00Z',
-  is_final_in_data_range: false,
-  lifecycle_state: 'event_end_unknown' as const,
-}
-
-const limitations = [
-  'unique_ipv4_address 是固定前缀规范化、去重并合并重叠后的 IPv4 唯一地址并集，不是用户数、设备数或流量。',
-  'RRC25 是单一观察点，不能代表全国或全球互联网。',
-  '极值、下降或末值回升不能单独证明事件原因、责任、全国中断或真实恢复。',
-  '窗口冻结仅表示评测输入不静默变化，不表示真实事件已经结束。',
-]
-
 const context: DomeyeAnswerContext = {
-  schema_version: 'domeye_agent_answer_context_v1',
-  context_id: 'answer-context-1',
-  candidate_id: 'candidate-1',
-  contract_version: 'domeye.first-vertical-slice/v1.0',
-  contract_digest: `sha256:${'a'.repeat(64)}`,
-  data_identity: identity,
-  finding: {
-    schema_version: 'domeye_agent_typed_finding_v1',
-    finding_id: 'finding-1',
-    finding_type: 'fixed_visible_ipv4_series_extrema',
-    value_state: 'known',
-    candidate_id: 'candidate-1',
-    tenant_id: 'domeye',
-    data_identity: identity,
-    metric: 'fixed_visible_ipv4_address_count',
-    unit: 'unique_ipv4_address',
-    population_definition:
-      'normalized_deduplicated_merged_fixed_prefix_ipv4_unique_address_union',
-    values: {
-      first: 10156800,
-      first_at_utc: '2026-02-27T00:10:00Z',
-      last: 10069760,
-      last_at_utc: '2026-03-11T00:00:00Z',
-      minimum: 9577728,
-      minimum_at_utc: '2026-02-28T14:35:00Z',
-      maximum: 10156800,
-      maximum_at_utc: '2026-02-27T00:10:00Z',
-      difference: 579072,
-      net_change: -87040,
+  schema_version: 'domeye_agent_answer_context_v2',
+  question_zh:
+    '在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？',
+  metric_zh: '固定前缀可见 IPv4 地址量',
+  unit_zh: '个唯一 IPv4 地址',
+  facts: {
+    minimum: { value: 9577728, display_zh: '9,577,728' },
+    minimum_at_utc: {
+      value: '2026-02-28T14:35:00Z',
+      display_zh: '2026 年 2 月 28 日 14:35 UTC',
     },
-    time_slot_count: 3455,
-    observed_point_count: 3455,
-    null_point_count: 0,
-    completeness_state: 'complete',
-    limitation_codes: [
-      'fixed_population_semantics',
-      'rrc25_observer_scope_only',
-      'no_cause_responsibility_or_recovery',
-      'window_not_event_closure',
-    ],
-    tool_version: '1.0.0',
-    operator_version: '1.0.0',
-    artifact_refs: ['artifact-series', 'artifact-extrema'],
-    receipt_refs: ['receipt-series', 'receipt-extrema'],
-    evidence_refs: ['domeye:evidence-series'],
-    result_digest: `sha256:${'b'.repeat(64)}`,
+    first: { value: 10156800, display_zh: '10,156,800' },
+    last: { value: 10069760, display_zh: '10,069,760' },
+    maximum: { value: 10156800, display_zh: '10,156,800' },
+    difference: { value: 579072, display_zh: '579,072' },
   },
-  observer_scope_zh: 'RRC25 单一观察点的 BGP 控制面观测',
-  mandatory_limitations_zh: limitations,
+  required_boundaries: [
+    {
+      code: 'fixed_prefix_population_not_users',
+      meaning_zh: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数。',
+    },
+    {
+      code: 'rrc25_control_plane_observation_only',
+      meaning_zh: '结果只表示 RRC25 的 BGP 控制面观测。',
+    },
+    {
+      code: 'no_national_or_user_impact_cause_responsibility_recovery',
+      meaning_zh: '不能据此判断全国状态、用户影响、原因、责任或恢复。',
+    },
+  ],
   forbidden_conclusions: [
     'national_outage',
     'real_user_impact',
@@ -100,28 +60,37 @@ const context: DomeyeAnswerContext = {
     'responsibility',
     'real_recovery',
   ],
-  evidence_refs: ['domeye:evidence-series'],
-  context_digest: `sha256:${'c'.repeat(64)}`,
+  style_constraints: {
+    max_lead_graphemes: 90,
+    max_fact_blocks: 3,
+    required_boundary_blocks: 1,
+    max_total_graphemes: 360,
+    max_sentences: 6,
+  },
 }
 
 function draft(): DomeyeRendererDraft {
   return {
-    schema_version: 'domeye_agent_renderer_draft_v1',
-    context_id: context.context_id,
-    finding_id: context.finding.finding_id,
-    candidate_id: context.candidate_id,
-    publication_id: identity.publication_id,
-    revision: identity.revision,
-    collector_id: 'rrc25',
-    window_start_utc: identity.window_start_utc,
-    window_end_utc: identity.window_end_utc,
-    metric: context.finding.metric,
-    unit: context.finding.unit,
-    values: context.finding.values,
-    observer_scope_zh: context.observer_scope_zh,
-    limitations_zh: limitations,
-    evidence_refs: context.evidence_refs,
-    text: renderCountryOutageDeterministicFallback(context),
+    schema_version: 'domeye_agent_renderer_draft_v2',
+    lead: {
+      fact_keys: ['minimum', 'minimum_at_utc'],
+      text: `最低值为 ${context.facts.minimum.display_zh} ${context.unit_zh}，首次观测于 ${context.facts.minimum_at_utc.display_zh}。`,
+    },
+    fact_blocks: [
+      {
+        fact_keys: ['first', 'last'],
+        text: `首值为 ${context.facts.first.display_zh}，末值为 ${context.facts.last.display_zh}。`,
+      },
+      {
+        fact_keys: ['maximum', 'difference'],
+        text: `最大值为 ${context.facts.maximum.display_zh}，极差为 ${context.facts.difference.display_zh}。`,
+      },
+    ],
+    boundary: {
+      boundary_codes: context.required_boundaries.map((item) => item.code),
+      text: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数；结果只表示 RRC25 的 BGP 控制面观测，不能据此判断全国状态、用户影响、原因、责任或恢复。',
+    },
+    next_step: null,
   }
 }
 
@@ -283,6 +252,7 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
   )
   assert.equal(result.source, 'renderer')
   assert.equal(result.guard_result.decision, 'pass')
+  assert.equal(result.answer, composeCountryOutageRendererDraftText(draft()))
   assert.equal(networkCalls.value, 1)
   assert.equal(accounting.audit().attempt_count, 1)
   assert.equal(accounting.audit().estimated_cost_usd, 0.01)
@@ -290,7 +260,11 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
   assert.equal('answer_context' in prompts[0]!, false)
   assert.equal('instruction' in prompts[0]!, false)
   assert.equal('renderer_draft_skeleton' in prompts[0]!, false)
-  assert.deepEqual(prompts[0], draft())
+  assert.deepEqual(prompts[0], context)
+  assert.doesNotMatch(
+    JSON.stringify(prompts[0]),
+    /candidate|finding_id|context_id|digest|sha256|receipt|artifact|evidence|usage/iu,
+  )
 })
 
 test('Renderer 将 DeepSeek JSON object 约束传到底层且保留既有 payload hook', async () => {
@@ -398,6 +372,8 @@ test('Renderer 非法输出不重试模型，直接使用同 Context 确定性�
   assert.equal(result.source, 'deterministic_fallback')
   assert.equal(result.answer, renderCountryOutageDeterministicFallback(context))
   assert.equal(result.guard_result.decision, 'block')
+  assert.equal(result.guard_result.assessment_status, 'not_evaluated')
+  assert.equal(result.guard_result.style_assessment, null)
   assert.deepEqual(result.guard_result.reason_codes, ['renderer_failed_or_invalid'])
   assert.equal(networkCalls.value, 1)
   assert.equal(accounting.audit().attempt_count, 1)
@@ -408,9 +384,13 @@ test('Renderer 继续拒绝 fenced、非 JSON、Schema 非法与 Guard 不通过
     ...draft(),
     unexpected_field: true,
   }
+  const acceptedDraft = draft()
   const guardRejected = {
-    ...draft(),
-    text: `${draft().text}\n事件已经恢复。`,
+    ...acceptedDraft,
+    fact_blocks: [{
+      ...acceptedDraft.fact_blocks[0]!,
+      text: `${acceptedDraft.fact_blocks[0]!.text} 事件已经恢复。`,
+    }, acceptedDraft.fact_blocks[1]!],
   }
   const wrappedDraft = {
     renderer_draft_skeleton: draft(),

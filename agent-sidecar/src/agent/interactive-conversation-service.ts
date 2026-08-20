@@ -35,6 +35,7 @@ import type {
   DomeyeDataIdentityVerifier,
   DomeyeVerifiedIdentityReceipt,
 } from './country-outage-read-model.js'
+import { DomeyeReadModelError } from './country-outage-read-model.js'
 
 export interface DomeyeAuthenticatedPrincipal {
   readonly userId: string
@@ -53,14 +54,6 @@ export interface DomeyeConversationTurnRequest {
   readonly idempotency_key: string
 }
 
-export interface DomeyeTurnEvidence {
-  readonly evidence_ref: string
-  readonly label: string
-  readonly value: number | string | null
-  readonly unit: string | null
-  readonly observed_at_utc: string | null
-}
-
 export interface DomeyeAuthorizationDerivation {
   readonly schema_version: 'domeye_authorization_derivation_v1'
   readonly rule_id: 'country_outage_event_read_to_country_outage_read_v1'
@@ -72,97 +65,28 @@ export interface DomeyeAuthorizationDerivation {
   readonly derived_scope: 'country_outage:read'
 }
 
-interface DomeyeInteractiveTurnTrace {
-  readonly goal_id: string
-  readonly goal_state_revision: number
-  readonly disposition: string
-  readonly authorization_derivation: DomeyeAuthorizationDerivation
-  readonly admission_receipts: readonly {
-    receipt_id: string
-    decision: 'admitted' | 'rejected'
-    reason_code: string | null
-  }[]
-  readonly action_receipts: readonly {
-    receipt_id: string
-    capability_id: 'CAP-006' | 'CAP-016'
-    status: 'succeeded' | 'failed'
-    failure_code: string | null
-  }[]
-  readonly artifacts: readonly {
-    artifact_id: string
-    artifact_kind: 'metric_series' | 'series_extrema'
-    content_digest: string
-  }[]
-  readonly observations: readonly {
-    observation_id: string
-    capability_id: 'CAP-006' | 'CAP-016'
-    status: 'succeeded' | 'rejected' | 'failed'
-    reason_code: string | null
-  }[]
-  readonly response_guard: {
-    decision: 'pass' | 'block'
-    reason_codes: readonly string[]
-  } | null
-}
-
 interface DomeyeInteractiveTurnAnswerCommon {
-  readonly schema_version: 'domeye_interactive_agent_turn_answer_v1'
+  readonly schema_version: 'domeye_interactive_agent_turn_answer_v2'
   readonly answer_text: string
-  readonly candidate_id: string
-  readonly data_identity: DomeyeDataIdentity
-  readonly evidence: readonly DomeyeTurnEvidence[]
-  readonly limitations: readonly string[]
-  readonly usage: DomeyeFirstSliceRunResult['usage']
 }
 
 export interface DomeyeInteractiveSuccessfulTurnAnswer
   extends DomeyeInteractiveTurnAnswerCommon {
   readonly answerability: 'supported'
   readonly answer_source: 'renderer'
-  readonly finding: DomeyeTypedFinding
-  readonly trace: Readonly<
-    Omit<
-      DomeyeInteractiveTurnTrace,
-      | 'disposition'
-      | 'admission_receipts'
-      | 'action_receipts'
-      | 'observations'
-      | 'response_guard'
-    > & {
-      disposition: 'goal_satisfied'
-      admission_receipts: readonly {
-        receipt_id: string
-        decision: 'admitted'
-        reason_code: null
-      }[]
-      action_receipts: readonly {
-        receipt_id: string
-        capability_id: 'CAP-006' | 'CAP-016'
-        status: 'succeeded'
-        failure_code: null
-      }[]
-      observations: readonly {
-        observation_id: string
-        capability_id: 'CAP-006' | 'CAP-016'
-        status: 'succeeded'
-        reason_code: null
-      }[]
-      response_guard: {
-        decision: 'pass'
-        reason_codes: readonly []
-      }
-    }
-  >
+  readonly basis: {
+    readonly source_label_zh: string
+    readonly observed_object_zh: string
+    readonly window_start_utc: string
+    readonly window_end_utc: string
+    readonly important_boundary_zh: string
+  }
 }
 
 export interface DomeyeInteractiveNonSuccessfulTurnAnswer
   extends DomeyeInteractiveTurnAnswerCommon {
   readonly answerability: 'clarification_required' | 'stopped'
   readonly answer_source: 'none'
-  readonly finding: null
-  readonly evidence: readonly []
-  readonly limitations: readonly []
-  readonly trace: DomeyeInteractiveTurnTrace
 }
 
 export type DomeyeInteractiveTurnAnswer =
@@ -209,14 +133,41 @@ export type DomeyeConversationTurn =
   }>
 
 export interface DomeyeInteractiveConversation {
-  readonly schema_version: 'domeye_interactive_agent_conversation_v1'
+  readonly schema_version: 'domeye_interactive_agent_conversation_v2'
   readonly conversation_id: string
   readonly binding: DomeyeDataIdentity & { event_reference: string }
-  readonly identity_receipt_id: string
-  readonly candidate_id: string
   readonly turns: readonly DomeyeConversationTurn[]
   readonly expires_at: string
   readonly created_at: string
+}
+
+export interface DomeyeInteractiveTurnInternalRecord {
+  readonly schema_version: 'domeye_interactive_agent_turn_internal_record_v1'
+  readonly record_id: string
+  readonly record_digest: `sha256:${string}`
+  readonly conversation_id: string
+  readonly turn_id: string
+  readonly candidate_id: string
+  readonly contract_version: 'domeye.first-vertical-slice/v1.0'
+  readonly contract_digest: string
+  readonly answer_presentation_contract_version:
+    'domeye.first-vertical-slice.answer-presentation/v1.0'
+  readonly answer_presentation_contract_digest: string
+  readonly data_identity: DomeyeDataIdentity
+  readonly identity_receipt: DomeyeVerifiedIdentityReceipt
+  readonly authorization_derivation: DomeyeAuthorizationDerivation
+  readonly public_projection: DomeyeConversationTurn
+  readonly public_answer_sha256: `sha256:${string}` | null
+  readonly public_projection_sha256: `sha256:${string}`
+  readonly runtime_result: DomeyeFirstSliceRunResult | null
+  readonly failure: {
+    readonly code: string
+    readonly error_name: string
+    readonly error_message: string
+    readonly retryable: boolean
+    readonly run_evidence: DomeyeFirstSliceRunError['evidence'] | null
+  } | null
+  readonly recorded_at_utc: string
 }
 
 interface StoredConversation {
@@ -227,7 +178,7 @@ interface StoredConversation {
   authorizationDerivation: DomeyeAuthorizationDerivation
   createIdempotencyKey: string
   turnIdempotency: Map<string, { question: string, turnId: string }>
-  failureEvidence: Map<string, DomeyeFirstSliceRunError['evidence']>
+  internalRecords: Map<string, DomeyeInteractiveTurnInternalRecord>
   active?: { turnId: string, controller: AbortController, promise: Promise<void> }
 }
 
@@ -236,6 +187,7 @@ export class DomeyeConversationError extends Error {
     readonly code:
       | 'permission_denied'
       | 'conversation_not_found'
+      | 'internal_record_not_found'
       | 'conversation_expired'
       | 'conversation_busy'
       | 'idempotency_conflict'
@@ -280,11 +232,115 @@ function immutableClone<T>(value: T): T {
 
 function safeErrorCode(error: unknown): string {
   if (error instanceof DomeyeConversationError) return error.code
+  if (error instanceof DomeyeReadModelError) return error.code
+  if (error instanceof DomeyeFirstSliceRunError) return error.code
   if (
     error instanceof Error
     && /^[a-z][a-z0-9_]{0,63}$/.test(error.message)
   ) return error.message
   return 'interactive_agent_failed'
+}
+
+const RETRYABLE_RUNTIME_FAILURE_CODES = new Set([
+  'read_timeout',
+  'data_api_unavailable',
+  'interactive_loop_timeout',
+  'cognition_provider_failed',
+  'renderer_timeout',
+  'renderer_provider_failed',
+])
+
+function isRetryableExecutionFailure(error: unknown): boolean {
+  if (error instanceof DomeyeConversationError) return error.retryable
+  if (error instanceof DomeyeReadModelError) return error.retryable
+  if (error instanceof DomeyeFirstSliceRunError) {
+    if (RETRYABLE_RUNTIME_FAILURE_CODES.has(error.code)) return true
+    const evidence = error.evidence
+    if (evidence.failure_stage !== 'answer') return false
+    return RETRYABLE_RUNTIME_FAILURE_CODES.has(
+      evidence.answer.render_attempt.failure_code ?? '',
+    )
+  }
+  return false
+}
+
+function internalErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function internalErrorName(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error
+}
+
+function publicFailureMessage(retryable: boolean): string {
+  return retryable
+    ? '这次没有形成可靠答案，临时服务异常。请稍后重试。'
+    : '本轮未通过回答合同或安全校验，没有发布答案。'
+}
+
+function publicTurnFailure(error: unknown): {
+  readonly code: 'answer_temporarily_unavailable' | 'answer_not_published'
+  readonly message: string
+  readonly retryable: boolean
+} {
+  const retryable = isRetryableExecutionFailure(error)
+  return {
+    code: retryable
+      ? 'answer_temporarily_unavailable'
+      : 'answer_not_published',
+    message: publicFailureMessage(retryable),
+    retryable,
+  }
+}
+
+function sha256Text(value: string): `sha256:${string}` {
+  return `sha256:${createHash('sha256').update(value, 'utf8').digest('hex')}`
+}
+
+function sha256Projection(value: unknown): `sha256:${string}` {
+  return `sha256:${canonicalJsonSha256(value)}`
+}
+
+export function hasValidDomeyeInteractiveTurnInternalRecord(
+  record: DomeyeInteractiveTurnInternalRecord,
+): boolean {
+  try {
+    const {
+      record_id: recordId,
+      record_digest: recordDigest,
+      ...body
+    } = record
+    const expectedDigest = sha256Projection(body)
+    const expectedId =
+      `turn-internal-record-sha256:${expectedDigest.slice(7)}`
+    const projection = record.public_projection
+    const answerText = 'answer' in projection
+      ? projection.answer.answer_text
+      : null
+    return recordDigest === expectedDigest
+      && recordId === expectedId
+      && record.turn_id === projection.turn_id
+      && record.public_projection_sha256 === sha256Projection(projection)
+      && record.public_answer_sha256 === (
+        answerText === null ? null : sha256Text(answerText)
+      )
+      && (
+        projection.state !== 'completed'
+        || (
+          record.failure === null
+          && record.runtime_result?.outcome === 'completed'
+          && record.runtime_result.candidate_id === record.candidate_id
+          && record.runtime_result.contract_version === record.contract_version
+          && record.runtime_result.contract_digest === record.contract_digest
+          && record.runtime_result.answer_presentation_contract_version
+            === record.answer_presentation_contract_version
+          && record.runtime_result.answer_presentation_contract_digest
+            === record.answer_presentation_contract_digest
+        )
+      )
+  } catch {
+    return false
+  }
 }
 
 function countryFromReference(reference: string): string | null {
@@ -344,133 +400,38 @@ function runtimePrincipal(
   }
 }
 
-function evidenceFromFinding(
-  finding: DomeyeTypedFinding | null,
-): DomeyeTurnEvidence[] {
-  if (!finding) return []
-  const values = finding.values
-  return [
-    ['first', '首值', values.first, values.first_at_utc],
-    ['last', '末值', values.last, values.last_at_utc],
-    ['minimum', '最低值', values.minimum, values.minimum_at_utc],
-    ['maximum', '最大值', values.maximum, values.maximum_at_utc],
-    ['difference', '极差', values.difference, null],
-    ['net_change', '首末净变化', values.net_change, null],
-  ].map(([field, label, value, observedAt]) => ({
-    evidence_ref: `${finding.finding_id}#/values/${field}`,
-    label: String(label),
-    value: value as number | null,
-    unit: finding.unit,
-    observed_at_utc: observedAt as string | null,
-  }))
-}
-
-function publicTrace(
-  result: DomeyeFirstSliceRunResult,
-  authorizationDerivation: DomeyeAuthorizationDerivation,
-): DomeyeInteractiveTurnTrace {
-  return {
-    goal_id: result.semantic_goal.goal_id,
-    goal_state_revision: result.goal_state.state_revision,
-    disposition: result.loop.disposition.disposition,
-    authorization_derivation: authorizationDerivation,
-    admission_receipts: result.loop.admission_receipts.map((receipt) => ({
-      receipt_id: receipt.receipt_id,
-      decision: receipt.decision,
-      reason_code: receipt.reason_code,
-    })),
-    action_receipts: result.loop.action_receipts.map((receipt) => ({
-      receipt_id: receipt.receipt_id,
-      capability_id: receipt.capability_id,
-      status: receipt.status,
-      failure_code: receipt.failure_code,
-    })),
-    artifacts: result.loop.artifacts.map((artifact) => ({
-      artifact_id: artifact.artifact_id,
-      artifact_kind: artifact.artifact_kind,
-      content_digest: artifact.content_digest,
-    })),
-    observations: result.loop.observations.map((observation) => ({
-      observation_id: observation.observation_id,
-      capability_id: observation.capability_id,
-      status: observation.status,
-      reason_code: observation.reason_code,
-    })),
-    response_guard: result.answer
-      ? {
-          decision: result.answer.guard_result.decision,
-          reason_codes: [...result.answer.guard_result.reason_codes],
-        }
-      : null,
-  }
-}
-
 function publicSuccessfulAnswer(
   result: Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }>,
-  authorizationDerivation: DomeyeAuthorizationDerivation,
 ): DomeyeInteractiveSuccessfulTurnAnswer {
-  const trace = publicTrace(result, authorizationDerivation)
   return {
-    schema_version: 'domeye_interactive_agent_turn_answer_v1',
+    schema_version: 'domeye_interactive_agent_turn_answer_v2',
     answerability: 'supported',
     answer_text: result.answer.answer,
     answer_source: 'renderer',
-    candidate_id: result.candidate_id,
-    data_identity: result.semantic_goal.data_identity,
-    finding: result.finding,
-    evidence: evidenceFromFinding(result.finding),
-    limitations: result.answer_context.mandatory_limitations_zh,
-    trace: {
-      ...trace,
-      disposition: 'goal_satisfied',
-      admission_receipts: result.loop.admission_receipts.map((receipt) => ({
-        receipt_id: receipt.receipt_id,
-        decision: 'admitted',
-        reason_code: null,
-      })),
-      action_receipts: result.loop.action_receipts.map((receipt) => ({
-        receipt_id: receipt.receipt_id,
-        capability_id: receipt.capability_id,
-        status: 'succeeded',
-        failure_code: null,
-      })),
-      observations: result.loop.observations.map((observation) => ({
-        observation_id: observation.observation_id,
-        capability_id: observation.capability_id,
-        status: 'succeeded',
-        reason_code: null,
-      })),
-      response_guard: {
-        decision: 'pass',
-        reason_codes: [],
-      },
+    basis: {
+      source_label_zh: 'Domeye 国家中断观测数据',
+      observed_object_zh:
+        'RRC25 观测到的固定前缀可见 IPv4 地址量',
+      window_start_utc: result.semantic_goal.data_identity.window_start_utc,
+      window_end_utc: result.semantic_goal.data_identity.window_end_utc,
+      important_boundary_zh:
+        '仅表示 RRC25 单一观察点的 BGP 控制面观测，不能据此推断全国或用户实际影响、原因、责任或真实恢复。',
     },
-    usage: result.usage,
   }
 }
 
 function publicNonSuccessfulAnswer(
   result: DomeyeFirstSliceRunResult,
-  authorizationDerivation: DomeyeAuthorizationDerivation,
 ): DomeyeInteractiveNonSuccessfulTurnAnswer {
   return {
-    schema_version: 'domeye_interactive_agent_turn_answer_v1',
+    schema_version: 'domeye_interactive_agent_turn_answer_v2',
     answerability: result.outcome === 'clarification_required'
       ? 'clarification_required'
       : 'stopped',
-    answer_text: result.outcome === 'completed'
-      ? '未形成满足公开合同的正确完整答案。'
-      : result.outcome === 'clarification_required'
-        ? '当前目标需要进一步澄清，未执行未获准能力。'
-        : '当前调查已安全停止，未形成可发布答案。',
+    answer_text: result.outcome === 'clarification_required'
+      ? '当前信息不足以形成可靠答案。请确认是否继续查询这个冻结观测窗口内的固定前缀可见 IPv4 地址量？'
+      : '本轮未通过回答合同或安全校验，没有形成可发布答案。',
     answer_source: 'none',
-    candidate_id: result.candidate_id,
-    data_identity: result.semantic_goal.data_identity,
-    finding: null,
-    evidence: [],
-    limitations: [],
-    trace: publicTrace(result, authorizationDerivation),
-    usage: result.usage,
   }
 }
 
@@ -492,21 +453,23 @@ function hasValidFindingAndContext(
       extrema_artifact: result.loop.artifacts[1]!,
       extrema_receipt: result.loop.action_receipts[1]!,
     })
-    const expectedContext = buildCountryOutageAnswerContext(
-      expectedFinding,
-      candidate.contract_digest,
-    )
+    const expectedContext = buildCountryOutageAnswerContext(expectedFinding)
     return canonicalJsonSha256(finding)
         === canonicalJsonSha256(expectedFinding)
       && canonicalJsonSha256(context)
         === canonicalJsonSha256(expectedContext)
+      && result.answer_context_digest === sha256Projection(context)
       && finding.candidate_id === candidate.candidate_id
-      && context.candidate_id === candidate.candidate_id
       && result.candidate_id === candidate.candidate_id
+      && result.contract_version === candidate.contract_version
+      && result.contract_digest === candidate.contract_digest
+      && result.answer_presentation_contract_version
+        === candidate.answer_presentation_contract_version
+      && result.answer_presentation_contract_digest
+        === candidate.answer_presentation_contract_digest
       && canonicalJsonSha256(result.identity_receipt)
         === canonicalJsonSha256(identityReceipt)
       && sameIdentity(finding.data_identity, candidate.data_identity)
-      && sameIdentity(context.data_identity, candidate.data_identity)
       && sameIdentity(
         result.semantic_goal.data_identity,
         candidate.data_identity,
@@ -708,7 +671,7 @@ function hasCompleteExecutionChain(
     || !Check(DomeyeGoalStateSchema, result.loop.goal_state)
     || !Check(DomeyeGoalStateSchema, result.goal_state)
     || !Check(DomeyeGoalDispositionSchema, result.loop.disposition)
-    || result.schema_version !== 'domeye_first_vertical_slice_run_v1'
+    || result.schema_version !== 'domeye_first_vertical_slice_run_v2'
     || result.candidate_id !== candidate.candidate_id
     || result.loop.disposition.disposition !== 'goal_satisfied'
     || result.loop.disposition.reason_code !== 'finding_input_ready'
@@ -722,6 +685,8 @@ function hasCompleteExecutionChain(
     || artifacts.length !== 2
     || observations.length !== 2
     || candidate.contract_version !== 'domeye.first-vertical-slice/v1.0'
+    || candidate.answer_presentation_contract_version
+      !== 'domeye.first-vertical-slice.answer-presentation/v1.0'
     || candidate.policy.state !== 'active'
     || candidate.registry.state !== 'active'
     || canonicalJsonSha256(candidate.policy.allowed_capability_ids)
@@ -1106,13 +1071,14 @@ function hasSuccessfulFinalAnswerUnchecked(
         DomeyeRendererDraftSchema,
         result.answer.render_attempt.draft,
       )
-      || result.answer.answer !== result.answer.render_attempt.draft.text
     ) return false
     const recomputedGuard = guardCountryOutageResponse(
       result.answer_context,
       result.answer.render_attempt.draft,
     )
     return recomputedGuard.decision === 'pass'
+      && result.answer.answer === recomputedGuard.guarded_text
+      && result.answer.answer_digest === recomputedGuard.guarded_text_digest
       && canonicalJsonSha256(recomputedGuard)
         === canonicalJsonSha256(result.answer.guard_result)
   } catch {
@@ -1125,7 +1091,7 @@ export function hasSuccessfulDomeyePublicFinalAnswer(
   candidate: DomeyeFirstSliceCandidateBinding,
   identityReceipt: DomeyeVerifiedIdentityReceipt,
   expectedPrincipalId: string,
-): result is Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }> {
+): boolean {
   try {
     return hasSuccessfulFinalAnswerUnchecked(
       result,
@@ -1221,14 +1187,12 @@ export class DomeyeInteractiveConversationService {
       idempotency_key: request.idempotency_key,
     })}`
     const descriptor: DomeyeInteractiveConversation = {
-      schema_version: 'domeye_interactive_agent_conversation_v1',
+      schema_version: 'domeye_interactive_agent_conversation_v2',
       conversation_id: conversationId,
       binding: {
         ...identityReceipt.data_identity,
         event_reference: request.event_reference,
       },
-      identity_receipt_id: identityReceipt.receipt_id,
-      candidate_id: this.#options.candidate.candidate_id,
       turns: [],
       expires_at: new Date(createdAt.valueOf() + this.#ttlMs).toISOString(),
       created_at: createdAt.toISOString(),
@@ -1241,7 +1205,7 @@ export class DomeyeInteractiveConversationService {
       authorizationDerivation,
       createIdempotencyKey: request.idempotency_key,
       turnIdempotency: new Map(),
-      failureEvidence: new Map(),
+      internalRecords: new Map(),
     })
     this.#createIdempotency.set(idempotencyScope, conversationId)
     return { conversation: structuredClone(descriptor), deduplicated: false }
@@ -1369,12 +1333,9 @@ export class DomeyeInteractiveConversationService {
         stored.identityReceipt,
         stored.ownerId,
       )
-      if (answerSuccess) {
-        const answer = publicSuccessfulAnswer(
-          result,
-          stored.authorizationDerivation,
-        )
-        this.#replaceTurn(stored, turnId, (turn) => ({
+      if (answerSuccess && result.outcome === 'completed') {
+        const answer = publicSuccessfulAnswer(result)
+        this.#commitTerminalTurn(stored, turnId, (turn) => ({
           turn_id: turn.turn_id,
           turn_number: turn.turn_number,
           question: turn.question,
@@ -1384,16 +1345,13 @@ export class DomeyeInteractiveConversationService {
           answer,
           created_at: turn.created_at,
           completed_at: this.#now().toISOString(),
-        }))
+        }), result)
       } else {
-        const answer = publicNonSuccessfulAnswer(
-          result,
-          stored.authorizationDerivation,
-        )
+        const answer = publicNonSuccessfulAnswer(result)
         const state = result.outcome === 'clarification_required'
           ? 'clarification_required' as const
           : 'stopped' as const
-        this.#replaceTurn(stored, turnId, (turn) => ({
+        this.#commitTerminalTurn(stored, turnId, (turn) => ({
           turn_id: turn.turn_id,
           turn_number: turn.turn_number,
           question: turn.question,
@@ -1403,7 +1361,11 @@ export class DomeyeInteractiveConversationService {
           answer,
           created_at: turn.created_at,
           completed_at: this.#now().toISOString(),
-        }))
+        }), result,
+          result.outcome === 'completed'
+            ? new Error('public_completion_gate_rejected')
+            : undefined,
+        )
       }
     } catch (error) {
       const cancelled = controller.signal.aborted
@@ -1412,38 +1374,108 @@ export class DomeyeInteractiveConversationService {
         return
       }
       if (!this.#isTurnExecuting(stored, turnId)) return
-      if (error instanceof DomeyeFirstSliceRunError) {
-        stored.failureEvidence.set(turnId, immutableClone(error.evidence))
-      }
-      this.#replaceTurn(stored, turnId, (turn) => ({
+      const publicFailure = publicTurnFailure(error)
+      this.#commitTerminalTurn(stored, turnId, (turn) => ({
         turn_id: turn.turn_id,
         turn_number: turn.turn_number,
         question: turn.question,
         state: 'failed',
         answer_success: false,
         workflow_completed: false,
-        error: {
-          code: safeErrorCode(error),
-          message: '首个纵向切片执行失败，未发布答案',
-          retryable: true,
-        },
+        error: publicFailure,
         created_at: turn.created_at,
         completed_at: this.#now().toISOString(),
-      }))
+      }), null, error)
     }
   }
 
-  #replaceTurn(
+  #buildInternalRecord(
+    stored: StoredConversation,
+    projection: Exclude<DomeyeConversationTurn, { state: 'executing' }>,
+    runtimeResult: DomeyeFirstSliceRunResult | null,
+    error?: unknown,
+  ): DomeyeInteractiveTurnInternalRecord {
+    const publicAnswerText = 'answer' in projection
+      ? projection.answer.answer_text
+      : null
+    const retryable = error === undefined
+      ? false
+      : isRetryableExecutionFailure(error)
+    const runEvidence = error instanceof DomeyeFirstSliceRunError
+      ? error.evidence
+      : null
+    const body: Omit<
+      DomeyeInteractiveTurnInternalRecord,
+      'record_id' | 'record_digest'
+    > = {
+      schema_version: 'domeye_interactive_agent_turn_internal_record_v1',
+      conversation_id: stored.descriptor.conversation_id,
+      turn_id: projection.turn_id,
+      candidate_id: this.#options.candidate.candidate_id,
+      contract_version: this.#options.candidate.contract_version,
+      contract_digest: this.#options.candidate.contract_digest,
+      answer_presentation_contract_version:
+        this.#options.candidate.answer_presentation_contract_version,
+      answer_presentation_contract_digest:
+        this.#options.candidate.answer_presentation_contract_digest,
+      data_identity: stored.identityReceipt.data_identity,
+      identity_receipt: stored.identityReceipt,
+      authorization_derivation: stored.authorizationDerivation,
+      public_projection: projection,
+      public_answer_sha256: publicAnswerText === null
+        ? null
+        : sha256Text(publicAnswerText),
+      public_projection_sha256: sha256Projection(projection),
+      runtime_result: runtimeResult,
+      failure: error === undefined
+        ? null
+        : {
+            code: safeErrorCode(error),
+            error_name: internalErrorName(error),
+            error_message: internalErrorMessage(error),
+            retryable,
+            run_evidence: runEvidence,
+          },
+      recorded_at_utc: this.#now().toISOString(),
+    }
+    const recordDigest = sha256Projection(body)
+    return immutableClone({
+      ...body,
+      record_id: `turn-internal-record-sha256:${recordDigest.slice(7)}`,
+      record_digest: recordDigest,
+    })
+  }
+
+  #commitTerminalTurn(
     stored: StoredConversation,
     turnId: string,
-    update: (turn: DomeyeConversationTurn) => DomeyeConversationTurn,
+    buildProjection: (
+      turn: Extract<DomeyeConversationTurn, { state: 'executing' }>,
+    ) => Exclude<DomeyeConversationTurn, { state: 'executing' }>,
+    runtimeResult: DomeyeFirstSliceRunResult | null,
+    error?: unknown,
   ): void {
-    stored.descriptor = {
+    const current = stored.descriptor.turns.find(
+      (turn) => turn.turn_id === turnId,
+    )
+    if (!current || current.state !== 'executing') {
+      throw new Error('executing_turn_projection_missing')
+    }
+    const projection = immutableClone(buildProjection(current))
+    const record = this.#buildInternalRecord(
+      stored,
+      projection,
+      runtimeResult,
+      error,
+    )
+    const descriptor: DomeyeInteractiveConversation = {
       ...stored.descriptor,
       turns: stored.descriptor.turns.map((turn) =>
-        turn.turn_id === turnId ? update(turn) : turn,
+        turn.turn_id === turnId ? projection : turn,
       ),
     }
+    stored.internalRecords.set(turnId, record)
+    stored.descriptor = descriptor
   }
 
   #isTurnExecuting(stored: StoredConversation, turnId: string): boolean {
@@ -1453,9 +1485,8 @@ export class DomeyeInteractiveConversationService {
   }
 
   #markTurnCancelled(stored: StoredConversation, turnId: string): void {
-    this.#replaceTurn(stored, turnId, (turn) => {
-      if (turn.state !== 'executing') return turn
-      return {
+    if (!this.#isTurnExecuting(stored, turnId)) return
+    this.#commitTerminalTurn(stored, turnId, (turn) => ({
         turn_id: turn.turn_id,
         turn_number: turn.turn_number,
         question: turn.question,
@@ -1469,8 +1500,7 @@ export class DomeyeInteractiveConversationService {
         },
         created_at: turn.created_at,
         completed_at: this.#now().toISOString(),
-      }
-    })
+      }), null, new Error('cancelled'))
   }
 
   async cancelTurn(
@@ -1498,5 +1528,22 @@ export class DomeyeInteractiveConversationService {
   async waitForTurn(conversationId: string, turnId: string): Promise<void> {
     const active = this.#conversations.get(conversationId)?.active
     if (active?.turnId === turnId) await active.promise
+  }
+
+  getTurnInternalRecord(
+    conversationId: string,
+    turnId: string,
+  ): DomeyeInteractiveTurnInternalRecord {
+    const record = this.#conversations
+      .get(conversationId)
+      ?.internalRecords.get(turnId)
+    if (!record) throw new DomeyeConversationError(
+      'internal_record_not_found',
+      '内部 turn 记录不存在',
+    )
+    if (!hasValidDomeyeInteractiveTurnInternalRecord(record)) {
+      throw new Error('internal_record_integrity_failed')
+    }
+    return immutableClone(record)
   }
 }

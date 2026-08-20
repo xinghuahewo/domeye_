@@ -1,7 +1,10 @@
 import { canonicalJsonSha256 } from '../shared/deterministic-json.js'
 
 import type {
+  DomeyeAnswerBoundaryCode,
   DomeyeAnswerContext,
+  DomeyeAnswerFactKey,
+  DomeyeAnswerStyleAssessment,
   DomeyeActionReceipt,
   DomeyeArtifactEnvelope,
   DomeyeRendererDraft,
@@ -10,13 +13,17 @@ import type {
 } from './contracts.js'
 
 const FINDING_SCHEMA_VERSION = 'domeye_agent_typed_finding_v1' as const
-const ANSWER_CONTEXT_SCHEMA_VERSION = 'domeye_agent_answer_context_v1' as const
+const ANSWER_CONTEXT_SCHEMA_VERSION = 'domeye_agent_answer_context_v2' as const
 const RESPONSE_GUARD_SCHEMA_VERSION =
-  'domeye_agent_response_guard_v1' as const
+  'domeye_agent_response_guard_v2' as const
+
+export const COUNTRY_OUTAGE_ANSWER_STYLE_POLICY_ID =
+  'domeye.answer-style.compact-first-slice/v1.0' as const
 
 const METRIC = 'fixed_visible_ipv4_address_count' as const
 const UNIT = 'unique_ipv4_address' as const
-const OBSERVER_SCOPE = 'RRC25 单一观察点的 BGP 控制面观测' as const
+const FIRST_SLICE_QUESTION =
+  '在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？' as const
 
 export const COUNTRY_OUTAGE_MANDATORY_LIMITATIONS = Object.freeze([
   Object.freeze({
@@ -45,12 +52,74 @@ export const COUNTRY_OUTAGE_FORBIDDEN_CONCLUSIONS = Object.freeze([
   'real_recovery',
 ] as const)
 
+export const COUNTRY_OUTAGE_REQUIRED_ANSWER_BOUNDARIES = Object.freeze([
+  Object.freeze({
+    code: 'fixed_prefix_population_not_users' as const,
+    meaning_zh: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数。',
+  }),
+  Object.freeze({
+    code: 'rrc25_control_plane_observation_only' as const,
+    meaning_zh: '结果只表示 RRC25 的 BGP 控制面观测。',
+  }),
+  Object.freeze({
+    code: 'no_national_or_user_impact_cause_responsibility_recovery' as const,
+    meaning_zh: '不能据此判断全国状态、用户影响、原因、责任或恢复。',
+  }),
+])
+
+const REQUIRED_FACT_KEYS = Object.freeze([
+  'minimum',
+  'minimum_at_utc',
+  'first',
+  'last',
+  'maximum',
+  'difference',
+] as const satisfies readonly DomeyeAnswerFactKey[])
+
+const STYLE_POLICY_BODY = Object.freeze({
+  policy_id: COUNTRY_OUTAGE_ANSWER_STYLE_POLICY_ID,
+  normalization_algorithm_id:
+    'unicode-nfc-collapse-whitespace-intl-segmenter-zh-v1',
+  required_fact_keys: REQUIRED_FACT_KEYS,
+  required_boundary_codes: COUNTRY_OUTAGE_REQUIRED_ANSWER_BOUNDARIES.map(
+    (item) => item.code,
+  ),
+  lead_fact_keys: ['minimum', 'minimum_at_utc'],
+  fact_value_policy: 'context_display_zh_exact_once_per_fact_key',
+  expression_grammar_id: 'fact-label-display-pairing-zh-v1',
+  boundary_grammar_id: 'required-boundary-clauses-zh-v1',
+  unit_policy: 'context_unit_zh_exactly_once',
+  forbidden_conclusions: COUNTRY_OUTAGE_FORBIDDEN_CONCLUSIONS,
+  leak_policy: [
+    'internal_audit_object',
+    'digest_or_commit',
+    'path_or_code_location',
+    'endpoint_or_port',
+    'credential',
+    'runtime_accounting_or_identifier',
+    'audit_heading',
+  ],
+  outside_context_policy: [
+    'unknown_numeric_or_time_literal',
+    'unapproved_approximation_or_conversion',
+    'unknown_or_internal_unit',
+    'unsupported_external_assertion',
+    'unapproved_uncertainty_or_negation',
+    'next_step_not_allowed',
+  ],
+  max_lead_graphemes: 90,
+  max_fact_blocks: 3,
+  required_boundary_blocks: 1,
+  max_total_graphemes: 360,
+  max_sentences: 6,
+  next_step: 'not_applicable_for_fixed_first_slice',
+})
+
 export type DomeyeFindingAnswerErrorCode =
   | 'artifact_not_qualified'
   | 'receipt_not_qualified'
   | 'artifact_receipt_conflict'
   | 'identity_conflict'
-  | 'payload_digest_conflict'
   | 'invalid_extrema_payload'
 
 export class DomeyeFindingAnswerError extends Error {
@@ -83,6 +152,7 @@ type DomeyeFailedRenderAttempt = Readonly<{
 
 export type DomeyeAcceptedAnswer = Readonly<{
   answer: string
+  answer_digest: string
   source: 'renderer'
   guard_result: Extract<
     DomeyeResponseGuardDecision,
@@ -93,6 +163,7 @@ export type DomeyeAcceptedAnswer = Readonly<{
 
 export type DomeyeFallbackAnswer = Readonly<{
   answer: string
+  answer_digest: string
   source: 'deterministic_fallback'
   guard_result: Extract<
     DomeyeResponseGuardDecision,
@@ -151,10 +222,6 @@ function redactKnownText(text: string, values: readonly string[]): string {
       new RegExp(escapeRegExp(value), 'giu'),
       ' ',
     ), text)
-}
-
-function hasAllText(text: string, values: readonly string[]): boolean {
-  return values.every((value) => text.includes(value))
 }
 
 function includesSameMembers(
@@ -427,90 +494,122 @@ export function buildCountryOutageSeriesExtremaFinding(input: {
 
 export function buildCountryOutageAnswerContext(
   finding: DomeyeTypedFinding,
-  contractDigest: string,
 ): DomeyeAnswerContext {
-  if (!/^sha256:[a-f0-9]{64}$/.test(contractDigest)) {
+  const values = finding.values
+  if (
+    finding.value_state !== 'known'
+    || values.minimum === null
+    || values.minimum_at_utc === null
+    || values.first === null
+    || values.last === null
+    || values.maximum === null
+    || values.difference === null
+  ) {
     throw new DomeyeFindingAnswerError(
-      'payload_digest_conflict',
-      '首片合同摘要必须是 sha256 内容身份',
+      'invalid_extrema_payload',
+      '只有数值完整的 known Finding 才能形成回答上下文',
     )
   }
-  const contextContent = {
+  return deepFreeze({
     schema_version: ANSWER_CONTEXT_SCHEMA_VERSION,
-    candidate_id: finding.candidate_id,
-    contract_version: 'domeye.first-vertical-slice/v1.0' as const,
-    contract_digest: contractDigest,
-    data_identity: finding.data_identity,
-    finding,
-    observer_scope_zh: OBSERVER_SCOPE,
-    mandatory_limitations_zh: COUNTRY_OUTAGE_MANDATORY_LIMITATIONS.map(
-      (limitation) => limitation.text,
+    question_zh: FIRST_SLICE_QUESTION,
+    metric_zh: '固定前缀可见 IPv4 地址量' as const,
+    unit_zh: '个唯一 IPv4 地址' as const,
+    facts: {
+      minimum: {
+        value: values.minimum,
+        display_zh: formatIntegerZh(values.minimum),
+      },
+      minimum_at_utc: {
+        value: values.minimum_at_utc,
+        display_zh: formatUtcZh(values.minimum_at_utc),
+      },
+      first: {
+        value: values.first,
+        display_zh: formatIntegerZh(values.first),
+      },
+      last: {
+        value: values.last,
+        display_zh: formatIntegerZh(values.last),
+      },
+      maximum: {
+        value: values.maximum,
+        display_zh: formatIntegerZh(values.maximum),
+      },
+      difference: {
+        value: values.difference,
+        display_zh: formatIntegerZh(values.difference),
+      },
+    },
+    required_boundaries: COUNTRY_OUTAGE_REQUIRED_ANSWER_BOUNDARIES.map(
+      (item) => ({ ...item }),
     ),
     forbidden_conclusions: [...COUNTRY_OUTAGE_FORBIDDEN_CONCLUSIONS],
-    evidence_refs: [...finding.evidence_refs],
-  }
-  const contextDigest = digest(contextContent)
-  return deepFreeze({
-    ...contextContent,
-    context_id: `answer-context-${contextDigest}`,
-    context_digest: contextDigest,
+    style_constraints: {
+      max_lead_graphemes: 90 as const,
+      max_fact_blocks: 3 as const,
+      required_boundary_blocks: 1 as const,
+      max_total_graphemes: 360 as const,
+      max_sentences: 6 as const,
+    },
   }) as DomeyeAnswerContext
 }
 
-function expectedTextNumbers(context: DomeyeAnswerContext): string[] {
-  return Object.values(context.finding.values)
-    .filter((value): value is number => typeof value === 'number')
-    .map(String)
+function formatIntegerZh(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-function expectedTextTimes(context: DomeyeAnswerContext): string[] {
-  const values = context.finding.values
+function formatUtcZh(value: string): string {
+  const instant = new Date(value)
+  return `${instant.getUTCFullYear()} 年 ${instant.getUTCMonth() + 1} 月 ${instant.getUTCDate()} 日 ${String(instant.getUTCHours()).padStart(2, '0')}:${String(instant.getUTCMinutes()).padStart(2, '0')} UTC`
+}
+
+function countOccurrences(text: string, fragment: string): number {
+  if (fragment.length === 0) return 0
+  return text.split(fragment).length - 1
+}
+
+function normalizedForMeasurement(text: string): string {
+  return text.normalize('NFC').replace(/\s+/gu, ' ').trim()
+}
+
+const GRAPHEME_SEGMENTER = new Intl.Segmenter('zh-CN', {
+  granularity: 'grapheme',
+})
+
+function graphemeCount(text: string): number {
+  return [...GRAPHEME_SEGMENTER.segment(
+    normalizedForMeasurement(text),
+  )].length
+}
+
+function sentenceCount(text: string): number {
+  const normalized = normalizedForMeasurement(text)
+  if (!normalized) return 0
+  const endings = normalized.match(/[。！？!?]+/gu)?.length ?? 0
+  return endings + (/[。！？!?]$/u.test(normalized) ? 0 : 1)
+}
+
+function answerBlocks(draft: DomeyeRendererDraft): string[] {
   return [
-    values.first_at_utc,
-    values.last_at_utc,
-    values.minimum_at_utc,
-    values.maximum_at_utc,
-  ].filter((value): value is string => typeof value === 'string')
-}
-
-function hasUnknownNumber(
-  text: string,
-  context: DomeyeAnswerContext,
-): boolean {
-  const identityStrings = Object.values(context.data_identity)
-    .filter((value): value is string => typeof value === 'string')
-  const knownText = [
-    ...context.mandatory_limitations_zh,
-    ...context.evidence_refs,
-    ...identityStrings,
-    ...expectedTextTimes(context),
-    context.context_id,
-    context.finding.finding_id,
-    context.candidate_id,
-    context.contract_version,
-    context.contract_digest,
-    context.observer_scope_zh,
-    context.finding.metric,
-    context.finding.unit,
-    'RRC25',
-    'IPv4',
+    draft.lead.text,
+    ...draft.fact_blocks.map((block) => block.text),
+    draft.boundary.text,
+    ...(draft.next_step === null ? [] : [draft.next_step]),
   ]
-  const allowedNumbers = new Set([
-    ...expectedTextNumbers(context),
-    String(context.data_identity.revision),
-  ])
-  const remaining = redactKnownText(text, knownText)
-  const found = remaining.matchAll(
-    /(?<![\p{L}\p{N}_])-?\d+(?:\.\d+)?(?![\p{L}\p{N}_])/gu,
-  )
-  return [...found].some((match) => !allowedNumbers.has(match[0]))
 }
 
-function semanticText(
-  text: string,
-  context: DomeyeAnswerContext,
+export function composeCountryOutageRendererDraftText(
+  draft: DomeyeRendererDraft,
 ): string {
-  return redactKnownText(text, context.mandatory_limitations_zh)
+  return answerBlocks(draft).join('\n')
+}
+
+function factDisplay(
+  context: DomeyeAnswerContext,
+  key: DomeyeAnswerFactKey,
+): string {
+  return context.facts[key].display_zh
 }
 
 function hasSensitiveEndpoint(text: string): boolean {
@@ -525,186 +624,400 @@ function hasSensitiveCredential(text: string): boolean {
   )
 }
 
+const FACT_LABELS: Readonly<Record<DomeyeAnswerFactKey, RegExp>> = {
+  minimum: /(?:最低(?:值|点)?|最小值)/u,
+  minimum_at_utc:
+    /(?:首次(?:被)?观测(?:的)?(?:时刻|时间)?|首次(?:出现|出现在))/u,
+  first: /首值/u,
+  last: /末值/u,
+  maximum: /最大(?:值|点)?/u,
+  difference: /极差/u,
+}
+
+const FACT_CLAUSE_LABEL_GRAMMAR: Readonly<
+  Record<DomeyeAnswerFactKey, string>
+> = Object.freeze({
+  minimum: '(?:最低(?:值|点)?|最小值)',
+  minimum_at_utc:
+    '(?:首次(?:被)?观测(?:的)?(?:时刻|时间)?|首次(?:出现|出现在))',
+  first: '首值',
+  last: '末值',
+  maximum: '最大(?:值|点)?',
+  difference: '极差',
+})
+
+function factClauseContractPattern(
+  context: DomeyeAnswerContext,
+  key: DomeyeAnswerFactKey,
+): string {
+  const label = FACT_CLAUSE_LABEL_GRAMMAR[key]
+  const display = escapeRegExp(factDisplay(context, key))
+  if (key === 'minimum_at_utc') {
+    return `${label}\\s*(?:为|是|于|在|：|:)?\\s*${display}`
+  }
+  return `${label}\\s*(?:为|是|：|:)?\\s*${display}(?:\\s*${escapeRegExp(context.unit_zh)})?`
+}
+
+function expressionBlockMatchesContractGrammar(
+  context: DomeyeAnswerContext,
+  block: Readonly<{
+    fact_keys: readonly DomeyeAnswerFactKey[]
+    text: string
+  }>,
+): boolean {
+  if (block.fact_keys.length === 0) return false
+  const clauses = block.fact_keys.map(
+    (key) => factClauseContractPattern(context, key),
+  )
+  const connector = '\\s*(?:，|,|；|;|。|、|和|与|以及)\\s*'
+  return new RegExp(`^${clauses.join(connector)}。$`, 'u').test(
+    block.text.normalize('NFC'),
+  )
+}
+
+const BOUNDARY_CLAUSE_GRAMMAR: Readonly<
+  Record<DomeyeAnswerBoundaryCode, string>
+> = Object.freeze({
+  fixed_prefix_population_not_users:
+    '(?:地址量|该地址量|这些地址量)\\s*(?:是|仅是|表示的是)\\s*固定前缀(?:的)?\\s*IPv4\\s*唯一地址并集\\s*(?:，|,)\\s*(?:而)?(?:不是|不等于|并非)\\s*(?:真实)?用户数',
+  rrc25_control_plane_observation_only:
+    '(?:结果|这些结果|以上结果|上述结果)\\s*(?:只|仅)(?:表示|反映|是)\\s*RRC25\\s*(?:的)?\\s*(?:BGP\\s*)?控制面观测',
+  no_national_or_user_impact_cause_responsibility_recovery:
+    '(?:也)?(?:不能|无法|不足以)\\s*(?:据此)?\\s*(?:判断|说明|证明)\\s*全国(?:互联网)?状态\\s*(?:、|，|,)\\s*(?:真实)?用户影响\\s*(?:、|，|,)\\s*原因\\s*(?:、|，|,)\\s*责任\\s*(?:或|与|、)\\s*(?:真实)?恢复',
+})
+
+function boundaryMatchesContractGrammar(
+  boundary: DomeyeRendererDraft['boundary'],
+): boolean {
+  if (boundary.boundary_codes.length === 0) return false
+  const clauses = boundary.boundary_codes.map(
+    (code) => BOUNDARY_CLAUSE_GRAMMAR[code],
+  )
+  const connector = '\\s*(?:；|;|，|,)\\s*'
+  return new RegExp(`^${clauses.join(connector)}。$`, 'u').test(
+    boundary.text.normalize('NFC'),
+  )
+}
+
+function boundaryMeaningPresent(
+  code: DomeyeAnswerBoundaryCode,
+  text: string,
+): boolean {
+  if (code === 'fixed_prefix_population_not_users') {
+    return /(?:地址量|IPv4).{0,28}(?:不是|不等于|并非).{0,18}(?:用户数|用户)/u
+      .test(text)
+  }
+  if (code === 'rrc25_control_plane_observation_only') {
+    return /RRC25/u.test(text)
+      && /(?:BGP\s*)?控制面(?:的)?观测/u.test(text)
+  }
+  return /(?:不能|无法|不足以|不代表|不得)/u.test(text)
+    && /全国/u.test(text)
+    && /用户影响|用户受影响/u.test(text)
+    && /原因/u.test(text)
+    && /责任/u.test(text)
+    && /恢复/u.test(text)
+}
+
+function internalLeakCodes(text: string): string[] {
+  const codes: string[] = []
+  if (/\b(?:Candidate|Receipt|Finding|Artifact|Trace|Evidence)\b|(?:^|\n)\s*证据\s*[：:]/iu.test(text)) {
+    codes.push('internal_audit_object')
+  }
+  if (/\bsha256(?::|\b)|\b[a-f0-9]{40}\b|\b[a-f0-9]{64}\b/iu.test(text)) {
+    codes.push('digest_or_commit')
+  }
+  if (/(?:^|[\s（(])(?:\/Users\/|\/home\/|agent-sidecar\/|docs\/|contracts\/)|\b[\w./-]+\.(?:ts|js|py|json|md)(?::\d+)?\b/iu.test(text)) {
+    codes.push('path_or_code_location')
+  }
+  if (hasSensitiveEndpoint(text) || /\b(?:端口|port)\s*[:：]?\s*\d+/iu.test(text)) {
+    codes.push('endpoint_or_port')
+  }
+  if (hasSensitiveCredential(text)) codes.push('credential')
+  if (/\b(?:model_api_attempts|provider_usage|context_id|finding_id|candidate_id|receipt_refs|artifact_refs)\b|模型调用次数|调用账本|费用账本/iu.test(text)) {
+    codes.push('runtime_accounting_or_identifier')
+  }
+  if (/(?:^|\n)\s*(?:结论|证据|Evidence|执行证明|测试结果)\s*[：:]/iu.test(text)) {
+    codes.push('audit_heading')
+  }
+  return uniqueSorted(codes)
+}
+
+function forbiddenClaimCodes(text: string): string[] {
+  const codes: string[] = []
+  if (/全国(?:互联网|网络|范围)?(?:已经|已|发生|出现|遭遇|处于|全面)?(?:中断|断网|瘫痪)|全网(?:中断|断网)|nationwide\s+(?:internet\s+)?outage|global\s+outage/iu.test(text)) {
+    codes.push('forbidden_national_outage_claim')
+  }
+  if (/(?:用户|设备|人口).{0,16}(?:受影响|断网|中断|无法上网)|(?:影响|波及).{0,12}(?:用户|人)|users?\s+(?:were\s+)?affected/iu.test(text)) {
+    codes.push('forbidden_user_impact_claim')
+  }
+  if (/(?:原因(?:是|为)|由于.{0,40}(?:导致|造成)|由.{0,40}(?:导致|造成)|归因于|caused\s+by)/iu.test(text)) {
+    codes.push('forbidden_cause_claim')
+  }
+  if (/(?:责任(?:在于|属于|由)|应当?负责|承担责任|responsible\s+for)/iu.test(text)) {
+    codes.push('forbidden_responsibility_claim')
+  }
+  if (/(?:已经|已|完全|实际|全面)(?:恢复|恢复正常)|恢复(?:完成|了)|fully\s+recovered/iu.test(text)) {
+    codes.push('forbidden_recovery_claim')
+  }
+  if (/(?:实际发生于|事件(?:的)?发生时间(?:是|为)|occurred\s+at)/iu.test(text)) {
+    codes.push('observed_time_overstated')
+  }
+  return codes
+}
+
+function outsideContextCodes(
+  context: DomeyeAnswerContext,
+  draft: DomeyeRendererDraft,
+  finalText: string,
+): string[] {
+  const codes: string[] = []
+  const knownDisplays = REQUIRED_FACT_KEYS.map(
+    (key) => factDisplay(context, key),
+  )
+  const withoutKnownNumbers = redactKnownText(finalText, [
+    ...knownDisplays,
+    context.unit_zh,
+    context.metric_zh,
+    'RRC25',
+    'IPv4',
+  ])
+  if (/\d/u.test(withoutKnownNumbers)) {
+    codes.push('unknown_numeric_or_time_literal')
+  }
+  const withoutAuthorizedChineseNumeralWords = redactKnownText(finalText, [
+    '唯一',
+  ])
+  if (/[零〇一二两三四五六七八九十百千万亿兆]+/u.test(
+    withoutAuthorizedChineseNumeralWords,
+  ) || /(?:约|大约|近|超过|不足|至少|至多)\s*\d|\d+(?:倍|成)|百分之|数(?:十|百|千|万|百万|千万|亿)/u.test(
+    finalText,
+  )) codes.push('unapproved_approximation_or_conversion')
+
+  const nonBoundaryText = [
+    draft.lead.text,
+    ...draft.fact_blocks.map((block) => block.text),
+  ].join('\n')
+  if (/\b(?:unique_ipv4_address|fixed_visible_ipv4_address_count)\b|\b(?:Mbps|Gbps|bytes?|users?|devices?)\b/iu.test(finalText)) {
+    codes.push('unknown_or_internal_unit')
+  }
+  if (/(?:数据中心|机房|运营商|海缆|电力|攻击).{0,18}(?:发生|故障|中断|火灾|导致|造成)|(?:发生|遭遇).{0,12}(?:火灾|攻击)/u.test(finalText)) {
+    codes.push('unsupported_external_assertion')
+  }
+  if (/(?:也许|可能|大概|估计|疑似)|(?:最低|首值|末值|最大|极差|首次观测).{0,18}(?:不是|并非|不等于)/u.test(
+    nonBoundaryText,
+  )) codes.push('unapproved_uncertainty_or_negation')
+  if (draft.next_step !== null) codes.push('next_step_not_allowed')
+  return uniqueSorted(codes)
+}
+
+export function assessCountryOutageAnswerStyle(
+  context: DomeyeAnswerContext,
+  draft: DomeyeRendererDraft,
+): DomeyeAnswerStyleAssessment {
+  const reasons: string[] = []
+  const finalText = composeCountryOutageRendererDraftText(draft)
+  const expressionBlocks = [draft.lead, ...draft.fact_blocks]
+  const assignedFactKeys = expressionBlocks.flatMap(
+    (block) => block.fact_keys,
+  )
+  const factCounts = new Map<DomeyeAnswerFactKey, number>()
+  for (const key of assignedFactKeys) {
+    factCounts.set(key, (factCounts.get(key) ?? 0) + 1)
+  }
+  const realizedFactKeys = REQUIRED_FACT_KEYS.filter(
+    (key) => (factCounts.get(key) ?? 0) > 0,
+  )
+  const missingFactKeys = REQUIRED_FACT_KEYS.filter(
+    (key) => (factCounts.get(key) ?? 0) === 0,
+  )
+  const duplicateFactKeys = REQUIRED_FACT_KEYS.filter(
+    (key) => (factCounts.get(key) ?? 0) > 1,
+  )
+  if (missingFactKeys.length > 0) reasons.push('required_fact_missing')
+  if (duplicateFactKeys.length > 0) reasons.push('duplicate_fact')
+  if (!sameValue(
+    draft.lead.fact_keys,
+    ['minimum', 'minimum_at_utc'],
+  )) reasons.push('lead_not_direct')
+
+  for (const block of expressionBlocks) {
+    const displayCounts = new Map<string, number>()
+    for (const key of block.fact_keys) {
+      const display = factDisplay(context, key)
+      displayCounts.set(display, (displayCounts.get(display) ?? 0) + 1)
+      if (!FACT_LABELS[key].test(block.text)) {
+        reasons.push('fact_label_missing')
+      }
+    }
+    for (const [display, expectedCount] of displayCounts) {
+      if (countOccurrences(block.text, display) < expectedCount) {
+        reasons.push('visible_fact_missing')
+      }
+    }
+    if (!expressionBlockMatchesContractGrammar(context, block)) {
+      reasons.push('expression_outside_contract_grammar')
+    }
+  }
+
+  const expectedDisplayCounts = new Map<string, number>()
+  for (const key of REQUIRED_FACT_KEYS) {
+    const display = factDisplay(context, key)
+    expectedDisplayCounts.set(
+      display,
+      (expectedDisplayCounts.get(display) ?? 0) + 1,
+    )
+  }
+  for (const [display, expectedCount] of expectedDisplayCounts) {
+    const actualCount = countOccurrences(finalText, display)
+    if (actualCount < expectedCount) reasons.push('visible_fact_missing')
+    if (actualCount > expectedCount) reasons.push('duplicate_fact_text')
+  }
+  if (countOccurrences(finalText, context.unit_zh) !== 1) {
+    reasons.push('unit_missing_or_duplicate')
+  }
+
+  const assignedBoundaryCodes = draft.boundary.boundary_codes
+  const boundaryCounts = new Map<DomeyeAnswerBoundaryCode, number>()
+  for (const code of assignedBoundaryCodes) {
+    boundaryCounts.set(code, (boundaryCounts.get(code) ?? 0) + 1)
+  }
+  const requiredBoundaryCodes = context.required_boundaries.map(
+    (item) => item.code,
+  )
+  const realizedBoundaryCodes = requiredBoundaryCodes.filter(
+    (code) => (boundaryCounts.get(code) ?? 0) > 0,
+  )
+  const missingBoundaryCodes = requiredBoundaryCodes.filter(
+    (code) => (boundaryCounts.get(code) ?? 0) === 0,
+  )
+  const duplicateBoundaryCodes = requiredBoundaryCodes.filter(
+    (code) => (boundaryCounts.get(code) ?? 0) > 1,
+  )
+  if (missingBoundaryCodes.length > 0) {
+    reasons.push('required_boundary_missing')
+  }
+  if (duplicateBoundaryCodes.length > 0) {
+    reasons.push('duplicate_boundary')
+  }
+  if (!requiredBoundaryCodes.every(
+    (code) => boundaryMeaningPresent(code, draft.boundary.text),
+  )) reasons.push('required_boundary_meaning_missing')
+  if (!boundaryMatchesContractGrammar(draft.boundary)) {
+    reasons.push('boundary_outside_contract_grammar')
+  }
+  if (sentenceCount(draft.boundary.text) !== 1) {
+    reasons.push('boundary_must_be_single_sentence')
+  }
+  if (/(?:但|然而|可是|其实|实际上)/u.test(draft.boundary.text)) {
+    reasons.push('boundary_contains_contrast_claim')
+  }
+  const nonBoundaryText = [
+    draft.lead.text,
+    ...draft.fact_blocks.map((block) => block.text),
+  ].join('\n')
+  if (/(?:不是|不等于|并非).{0,18}用户|控制面(?:的)?观测|全国状态|用户影响|原因|责任|恢复/u.test(
+    nonBoundaryText,
+  )) reasons.push('duplicate_boundary_text')
+
+  const blocks = answerBlocks(draft)
+  if (blocks.some((text) =>
+    text.trim() !== text || /[\r\n\t\u0000-\u001f\u007f]/u.test(text)
+  )) reasons.push('expression_block_invalid')
+  const counts = {
+    lead_graphemes: graphemeCount(draft.lead.text),
+    total_graphemes: graphemeCount(finalText),
+    sentence_count: blocks.reduce(
+      (total, text) => total + sentenceCount(text),
+      0,
+    ),
+    fact_block_count: draft.fact_blocks.length,
+    boundary_block_count: 1,
+  }
+  if (counts.lead_graphemes > context.style_constraints.max_lead_graphemes) {
+    reasons.push('lead_too_long')
+  }
+  if (counts.fact_block_count > context.style_constraints.max_fact_blocks) {
+    reasons.push('too_many_fact_blocks')
+  }
+  if (
+    counts.boundary_block_count
+    !== context.style_constraints.required_boundary_blocks
+  ) reasons.push('boundary_block_count_mismatch')
+  if (counts.total_graphemes > context.style_constraints.max_total_graphemes) {
+    reasons.push('answer_too_long')
+  }
+  if (counts.sentence_count > context.style_constraints.max_sentences) {
+    reasons.push('too_many_sentences')
+  }
+
+  const leakCodes = internalLeakCodes(finalText)
+  if (leakCodes.length > 0) reasons.push('internal_information_leak')
+  const outsideCodes = outsideContextCodes(context, draft, finalText)
+  if (outsideCodes.length > 0) reasons.push('content_outside_answer_context')
+  reasons.push(...forbiddenClaimCodes(nonBoundaryText))
+  const boundaryForbiddenCodes = forbiddenClaimCodes(draft.boundary.text)
+    .filter((code) =>
+      code !== 'forbidden_national_outage_claim'
+      || /全国(?:互联网|网络|范围)?.{0,12}(?:已经|已|发生|出现|遭遇|处于|全面).{0,8}(?:中断|断网|瘫痪)/u
+        .test(draft.boundary.text)
+    )
+  reasons.push(...boundaryForbiddenCodes)
+
+  const reasonCodes = uniqueSorted(reasons)
+  return deepFreeze({
+    schema_version: 'domeye_agent_answer_style_assessment_v1',
+    policy_id: COUNTRY_OUTAGE_ANSWER_STYLE_POLICY_ID,
+    policy_digest: digest(STYLE_POLICY_BODY),
+    normalization_algorithm_id:
+      'unicode-nfc-collapse-whitespace-intl-segmenter-zh-v1',
+    final_text_digest: digest(finalText),
+    counts,
+    realized_fact_keys: [...realizedFactKeys],
+    missing_fact_keys: [...missingFactKeys],
+    duplicate_fact_keys: [...duplicateFactKeys],
+    realized_boundary_codes: [...realizedBoundaryCodes],
+    missing_boundary_codes: [...missingBoundaryCodes],
+    duplicate_boundary_codes: [...duplicateBoundaryCodes],
+    leak_codes: leakCodes,
+    outside_context_codes: outsideCodes,
+    passed: reasonCodes.length === 0,
+    reason_codes: reasonCodes,
+  }) as DomeyeAnswerStyleAssessment
+}
+
 export function guardCountryOutageResponse(
   context: DomeyeAnswerContext,
   draft: DomeyeRendererDraft,
 ): DomeyeResponseGuardDecision {
-  const reasons: string[] = []
-  const finding = context.finding
-  const identity = context.data_identity
-  if (draft.schema_version !== 'domeye_agent_renderer_draft_v1') {
-    reasons.push('renderer_schema_mismatch')
-  }
-  if (draft.context_id !== context.context_id) {
-    reasons.push('answer_context_identity_mismatch')
-  }
-  if (draft.finding_id !== finding.finding_id) {
-    reasons.push('finding_reference_mismatch')
-  }
-  if (draft.candidate_id !== context.candidate_id) {
-    reasons.push('candidate_identity_mismatch')
-  }
-  if (
-    draft.publication_id !== identity.publication_id
-    || draft.revision !== identity.revision
-    || draft.collector_id !== identity.collector_id
-  ) {
-    reasons.push('data_identity_mismatch')
-  }
-  if (
-    draft.window_start_utc !== identity.window_start_utc
-    || draft.window_end_utc !== identity.window_end_utc
-  ) {
-    reasons.push('window_identity_mismatch')
-  }
-  if (draft.metric !== finding.metric) {
-    reasons.push('metric_mismatch')
-  }
-  const draftNumbers = {
-    first: draft.values.first,
-    last: draft.values.last,
-    minimum: draft.values.minimum,
-    maximum: draft.values.maximum,
-    difference: draft.values.difference,
-    net_change: draft.values.net_change,
-  }
-  const findingNumbers = {
-    first: finding.values.first,
-    last: finding.values.last,
-    minimum: finding.values.minimum,
-    maximum: finding.values.maximum,
-    difference: finding.values.difference,
-    net_change: finding.values.net_change,
-  }
-  if (!sameValue(draftNumbers, findingNumbers)) {
-    reasons.push('number_mismatch')
-  }
-  const draftTimes = {
-    first_at_utc: draft.values.first_at_utc,
-    last_at_utc: draft.values.last_at_utc,
-    minimum_at_utc: draft.values.minimum_at_utc,
-    maximum_at_utc: draft.values.maximum_at_utc,
-  }
-  const findingTimes = {
-    first_at_utc: finding.values.first_at_utc,
-    last_at_utc: finding.values.last_at_utc,
-    minimum_at_utc: finding.values.minimum_at_utc,
-    maximum_at_utc: finding.values.maximum_at_utc,
-  }
-  if (!sameValue(draftTimes, findingTimes)) {
-    reasons.push('observed_time_mismatch')
-  }
-  if (draft.unit !== finding.unit || !draft.text.includes(finding.unit)) {
-    reasons.push('unit_mismatch')
-  }
-  if (
-    draft.observer_scope_zh !== context.observer_scope_zh
-    || !draft.text.includes(context.observer_scope_zh)
-  ) {
-    reasons.push('observer_scope_mismatch')
-  }
-  if (
-    !includesSameMembers(
-      draft.limitations_zh,
-      context.mandatory_limitations_zh,
-    )
-    || !hasAllText(draft.text, context.mandatory_limitations_zh)
-  ) {
-    reasons.push('mandatory_limitation_missing')
-  }
-  if (!includesSameMembers(draft.evidence_refs, context.evidence_refs)) {
-    reasons.push('evidence_reference_mismatch')
-  }
-  const requiredIdentityText = [
-    identity.publication_id,
-    `revision ${identity.revision}`,
-    identity.collector_id.toUpperCase(),
-    identity.window_start_utc,
-    identity.window_end_utc,
-  ]
-  if (!hasAllText(draft.text, requiredIdentityText)) {
-    reasons.push('visible_identity_missing')
-  }
-  if (!hasAllText(draft.text, expectedTextNumbers(context))) {
-    reasons.push('visible_number_missing')
-  }
-  if (!hasAllText(draft.text, expectedTextTimes(context))) {
-    reasons.push('visible_time_missing')
-  }
-  if (hasUnknownNumber(draft.text, context)) {
-    reasons.push('content_outside_answer_context')
-  }
-  if (draft.text !== renderCountryOutageDeterministicFallback(context)) {
-    reasons.push('content_outside_answer_context')
-  }
-
-  const semantics = semanticText(draft.text, context)
-  if (/全国(?:互联网|网络|范围)?(?:已经|已|发生|出现|遭遇|处于|全面)?(?:中断|断网|瘫痪)|全网(?:中断|断网)|nationwide\s+(?:internet\s+)?outage|global\s+outage/iu.test(semantics)) {
-    reasons.push('forbidden_national_outage_claim')
-  }
-  if (/(?:用户|设备|人口).{0,16}(?:受影响|断网|中断|无法上网)|(?:影响|波及).{0,12}(?:用户|人)|users?\s+(?:were\s+)?affected/iu.test(semantics)) {
-    reasons.push('forbidden_user_impact_claim')
-  }
-  if (/(?:原因(?:是|为)|由于.{0,40}(?:导致|造成)|由.{0,40}(?:导致|造成)|归因于|caused\s+by)/iu.test(semantics)) {
-    reasons.push('forbidden_cause_claim')
-  }
-  if (/(?:责任(?:在于|属于|由)|应当?负责|承担责任|responsible\s+for)/iu.test(semantics)) {
-    reasons.push('forbidden_responsibility_claim')
-  }
-  if (/(?:已经|已|完全|实际|全面)(?:恢复|恢复正常)|恢复(?:完成|了)|fully\s+recovered/iu.test(semantics)) {
-    reasons.push('forbidden_recovery_claim')
-  }
-  if (/(?:实际发生于|事件(?:的)?发生时间(?:是|为)|occurred\s+at)/iu.test(semantics)) {
-    reasons.push('observed_time_overstated')
-  }
-  if (hasSensitiveEndpoint(draft.text)) {
-    reasons.push('sensitive_endpoint_detected')
-  }
-  if (hasSensitiveCredential(draft.text)) {
-    reasons.push('sensitive_credential_detected')
-  }
-
-  const reasonCodes = uniqueSorted(reasons)
-  if (reasonCodes.length === 0) {
+  const styleAssessment = assessCountryOutageAnswerStyle(context, draft)
+  const guardedText = composeCountryOutageRendererDraftText(draft)
+  if (styleAssessment.passed) {
     return deepFreeze({
       schema_version: RESPONSE_GUARD_SCHEMA_VERSION,
       decision: 'pass',
       reason_codes: [],
+      guarded_text: guardedText,
+      guarded_text_digest: digest(guardedText),
+      assessment_status: 'evaluated',
+      style_assessment: styleAssessment,
     })
   }
   return deepFreeze({
     schema_version: RESPONSE_GUARD_SCHEMA_VERSION,
     decision: 'block',
-    reason_codes: reasonCodes,
+    reason_codes: [...styleAssessment.reason_codes],
+    guarded_text: guardedText,
+    guarded_text_digest: digest(guardedText),
+    assessment_status: 'evaluated',
+    style_assessment: styleAssessment,
   })
 }
 
 export function renderCountryOutageDeterministicFallback(
-  context: DomeyeAnswerContext,
+  _context: DomeyeAnswerContext,
 ): string {
-  const identity = context.data_identity
-  const finding = context.finding
-  const lines = [
-    `在 publication ${identity.publication_id}、revision ${identity.revision} 的固定窗口 ${identity.window_start_utc} 至 ${identity.window_end_utc} 内，${context.observer_scope_zh}结果如下。`,
-    `指标：${finding.metric}；单位：${finding.unit}。`,
-  ]
-  if (finding.value_state === 'known') {
-    const values = finding.values
-    lines.push(
-      `首值 ${values.first}，首次观测时刻 ${values.first_at_utc}。`,
-      `末值 ${values.last}，末次观测时刻 ${values.last_at_utc}。`,
-      `最低值 ${values.minimum}，首次最低观测时刻 ${values.minimum_at_utc}。`,
-      `最大值 ${values.maximum}，首次最大观测时刻 ${values.maximum_at_utc}。`,
-      `极差 ${values.difference}；首末净变化 ${values.net_change}。`,
-    )
-  } else {
-    lines.push('当前冻结轨道没有有效观测点，不能按 0 生成正常极值事实。')
-  }
-  lines.push(
-    ...context.mandatory_limitations_zh,
-    `Evidence：${context.evidence_refs.join('；')}。`,
-  )
-  return lines.join('\n')
+  return '当前回答未通过安全检查，未形成可发布答案。'
 }
 
 export async function composeCountryOutageAnswer(
@@ -715,13 +1028,19 @@ export async function composeCountryOutageAnswer(
   try {
     draft = await renderer.render(context)
   } catch {
+    const fallback = renderCountryOutageDeterministicFallback(context)
     return deepFreeze({
-      answer: renderCountryOutageDeterministicFallback(context),
+      answer: fallback,
+      answer_digest: digest(fallback),
       source: 'deterministic_fallback',
       guard_result: {
         schema_version: RESPONSE_GUARD_SCHEMA_VERSION,
         decision: 'block',
         reason_codes: ['renderer_failed_or_invalid'],
+        guarded_text: fallback,
+        guarded_text_digest: digest(fallback),
+        assessment_status: 'not_evaluated',
+        style_assessment: null,
       },
       render_attempt: {
         status: 'failed',
@@ -733,7 +1052,8 @@ export async function composeCountryOutageAnswer(
   const guardResult = guardCountryOutageResponse(context, draft)
   if (guardResult.decision === 'pass') {
     return deepFreeze({
-      answer: draft.text,
+      answer: guardResult.guarded_text,
+      answer_digest: guardResult.guarded_text_digest,
       source: 'renderer',
       guard_result: guardResult,
       render_attempt: {
@@ -743,8 +1063,10 @@ export async function composeCountryOutageAnswer(
       },
     })
   }
+  const fallback = renderCountryOutageDeterministicFallback(context)
   return deepFreeze({
-    answer: renderCountryOutageDeterministicFallback(context),
+    answer: fallback,
+    answer_digest: digest(fallback),
     source: 'deterministic_fallback',
     guard_result: guardResult,
     render_attempt: {

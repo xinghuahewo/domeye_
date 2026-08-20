@@ -478,7 +478,7 @@
       "servers": [{"url": "/"}],
       "post": {
         "operationId": "createCountryOutageChatConversation",
-        "description": "创建绑定单一冻结 publication、revision 与 Candidate 的首个纵向切片交互会话。",
+        "description": "创建绑定单一冻结 publication 与 revision 的首个纵向切片交互会话。",
         "parameters": [{"name": "Idempotency-Key", "in": "header", "required": false, "description": "若提供，必须与请求体 idempotency_key 完全一致。", "schema": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,128}$"}}],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageChatBindingRequest"}}}},
         "responses": {
@@ -488,6 +488,7 @@
           "401": {"$ref": "#/components/responses/CountryOutageAgentUnauthenticated"},
           "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
           "409": {"$ref": "#/components/responses/CountryOutageAgentConflict"},
+          "502": {"$ref": "#/components/responses/CountryOutageAgentBadGateway"},
           "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
         }
       }
@@ -504,6 +505,7 @@
           "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
           "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
           "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "502": {"$ref": "#/components/responses/CountryOutageAgentBadGateway"},
           "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
         }
       }
@@ -524,6 +526,7 @@
           "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
           "409": {"$ref": "#/components/responses/CountryOutageAgentConflict"},
           "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "502": {"$ref": "#/components/responses/CountryOutageAgentBadGateway"},
           "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
         }
       }
@@ -542,6 +545,7 @@
           "403": {"$ref": "#/components/responses/CountryOutageAgentForbidden"},
           "404": {"$ref": "#/components/responses/CountryOutageAgentNotFound"},
           "410": {"$ref": "#/components/responses/CountryOutageAgentExpired"},
+          "502": {"$ref": "#/components/responses/CountryOutageAgentBadGateway"},
           "503": {"$ref": "#/components/responses/CountryOutageAgentUnavailable"}
         }
       }
@@ -835,7 +839,8 @@
       "CountryOutageAgentConflict": {"description": "幂等键、快照身份、并发运行或状态冲突", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
       "CountryOutageAgentExpired": {"description": "短期会话已到期，需由用户重新生成", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
       "CountryOutageAgentRateLimited": {"description": "并发、队列、问题数或频率超过冻结门槛", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
-      "CountryOutageAgentUnavailable": {"description": "Agent Sidecar 未配置或暂不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentBadGateway": {"description": "回答服务返回了不符合公开合同的响应", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
+      "CountryOutageAgentUnavailable": {"description": "回答服务暂时不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
       "CountryOutageInvestigationBadRequest": {"description": "严格 JSON、路径、幂等、CAS、分页或 anchor 不合法", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
       "CountryOutageInvestigationNotFound": {"description": "调查或制品不存在，或不属于当前用户/调查", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
       "CountryOutageInvestigationConflict": {"description": "幂等、CAS、revision、状态、身份或制品闭包冲突", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CountryOutageAgentErrorResponse"}}}},
@@ -862,528 +867,661 @@
           "idempotency_key": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,128}$"}
         }
       },
-      "CountryOutageInteractiveDataIdentity": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["event_type", "incident_id", "publication_id", "revision", "collector_id", "cohort_id", "country_code", "window_start_utc", "window_end_utc", "data_through", "is_final_in_data_range", "lifecycle_state"],
-        "properties": {
-          "event_type": {"type": "string", "const": "country_outage"},
-          "incident_id": {"type": "string", "minLength": 1, "maxLength": 256},
-          "publication_id": {"type": "string", "minLength": 1, "maxLength": 256},
-          "revision": {"type": "integer", "minimum": 1},
-          "collector_id": {"type": "string", "const": "rrc25"},
-          "cohort_id": {"type": "string", "minLength": 1, "maxLength": 256},
-          "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
-          "window_start_utc": {"type": "string", "format": "date-time"},
-          "window_end_utc": {"type": "string", "format": "date-time"},
-          "data_through": {"type": "string", "format": "date-time"},
-          "is_final_in_data_range": {"type": "boolean"},
-          "lifecycle_state": {"type": "string", "const": "event_end_unknown"}
-        }
-      },
       "CountryOutageInteractiveBinding": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["event_reference", "event_type", "incident_id", "publication_id", "revision", "collector_id", "cohort_id", "country_code", "window_start_utc", "window_end_utc", "data_through", "is_final_in_data_range", "lifecycle_state"],
+        "required": [
+          "event_reference",
+          "event_type",
+          "incident_id",
+          "publication_id",
+          "revision",
+          "collector_id",
+          "cohort_id",
+          "country_code",
+          "window_start_utc",
+          "window_end_utc",
+          "data_through",
+          "is_final_in_data_range",
+          "lifecycle_state"
+        ],
         "properties": {
-          "event_reference": {"type": "string", "pattern": "^country_outage/\\d{4}-\\d{2}-\\d{2}[ +]\\d{2}:\\d{2}:\\d{2}/[A-Z]{2}/[1-9]\\d*/r$"},
-          "event_type": {"type": "string", "const": "country_outage"},
-          "incident_id": {"type": "string", "minLength": 1, "maxLength": 256},
-          "publication_id": {"type": "string", "minLength": 1, "maxLength": 256},
-          "revision": {"type": "integer", "minimum": 1},
-          "collector_id": {"type": "string", "const": "rrc25"},
-          "cohort_id": {"type": "string", "minLength": 1, "maxLength": 256},
-          "country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
-          "window_start_utc": {"type": "string", "format": "date-time"},
-          "window_end_utc": {"type": "string", "format": "date-time"},
-          "data_through": {"type": "string", "format": "date-time"},
-          "is_final_in_data_range": {"type": "boolean"},
-          "lifecycle_state": {"type": "string", "const": "event_end_unknown"}
-        }
-      },
-      "CountryOutageInteractiveFindingValues": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["first", "first_at_utc", "last", "last_at_utc", "minimum", "minimum_at_utc", "maximum", "maximum_at_utc", "difference", "net_change"],
-        "properties": {
-          "first": {"type": ["integer", "null"], "minimum": 0},
-          "first_at_utc": {"type": ["string", "null"], "format": "date-time"},
-          "last": {"type": ["integer", "null"], "minimum": 0},
-          "last_at_utc": {"type": ["string", "null"], "format": "date-time"},
-          "minimum": {"type": ["integer", "null"], "minimum": 0},
-          "minimum_at_utc": {"type": ["string", "null"], "format": "date-time"},
-          "maximum": {"type": ["integer", "null"], "minimum": 0},
-          "maximum_at_utc": {"type": ["string", "null"], "format": "date-time"},
-          "difference": {"type": ["integer", "null"], "minimum": 0},
-          "net_change": {"type": ["integer", "null"]}
-        }
-      },
-      "CountryOutageInteractiveFinding": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schema_version", "finding_id", "finding_type", "value_state", "candidate_id", "tenant_id", "data_identity", "metric", "unit", "population_definition", "values", "time_slot_count", "observed_point_count", "null_point_count", "completeness_state", "limitation_codes", "tool_version", "operator_version", "artifact_refs", "receipt_refs", "evidence_refs", "result_digest"],
-        "properties": {
-          "schema_version": {"type": "string", "const": "domeye_agent_typed_finding_v1"},
-          "finding_id": {"type": "string", "pattern": "^finding-sha256:[a-f0-9]{64}$"},
-          "finding_type": {"type": "string", "const": "fixed_visible_ipv4_series_extrema"},
-          "value_state": {"type": "string", "enum": ["known", "empty", "incomplete", "not_computable"]},
-          "candidate_id": {"type": "string", "pattern": "^manifest:sha256:[a-f0-9]{64}$"},
-          "tenant_id": {"type": "string", "const": "domeye"},
-          "data_identity": {"$ref": "#/components/schemas/CountryOutageInteractiveDataIdentity"},
-          "metric": {"type": "string", "const": "fixed_visible_ipv4_address_count"},
-          "unit": {"type": "string", "const": "unique_ipv4_address"},
-          "population_definition": {"type": "string", "const": "normalized_deduplicated_merged_fixed_prefix_ipv4_unique_address_union"},
-          "values": {"$ref": "#/components/schemas/CountryOutageInteractiveFindingValues"},
-          "time_slot_count": {"type": "integer", "minimum": 1},
-          "observed_point_count": {"type": "integer", "minimum": 0},
-          "null_point_count": {"type": "integer", "minimum": 0},
-          "completeness_state": {"type": "string", "enum": ["complete", "incomplete"]},
-          "limitation_codes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-          "tool_version": {"type": "string", "const": "1.0.0"},
-          "operator_version": {"type": "string", "const": "1.0.0"},
-          "artifact_refs": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-          "receipt_refs": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-          "evidence_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-          "result_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
-        }
-      },
-      "CountryOutageInteractiveEvidence": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["evidence_ref", "label", "value", "unit", "observed_at_utc"],
-        "properties": {
-          "evidence_ref": {"type": "string", "pattern": "^finding-sha256:[a-f0-9]{64}#/values/(first|last|minimum|maximum|difference|net_change)$"},
-          "label": {"type": "string", "minLength": 1},
-          "value": {"type": ["number", "string", "null"]},
-          "unit": {"type": ["string", "null"]},
-          "observed_at_utc": {"type": ["string", "null"], "format": "date-time"}
-        }
-      },
-      "CountryOutageInteractiveAdmissionReceiptSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["receipt_id", "decision", "reason_code"],
-        "properties": {
-          "receipt_id": {"type": "string", "pattern": "^admission-receipt-sha256:[a-f0-9]{64}$"},
-          "decision": {"type": "string", "enum": ["admitted", "rejected"]},
-          "reason_code": {"type": ["string", "null"]}
-        }
-      },
-      "CountryOutageInteractiveActionReceiptSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["receipt_id", "capability_id", "status", "failure_code"],
-        "properties": {
-          "receipt_id": {"type": "string", "pattern": "^action-receipt-sha256:[a-f0-9]{64}$"},
-          "capability_id": {"type": "string", "enum": ["CAP-006", "CAP-016"]},
-          "status": {"type": "string", "enum": ["succeeded", "failed"]},
-          "failure_code": {"type": ["string", "null"]}
-        }
-      },
-      "CountryOutageInteractiveArtifactSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["artifact_id", "artifact_kind", "content_digest"],
-        "properties": {
-          "artifact_id": {"type": "string", "pattern": "^artifact-sha256:[a-f0-9]{64}$"},
-          "artifact_kind": {"type": "string", "enum": ["metric_series", "series_extrema"]},
-          "content_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
-        }
-      },
-      "CountryOutageInteractiveObservationSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["observation_id", "capability_id", "status", "reason_code"],
-        "properties": {
-          "observation_id": {"type": "string", "pattern": "^(observation-sha256:[a-f0-9]{64}|observation-protocol-[A-Za-z0-9_-]{1,80})$"},
-          "capability_id": {"type": "string", "enum": ["CAP-006", "CAP-016"]},
-          "status": {"type": "string", "enum": ["succeeded", "rejected", "failed"]},
-          "reason_code": {"type": ["string", "null"]}
-        }
-      },
-      "CountryOutageInteractiveResponseGuardSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["decision", "reason_codes"],
-        "properties": {
-          "decision": {"type": "string", "enum": ["pass", "block"]},
-          "reason_codes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
-        }
-      },
-      "CountryOutageInteractiveAuthorizationDerivation": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schema_version", "rule_id", "source_scope", "source_scope_kind", "source_country_code", "derived_scope"],
-        "properties": {
-          "schema_version": {"type": "string", "const": "domeye_authorization_derivation_v1"},
-          "rule_id": {"type": "string", "const": "country_outage_event_read_to_country_outage_read_v1"},
-          "source_scope": {"type": "string", "pattern": "^country_outage_event_read(:[A-Z]{2})?$"},
-          "source_scope_kind": {"type": "string", "enum": ["global_event_read", "country_event_read"]},
-          "source_country_code": {"type": "string", "pattern": "^[A-Z]{2}$"},
-          "derived_scope": {"type": "string", "const": "country_outage:read"}
-        }
-      },
-      "CountryOutageInteractiveTrace": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["goal_id", "goal_state_revision", "disposition", "authorization_derivation", "admission_receipts", "action_receipts", "artifacts", "observations", "response_guard"],
-        "properties": {
-          "goal_id": {"type": "string", "pattern": "^goal-sha256:[a-f0-9]{64}$"},
-          "goal_state_revision": {"type": "integer", "minimum": 1},
-          "disposition": {"type": "string", "enum": ["goal_satisfied", "clarification_required", "stopped"]},
-          "authorization_derivation": {"$ref": "#/components/schemas/CountryOutageInteractiveAuthorizationDerivation"},
-          "admission_receipts": {"type": "array", "maxItems": 10, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveAdmissionReceiptSummary"}},
-          "action_receipts": {"type": "array", "maxItems": 2, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveActionReceiptSummary"}},
-          "artifacts": {"type": "array", "maxItems": 2, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveArtifactSummary"}},
-          "observations": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageInteractiveObservationSummary"}},
-          "response_guard": {"anyOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveResponseGuardSummary"}, {"type": "null"}]}
-        }
-      },
-      "CountryOutageInteractiveSuccessfulTrace": {
-        "allOf": [
-          {"$ref": "#/components/schemas/CountryOutageInteractiveTrace"},
-          {
-            "type": "object",
-            "required": ["goal_state_revision", "disposition", "admission_receipts", "action_receipts", "artifacts", "observations"],
-            "properties": {
-              "goal_state_revision": {"type": "integer", "const": 4},
-              "disposition": {"type": "string", "const": "goal_satisfied"},
-              "admission_receipts": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 2,
-                "prefixItems": [
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveAdmissionReceiptSummary"}, {"type": "object", "required": ["decision", "reason_code"], "properties": {"decision": {"type": "string", "const": "admitted"}, "reason_code": {"type": "null"}}}]},
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveAdmissionReceiptSummary"}, {"type": "object", "required": ["decision", "reason_code"], "properties": {"decision": {"type": "string", "const": "admitted"}, "reason_code": {"type": "null"}}}]}
-                ],
-                "items": false
-              },
-              "action_receipts": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 2,
-                "prefixItems": [
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveActionReceiptSummary"}, {"type": "object", "required": ["capability_id", "status", "failure_code"], "properties": {"capability_id": {"type": "string", "const": "CAP-006"}, "status": {"type": "string", "const": "succeeded"}, "failure_code": {"type": "null"}}}]},
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveActionReceiptSummary"}, {"type": "object", "required": ["capability_id", "status", "failure_code"], "properties": {"capability_id": {"type": "string", "const": "CAP-016"}, "status": {"type": "string", "const": "succeeded"}, "failure_code": {"type": "null"}}}]}
-                ],
-                "items": false
-              },
-              "artifacts": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 2,
-                "prefixItems": [
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveArtifactSummary"}, {"type": "object", "required": ["artifact_kind"], "properties": {"artifact_kind": {"type": "string", "const": "metric_series"}}}]},
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveArtifactSummary"}, {"type": "object", "required": ["artifact_kind"], "properties": {"artifact_kind": {"type": "string", "const": "series_extrema"}}}]}
-                ],
-                "items": false
-              },
-              "observations": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 2,
-                "prefixItems": [
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveObservationSummary"}, {"type": "object", "required": ["capability_id", "status", "reason_code"], "properties": {"capability_id": {"type": "string", "const": "CAP-006"}, "status": {"type": "string", "const": "succeeded"}, "reason_code": {"type": "null"}}}]},
-                  {"allOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveObservationSummary"}, {"type": "object", "required": ["capability_id", "status", "reason_code"], "properties": {"capability_id": {"type": "string", "const": "CAP-016"}, "status": {"type": "string", "const": "succeeded"}, "reason_code": {"type": "null"}}}]}
-                ],
-                "items": false
-              }
-            }
-          }
-        ]
-      },
-      "CountryOutageInteractiveUsageAttempt": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["attempt_id", "phase", "provider", "model", "model_version", "expected_response_model", "response_model", "started_at_utc", "ended_at_utc", "latency_ms", "outcome", "failure_code"],
-        "properties": {
-          "attempt_id": {"type": "integer", "minimum": 1},
-          "phase": {"type": "string", "enum": ["cognition", "renderer"]},
-          "provider": {"type": "string", "minLength": 1},
-          "model": {"type": "string", "minLength": 1},
-          "model_version": {"type": "string", "minLength": 1},
-          "expected_response_model": {"type": "string", "minLength": 1},
-          "response_model": {"type": ["string", "null"]},
-          "started_at_utc": {"type": "string", "format": "date-time"},
-          "ended_at_utc": {"type": ["string", "null"], "format": "date-time"},
-          "latency_ms": {"type": ["integer", "null"], "minimum": 0},
-          "outcome": {"type": "string", "enum": ["started", "completed", "failed", "limit_rejected"]},
-          "failure_code": {"type": ["string", "null"]}
-        }
-      },
-      "CountryOutageInteractiveUsage": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["attempt_count", "maximum_attempt_count", "cost_policy", "tokens", "estimated_cost_usd", "attempts"],
-        "properties": {
-          "attempt_count": {"type": "integer", "minimum": 0, "maximum": 10},
-          "maximum_attempt_count": {"type": "integer", "const": 10},
-          "cost_policy": {"type": "string", "const": "audit_only"},
-          "tokens": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["input", "output", "cache_read", "cache_write", "total"],
-            "properties": {
-              "input": {"type": "integer", "minimum": 0},
-              "output": {"type": "integer", "minimum": 0},
-              "cache_read": {"type": "integer", "minimum": 0},
-              "cache_write": {"type": "integer", "minimum": 0},
-              "total": {"type": "integer", "minimum": 0}
-            }
+          "event_reference": {
+            "type": "string",
+            "pattern": "^country_outage/\\d{4}-\\d{2}-\\d{2}[ +]\\d{2}:\\d{2}:\\d{2}/[A-Z]{2}/[1-9]\\d*/r$"
           },
-          "estimated_cost_usd": {"type": "number", "minimum": 0},
-          "attempts": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageInteractiveUsageAttempt"}}
+          "event_type": {
+            "type": "string",
+            "const": "country_outage"
+          },
+          "incident_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "publication_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "collector_id": {
+            "type": "string",
+            "const": "rrc25"
+          },
+          "cohort_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "country_code": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "window_start_utc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window_end_utc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data_through": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "is_final_in_data_range": {
+            "type": "boolean"
+          },
+          "lifecycle_state": {
+            "type": "string",
+            "const": "event_end_unknown"
+          }
         }
       },
-      "CountryOutageInteractiveTurnAnswer": {
+      "CountryOutageInteractiveAnswerBasis": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema_version", "answerability", "answer_text", "answer_source", "candidate_id", "data_identity", "finding", "evidence", "limitations", "trace", "usage"],
+        "required": [
+          "source_label_zh",
+          "observed_object_zh",
+          "window_start_utc",
+          "window_end_utc",
+          "important_boundary_zh"
+        ],
         "properties": {
-          "schema_version": {"type": "string", "const": "domeye_interactive_agent_turn_answer_v1"},
-          "answerability": {"type": "string", "enum": ["supported", "clarification_required", "stopped"]},
-          "answer_text": {"type": "string"},
-          "answer_source": {"type": "string", "enum": ["renderer", "none"]},
-          "candidate_id": {"type": "string", "pattern": "^manifest:sha256:[a-f0-9]{64}$"},
-          "data_identity": {"$ref": "#/components/schemas/CountryOutageInteractiveDataIdentity"},
-          "finding": {"anyOf": [{"$ref": "#/components/schemas/CountryOutageInteractiveFinding"}, {"type": "null"}]},
-          "evidence": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageInteractiveEvidence"}},
-          "limitations": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-          "trace": {"$ref": "#/components/schemas/CountryOutageInteractiveTrace"},
-          "usage": {"$ref": "#/components/schemas/CountryOutageInteractiveUsage"}
-        }
-      },
-      "CountryOutageInteractiveSuccessfulFinding": {
-        "allOf": [
-          {"$ref": "#/components/schemas/CountryOutageInteractiveFinding"},
-          {
-            "type": "object",
-            "required": ["value_state", "values", "observed_point_count", "null_point_count", "completeness_state"],
-            "properties": {
-              "value_state": {"type": "string", "const": "known"},
-              "values": {
-                "type": "object",
-                "required": ["first", "first_at_utc", "last", "last_at_utc", "minimum", "minimum_at_utc", "maximum", "maximum_at_utc", "difference", "net_change"],
-                "properties": {
-                  "first": {"type": "integer", "minimum": 0},
-                  "first_at_utc": {"type": "string", "format": "date-time"},
-                  "last": {"type": "integer", "minimum": 0},
-                  "last_at_utc": {"type": "string", "format": "date-time"},
-                  "minimum": {"type": "integer", "minimum": 0},
-                  "minimum_at_utc": {"type": "string", "format": "date-time"},
-                  "maximum": {"type": "integer", "minimum": 0},
-                  "maximum_at_utc": {"type": "string", "format": "date-time"},
-                  "difference": {"type": "integer", "minimum": 0},
-                  "net_change": {"type": "integer"}
-                }
-              },
-              "observed_point_count": {"type": "integer", "minimum": 1},
-              "null_point_count": {"type": "integer", "minimum": 0},
-              "completeness_state": {"type": "string", "const": "complete"}
-            }
+          "source_label_zh": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "observed_object_zh": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "window_start_utc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window_end_utc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "important_boundary_zh": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
           }
-        ]
+        }
       },
       "CountryOutageInteractiveSuccessfulTurnAnswer": {
-        "allOf": [
-          {"$ref": "#/components/schemas/CountryOutageInteractiveTurnAnswer"},
-          {
-            "type": "object",
-            "required": ["answerability", "answer_text", "answer_source", "finding", "evidence", "limitations", "trace"],
-            "properties": {
-              "answerability": {"type": "string", "const": "supported"},
-              "answer_text": {"type": "string", "minLength": 1},
-              "answer_source": {"type": "string", "const": "renderer"},
-              "finding": {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulFinding"},
-              "evidence": {"type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true, "items": {"$ref": "#/components/schemas/CountryOutageInteractiveEvidence"}},
-              "limitations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-              "trace": {
-                "allOf": [
-                  {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulTrace"},
-                  {
-                    "type": "object",
-                    "required": ["response_guard"],
-                    "properties": {
-                      "response_guard": {
-                        "allOf": [
-                          {"$ref": "#/components/schemas/CountryOutageInteractiveResponseGuardSummary"},
-                          {"type": "object", "required": ["decision", "reason_codes"], "properties": {"decision": {"type": "string", "const": "pass"}, "reason_codes": {"type": "array", "maxItems": 0}}}
-                        ]
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "CountryOutageInteractiveTurnError": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "message", "retryable"],
+        "required": [
+          "schema_version",
+          "answerability",
+          "answer_source",
+          "answer_text",
+          "basis"
+        ],
         "properties": {
-          "code": {"type": "string", "minLength": 1},
-          "message": {"type": "string", "minLength": 1},
-          "retryable": {"type": "boolean"}
+          "schema_version": {
+            "type": "string",
+            "const": "domeye_interactive_agent_turn_answer_v2"
+          },
+          "answerability": {
+            "type": "string",
+            "const": "supported"
+          },
+          "answer_source": {
+            "type": "string",
+            "const": "renderer"
+          },
+          "answer_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 360
+          },
+          "basis": {
+            "$ref": "#/components/schemas/CountryOutageInteractiveAnswerBasis"
+          }
         }
+      },
+      "CountryOutageInteractiveClarificationTurnAnswer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "answerability",
+          "answer_source",
+          "answer_text"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "domeye_interactive_agent_turn_answer_v2"
+          },
+          "answerability": {
+            "type": "string",
+            "const": "clarification_required"
+          },
+          "answer_source": {
+            "type": "string",
+            "const": "none"
+          },
+          "answer_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          }
+        }
+      },
+      "CountryOutageInteractiveStoppedTurnAnswer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "answerability",
+          "answer_source",
+          "answer_text"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "domeye_interactive_agent_turn_answer_v2"
+          },
+          "answerability": {
+            "type": "string",
+            "const": "stopped"
+          },
+          "answer_source": {
+            "type": "string",
+            "const": "none"
+          },
+          "answer_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          }
+        }
+      },
+      "CountryOutageInteractiveTurnError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message", "retryable"],
+            "properties": {
+              "code": {"type": "string", "const": "answer_temporarily_unavailable"},
+              "message": {"type": "string", "const": "这次没有形成可靠答案，临时服务异常。请稍后重试。"},
+              "retryable": {"type": "boolean", "const": true}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message", "retryable"],
+            "properties": {
+              "code": {"type": "string", "const": "answer_not_published"},
+              "message": {"type": "string", "const": "本轮未通过回答合同或安全校验，没有发布答案。"},
+              "retryable": {"type": "boolean", "const": false}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message", "retryable"],
+            "properties": {
+              "code": {"type": "string", "const": "cancelled"},
+              "message": {"type": "string", "const": "本轮已取消，未发布答案"},
+              "retryable": {"type": "boolean", "const": false}
+            }
+          }
+        ],
+        "discriminator": {"propertyName": "code"}
       },
       "CountryOutageInteractiveTurn": {
         "oneOf": [
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["turn_id", "turn_number", "question", "state", "answer_success", "workflow_completed", "created_at"],
+            "required": [
+              "turn_id",
+              "turn_number",
+              "question",
+              "state",
+              "answer_success",
+              "workflow_completed",
+              "created_at"
+            ],
             "properties": {
-              "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-              "turn_number": {"type": "integer", "minimum": 1},
-              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
-              "state": {"type": "string", "const": "executing"},
-              "answer_success": {"type": "boolean", "const": false},
-              "workflow_completed": {"type": "boolean", "const": false},
-              "created_at": {"type": "string", "format": "date-time"}
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["turn_id", "turn_number", "question", "state", "answer_success", "workflow_completed", "answer", "created_at", "completed_at"],
-            "properties": {
-              "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-              "turn_number": {"type": "integer", "minimum": 1},
-              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
-              "state": {"type": "string", "const": "completed"},
-              "answer_success": {"type": "boolean", "const": true},
-              "workflow_completed": {"type": "boolean", "const": true},
-              "answer": {"$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulTurnAnswer"},
-              "created_at": {"type": "string", "format": "date-time"},
-              "completed_at": {"type": "string", "format": "date-time"}
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["turn_id", "turn_number", "question", "state", "answer_success", "workflow_completed", "answer", "created_at", "completed_at"],
-            "properties": {
-              "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-              "turn_number": {"type": "integer", "minimum": 1},
-              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
-              "state": {"type": "string", "const": "clarification_required"},
-              "answer_success": {"type": "boolean", "const": false},
-              "workflow_completed": {"type": "boolean", "const": false},
-              "answer": {
-                "allOf": [
-                  {"$ref": "#/components/schemas/CountryOutageInteractiveTurnAnswer"},
-                  {"type": "object", "required": ["answerability", "answer_source", "finding", "evidence", "limitations"], "properties": {"answerability": {"type": "string", "const": "clarification_required"}, "answer_source": {"type": "string", "const": "none"}, "finding": {"type": "null"}, "evidence": {"type": "array", "maxItems": 0}, "limitations": {"type": "array", "maxItems": 0}}}
-                ]
+              "turn_id": {
+                "type": "string",
+                "pattern": "^turn_sha256_[a-f0-9]{64}$"
               },
-              "created_at": {"type": "string", "format": "date-time"},
-              "completed_at": {"type": "string", "format": "date-time"}
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["turn_id", "turn_number", "question", "state", "answer_success", "workflow_completed", "answer", "created_at", "completed_at"],
-            "properties": {
-              "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-              "turn_number": {"type": "integer", "minimum": 1},
-              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
-              "state": {"type": "string", "const": "stopped"},
-              "answer_success": {"type": "boolean", "const": false},
-              "workflow_completed": {"type": "boolean", "const": false},
-              "answer": {
-                "allOf": [
-                  {"$ref": "#/components/schemas/CountryOutageInteractiveTurnAnswer"},
-                  {"type": "object", "required": ["answerability", "answer_source", "finding", "evidence", "limitations"], "properties": {"answerability": {"type": "string", "const": "stopped"}, "answer_source": {"type": "string", "const": "none"}, "finding": {"type": "null"}, "evidence": {"type": "array", "maxItems": 0}, "limitations": {"type": "array", "maxItems": 0}}}
-                ]
+              "turn_number": {
+                "type": "integer",
+                "minimum": 1
               },
-              "created_at": {"type": "string", "format": "date-time"},
-              "completed_at": {"type": "string", "format": "date-time"}
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string",
+                "const": "executing"
+              },
+              "answer_success": {
+                "type": "boolean",
+                "const": false
+              },
+              "workflow_completed": {
+                "type": "boolean",
+                "const": false
+              }
             }
           },
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["turn_id", "turn_number", "question", "state", "answer_success", "workflow_completed", "error", "created_at", "completed_at"],
+            "required": [
+              "turn_id",
+              "turn_number",
+              "question",
+              "state",
+              "answer_success",
+              "workflow_completed",
+              "created_at",
+              "completed_at",
+              "answer"
+            ],
             "properties": {
-              "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-              "turn_number": {"type": "integer", "minimum": 1},
-              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
-              "state": {"type": "string", "const": "failed"},
-              "answer_success": {"type": "boolean", "const": false},
-              "workflow_completed": {"type": "boolean", "const": false},
-              "error": {"$ref": "#/components/schemas/CountryOutageInteractiveTurnError"},
-              "created_at": {"type": "string", "format": "date-time"},
-              "completed_at": {"type": "string", "format": "date-time"}
+              "turn_id": {
+                "type": "string",
+                "pattern": "^turn_sha256_[a-f0-9]{64}$"
+              },
+              "turn_number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string",
+                "const": "completed"
+              },
+              "answer_success": {
+                "type": "boolean",
+                "const": true
+              },
+              "workflow_completed": {
+                "type": "boolean",
+                "const": true
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "answer": {
+                "$ref": "#/components/schemas/CountryOutageInteractiveSuccessfulTurnAnswer"
+              }
             }
           },
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["turn_id", "turn_number", "question", "state", "answer_success", "workflow_completed", "error", "created_at", "completed_at"],
+            "required": [
+              "turn_id",
+              "turn_number",
+              "question",
+              "state",
+              "answer_success",
+              "workflow_completed",
+              "created_at",
+              "completed_at",
+              "answer"
+            ],
             "properties": {
-              "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-              "turn_number": {"type": "integer", "minimum": 1},
-              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
-              "state": {"type": "string", "const": "cancelled"},
-              "answer_success": {"type": "boolean", "const": false},
-              "workflow_completed": {"type": "boolean", "const": false},
-              "error": {"$ref": "#/components/schemas/CountryOutageInteractiveTurnError"},
-              "created_at": {"type": "string", "format": "date-time"},
-              "completed_at": {"type": "string", "format": "date-time"}
+              "turn_id": {
+                "type": "string",
+                "pattern": "^turn_sha256_[a-f0-9]{64}$"
+              },
+              "turn_number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string",
+                "const": "clarification_required"
+              },
+              "answer_success": {
+                "type": "boolean",
+                "const": false
+              },
+              "workflow_completed": {
+                "type": "boolean",
+                "const": false
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "answer": {
+                "$ref": "#/components/schemas/CountryOutageInteractiveClarificationTurnAnswer"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "turn_id",
+              "turn_number",
+              "question",
+              "state",
+              "answer_success",
+              "workflow_completed",
+              "created_at",
+              "completed_at",
+              "answer"
+            ],
+            "properties": {
+              "turn_id": {
+                "type": "string",
+                "pattern": "^turn_sha256_[a-f0-9]{64}$"
+              },
+              "turn_number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string",
+                "const": "stopped"
+              },
+              "answer_success": {
+                "type": "boolean",
+                "const": false
+              },
+              "workflow_completed": {
+                "type": "boolean",
+                "const": false
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "answer": {
+                "$ref": "#/components/schemas/CountryOutageInteractiveStoppedTurnAnswer"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "turn_id",
+              "turn_number",
+              "question",
+              "state",
+              "answer_success",
+              "workflow_completed",
+              "created_at",
+              "completed_at",
+              "error"
+            ],
+            "properties": {
+              "turn_id": {
+                "type": "string",
+                "pattern": "^turn_sha256_[a-f0-9]{64}$"
+              },
+              "turn_number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string",
+                "const": "failed"
+              },
+              "answer_success": {
+                "type": "boolean",
+                "const": false
+              },
+              "workflow_completed": {
+                "type": "boolean",
+                "const": false
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "error": {
+                "$ref": "#/components/schemas/CountryOutageInteractiveTurnError"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "turn_id",
+              "turn_number",
+              "question",
+              "state",
+              "answer_success",
+              "workflow_completed",
+              "created_at",
+              "completed_at",
+              "error"
+            ],
+            "properties": {
+              "turn_id": {
+                "type": "string",
+                "pattern": "^turn_sha256_[a-f0-9]{64}$"
+              },
+              "turn_number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string",
+                "const": "cancelled"
+              },
+              "answer_success": {
+                "type": "boolean",
+                "const": false
+              },
+              "workflow_completed": {
+                "type": "boolean",
+                "const": false
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "error": {
+                "$ref": "#/components/schemas/CountryOutageInteractiveTurnError"
+              }
             }
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "state"
+        }
       },
       "CountryOutageInteractiveConversation": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema_version", "conversation_id", "binding", "identity_receipt_id", "candidate_id", "turns", "expires_at", "created_at"],
+        "required": [
+          "schema_version",
+          "conversation_id",
+          "binding",
+          "turns",
+          "expires_at",
+          "created_at"
+        ],
         "properties": {
-          "schema_version": {"type": "string", "const": "domeye_interactive_agent_conversation_v1"},
-          "conversation_id": {"type": "string", "pattern": "^conversation_sha256_[a-f0-9]{64}$"},
-          "binding": {"$ref": "#/components/schemas/CountryOutageInteractiveBinding"},
-          "identity_receipt_id": {"type": "string", "pattern": "^identity-receipt-sha256:[a-f0-9]{64}$"},
-          "candidate_id": {"type": "string", "pattern": "^manifest:sha256:[a-f0-9]{64}$"},
-          "turns": {"type": "array", "items": {"$ref": "#/components/schemas/CountryOutageInteractiveTurn"}},
-          "expires_at": {"type": "string", "format": "date-time"},
-          "created_at": {"type": "string", "format": "date-time"}
+          "schema_version": {
+            "type": "string",
+            "const": "domeye_interactive_agent_conversation_v2"
+          },
+          "conversation_id": {
+            "type": "string",
+            "pattern": "^conversation_sha256_[a-f0-9]{64}$"
+          },
+          "binding": {
+            "$ref": "#/components/schemas/CountryOutageInteractiveBinding"
+          },
+          "turns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountryOutageInteractiveTurn"
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "CountryOutageInteractiveConversationCreateResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["conversation", "deduplicated"],
+        "required": [
+          "conversation",
+          "deduplicated"
+        ],
         "properties": {
-          "conversation": {"$ref": "#/components/schemas/CountryOutageInteractiveConversation"},
-          "deduplicated": {"type": "boolean"}
+          "conversation": {
+            "$ref": "#/components/schemas/CountryOutageInteractiveConversation"
+          },
+          "deduplicated": {
+            "type": "boolean"
+          }
         }
       },
       "CountryOutageInteractiveConversationGetResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["conversation"],
+        "required": [
+          "conversation"
+        ],
         "properties": {
-          "conversation": {"$ref": "#/components/schemas/CountryOutageInteractiveConversation"}
+          "conversation": {
+            "$ref": "#/components/schemas/CountryOutageInteractiveConversation"
+          }
         }
       },
       "CountryOutageInteractiveTurnCreateResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["turn", "deduplicated"],
+        "required": [
+          "turn",
+          "deduplicated"
+        ],
         "properties": {
-          "turn": {"$ref": "#/components/schemas/CountryOutageInteractiveTurn"},
-          "deduplicated": {"type": "boolean"}
+          "turn": {
+            "$ref": "#/components/schemas/CountryOutageInteractiveTurn"
+          },
+          "deduplicated": {
+            "type": "boolean"
+          }
         }
       },
       "CountryOutageInteractiveTurnCancelResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["turn_id", "state"],
+        "required": [
+          "turn_id",
+          "state"
+        ],
         "properties": {
-          "turn_id": {"type": "string", "pattern": "^turn_sha256_[a-f0-9]{64}$"},
-          "state": {"type": "string", "enum": ["cancel_requested", "not_active"]}
+          "turn_id": {
+            "type": "string",
+            "pattern": "^turn_sha256_[a-f0-9]{64}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "cancel_requested",
+              "not_active"
+            ]
+          }
         }
       },
       "CountryOutageInvestigationCreateRequest": {

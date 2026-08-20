@@ -15,7 +15,6 @@ import {
   type DomeyeRendererDraft,
 } from './contracts.js'
 import {
-  renderCountryOutageDeterministicFallback,
   type DomeyeAnswerRenderer,
 } from './finding-answer.js'
 import {
@@ -29,10 +28,13 @@ import {
 } from '../pi/static-resource-loader.js'
 
 const RENDERER_SYSTEM_PROMPT = `你是 Domeye 首个纵向切片的中文 Renderer。
-当前会话没有工具，只能读取用户消息中由单个 Answer Context 生成的受控投影；不得使用模型记忆、互联网、文件、旧对话或投影外事实。
-用户消息本身就是唯一目标 JSON 对象；原样返回该对象，不要输出 wrapper、Markdown 围栏、解释或任何额外字段。
-不得增删、改写或重排目标 JSON 中的任何字段和值，text 也必须逐字保持。
-不得推断全国断网、真实用户影响、原因、责任或真实恢复。`
+当前会话没有工具，只能读取用户消息中的 Answer Context；不得使用模型记忆、互联网、文件、旧对话或上下文外事实。
+只返回一个 JSON 对象，不要输出 wrapper、Markdown 围栏、解释或额外字段。对象结构必须是：
+{"schema_version":"domeye_agent_renderer_draft_v2","lead":{"fact_keys":[...],"text":"..."},"fact_blocks":[{"fact_keys":[...],"text":"..."}],"boundary":{"boundary_codes":[...],"text":"..."},"next_step":null}
+lead 只承载 minimum 与 minimum_at_utc，直接说最低值和首次观测时间；其余四项事实放入一至三个 fact_blocks。六个 fact key 各出现一次，并在对应 text 中逐字使用 Answer Context 给出的 display_zh；全文只显示一次 unit_zh。
+每个表达块只能按 fact_keys 的顺序写对应事实短句：使用“最低值/首次观测/首值/末值/最大值/极差”标签，接“为/是/于”和该 key 自己的 display_zh；只用“，；。、和、与、以及”连接，句尾使用“。”。不得互换标签和值，也不得追加评价、趋势、状态或其他句子。
+boundary 恰好一块并按 boundary_codes 顺序覆盖三类合同句式：地址量是固定前缀 IPv4 唯一地址并集且不是用户数；结果只表示 RRC25 的 BGP 控制面观测；不能据此判断全国状态、用户影响、原因、责任或恢复。三类句式用“；”或“，”连接为一句，不能追加其他语义。next_step 在本切片固定为 null。
+遵守 Answer Context 的篇幅约束；一个事实只说一次。不得输出内部 ID、摘要、路径、Evidence、调用账本或审计栏目，不得推断全国断网、真实用户影响、原因、责任或真实恢复。`
 
 type PiStreamFunction = DomeyePiSessionHandle['agent']['streamFunction']
 type PiStreamOptions = Parameters<PiStreamFunction>[2]
@@ -170,26 +172,7 @@ function installRendererJsonObjectPayloadBoundary(
 }
 
 function rendererPrompt(context: DomeyeAnswerContext): string {
-  const identity = context.data_identity
-  const finding = context.finding
-  return JSON.stringify({
-    schema_version: 'domeye_agent_renderer_draft_v1',
-    context_id: context.context_id,
-    finding_id: finding.finding_id,
-    candidate_id: context.candidate_id,
-    publication_id: identity.publication_id,
-    revision: identity.revision,
-    collector_id: identity.collector_id,
-    window_start_utc: identity.window_start_utc,
-    window_end_utc: identity.window_end_utc,
-    metric: finding.metric,
-    unit: finding.unit,
-    values: finding.values,
-    observer_scope_zh: context.observer_scope_zh,
-    limitations_zh: context.mandatory_limitations_zh,
-    evidence_refs: context.evidence_refs,
-    text: renderCountryOutageDeterministicFallback(context),
-  })
+  return JSON.stringify(context)
 }
 
 export class PiAnswerRenderer implements DomeyeAnswerRenderer {

@@ -29,6 +29,8 @@ after(() => {
 
 const ANCHOR_PATH =
   'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md'
+const ANSWER_PRESENTATION_PATH =
+  'docs/architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md'
 const MODEL_PATH =
   'contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json'
 const CONTRACTS_PATH = 'agent-sidecar/src/agent/contracts.ts'
@@ -54,6 +56,7 @@ const RUNTIME_SOURCE_PATHS = [
 
 const FIXED_SOURCE_PATHS = [
   ANCHOR_PATH,
+  ANSWER_PRESENTATION_PATH,
   MODEL_PATH,
   'agent-sidecar/package.json',
   'agent-sidecar/package-lock.json',
@@ -207,6 +210,7 @@ function createFixture(): Fixture {
     `import '../runtime/critical-transitive.js';\nexport const entry = true;\n`,
   )
   contents.set(ANCHOR_PATH, 'first vertical slice anchor\n')
+  contents.set(ANSWER_PRESENTATION_PATH, 'answer presentation addendum\n')
   contents.set(MODEL_PATH, '{"model":"model-first-slice"}\n')
 
   const sourceFiles = [...contents.entries()]
@@ -222,11 +226,15 @@ function createFixture(): Fixture {
   const implementationDigest = sourceDigest.get(IMPLEMENTATION_PATH)!
   const capabilities = fixedCapabilities(contractDigest, implementationDigest)
   const payload: DomeyeFirstSliceCandidateManifestPayload = {
-    schema_version: 'domeye_first_slice_candidate_manifest_v1',
+    schema_version: 'domeye_first_slice_candidate_manifest_v2',
     base_commit: 'a'.repeat(40),
     contract: {
       version: 'domeye.first-vertical-slice/v1.0',
       digest: sourceDigest.get(ANCHOR_PATH)!,
+    },
+    answer_presentation_contract: {
+      version: 'domeye.first-vertical-slice.answer-presentation/v1.0',
+      digest: sourceDigest.get(ANSWER_PRESENTATION_PATH)!,
     },
     data_identity: IDENTITY,
     series_response_sha256: sha('2'),
@@ -311,6 +319,14 @@ test('加载器返回冻结且来源闭包完整的 Candidate binding', async ()
     loaded.candidate.contract_version,
     'domeye.first-vertical-slice/v1.0',
   )
+  assert.equal(
+    loaded.candidate.answer_presentation_contract_version,
+    'domeye.first-vertical-slice.answer-presentation/v1.0',
+  )
+  assert.equal(
+    loaded.candidate.answer_presentation_contract_digest,
+    sourceDigest.get(ANSWER_PRESENTATION_PATH),
+  )
   assert.deepEqual(loaded.candidate.data_identity, IDENTITY)
   assert.equal(
     loaded.candidate.registry.capabilities[0]?.execution_binding
@@ -345,6 +361,17 @@ test('Candidate ID 必须等于 canonical payload 摘要且 payload 不接受额
   const payload = { ...extra.payload, runtime_selector: 'not-allowed' }
   writeManifest(extra.root, envelope(payload))
   await assert.rejects(() => load(extra.root), hasCode('manifest_schema_invalid'))
+})
+
+test('旧 Anchor 与新回答呈现附加合同必须分别绑定固定路径摘要', async () => {
+  const fixture = createFixture()
+  const payload = structuredClone(fixture.payload)
+  payload.answer_presentation_contract.digest = sha('9')
+  writeManifest(fixture.root, envelope(payload))
+  await assert.rejects(
+    () => load(fixture.root),
+    hasCode('source_binding_invalid'),
+  )
 })
 
 test('预算、模型与激活合同失败关闭', async () => {

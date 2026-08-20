@@ -20,6 +20,8 @@ const SourcePath = Type.String({ minLength: 1, maxLength: 512 })
 
 const ANCHOR_SOURCE_PATH =
   'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md'
+const ANSWER_PRESENTATION_SOURCE_PATH =
+  'docs/architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md'
 const MODEL_RESOURCE_SOURCE_PATH =
   'contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json'
 const MACHINE_CONTRACT_SOURCE_PATH =
@@ -30,6 +32,7 @@ const PATCHED_PROVIDER_SOURCE_PATH =
   'agent-sidecar/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js'
 const REQUIRED_FIXED_SOURCE_PATHS = Object.freeze([
   ANCHOR_SOURCE_PATH,
+  ANSWER_PRESENTATION_SOURCE_PATH,
   MODEL_RESOURCE_SOURCE_PATH,
   'agent-sidecar/package.json',
   'agent-sidecar/package-lock.json',
@@ -118,10 +121,16 @@ const SourceFileSchema = Type.Object({
 }, { additionalProperties: false })
 
 export const DomeyeFirstSliceCandidateManifestPayloadSchema = Type.Object({
-  schema_version: Type.Literal('domeye_first_slice_candidate_manifest_v1'),
+  schema_version: Type.Literal('domeye_first_slice_candidate_manifest_v2'),
   base_commit: BaseCommit,
   contract: Type.Object({
     version: Type.Literal('domeye.first-vertical-slice/v1.0'),
+    digest: Sha256,
+  }, { additionalProperties: false }),
+  answer_presentation_contract: Type.Object({
+    version: Type.Literal(
+      'domeye.first-vertical-slice.answer-presentation/v1.0',
+    ),
     digest: Sha256,
   }, { additionalProperties: false }),
   data_identity: DomeyeDataIdentitySchema,
@@ -296,6 +305,15 @@ function assertSourceManifest(
     throw new DomeyeCandidateManifestError(
       'source_binding_invalid',
       '纵向切片合同摘要没有绑定固定 Anchor 路径',
+    )
+  }
+  if (
+    sourceByPath.get(ANSWER_PRESENTATION_SOURCE_PATH)
+    !== manifest.payload.answer_presentation_contract.digest
+  ) {
+    throw new DomeyeCandidateManifestError(
+      'source_binding_invalid',
+      '回答呈现合同摘要没有绑定固定附加合同路径',
     )
   }
   if (
@@ -575,6 +593,10 @@ export async function loadDomeyeFirstSliceCandidateManifest(
     candidate_id: manifest.candidate_id,
     contract_version: manifest.payload.contract.version,
     contract_digest: manifest.payload.contract.digest,
+    answer_presentation_contract_version:
+      manifest.payload.answer_presentation_contract.version,
+    answer_presentation_contract_digest:
+      manifest.payload.answer_presentation_contract.digest,
     data_identity: manifest.payload.data_identity,
     series_response_sha256: manifest.payload.series_response_sha256,
     model_identity: manifest.payload.model,

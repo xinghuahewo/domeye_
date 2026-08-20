@@ -16,8 +16,9 @@ import {
   type CountryOutageMetricSeriesRead,
   type CountryOutageSeriesReadModel,
 } from '../src/agent/capability-execution.js'
-import type {
-  DomeyeVerifiedIdentityReceipt,
+import {
+  DomeyeReadModelError,
+  type DomeyeVerifiedIdentityReceipt,
 } from '../src/agent/country-outage-read-model.js'
 import {
   DOMEYE_FIRST_SLICE_QUESTION,
@@ -31,6 +32,7 @@ import {
 import {
   DomeyeConversationError,
   DomeyeInteractiveConversationService,
+  hasValidDomeyeInteractiveTurnInternalRecord,
   hasSuccessfulDomeyePublicFinalAnswer,
   type DomeyeConversationTurn,
   type DomeyeInteractiveNonSuccessfulTurnAnswer,
@@ -39,6 +41,7 @@ import {
 import {
   buildCountryOutageAnswerContext,
   buildCountryOutageSeriesExtremaFinding,
+  composeCountryOutageRendererDraftText,
   COUNTRY_OUTAGE_MANDATORY_LIMITATIONS,
   guardCountryOutageResponse,
   renderCountryOutageDeterministicFallback,
@@ -71,50 +74,23 @@ function assertPublicCompletionTypeContract(
 ): void {
   const supported: 'supported' = successfulAnswer.answerability
   const renderer: 'renderer' = successfulAnswer.answer_source
-  const successfulFinding: DomeyeTypedFinding = successfulAnswer.finding
-  const guardPass: 'pass' = successfulAnswer.trace.response_guard.decision
-  const guardReasonCodes: readonly [] =
-    successfulAnswer.trace.response_guard.reason_codes
-  const disposition: 'goal_satisfied' = successfulAnswer.trace.disposition
-  const usageAttemptCount: number = successfulAnswer.usage.attempt_count
+  const sourceLabel: string = successfulAnswer.basis.source_label_zh
   const completedAnswer: Extract<
     DomeyeConversationTurn,
     { state: 'completed' }
   >['answer'] = successfulAnswer
-  const fallbackAnswer = {
-    ...successfulAnswer,
-    answer_source: 'deterministic_fallback' as const,
-  }
-  const guardBlockAnswer = {
-    ...successfulAnswer,
-    trace: {
-      ...successfulAnswer.trace,
-      response_guard: {
-        decision: 'block' as const,
-        reason_codes: ['number_mismatch'] as const,
-      },
-    },
-  }
-
-  // @ts-expect-error completed turn 不能接受 fallback answer
-  const completedFallback: typeof completedAnswer = fallbackAnswer
-  // @ts-expect-error completed turn 不能接受 Guard block answer
-  const completedGuardBlock: typeof completedAnswer = guardBlockAnswer
   // @ts-expect-error completed turn 不能接受 answer_source=none 的非成功 answer
   const completedNone: typeof completedAnswer = nonSuccessfulAnswer
+  // @ts-expect-error 公开 success answer 不包含内部 Finding
+  const leakedFinding = successfulAnswer.finding
 
   void [
     supported,
     renderer,
-    successfulFinding,
-    guardPass,
-    guardReasonCodes,
-    disposition,
-    usageAttemptCount,
+    sourceLabel,
     completedAnswer,
-    completedFallback,
-    completedGuardBlock,
     completedNone,
+    leakedFinding,
   ]
 }
 
@@ -190,6 +166,9 @@ const CANDIDATE: DomeyeFirstSliceCandidateBinding = {
   candidate_id: CANDIDATE_ID,
   contract_version: 'domeye.first-vertical-slice/v1.0',
   contract_digest: sha('d'),
+  answer_presentation_contract_version:
+    'domeye.first-vertical-slice.answer-presentation/v1.0',
+  answer_presentation_contract_digest: sha('a'),
   data_identity: IDENTITY,
   series_response_sha256: SERIES_DIGEST,
   model_identity: {
@@ -235,6 +214,33 @@ const CANDIDATE: DomeyeFirstSliceCandidateBinding = {
 
 function candidate(): DomeyeFirstSliceCandidateBinding {
   return structuredClone(CANDIDATE)
+}
+
+function acceptedDraft(
+  context: ReturnType<typeof buildCountryOutageAnswerContext>,
+): DomeyeRendererDraft {
+  return {
+    schema_version: 'domeye_agent_renderer_draft_v2',
+    lead: {
+      fact_keys: ['minimum', 'minimum_at_utc'],
+      text: `最低值为 ${context.facts.minimum.display_zh} ${context.unit_zh}，首次观测于 ${context.facts.minimum_at_utc.display_zh}。`,
+    },
+    fact_blocks: [
+      {
+        fact_keys: ['first', 'last'],
+        text: `首值为 ${context.facts.first.display_zh}，末值为 ${context.facts.last.display_zh}。`,
+      },
+      {
+        fact_keys: ['maximum', 'difference'],
+        text: `最大值为 ${context.facts.maximum.display_zh}，极差为 ${context.facts.difference.display_zh}。`,
+      },
+    ],
+    boundary: {
+      boundary_codes: context.required_boundaries.map((item) => item.code),
+      text: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数；结果只表示 RRC25 的 BGP 控制面观测，不能据此判断全国状态、用户影响、原因、责任或恢复。',
+    },
+    next_step: null,
+  }
 }
 
 function finding(valueState: 'known' | 'empty'): DomeyeTypedFinding {
@@ -287,14 +293,11 @@ function legacySelfReportedResult(
   valueState: 'known' | 'empty' = 'known',
 ): DomeyeFirstSliceRunResult {
   const resultFinding = finding(valueState)
-  const answerContext = buildCountryOutageAnswerContext(
-    resultFinding,
-    candidate().contract_digest,
-  )
+  const answerContext = buildCountryOutageAnswerContext(resultFinding)
   const answerText = renderCountryOutageDeterministicFallback(answerContext)
   const draft = {
     schema_version: 'domeye_agent_renderer_draft_v1' as const,
-    context_id: answerContext.context_id,
+    context_id: 'legacy-context',
     finding_id: resultFinding.finding_id,
     candidate_id: CANDIDATE_ID,
     publication_id: IDENTITY.publication_id,
@@ -305,13 +308,16 @@ function legacySelfReportedResult(
     metric: resultFinding.metric,
     unit: resultFinding.unit,
     values: resultFinding.values,
-    observer_scope_zh: answerContext.observer_scope_zh,
-    limitations_zh: answerContext.mandatory_limitations_zh,
-    evidence_refs: answerContext.evidence_refs,
+    observer_scope_zh: 'legacy-observer-scope',
+    limitations_zh: ['legacy-limitation'],
+    evidence_refs: ['legacy-evidence'],
     text: answerText,
   }
-  const guardResult = guardCountryOutageResponse(answerContext, draft)
-  if (valueState === 'known') assert.equal(guardResult.decision, 'pass')
+  const guardResult = {
+    schema_version: 'domeye_agent_response_guard_v1',
+    decision: 'pass',
+    reason_codes: [],
+  }
   return {
     outcome: 'completed',
     candidate_id: CANDIDATE_ID,
@@ -415,6 +421,7 @@ function legacySelfReportedResult(
     },
     finding: resultFinding,
     answer_context: answerContext,
+    answer_context_digest: `sha256:${canonicalJsonSha256(answerContext)}`,
     answer: {
       answer: answerText,
       source: 'renderer',
@@ -730,30 +737,11 @@ async function buildCompletedResult(
     extrema_artifact: second.artifact,
     extrema_receipt: second.receipt,
   })
-  const answerContext = buildCountryOutageAnswerContext(
-    resultFinding,
-    CANDIDATE.contract_digest,
-  )
-  const answerText = renderCountryOutageDeterministicFallback(answerContext)
-  const draft: DomeyeRendererDraft = {
-    schema_version: 'domeye_agent_renderer_draft_v1',
-    context_id: answerContext.context_id,
-    finding_id: resultFinding.finding_id,
-    candidate_id: CANDIDATE_ID,
-    publication_id: IDENTITY.publication_id,
-    revision: IDENTITY.revision,
-    collector_id: 'rrc25',
-    window_start_utc: IDENTITY.window_start_utc,
-    window_end_utc: IDENTITY.window_end_utc,
-    metric: resultFinding.metric,
-    unit: resultFinding.unit,
-    values: resultFinding.values,
-    observer_scope_zh: answerContext.observer_scope_zh,
-    limitations_zh: answerContext.mandatory_limitations_zh,
-    evidence_refs: answerContext.evidence_refs,
-    text: answerText,
-  }
+  const answerContext = buildCountryOutageAnswerContext(resultFinding)
+  const draft = acceptedDraft(answerContext)
+  const answerText = composeCountryOutageRendererDraftText(draft)
   const guardResult = guardCountryOutageResponse(answerContext, draft)
+  if (guardResult.decision !== 'pass') throw new Error('expected guard pass')
   const cognitionAttempts = [
     completedAttempt(1, 'cognition'),
     completedAttempt(2, 'cognition'),
@@ -764,9 +752,15 @@ async function buildCompletedResult(
     completedAttempt(4, 'renderer'),
   ]
   return {
-    schema_version: 'domeye_first_vertical_slice_run_v1',
+    schema_version: 'domeye_first_vertical_slice_run_v2',
     outcome: 'completed',
     candidate_id: CANDIDATE_ID,
+    contract_version: CANDIDATE.contract_version,
+    contract_digest: CANDIDATE.contract_digest,
+    answer_presentation_contract_version:
+      CANDIDATE.answer_presentation_contract_version,
+    answer_presentation_contract_digest:
+      CANDIDATE.answer_presentation_contract_digest,
     identity_receipt: identityReceipt(),
     semantic_goal: semanticGoal,
     goal_state: goalState({
@@ -797,31 +791,18 @@ async function buildCompletedResult(
     },
     finding: resultFinding,
     answer_context: answerContext,
-    answer: resultFinding.value_state === 'known'
-      ? {
-          answer: answerText,
-          source: 'renderer',
-          guard_result: guardResult,
-          render_attempt: {
-            status: 'completed',
-            draft,
-            failure_code: null,
-          },
-        }
-      : {
-          answer: answerText,
-          source: 'deterministic_fallback',
-          guard_result: {
-            schema_version: 'domeye_agent_response_guard_v1',
-            decision: 'block',
-            reason_codes: ['renderer_failed_or_invalid'],
-          },
-          render_attempt: {
-            status: 'failed',
-            draft: null,
-            failure_code: 'renderer_failed_or_invalid',
-          },
-        },
+    answer_context_digest: `sha256:${canonicalJsonSha256(answerContext)}`,
+    answer: {
+      answer: answerText,
+      answer_digest: guardResult.guarded_text_digest,
+      source: 'renderer',
+      guard_result: guardResult,
+      render_attempt: {
+        status: 'completed',
+        draft,
+        failure_code: null,
+      },
+    },
     usage: usage(allAttempts),
   } as unknown as Extract<
     DomeyeFirstSliceRunResult,
@@ -829,19 +810,30 @@ async function buildCompletedResult(
   >
 }
 
-const SUCCESSFUL_RESULT = await buildCompletedResult([10, null, 5, 10])
-const EMPTY_RESULT = await buildCompletedResult([null, null, null, null])
+const SUCCESSFUL_RESULT = await buildCompletedResult([
+  10_156_800,
+  null,
+  9_577_728,
+  10_069_760,
+])
+const EMPTY_RESULT = {
+  ...structuredClone(SUCCESSFUL_RESULT),
+  finding: finding('empty'),
+  answer_context: null,
+  answer_context_digest: null,
+  answer: null,
+} as unknown as DomeyeFirstSliceRunResult
 const WRONG_PRINCIPAL_RESULT = await buildCompletedResult(
-  [10, null, 5, 10],
+  [10_156_800, null, 9_577_728, 10_069_760],
   'different-user',
 )
 const EXTRA_SCOPE_RESULT = await buildCompletedResult(
-  [10, null, 5, 10],
+  [10_156_800, null, 9_577_728, 10_069_760],
   PRINCIPAL.userId,
   ['country_outage:read', 'unexpected:scope'],
 )
 const WRONG_ADMISSION_USAGE_RESULT = await buildCompletedResult(
-  [10, null, 5, 10],
+  [10_156_800, null, 9_577_728, 10_069_760],
   PRINCIPAL.userId,
   ['country_outage:read'],
   [2, 3],
@@ -862,29 +854,24 @@ function clarificationResult(): DomeyeFirstSliceRunResult {
     },
     finding: null,
     answer_context: null,
+    answer_context_digest: null,
     answer: null,
   } as unknown as DomeyeFirstSliceRunResult
 }
 
 function emptyResult(): DomeyeFirstSliceRunResult {
   const result = structuredClone(EMPTY_RESULT)
-  assert.equal(result.outcome, 'completed')
   return {
     ...result,
-    answer: {
-      answer: renderCountryOutageDeterministicFallback(result.answer_context),
-      source: 'deterministic_fallback',
-      guard_result: {
-        schema_version: 'domeye_agent_response_guard_v1',
-        decision: 'block',
-        reason_codes: ['renderer_failed_or_invalid'],
-      },
-      render_attempt: {
-        status: 'failed',
-        draft: null,
-        failure_code: 'renderer_failed_or_invalid',
-      },
+    outcome: 'stopped',
+    loop: {
+      ...result.loop,
+      disposition: { disposition: 'stopped' },
     },
+    finding: null,
+    answer_context: null,
+    answer_context_digest: null,
+    answer: null,
   } as unknown as DomeyeFirstSliceRunResult
 }
 
@@ -897,9 +884,9 @@ function knownFallbackResult(): DomeyeFirstSliceRunResult {
   }
   const blockedDraft: DomeyeRendererDraft = {
     ...result.answer.render_attempt.draft,
-    values: {
-      ...result.answer.render_attempt.draft.values,
-      minimum: (result.answer.render_attempt.draft.values.minimum ?? 0) + 1,
+    lead: {
+      ...result.answer.render_attempt.draft.lead,
+      text: `${result.answer.render_attempt.draft.lead.text} Candidate`,
     },
   }
   const blockedGuard = guardCountryOutageResponse(
@@ -907,11 +894,16 @@ function knownFallbackResult(): DomeyeFirstSliceRunResult {
     blockedDraft,
   )
   assert.equal(blockedGuard.decision, 'block')
+  const fallback = renderCountryOutageDeterministicFallback(
+    result.answer_context,
+  )
   return {
     ...result,
     outcome: 'completed',
     answer: {
       ...result.answer,
+      answer: fallback,
+      answer_digest: `sha256:${canonicalJsonSha256(fallback)}`,
       source: 'deterministic_fallback',
       guard_result: blockedGuard,
       render_attempt: {
@@ -945,10 +937,21 @@ function tenCognitionThenLocalLimitFallback(): DomeyeFirstSliceRunResult {
     ...result,
     answer: {
       ...result.answer,
+      answer: renderCountryOutageDeterministicFallback(result.answer_context),
+      answer_digest: `sha256:${canonicalJsonSha256(
+        renderCountryOutageDeterministicFallback(result.answer_context),
+      )}`,
       guard_result: {
-        schema_version: 'domeye_agent_response_guard_v1',
+        schema_version: 'domeye_agent_response_guard_v2',
         decision: 'block',
         reason_codes: ['renderer_failed_or_invalid'],
+        guarded_text: renderCountryOutageDeterministicFallback(
+          result.answer_context,
+        ),
+        guarded_text_digest: `sha256:${canonicalJsonSha256(
+          renderCountryOutageDeterministicFallback(result.answer_context),
+        )}`,
+        style_assessment: null,
       },
       render_attempt: {
         status: 'failed',
@@ -979,9 +982,15 @@ function answerFailure(
   assert.equal(result.outcome, 'completed')
   if (result.outcome !== 'completed') throw new Error('expected forged fallback')
   const evidence = {
-    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
     failure_stage: 'answer',
     candidate_id: result.candidate_id,
+    contract_version: result.contract_version,
+    contract_digest: result.contract_digest,
+    answer_presentation_contract_version:
+      result.answer_presentation_contract_version,
+    answer_presentation_contract_digest:
+      result.answer_presentation_contract_digest,
     identity_receipt: result.identity_receipt,
     semantic_goal: result.semantic_goal,
     goal_state: { ...result.goal_state, status: 'stopped' },
@@ -989,6 +998,7 @@ function answerFailure(
     loop: result.loop,
     finding: result.finding,
     answer_context: result.answer_context,
+    answer_context_digest: result.answer_context_digest,
     answer: result.answer,
     usage: result.usage,
   } as unknown as DomeyeFirstSliceRunFailureEvidence
@@ -1057,16 +1067,23 @@ function invalidProviderAttemptTimestamp(): DomeyeFirstSliceRunResult {
 function localRendererInvalidAfterCompletedProvider(): DomeyeFirstSliceRunResult {
   const result = successfulResult()
   assert.equal(result.outcome, 'completed')
+  const fallback = renderCountryOutageDeterministicFallback(
+    result.answer_context,
+  )
   return {
     ...result,
     outcome: 'completed',
     answer: {
-      answer: renderCountryOutageDeterministicFallback(result.answer_context),
+      answer: fallback,
+      answer_digest: `sha256:${canonicalJsonSha256(fallback)}`,
       source: 'deterministic_fallback',
       guard_result: {
-        schema_version: 'domeye_agent_response_guard_v1',
+        schema_version: 'domeye_agent_response_guard_v2',
         decision: 'block',
         reason_codes: ['renderer_failed_or_invalid'],
+        guarded_text: fallback,
+        guarded_text_digest: `sha256:${canonicalJsonSha256(fallback)}`,
+        style_assessment: null,
       },
       render_attempt: {
         status: 'failed',
@@ -1089,8 +1106,8 @@ function selfConsistentWrongFindingValue(): DomeyeFirstSliceRunResult {
     ...findingContent,
     values: {
       ...findingContent.values,
-      minimum: 6,
-      difference: 4,
+      minimum: 9_577_729,
+      difference: 579_071,
     },
   }
   const wrongDigest = `sha256:${canonicalJsonSha256(wrongContent)}`
@@ -1099,24 +1116,11 @@ function selfConsistentWrongFindingValue(): DomeyeFirstSliceRunResult {
     finding_id: `finding-${wrongDigest}`,
     result_digest: wrongDigest,
   }
-  const wrongContext = buildCountryOutageAnswerContext(
-    wrongFinding,
-    CANDIDATE.contract_digest,
-  )
-  const wrongText = renderCountryOutageDeterministicFallback(wrongContext)
-  const priorDraft = result.answer.render_attempt.status === 'completed'
-    ? result.answer.render_attempt.draft
-    : null
-  assert.ok(priorDraft)
-  const wrongDraft: DomeyeRendererDraft = {
-    ...priorDraft,
-    context_id: wrongContext.context_id,
-    finding_id: wrongFinding.finding_id,
-    values: wrongFinding.values,
-    text: wrongText,
-  }
+  const wrongContext = buildCountryOutageAnswerContext(wrongFinding)
+  const wrongDraft = acceptedDraft(wrongContext)
+  const wrongText = composeCountryOutageRendererDraftText(wrongDraft)
   const wrongGuard = guardCountryOutageResponse(wrongContext, wrongDraft)
-  assert.equal(wrongGuard.decision, 'pass')
+  if (wrongGuard.decision !== 'pass') throw new Error('expected guard pass')
   return {
     ...result,
     goal_state: {
@@ -1127,6 +1131,7 @@ function selfConsistentWrongFindingValue(): DomeyeFirstSliceRunResult {
     answer_context: wrongContext,
     answer: {
       answer: wrongText,
+      answer_digest: wrongGuard.guarded_text_digest,
       source: 'renderer',
       guard_result: wrongGuard,
       render_attempt: {
@@ -1309,6 +1314,20 @@ test('会话冻结验证回执并以中性事件引用绑定同一 Candidate', a
   const conversationService = service(sourceReceipt, runtime)
   const created = await createConversation(conversationService)
 
+  assert.equal(
+    created.conversation.schema_version,
+    'domeye_interactive_agent_conversation_v2',
+  )
+  assert.deepEqual(Object.keys(created.conversation).sort(), [
+    'binding',
+    'conversation_id',
+    'created_at',
+    'expires_at',
+    'schema_version',
+    'turns',
+  ])
+  assert.equal('identity_receipt_id' in created.conversation, false)
+  assert.equal('candidate_id' in created.conversation, false)
   assert.equal(created.conversation.binding.event_reference, EVENT_REFERENCE)
   ;(sourceReceipt.data_identity as { publication_id: string }).publication_id =
     'mutated-publication'
@@ -1394,35 +1413,115 @@ test('turn 异步启动并在完成后发布结构化答案', async () => {
   assert.equal(completedTurn.workflow_completed, true)
   assert.equal(successfulAnswer.answerability, 'supported')
   assert.equal(successfulAnswer.answer_source, 'renderer')
-  assert.equal(successfulAnswer.trace.disposition, 'goal_satisfied')
-  assert.equal(successfulAnswer.trace.response_guard.decision, 'pass')
+  assert.deepEqual(Object.keys(successfulAnswer).sort(), [
+    'answer_source',
+    'answer_text',
+    'answerability',
+    'basis',
+    'schema_version',
+  ])
+  assert.equal(
+    successfulAnswer.answer_text,
+    SUCCESSFUL_RESULT.answer.answer,
+  )
   assert.deepEqual(
-    successfulAnswer.trace.authorization_derivation,
+    successfulAnswer.basis,
     {
-      schema_version: 'domeye_authorization_derivation_v1',
-      rule_id: 'country_outage_event_read_to_country_outage_read_v1',
-      source_scope: 'country_outage_event_read:IR',
-      source_scope_kind: 'country_event_read',
-      source_country_code: 'IR',
-      derived_scope: 'country_outage:read',
+      source_label_zh: 'Domeye 国家中断观测数据',
+      observed_object_zh: 'RRC25 观测到的固定前缀可见 IPv4 地址量',
+      window_start_utc: IDENTITY.window_start_utc,
+      window_end_utc: IDENTITY.window_end_utc,
+      important_boundary_zh:
+        '仅表示 RRC25 单一观察点的 BGP 控制面观测，不能据此推断全国或用户实际影响、原因、责任或真实恢复。',
     },
   )
-  const publishedFindingId = successfulAnswer.finding.finding_id
-  assert.ok(publishedFindingId)
-  assert.equal(successfulAnswer.finding.observed_point_count, 3)
-  assert.equal(successfulAnswer.finding.null_point_count, 1)
-  assert.deepEqual(
-    successfulAnswer.evidence.map((item) => item.evidence_ref),
-    ['first', 'last', 'minimum', 'maximum', 'difference', 'net_change']
-      .map((field) => `${publishedFindingId}#/values/${field}`),
+  assert.doesNotMatch(
+    JSON.stringify(successfulAnswer),
+    /candidate_id|finding_id|receipt|artifact|trace|usage|sha256|Evidence/u,
   )
+
+  const internal = conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  assert.equal(hasValidDomeyeInteractiveTurnInternalRecord(internal), true)
+  assert.equal(internal.runtime_result?.outcome, 'completed')
+  assert.equal(internal.failure, null)
+  assert.equal(Object.isFrozen(internal), true)
+  assert.equal(internal.contract_version, CANDIDATE.contract_version)
+  assert.equal(internal.contract_digest, CANDIDATE.contract_digest)
+  assert.equal(
+    internal.answer_presentation_contract_version,
+    CANDIDATE.answer_presentation_contract_version,
+  )
+  assert.equal(
+    internal.answer_presentation_contract_digest,
+    CANDIDATE.answer_presentation_contract_digest,
+  )
+  assert.equal(internal.authorization_derivation.source_scope,
+    'country_outage_event_read:IR')
+  assert.equal(internal.runtime_result?.finding?.observed_point_count, 3)
+  assert.equal(internal.runtime_result?.finding?.null_point_count, 1)
+  assert.equal(internal.public_projection_sha256,
+    `sha256:${canonicalJsonSha256(completedTurn)}`)
+
+  const tampered = structuredClone(internal)
+  ;(tampered as { record_digest: `sha256:${string}` }).record_digest = sha('f')
+  assert.equal(hasValidDomeyeInteractiveTurnInternalRecord(tampered), false)
+})
+
+test('内部记录构造失败时不会先公开 completed', async () => {
+  const result = successfulResult()
+  Object.defineProperty(result, 'record_clone_fault', {
+    enumerable: true,
+    get() {
+      throw new Error('internal_record_build_failed')
+    },
+  })
+  const conversationService = service(
+    identityReceipt(),
+    new RuntimeDouble(async () => result),
+  )
+  const { conversation } = await createConversation(conversationService)
+  const started = await conversationService.createTurn(
+    PRINCIPAL,
+    conversation.conversation_id,
+    {
+      question: DOMEYE_FIRST_SLICE_QUESTION,
+      idempotency_key: 'turn-record-construction-failure',
+    },
+  )
+
+  await conversationService.waitForTurn(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  const final = (await conversationService.getConversation(
+    PRINCIPAL,
+    conversation.conversation_id,
+  )).turns[0]
+  assert.equal(final?.state, 'failed')
+  assert.equal(final?.answer_success, false)
+  assert.equal(final?.workflow_completed, false)
+  assert.ok(final)
+  assert.equal('answer' in final, false)
+  assert.equal('error' in final ? final.error.code : null, 'answer_not_published')
+
+  const internal = conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  assert.equal(hasValidDomeyeInteractiveTurnInternalRecord(internal), true)
+  assert.equal(internal.public_projection.state, 'failed')
+  assert.equal(internal.runtime_result, null)
+  assert.equal(internal.failure?.code, 'internal_record_build_failed')
 })
 
 test('公共服务对跨毫秒一致执行链仍发布 completed/true/true', async () => {
   const startedAt = Date.parse(NOW) + 1
   let elapsedMs = 0
   const result = await buildCompletedResult(
-    [10, null, 5, 10],
+    [10_156_800, null, 9_577_728, 10_069_760],
     PRINCIPAL.userId,
     ['country_outage:read'],
     [1, 2],
@@ -1545,7 +1644,67 @@ test('结构化 answer failure 不发布 fallback，并进入 failed', async () 
   assert.equal(final?.workflow_completed, false)
   assert.ok(final)
   assert.equal('answer' in final, false)
-  assert.equal('error' in final ? final.error.code : null, 'answer_not_accepted')
+  assert.equal('error' in final ? final.error.code : null, 'answer_not_published')
+  assert.equal(
+    'error' in final ? final.error.message : null,
+    '本轮未通过回答合同或安全校验，没有发布答案。',
+  )
+  assert.equal('error' in final ? final.error.retryable : null, false)
+  assert.equal(conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  ).failure?.code, 'answer_not_accepted')
+})
+
+test('只有短暂读取故障对外建议重试，内部原码不泄漏', async () => {
+  const conversationService = service(
+    identityReceipt(),
+    new RuntimeDouble(async () => {
+      throw new DomeyeReadModelError(
+        'data_api_unavailable',
+        'raw internal data api failure',
+        true,
+      )
+    }),
+  )
+  const { conversation } = await createConversation(conversationService)
+  const started = await conversationService.createTurn(
+    PRINCIPAL,
+    conversation.conversation_id,
+    {
+      question: DOMEYE_FIRST_SLICE_QUESTION,
+      idempotency_key: 'turn-transient-read-failure',
+    },
+  )
+
+  await conversationService.waitForTurn(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  const final = (await conversationService.getConversation(
+    PRINCIPAL,
+    conversation.conversation_id,
+  )).turns[0]
+  assert.equal(final?.state, 'failed')
+  assert.ok(final && 'error' in final)
+  if (!final || !('error' in final)) throw new Error('expected public failure')
+  assert.deepEqual(final.error, {
+    code: 'answer_temporarily_unavailable',
+    message: '这次没有形成可靠答案，临时服务异常。请稍后重试。',
+    retryable: true,
+  })
+  assert.doesNotMatch(
+    JSON.stringify(final),
+    /data_api_unavailable|raw internal data api failure/u,
+  )
+
+  const internal = conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  assert.equal(internal.failure?.code, 'data_api_unavailable')
+  assert.equal(internal.failure?.error_message, 'raw internal data api failure')
+  assert.equal(internal.failure?.retryable, true)
 })
 
 test('伪造 completed 的 Guard block fallback 也被公开门禁停止', async () => {
@@ -1572,8 +1731,22 @@ test('伪造 completed 的 Guard block fallback 也被公开门禁停止', async
   assert.equal(final?.workflow_completed, false)
   if (final?.state === 'stopped') {
     assert.equal(final.answer.answer_source, 'none')
-    assert.equal(final.answer.trace.response_guard?.decision, 'block')
+    assert.deepEqual(Object.keys(final.answer).sort(), [
+      'answer_source',
+      'answer_text',
+      'answerability',
+      'schema_version',
+    ])
   }
+  const internal = conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  assert.equal(internal.failure?.code, 'public_completion_gate_rejected')
+  assert.equal(
+    internal.runtime_result?.answer?.guard_result.decision,
+    'block',
+  )
 })
 
 test('Renderer 调用成功但本地解析失败时，精确 fallback 仍不算完成', async () => {
@@ -1603,9 +1776,15 @@ test('Renderer 调用成功但本地解析失败时，精确 fallback 仍不算�
   assert.equal(final?.workflow_completed, false)
   if (final?.state === 'stopped') {
     assert.equal(final.answer.answer_source, 'none')
-    assert.equal(final.answer.trace.response_guard?.decision, 'block')
-    assert.equal(final.answer.usage.attempts.at(-1)?.outcome, 'completed')
   }
+  const internal = conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  assert.equal(
+    internal.runtime_result?.usage.attempts.at(-1)?.outcome,
+    'completed',
+  )
 })
 
 test('前置协议拒绝即使后续链完整也不能完成', async () => {
@@ -1630,7 +1809,10 @@ test('前置协议拒绝即使后续链完整也不能完成', async () => {
   assert.equal(final?.state, 'stopped')
   assert.equal(final?.answer_success, false)
   assert.equal(final?.workflow_completed, false)
-  assert.equal(final?.answer?.usage.attempt_count, 5)
+  assert.equal(conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  ).runtime_result?.usage.attempt_count, 5)
 })
 
 test('第 10 次 cognition 后 Renderer 本地限流与 fallback 都不算完成', async () => {
@@ -1659,7 +1841,12 @@ test('第 10 次 cognition 后 Renderer 本地限流与 fallback 都不算完成
   assert.equal(final?.workflow_completed, false)
   assert.ok(final)
   assert.equal('answer' in final, false)
-  assert.equal('error' in final ? final.error.code : null, 'answer_not_accepted')
+  assert.equal('error' in final ? final.error.code : null, 'answer_not_published')
+  assert.equal('error' in final ? final.error.retryable : null, false)
+  assert.equal(conversationService.getTurnInternalRecord(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  ).failure?.code, 'answer_not_accepted')
 })
 
 test('自报 pass、模型身份漂移或伪造执行链都不能发布事实或标记完成', async () => {
@@ -1702,14 +1889,19 @@ test('自报 pass、模型身份漂移或伪造执行链都不能发布事实或
     assert.equal(final?.workflow_completed, false)
     if (final?.state === 'stopped') {
       assert.equal(final.answer.answer_source, 'none')
-      assert.equal(final.answer.finding, null)
-      assert.deepEqual(final.answer.evidence, [])
-      assert.deepEqual(final.answer.limitations, [])
       assert.equal(
         final.answer.answer_text,
-        '未形成满足公开合同的正确完整答案。',
+        '本轮未通过回答合同或安全校验，没有形成可发布答案。',
+      )
+      assert.doesNotMatch(
+        JSON.stringify(final.answer),
+        /candidate|finding|evidence|trace|usage|sha256/iu,
       )
     }
+    assert.ok(conversationService.getTurnInternalRecord(
+      conversation.conversation_id,
+      started.turn.turn_id,
+    ).runtime_result)
   }
 })
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import type { RequestListener, Server } from 'node:http'
+import type { IncomingMessage, RequestListener, Server } from 'node:http'
 import { resolve } from 'node:path'
 import test from 'node:test'
 
@@ -17,6 +17,9 @@ import {
   startDomeyeInteractiveAgentSidecar,
   type DomeyeInteractiveAgentEnvironment,
 } from '../src/cli/interactive-agent-sidecar.js'
+import {
+  createCountryOutageVerifierAuthenticator,
+} from '../src/cli/sidecar-security.js'
 
 const sha = (character: string): `sha256:${string}` =>
   `sha256:${character.repeat(64)}`
@@ -71,11 +74,15 @@ const extremaBinding = {
 }
 
 const manifestPayload: DomeyeFirstSliceCandidateManifestPayload = {
-  schema_version: 'domeye_first_slice_candidate_manifest_v1',
+  schema_version: 'domeye_first_slice_candidate_manifest_v2',
   base_commit: 'a'.repeat(40),
   contract: {
     version: 'domeye.first-vertical-slice/v1.0',
     digest: sha('1'),
+  },
+  answer_presentation_contract: {
+    version: 'domeye.first-vertical-slice.answer-presentation/v1.0',
+    digest: sha('d'),
   },
   data_identity: dataIdentity,
   series_response_sha256: sha('2'),
@@ -123,6 +130,10 @@ const candidate: DomeyeFirstSliceCandidateBinding = {
   candidate_id: candidateId,
   contract_version: manifestPayload.contract.version,
   contract_digest: manifestPayload.contract.digest,
+  answer_presentation_contract_version:
+    manifestPayload.answer_presentation_contract.version,
+  answer_presentation_contract_digest:
+    manifestPayload.answer_presentation_contract.digest,
   data_identity: dataIdentity,
   series_response_sha256: manifestPayload.series_response_sha256,
   model_identity: modelIdentity,
@@ -150,9 +161,10 @@ const modelBinding = {
 function validEnvironment(): DomeyeInteractiveAgentEnvironment {
   return {
     COUNTRY_OUTAGE_AGENT_HOST: '127.0.0.1',
-    COUNTRY_OUTAGE_AGENT_PORT: '28475',
     COUNTRY_OUTAGE_AGENT_SHARED_TOKEN:
       'interactive-agent-sidecar-token',
+    COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN:
+      'interactive-agent-verifier-token',
     COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT: process.cwd(),
     COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST:
       'contracts/agent/domeye-first-vertical-slice/candidate.json',
@@ -219,7 +231,7 @@ test('唯一交互式 Agent CLI 精确装配 Candidate、模型、服务与 read
     'model',
     'server',
     'once:error',
-    'listen:127.0.0.1:28475',
+    'listen:127.0.0.1:28476',
     'off:error',
   ])
   assert.deepEqual(manifestCalls, [{
@@ -247,6 +259,8 @@ test('唯一交互式 Agent CLI 精确装配 Candidate、模型、服务与 read
     activation_scope: 'local_evaluation_only',
     production_deployed: false,
     contract: manifestPayload.contract,
+    answer_presentation_contract:
+      manifestPayload.answer_presentation_contract,
     data_identity: dataIdentity,
     model_identity: modelIdentity,
     budget_policy: {
@@ -303,6 +317,7 @@ test('非本机 host 与必需配置缺失时在任何工厂或 Server 前失败
 
   const requiredConfiguration = [
     'COUNTRY_OUTAGE_AGENT_SHARED_TOKEN',
+    'COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN',
     'COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT',
     'COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST',
     'COUNTRY_OUTAGE_PI_AUTH_PATH',
@@ -318,11 +333,50 @@ test('非本机 host 与必需配置缺失时在任何工厂或 Server 前失败
     )
     assert.equal(dependencyCallCount, 0, name)
   }
+
+  await assert.rejects(
+    createDomeyeInteractiveAgentSidecar({
+      ...validEnvironment(),
+      COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN:
+        'interactive-agent-sidecar-token',
+    }, dependencies),
+    /必须与普通访问 Token 分离/,
+  )
+  assert.equal(dependencyCallCount, 0)
+})
+
+test('验证器 Token 同时绑定独立凭据与 loopback 来源', () => {
+  const authenticate = createCountryOutageVerifierAuthenticator(
+    'interactive-agent-verifier-token',
+  )
+  const request = (
+    authorization: string,
+    remoteAddress: string,
+  ): IncomingMessage => ({
+    headers: { authorization },
+    socket: { remoteAddress },
+  }) as unknown as IncomingMessage
+
+  assert.equal(authenticate(request(
+    'Bearer interactive-agent-verifier-token',
+    '127.0.0.1',
+  )), true)
+  assert.equal(authenticate(request(
+    'Bearer interactive-agent-sidecar-token',
+    '127.0.0.1',
+  )), false)
+  assert.equal(authenticate(request(
+    'Bearer interactive-agent-verifier-token',
+    '10.0.0.8',
+  )), false)
 })
 
 test('唯一 CLI 源码不依赖旧 chat，不包含路由选择器或 fallback', () => {
   const source = readFileSync(
-    resolve(process.cwd(), 'src/cli/interactive-agent-sidecar.ts'),
+    resolve(
+      import.meta.dirname,
+      '../../src/cli/interactive-agent-sidecar.ts',
+    ),
     'utf8',
   )
   assert.doesNotMatch(source, /from ['"]\.\.\/chat\//)

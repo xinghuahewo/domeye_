@@ -20,6 +20,7 @@ const MAX_REQUEST_BYTES = 64 * 1024
 export interface DomeyeInteractiveAgentHttpHandlerOptions {
   readonly service: DomeyeInteractiveConversationService
   readonly authenticate: AuthenticateCountryOutageRequest
+  readonly authenticate_verifier: (request: IncomingMessage) => boolean
   readonly readiness: () => unknown
   readonly base_path?: string
 }
@@ -55,13 +56,36 @@ function publicError(
 
 function writeError(response: ServerResponse, error: unknown): void {
   if (error instanceof DomeyeConversationError) {
+    if (error.code === 'internal_record_not_found') {
+      publicError(response, 404, error.code, '内部 turn 记录不存在')
+      return
+    }
     const status = error.code === 'permission_denied' ? 403
       : error.code === 'conversation_not_found' ? 404
         : error.code === 'conversation_expired' ? 410
           : error.code === 'conversation_busy'
               || error.code === 'idempotency_conflict' ? 409
-            : 400
-    publicError(response, status, error.code, error.message, error.retryable)
+            : error.code === 'verified_identity_outside_candidate' ? 409
+              : 400
+    const publicCode = error.code === 'goal_outside_first_slice_contract'
+      ? 'invalid_request'
+      : error.code === 'verified_identity_outside_candidate'
+        ? 'data_not_available'
+        : error.code
+    const message = error.code === 'permission_denied'
+      ? '无权访问此资源'
+      : error.code === 'conversation_not_found'
+        ? '会话不存在'
+        : error.code === 'conversation_expired'
+          ? '会话已过期'
+          : error.code === 'conversation_busy'
+            ? '当前会话已有执行中的问题'
+            : error.code === 'idempotency_conflict'
+              ? '幂等键与已有请求冲突'
+              : error.code === 'verified_identity_outside_candidate'
+                ? '当前数据版本无法用于本次回答'
+                : '当前请求超出此回答功能支持的范围'
+    publicError(response, status, publicCode, message, error.retryable)
     return
   }
   if (error instanceof DomeyeReadModelError) {
@@ -70,7 +94,19 @@ function writeError(response: ServerResponse, error: unknown): void {
         : error.code === 'data_api_unavailable' ? 503
           : error.code === 'cancelled' ? 409
             : 400
-    publicError(response, status, error.code, error.message, error.retryable)
+    const retryable = error.code === 'read_timeout'
+      || error.code === 'data_api_unavailable'
+    const code = retryable
+      ? 'service_temporarily_unavailable'
+      : error.code === 'cancelled'
+        ? 'request_cancelled'
+        : 'data_not_available'
+    const message = retryable
+      ? '数据暂时不可用，请稍后重试'
+      : error.code === 'cancelled'
+        ? '请求已取消'
+        : '当前数据无法用于本次回答'
+    publicError(response, status, code, message, retryable)
     return
   }
   publicError(
@@ -93,6 +129,18 @@ async function authenticate(
     )
   }
   return principal
+}
+
+function authenticateVerifier(
+  options: DomeyeInteractiveAgentHttpHandlerOptions,
+  request: IncomingMessage,
+): void {
+  if (!options.authenticate_verifier(request)) {
+    throw new DomeyeConversationError(
+      'permission_denied',
+      '需要独立验证器身份认证',
+    )
+  }
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {
@@ -279,6 +327,25 @@ export function createDomeyeInteractiveAgentHttpHandler(
         }
         await authenticate(options, request)
         writeJson(response, 200, options.readiness())
+        return
+      }
+
+      const internalRecordMatch = pathname.match(
+        new RegExp(
+          `^${escapedBasePath}/internal/conversations/([^/]+)/turns/([^/]+)$`,
+        ),
+      )
+      if (internalRecordMatch) {
+        if (request.method !== 'GET') {
+          methodNotAllowed(response, 'GET')
+          return
+        }
+        authenticateVerifier(options, request)
+        const record = options.service.getTurnInternalRecord(
+          identifier(internalRecordMatch[1]!),
+          identifier(internalRecordMatch[2]!),
+        )
+        writeJson(response, 200, { record })
         return
       }
 

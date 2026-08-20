@@ -65,6 +65,146 @@ def test_openapi_only_allows_explicit_agent_state_machine_post_operations():
     assert actual_posts == expected_posts
 
 
+def test_openapi_interactive_chat_exposes_only_the_public_answer_projection():
+    project_root = Path(__file__).resolve().parents[3]
+    contract = json.loads(
+        (project_root / 'contracts' / 'openapi.json').read_text(encoding='utf-8')
+    )
+    schemas = contract['components']['schemas']
+
+    conversation = schemas['CountryOutageInteractiveConversation']
+    assert conversation['properties']['schema_version']['const'] == (
+        'domeye_interactive_agent_conversation_v2'
+    )
+    assert set(conversation['properties']) == {
+        'schema_version',
+        'conversation_id',
+        'binding',
+        'turns',
+        'expires_at',
+        'created_at',
+    }
+
+    answer = schemas['CountryOutageInteractiveSuccessfulTurnAnswer']
+    assert answer['additionalProperties'] is False
+    assert set(answer['properties']) == {
+        'schema_version',
+        'answerability',
+        'answer_source',
+        'answer_text',
+        'basis',
+    }
+    assert answer['properties']['schema_version']['const'] == (
+        'domeye_interactive_agent_turn_answer_v2'
+    )
+    assert answer['properties']['answer_text']['maxLength'] == 360
+
+    basis = schemas['CountryOutageInteractiveAnswerBasis']
+    assert basis['additionalProperties'] is False
+    assert set(basis['required']) == {
+        'source_label_zh',
+        'observed_object_zh',
+        'window_start_utc',
+        'window_end_utc',
+        'important_boundary_zh',
+    }
+
+    for name, answerability in (
+        ('CountryOutageInteractiveClarificationTurnAnswer',
+         'clarification_required'),
+        ('CountryOutageInteractiveStoppedTurnAnswer', 'stopped'),
+    ):
+        non_success = schemas[name]
+        assert set(non_success['properties']) == {
+            'schema_version',
+            'answerability',
+            'answer_source',
+            'answer_text',
+        }
+        assert non_success['properties']['answerability']['const'] == (
+            answerability
+        )
+        assert non_success['properties']['answer_source']['const'] == 'none'
+        assert non_success['properties']['answer_text']['maxLength'] == 140
+
+    turns = schemas['CountryOutageInteractiveTurn']['oneOf']
+    assert len(turns) == 6
+    assert {
+        branch['properties']['state']['const'] for branch in turns
+    } == {
+        'executing',
+        'completed',
+        'clarification_required',
+        'stopped',
+        'failed',
+        'cancelled',
+    }
+    assert all(branch['additionalProperties'] is False for branch in turns)
+
+    turn_error = schemas['CountryOutageInteractiveTurnError']
+    assert turn_error['discriminator'] == {'propertyName': 'code'}
+    assert len(turn_error['oneOf']) == 3
+    assert all(
+        branch['additionalProperties'] is False
+        and branch['required'] == ['code', 'message', 'retryable']
+        for branch in turn_error['oneOf']
+    )
+    assert {
+        (
+            branch['properties']['code']['const'],
+            branch['properties']['message']['const'],
+            branch['properties']['retryable']['const'],
+        )
+        for branch in turn_error['oneOf']
+    } == {
+        (
+            'answer_temporarily_unavailable',
+            '这次没有形成可靠答案，临时服务异常。请稍后重试。',
+            True,
+        ),
+        (
+            'answer_not_published',
+            '本轮未通过回答合同或安全校验，没有发布答案。',
+            False,
+        ),
+        ('cancelled', '本轮已取消，未发布答案', False),
+    }
+
+    retired_chat_schemas = {
+        'CountryOutageInteractiveDataIdentity',
+        'CountryOutageInteractiveFinding',
+        'CountryOutageInteractiveEvidence',
+        'CountryOutageInteractiveTrace',
+        'CountryOutageInteractiveSuccessfulTrace',
+        'CountryOutageInteractiveUsage',
+        'CountryOutageInteractiveUsageAttempt',
+    }
+    assert retired_chat_schemas.isdisjoint(schemas)
+
+    public_chat_schema = json.dumps(
+        {
+            name: value
+            for name, value in schemas.items()
+            if name.startswith('CountryOutageInteractive')
+        },
+        ensure_ascii=False,
+    ).lower()
+    for forbidden in (
+        'candidate_id',
+        'identity_receipt_id',
+        'finding_id',
+        'receipt_refs',
+        'artifact_refs',
+        'evidence_refs',
+        'response_guard',
+        'provider_usage',
+        'model_api_attempts',
+    ):
+        assert forbidden not in public_chat_schema
+
+    assert not any('/chat/internal/' in path for path in contract['paths'])
+
+
 def test_openapi_country_outage_general_read_model_is_bounded_and_versioned():
     project_root = Path(__file__).resolve().parents[3]
     contract = json.loads(

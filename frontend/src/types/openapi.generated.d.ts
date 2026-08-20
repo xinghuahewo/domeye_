@@ -398,7 +398,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description 创建绑定单一冻结 publication、revision 与 Candidate 的首个纵向切片交互会话。 */
+        /** @description 创建绑定单一冻结 publication 与 revision 的首个纵向切片交互会话。 */
         post: operations["createCountryOutageChatConversation"];
         delete?: never;
         options?: never;
@@ -948,26 +948,6 @@ export interface components {
             question: string;
             idempotency_key: string;
         };
-        CountryOutageInteractiveDataIdentity: {
-            /** @constant */
-            event_type: "country_outage";
-            incident_id: string;
-            publication_id: string;
-            revision: number;
-            /** @constant */
-            collector_id: "rrc25";
-            cohort_id: string;
-            country_code: string;
-            /** Format: date-time */
-            window_start_utc: string;
-            /** Format: date-time */
-            window_end_utc: string;
-            /** Format: date-time */
-            data_through: string;
-            is_final_in_data_range: boolean;
-            /** @constant */
-            lifecycle_state: "event_end_unknown";
-        };
         CountryOutageInteractiveBinding: {
             event_reference: string;
             /** @constant */
@@ -989,388 +969,158 @@ export interface components {
             /** @constant */
             lifecycle_state: "event_end_unknown";
         };
-        CountryOutageInteractiveFindingValues: {
-            first: number | null;
+        CountryOutageInteractiveAnswerBasis: {
+            source_label_zh: string;
+            observed_object_zh: string;
             /** Format: date-time */
-            first_at_utc: string | null;
-            last: number | null;
+            window_start_utc: string;
             /** Format: date-time */
-            last_at_utc: string | null;
-            minimum: number | null;
-            /** Format: date-time */
-            minimum_at_utc: string | null;
-            maximum: number | null;
-            /** Format: date-time */
-            maximum_at_utc: string | null;
-            difference: number | null;
-            net_change: number | null;
+            window_end_utc: string;
+            important_boundary_zh: string;
         };
-        CountryOutageInteractiveFinding: {
+        CountryOutageInteractiveSuccessfulTurnAnswer: {
             /** @constant */
-            schema_version: "domeye_agent_typed_finding_v1";
-            finding_id: string;
-            /** @constant */
-            finding_type: "fixed_visible_ipv4_series_extrema";
-            /** @enum {string} */
-            value_state: "known" | "empty" | "incomplete" | "not_computable";
-            candidate_id: string;
-            /** @constant */
-            tenant_id: "domeye";
-            data_identity: components["schemas"]["CountryOutageInteractiveDataIdentity"];
-            /** @constant */
-            metric: "fixed_visible_ipv4_address_count";
-            /** @constant */
-            unit: "unique_ipv4_address";
-            /** @constant */
-            population_definition: "normalized_deduplicated_merged_fixed_prefix_ipv4_unique_address_union";
-            values: components["schemas"]["CountryOutageInteractiveFindingValues"];
-            time_slot_count: number;
-            observed_point_count: number;
-            null_point_count: number;
-            /** @enum {string} */
-            completeness_state: "complete" | "incomplete";
-            limitation_codes: string[];
-            /** @constant */
-            tool_version: "1.0.0";
-            /** @constant */
-            operator_version: "1.0.0";
-            artifact_refs: string[];
-            receipt_refs: string[];
-            evidence_refs: string[];
-            result_digest: string;
-        };
-        CountryOutageInteractiveEvidence: {
-            evidence_ref: string;
-            label: string;
-            value: number | string | null;
-            unit: string | null;
-            /** Format: date-time */
-            observed_at_utc: string | null;
-        };
-        CountryOutageInteractiveAdmissionReceiptSummary: {
-            receipt_id: string;
-            /** @enum {string} */
-            decision: "admitted" | "rejected";
-            reason_code: string | null;
-        };
-        CountryOutageInteractiveActionReceiptSummary: {
-            receipt_id: string;
-            /** @enum {string} */
-            capability_id: "CAP-006" | "CAP-016";
-            /** @enum {string} */
-            status: "succeeded" | "failed";
-            failure_code: string | null;
-        };
-        CountryOutageInteractiveArtifactSummary: {
-            artifact_id: string;
-            /** @enum {string} */
-            artifact_kind: "metric_series" | "series_extrema";
-            content_digest: string;
-        };
-        CountryOutageInteractiveObservationSummary: {
-            observation_id: string;
-            /** @enum {string} */
-            capability_id: "CAP-006" | "CAP-016";
-            /** @enum {string} */
-            status: "succeeded" | "rejected" | "failed";
-            reason_code: string | null;
-        };
-        CountryOutageInteractiveResponseGuardSummary: {
-            /** @enum {string} */
-            decision: "pass" | "block";
-            reason_codes: string[];
-        };
-        CountryOutageInteractiveAuthorizationDerivation: {
-            /** @constant */
-            schema_version: "domeye_authorization_derivation_v1";
-            /** @constant */
-            rule_id: "country_outage_event_read_to_country_outage_read_v1";
-            source_scope: string;
-            /** @enum {string} */
-            source_scope_kind: "global_event_read" | "country_event_read";
-            source_country_code: string;
-            /** @constant */
-            derived_scope: "country_outage:read";
-        };
-        CountryOutageInteractiveTrace: {
-            goal_id: string;
-            goal_state_revision: number;
-            /** @enum {string} */
-            disposition: "goal_satisfied" | "clarification_required" | "stopped";
-            authorization_derivation: components["schemas"]["CountryOutageInteractiveAuthorizationDerivation"];
-            admission_receipts: components["schemas"]["CountryOutageInteractiveAdmissionReceiptSummary"][];
-            action_receipts: components["schemas"]["CountryOutageInteractiveActionReceiptSummary"][];
-            artifacts: components["schemas"]["CountryOutageInteractiveArtifactSummary"][];
-            observations: components["schemas"]["CountryOutageInteractiveObservationSummary"][];
-            response_guard: components["schemas"]["CountryOutageInteractiveResponseGuardSummary"] | null;
-        };
-        CountryOutageInteractiveSuccessfulTrace: components["schemas"]["CountryOutageInteractiveTrace"] & {
-            /** @constant */
-            goal_state_revision: 4;
-            /** @constant */
-            disposition: "goal_satisfied";
-            admission_receipts: [
-                components["schemas"]["CountryOutageInteractiveAdmissionReceiptSummary"] & {
-                    /** @constant */
-                    decision: "admitted";
-                    reason_code: null;
-                },
-                components["schemas"]["CountryOutageInteractiveAdmissionReceiptSummary"] & {
-                    /** @constant */
-                    decision: "admitted";
-                    reason_code: null;
-                }
-            ];
-            action_receipts: [
-                components["schemas"]["CountryOutageInteractiveActionReceiptSummary"] & {
-                    /** @constant */
-                    capability_id: "CAP-006";
-                    /** @constant */
-                    status: "succeeded";
-                    failure_code: null;
-                },
-                components["schemas"]["CountryOutageInteractiveActionReceiptSummary"] & {
-                    /** @constant */
-                    capability_id: "CAP-016";
-                    /** @constant */
-                    status: "succeeded";
-                    failure_code: null;
-                }
-            ];
-            artifacts: [
-                components["schemas"]["CountryOutageInteractiveArtifactSummary"] & {
-                    /** @constant */
-                    artifact_kind: "metric_series";
-                },
-                components["schemas"]["CountryOutageInteractiveArtifactSummary"] & {
-                    /** @constant */
-                    artifact_kind: "series_extrema";
-                }
-            ];
-            observations: [
-                components["schemas"]["CountryOutageInteractiveObservationSummary"] & {
-                    /** @constant */
-                    capability_id: "CAP-006";
-                    /** @constant */
-                    status: "succeeded";
-                    reason_code: null;
-                },
-                components["schemas"]["CountryOutageInteractiveObservationSummary"] & {
-                    /** @constant */
-                    capability_id: "CAP-016";
-                    /** @constant */
-                    status: "succeeded";
-                    reason_code: null;
-                }
-            ];
-        };
-        CountryOutageInteractiveUsageAttempt: {
-            attempt_id: number;
-            /** @enum {string} */
-            phase: "cognition" | "renderer";
-            provider: string;
-            model: string;
-            model_version: string;
-            expected_response_model: string;
-            response_model: string | null;
-            /** Format: date-time */
-            started_at_utc: string;
-            /** Format: date-time */
-            ended_at_utc: string | null;
-            latency_ms: number | null;
-            /** @enum {string} */
-            outcome: "started" | "completed" | "failed" | "limit_rejected";
-            failure_code: string | null;
-        };
-        CountryOutageInteractiveUsage: {
-            attempt_count: number;
-            /** @constant */
-            maximum_attempt_count: 10;
-            /** @constant */
-            cost_policy: "audit_only";
-            tokens: {
-                input: number;
-                output: number;
-                cache_read: number;
-                cache_write: number;
-                total: number;
-            };
-            estimated_cost_usd: number;
-            attempts: components["schemas"]["CountryOutageInteractiveUsageAttempt"][];
-        };
-        CountryOutageInteractiveTurnAnswer: {
-            /** @constant */
-            schema_version: "domeye_interactive_agent_turn_answer_v1";
-            /** @enum {string} */
-            answerability: "supported" | "clarification_required" | "stopped";
-            answer_text: string;
-            /** @enum {string} */
-            answer_source: "renderer" | "none";
-            candidate_id: string;
-            data_identity: components["schemas"]["CountryOutageInteractiveDataIdentity"];
-            finding: components["schemas"]["CountryOutageInteractiveFinding"] | null;
-            evidence: components["schemas"]["CountryOutageInteractiveEvidence"][];
-            limitations: string[];
-            trace: components["schemas"]["CountryOutageInteractiveTrace"];
-            usage: components["schemas"]["CountryOutageInteractiveUsage"];
-        };
-        CountryOutageInteractiveSuccessfulFinding: components["schemas"]["CountryOutageInteractiveFinding"] & {
-            /** @constant */
-            value_state: "known";
-            values: {
-                first: number;
-                /** Format: date-time */
-                first_at_utc: string;
-                last: number;
-                /** Format: date-time */
-                last_at_utc: string;
-                minimum: number;
-                /** Format: date-time */
-                minimum_at_utc: string;
-                maximum: number;
-                /** Format: date-time */
-                maximum_at_utc: string;
-                difference: number;
-                net_change: number;
-            };
-            observed_point_count: number;
-            null_point_count: number;
-            /** @constant */
-            completeness_state: "complete";
-        };
-        CountryOutageInteractiveSuccessfulTurnAnswer: components["schemas"]["CountryOutageInteractiveTurnAnswer"] & {
+            schema_version: "domeye_interactive_agent_turn_answer_v2";
             /** @constant */
             answerability: "supported";
-            answer_text: string;
             /** @constant */
             answer_source: "renderer";
-            finding: components["schemas"]["CountryOutageInteractiveSuccessfulFinding"];
-            evidence: components["schemas"]["CountryOutageInteractiveEvidence"][];
-            limitations: string[];
-            trace: components["schemas"]["CountryOutageInteractiveSuccessfulTrace"] & {
-                response_guard: components["schemas"]["CountryOutageInteractiveResponseGuardSummary"] & {
-                    /** @constant */
-                    decision: "pass";
-                    reason_codes: unknown[];
-                };
-            };
+            answer_text: string;
+            basis: components["schemas"]["CountryOutageInteractiveAnswerBasis"];
+        };
+        CountryOutageInteractiveClarificationTurnAnswer: {
+            /** @constant */
+            schema_version: "domeye_interactive_agent_turn_answer_v2";
+            /** @constant */
+            answerability: "clarification_required";
+            /** @constant */
+            answer_source: "none";
+            answer_text: string;
+        };
+        CountryOutageInteractiveStoppedTurnAnswer: {
+            /** @constant */
+            schema_version: "domeye_interactive_agent_turn_answer_v2";
+            /** @constant */
+            answerability: "stopped";
+            /** @constant */
+            answer_source: "none";
+            answer_text: string;
         };
         CountryOutageInteractiveTurnError: {
-            code: string;
-            message: string;
-            retryable: boolean;
+            /** @constant */
+            code: "answer_temporarily_unavailable";
+            /** @constant */
+            message: "这次没有形成可靠答案，临时服务异常。请稍后重试。";
+            /** @constant */
+            retryable: true;
+        } | {
+            /** @constant */
+            code: "answer_not_published";
+            /** @constant */
+            message: "本轮未通过回答合同或安全校验，没有发布答案。";
+            /** @constant */
+            retryable: false;
+        } | {
+            /** @constant */
+            code: "cancelled";
+            /** @constant */
+            message: "本轮已取消，未发布答案";
+            /** @constant */
+            retryable: false;
         };
         CountryOutageInteractiveTurn: {
             turn_id: string;
             turn_number: number;
             question: string;
+            /** Format: date-time */
+            created_at: string;
             /** @constant */
             state: "executing";
             /** @constant */
             answer_success: false;
             /** @constant */
             workflow_completed: false;
-            /** Format: date-time */
-            created_at: string;
         } | {
             turn_id: string;
             turn_number: number;
             question: string;
+            /** Format: date-time */
+            created_at: string;
             /** @constant */
             state: "completed";
             /** @constant */
             answer_success: true;
             /** @constant */
             workflow_completed: true;
-            answer: components["schemas"]["CountryOutageInteractiveSuccessfulTurnAnswer"];
-            /** Format: date-time */
-            created_at: string;
             /** Format: date-time */
             completed_at: string;
+            answer: components["schemas"]["CountryOutageInteractiveSuccessfulTurnAnswer"];
         } | {
             turn_id: string;
             turn_number: number;
             question: string;
+            /** Format: date-time */
+            created_at: string;
             /** @constant */
             state: "clarification_required";
             /** @constant */
             answer_success: false;
             /** @constant */
             workflow_completed: false;
-            answer: components["schemas"]["CountryOutageInteractiveTurnAnswer"] & {
-                /** @constant */
-                answerability: "clarification_required";
-                /** @constant */
-                answer_source: "none";
-                finding: null;
-                evidence: unknown[];
-                limitations: unknown[];
-            };
-            /** Format: date-time */
-            created_at: string;
             /** Format: date-time */
             completed_at: string;
+            answer: components["schemas"]["CountryOutageInteractiveClarificationTurnAnswer"];
         } | {
             turn_id: string;
             turn_number: number;
             question: string;
+            /** Format: date-time */
+            created_at: string;
             /** @constant */
             state: "stopped";
             /** @constant */
             answer_success: false;
             /** @constant */
             workflow_completed: false;
-            answer: components["schemas"]["CountryOutageInteractiveTurnAnswer"] & {
-                /** @constant */
-                answerability: "stopped";
-                /** @constant */
-                answer_source: "none";
-                finding: null;
-                evidence: unknown[];
-                limitations: unknown[];
-            };
-            /** Format: date-time */
-            created_at: string;
             /** Format: date-time */
             completed_at: string;
+            answer: components["schemas"]["CountryOutageInteractiveStoppedTurnAnswer"];
         } | {
             turn_id: string;
             turn_number: number;
             question: string;
+            /** Format: date-time */
+            created_at: string;
             /** @constant */
             state: "failed";
             /** @constant */
             answer_success: false;
             /** @constant */
             workflow_completed: false;
-            error: components["schemas"]["CountryOutageInteractiveTurnError"];
-            /** Format: date-time */
-            created_at: string;
             /** Format: date-time */
             completed_at: string;
+            error: components["schemas"]["CountryOutageInteractiveTurnError"];
         } | {
             turn_id: string;
             turn_number: number;
             question: string;
+            /** Format: date-time */
+            created_at: string;
             /** @constant */
             state: "cancelled";
             /** @constant */
             answer_success: false;
             /** @constant */
             workflow_completed: false;
-            error: components["schemas"]["CountryOutageInteractiveTurnError"];
-            /** Format: date-time */
-            created_at: string;
             /** Format: date-time */
             completed_at: string;
+            error: components["schemas"]["CountryOutageInteractiveTurnError"];
         };
         CountryOutageInteractiveConversation: {
             /** @constant */
-            schema_version: "domeye_interactive_agent_conversation_v1";
+            schema_version: "domeye_interactive_agent_conversation_v2";
             conversation_id: string;
             binding: components["schemas"]["CountryOutageInteractiveBinding"];
-            identity_receipt_id: string;
-            candidate_id: string;
             turns: components["schemas"]["CountryOutageInteractiveTurn"][];
             /** Format: date-time */
             expires_at: string;
@@ -4529,7 +4279,16 @@ export interface components {
                 "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
             };
         };
-        /** @description Agent Sidecar 未配置或暂不可用 */
+        /** @description 回答服务返回了不符合公开合同的响应 */
+        CountryOutageAgentBadGateway: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CountryOutageAgentErrorResponse"];
+            };
+        };
+        /** @description 回答服务暂时不可用 */
         CountryOutageAgentUnavailable: {
             headers: {
                 [name: string]: unknown;
@@ -5392,6 +5151,7 @@ export interface operations {
             401: components["responses"]["CountryOutageAgentUnauthenticated"];
             403: components["responses"]["CountryOutageAgentForbidden"];
             409: components["responses"]["CountryOutageAgentConflict"];
+            502: components["responses"]["CountryOutageAgentBadGateway"];
             503: components["responses"]["CountryOutageAgentUnavailable"];
         };
     };
@@ -5420,6 +5180,7 @@ export interface operations {
             403: components["responses"]["CountryOutageAgentForbidden"];
             404: components["responses"]["CountryOutageAgentNotFound"];
             410: components["responses"]["CountryOutageAgentExpired"];
+            502: components["responses"]["CountryOutageAgentBadGateway"];
             503: components["responses"]["CountryOutageAgentUnavailable"];
         };
     };
@@ -5465,6 +5226,7 @@ export interface operations {
             404: components["responses"]["CountryOutageAgentNotFound"];
             409: components["responses"]["CountryOutageAgentConflict"];
             410: components["responses"]["CountryOutageAgentExpired"];
+            502: components["responses"]["CountryOutageAgentBadGateway"];
             503: components["responses"]["CountryOutageAgentUnavailable"];
         };
     };
@@ -5498,6 +5260,7 @@ export interface operations {
             403: components["responses"]["CountryOutageAgentForbidden"];
             404: components["responses"]["CountryOutageAgentNotFound"];
             410: components["responses"]["CountryOutageAgentExpired"];
+            502: components["responses"]["CountryOutageAgentBadGateway"];
             503: components["responses"]["CountryOutageAgentUnavailable"];
         };
     };
