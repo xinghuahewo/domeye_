@@ -440,6 +440,62 @@ validate_config() {
     owner_mode "${auth}" 600 || { error '模型凭据必须为 0600'; return 1; }
 }
 
+validate_release_launch_paths() {
+    local release_id="$1" directory="$2" expected_directory current_target \
+        project_root candidate_manifest
+    expected_directory="$(release_directory "${release_id}")" || return 1
+    [[ "${directory}" == "${expected_directory}" \
+        && -d "${directory}" && ! -L "${directory}" \
+        && "$(readlink -f -- "${directory}")" == "${directory}" ]] || {
+        error '启动目录不是目标 release 的规范真实目录'
+        return 1
+    }
+    [[ -L "${CURRENT_LINK}" ]] || {
+        error '启动前 current 不是 symlink'
+        return 1
+    }
+    current_target="$(readlink -f -- "${CURRENT_LINK}" 2>/dev/null || true)"
+    [[ -n "${current_target}" \
+        && "${current_target}" == "${RELEASE_ROOT}/"* ]] || {
+        error 'current 解析路径逃逸 release 根目录'
+        return 1
+    }
+    [[ "${current_target}" == "${directory}" ]] || {
+        error 'current 指向错误 release'
+        return 1
+    }
+    project_root="${directory}/project"
+    candidate_manifest="${project_root}/${CANDIDATE_RELATIVE}"
+    [[ -d "${project_root}" && ! -L "${project_root}" \
+        && "$(readlink -f -- "${project_root}")" == "${project_root}" ]] || {
+        error 'release project 路径无效或发生逃逸'
+        return 1
+    }
+    [[ -f "${candidate_manifest}" && ! -L "${candidate_manifest}" \
+        && "$(readlink -f -- "${candidate_manifest}")" \
+            == "${candidate_manifest}" ]] || {
+        error 'release Candidate 路径无效或发生逃逸'
+        return 1
+    }
+}
+
+bind_launch_config_line() {
+    local line="$1" directory="$2" key
+    key="${line%%=*}"
+    case "${key}" in
+        COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT)
+            printf '%s=%s/project\n' "${key}" "${directory}"
+            ;;
+        COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST)
+            printf '%s=%s/project/%s\n' \
+                "${key}" "${directory}" "${CANDIDATE_RELATIVE}"
+            ;;
+        *)
+            printf '%s\n' "${line}"
+            ;;
+    esac
+}
+
 verify_release() {
     local release_id="$1" directory
     directory="$(release_directory "${release_id}")"
@@ -1035,11 +1091,21 @@ launch_release() {
         error '无法原子切换 current 到目标 release'
         return 1
     fi
+    if ! validate_release_launch_paths "${release_id}" "${directory}"; then
+        force_fail_closed || true
+        error 'current 与目标 release 的启动路径绑定失败'
+        return 1
+    fi
     local -a environment=()
-    local line
+    local line bound_line
     while IFS= read -r line || [[ -n "${line}" ]]; do
         [[ -z "${line}" || "${line}" == \#* ]] && continue
-        environment+=("${line}")
+        if ! bound_line="$(bind_launch_config_line "${line}" "${directory}")"; then
+            force_fail_closed || true
+            error '无法把启动配置绑定到目标 release'
+            return 1
+        fi
+        environment+=("${bound_line}")
     done < "${CONFIG_FILE}" || {
         error '无法读取已验证的 Interactive Agent 配置'; return 1
     }
@@ -1529,6 +1595,22 @@ main() {
                 error '测试入口只能在显式临时测试根使用'; return 1;
             }
             validate_config
+            ;;
+        _test_launch_environment)
+            [[ "${TEST_MODE}" == true ]] || {
+                error '测试入口只能在显式临时测试根使用'; return 1;
+            }
+            (( $# == 1 )) || return 2
+            local test_release_directory test_key test_value
+            test_release_directory="$(release_directory "$1")" || return 1
+            validate_config
+            validate_release_launch_paths "$1" "${test_release_directory}"
+            for test_key in COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT \
+                COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST; do
+                test_value="$(read_config_value "${test_key}")" || return 1
+                bind_launch_config_line \
+                    "${test_key}=${test_value}" "${test_release_directory}"
+            done
             ;;
         _test_archive_promotion)
             [[ "${TEST_MODE}" == true ]] || {

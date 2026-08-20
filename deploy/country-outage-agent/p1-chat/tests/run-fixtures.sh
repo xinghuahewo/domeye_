@@ -21,6 +21,9 @@ readonly STATE_ROOT="${RUNTIME_ROOT}/state"
 readonly CONFIG="${FIXTURE_ROOT}/runtime/config/country-outage-interactive-agent.env"
 readonly REAL_RELEASE_ROOT="${RUNTIME_ROOT}/releases/${RELEASE_ID}"
 readonly REAL_PROJECT="${REAL_RELEASE_ROOT}/project"
+readonly BINDING_RELEASE_ID='20260819T120001Z-country-outage-interactive-agent-binding'
+readonly BINDING_RELEASE_ROOT="${RUNTIME_ROOT}/releases/${BINDING_RELEASE_ID}"
+readonly WRONG_RELEASE_ROOT="${RUNTIME_ROOT}/releases/20260819T120002Z-country-outage-interactive-agent-wrong"
 readonly HISTORICAL_ACCEPTED_COMMIT='cb8e30855fba04c54d3ad3bb3dca573ac6fe3d17'
 readonly HISTORICAL_ACCEPTANCE_RELATIVE='evaluation/country-outage/first-vertical-slice/runs/formal-20260819T1839/acceptance-record-final.json'
 
@@ -117,6 +120,41 @@ assert_fails '生产端口漂移' manager _test_validate_config
 cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
 chmod 0600 "${CONFIG}"
 chgrp "$(id -g)" "${CONFIG}"
+
+# 配置继续固定为 current symlink；子进程环境必须绑定同一个真实 release，
+# 并拒绝 current 逃逸 release 根目录或串到另一个 release。
+mkdir -p "${BINDING_RELEASE_ROOT}/project/$(dirname \
+    'contracts/agent/domeye-first-vertical-slice/v1/candidate.json')" \
+    "${WRONG_RELEASE_ROOT}" "${FIXTURE_ROOT}/escaped-release"
+printf '{}\n' > "${BINDING_RELEASE_ROOT}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json"
+ln -s "${BINDING_RELEASE_ROOT}" "${RUNTIME_ROOT}/current"
+manager _test_launch_environment "${BINDING_RELEASE_ID}" \
+    > "${FIXTURE_ROOT}/launch-environment.out" \
+    || fail '首发 current symlink 未能绑定到真实 release'
+cat > "${FIXTURE_ROOT}/launch-environment.expected" <<EOF
+COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT=${BINDING_RELEASE_ROOT}/project
+COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST=${BINDING_RELEASE_ROOT}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json
+EOF
+cmp -s "${FIXTURE_ROOT}/launch-environment.expected" \
+    "${FIXTURE_ROOT}/launch-environment.out" \
+    || fail '子进程 Project/Candidate 没有绑定同一真实 release 目录'
+unlink "${RUNTIME_ROOT}/current"
+
+ln -s "${FIXTURE_ROOT}/escaped-release" "${RUNTIME_ROOT}/current"
+assert_fails 'current 路径逃逸 release 根目录' \
+    manager _test_launch_environment "${BINDING_RELEASE_ID}"
+grep -F 'current 解析路径逃逸 release 根目录' \
+    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
+    || fail 'current 路径逃逸未命中启动路径门'
+unlink "${RUNTIME_ROOT}/current"
+
+ln -s "${WRONG_RELEASE_ROOT}" "${RUNTIME_ROOT}/current"
+assert_fails 'current 指向错误 release' \
+    manager _test_launch_environment "${BINDING_RELEASE_ID}"
+grep -F 'current 指向错误 release' \
+    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
+    || fail '错误 release 未命中启动路径门'
+unlink "${RUNTIME_ROOT}/current"
 
 # 28476 必须只绑定 IPv4 loopback；相同 PID 的 wildcard/IPv6 wildcard 也拒绝。
 printf '%s\n' \
