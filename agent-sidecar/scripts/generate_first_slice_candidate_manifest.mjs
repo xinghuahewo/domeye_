@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
+import { createHash, createPublicKey } from 'node:crypto'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import {
   dirname,
@@ -40,6 +40,13 @@ const fixedSourcePaths = [
   'agent-sidecar/scripts/apply_pi_response_model_patch.mjs',
   'agent-sidecar/resources/vendor-patches/pi-ai-openai-completions-response-model-v1.json',
   'agent-sidecar/vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch',
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/execution-public-key.json',
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/reviewer-public-key.json',
+  'evaluation/country-outage/first-vertical-slice/evaluator.mjs',
+  'evaluation/country-outage/first-vertical-slice/adversarial-driver.mjs',
+  'evaluation/country-outage/first-vertical-slice/case-registry.mjs',
+  'evaluation/country-outage/first-vertical-slice/source-loader.mjs',
+  'evaluation/country-outage/first-vertical-slice/run.mjs',
 ]
 const patchedProviderRelativePath =
   'agent-sidecar/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js'
@@ -261,6 +268,50 @@ execFileSync(npmCommand, ['run', 'build'], {
   stdio: 'inherit',
 })
 
+const { parseDomeyeJsonWithoutDuplicateKeys } = await import(
+  '../dist/src/agent/candidate-manifest.js'
+)
+
+async function readAttestorPublicKey(path, role) {
+  const value = parseDomeyeJsonWithoutDuplicateKeys(
+    await readFile(resolve(projectRoot, path), 'utf8'),
+  )
+  const expectedKeys = [
+    'algorithm',
+    'key_id',
+    'public_key_spki_der_base64',
+    'role',
+    'schema_version',
+  ]
+  if (
+    !value
+    || typeof value !== 'object'
+    || Array.isArray(value)
+    || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expectedKeys)
+    || value.schema_version !== 'domeye_first_slice_attestor_public_key_v1'
+    || value.role !== role
+    || value.algorithm !== 'ed25519'
+    || typeof value.public_key_spki_der_base64 !== 'string'
+  ) throw new Error(`candidate_attestor_public_key_invalid:${role}`)
+  try {
+    const der = Buffer.from(value.public_key_spki_der_base64, 'base64')
+    if (
+      der.length === 0
+      || der.toString('base64') !== value.public_key_spki_der_base64
+    ) throw new Error('spki_base64_noncanonical')
+    const key = createPublicKey({ key: der, format: 'der', type: 'spki' })
+    if (key.asymmetricKeyType !== 'ed25519') throw new Error('not_ed25519')
+    const canonicalDer = key.export({ format: 'der', type: 'spki' })
+    const keyId = `ed25519-spki-sha256:${sha256(der)}`
+    if (!Buffer.from(canonicalDer).equals(der) || value.key_id !== keyId) {
+      throw new Error('attestor_key_id_mismatch')
+    }
+  } catch {
+    throw new Error(`candidate_attestor_public_key_invalid:${role}`)
+  }
+  return value
+}
+
 assertPatchedProviderPath()
 const runtimeSourcePaths = await discoverRuntimeSourceClosure(sourceEntryPaths)
 for (const requiredPath of requiredRuntimeSourcePaths) {
@@ -281,11 +332,25 @@ const sourceFiles = await Promise.all(sourcePaths.map(async (path) => ({
   sha256: `sha256:${sha256(await readFile(resolve(projectRoot, path)))}`,
 })))
 const sourceDigest = new Map(sourceFiles.map((item) => [item.path, item.sha256]))
-const task = JSON.parse(await readFile(resolve(projectRoot, '.codex/TASK.json'), 'utf8'))
-const modelResource = JSON.parse(await readFile(
+const task = parseDomeyeJsonWithoutDuplicateKeys(await readFile(
+  resolve(projectRoot, '.codex/TASK.json'),
+  'utf8',
+))
+const modelResource = parseDomeyeJsonWithoutDuplicateKeys(await readFile(
   resolve(projectRoot, 'contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json'),
   'utf8',
 ))
+const executionAttestor = await readAttestorPublicKey(
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/execution-public-key.json',
+  'execution_evidence',
+)
+const reviewerAttestor = await readAttestorPublicKey(
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/reviewer-public-key.json',
+  'independent_review',
+)
+if (executionAttestor.key_id === reviewerAttestor.key_id) {
+  throw new Error('candidate_attestor_keys_must_be_distinct')
+}
 const contractDigest = sourceDigest.get(
   'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md',
 )
@@ -413,6 +478,32 @@ const payload = {
     registry_digest: `sha256:${registryHash}`,
     state: 'active',
     capabilities,
+  },
+  attestation_policy: {
+    schema_version: 'domeye_first_slice_attestation_policy_v1',
+    algorithm: 'ed25519',
+    canonicalization: 'domeye_unicode_codepoint_canonical_json_v1',
+    signature_domains: {
+      execution_evidence:
+        'domeye.first-slice.evaluation-attestation/execution/v1',
+      independent_review:
+        'domeye.first-slice.evaluation-attestation/independent-review/v1',
+    },
+    release_eligible: true,
+    execution_evidence: {
+      role: executionAttestor.role,
+      actor_id: 'domeye-first-slice-real-runtime-attestor-v1',
+      key_id: executionAttestor.key_id,
+      public_key_spki_der_base64:
+        executionAttestor.public_key_spki_der_base64,
+    },
+    independent_review: {
+      role: reviewerAttestor.role,
+      actor_id: 'domeye-first-slice-independent-reviewer-v1',
+      key_id: reviewerAttestor.key_id,
+      public_key_spki_der_base64:
+        reviewerAttestor.public_key_spki_der_base64,
+    },
   },
   source_files: sourceFiles,
   activation: {

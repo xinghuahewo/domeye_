@@ -1,0 +1,7 @@
+{
+  "schema_version": "domeye_first_slice_attestor_public_key_v1",
+  "role": "independent_review",
+  "algorithm": "ed25519",
+  "key_id": "ed25519-spki-sha256:785c71f709a61cd74a4801b0ce163c8614859ec367f9657b813caa458d2ebbdf",
+  "public_key_spki_der_base64": "MCowBQYDK2VwAyEAzzCysI/7F/LIc5UcVtawEwEN1yjkzvgrPvSDRUW8Qls="
+}

@@ -1,6 +1,10 @@
-import { createHash } from 'node:crypto'
+import {
+  createHash,
+  createPublicKey,
+  verify as verifySignature,
+} from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -20,7 +24,10 @@ import {
 } from './source-loader.mjs'
 
 const {
+  domeyeFirstSliceCandidateId,
   loadDomeyeFirstSliceCandidateManifest,
+  parseDomeyeJsonWithoutDuplicateKeys,
+  verifiedDomeyeFirstSliceCandidateProjectRoot,
 } = await import('../../../agent-sidecar/src/agent/candidate-manifest.ts')
 const {
   HttpCountryOutageReadModel,
@@ -66,6 +73,7 @@ const {
   '../../../agent-sidecar/src/agent/finding-answer.ts'
 )
 const {
+  canonicalJsonStringify,
   canonicalJsonSha256,
 } = await import('../../../agent-sidecar/src/shared/deterministic-json.ts')
 const { Check } = await import(new URL(
@@ -160,6 +168,19 @@ function byteDigest(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`
 }
 
+export function parseTrustedJson(value, errorCode = 'trusted_json_invalid') {
+  try {
+    const text = Buffer.isBuffer(value)
+      ? value.toString('utf8')
+      : typeof value === 'string'
+        ? value
+        : (() => { throw new TypeError(errorCode) })()
+    return parseDomeyeJsonWithoutDuplicateKeys(text)
+  } catch {
+    throw new TypeError(errorCode)
+  }
+}
+
 function sha256Hex(value) {
   return createHash('sha256').update(value).digest('hex')
 }
@@ -213,16 +234,9 @@ async function attestApiEndpoint(apiBaseUrl, fetcher = fetch) {
     redirect: 'error',
   })
   const raw = await response.text()
-  let payload
-  try {
-    payload = JSON.parse(raw)
-  } catch {
-    throw new TypeError('api_health_contract_invalid')
-  }
+  const payload = parseFirstSliceApiHealthResponse(raw)
   if (
     response.status !== 200
-    || payload?.status !== 'ok'
-    || payload?.service !== 'domeye-core'
   ) throw new TypeError('api_health_contract_invalid')
   return Object.freeze({
     schema_version: 'domeye_evaluation_api_endpoint_attestation_v1',
@@ -239,6 +253,22 @@ async function attestApiEndpoint(apiBaseUrl, fetcher = fetch) {
       '该证明不表示代码已合并、发布、部署或生产验证。',
     ],
   })
+}
+
+export function parseFirstSliceApiHealthResponse(raw) {
+  let payload
+  try {
+    payload = parseTrustedJson(raw, 'api_health_contract_invalid')
+    if (
+      !exactRecordKeys(payload, ['status', 'service', 'time'])
+      || payload.status !== 'ok'
+      || payload.service !== 'domeye-core'
+    ) throw new TypeError('api_health_contract_invalid')
+    canonicalUtcTimestamp(payload.time, 'api_health_time')
+  } catch {
+    throw new TypeError('api_health_contract_invalid')
+  }
+  return payload
 }
 
 function bindLoadedRuntimeSources(projectRoot, loadedCandidate) {
@@ -316,6 +346,19 @@ function timestamp(value, name) {
   return text
 }
 
+function canonicalUtcTimestamp(value, name) {
+  const text = requiredString(value, name)
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/u.test(
+    text,
+  )) throw new TypeError(`${name}_invalid`)
+  const parsed = new Date(text)
+  if (
+    !Number.isFinite(parsed.valueOf())
+    || parsed.toISOString().slice(0, 19) !== text.slice(0, 19)
+  ) throw new TypeError(`${name}_invalid`)
+  return text
+}
+
 function safeFailureCode(error) {
   if (
     isRecord(error)
@@ -378,6 +421,28 @@ function normalizeExpectedCases(value) {
   ]))
 }
 
+const JOURNEY_JUDGMENT_INPUT_KEYS = Object.freeze([
+  'schema_version',
+  'journey_id',
+  'case_id',
+  'candidate_id',
+  'contract_version',
+  'contract_digest',
+  'answer_presentation_contract_version',
+  'answer_presentation_contract_digest',
+  'safety_assertion_passed',
+  'evaluator_actor_id',
+  'evaluated_at_utc',
+  'evidence_refs',
+  'zero_tolerance_counts',
+  'failure_code',
+])
+const DRIVEN_JOURNEY_JUDGMENT_INPUT_KEYS = Object.freeze([
+  ...JOURNEY_JUDGMENT_INPUT_KEYS,
+  'evidence',
+  'evidence_digest',
+])
+
 function normalizeJourneyJudgment(
   value,
   expected,
@@ -387,7 +452,13 @@ function normalizeJourneyJudgment(
 ) {
   if (!isRecord(value)) throw new TypeError('journey_judgment_invalid')
   if (
-    value.schema_version !== 'domeye_first_slice_journey_judgment_v2'
+    !exactRecordKeys(
+      value,
+      source === 'builtin_adversarial_driver'
+        ? DRIVEN_JOURNEY_JUDGMENT_INPUT_KEYS
+        : JOURNEY_JUDGMENT_INPUT_KEYS,
+    )
+    || value.schema_version !== 'domeye_first_slice_journey_judgment_v2'
     || value.journey_id !== expected.journey_id
     || value.case_id !== expected.case_id
     || value.candidate_id !== candidateId
@@ -3065,7 +3136,26 @@ export async function bindRealFirstSliceEvaluationTarget(config, dependencies) {
   if (!isRecord(config)) throw new TypeError('real_target_config_required')
   const dependencyInjected = arguments.length >= 2
   const dependencyOverrides = isRecord(dependencies) ? dependencies : {}
-  const projectRoot = resolve(requiredString(config.project_root, 'project_root'))
+  let projectRoot
+  try {
+    projectRoot = await realpath(resolve(requiredString(
+      config.project_root,
+      'project_root',
+    )))
+  } catch {
+    throw new TypeError('evaluation_project_root_invalid')
+  }
+  if (!dependencyInjected) {
+    let evaluatorProjectRoot
+    try {
+      evaluatorProjectRoot = await realpath(EVALUATION_PROJECT_ROOT)
+    } catch {
+      throw new TypeError('evaluation_project_root_invalid')
+    }
+    if (projectRoot !== evaluatorProjectRoot) {
+      throw new TypeError('evaluation_project_root_mismatch')
+    }
+  }
   const apiBaseUrl = dependencyInjected
     ? requiredString(config.api_base_url, 'api_base_url')
     : normalizeApiBaseUrl(config.api_base_url)
@@ -3270,10 +3360,384 @@ function parseEvidenceJsonl(value) {
     throw new TypeError('evidence_jsonl_invalid')
   }
   try {
-    return rawLines.map((line) => JSON.parse(line))
+    return rawLines.map((line) => parseTrustedJson(
+      line,
+      'evidence_jsonl_invalid',
+    ))
   } catch {
     throw new TypeError('evidence_jsonl_invalid')
   }
+}
+
+const EXECUTION_ATTESTATION_KEYS = Object.freeze([
+  'schema_version',
+  'attestation_id',
+  'payload',
+  'signature',
+])
+const EXECUTION_ATTESTATION_PAYLOAD_KEYS = Object.freeze([
+  'schema_version',
+  'attestation_policy_digest',
+  'candidate_id',
+  'candidate_manifest_payload_digest',
+  'candidate_source_file_set_digest',
+  'contract',
+  'answer_presentation_contract',
+  'evaluation_run_id',
+  'evaluation_phase',
+  'exact_run_count',
+  'execution_mode',
+  'execution_actor_id',
+  'evaluator_implementation',
+  'runtime_source_binding',
+  'api_endpoint_attestation',
+  'api_response_digest_sets',
+  'summary_digest',
+  'summary_json_sha256',
+  'evidence_jsonl_sha256',
+  'trial_bindings',
+  'issued_at_utc',
+  'nonce',
+  'key_id',
+])
+const EXECUTION_TRIAL_BINDING_KEYS = Object.freeze([
+  'trial_id',
+  'result_digest',
+  'provider_usage_digest',
+])
+const ED25519_SIGNATURE_KEYS = Object.freeze([
+  'schema_version',
+  'algorithm',
+  'key_id',
+  'domain',
+  'signature_base64',
+])
+
+function rawBytes(value, code) {
+  if (Buffer.isBuffer(value)) return value
+  if (typeof value === 'string') return Buffer.from(value, 'utf8')
+  throw new TypeError(code)
+}
+
+function assertCandidateAttestationBinding(loadedCandidate) {
+  let projectRoot
+  try {
+    projectRoot = verifiedDomeyeFirstSliceCandidateProjectRoot(loadedCandidate)
+  } catch {
+    throw new TypeError('canonical_candidate_loader_required')
+  }
+  const manifest = loadedCandidate?.manifest
+  const payload = manifest?.payload
+  const policy = payload?.attestation_policy
+  if (
+    !isRecord(manifest)
+    || !isRecord(payload)
+    || manifest.candidate_id !== domeyeFirstSliceCandidateId(payload)
+    || loadedCandidate.candidate?.candidate_id !== manifest.candidate_id
+    || policy?.schema_version
+      !== 'domeye_first_slice_attestation_policy_v1'
+    || policy.algorithm !== 'ed25519'
+    || policy.canonicalization
+      !== 'domeye_unicode_codepoint_canonical_json_v1'
+    || policy.release_eligible !== true
+    || policy.signature_domains?.execution_evidence
+      !== 'domeye.first-slice.evaluation-attestation/execution/v1'
+    || policy.signature_domains?.independent_review
+      !== 'domeye.first-slice.evaluation-attestation/independent-review/v1'
+    || policy.execution_evidence?.role !== 'execution_evidence'
+    || policy.execution_evidence?.actor_id
+      !== 'domeye-first-slice-real-runtime-attestor-v1'
+    || policy.independent_review?.role !== 'independent_review'
+    || policy.independent_review?.actor_id
+      !== 'domeye-first-slice-independent-reviewer-v1'
+    || policy.execution_evidence.key_id === policy.independent_review.key_id
+    || policy.execution_evidence.actor_id
+      === policy.independent_review.actor_id
+  ) throw new TypeError('candidate_attestation_policy_invalid')
+  return { manifest, payload, policy, project_root: projectRoot }
+}
+
+function assertCandidateSourceBindings(payload, summary) {
+  const sourceByPath = new Map(payload.source_files.map(
+    (item) => [item.path, item.sha256],
+  ))
+  const evaluator = summary.evaluator_implementation
+  const runtimeBinding = summary.runtime_source_binding
+  const runtimeClosure = runtimeBinding?.loaded_runtime_source_closure
+  const runtimeFiles = runtimeClosure?.files
+  if (
+    !exactRecordKeys(evaluator, [
+      'schema_version',
+      'files',
+      'file_set_digest',
+    ])
+    || evaluator.schema_version
+      !== 'domeye_first_slice_evaluator_implementation_v2'
+    || !Array.isArray(evaluator.files)
+    || evaluator.files.some((file) =>
+      !exactRecordKeys(file, ['path', 'sha256'])
+    )
+    || evaluator.file_set_digest !== digest(evaluator.files)
+    || !exactRecordKeys(runtimeBinding, [
+      ...Object.keys(SOURCE_RUNTIME_LOADER_ID),
+      'candidate_source_file_count',
+      'candidate_source_file_set_digest',
+      'candidate_manifest_payload_digest',
+      'loaded_runtime_source_closure',
+    ])
+    || Object.entries(SOURCE_RUNTIME_LOADER_ID).some(
+      ([key, value]) => runtimeBinding[key] !== value,
+    )
+    || runtimeBinding.candidate_source_file_count
+      !== payload.source_files.length
+    || runtimeBinding.candidate_source_file_set_digest
+      !== digest(payload.source_files)
+    || runtimeBinding.candidate_manifest_payload_digest !== digest(payload)
+    || !exactRecordKeys(runtimeClosure, [
+      'schema_version',
+      'files',
+      'file_set_digest',
+      'all_files_candidate_bound',
+    ])
+    || runtimeClosure.schema_version
+      !== 'domeye_loaded_runtime_source_closure_v1'
+    || runtimeClosure.all_files_candidate_bound !== true
+    || !Array.isArray(runtimeFiles)
+    || runtimeFiles.length === 0
+    || runtimeFiles.some((file) =>
+      !exactRecordKeys(file, ['path', 'sha256'])
+    )
+    || runtimeClosure.file_set_digest !== digest(runtimeFiles)
+    || evaluator.files.length !== EVALUATOR_IMPLEMENTATION_FILES.length
+    || evaluator.files.some((file) =>
+      sourceByPath.get(
+        `evaluation/country-outage/first-vertical-slice/${file.path}`,
+      ) !== file.sha256
+    )
+    || runtimeFiles.some((file) =>
+      sourceByPath.get(file.path) !== file.sha256
+    )
+  ) throw new TypeError('candidate_source_binding_invalid')
+}
+
+function executionResultFromEvidence(summary, evidenceJsonl) {
+  const records = parseEvidenceJsonl(evidenceJsonl)
+  const bindings = records.filter(
+    (record) => record?.record_type === 'evaluation_binding',
+  )
+  const trials = records.filter(
+    (record) => record?.record_type === 'j1_trial',
+  ).map((record) => record.payload)
+  const judgments = records.filter(
+    (record) => record?.record_type === 'journey_judgment',
+  ).map((record) => record.payload)
+  const summaries = records.filter(
+    (record) => record?.record_type === 'evaluation_summary',
+  )
+  if (
+    records[0]?.record_type !== 'evaluation_binding'
+    || records.at(-1)?.record_type !== 'evaluation_summary'
+    || bindings.length !== 1
+    || summaries.length !== 1
+    || !sameValue(summaries[0].payload, summary)
+  ) throw new TypeError('execution_attestation_evidence_invalid')
+  return {
+    binding: bindings[0].payload,
+    j1_records: trials,
+    journey_judgments: judgments,
+    summary,
+  }
+}
+
+export function buildExecutionAttestationPayload(options) {
+  const {
+    result,
+    loaded_candidate: loadedCandidate,
+    nonce,
+  } = options
+  const summaryBytes = rawBytes(
+    options.summary_json_bytes,
+    'summary_json_bytes_invalid',
+  )
+  const evidenceBytes = rawBytes(
+    options.evidence_jsonl_bytes,
+    'evidence_jsonl_bytes_invalid',
+  )
+  const summary = result?.summary
+  const parsedSummary = parseTrustedJson(summaryBytes, 'summary_json_invalid')
+  if (
+    summaryBytes.at(-1) !== 0x0a
+    || !sameValue(parsedSummary, summary)
+    || evidenceBytes.at(-1) !== 0x0a
+    || !/^[a-f0-9]{64}$/.test(nonce)
+  ) throw new TypeError('execution_attestation_input_invalid')
+  const candidateBinding = assertCandidateAttestationBinding(loadedCandidate)
+  const policy = candidateBinding.policy
+  const reconstructed = executionResultFromEvidence(
+    summary,
+    evidenceBytes.toString('utf8'),
+  )
+  if (
+    !sameValue(reconstructed.binding, result.binding)
+    || !sameValue(reconstructed.j1_records, result.j1_records)
+    || !sameValue(
+      reconstructed.journey_judgments,
+      result.journey_judgments,
+    )
+    || summary.candidate_id !== candidateBinding.manifest.candidate_id
+    || summary.candidate_manifest_payload_digest
+      !== digest(candidateBinding.payload)
+    || summary.execution_mode !== 'real_runtime'
+    || summary.execution_actor_id
+      !== policy.execution_evidence.actor_id
+    || !['pilot', 'formal'].includes(summary.evaluation_phase)
+    || summary.j1?.requested_runs !== result.j1_records.length
+    || result.j1_records.some((trial) =>
+      trial.execution_mode !== 'real_runtime'
+      || trial.execution_actor_id !== undefined
+    )
+  ) throw new TypeError('execution_attestation_binding_invalid')
+  assertCandidateSourceBindings(candidateBinding.payload, summary)
+  return Object.freeze({
+    schema_version: 'domeye_first_slice_execution_attestation_payload_v1',
+    attestation_policy_digest: digest(policy),
+    candidate_id: summary.candidate_id,
+    candidate_manifest_payload_digest:
+      summary.candidate_manifest_payload_digest,
+    candidate_source_file_set_digest:
+      digest(candidateBinding.payload.source_files),
+    contract: structuredClone(summary.contract),
+    answer_presentation_contract: structuredClone(
+      summary.answer_presentation_contract,
+    ),
+    evaluation_run_id: summary.evaluation_run_id,
+    evaluation_phase: summary.evaluation_phase,
+    exact_run_count: result.j1_records.length,
+    execution_mode: summary.execution_mode,
+    execution_actor_id: summary.execution_actor_id,
+    evaluator_implementation: structuredClone(
+      summary.evaluator_implementation,
+    ),
+    runtime_source_binding: structuredClone(summary.runtime_source_binding),
+    api_endpoint_attestation: structuredClone(
+      summary.api_endpoint_attestation,
+    ),
+    api_response_digest_sets: structuredClone(
+      summary.api_response_digest_sets,
+    ),
+    summary_digest: summary.summary_digest,
+    summary_json_sha256: byteDigest(summaryBytes),
+    evidence_jsonl_sha256: byteDigest(evidenceBytes),
+    trial_bindings: result.j1_records.map((trial) => ({
+      trial_id: trial.trial_id,
+      result_digest: trial.evidence?.result_digest ?? null,
+      provider_usage_digest: digest(trial.evidence?.usage ?? null),
+    })),
+    issued_at_utc: summary.completed_at_utc,
+    nonce,
+    key_id: policy.execution_evidence.key_id,
+  })
+}
+
+function signatureInput(domain, payload) {
+  return Buffer.concat([
+    Buffer.from(domain, 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalJsonStringify(payload), 'utf8'),
+  ])
+}
+
+function verifyEd25519Signature(signature, policyMember, domain, payload) {
+  if (
+    !exactRecordKeys(signature, ED25519_SIGNATURE_KEYS)
+    || signature.schema_version !== 'domeye_ed25519_signature_v1'
+    || signature.algorithm !== 'ed25519'
+    || signature.key_id !== policyMember.key_id
+    || signature.domain !== domain
+    || typeof signature.signature_base64 !== 'string'
+  ) throw new TypeError('attestation_signature_invalid')
+  let signatureBytes
+  try {
+    signatureBytes = Buffer.from(signature.signature_base64, 'base64')
+    if (
+      signatureBytes.length !== 64
+      || signatureBytes.toString('base64') !== signature.signature_base64
+    ) throw new Error('signature_base64_noncanonical')
+    const der = Buffer.from(
+      policyMember.public_key_spki_der_base64,
+      'base64',
+    )
+    const publicKey = createPublicKey({ key: der, format: 'der', type: 'spki' })
+    if (
+      publicKey.asymmetricKeyType !== 'ed25519'
+      || !verifySignature(
+        null,
+        signatureInput(domain, payload),
+        publicKey,
+        signatureBytes,
+      )
+    ) throw new Error('signature_verify_failed')
+  } catch {
+    throw new TypeError('attestation_signature_invalid')
+  }
+}
+
+export function verifyExecutionAttestation(options) {
+  const loadedCandidate = options.loaded_candidate
+  const summary = options.summary
+  const summaryBytes = rawBytes(
+    options.summary_json_bytes,
+    'summary_json_bytes_invalid',
+  )
+  const evidenceBytes = rawBytes(
+    options.evidence_jsonl,
+    'evidence_jsonl_bytes_invalid',
+  )
+  const attestation = options.execution_attestation
+  if (
+    !exactRecordKeys(attestation, EXECUTION_ATTESTATION_KEYS)
+    || attestation.schema_version
+      !== 'domeye_first_slice_execution_attestation_v1'
+    || !exactRecordKeys(
+      attestation.payload,
+      EXECUTION_ATTESTATION_PAYLOAD_KEYS,
+    )
+    || attestation.payload.schema_version
+      !== 'domeye_first_slice_execution_attestation_payload_v1'
+    || !Array.isArray(attestation.payload.trial_bindings)
+    || attestation.payload.trial_bindings.some((binding) =>
+      !exactRecordKeys(binding, EXECUTION_TRIAL_BINDING_KEYS)
+    )
+    || attestation.attestation_id
+      !== `execution-attestation-sha256:${canonicalJsonSha256(
+        attestation.payload,
+      )}`
+  ) throw new TypeError('execution_attestation_contract_invalid')
+  const result = executionResultFromEvidence(
+    summary,
+    evidenceBytes.toString('utf8'),
+  )
+  const expectedPayload = buildExecutionAttestationPayload({
+    result,
+    loaded_candidate: loadedCandidate,
+    summary_json_bytes: summaryBytes,
+    evidence_jsonl_bytes: evidenceBytes,
+    nonce: attestation.payload.nonce,
+  })
+  if (!sameValue(attestation.payload, expectedPayload)) {
+    throw new TypeError('execution_attestation_binding_invalid')
+  }
+  const { policy } = assertCandidateAttestationBinding(loadedCandidate)
+  verifyEd25519Signature(
+    attestation.signature,
+    policy.execution_evidence,
+    policy.signature_domains.execution_evidence,
+    attestation.payload,
+  )
+  return Object.freeze({
+    attestation_digest: digest(attestation),
+    payload: structuredClone(attestation.payload),
+  })
 }
 
 function validJ1ReplayClosure(trial, summary) {
@@ -3373,31 +3837,63 @@ function validJ1ReplayClosure(trial, summary) {
   if (
     !sameValue(closure.finding, rebuiltFinding)
     || !sameValue(closure.answer_context, rebuiltContext)
-    || closure.render_attempt.status !== 'completed'
-    || closure.render_attempt.failure_code !== null
-    || !Check(DomeyeRendererDraftSchema, closure.render_attempt.draft)
-    || !sameValue(closure.renderer_draft, closure.render_attempt.draft)
   ) return false
-  const recomputedGuard = guardCountryOutageResponse(
-    rebuiltContext,
-    closure.render_attempt.draft,
-  )
-  const recomputedAnswer = {
-    answer: recomputedGuard.guarded_text,
-    answer_digest: recomputedGuard.guarded_text_digest,
-    source: 'renderer',
-    guard_result: recomputedGuard,
-    render_attempt: closure.render_attempt,
-  }
+  let recomputedAnswer
+  if (closure.render_attempt.status === 'completed') {
+    if (
+      closure.render_attempt.failure_code !== null
+      || !Check(DomeyeRendererDraftSchema, closure.render_attempt.draft)
+      || !sameValue(closure.renderer_draft, closure.render_attempt.draft)
+    ) return false
+    const recomputedGuard = guardCountryOutageResponse(
+      rebuiltContext,
+      closure.render_attempt.draft,
+    )
+    if (recomputedGuard.decision === 'pass') {
+      recomputedAnswer = {
+        answer: recomputedGuard.guarded_text,
+        answer_digest: recomputedGuard.guarded_text_digest,
+        source: 'renderer',
+        guard_result: recomputedGuard,
+        render_attempt: closure.render_attempt,
+      }
+    } else {
+      const fallback = renderCountryOutageDeterministicFallback(rebuiltContext)
+      recomputedAnswer = {
+        answer: fallback,
+        answer_digest: digest(fallback),
+        source: 'deterministic_fallback',
+        guard_result: recomputedGuard,
+        render_attempt: closure.render_attempt,
+      }
+    }
+  } else if (
+    closure.render_attempt.status === 'failed'
+    && closure.render_attempt.draft === null
+    && closure.render_attempt.failure_code === 'renderer_failed_or_invalid'
+    && closure.renderer_draft === null
+  ) {
+    const fallback = renderCountryOutageDeterministicFallback(rebuiltContext)
+    recomputedAnswer = {
+      answer: fallback,
+      answer_digest: digest(fallback),
+      source: 'deterministic_fallback',
+      guard_result: {
+        schema_version: 'domeye_agent_response_guard_v2',
+        decision: 'block',
+        reason_codes: ['renderer_failed_or_invalid'],
+        guarded_text: fallback,
+        guarded_text_digest: digest(fallback),
+        assessment_status: 'not_evaluated',
+        style_assessment: null,
+      },
+      render_attempt: closure.render_attempt,
+    }
+  } else return false
   const expectedResponseGuardProjection =
     j1ResponseGuardEvidenceProjection(recomputedAnswer)
   if (
-    recomputedGuard.decision !== 'pass'
-    || recomputedGuard.assessment_status !== 'evaluated'
-    || recomputedGuard.style_assessment?.passed !== true
-    || recomputedGuard.style_assessment?.policy_id
-      !== COUNTRY_OUTAGE_ANSWER_STYLE_POLICY_ID
-    || !sameValue(closure.response_guard, recomputedGuard)
+    !sameValue(closure.response_guard, recomputedAnswer.guard_result)
     || !sameValue(closure.answer, recomputedAnswer)
     || !sameValue(
       trial.evidence.response_guard,
@@ -3913,6 +4409,109 @@ function validJ1FailureEvidence(trial, summary) {
     ) === false
 }
 
+const EVIDENCE_RECORD_KEYS = Object.freeze(['record_type', 'payload'])
+const EVALUATION_BINDING_KEYS = Object.freeze([
+  'schema_version',
+  'evaluation_run_id',
+  'candidate_id',
+  'candidate_manifest_payload_digest',
+  'contract',
+  'answer_presentation_contract',
+  'answer_style_policy_binding',
+  'readability_rubric_binding',
+  'data_identity',
+  'series_response_sha256',
+  'policy_binding',
+  'policy_snapshot',
+  'registry_binding',
+  'registry_snapshot',
+  'budget_policy',
+  'model_identity',
+  'execution_actor_id',
+  'evaluation_phase',
+  'execution_mode',
+  'runtime_principal_binding',
+  'runtime_source_binding',
+  'evaluator_implementation',
+  'api_endpoint_attestation',
+  'api_response_digest_sets',
+  'adversarial_case_set_digest',
+])
+const EVALUATION_SUMMARY_KEYS = Object.freeze([
+  ...EVALUATION_BINDING_KEYS,
+  'started_at_utc',
+  'completed_at_utc',
+  'j1',
+  'journeys',
+  'zero_tolerance_gate',
+  'evidence_gate',
+  'pilot_gate',
+  'summary_digest',
+])
+const J1_TRIAL_KEYS = Object.freeze([
+  'schema_version',
+  'trial_id',
+  'evaluation_run_id',
+  'journey_id',
+  'ordinal',
+  'candidate_id',
+  'evaluation_phase',
+  'execution_mode',
+  'first_attempt',
+  'human_intervention',
+  'workflow_completed',
+  'answer_success',
+  'passed',
+  'public_completion_gate_passed',
+  'answer_source',
+  'failure_codes',
+  'started_at_utc',
+  'completed_at_utc',
+  'latency_ms',
+  'estimated_cost_usd',
+  'provider_attempt_count',
+  'zero_tolerance_counts',
+  'zero_tolerance_assessment',
+  'evidence',
+])
+const JOURNEY_JUDGMENT_KEYS = Object.freeze([
+  'schema_version',
+  'journey_id',
+  'case_id',
+  'candidate_id',
+  'contract_version',
+  'contract_digest',
+  'answer_presentation_contract_version',
+  'answer_presentation_contract_digest',
+  'safety_assertion_passed',
+  'evaluator_actor_id',
+  'evaluated_at_utc',
+  'evidence_refs',
+  'zero_tolerance_counts',
+  'failure_code',
+  'source',
+  'evidence',
+  'evidence_digest',
+])
+
+function validTrialTimingAndUsage(trial) {
+  const started = Date.parse(trial?.started_at_utc)
+  const completed = Date.parse(trial?.completed_at_utc)
+  const usage = trial?.evidence?.usage
+  const expectedAttempts = Number.isSafeInteger(usage?.attempt_count)
+    ? usage.attempt_count
+    : null
+  const expectedCost = Number.isFinite(usage?.estimated_cost_usd)
+    ? usage.estimated_cost_usd
+    : null
+  return Number.isFinite(started)
+    && Number.isFinite(completed)
+    && completed >= started
+    && trial.latency_ms === completed - started
+    && trial.provider_attempt_count === expectedAttempts
+    && trial.estimated_cost_usd === expectedCost
+}
+
 function assertEvidenceClosure(summary, evidenceJsonl) {
   const records = parseEvidenceJsonl(evidenceJsonl)
   const bindings = records.filter(
@@ -3925,6 +4524,24 @@ function assertEvidenceClosure(summary, evidenceJsonl) {
   const summaries = records.filter(
     (record) => record?.record_type === 'evaluation_summary',
   )
+  if (records.some(
+    (record) => !exactRecordKeys(record, EVIDENCE_RECORD_KEYS),
+  )) throw new TypeError('evidence_jsonl_structure_invalid:record_keys')
+  if (!exactRecordKeys(bindings[0]?.payload, EVALUATION_BINDING_KEYS)) {
+    throw new TypeError('evidence_jsonl_structure_invalid:binding_keys')
+  }
+  if (!exactRecordKeys(summaries[0]?.payload, EVALUATION_SUMMARY_KEYS)) {
+    throw new TypeError('evidence_jsonl_structure_invalid:summary_keys')
+  }
+  if (trials.some(
+    (record) => !exactRecordKeys(record.payload, J1_TRIAL_KEYS),
+  )) throw new TypeError('evidence_jsonl_structure_invalid:trial_keys')
+  const invalidJourneyShape = judgments.find(
+    (record) => !exactRecordKeys(record.payload, JOURNEY_JUDGMENT_KEYS),
+  )
+  if (invalidJourneyShape) {
+    throw new TypeError('evidence_jsonl_structure_invalid:journey_keys')
+  }
   if (
     records[0]?.record_type !== 'evaluation_binding'
     || records.at(-1)?.record_type !== 'evaluation_summary'
@@ -4051,10 +4668,7 @@ function assertEvidenceClosure(summary, evidenceJsonl) {
     || trial.first_attempt !== true
     || trial.human_intervention !== false
     || trial.execution_mode !== summary.execution_mode
-    || !Number.isFinite(Date.parse(trial.started_at_utc))
-    || !Number.isFinite(Date.parse(trial.completed_at_utc))
-    || !Number.isFinite(trial.latency_ms)
-    || trial.latency_ms < 0
+    || !validTrialTimingAndUsage(trial)
     || !isRecord(trial.zero_tolerance_counts)
     || !sameValue(
       normalizeZeroToleranceCounts(trial.zero_tolerance_counts),
@@ -4107,6 +4721,20 @@ function assertEvidenceClosure(summary, evidenceJsonl) {
   }
   const requiredPassAt1 = FORMAL_PASS_AT_1_REQUIRED
   const requiredPassPower3 = FORMAL_PASS_POWER_3_REQUIRED
+  const latencyValues = trialPayloads.map((trial) => trial.latency_ms)
+  const costValues = trialPayloads.map((trial) => trial.estimated_cost_usd)
+    .filter(Number.isFinite)
+  const expectedLatencySummary = {
+    total: latencyValues.reduce((sum, value) => sum + value, 0),
+    mean: mean(latencyValues),
+    minimum: Math.min(...latencyValues),
+    maximum: Math.max(...latencyValues),
+  }
+  const expectedCostSummary = {
+    total: costValues.reduce((sum, value) => sum + value, 0),
+    mean: mean(costValues),
+    reported_trial_count: costValues.length,
+  }
   if (
     trialPayloads.length !== FORMAL_J1_RUNS
     || expectedTripleRecords.length !== FORMAL_PASS_POWER_3_GROUPS
@@ -4130,6 +4758,8 @@ function assertEvidenceClosure(summary, evidenceJsonl) {
       summary.j1.pass_power_3?.groups,
       expectedTripleRecords,
     )
+    || !sameValue(summary.j1.latency_ms, expectedLatencySummary)
+    || !sameValue(summary.j1.estimated_cost_usd, expectedCostSummary)
   ) throw new TypeError('evidence_j1_summary_mismatch')
   if (
     !sameValue(summary.j1.successful_answer_source_counts, {
@@ -4369,6 +4999,44 @@ const READABILITY_JUDGMENT_KEYS = Object.freeze([
   'reason_codes',
 ])
 
+const LEGACY_INDEPENDENT_REVIEW_KEYS = Object.freeze([
+  'schema_version',
+  'reviewer_actor_id',
+  'reviewer_role',
+  'independent_from_execution',
+  'candidate_id',
+  'evaluation_run_id',
+  'evaluation_phase',
+  'contract',
+  'answer_presentation_contract',
+  'answer_style_policy_binding',
+  'readability_rubric_binding',
+  'summary_digest',
+  'evidence_jsonl_sha256',
+  'decision',
+  'dg1_decision',
+  'rationale_codes',
+  'readability_review',
+  'reviewed_at_utc',
+])
+
+const UNSIGNED_INDEPENDENT_REVIEW_KEYS = Object.freeze([
+  ...LEGACY_INDEPENDENT_REVIEW_KEYS,
+  'execution_attestation_digest',
+  'summary_json_sha256',
+  'final_text_digests',
+])
+
+const SIGNED_INDEPENDENT_REVIEW_KEYS = Object.freeze([
+  ...UNSIGNED_INDEPENDENT_REVIEW_KEYS,
+  'signature',
+])
+
+const FINAL_TEXT_DIGEST_BINDING_KEYS = Object.freeze([
+  'trial_id',
+  'final_text_digest',
+])
+
 function normalizeReadabilityReview(
   value,
   summary,
@@ -4383,14 +5051,15 @@ function normalizeReadabilityReview(
     (record) => record?.record_type === 'j1_trial',
   ).map((record) => record.payload)
   const expectedTrials = trials.map((trial) => {
-    const finalTextDigest =
+    const rawFinalTextDigest =
       trial.evidence?.replay_closure?.final_answer_digest ?? null
+    const evaluable = successfulJ1Trial(trial)
+      && typeof rawFinalTextDigest === 'string'
+      && /^sha256:[a-f0-9]{64}$/.test(rawFinalTextDigest)
     return {
       trial_id: trial.trial_id,
-      final_text_digest: finalTextDigest,
-      evaluable: successfulJ1Trial(trial)
-        && typeof finalTextDigest === 'string'
-        && /^sha256:[a-f0-9]{64}$/.test(finalTextDigest),
+      final_text_digest: evaluable ? rawFinalTextDigest : null,
+      evaluable,
     }
   })
   const judgments = value.trial_judgments
@@ -4487,12 +5156,30 @@ function normalizeReadabilityReview(
   return structuredClone(value)
 }
 
-export function finalizeIndependentAcceptanceRecord(options) {
-  const { summary, evidence_jsonl, independent_review: review } = options
-  assertSummaryDigest(summary)
-  const evidenceRecords = assertEvidenceClosure(summary, evidence_jsonl)
-  if (!isRecord(review)) throw new TypeError('independent_review_required')
-  const evidenceSha = byteDigest(evidence_jsonl)
+function finalTextDigestBindings(evidenceRecords) {
+  return evidenceRecords.filter(
+    (record) => record?.record_type === 'j1_trial',
+  ).map((record) => {
+    const trial = record.payload
+    const rawFinalTextDigest =
+      trial.evidence?.replay_closure?.final_answer_digest ?? null
+    return {
+      trial_id: trial.trial_id,
+      final_text_digest: successfulJ1Trial(trial)
+        && typeof rawFinalTextDigest === 'string'
+        && /^sha256:[a-f0-9]{64}$/.test(rawFinalTextDigest)
+        ? rawFinalTextDigest
+        : null,
+    }
+  })
+}
+
+function validateIndependentReviewCore(
+  review,
+  summary,
+  evidenceRecords,
+  expectedReviewerActor,
+) {
   const reviewerActor = normalizedActorId(
     review.reviewer_actor_id,
     'reviewer_actor_id',
@@ -4501,11 +5188,27 @@ export function finalizeIndependentAcceptanceRecord(options) {
     summary.execution_actor_id,
     'execution_actor_id',
   )
+  let reviewedAt
+  let completedAt
+  try {
+    reviewedAt = canonicalUtcTimestamp(
+      review.reviewed_at_utc,
+      'reviewed_at_utc',
+    )
+    completedAt = canonicalUtcTimestamp(
+      summary.completed_at_utc,
+      'summary_completed_at_utc',
+    )
+  } catch {
+    throw new TypeError('independent_review_contract_invalid')
+  }
   if (
     review.schema_version !== 'domeye_first_slice_independent_review_v2'
     || review.reviewer_role !== 'independent_acceptance_reviewer'
     || review.independent_from_execution !== true
     || reviewerActor === executionActor
+    || (expectedReviewerActor !== null
+      && review.reviewer_actor_id !== expectedReviewerActor)
     || review.candidate_id !== summary.candidate_id
     || review.evaluation_run_id !== summary.evaluation_run_id
     || review.evaluation_phase !== 'formal'
@@ -4523,7 +5226,7 @@ export function finalizeIndependentAcceptanceRecord(options) {
       summary.readability_rubric_binding,
     )
     || review.summary_digest !== summary.summary_digest
-    || review.evidence_jsonl_sha256 !== evidenceSha
+    || Date.parse(reviewedAt) < Date.parse(completedAt)
     || !['accepted', 'rejected'].includes(review.decision)
     || !['GO', 'REPAIR', 'STOP'].includes(review.dg1_decision)
     || !Array.isArray(review.rationale_codes)
@@ -4532,7 +5235,6 @@ export function finalizeIndependentAcceptanceRecord(options) {
       typeof item !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(item)
     )
   ) throw new TypeError('independent_review_contract_invalid')
-  timestamp(review.reviewed_at_utc, 'reviewed_at_utc')
   const readabilityReview = normalizeReadabilityReview(
     review.readability_review,
     summary,
@@ -4556,32 +5258,167 @@ export function finalizeIndependentAcceptanceRecord(options) {
     review.decision === 'rejected'
     && !['REPAIR', 'STOP'].includes(review.dg1_decision)
   ) throw new TypeError('rejected_review_requires_repair_or_stop')
-  const normalizedReview = {
-    schema_version: review.schema_version,
-    reviewer_actor_id: review.reviewer_actor_id,
-    reviewer_role: review.reviewer_role,
+  return readabilityReview
+}
+
+export function prepareIndependentReviewForSigning(options) {
+  const loadedCandidate = options.loaded_candidate
+  const summary = options.summary
+  const summaryBytes = rawBytes(
+    options.summary_json_bytes,
+    'summary_json_bytes_invalid',
+  )
+  const evidenceBytes = rawBytes(
+    options.evidence_jsonl,
+    'evidence_jsonl_bytes_invalid',
+  )
+  const execution = verifyExecutionAttestation({
+    loaded_candidate: loadedCandidate,
+    summary,
+    summary_json_bytes: summaryBytes,
+    evidence_jsonl: evidenceBytes,
+    execution_attestation: options.execution_attestation,
+  })
+  assertSummaryDigest(summary)
+  const evidenceRecords = assertEvidenceClosure(
+    summary,
+    evidenceBytes.toString('utf8'),
+  )
+  const { policy } = assertCandidateAttestationBinding(loadedCandidate)
+  const draft = options.independent_review_draft
+  const expectedFinalTextDigests = finalTextDigestBindings(evidenceRecords)
+  if (
+    !exactRecordKeys(draft, UNSIGNED_INDEPENDENT_REVIEW_KEYS)
+    || draft.execution_attestation_digest !== execution.attestation_digest
+    || draft.summary_json_sha256 !== byteDigest(summaryBytes)
+    || draft.evidence_jsonl_sha256 !== byteDigest(evidenceBytes)
+    || !Array.isArray(draft.final_text_digests)
+    || draft.final_text_digests.length !== FORMAL_J1_RUNS
+    || draft.final_text_digests.some((binding) =>
+      !exactRecordKeys(binding, FINAL_TEXT_DIGEST_BINDING_KEYS)
+    )
+    || !sameValue(draft.final_text_digests, expectedFinalTextDigests)
+  ) throw new TypeError('independent_review_binding_invalid')
+  const readabilityReview = validateIndependentReviewCore(
+    draft,
+    summary,
+    evidenceRecords,
+    policy.independent_review.actor_id,
+  )
+  const unsignedReview = {
+    schema_version: draft.schema_version,
+    reviewer_actor_id: draft.reviewer_actor_id,
+    reviewer_role: draft.reviewer_role,
     independent_from_execution: true,
-    candidate_id: review.candidate_id,
-    evaluation_run_id: review.evaluation_run_id,
-    evaluation_phase: review.evaluation_phase,
-    contract: structuredClone(review.contract),
+    candidate_id: draft.candidate_id,
+    evaluation_run_id: draft.evaluation_run_id,
+    evaluation_phase: draft.evaluation_phase,
+    contract: structuredClone(draft.contract),
     answer_presentation_contract: structuredClone(
-      review.answer_presentation_contract,
+      draft.answer_presentation_contract,
     ),
     answer_style_policy_binding: structuredClone(
-      review.answer_style_policy_binding,
+      draft.answer_style_policy_binding,
     ),
     readability_rubric_binding: structuredClone(
-      review.readability_rubric_binding,
+      draft.readability_rubric_binding,
     ),
-    summary_digest: review.summary_digest,
-    evidence_jsonl_sha256: review.evidence_jsonl_sha256,
-    decision: review.decision,
-    dg1_decision: review.dg1_decision,
-    rationale_codes: [...review.rationale_codes],
+    summary_digest: draft.summary_digest,
+    summary_json_sha256: draft.summary_json_sha256,
+    evidence_jsonl_sha256: draft.evidence_jsonl_sha256,
+    execution_attestation_digest: draft.execution_attestation_digest,
+    final_text_digests: structuredClone(draft.final_text_digests),
+    decision: draft.decision,
+    dg1_decision: draft.dg1_decision,
+    rationale_codes: [...draft.rationale_codes],
     readability_review: readabilityReview,
-    reviewed_at_utc: review.reviewed_at_utc,
+    reviewed_at_utc: draft.reviewed_at_utc,
   }
+  return Object.freeze({
+    unsigned_review: Object.freeze(unsignedReview),
+    signature_domain: policy.signature_domains.independent_review,
+    key_id: policy.independent_review.key_id,
+  })
+}
+
+export function finalizeIndependentAcceptanceRecord(options) {
+  const { summary, independent_review: suppliedReview } = options
+  const evidenceBytes = rawBytes(
+    options.evidence_jsonl,
+    'evidence_jsonl_bytes_invalid',
+  )
+  const evidenceJsonl = evidenceBytes.toString('utf8')
+  assertSummaryDigest(summary)
+  if (!isRecord(suppliedReview)) {
+    throw new TypeError('independent_review_required')
+  }
+  const evidenceSha = byteDigest(evidenceBytes)
+  const signedPath = suppliedReview.decision === 'accepted'
+    || suppliedReview.signature !== undefined
+    || options.execution_attestation !== undefined
+  let review
+  let executionAttestationDigest = null
+  let summaryJsonSha256 = null
+  if (signedPath) {
+    if (!isRecord(options.execution_attestation)) {
+      throw new TypeError('execution_attestation_required')
+    }
+    if (!isRecord(suppliedReview.signature)) {
+      throw new TypeError('independent_review_signature_required')
+    }
+    if (!exactRecordKeys(suppliedReview, SIGNED_INDEPENDENT_REVIEW_KEYS)) {
+      throw new TypeError('independent_review_contract_invalid')
+    }
+    const summaryBytes = rawBytes(
+      options.summary_json_bytes,
+      'summary_json_bytes_required',
+    )
+    const {
+      signature,
+      ...unsignedDraft
+    } = suppliedReview
+    const prepared = prepareIndependentReviewForSigning({
+      loaded_candidate: options.loaded_candidate,
+      summary,
+      summary_json_bytes: summaryBytes,
+      evidence_jsonl: evidenceBytes,
+      execution_attestation: options.execution_attestation,
+      independent_review_draft: unsignedDraft,
+    })
+    const { policy } = assertCandidateAttestationBinding(
+      options.loaded_candidate,
+    )
+    verifyEd25519Signature(
+      signature,
+      policy.independent_review,
+      policy.signature_domains.independent_review,
+      prepared.unsigned_review,
+    )
+    review = {
+      ...prepared.unsigned_review,
+      signature: structuredClone(signature),
+    }
+    executionAttestationDigest = review.execution_attestation_digest
+    summaryJsonSha256 = review.summary_json_sha256
+  } else {
+    const evidenceRecords = assertEvidenceClosure(summary, evidenceJsonl)
+    if (
+      !exactRecordKeys(suppliedReview, LEGACY_INDEPENDENT_REVIEW_KEYS)
+      || suppliedReview.decision !== 'rejected'
+      || suppliedReview.evidence_jsonl_sha256 !== evidenceSha
+    ) throw new TypeError('independent_review_contract_invalid')
+    const readabilityReview = validateIndependentReviewCore(
+      suppliedReview,
+      summary,
+      evidenceRecords,
+      null,
+    )
+    review = {
+      ...structuredClone(suppliedReview),
+      readability_review: readabilityReview,
+    }
+  }
+  const normalizedReview = structuredClone(review)
   const withoutId = {
     schema_version: 'domeye_first_slice_acceptance_record_v2',
     evaluation_run_id: summary.evaluation_run_id,
@@ -4592,7 +5429,9 @@ export function finalizeIndependentAcceptanceRecord(options) {
     answer_style_policy_binding: summary.answer_style_policy_binding,
     readability_rubric_binding: summary.readability_rubric_binding,
     summary_digest: summary.summary_digest,
+    summary_json_sha256: summaryJsonSha256,
     evidence_jsonl_sha256: evidenceSha,
+    execution_attestation_digest: executionAttestationDigest,
     acceptance_state: review.decision,
     independent_review: {
       ...normalizedReview,
@@ -4616,12 +5455,27 @@ export function finalizeIndependentAcceptanceRecord(options) {
 }
 
 export async function finalizeAcceptanceRecordFiles(options) {
-  const summary = JSON.parse(await readFile(options.summary_path, 'utf8'))
-  const evidenceJsonl = await readFile(options.evidence_jsonl_path, 'utf8')
-  const review = JSON.parse(await readFile(options.independent_review_path, 'utf8'))
+  const loadedCandidate = await loadDomeyeFirstSliceCandidateManifest({
+    project_root: requiredString(options.project_root, 'project_root'),
+    manifest_path: requiredString(options.manifest_path, 'manifest_path'),
+  })
+  const summaryBytes = await readFile(options.summary_path)
+  const summary = parseTrustedJson(summaryBytes, 'summary_json_invalid')
+  const evidenceJsonl = await readFile(options.evidence_jsonl_path)
+  const executionAttestation = parseTrustedJson(
+    await readFile(options.evidence_attestation_path),
+    'evidence_attestation_json_invalid',
+  )
+  const review = parseTrustedJson(
+    await readFile(options.independent_review_path),
+    'independent_review_json_invalid',
+  )
   const record = finalizeIndependentAcceptanceRecord({
+    loaded_candidate: loadedCandidate,
     summary,
+    summary_json_bytes: summaryBytes,
     evidence_jsonl: evidenceJsonl,
+    execution_attestation: executionAttestation,
     independent_review: review,
   })
   await writeNew(

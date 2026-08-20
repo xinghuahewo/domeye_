@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
+import {
+  createHash,
+  generateKeyPairSync,
+} from 'node:crypto'
 import {
   mkdirSync,
   mkdtempSync,
@@ -42,6 +45,17 @@ const TRANSITIVE_DIST_PATH =
   'agent-sidecar/dist/src/runtime/critical-transitive.js'
 const PATCHED_PROVIDER_PATH =
   'agent-sidecar/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js'
+const EXECUTION_PUBLIC_KEY_PATH =
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/execution-public-key.json'
+const REVIEWER_PUBLIC_KEY_PATH =
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/reviewer-public-key.json'
+const EVALUATOR_IMPLEMENTATION_PATHS = [
+  'evaluation/country-outage/first-vertical-slice/evaluator.mjs',
+  'evaluation/country-outage/first-vertical-slice/adversarial-driver.mjs',
+  'evaluation/country-outage/first-vertical-slice/case-registry.mjs',
+  'evaluation/country-outage/first-vertical-slice/source-loader.mjs',
+  'evaluation/country-outage/first-vertical-slice/run.mjs',
+] as const
 
 const RUNTIME_SOURCE_PATHS = [
   'agent-sidecar/src/cli/serve-interactive-agent.ts',
@@ -65,6 +79,9 @@ const FIXED_SOURCE_PATHS = [
   'agent-sidecar/scripts/apply_pi_response_model_patch.mjs',
   'agent-sidecar/resources/vendor-patches/pi-ai-openai-completions-response-model-v1.json',
   'agent-sidecar/vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch',
+  EXECUTION_PUBLIC_KEY_PATH,
+  REVIEWER_PUBLIC_KEY_PATH,
+  ...EVALUATOR_IMPLEMENTATION_PATHS,
   PATCHED_PROVIDER_PATH,
 ] as const
 
@@ -90,6 +107,19 @@ function shaText(text: string): `sha256:${string}` {
 
 function sha(character: string): `sha256:${string}` {
   return `sha256:${character.repeat(64)}`
+}
+
+function attestorPublicKey(role: 'execution_evidence' | 'independent_review') {
+  const { publicKey } = generateKeyPairSync('ed25519')
+  const spki = publicKey.export({ format: 'der', type: 'spki' })
+  return {
+    schema_version: 'domeye_first_slice_attestor_public_key_v1' as const,
+    role,
+    algorithm: 'ed25519' as const,
+    key_id: `ed25519-spki-sha256:${createHash('sha256')
+      .update(spki).digest('hex')}`,
+    public_key_spki_der_base64: spki.toString('base64'),
+  }
 }
 
 function runtimeDistPath(path: string): string {
@@ -212,6 +242,16 @@ function createFixture(): Fixture {
   contents.set(ANCHOR_PATH, 'first vertical slice anchor\n')
   contents.set(ANSWER_PRESENTATION_PATH, 'answer presentation addendum\n')
   contents.set(MODEL_PATH, '{"model":"model-first-slice"}\n')
+  const executionKey = attestorPublicKey('execution_evidence')
+  const reviewerKey = attestorPublicKey('independent_review')
+  contents.set(
+    EXECUTION_PUBLIC_KEY_PATH,
+    `${JSON.stringify(executionKey, null, 2)}\n`,
+  )
+  contents.set(
+    REVIEWER_PUBLIC_KEY_PATH,
+    `${JSON.stringify(reviewerKey, null, 2)}\n`,
+  )
 
   const sourceFiles = [...contents.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
@@ -259,6 +299,30 @@ function createFixture(): Fixture {
     },
     policy: fixedPolicy(),
     registry: fixedRegistry(capabilities),
+    attestation_policy: {
+      schema_version: 'domeye_first_slice_attestation_policy_v1',
+      algorithm: 'ed25519',
+      canonicalization: 'domeye_unicode_codepoint_canonical_json_v1',
+      signature_domains: {
+        execution_evidence:
+          'domeye.first-slice.evaluation-attestation/execution/v1',
+        independent_review:
+          'domeye.first-slice.evaluation-attestation/independent-review/v1',
+      },
+      release_eligible: true,
+      execution_evidence: {
+        role: executionKey.role,
+        actor_id: 'domeye-first-slice-real-runtime-attestor-v1',
+        key_id: executionKey.key_id,
+        public_key_spki_der_base64: executionKey.public_key_spki_der_base64,
+      },
+      independent_review: {
+        role: reviewerKey.role,
+        actor_id: 'domeye-first-slice-independent-reviewer-v1',
+        key_id: reviewerKey.key_id,
+        public_key_spki_der_base64: reviewerKey.public_key_spki_der_base64,
+      },
+    },
     source_files: sourceFiles,
     activation: {
       scope: 'local_evaluation_only',
@@ -345,8 +409,73 @@ test('加载器返回冻结且来源闭包完整的 Candidate binding', async ()
   assert.equal(loaded.manifest.payload.budget_policy.monetary_limit_usd, null)
   assert.equal(loaded.manifest.payload.activation.scope, 'local_evaluation_only')
   assert.equal(loaded.manifest.payload.activation.production_deployed, false)
+  assert.equal(
+    loaded.manifest.payload.attestation_policy!.release_eligible,
+    true,
+  )
+  assert.notEqual(
+    loaded.manifest.payload.attestation_policy!.execution_evidence.key_id,
+    loaded.manifest.payload.attestation_policy!.independent_review.key_id,
+  )
   assert.equal(Object.isFrozen(loaded), true)
   assert.equal(Object.isFrozen(loaded.candidate.registry.capabilities), true)
+})
+
+test('attestation policy 必须精确绑定两个不同的 Ed25519 SPKI 公钥', async () => {
+  const unknown = createFixture()
+  const unknownPayload = {
+    ...unknown.payload,
+    attestation_policy: {
+      ...unknown.payload.attestation_policy,
+      caller_may_sign_arbitrary_json: true,
+    },
+  }
+  writeManifest(unknown.root, envelope(unknownPayload))
+  await assert.rejects(
+    () => load(unknown.root),
+    hasCode('manifest_schema_invalid'),
+  )
+
+  const wrongId = createFixture()
+  const wrongIdPayload = structuredClone(wrongId.payload)
+  wrongIdPayload.attestation_policy!.execution_evidence.key_id =
+    `ed25519-spki-sha256:${'0'.repeat(64)}`
+  writeManifest(wrongId.root, envelope(wrongIdPayload))
+  await assert.rejects(
+    () => load(wrongId.root),
+    hasCode('attestation_policy_invalid'),
+  )
+
+  const sameKey = createFixture()
+  const sameKeyPayload = structuredClone(sameKey.payload)
+  sameKeyPayload.attestation_policy!.independent_review = {
+    ...sameKeyPayload.attestation_policy!.execution_evidence,
+    role: 'independent_review',
+    actor_id: 'domeye-first-slice-independent-reviewer-v1',
+  }
+  writeManifest(sameKey.root, envelope(sameKeyPayload))
+  await assert.rejects(
+    () => load(sameKey.root),
+    hasCode('attestation_policy_invalid'),
+  )
+
+  const mismatchedFile = createFixture()
+  const replacement = attestorPublicKey('execution_evidence')
+  const replacementText = `${JSON.stringify(replacement, null, 2)}\n`
+  writeProjectFile(
+    mismatchedFile.root,
+    EXECUTION_PUBLIC_KEY_PATH,
+    replacementText,
+  )
+  const mismatchedPayload = structuredClone(mismatchedFile.payload)
+  mismatchedPayload.source_files.find(
+    (source) => source.path === EXECUTION_PUBLIC_KEY_PATH,
+  )!.sha256 = shaText(replacementText)
+  writeManifest(mismatchedFile.root, envelope(mismatchedPayload))
+  await assert.rejects(
+    () => load(mismatchedFile.root),
+    hasCode('attestation_policy_invalid'),
+  )
 })
 
 test('Candidate ID 必须等于 canonical payload 摘要且 payload 不接受额外字段', async () => {

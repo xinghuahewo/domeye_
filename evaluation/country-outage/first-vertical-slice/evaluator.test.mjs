@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import {
+  createHash,
+  generateKeyPairSync,
+  sign as signEd25519,
+} from 'node:crypto'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import test, { after } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
@@ -13,7 +23,10 @@ import {
   REGISTERED_JOURNEY_CASES,
   ZERO_TOLERANCE_KEYS,
   bindRealFirstSliceEvaluationTarget,
+  buildExecutionAttestationPayload,
   finalizeIndependentAcceptanceRecord,
+  parseFirstSliceApiHealthResponse,
+  prepareIndependentReviewForSigning,
   runFirstVerticalSliceEvaluation,
   writeEvaluationArtifacts,
 } from './evaluator.mjs'
@@ -43,8 +56,14 @@ const {
 } = await import(
   '../../../agent-sidecar/src/agent/finding-answer.ts'
 )
-const { canonicalJsonSha256 } = await import(
+const { canonicalJsonSha256, canonicalJsonStringify } = await import(
   '../../../agent-sidecar/src/shared/deterministic-json.ts'
+)
+const {
+  domeyeFirstSliceCandidateId,
+  loadDomeyeFirstSliceCandidateManifest,
+} = await import(
+  '../../../agent-sidecar/src/agent/candidate-manifest.ts'
 )
 
 const roots = []
@@ -54,8 +73,99 @@ after(() => {
 
 const sha = (character) => `sha256:${character.repeat(64)}`
 const digest = (value) => `sha256:${canonicalJsonSha256(value)}`
-const candidateId = `manifest:sha256:${'c'.repeat(64)}`
+const byteDigest = (value) => `sha256:${createHash('sha256')
+  .update(value).digest('hex')}`
 const driverNow = '2026-08-19T08:00:00.000Z'
+const testProjectRoot = resolve(fileURLToPath(new URL('../../../', import.meta.url)))
+
+const EXECUTION_PUBLIC_KEY_PATH =
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/execution-public-key.json'
+const REVIEWER_PUBLIC_KEY_PATH =
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/reviewer-public-key.json'
+const EVALUATOR_IMPLEMENTATION_PATHS = Object.freeze([
+  'evaluation/country-outage/first-vertical-slice/evaluator.mjs',
+  'evaluation/country-outage/first-vertical-slice/adversarial-driver.mjs',
+  'evaluation/country-outage/first-vertical-slice/case-registry.mjs',
+  'evaluation/country-outage/first-vertical-slice/source-loader.mjs',
+  'evaluation/country-outage/first-vertical-slice/run.mjs',
+])
+const FIXED_SOURCE_PATHS = Object.freeze([
+  'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md',
+  'docs/architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md',
+  'contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json',
+  'agent-sidecar/package.json',
+  'agent-sidecar/package-lock.json',
+  'agent-sidecar/tsconfig.json',
+  'agent-sidecar/scripts/generate_first_slice_candidate_manifest.mjs',
+  'agent-sidecar/scripts/apply_pi_response_model_patch.mjs',
+  'agent-sidecar/resources/vendor-patches/pi-ai-openai-completions-response-model-v1.json',
+  'agent-sidecar/vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch',
+  EXECUTION_PUBLIC_KEY_PATH,
+  REVIEWER_PUBLIC_KEY_PATH,
+  ...EVALUATOR_IMPLEMENTATION_PATHS,
+  'agent-sidecar/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js',
+])
+const REQUIRED_RUNTIME_SOURCE_PATHS = Object.freeze([
+  'agent-sidecar/src/cli/serve-interactive-agent.ts',
+  'agent-sidecar/src/agent/contracts.ts',
+  'agent-sidecar/src/agent/capability-execution.ts',
+  'agent-sidecar/src/formal-runtime-limits.ts',
+  'agent-sidecar/src/pi/country-outage-skill-bundle.ts',
+  'agent-sidecar/src/pi/formal-model-runtime.ts',
+  'agent-sidecar/src/cli/sidecar-security.ts',
+])
+
+function runtimeDistPath(path) {
+  return `agent-sidecar/dist/src/${path.slice(
+    'agent-sidecar/src/'.length,
+    -'.ts'.length,
+  )}.js`
+}
+
+function testAttestor(role, keyPair) {
+  const spki = keyPair.publicKey.export({ format: 'der', type: 'spki' })
+  return Object.freeze({
+    schema_version: 'domeye_first_slice_attestor_public_key_v1',
+    role,
+    algorithm: 'ed25519',
+    key_id: `ed25519-spki-sha256:${createHash('sha256')
+      .update(spki).digest('hex')}`,
+    public_key_spki_der_base64: spki.toString('base64'),
+  })
+}
+
+const executionTestKeyPair = generateKeyPairSync('ed25519')
+const reviewerTestKeyPair = generateKeyPairSync('ed25519')
+const executionTestAttestor = testAttestor(
+  'execution_evidence',
+  executionTestKeyPair,
+)
+const reviewerTestAttestor = testAttestor(
+  'independent_review',
+  reviewerTestKeyPair,
+)
+const testRuntimeSourceFiles = loadedAgentSourceClosure(testProjectRoot)
+const attestedSourceContents = new Map()
+for (const path of new Set([
+  ...FIXED_SOURCE_PATHS,
+  ...REQUIRED_RUNTIME_SOURCE_PATHS,
+  ...testRuntimeSourceFiles.map((item) => item.path),
+  ...REQUIRED_RUNTIME_SOURCE_PATHS.map(runtimeDistPath),
+  ...testRuntimeSourceFiles.map((item) => runtimeDistPath(item.path)),
+])) {
+  const content = path === EXECUTION_PUBLIC_KEY_PATH
+    ? Buffer.from(`${JSON.stringify(executionTestAttestor, null, 2)}\n`)
+    : path === REVIEWER_PUBLIC_KEY_PATH
+      ? Buffer.from(`${JSON.stringify(reviewerTestAttestor, null, 2)}\n`)
+      : readFileSync(resolve(testProjectRoot, path))
+  attestedSourceContents.set(path, content)
+}
+const attestedSourceFiles = [...attestedSourceContents.entries()]
+  .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+  .map(([path, content]) => ({ path, sha256: byteDigest(content) }))
+const attestedSourceDigest = new Map(attestedSourceFiles.map(
+  (source) => [source.path, source.sha256],
+))
 
 const dataIdentity = {
   event_type: 'country_outage',
@@ -74,7 +184,9 @@ const dataIdentity = {
 
 const modelIdentity = {
   candidate_id: 'model-evaluation-offline',
-  resource_sha256: sha('a'),
+  resource_sha256: attestedSourceDigest.get(
+    'contracts/agent/domeye-first-vertical-slice/v1/model-runtime.json',
+  ),
   provider: 'provider-evaluation-offline',
   model: 'model-evaluation-offline',
   model_version: 'model-evaluation-offline-20260819',
@@ -90,18 +202,32 @@ const readerBinding = {
   execution_unit_id: 'TOOL-03',
   execution_unit_name: 'read_metric_series',
   execution_unit_version: '1.0.0',
-  contract_digest: sha('5'),
-  implementation_digest: sha('6'),
-  semantic_digest: sha('7'),
+  contract_digest: attestedSourceDigest.get(
+    'agent-sidecar/src/agent/contracts.ts',
+  ),
+  implementation_digest: attestedSourceDigest.get(
+    'agent-sidecar/src/agent/capability-execution.ts',
+  ),
+  semantic_digest: digest({
+    metric: 'fixed_visible_ipv4_address_count',
+    operation: 'read_metric_series',
+    output: 'immutable_metric_series_artifact',
+  }),
 }
 
 const extremaBinding = {
   execution_unit_id: 'OP-01',
   execution_unit_name: 'series_extrema',
   execution_unit_version: '1.0.0',
-  contract_digest: sha('8'),
-  implementation_digest: sha('9'),
-  semantic_digest: sha('b'),
+  contract_digest: readerBinding.contract_digest,
+  implementation_digest: readerBinding.implementation_digest,
+  semantic_digest: digest({
+    input: 'qualified_metric_series_artifact_ref',
+    operation: 'series_extrema',
+    tie_policy: 'first_observed_occurrence',
+    null_policy: 'exclude_null_never_zero_fill',
+    empty_policy: 'empty_observed_set',
+  }),
 }
 
 const budgetPolicy = {
@@ -111,21 +237,59 @@ const budgetPolicy = {
   monetary_limit_usd: null,
 }
 
+const policyHash = canonicalJsonSha256({
+  tenant_id: 'domeye',
+  required_scope: 'country_outage:read',
+  allowed_capability_ids: ['CAP-006', 'CAP-016'],
+  model_api_attempt_limit: 10,
+  approved_action_limit: 2,
+  cost_policy: 'audit_only',
+  monetary_limit_usd: null,
+})
 const policy = {
-  policy_id: 'policy-evaluation-offline',
-  policy_digest: sha('3'),
+  policy_id: `policy-sha256:${policyHash}`,
+  policy_digest: `sha256:${policyHash}`,
   state: 'active',
   allowed_capability_ids: ['CAP-006', 'CAP-016'],
 }
 
+const registryCapabilities = [
+  { capability_id: 'CAP-006', state: 'active', execution_binding: readerBinding },
+  { capability_id: 'CAP-016', state: 'active', execution_binding: extremaBinding },
+]
+const registryHash = canonicalJsonSha256({ capabilities: registryCapabilities })
 const registry = {
-  registry_snapshot_id: 'registry-evaluation-offline',
-  registry_digest: sha('4'),
+  registry_snapshot_id: `registry-snapshot-sha256:${registryHash}`,
+  registry_digest: `sha256:${registryHash}`,
   state: 'active',
-  capabilities: [
-    { capability_id: 'CAP-006', state: 'active', execution_binding: readerBinding },
-    { capability_id: 'CAP-016', state: 'active', execution_binding: extremaBinding },
-  ],
+  capabilities: registryCapabilities,
+}
+
+const attestationPolicy = {
+  schema_version: 'domeye_first_slice_attestation_policy_v1',
+  algorithm: 'ed25519',
+  canonicalization: 'domeye_unicode_codepoint_canonical_json_v1',
+  signature_domains: {
+    execution_evidence:
+      'domeye.first-slice.evaluation-attestation/execution/v1',
+    independent_review:
+      'domeye.first-slice.evaluation-attestation/independent-review/v1',
+  },
+  release_eligible: true,
+  execution_evidence: {
+    role: executionTestAttestor.role,
+    actor_id: 'domeye-first-slice-real-runtime-attestor-v1',
+    key_id: executionTestAttestor.key_id,
+    public_key_spki_der_base64:
+      executionTestAttestor.public_key_spki_der_base64,
+  },
+  independent_review: {
+    role: reviewerTestAttestor.role,
+    actor_id: 'domeye-first-slice-independent-reviewer-v1',
+    key_id: reviewerTestAttestor.key_id,
+    public_key_spki_der_base64:
+      reviewerTestAttestor.public_key_spki_der_base64,
+  },
 }
 
 const manifestPayload = {
@@ -133,11 +297,15 @@ const manifestPayload = {
   base_commit: 'a'.repeat(40),
   contract: {
     version: 'domeye.first-vertical-slice/v1.0',
-    digest: sha('1'),
+    digest: attestedSourceDigest.get(
+      'docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md',
+    ),
   },
   answer_presentation_contract: {
     version: 'domeye.first-vertical-slice.answer-presentation/v1.0',
-    digest: sha('d'),
+    digest: attestedSourceDigest.get(
+      'docs/architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md',
+    ),
   },
   data_identity: dataIdentity,
   series_response_sha256: sha('2'),
@@ -145,12 +313,11 @@ const manifestPayload = {
   budget_policy: budgetPolicy,
   policy,
   registry,
-  source_files: [
-    { path: 'src/reader.ts', sha256: readerBinding.implementation_digest },
-    { path: 'src/extrema.ts', sha256: extremaBinding.implementation_digest },
-  ],
+  attestation_policy: attestationPolicy,
+  source_files: attestedSourceFiles,
   activation: { scope: 'local_evaluation_only', production_deployed: false },
 }
+const candidateId = domeyeFirstSliceCandidateId(manifestPayload)
 
 const loadedCandidate = {
   candidate: {
@@ -170,6 +337,59 @@ const loadedCandidate = {
   },
   model_identity: modelIdentity,
   manifest: { candidate_id: candidateId, payload: manifestPayload },
+}
+
+async function canonicalAttestedCandidate() {
+  const root = mkdtempSync(join(tmpdir(), 'first-slice-attested-candidate-'))
+  roots.push(root)
+  for (const [path, content] of attestedSourceContents) {
+    const absolute = resolve(root, path)
+    mkdirSync(dirname(absolute), { recursive: true })
+    writeFileSync(absolute, content)
+  }
+  writeFileSync(
+    resolve(root, 'candidate.json'),
+    `${JSON.stringify({ candidate_id: candidateId, payload: manifestPayload }, null, 2)}\n`,
+  )
+  const loaded = await loadDomeyeFirstSliceCandidateManifest({
+    project_root: root,
+    manifest_path: 'candidate.json',
+  })
+  return { root, loaded_candidate: loaded }
+}
+
+function attestationSignature(policyMember, domain, payload, privateKey) {
+  const signature = signEd25519(
+    null,
+    Buffer.concat([
+      Buffer.from(domain, 'utf8'),
+      Buffer.from([0]),
+      Buffer.from(canonicalJsonStringify(payload), 'utf8'),
+    ]),
+    privateKey,
+  )
+  return {
+    schema_version: 'domeye_ed25519_signature_v1',
+    algorithm: 'ed25519',
+    key_id: policyMember.key_id,
+    domain,
+    signature_base64: signature.toString('base64'),
+  }
+}
+
+function executionAttestation(payload) {
+  return {
+    schema_version: 'domeye_first_slice_execution_attestation_v1',
+    attestation_id:
+      `execution-attestation-sha256:${canonicalJsonSha256(payload)}`,
+    payload,
+    signature: attestationSignature(
+      attestationPolicy.execution_evidence,
+      attestationPolicy.signature_domains.execution_evidence,
+      payload,
+      executionTestKeyPair.privateKey,
+    ),
+  }
 }
 
 function zeroToleranceCounts(overrides = {}) {
@@ -848,7 +1068,7 @@ function rejectedReview(result, evidenceJsonl, overrides = {}) {
     return {
       trial_id: trial.trial_id,
       assessment_status: evaluable ? 'evaluated' : 'not_evaluated',
-      final_text_digest: finalTextDigest,
+      final_text_digest: evaluable ? finalTextDigest : null,
       scores: evaluable
         ? { natural_chinese: 4, first_read_readability: 4 }
         : null,
@@ -1720,7 +1940,7 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
     summary: result.summary,
     evidence_jsonl: tamperedJsonl,
     independent_review: rejectedReview(result, tamperedJsonl),
-  }), /evidence_binding_mismatch/)
+  }), /evidence_jsonl_structure_invalid/)
 
   const dispositionLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const dispositionJ2 = dispositionLines.find((line) =>
@@ -1745,6 +1965,25 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
 })
 
 test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充真实运行', async () => {
+  assert.deepEqual(parseFirstSliceApiHealthResponse(JSON.stringify({
+    status: 'ok',
+    service: 'domeye-core',
+    time: '2026-08-19T08:00:00.123456Z',
+  })), {
+    status: 'ok',
+    service: 'domeye-core',
+    time: '2026-08-19T08:00:00.123456Z',
+  })
+  for (const invalidHealth of [
+    '{"status":"bad","status":"ok","service":"domeye-core","time":"2026-08-19T08:00:00Z"}',
+    '{"status":"ok","service":"domeye-core","time":"2026-08-19T08:00:00Z","unknown":true}',
+    '{"status":"ok","service":"domeye-core"}',
+    '{"status":"ok","service":"domeye-core","time":"2026-02-30T08:00:00Z"}',
+    '{"status":"ok","service":"domeye-core","time":"2026-08-19T08:00:00+00:00"}',
+  ]) assert.throws(
+    () => parseFirstSliceApiHealthResponse(invalidHealth),
+    /api_health_contract_invalid/,
+  )
   const calls = []
   const targetConfig = {
     project_root: process.cwd(),
@@ -1821,6 +2060,14 @@ test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充
       drive_adversarial_cases: true,
     }),
     /real_runtime_runner_not_source_bound/,
+  )
+  const alternateProject = await canonicalAttestedCandidate()
+  await assert.rejects(
+    bindRealFirstSliceEvaluationTarget({
+      ...targetConfig,
+      project_root: alternateProject.root,
+    }),
+    /evaluation_project_root_mismatch/,
   )
   await assert.rejects(
     bindRealFirstSliceEvaluationTarget({
@@ -2102,7 +2349,7 @@ test('Formal 仅 exact30；27/30 与 8/10 必须 NO-GO 且三阶段失败可重�
     summary: result.summary,
     evidence_jsonl: evidenceJsonl,
     independent_review: { ...review, decision: 'accepted', dg1_decision: 'REPAIR' },
-  }), /blocked_evidence_cannot_be_accepted/)
+  }), /execution_attestation_required/)
   assert.throws(() => finalizeIndependentAcceptanceRecord({
     summary: result.summary,
     evidence_jsonl: '{"record_type":"evaluation_summary"}\n',
@@ -2128,6 +2375,52 @@ test('Formal 仅 exact30；27/30 与 8/10 必须 NO-GO 且三阶段失败可重�
     evidence_jsonl: selfReportedJsonl,
     independent_review: rejectedReview(selfReported, selfReportedJsonl),
   }), /evidence_journey_invalid/)
+
+  const completedFallback = await runFirstVerticalSliceEvaluation({
+    loaded_candidate: loadedCandidate,
+    execution_mode: 'offline_test',
+    evaluation_phase: 'formal',
+    execution_actor_id: 'offline-completed-fallback-agent',
+    runs: 30,
+    drive_adversarial_cases: true,
+    now: advancingClock(),
+    run_j1_trial: async ({ ordinal }) => ordinal === 4
+      ? await guardedFallbackJ1Result(ordinal)
+      : await successfulJ1Result(ordinal),
+  })
+  const completedFallbackRoot = mkdtempSync(join(
+    tmpdir(),
+    'first-slice-completed-fallback-',
+  ))
+  roots.push(completedFallbackRoot)
+  const completedFallbackOutput = await writeEvaluationArtifacts(
+    completedFallback,
+    completedFallbackRoot,
+  )
+  const completedFallbackJsonl = readFileSync(
+    completedFallbackOutput.paths.evidence_jsonl,
+    'utf8',
+  )
+  const completedFallbackTrial = completedFallback.j1_records[3]
+  assert.equal(completedFallbackTrial.evidence.outcome, 'completed')
+  assert.equal(completedFallbackTrial.evidence.response_guard.decision, 'block')
+  assert.deepEqual([
+    completedFallbackTrial.workflow_completed,
+    completedFallbackTrial.answer_success,
+    completedFallbackTrial.passed,
+    completedFallbackTrial.public_completion_gate_passed,
+    completedFallbackTrial.answer_source,
+  ], [false, false, false, false, null])
+  const completedFallbackRecord = finalizeIndependentAcceptanceRecord({
+    summary: completedFallback.summary,
+    evidence_jsonl: completedFallbackJsonl,
+    independent_review: rejectedReview(
+      completedFallback,
+      completedFallbackJsonl,
+    ),
+  })
+  assert.equal(completedFallbackRecord.acceptance_state, 'rejected')
+  assert.equal(completedFallbackRecord.dg1_decision, 'REPAIR')
 })
 
 test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', async () => {
@@ -2303,6 +2596,85 @@ test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', as
     forgedArtifact,
   ), /evidence_j1_trial_invalid/)
 
+  const resignWholeBundleTamper = (mutate) => {
+    const lines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+    const binding = lines.find(
+      (line) => line.record_type === 'evaluation_binding',
+    ).payload
+    const trials = lines.filter(
+      (line) => line.record_type === 'j1_trial',
+    ).map((line) => line.payload)
+    const judgments = lines.filter(
+      (line) => line.record_type === 'journey_judgment',
+    ).map((line) => line.payload)
+    const summary = lines.find(
+      (line) => line.record_type === 'evaluation_summary',
+    ).payload
+    mutate({ lines, binding, trials, judgments, summary })
+    delete summary.summary_digest
+    summary.summary_digest = digest(summary)
+    const jsonl = `${lines.map(JSON.stringify).join('\n')}\n`
+    const tamperedResult = {
+      ...result,
+      binding,
+      j1_records: trials,
+      journey_judgments: judgments,
+      summary,
+    }
+    return {
+      summary,
+      evidence_jsonl: jsonl,
+      independent_review: rejectedReview(tamperedResult, jsonl),
+    }
+  }
+  for (const bundle of [
+    resignWholeBundleTamper(({ binding }) => {
+      binding.unregistered_claim = true
+    }),
+    resignWholeBundleTamper(({ summary }) => {
+      summary.unregistered_claim = true
+    }),
+    resignWholeBundleTamper(({ trials }) => {
+      trials[0].unregistered_claim = true
+    }),
+    resignWholeBundleTamper(({ judgments }) => {
+      judgments[0].unregistered_claim = true
+    }),
+  ]) {
+    assert.throws(() => finalizeIndependentAcceptanceRecord(bundle),
+      /evidence_jsonl_structure_invalid/)
+  }
+  const forgedLatency = resignWholeBundleTamper(({ trials }) => {
+    trials[0].latency_ms += 1
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(forgedLatency),
+    /evidence_j1_trial_invalid/)
+  const forgedAttemptCount = resignWholeBundleTamper(({ trials }) => {
+    trials[0].provider_attempt_count += 1
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedAttemptCount,
+  ), /evidence_j1_trial_invalid/)
+  const forgedCost = resignWholeBundleTamper(({ trials }) => {
+    trials[0].estimated_cost_usd += 1
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(forgedCost),
+    /evidence_j1_trial_invalid/)
+  const forgedCostSummary = resignWholeBundleTamper(({ summary }) => {
+    summary.j1.estimated_cost_usd.total += 1
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedCostSummary,
+  ), /evidence_j1_summary_mismatch/)
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: {
+      ...review,
+      unregistered_claim: true,
+    },
+  }), /independent_review_contract_invalid/)
+
   const humanOverride = {
     ...structuredClone(review),
     decision: 'accepted',
@@ -2323,7 +2695,7 @@ test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', as
     summary: result.summary,
     evidence_jsonl: evidenceJsonl,
     independent_review: humanOverride,
-  }), /blocked_evidence_cannot_be_accepted/)
+  }), /execution_attestation_required/)
 
   const goLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const goBinding = goLines.find(
@@ -2366,10 +2738,14 @@ test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', as
     ],
   }
   goBinding.execution_mode = 'real_runtime'
+  goBinding.execution_actor_id =
+    attestationPolicy.execution_evidence.actor_id
   goBinding.runtime_source_binding = runtimeSourceBinding
   goBinding.api_endpoint_attestation = apiEndpointAttestation
   for (const trial of goTrials) trial.execution_mode = 'real_runtime'
   goSummary.execution_mode = 'real_runtime'
+  goSummary.execution_actor_id =
+    attestationPolicy.execution_evidence.actor_id
   goSummary.runtime_source_binding = runtimeSourceBinding
   goSummary.api_endpoint_attestation = apiEndpointAttestation
   goSummary.evidence_gate = {
@@ -2394,10 +2770,108 @@ test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', as
     dg1_decision: 'GO',
     rationale_codes: [...humanOverride.rationale_codes],
   })
-  const acceptedRecord = finalizeIndependentAcceptanceRecord({
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
     summary: goSummary,
     evidence_jsonl: goJsonl,
     independent_review: acceptedReview,
+  }), /execution_attestation_required/)
+
+  const { loaded_candidate: canonicalCandidate } =
+    await canonicalAttestedCandidate()
+  assert.throws(() => buildExecutionAttestationPayload({
+    result,
+    loaded_candidate: canonicalCandidate,
+    summary_json_bytes: readFileSync(output.paths.summary),
+    evidence_jsonl_bytes: Buffer.from(evidenceJsonl),
+    nonce: '0'.repeat(64),
+  }), /execution_attestation_binding_invalid/)
+  const summaryJsonBytes = Buffer.from(
+    `${JSON.stringify(goSummary, null, 2)}\n`,
+  )
+  const executionPayload = buildExecutionAttestationPayload({
+    result: goResult,
+    loaded_candidate: canonicalCandidate,
+    summary_json_bytes: summaryJsonBytes,
+    evidence_jsonl_bytes: Buffer.from(goJsonl),
+    nonce: '1'.repeat(64),
+  })
+  const signedExecutionAttestation = executionAttestation(executionPayload)
+  const reviewerActor = attestationPolicy.independent_review.actor_id
+  acceptedReview.reviewer_actor_id = reviewerActor
+  acceptedReview.readability_review.reviewer_actor_id = reviewerActor
+  const {
+    review_digest: _actorReviewDigest,
+    ...actorReviewWithoutDigest
+  } = acceptedReview.readability_review
+  acceptedReview.readability_review.review_digest = digest(
+    actorReviewWithoutDigest,
+  )
+  const unsignedAcceptedReview = {
+    ...acceptedReview,
+    execution_attestation_digest: digest(signedExecutionAttestation),
+    summary_json_sha256: byteDigest(summaryJsonBytes),
+    final_text_digests: goTrials.map((trial) => ({
+      trial_id: trial.trial_id,
+      final_text_digest:
+        trial.evidence.replay_closure.final_answer_digest,
+    })),
+  }
+  const forgedExecutionAttestation = structuredClone(
+    signedExecutionAttestation,
+  )
+  forgedExecutionAttestation.signature.signature_base64 = Buffer.alloc(64)
+    .toString('base64')
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    loaded_candidate: canonicalCandidate,
+    summary: goSummary,
+    summary_json_bytes: summaryJsonBytes,
+    evidence_jsonl: goJsonl,
+    execution_attestation: forgedExecutionAttestation,
+    independent_review: {
+      ...unsignedAcceptedReview,
+      signature: attestationSignature(
+        attestationPolicy.independent_review,
+        attestationPolicy.signature_domains.independent_review,
+        unsignedAcceptedReview,
+        reviewerTestKeyPair.privateKey,
+      ),
+    },
+  }), /attestation_signature_invalid/)
+  const preparedReview = prepareIndependentReviewForSigning({
+    loaded_candidate: canonicalCandidate,
+    summary: goSummary,
+    summary_json_bytes: summaryJsonBytes,
+    evidence_jsonl: Buffer.from(goJsonl),
+    execution_attestation: signedExecutionAttestation,
+    independent_review_draft: unsignedAcceptedReview,
+  })
+  const signedAcceptedReview = {
+    ...preparedReview.unsigned_review,
+    signature: attestationSignature(
+      attestationPolicy.independent_review,
+      preparedReview.signature_domain,
+      preparedReview.unsigned_review,
+      reviewerTestKeyPair.privateKey,
+    ),
+  }
+  const forgedReviewerSignature = structuredClone(signedAcceptedReview)
+  forgedReviewerSignature.signature.signature_base64 = Buffer.alloc(64)
+    .toString('base64')
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    loaded_candidate: canonicalCandidate,
+    summary: goSummary,
+    summary_json_bytes: summaryJsonBytes,
+    evidence_jsonl: goJsonl,
+    execution_attestation: signedExecutionAttestation,
+    independent_review: forgedReviewerSignature,
+  }), /attestation_signature_invalid/)
+  const acceptedRecord = finalizeIndependentAcceptanceRecord({
+    loaded_candidate: canonicalCandidate,
+    summary: goSummary,
+    summary_json_bytes: summaryJsonBytes,
+    evidence_jsonl: goJsonl,
+    execution_attestation: signedExecutionAttestation,
+    independent_review: signedAcceptedReview,
   })
   assert.equal(acceptedRecord.acceptance_state, 'accepted')
   assert.equal(acceptedRecord.dg1_decision, 'GO')
@@ -2470,6 +2944,18 @@ test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', as
     summary: result.summary,
     evidence_jsonl: evidenceJsonl,
     independent_review: selfReview,
+  }), /independent_review_contract_invalid/)
+
+  for (const reviewedAt of [
+    '2026-08-19T06:59:59.999Z',
+    '2026-08-19T09:00:00+00:00',
+  ]) assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: {
+      ...review,
+      reviewed_at_utc: reviewedAt,
+    },
   }), /independent_review_contract_invalid/)
 
   const mixedV1 = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, createPublicKey } from 'node:crypto'
 import { lstat, readFile, realpath } from 'node:fs/promises'
 import { isAbsolute, posix, relative, resolve, sep } from 'node:path'
 
@@ -28,6 +28,17 @@ const MACHINE_CONTRACT_SOURCE_PATH =
   'agent-sidecar/src/agent/contracts.ts'
 const CAPABILITY_IMPLEMENTATION_SOURCE_PATH =
   'agent-sidecar/src/agent/capability-execution.ts'
+const EXECUTION_ATTESTOR_SOURCE_PATH =
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/execution-public-key.json'
+const REVIEWER_ATTESTOR_SOURCE_PATH =
+  'contracts/agent/domeye-first-vertical-slice/v1.1/attestors/reviewer-public-key.json'
+const EVALUATOR_IMPLEMENTATION_SOURCE_PATHS = Object.freeze([
+  'evaluation/country-outage/first-vertical-slice/evaluator.mjs',
+  'evaluation/country-outage/first-vertical-slice/adversarial-driver.mjs',
+  'evaluation/country-outage/first-vertical-slice/case-registry.mjs',
+  'evaluation/country-outage/first-vertical-slice/source-loader.mjs',
+  'evaluation/country-outage/first-vertical-slice/run.mjs',
+] as const)
 const PATCHED_PROVIDER_SOURCE_PATH =
   'agent-sidecar/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js'
 const REQUIRED_FIXED_SOURCE_PATHS = Object.freeze([
@@ -41,6 +52,9 @@ const REQUIRED_FIXED_SOURCE_PATHS = Object.freeze([
   'agent-sidecar/scripts/apply_pi_response_model_patch.mjs',
   'agent-sidecar/resources/vendor-patches/pi-ai-openai-completions-response-model-v1.json',
   'agent-sidecar/vendor-patches/pi-ai-0.84.1-openai-completions-response-model-v1.patch',
+  EXECUTION_ATTESTOR_SOURCE_PATH,
+  REVIEWER_ATTESTOR_SOURCE_PATH,
+  ...EVALUATOR_IMPLEMENTATION_SOURCE_PATHS,
   PATCHED_PROVIDER_SOURCE_PATH,
 ] as const)
 const REQUIRED_RUNTIME_SOURCE_PATHS = Object.freeze([
@@ -120,6 +134,56 @@ const SourceFileSchema = Type.Object({
   sha256: Sha256,
 }, { additionalProperties: false })
 
+const AttestorKeyId = Type.String({
+  pattern: '^ed25519-spki-sha256:[a-f0-9]{64}$',
+})
+const SpkiDerBase64 = Type.String({
+  minLength: 1,
+  maxLength: 4_096,
+  pattern: '^[A-Za-z0-9+/]+={0,2}$',
+})
+
+const AttestorPolicyMemberSchema = (
+  role: 'execution_evidence' | 'independent_review',
+  actorId:
+    | 'domeye-first-slice-real-runtime-attestor-v1'
+    | 'domeye-first-slice-independent-reviewer-v1',
+) => Type.Object({
+  role: Type.Literal(role),
+  actor_id: Type.Literal(actorId),
+  key_id: AttestorKeyId,
+  public_key_spki_der_base64: SpkiDerBase64,
+}, { additionalProperties: false })
+
+export const DomeyeFirstSliceAttestationPolicySchema = Type.Object({
+  schema_version: Type.Literal('domeye_first_slice_attestation_policy_v1'),
+  algorithm: Type.Literal('ed25519'),
+  canonicalization: Type.Literal(
+    'domeye_unicode_codepoint_canonical_json_v1',
+  ),
+  signature_domains: Type.Object({
+    execution_evidence: Type.Literal(
+      'domeye.first-slice.evaluation-attestation/execution/v1',
+    ),
+    independent_review: Type.Literal(
+      'domeye.first-slice.evaluation-attestation/independent-review/v1',
+    ),
+  }, { additionalProperties: false }),
+  release_eligible: Type.Literal(true),
+  execution_evidence: AttestorPolicyMemberSchema(
+    'execution_evidence',
+    'domeye-first-slice-real-runtime-attestor-v1',
+  ),
+  independent_review: AttestorPolicyMemberSchema(
+    'independent_review',
+    'domeye-first-slice-independent-reviewer-v1',
+  ),
+}, { additionalProperties: false })
+
+export type DomeyeFirstSliceAttestationPolicy = Static<
+  typeof DomeyeFirstSliceAttestationPolicySchema
+>
+
 export const DomeyeFirstSliceCandidateManifestPayloadSchema = Type.Object({
   schema_version: Type.Literal('domeye_first_slice_candidate_manifest_v2'),
   base_commit: BaseCommit,
@@ -139,6 +203,7 @@ export const DomeyeFirstSliceCandidateManifestPayloadSchema = Type.Object({
   budget_policy: BudgetPolicySchema,
   policy: PolicySchema,
   registry: RegistrySchema,
+  attestation_policy: DomeyeFirstSliceAttestationPolicySchema,
   source_files: Type.Array(SourceFileSchema, {
     minItems: 2,
     uniqueItems: true,
@@ -149,9 +214,18 @@ export const DomeyeFirstSliceCandidateManifestPayloadSchema = Type.Object({
   }, { additionalProperties: false }),
 }, { additionalProperties: false })
 
-export type DomeyeFirstSliceCandidateManifestPayload = Static<
+type StrictDomeyeFirstSliceCandidateManifestPayload = Static<
   typeof DomeyeFirstSliceCandidateManifestPayloadSchema
 >
+
+// 旧的纯内存测试夹具只把该类型用作 Runtime binding 输入；磁盘 Manifest
+// 仍由上面的精确 schema 强制要求 attestation_policy。
+export type DomeyeFirstSliceCandidateManifestPayload = Omit<
+  StrictDomeyeFirstSliceCandidateManifestPayload,
+  'attestation_policy'
+> & {
+  readonly attestation_policy?: DomeyeFirstSliceAttestationPolicy
+}
 
 export const DomeyeFirstSliceCandidateManifestSchema = Type.Object({
   candidate_id: Type.String({
@@ -160,9 +234,16 @@ export const DomeyeFirstSliceCandidateManifestSchema = Type.Object({
   payload: DomeyeFirstSliceCandidateManifestPayloadSchema,
 }, { additionalProperties: false })
 
-export type DomeyeFirstSliceCandidateManifest = Static<
+type StrictDomeyeFirstSliceCandidateManifest = Static<
   typeof DomeyeFirstSliceCandidateManifestSchema
 >
+
+export type DomeyeFirstSliceCandidateManifest = Omit<
+  StrictDomeyeFirstSliceCandidateManifest,
+  'payload'
+> & {
+  readonly payload: DomeyeFirstSliceCandidateManifestPayload
+}
 
 export type DomeyeCandidateManifestErrorCode =
   | 'project_root_invalid'
@@ -173,6 +254,7 @@ export type DomeyeCandidateManifestErrorCode =
   | 'model_binding_invalid'
   | 'policy_binding_invalid'
   | 'registry_binding_invalid'
+  | 'attestation_policy_invalid'
   | 'source_binding_invalid'
   | 'runtime_closure_invalid'
   | 'source_file_path_invalid'
@@ -195,6 +277,23 @@ export interface LoadedDomeyeFirstSliceCandidateManifest {
   readonly manifest: DomeyeFirstSliceCandidateManifest
 }
 
+const verifiedLoadedCandidates = new WeakMap<object, {
+  readonly project_root: string
+}>()
+
+export function verifiedDomeyeFirstSliceCandidateProjectRoot(
+  value: LoadedDomeyeFirstSliceCandidateManifest,
+): string {
+  const metadata = verifiedLoadedCandidates.get(value)
+  if (!metadata) {
+    throw new DomeyeCandidateManifestError(
+      'manifest_file_invalid',
+      'Candidate 必须由 canonical loader 从受约束项目根加载',
+    )
+  }
+  return metadata.project_root
+}
+
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
     for (const child of Object.values(value as Record<string, unknown>)) {
@@ -211,8 +310,144 @@ export function domeyeFirstSliceCandidateId(
   return `manifest:sha256:${canonicalJsonSha256(payload)}`
 }
 
+export function parseDomeyeJsonWithoutDuplicateKeys(text: string): unknown {
+  let offset = 0
+  const skipWhitespace = (): void => {
+    while (/[ \t\r\n]/u.test(text[offset] ?? '')) offset += 1
+  }
+  const parseString = (): string => {
+    const start = offset
+    if (text[offset] !== '"') throw new SyntaxError('json_string_expected')
+    offset += 1
+    while (offset < text.length) {
+      if (text[offset] === '\\') {
+        offset += 2
+        continue
+      }
+      if (text[offset] === '"') {
+        offset += 1
+        return JSON.parse(text.slice(start, offset)) as string
+      }
+      offset += 1
+    }
+    throw new SyntaxError('json_string_unterminated')
+  }
+  const parseValue = (depth: number): unknown => {
+    if (depth > 256) throw new SyntaxError('json_depth_exceeded')
+    skipWhitespace()
+    if (text[offset] === '"') return parseString()
+    if (text[offset] === '{') {
+      offset += 1
+      skipWhitespace()
+      const entries: Array<[string, unknown]> = []
+      const keys = new Set<string>()
+      if (text[offset] === '}') {
+        offset += 1
+        return {}
+      }
+      while (true) {
+        skipWhitespace()
+        const key = parseString()
+        if (keys.has(key)) throw new SyntaxError('json_duplicate_key')
+        keys.add(key)
+        skipWhitespace()
+        if (text[offset] !== ':') throw new SyntaxError('json_colon_expected')
+        offset += 1
+        entries.push([key, parseValue(depth + 1)])
+        skipWhitespace()
+        if (text[offset] === '}') {
+          offset += 1
+          return Object.fromEntries(entries)
+        }
+        if (text[offset] !== ',') throw new SyntaxError('json_comma_expected')
+        offset += 1
+      }
+    }
+    if (text[offset] === '[') {
+      offset += 1
+      skipWhitespace()
+      const values: unknown[] = []
+      if (text[offset] === ']') {
+        offset += 1
+        return values
+      }
+      while (true) {
+        values.push(parseValue(depth + 1))
+        skipWhitespace()
+        if (text[offset] === ']') {
+          offset += 1
+          return values
+        }
+        if (text[offset] !== ',') throw new SyntaxError('json_comma_expected')
+        offset += 1
+      }
+    }
+    const remainder = text.slice(offset)
+    const token = /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/u
+      .exec(remainder)?.[0]
+    if (!token) throw new SyntaxError('json_value_expected')
+    offset += token.length
+    return JSON.parse(token) as unknown
+  }
+  const value = parseValue(0)
+  skipWhitespace()
+  if (offset !== text.length) throw new SyntaxError('json_trailing_content')
+  return value
+}
+
+function validateEd25519Attestor(
+  member: DomeyeFirstSliceAttestationPolicy['execution_evidence']
+    | DomeyeFirstSliceAttestationPolicy['independent_review'],
+): void {
+  try {
+    const der = Buffer.from(member.public_key_spki_der_base64, 'base64')
+    if (
+      der.length === 0
+      || der.toString('base64') !== member.public_key_spki_der_base64
+    ) throw new Error('spki_base64_noncanonical')
+    const key = createPublicKey({ key: der, format: 'der', type: 'spki' })
+    if (key.asymmetricKeyType !== 'ed25519') throw new Error('not_ed25519')
+    const canonicalDer = key.export({ format: 'der', type: 'spki' })
+    if (!Buffer.from(canonicalDer).equals(der)) {
+      throw new Error('spki_der_noncanonical')
+    }
+    const expectedKeyId = `ed25519-spki-sha256:${createHash('sha256')
+      .update(der).digest('hex')}`
+    if (member.key_id !== expectedKeyId) throw new Error('key_id_mismatch')
+  } catch {
+    throw new DomeyeCandidateManifestError(
+      'attestation_policy_invalid',
+      'Attestor 必须使用 canonical Ed25519 SPKI，且 key_id 必须由 SPKI DER 派生',
+    )
+  }
+}
+
+function assertAttestationPolicy(
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
+): void {
+  const policy = manifest.payload.attestation_policy
+  if (!policy) {
+    throw new DomeyeCandidateManifestError(
+      'attestation_policy_invalid',
+      'Candidate 必须绑定精确 attestation_policy',
+    )
+  }
+  validateEd25519Attestor(policy.execution_evidence)
+  validateEd25519Attestor(policy.independent_review)
+  if (
+    policy.execution_evidence.key_id === policy.independent_review.key_id
+    || policy.execution_evidence.actor_id
+      === policy.independent_review.actor_id
+  ) {
+    throw new DomeyeCandidateManifestError(
+      'attestation_policy_invalid',
+      '执行 Attestor 与独立 Reviewer 必须使用不同 actor 和不同 Ed25519 key',
+    )
+  }
+}
+
 function assertModelBinding(
-  manifest: DomeyeFirstSliceCandidateManifest,
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
 ): void {
   try {
     const url = new URL(manifest.payload.model.base_url)
@@ -280,7 +515,7 @@ function assertRuntimeSourcePairs(paths: ReadonlySet<string>): void {
 }
 
 function assertSourceManifest(
-  manifest: DomeyeFirstSliceCandidateManifest,
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
 ): FixedSourceDigests {
   const paths = manifest.payload.source_files.map((source) => source.path)
   if (new Set(paths).size !== paths.length) {
@@ -342,7 +577,7 @@ function assertSourceManifest(
 }
 
 function assertPolicyBinding(
-  manifest: DomeyeFirstSliceCandidateManifest,
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
 ): void {
   const policyHash = canonicalJsonSha256({
     tenant_id: 'domeye',
@@ -408,7 +643,7 @@ function expectedRegistryCapabilities(
 }
 
 function assertRegistryBinding(
-  manifest: DomeyeFirstSliceCandidateManifest,
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
   sourceDigests: FixedSourceDigests,
 ): void {
   const capabilities = expectedRegistryCapabilities(sourceDigests)
@@ -432,7 +667,7 @@ function assertRegistryBinding(
 
 export function parseDomeyeFirstSliceCandidateManifest(
   value: unknown,
-): DomeyeFirstSliceCandidateManifest {
+): StrictDomeyeFirstSliceCandidateManifest {
   if (!Check(DomeyeFirstSliceCandidateManifestSchema, value)) {
     throw new DomeyeCandidateManifestError(
       'manifest_schema_invalid',
@@ -450,6 +685,7 @@ export function parseDomeyeFirstSliceCandidateManifest(
   const sourceDigests = assertSourceManifest(manifest)
   assertPolicyBinding(manifest)
   assertRegistryBinding(manifest, sourceDigests)
+  assertAttestationPolicy(manifest)
   return deepFreeze(manifest)
 }
 
@@ -553,7 +789,7 @@ async function readManifestFile(
     )
   }
   try {
-    return JSON.parse(text) as unknown
+    return parseDomeyeJsonWithoutDuplicateKeys(text)
   } catch {
     throw new DomeyeCandidateManifestError(
       'manifest_json_invalid',
@@ -564,7 +800,7 @@ async function readManifestFile(
 
 async function verifySourceFiles(
   projectRoot: string,
-  manifest: DomeyeFirstSliceCandidateManifest,
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
 ): Promise<void> {
   for (const source of manifest.payload.source_files) {
     const path = await assertRegularFile(projectRoot, source.path)
@@ -574,6 +810,41 @@ async function verifySourceFiles(
       throw new DomeyeCandidateManifestError(
         'source_file_hash_mismatch',
         `source_files 摘要不一致：${source.path}`,
+      )
+    }
+  }
+}
+
+async function verifyAttestorSourceBindings(
+  projectRoot: string,
+  manifest: StrictDomeyeFirstSliceCandidateManifest,
+): Promise<void> {
+  const bindings = [
+    [EXECUTION_ATTESTOR_SOURCE_PATH, manifest.payload.attestation_policy!
+      .execution_evidence],
+    [REVIEWER_ATTESTOR_SOURCE_PATH, manifest.payload.attestation_policy!
+      .independent_review],
+  ] as const
+  for (const [path, member] of bindings) {
+    try {
+      const absolute = await assertRegularFile(projectRoot, path)
+      const value = parseDomeyeJsonWithoutDuplicateKeys(
+        await readFile(absolute, 'utf8'),
+      )
+      const expected = {
+        schema_version: 'domeye_first_slice_attestor_public_key_v1',
+        role: member.role,
+        algorithm: 'ed25519',
+        key_id: member.key_id,
+        public_key_spki_der_base64: member.public_key_spki_der_base64,
+      }
+      if (canonicalJsonSha256(value) !== canonicalJsonSha256(expected)) {
+        throw new Error('attestor_source_mismatch')
+      }
+    } catch {
+      throw new DomeyeCandidateManifestError(
+        'attestation_policy_invalid',
+        `Attestor 公钥来源文件与 Candidate 策略不一致：${path}`,
       )
     }
   }
@@ -589,6 +860,7 @@ export async function loadDomeyeFirstSliceCandidateManifest(
   const value = await readManifestFile(projectRoot, options.manifest_path)
   const manifest = parseDomeyeFirstSliceCandidateManifest(value)
   await verifySourceFiles(projectRoot, manifest)
+  await verifyAttestorSourceBindings(projectRoot, manifest)
   const candidate: DomeyeFirstSliceCandidateBinding = deepFreeze({
     candidate_id: manifest.candidate_id,
     contract_version: manifest.payload.contract.version,
@@ -604,9 +876,11 @@ export async function loadDomeyeFirstSliceCandidateManifest(
     policy: manifest.payload.policy,
     registry: manifest.payload.registry,
   })
-  return deepFreeze({
+  const loaded = deepFreeze({
     candidate,
     model_identity: manifest.payload.model,
     manifest,
   })
+  verifiedLoadedCandidates.set(loaded, { project_root: projectRoot })
+  return loaded
 }

@@ -1,0 +1,7 @@
+{
+  "schema_version": "domeye_first_slice_attestor_public_key_v1",
+  "role": "execution_evidence",
+  "algorithm": "ed25519",
+  "key_id": "ed25519-spki-sha256:77b6cf4878e19aa98161ed06d4076bbeeffd47f086d02f65e91961dc000fc53d",
+  "public_key_spki_der_base64": "MCowBQYDK2VwAyEAamxMc7yzmYMTNH7iCH0jrcgOod/9/Wj5xsCjjLsMzQM="
+}
