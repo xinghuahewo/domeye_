@@ -183,7 +183,6 @@ function nextGoalState(
   observation: DomeyeCapabilityObservation,
   actionReceipt: DomeyeActionReceipt | undefined,
   artifact: DomeyeArtifactEnvelope | undefined,
-  now: string,
 ): DomeyeGoalState {
   const completed = actionReceipt?.status === 'succeeded'
     ? [...new Set([
@@ -199,7 +198,7 @@ function nextGoalState(
       ? [...new Set([...state.artifact_ids, artifact.artifact_id])]
       : [...state.artifact_ids],
     last_observation_id: observation.observation_id,
-    updated_at_utc: now,
+    updated_at_utc: observation.created_at_utc,
   }) as DomeyeGoalState
 }
 
@@ -645,7 +644,6 @@ export class PiInteractiveAgentLoop {
             observation,
             undefined,
             undefined,
-            this.#now().toISOString(),
           )
           nextPrompt = observationPrompt(goal, state, observation, artifacts)
           continue
@@ -664,7 +662,6 @@ export class PiInteractiveAgentLoop {
           execution.observation,
           execution.receipt,
           execution.artifact ?? undefined,
-          this.#now().toISOString(),
         )
         nextPrompt = observationPrompt(
           goal,

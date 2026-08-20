@@ -545,6 +545,7 @@ function goalState(input: {
   artifactIds?: readonly string[]
   findingIds?: readonly string[]
   lastObservationId?: string | null
+  updatedAtUtc?: string
 }): DomeyeGoalState {
   return {
     schema_version: 'domeye_agent_goal_state_v1',
@@ -555,7 +556,7 @@ function goalState(input: {
     artifact_ids: [...(input.artifactIds ?? [])],
     finding_ids: [...(input.findingIds ?? [])],
     last_observation_id: input.lastObservationId ?? null,
-    updated_at_utc: NOW,
+    updated_at_utc: input.updatedAtUtc ?? NOW,
   }
 }
 
@@ -586,14 +587,17 @@ function seriesRead(
   }
 }
 
-function gateway(values: readonly (number | null)[]): DomeyeCapabilityGateway {
+function gateway(
+  values: readonly (number | null)[],
+  now: () => Date = () => new Date(NOW),
+): DomeyeCapabilityGateway {
   const readModel: CountryOutageSeriesReadModel = {
     async readMetricSeries() { return seriesRead(values) },
   }
   return new DomeyeCapabilityGateway({
     series_read_model: readModel,
     expected_series_response_sha256: SERIES_DIGEST,
-    now: () => new Date(NOW),
+    now,
   })
 }
 
@@ -642,6 +646,7 @@ async function buildCompletedResult(
   principalId = PRINCIPAL.userId,
   authorizationScopes: readonly string[] = ['country_outage:read'],
   admissionAttemptCounts: readonly [number, number] = [1, 2],
+  now: () => Date = () => new Date(NOW),
 ): Promise<Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }>> {
   const goalId = `goal-sha256:${canonicalJsonSha256({
     candidate_id: CANDIDATE_ID,
@@ -671,7 +676,7 @@ async function buildCompletedResult(
     principalId,
     authorizationScopes,
   })))
-  const executor = gateway(values)
+  const executor = gateway(values, now)
   const first = await executor.execute(firstDecision, [])
   assert.equal(first.status, 'succeeded')
   if (first.status !== 'succeeded') throw new Error('first action failed')
@@ -682,6 +687,7 @@ async function buildCompletedResult(
     completed: ['CAP-006'],
     artifactIds: [first.artifact.artifact_id],
     lastObservationId: first.observation.observation_id,
+    updatedAtUtc: first.observation.created_at_utc,
   })
   const secondDecision = admitted(kernel.admit(admissionRequest({
     proposal: proposal(goalId, 2, 'CAP-016', first.artifact.artifact_id),
@@ -705,6 +711,7 @@ async function buildCompletedResult(
     completed: ['CAP-006', 'CAP-016'],
     artifactIds: artifacts.map((artifact) => artifact.artifact_id),
     lastObservationId: second.observation.observation_id,
+    updatedAtUtc: now().toISOString(),
   })
   const resultFinding = buildCountryOutageSeriesExtremaFinding({
     series_artifact: first.artifact,
@@ -759,6 +766,7 @@ async function buildCompletedResult(
       artifactIds: artifacts.map((artifact) => artifact.artifact_id),
       findingIds: [resultFinding.finding_id],
       lastObservationId: second.observation.observation_id,
+      updatedAtUtc: now().toISOString(),
     }),
     loop: {
       goal_state: loopState,
@@ -1348,6 +1356,43 @@ test('turn 异步启动并在完成后发布结构化答案', async () => {
     ['first', 'last', 'minimum', 'maximum', 'difference', 'net_change']
       .map((field) => `${publishedFindingId}#/values/${field}`),
   )
+})
+
+test('公共服务对跨毫秒一致执行链仍发布 completed/true/true', async () => {
+  const startedAt = Date.parse(NOW) + 1
+  let elapsedMs = 0
+  const result = await buildCompletedResult(
+    [10, null, 5, 10],
+    PRINCIPAL.userId,
+    ['country_outage:read'],
+    [1, 2],
+    () => new Date(startedAt + elapsedMs++),
+  )
+  assert.notEqual(
+    result.loop.observations[0]?.created_at_utc,
+    result.loop.observations[1]?.created_at_utc,
+  )
+  const runtime = new RuntimeDouble(async () => structuredClone(result))
+  const conversationService = service(identityReceipt(), runtime)
+  const { conversation } = await createConversation(conversationService)
+
+  const started = await conversationService.createTurn(
+    PRINCIPAL,
+    conversation.conversation_id,
+    { question: DOMEYE_FIRST_SLICE_QUESTION, idempotency_key: 'turn-ms' },
+  )
+  await conversationService.waitForTurn(
+    conversation.conversation_id,
+    started.turn.turn_id,
+  )
+  const completed = await conversationService.getConversation(
+    PRINCIPAL,
+    conversation.conversation_id,
+  )
+  const turn = completed.turns[0]
+  assert.equal(turn?.state, 'completed')
+  assert.equal(turn?.answer_success, true)
+  assert.equal(turn?.workflow_completed, true)
 })
 
 test('只有匹配事件的认证读取 scope 才能派生运行时读取 scope', async () => {

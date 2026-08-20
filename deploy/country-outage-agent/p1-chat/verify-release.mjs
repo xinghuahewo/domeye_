@@ -828,6 +828,29 @@ function extractSuccessfulTurn(
   return { conversation, turn }
 }
 
+function verifyPromotionCompletionEnvelope(turn) {
+  const answer = turn?.answer
+  if (
+    turn?.state !== 'completed'
+    || turn.answer_success !== true
+    || turn.workflow_completed !== true
+    || !answer
+    || typeof answer !== 'object'
+    || Array.isArray(answer)
+    || answer.answerability !== 'supported'
+    || answer.answer_source !== 'renderer'
+    || !answer.finding
+    || typeof answer.finding !== 'object'
+    || Array.isArray(answer.finding)
+  ) {
+    fail(
+      'Backend Turn 未形成 completed/answer_success/workflow_completed '
+      + '的 supported Renderer 非空 Finding，不能晋级',
+    )
+  }
+  return answer
+}
+
 function verifySuccessfulTraceClosure(answer, candidatePayload) {
   const trace = answer?.trace
   const finding = answer?.finding
@@ -1200,7 +1223,7 @@ async function verifyPromotion(
     expectedConversationId,
     expectedTurnId,
   )
-  const answer = turn?.answer
+  const answer = verifyPromotionCompletionEnvelope(turn)
   verifySuccessfulTraceClosure(answer, verified.candidate.payload)
   verifySuccessfulProviderUsage(answer, verified.candidate.payload)
   const replayedAnswer = await replayTrustedFindingAnswerGuard(
@@ -1212,12 +1235,7 @@ async function verifyPromotion(
   if (
     !/^conversation_sha256_[a-f0-9]{64}$/.test(conversation?.conversation_id)
     || !/^turn_sha256_[a-f0-9]{64}$/.test(turn?.turn_id)
-    || turn?.state !== 'completed'
-    || turn.answer_success !== true
-    || turn.workflow_completed !== true
     || answer?.schema_version !== 'domeye_interactive_agent_turn_answer_v1'
-    || answer.answerability !== 'supported'
-    || answer.answer_source !== 'renderer'
     || typeof answer.answer_text !== 'string'
     || !answer.answer_text.trim()
     || answer.candidate_id !== verified.candidate.candidate_id
@@ -1316,6 +1334,12 @@ if (args[0] === '_test-promotion-binding') {
   const root = fixtureRoot()
   const response = readJson(fixtureFile(root, args[1]))
   extractExpectedConversationTurn(response, args[2], args[3], args[4])
+} else if (args[0] === '_test-promotion-completion-envelope') {
+  if (args.length !== 2) {
+    fail('用法：verify-release.mjs _test-promotion-completion-envelope <turn.json>')
+  }
+  const root = fixtureRoot()
+  verifyPromotionCompletionEnvelope(readJson(fixtureFile(root, args[1])))
 } else if (args[0] === '_test-provider-usage') {
   if (args.length !== 3) {
     fail('用法：verify-release.mjs _test-provider-usage <answer.json> <candidate.json>')

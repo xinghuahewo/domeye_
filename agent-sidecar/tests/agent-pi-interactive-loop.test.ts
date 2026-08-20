@@ -13,6 +13,7 @@ import {
   type CountryOutageSeriesReadModel,
 } from '../src/agent/capability-execution.js'
 import type {
+  DomeyeCapabilityObservation,
   DomeyeCapabilityProposal,
   DomeyeDataIdentity,
   DomeyeGoalDisposition,
@@ -301,6 +302,7 @@ function loop(
   steps: readonly ScriptStep[],
   readModel: CountryOutageSeriesReadModel,
   networkCalls = { value: 0 },
+  now: () => Date = () => new Date('2026-08-19T06:00:00Z'),
 ): PiInteractiveAgentLoop {
   return new PiInteractiveAgentLoop({
     model_binding: modelBinding,
@@ -320,11 +322,17 @@ function loop(
     capability_gateway: new DomeyeCapabilityGateway({
       series_read_model: readModel,
       expected_series_response_sha256: `sha256:${'9'.repeat(64)}`,
-      now: () => new Date('2026-08-19T06:00:00Z'),
+      now,
     }),
     session_factory: scriptedSessionFactory(steps, networkCalls),
-    now: () => new Date('2026-08-19T06:00:00Z'),
+    now,
   })
+}
+
+function advancingClock(): () => Date {
+  const startedAt = Date.parse('2026-08-19T06:00:00.001Z')
+  let elapsedMs = 0
+  return () => new Date(startedAt + elapsedMs++)
 }
 
 function cap006(prompt: Record<string, unknown>): DomeyeCapabilityProposal {
@@ -462,6 +470,82 @@ test('真实交互顺序为 CAP-006 Observation 后才提出 CAP-016', async () 
   assert.equal(networkCalls.value, 3)
   assert.equal(result.decision_protocol_rejections.length, 0)
   assert.equal(result.disposition.disposition, 'goal_satisfied')
+})
+
+test('真实递增时钟下成功 Goal State 精确继承对应 Observation 时间', async () => {
+  const networkCalls = { value: 0 }
+  const runtime = loop([
+    (prompt) => ({ proposals: [cap006(prompt)] }),
+    (prompt) => {
+      const state = prompt.goal_state as DomeyeGoalState
+      const observation = prompt.observation as DomeyeCapabilityObservation
+      assert.equal(state.updated_at_utc, observation.created_at_utc)
+      return { proposals: [cap016(prompt)] }
+    },
+    (prompt) => {
+      const state = prompt.goal_state as DomeyeGoalState
+      const observation = prompt.observation as DomeyeCapabilityObservation
+      assert.equal(state.updated_at_utc, observation.created_at_utc)
+      return {
+        dispositions: [goalDisposition(
+          prompt,
+          'goal_satisfied',
+          'finding_input_ready',
+        )],
+      }
+    },
+  ], readModel, networkCalls, advancingClock())
+
+  const result = await runtime.run(goal, initialState)
+  assert.equal(result.goal_state.status, 'answer_pending')
+  assert.equal(result.observations.length, 2)
+  assert.ok(
+    Date.parse(result.goal_state.updated_at_utc)
+      > Date.parse(result.observations[1]!.created_at_utc),
+  )
+})
+
+test('真实递增时钟下 rejected Goal State 精确继承拒绝 Observation 时间', async () => {
+  const runtime = loop([
+    (prompt) => {
+      const state = prompt.goal_state as DomeyeGoalState
+      return {
+        proposals: [{
+          schema_version: 'domeye_agent_capability_proposal_v1',
+          goal_id: goal.goal_id,
+          goal_state_revision: state.state_revision,
+          rationale: '敌对地跳过读取',
+          capability_id: 'CAP-016',
+          input: {
+            metric: 'fixed_visible_ipv4_address_count',
+            source_artifact_id: 'artifact-not-present',
+            tie_policy: 'first_observed_occurrence',
+          },
+        }],
+      }
+    },
+    (prompt) => {
+      const state = prompt.goal_state as DomeyeGoalState
+      const observation = prompt.observation as DomeyeCapabilityObservation
+      assert.equal(observation.status, 'rejected')
+      assert.equal(state.updated_at_utc, observation.created_at_utc)
+      return {
+        dispositions: [goalDisposition(
+          prompt,
+          'stopped',
+          'source_artifact_missing',
+        )],
+      }
+    },
+  ], readModel, { value: 0 }, advancingClock())
+
+  const result = await runtime.run(goal, initialState)
+  assert.equal(result.goal_state.status, 'stopped')
+  assert.equal(result.observations[0]?.status, 'rejected')
+  assert.ok(
+    Date.parse(result.goal_state.updated_at_utc)
+      > Date.parse(result.observations[0]!.created_at_utc),
+  )
 })
 
 test('Finding 输入 ready 后拒绝澄清、停止与错误成功原因，并精确重问', async () => {

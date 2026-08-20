@@ -202,6 +202,39 @@ assert_fails '旧正确 Turn 不得晋级' \
     "${FIXTURE_ROOT}/promotion-binding-stale-turn.json" \
     "${CONVERSATION_ID}" "${TURN_ID}" "${FIXED_QUESTION}"
 
+# promotion 必须先验证 Turn 的公开成功终态，再深查 Finding 与 trace 引用；
+# stopped 不能被误报为 Finding 引用不闭合。
+jq -n '{
+  state:"completed",
+  answer_success:true,
+  workflow_completed:true,
+  answer:{
+    answerability:"supported",
+    answer_source:"renderer",
+    finding:{finding_id:"finding-fixture"}
+  }
+}' > "${FIXTURE_ROOT}/promotion-completion-good.json"
+verifier _test-promotion-completion-envelope \
+    "${FIXTURE_ROOT}/promotion-completion-good.json" \
+    || fail 'promotion 基础成功终态未通过'
+jq '
+  .state="stopped" |
+  .answer_success=false |
+  .workflow_completed=false |
+  .answer={answerability:"stopped",answer_source:"none",finding:null}
+' "${FIXTURE_ROOT}/promotion-completion-good.json" \
+    > "${FIXTURE_ROOT}/promotion-completion-stopped.json"
+assert_fails 'stopped Turn 不得进入 Finding/trace 深查' \
+    verifier _test-promotion-completion-envelope \
+    "${FIXTURE_ROOT}/promotion-completion-stopped.json"
+grep -F 'Backend Turn 未形成 completed/answer_success/workflow_completed' \
+    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
+    || fail 'stopped Turn 未命中 promotion 基础成功终态门'
+if grep -F 'Finding receipt_refs/artifact_refs' \
+    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null; then
+    fail 'stopped Turn 被误报为 Finding 引用不闭合'
+fi
+
 # 来源门从固定 checkout 验 annotated tag，并精确比对规范解包树。
 readonly TRUSTED_CHECKOUT="${FIXTURE_ROOT}/trusted-checkout"
 readonly TRUSTED_ORIGIN="${FIXTURE_ROOT}/trusted-origin.git"
