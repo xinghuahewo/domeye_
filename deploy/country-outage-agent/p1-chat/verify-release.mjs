@@ -96,6 +96,42 @@ function exactZeroToleranceCounts(value) {
     && Object.values(value).every((count) => count === 0)
 }
 
+function verifyFormalPublicCompletionTrials(j1Trials, candidateId) {
+  const ordinals = j1Trials.map((item) => item.payload?.ordinal)
+  if (
+    j1Trials.length !== 30
+    || !sameValue([...ordinals].sort((left, right) => left - right),
+      Array.from({ length: 30 }, (_, index) => index + 1))
+    || j1Trials.some((item) =>
+      item.payload?.journey_id !== 'J1'
+      || item.payload?.candidate_id !== candidateId
+      || item.payload?.first_attempt !== true
+      || item.payload?.human_intervention !== false
+      || item.payload?.workflow_completed !== true
+      || item.payload?.answer_success !== true
+      || item.payload?.passed !== true
+      || item.payload?.public_completion_gate_passed !== true
+      || item.payload?.answer_source !== 'renderer'
+      || item.payload?.evidence?.outcome !== 'completed'
+      || item.payload?.evidence?.response_guard?.decision !== 'pass'
+      || item.payload?.evidence?.response_guard?.answer_source !== 'renderer'
+      || !Array.isArray(item.payload?.evidence?.response_guard?.reason_codes)
+      || item.payload.evidence.response_guard.reason_codes.length !== 0
+      || !Array.isArray(item.payload?.evidence?.decision_protocol_rejections)
+      || item.payload.evidence.decision_protocol_rejections.length !== 0
+      || !Array.isArray(item.payload?.evidence?.usage?.attempts)
+      || item.payload.evidence.usage.attempts.some(
+        (attempt) => attempt?.outcome !== 'completed',
+      )
+      || item.payload?.zero_tolerance_assessment?.status !== 'complete'
+      || !Array.isArray(item.payload?.failure_codes)
+      || item.payload.failure_codes.length !== 0
+      || !exactZeroToleranceCounts(item.payload?.zero_tolerance_counts)
+      || canonical(item.payload).includes('deterministic_fallback')
+      || canonical(item.payload).includes('answer_not_accepted'))
+  ) fail('发布级 raw evidence 不是 30/30 Renderer 公开完成门成功')
+}
+
 function regularFile(path) {
   const normalized = resolve(path)
   let stats
@@ -576,38 +612,7 @@ async function verifyAcceptance(root, release, candidate) {
   const j1Trials = readJsonLines(evidencePath).filter(
     (item) => item.record_type === 'j1_trial',
   )
-  const ordinals = j1Trials.map((item) => item.payload?.ordinal)
-  if (
-    j1Trials.length !== 30
-    || !sameValue([...ordinals].sort((left, right) => left - right),
-      Array.from({ length: 30 }, (_, index) => index + 1))
-    || j1Trials.some((item) =>
-      item.payload?.journey_id !== 'J1'
-      || item.payload?.candidate_id !== candidate.candidate_id
-      || item.payload?.first_attempt !== true
-      || item.payload?.human_intervention !== false
-      || item.payload?.workflow_completed !== true
-      || item.payload?.answer_success !== true
-      || item.payload?.passed !== true
-      || item.payload?.answer_source !== 'renderer'
-      || item.payload?.evidence?.outcome !== 'completed'
-      || item.payload?.evidence?.response_guard?.decision !== 'pass'
-      || item.payload?.evidence?.response_guard?.answer_source !== 'renderer'
-      || !Array.isArray(item.payload?.evidence?.response_guard?.reason_codes)
-      || item.payload.evidence.response_guard.reason_codes.length !== 0
-      || !Array.isArray(item.payload?.evidence?.decision_protocol_rejections)
-      || item.payload.evidence.decision_protocol_rejections.length !== 0
-      || !Array.isArray(item.payload?.evidence?.usage?.attempts)
-      || item.payload.evidence.usage.attempts.some(
-        (attempt) => attempt?.outcome !== 'completed',
-      )
-      || item.payload?.zero_tolerance_assessment?.status !== 'complete'
-      || !Array.isArray(item.payload?.failure_codes)
-      || item.payload.failure_codes.length !== 0
-      || !exactZeroToleranceCounts(item.payload?.zero_tolerance_counts)
-      || canonical(item.payload).includes('deterministic_fallback')
-      || canonical(item.payload).includes('answer_not_accepted'))
-  ) fail('发布级 raw evidence 不是 30/30 Renderer 完整成功')
+  verifyFormalPublicCompletionTrials(j1Trials, candidate.candidate_id)
   const reviewPath = regularFile(join(dirname(path), 'independent-review.json'))
   const review = readJson(reviewPath)
   const embedded = { ...record.independent_review }
@@ -1348,6 +1353,14 @@ if (args[0] === '_test-promotion-binding') {
   const answer = readJson(fixtureFile(root, args[1]))
   const candidate = readJson(fixtureFile(root, args[2]))
   verifySuccessfulProviderUsage(answer, candidate.payload)
+} else if (args[0] === '_test-formal-public-completion-trials') {
+  if (args.length !== 3) {
+    fail('用法：verify-release.mjs _test-formal-public-completion-trials <trials.json> <candidate-id>')
+  }
+  const root = fixtureRoot()
+  const fixture = readJson(fixtureFile(root, args[1]))
+  if (!Array.isArray(fixture.trials)) fail('trials 必须是数组')
+  verifyFormalPublicCompletionTrials(fixture.trials, args[2])
 } else if (args[0] === 'acceptance-replay') {
   if (args.length !== 3) {
     fail('用法：verify-release.mjs acceptance-replay <project-root> <acceptance-record-relative-path>')

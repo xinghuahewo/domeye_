@@ -31,6 +31,7 @@ import {
 import {
   DomeyeConversationError,
   DomeyeInteractiveConversationService,
+  hasSuccessfulDomeyePublicFinalAnswer,
   type DomeyeConversationTurn,
   type DomeyeInteractiveNonSuccessfulTurnAnswer,
   type DomeyeInteractiveSuccessfulTurnAnswer,
@@ -140,17 +141,27 @@ function referenceDigest(reference: string): string {
 }
 
 function identityReceipt(): DomeyeVerifiedIdentityReceipt {
-  return {
-    schema_version: 'domeye_verified_data_identity_receipt_v1',
-    receipt_id: 'identity-receipt-1',
+  const resolverResponseSha256 = 'b'.repeat(64)
+  const overviewResponseSha256 = 'c'.repeat(64)
+  const receiptBody = {
     candidate_id: CANDIDATE_ID,
     reference_sha256: referenceDigest(EVENT_REFERENCE),
     data_identity: structuredClone(IDENTITY),
-    resolver_response_sha256: 'b'.repeat(64),
-    overview_response_sha256: 'c'.repeat(64),
-    evidence_refs: ['domeye:/api/v2/events/resolve', 'domeye:/overview'],
-    immutable: true,
+    resolver_response_sha256: resolverResponseSha256,
+    overview_response_sha256: overviewResponseSha256,
     verified_at_utc: NOW,
+  }
+  return {
+    schema_version: 'domeye_verified_data_identity_receipt_v1',
+    receipt_id: `identity-receipt-sha256:${referenceDigest(
+      JSON.stringify(receiptBody),
+    )}`,
+    ...receiptBody,
+    evidence_refs: [
+      `domeye:evidence:resolver:sha256:${resolverResponseSha256}`,
+      `domeye:evidence:overview:sha256:${overviewResponseSha256}`,
+    ],
+    immutable: true,
   }
 }
 
@@ -1242,6 +1253,55 @@ async function createConversation(
     idempotency_key: 'create-1',
   })
 }
+
+test('共享公开完成门只接受正确 Renderer 与匹配 principal/receipt', () => {
+  const result = successfulResult()
+  assert.equal(
+    hasSuccessfulDomeyePublicFinalAnswer(
+      result,
+      CANDIDATE,
+      identityReceipt(),
+      PRINCIPAL.userId,
+    ),
+    true,
+  )
+  assert.equal(
+    hasSuccessfulDomeyePublicFinalAnswer(
+      result,
+      CANDIDATE,
+      identityReceipt(),
+      'different-user',
+    ),
+    false,
+  )
+  assert.equal(
+    hasSuccessfulDomeyePublicFinalAnswer(
+      result,
+      CANDIDATE,
+      { ...identityReceipt(), receipt_id: 'identity-receipt-tampered' },
+      PRINCIPAL.userId,
+    ),
+    false,
+  )
+  assert.equal(
+    hasSuccessfulDomeyePublicFinalAnswer(
+      knownFallbackResult(),
+      CANDIDATE,
+      identityReceipt(),
+      PRINCIPAL.userId,
+    ),
+    false,
+  )
+  assert.equal(
+    hasSuccessfulDomeyePublicFinalAnswer(
+      clarificationResult(),
+      CANDIDATE,
+      identityReceipt(),
+      PRINCIPAL.userId,
+    ),
+    false,
+  )
+})
 
 test('会话冻结验证回执并以中性事件引用绑定同一 Candidate', async () => {
   const sourceReceipt = identityReceipt()

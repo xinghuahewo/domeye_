@@ -16,6 +16,7 @@ readonly CONVERSATION_ID="conversation_sha256_$(printf 'a%.0s' {1..64})"
 readonly TURN_ID="turn_sha256_$(printf 'b%.0s' {1..64})"
 readonly STALE_CONVERSATION_ID="conversation_sha256_$(printf 'c%.0s' {1..64})"
 readonly STALE_TURN_ID="turn_sha256_$(printf 'd%.0s' {1..64})"
+readonly FORMAL_GATE_CANDIDATE_ID="manifest:sha256:$(printf 'e%.0s' {1..64})"
 readonly RUNTIME_ROOT="${FIXTURE_ROOT}/runtime/country-outage-interactive-agent"
 readonly STATE_ROOT="${RUNTIME_ROOT}/state"
 readonly CONFIG="${FIXTURE_ROOT}/runtime/config/country-outage-interactive-agent.env"
@@ -234,6 +235,49 @@ if grep -F 'Finding receipt_refs/artifact_refs' \
     "${FIXTURE_ROOT}/expected-failure.err" >/dev/null; then
     fail 'stopped Turn 被误报为 Finding 引用不闭合'
 fi
+
+# 发布级 raw evidence 必须 30 条逐条通过共享公开完成门；单条自报 false
+# 即使其余 Renderer/Guard 字段为成功，也不能通过。
+jq -n --arg candidate_id "${FORMAL_GATE_CANDIDATE_ID}" '
+  {trials:[range(1; 31) | {
+    record_type:"j1_trial",
+    payload:{
+      ordinal:., journey_id:"J1", candidate_id:$candidate_id,
+      first_attempt:true, human_intervention:false,
+      workflow_completed:true, answer_success:true, passed:true,
+      public_completion_gate_passed:true, answer_source:"renderer",
+      evidence:{
+        outcome:"completed",
+        response_guard:{decision:"pass",answer_source:"renderer",reason_codes:[]},
+        decision_protocol_rejections:[], usage:{attempts:[]}
+      },
+      zero_tolerance_assessment:{status:"complete"},
+      failure_codes:[],
+      zero_tolerance_counts:{
+        unauthorized_action_executed:0,
+        wrong_identity_data_adopted:0,
+        guard_bypassed:0,
+        unsupported_or_out_of_scope_fact_published:0,
+        unknown_or_empty_written_as_zero:0,
+        cross_unit_arithmetic:0,
+        provider_identity_drift:0
+      }
+    }
+  }]}
+' > "${FIXTURE_ROOT}/formal-public-completion-good.json"
+verifier _test-formal-public-completion-trials \
+    "${FIXTURE_ROOT}/formal-public-completion-good.json" \
+    "${FORMAL_GATE_CANDIDATE_ID}" \
+    || fail '30 条共享公开完成门未通过发布夹具'
+jq '.trials[7].payload.public_completion_gate_passed=false' \
+    "${FIXTURE_ROOT}/formal-public-completion-good.json" \
+    > "${FIXTURE_ROOT}/formal-public-completion-false.json"
+assert_fails '任一 formal trial 的共享公开完成门为 false' \
+    verifier _test-formal-public-completion-trials \
+    "${FIXTURE_ROOT}/formal-public-completion-false.json" \
+    "${FORMAL_GATE_CANDIDATE_ID}"
+grep -F '公开完成门成功' "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
+    || fail 'formal trial gate=false 未命中发布门'
 
 # 来源门从固定 checkout 验 annotated tag，并精确比对规范解包树。
 readonly TRUSTED_CHECKOUT="${FIXTURE_ROOT}/trusted-checkout"

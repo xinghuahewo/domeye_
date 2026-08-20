@@ -15,10 +15,6 @@ import {
   runFirstVerticalSliceEvaluation,
   writeEvaluationArtifacts,
 } from './evaluator.mjs'
-import {
-  createQualifiedFirstSliceEvidence,
-} from './adversarial-driver.mjs'
-
 const {
   DOMEYE_FIRST_SLICE_QUESTION,
   DomeyeFirstSliceRunError,
@@ -26,6 +22,16 @@ const {
   '../../../agent-sidecar/src/agent/first-slice-runtime.ts'
 )
 const {
+  DomeyeCapabilityGateway,
+} = await import(
+  '../../../agent-sidecar/src/agent/capability-execution.ts'
+)
+const {
+  DomeyeTrustKernel,
+} = await import('../../../agent-sidecar/src/agent/trust-kernel.ts')
+const {
+  buildCountryOutageAnswerContext,
+  buildCountryOutageSeriesExtremaFinding,
   guardCountryOutageResponse,
   renderCountryOutageDeterministicFallback,
 } = await import(
@@ -42,7 +48,6 @@ after(() => {
 
 const sha = (character) => `sha256:${character.repeat(64)}`
 const candidateId = `manifest:sha256:${'c'.repeat(64)}`
-const driverGoalId = 'goal-first-slice-adversarial-evaluation'
 const driverNow = '2026-08-19T08:00:00.000Z'
 
 const dataIdentity = {
@@ -249,12 +254,174 @@ function receivedJudgments(overrides = {}) {
   )
 }
 
+function evaluationGoalState({
+  goalId,
+  revision,
+  completed = [],
+  artifactIds = [],
+  lastObservationId = null,
+  updatedAtUtc = driverNow,
+}) {
+  return {
+    schema_version: 'domeye_agent_goal_state_v1',
+    goal_id: goalId,
+    state_revision: revision,
+    status: 'active',
+    completed_capability_ids: [...completed],
+    artifact_ids: [...artifactIds],
+    finding_ids: [],
+    last_observation_id: lastObservationId,
+    updated_at_utc: updatedAtUtc,
+  }
+}
+
+function evaluationProposal(goalState, capabilityId, sourceArtifactId = null) {
+  return {
+    schema_version: 'domeye_agent_capability_proposal_v1',
+    goal_id: goalState.goal_id,
+    goal_state_revision: goalState.state_revision,
+    capability_id: capabilityId,
+    input: capabilityId === 'CAP-006'
+      ? { metric: 'fixed_visible_ipv4_address_count' }
+      : {
+          metric: 'fixed_visible_ipv4_address_count',
+          source_artifact_id: sourceArtifactId,
+          tie_policy: 'first_observed_occurrence',
+        },
+    rationale: '构造规范公开完成门的离线评测输入。',
+  }
+}
+
+function evaluationAdmissionRequest({
+  goalState,
+  proposal,
+  sequence,
+  actionHistory = [],
+  artifacts = [],
+}) {
+  return {
+    proposal,
+    proposal_sequence: sequence,
+    goal_state: goalState,
+    principal: {
+      principal_id: 'first-slice-adversarial-evaluator',
+      authorization_scopes: ['country_outage:read'],
+    },
+    tenant_id: 'domeye',
+    data_identity: dataIdentity,
+    candidate_id: candidateId,
+    policy,
+    registry,
+    revocation: {
+      state: 'not_revoked',
+      checked_at_utc: driverNow,
+      reason_code: null,
+    },
+    model_api_attempts_used: sequence,
+    action_history: actionHistory,
+    artifacts,
+    admitted_at_utc: driverNow,
+  }
+}
+
+async function qualifiedPublicCompletionEvidence(seriesOverrides = {}) {
+  const start = Date.parse(dataIdentity.window_start_utc)
+  const end = Date.parse(dataIdentity.window_end_utc)
+  const timestamps = []
+  const values = []
+  for (let current = start; current <= end; current += 5 * 60 * 1_000) {
+    timestamps.push(new Date(current).toISOString().replace('.000Z', 'Z'))
+    values.push(10_000_000)
+  }
+  values[0] = 10_156_800
+  values[timestamps.indexOf('2026-02-28T14:35:00Z')] = 9_577_728
+  values[values.length - 1] = 10_069_760
+  const read = {
+    data_identity: dataIdentity,
+    metric: 'fixed_visible_ipv4_address_count',
+    unit: 'unique_ipv4_address',
+    population_definition:
+      'normalized_deduplicated_merged_fixed_prefix_ipv4_unique_address_union',
+    timestamps_utc: timestamps,
+    values,
+    definition: '固定 cohort 的 IPv4 唯一地址并集可见量。',
+    source_response_sha256: manifestPayload.series_response_sha256,
+    completeness: { state: 'complete', missing_slot_count: 0 },
+    evidence_refs: [
+      'domeye:/series#/timestamps',
+      'domeye:/series#/tracks/fixed_visible_ipv4_address_count',
+    ],
+    ...seriesOverrides,
+  }
+  const goalId = `goal-sha256:${canonicalJsonSha256({
+    candidate_id: candidateId,
+    question: DOMEYE_FIRST_SLICE_QUESTION,
+    data_identity: dataIdentity,
+  })}`
+  const kernel = new DomeyeTrustKernel()
+  const gateway = new DomeyeCapabilityGateway({
+    series_read_model: { async readMetricSeries() { return read } },
+    expected_series_response_sha256: manifestPayload.series_response_sha256,
+    now: () => new Date(driverNow),
+  })
+  const initialState = evaluationGoalState({ goalId, revision: 1 })
+  const firstDecision = kernel.admit(evaluationAdmissionRequest({
+    goalState: initialState,
+    proposal: evaluationProposal(initialState, 'CAP-006'),
+    sequence: 1,
+  }))
+  assert.equal(firstDecision.status, 'admitted')
+  if (firstDecision.status !== 'admitted') throw new Error('first_not_admitted')
+  const first = await gateway.execute(firstDecision, [])
+  assert.equal(first.status, 'succeeded')
+  if (first.status !== 'succeeded') throw new Error('first_not_succeeded')
+  const secondState = evaluationGoalState({
+    goalId,
+    revision: 2,
+    completed: ['CAP-006'],
+    artifactIds: [first.artifact.artifact_id],
+    lastObservationId: first.observation.observation_id,
+    updatedAtUtc: first.observation.created_at_utc,
+  })
+  const secondDecision = kernel.admit(evaluationAdmissionRequest({
+    goalState: secondState,
+    proposal: evaluationProposal(
+      secondState,
+      'CAP-016',
+      first.artifact.artifact_id,
+    ),
+    sequence: 2,
+    actionHistory: [first.receipt],
+    artifacts: [first.artifact],
+  }))
+  assert.equal(secondDecision.status, 'admitted')
+  if (secondDecision.status !== 'admitted') throw new Error('second_not_admitted')
+  const second = await gateway.execute(secondDecision, [first.artifact])
+  assert.equal(second.status, 'succeeded')
+  if (second.status !== 'succeeded') throw new Error('second_not_succeeded')
+  const finding = buildCountryOutageSeriesExtremaFinding({
+    series_artifact: first.artifact,
+    series_receipt: first.receipt,
+    extrema_artifact: second.artifact,
+    extrema_receipt: second.receipt,
+  })
+  return {
+    goalId,
+    admissions: [firstDecision.receipt, secondDecision.receipt],
+    receipts: [first.receipt, second.receipt],
+    artifacts: [first.artifact, second.artifact],
+    observations: [first.observation, second.observation],
+    finding,
+    context: buildCountryOutageAnswerContext(
+      finding,
+      manifestPayload.contract.digest,
+    ),
+  }
+}
+
 async function successfulJ1Result(ordinal, seriesOverrides = {}) {
-  const qualified = await createQualifiedFirstSliceEvidence(
-    loadedCandidate.candidate,
-    seriesOverrides,
-  )
-  const goalId = driverGoalId
+  const qualified = await qualifiedPublicCompletionEvidence(seriesOverrides)
+  const goalId = qualified.goalId
   const semanticGoal = {
     schema_version: 'domeye_agent_semantic_goal_v1',
     goal_id: goalId,
@@ -596,6 +763,18 @@ test('默认 30 次；离线 6 次正确统计且外部自报不能形成 GO', a
     },
   })
   assert.equal(callCount, 6)
+  assert.deepEqual(
+    result.j1_records.map((trial) => trial.public_completion_gate_passed),
+    [true, true, true, true, true, false],
+  )
+  assert.deepEqual(result.binding.runtime_principal_binding, {
+    principal_id: 'first-slice-adversarial-evaluator',
+    authorization_scopes: ['country_outage:read'],
+  })
+  assert.deepEqual(
+    result.summary.runtime_principal_binding,
+    result.binding.runtime_principal_binding,
+  )
   assert.ok(result.j1_records.every((trial, index) =>
     trial.evaluation_run_id === result.summary.evaluation_run_id
       && trial.trial_id
@@ -613,6 +792,7 @@ test('默认 30 次；离线 6 次正确统计且外部自报不能形成 GO', a
   assert.deepEqual(result.summary.j1.failure_classification, {
     evidence_incomplete: 1,
     provider_call_failed: 1,
+    public_completion_gate_rejected: 1,
   })
   assert.equal(
     result.j1_records[5].zero_tolerance_assessment.status,
@@ -775,12 +955,17 @@ test('算术自洽但偏离 frozen oracle 的 extrema 仍判 J1 失败', async (
     now: advancingClock(),
     run_j1_trial: async () => await successfulJ1Result(1, { values }),
   })
-  assert.equal(result.j1_records[0].passed, false)
-  assert.ok(result.j1_records[0].failure_codes.includes(
+  const trial = result.j1_records[0]
+  assert.equal(trial.public_completion_gate_passed, true)
+  assert.equal(trial.passed, false)
+  assert.equal(trial.workflow_completed, false)
+  assert.equal(trial.answer_success, false)
+  assert.deepEqual(trial.failure_codes, [
     'extrema_oracle_mismatch',
-  ))
-  assert.ok(result.j1_records[0].failure_codes.includes(
     'finding_oracle_mismatch',
+  ])
+  assert.ok(!result.summary.evidence_gate.reason_codes.includes(
+    'public_completion_gate_rejected',
   ))
   const outputRoot = mkdtempSync(join(tmpdir(), 'first-slice-wrong-oracle-'))
   roots.push(outputRoot)
@@ -791,6 +976,38 @@ test('算术自洽但偏离 frozen oracle 的 extrema 仍判 J1 失败', async (
     evidence_jsonl: evidenceJsonl,
     independent_review: rejectedReview(result, evidenceJsonl),
   }), /evidence_j1_formal_batch_invalid/)
+})
+
+test('旧核心断言可接受的 3ms observation 时间漂移仍被共享公开门拒绝', async () => {
+  const result = await runFirstVerticalSliceEvaluation({
+    loaded_candidate: loadedCandidate,
+    execution_mode: 'offline_test',
+    execution_actor_id: 'offline-execution-agent',
+    runs: 1,
+    drive_adversarial_cases: true,
+    now: advancingClock(),
+    run_j1_trial: async () => {
+      const value = structuredClone(await successfulJ1Result(1))
+      const observation = value.loop.observations[1]
+      observation.created_at_utc = new Date(
+        Date.parse(observation.created_at_utc) + 3,
+      ).toISOString()
+      value.loop.observations[1] = reissueObservation(observation)
+      value.loop.goal_state.last_observation_id =
+        value.loop.observations[1].observation_id
+      value.goal_state.last_observation_id =
+        value.loop.observations[1].observation_id
+      return value
+    },
+  })
+  const trial = result.j1_records[0]
+  assert.equal(trial.public_completion_gate_passed, false)
+  assert.deepEqual(trial.failure_codes, [
+    'public_completion_gate_rejected',
+  ])
+  assert.equal(trial.workflow_completed, false)
+  assert.equal(trial.answer_success, false)
+  assert.equal(trial.passed, false)
 })
 
 test('J1 拒绝错误 finding_input、旧完成原因码与旧 loop satisfied', async () => {
@@ -878,6 +1095,10 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
   assert.equal(fallback.j1_records[0].workflow_completed, false)
   assert.equal(fallback.j1_records[0].answer_success, false)
   assert.equal(fallback.j1_records[0].passed, false)
+  assert.equal(
+    fallback.j1_records[0].public_completion_gate_passed,
+    false,
+  )
   assert.equal(fallback.j1_records[0].answer_source, null)
   assert.ok(fallback.j1_records[0].failure_codes.includes(
     'correct_final_answer_missing',
@@ -966,6 +1187,11 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
   )
   assert.equal(
     locallyInvalidRendererFallback.j1_records[0].answer_success,
+    false,
+  )
+  assert.equal(
+    locallyInvalidRendererFallback.j1_records[0]
+      .public_completion_gate_passed,
     false,
   )
   assert.equal(locallyInvalidRendererFallback.j1_records[0].passed, false)
@@ -1155,6 +1381,7 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
   assert.deepEqual(rejectedLimitFallback.j1_records[0].failure_codes, [
     'answer_not_accepted',
     'correct_final_answer_missing',
+    'public_completion_gate_rejected',
   ])
 
   const wrongLimitCode = await runFirstVerticalSliceEvaluation({
@@ -1253,6 +1480,34 @@ test('J1 拒绝自洽重签但越界的准入与非确定性 identity receipt', 
   assert.ok(result.j1_records[1].failure_codes.includes(
     'identity_receipt_invalid',
   ))
+  assert.deepEqual(
+    result.j1_records.map((trial) => trial.public_completion_gate_passed),
+    [false, false],
+  )
+})
+
+test('固定 runtime principal 与执行回执 principal 漂移时公开门拒绝', async () => {
+  const result = await runFirstVerticalSliceEvaluation({
+    loaded_candidate: loadedCandidate,
+    execution_mode: 'offline_test',
+    execution_actor_id: 'offline-execution-agent',
+    runtime_principal_binding: {
+      principal_id: 'forged-evaluation-principal',
+      authorization_scopes: ['country_outage:read'],
+    },
+    runs: 1,
+    drive_adversarial_cases: true,
+    now: advancingClock(),
+    run_j1_trial: async () => await successfulJ1Result(1),
+  })
+  assert.deepEqual(result.summary.runtime_principal_binding, {
+    principal_id: 'forged-evaluation-principal',
+    authorization_scopes: ['country_outage:read'],
+  })
+  assert.equal(result.j1_records[0].public_completion_gate_passed, false)
+  assert.deepEqual(result.j1_records[0].failure_codes, [
+    'public_completion_gate_rejected',
+  ])
 })
 
 test('安全停止与 structured failure 都形成可复核失败闭包；正确拒绝不能伪报完成', async () => {
@@ -1385,6 +1640,10 @@ test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充
   )
   assert.equal(target.loaded_candidate, loadedCandidate)
   assert.equal(target.execution_mode, 'offline_test')
+  assert.deepEqual(target.runtime_principal_binding, {
+    principal_id: 'evaluation-principal',
+    authorization_scopes: ['country_outage:read'],
+  })
   assert.equal(target.runtime_source_binding.source_scope, 'agent-sidecar/src')
   assert.equal(typeof target.run_j1_trial, 'function')
   assert.equal(calls.length, 2)
@@ -1477,6 +1736,7 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
       trial.passed,
       trial.answer_source,
     ], [false, false, false, null])
+    assert.equal(trial.public_completion_gate_passed, false)
   }
   assert.deepEqual([4, 5, 7].map((ordinal) =>
     result.j1_records[ordinal - 1].evidence.structured_failure.failure_stage
@@ -1522,6 +1782,45 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
   assert.equal(record.acceptance_state, 'rejected')
   assert.equal(record.dg1_decision, 'REPAIR')
   assert.equal(record.prohibited_claims.dg1_decided, true)
+
+  const falseToTrueLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+  const falseTrial = falseToTrueLines.find((line) =>
+    line.record_type === 'j1_trial' && line.payload.ordinal === 4
+  )
+  assert.equal(falseTrial.payload.public_completion_gate_passed, false)
+  falseTrial.payload.public_completion_gate_passed = true
+  const falseToTrueJsonl =
+    `${falseToTrueLines.map(JSON.stringify).join('\n')}\n`
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: falseToTrueJsonl,
+    independent_review: rejectedReview(result, falseToTrueJsonl),
+  }), /evidence_j1_trial_invalid/)
+
+  const receiptTamperLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+  const receiptTrial = receiptTamperLines.find((line) =>
+    line.record_type === 'j1_trial' && line.payload.ordinal === 1
+  )
+  receiptTrial.payload.evidence.replay_closure.identity_receipt.receipt_id =
+    'identity-receipt-forged'
+  const receiptTamperJsonl =
+    `${receiptTamperLines.map(JSON.stringify).join('\n')}\n`
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: receiptTamperJsonl,
+    independent_review: rejectedReview(result, receiptTamperJsonl),
+  }), /evidence_j1_trial_invalid/)
+
+  const principalTamperLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+  principalTamperLines[0].payload.runtime_principal_binding.principal_id =
+    'forged-evaluation-principal'
+  const principalTamperJsonl =
+    `${principalTamperLines.map(JSON.stringify).join('\n')}\n`
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: principalTamperJsonl,
+    independent_review: rejectedReview(result, principalTamperJsonl),
+  }), /evidence_binding_mismatch/)
 
   const assertFailureClosureTamperRejected = (ordinal, mutate) => {
     const lines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)

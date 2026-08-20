@@ -39,6 +39,7 @@ async function runEvaluation(config, configDirectory) {
     loaded_candidate: target.loaded_candidate,
     run_j1_trial: target.run_j1_trial,
     execution_mode: target.execution_mode,
+    runtime_principal_binding: target.runtime_principal_binding,
     runtime_source_binding: target.runtime_source_binding,
     evaluator_implementation: target.evaluator_implementation,
     api_endpoint_attestation: target.api_endpoint_attestation,

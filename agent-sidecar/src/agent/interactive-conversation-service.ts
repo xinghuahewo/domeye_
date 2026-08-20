@@ -531,6 +531,36 @@ function isUtcTimestamp(value: unknown): value is string {
   return new Date(parsed).toISOString() === normalized
 }
 
+function hasValidIdentityReceipt(
+  receipt: DomeyeVerifiedIdentityReceipt,
+  candidate: DomeyeFirstSliceCandidateBinding,
+): boolean {
+  const receiptBody = {
+    candidate_id: receipt.candidate_id,
+    reference_sha256: receipt.reference_sha256,
+    data_identity: receipt.data_identity,
+    resolver_response_sha256: receipt.resolver_response_sha256,
+    overview_response_sha256: receipt.overview_response_sha256,
+    verified_at_utc: receipt.verified_at_utc,
+  }
+  return receipt.schema_version === 'domeye_verified_data_identity_receipt_v1'
+    && receipt.receipt_id
+      === `identity-receipt-sha256:${referenceSha256(JSON.stringify(receiptBody))}`
+    && receipt.candidate_id === candidate.candidate_id
+    && sameIdentity(receipt.data_identity, candidate.data_identity)
+    && receipt.immutable === true
+    && isUtcTimestamp(receipt.verified_at_utc)
+    && /^[a-f0-9]{64}$/.test(receipt.reference_sha256)
+    && /^[a-f0-9]{64}$/.test(receipt.resolver_response_sha256)
+    && /^[a-f0-9]{64}$/.test(receipt.overview_response_sha256)
+    && Array.isArray(receipt.evidence_refs)
+    && canonicalJsonSha256(receipt.evidence_refs)
+      === canonicalJsonSha256([
+        `domeye:evidence:resolver:sha256:${receipt.resolver_response_sha256}`,
+        `domeye:evidence:overview:sha256:${receipt.overview_response_sha256}`,
+      ])
+}
+
 function hasNoProtocolRejections(
   result: Extract<DomeyeFirstSliceRunResult, { outcome: 'completed' }>,
   cognitionAttemptCount: number,
@@ -1046,7 +1076,8 @@ function hasSuccessfulFinalAnswerUnchecked(
   const finding = result.finding
   const values = finding.values
   if (
-    !hasValidFindingAndContext(result, candidate, identityReceipt)
+    !hasValidIdentityReceipt(identityReceipt, candidate)
+    || !hasValidFindingAndContext(result, candidate, identityReceipt)
     || !hasCompleteExecutionChain(result, candidate, expectedPrincipalId)
     || !hasValidProviderUsage(result, candidate)
     || finding.value_state !== 'known'
@@ -1089,7 +1120,7 @@ function hasSuccessfulFinalAnswerUnchecked(
   }
 }
 
-function hasSuccessfulFinalAnswer(
+export function hasSuccessfulDomeyePublicFinalAnswer(
   result: DomeyeFirstSliceRunResult,
   candidate: DomeyeFirstSliceCandidateBinding,
   identityReceipt: DomeyeVerifiedIdentityReceipt,
@@ -1332,7 +1363,7 @@ export class DomeyeInteractiveConversationService {
         }
         return
       }
-      const answerSuccess = hasSuccessfulFinalAnswer(
+      const answerSuccess = hasSuccessfulDomeyePublicFinalAnswer(
         result,
         this.#options.candidate,
         stored.identityReceipt,
