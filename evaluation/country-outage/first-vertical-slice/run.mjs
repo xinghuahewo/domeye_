@@ -16,6 +16,7 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import {
   bindRealFirstSliceEvaluationTarget,
@@ -257,6 +258,22 @@ function assertSigningKeyMatchesPolicy(privateKey, policyMember) {
   ) throw new TypeError('private_signing_key_not_candidate_bound')
 }
 
+export async function preflightExecutionSigningKey({
+  project_root,
+  output_root,
+  policy_member,
+}) {
+  let privateKey = await loadPrivateSigningKey(
+    EXECUTION_PRIVATE_KEY_ENV,
+    { project_root, output_root },
+  )
+  try {
+    assertSigningKeyMatchesPolicy(privateKey, policy_member)
+  } finally {
+    privateKey = null
+  }
+}
+
 function signatureInput(domain, payload) {
   return Buffer.from(
     `${requiredString(domain, 'signature_domain_invalid')}\u0000${canonicalJsonStringify(payload)}`,
@@ -326,7 +343,24 @@ async function runEvaluation(config, configDirectory) {
     configDirectory,
     requiredString(config.output_directory, 'output_directory_required'),
   )
+  const preflightCandidate = await loadDomeyeFirstSliceCandidateManifest({
+    project_root: projectRoot,
+    manifest_path: requiredString(
+      config.target?.manifest_path,
+      'manifest_path_required',
+    ),
+  })
+  await preflightExecutionSigningKey({
+    project_root: projectRoot,
+    output_root: outputDirectory,
+    policy_member: preflightCandidate.manifest.payload.attestation_policy
+      .execution_evidence,
+  })
   const target = await bindRealFirstSliceEvaluationTarget(config.target)
+  if (
+    target.loaded_candidate.manifest.candidate_id
+      !== preflightCandidate.manifest.candidate_id
+  ) throw new TypeError('candidate_changed_after_execution_key_preflight')
   const attestationPolicy = target.loaded_candidate.manifest.payload
     .attestation_policy
   let journeyJudgments
@@ -589,14 +623,19 @@ async function main() {
   process.stdout.write(`${JSON.stringify(result)}\n`)
 }
 
-void main().catch((error) => {
-  const code = error instanceof Error
-    && /^[a-z][a-z0-9_:.-]{0,127}$/.test(error.message)
-    ? error.message
-    : 'evaluation_failed'
-  process.stderr.write(`${JSON.stringify({
-    event: 'domeye_first_slice_evaluation_failed',
-    code,
-  })}\n`)
-  process.exitCode = 1
-})
+if (
+  process.argv[1]
+  && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  void main().catch((error) => {
+    const code = error instanceof Error
+      && /^[a-z][a-z0-9_:.-]{0,127}$/.test(error.message)
+      ? error.message
+      : 'evaluation_failed'
+    process.stderr.write(`${JSON.stringify({
+      event: 'domeye_first_slice_evaluation_failed',
+      code,
+    })}\n`)
+    process.exitCode = 1
+  })
+}

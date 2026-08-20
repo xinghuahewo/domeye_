@@ -8,6 +8,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -65,6 +66,7 @@ const {
 } = await import(
   '../../../agent-sidecar/src/agent/candidate-manifest.ts'
 )
+const { preflightExecutionSigningKey } = await import('./run.mjs')
 
 const roots = []
 after(() => {
@@ -2081,6 +2083,89 @@ test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充
     }),
     /api_endpoint_policy_rejected/,
   )
+
+  const keyRoot = mkdtempSync(join(tmpdir(), 'first-slice-execution-key-'))
+  const outputRoot = mkdtempSync(join(tmpdir(), 'first-slice-key-preflight-'))
+  roots.push(keyRoot, outputRoot)
+  const executionKeyPath = join(keyRoot, 'execution-private.pem')
+  const previousExecutionKeyPath =
+    process.env.DOMEYE_FIRST_SLICE_EXECUTION_PRIVATE_KEY_FILE
+  try {
+    delete process.env.DOMEYE_FIRST_SLICE_EXECUTION_PRIVATE_KEY_FILE
+    await assert.rejects(preflightExecutionSigningKey({
+      project_root: testProjectRoot,
+      output_root: outputRoot,
+      policy_member: attestationPolicy.execution_evidence,
+    }), /private_signing_key_required/)
+    assert.deepEqual(readdirSync(outputRoot), [])
+
+    const wrongKeyPair = generateKeyPairSync('ed25519')
+    writeFileSync(
+      executionKeyPath,
+      wrongKeyPair.privateKey.export({ format: 'pem', type: 'pkcs8' }),
+      { mode: 0o600 },
+    )
+    process.env.DOMEYE_FIRST_SLICE_EXECUTION_PRIVATE_KEY_FILE =
+      executionKeyPath
+    await assert.rejects(preflightExecutionSigningKey({
+      project_root: testProjectRoot,
+      output_root: outputRoot,
+      policy_member: attestationPolicy.execution_evidence,
+    }), /private_signing_key_not_candidate_bound/)
+    assert.deepEqual(readdirSync(outputRoot), [])
+
+    writeFileSync(
+      executionKeyPath,
+      executionTestKeyPair.privateKey.export({ format: 'pem', type: 'pkcs8' }),
+    )
+    await preflightExecutionSigningKey({
+      project_root: testProjectRoot,
+      output_root: outputRoot,
+      policy_member: attestationPolicy.execution_evidence,
+    })
+    writeFileSync(
+      executionKeyPath,
+      wrongKeyPair.privateKey.export({ format: 'pem', type: 'pkcs8' }),
+    )
+    await assert.rejects(preflightExecutionSigningKey({
+      project_root: testProjectRoot,
+      output_root: outputRoot,
+      policy_member: attestationPolicy.execution_evidence,
+    }), /private_signing_key_not_candidate_bound/)
+    assert.deepEqual(readdirSync(outputRoot), [])
+  } finally {
+    if (previousExecutionKeyPath === undefined) {
+      delete process.env.DOMEYE_FIRST_SLICE_EXECUTION_PRIVATE_KEY_FILE
+    } else {
+      process.env.DOMEYE_FIRST_SLICE_EXECUTION_PRIVATE_KEY_FILE =
+        previousExecutionKeyPath
+    }
+  }
+
+  const runSource = readFileSync(
+    fileURLToPath(new URL('./run.mjs', import.meta.url)),
+    'utf8',
+  )
+  const preflightCall = runSource.indexOf(
+    'await preflightExecutionSigningKey({',
+  )
+  const targetBinding = runSource.indexOf(
+    'await bindRealFirstSliceEvaluationTarget(config.target)',
+  )
+  const realRun = runSource.indexOf(
+    'await runFirstVerticalSliceEvaluation({',
+  )
+  const artifactWrite = runSource.indexOf(
+    'await writeEvaluationArtifacts(result, outputDirectory)',
+  )
+  const signingReload = runSource.lastIndexOf(
+    'await loadPrivateSigningKey(\n    EXECUTION_PRIVATE_KEY_ENV,',
+  )
+  assert.ok(preflightCall >= 0)
+  assert.ok(preflightCall < targetBinding)
+  assert.ok(targetBinding < realRun)
+  assert.ok(realRun < artifactWrite)
+  assert.ok(artifactWrite < signingReload)
 })
 
 test('Formal 仅 exact30；27/30 与 8/10 必须 NO-GO 且三阶段失败可重放', async () => {
