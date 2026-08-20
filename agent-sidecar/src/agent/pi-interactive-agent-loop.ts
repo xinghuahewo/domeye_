@@ -52,6 +52,13 @@ export const DOMEYE_CAPABILITY_PROPOSAL_TOOL =
 export const DOMEYE_GOAL_DISPOSITION_TOOL =
   'submit_domeye_goal_disposition' as const
 
+type DomeyeDecisionToolName =
+  | typeof DOMEYE_CAPABILITY_PROPOSAL_TOOL
+  | typeof DOMEYE_GOAL_DISPOSITION_TOOL
+type PiStreamFunction = DomeyePiSessionHandle['agent']['streamFunction']
+type PiStreamOptions = Parameters<PiStreamFunction>[2]
+type PiPayloadHook = NonNullable<NonNullable<PiStreamOptions>['onPayload']>
+
 const BUILTIN_AND_FILESYSTEM_TOOLS = [
   'read',
   'bash',
@@ -167,6 +174,82 @@ function deepFreeze<T>(value: T): Readonly<T> {
   return value
 }
 
+function isPlainJsonObject(
+  value: unknown,
+): value is Record<string, unknown> {
+  if (
+    value === null
+    || typeof value !== 'object'
+    || Array.isArray(value)
+  ) return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+function hasNamedProviderTool(
+  payload: Record<string, unknown>,
+  toolName: DomeyeDecisionToolName,
+): boolean {
+  return Array.isArray(payload.tools)
+    && payload.tools.some((value) => {
+      if (!isPlainJsonObject(value) || value.type !== 'function') return false
+      const definition = value.function
+      return isPlainJsonObject(definition) && definition.name === toolName
+    })
+}
+
+function cognitionPayloadHook(
+  existingHook: PiPayloadHook | undefined,
+  requiredToolName: () => DomeyeDecisionToolName,
+): PiPayloadHook {
+  return async (payload, model) => {
+    if (!isPlainJsonObject(payload)) {
+      throw new Error('cognition_provider_payload_invalid')
+    }
+    const existingResult = await existingHook?.(payload, model)
+    if (
+      existingResult !== undefined
+      && !isPlainJsonObject(existingResult)
+    ) throw new Error('cognition_provider_payload_invalid')
+    const source = existingResult ?? payload
+    const toolName = requiredToolName()
+    if (
+      typeof source.model !== 'string'
+      || !Array.isArray(source.messages)
+      || source.stream !== true
+      || !hasNamedProviderTool(source, toolName)
+    ) throw new Error('cognition_provider_payload_invalid')
+    return {
+      ...source,
+      temperature: 0,
+      tool_choice: {
+        type: 'function',
+        function: { name: toolName },
+      },
+    }
+  }
+}
+
+function installCognitionPayloadBoundary(
+  session: DomeyePiSessionHandle,
+  requiredToolName: () => DomeyeDecisionToolName,
+): void {
+  const original = session.agent.streamFunction
+  session.agent.streamFunction = (model, context, options) => {
+    if (
+      model.provider !== 'deepseek'
+      || model.api !== 'openai-completions'
+    ) return original(model, context, options)
+    return original(model, context, {
+      ...(options ?? {}),
+      onPayload: cognitionPayloadHook(
+        options?.onPayload,
+        requiredToolName,
+      ),
+    })
+  }
+}
+
 function assistantProviderFailed(session: DomeyePiSessionHandle): boolean {
   for (let index = session.messages.length - 1; index >= 0; index -= 1) {
     const value = session.messages[index]
@@ -236,15 +319,112 @@ function rejectedObservation(
   return observation
 }
 
+type DomeyeRequiredDecision =
+  | Readonly<{
+      tool_name: typeof DOMEYE_CAPABILITY_PROPOSAL_TOOL
+      capability_proposal: DomeyeCapabilityProposal
+      goal_disposition: null
+    }>
+  | Readonly<{
+      tool_name: typeof DOMEYE_GOAL_DISPOSITION_TOOL
+      capability_proposal: null
+      goal_disposition: DomeyeGoalDisposition
+    }>
+
+function requiredDecisionForState(
+  goal: DomeyeSemanticGoal,
+  state: DomeyeGoalState,
+  artifacts: readonly DomeyeArtifactEnvelope[],
+): DomeyeRequiredDecision {
+  if (findingInputForState(goal, state, artifacts) !== null) {
+    return {
+      tool_name: DOMEYE_GOAL_DISPOSITION_TOOL,
+      capability_proposal: null,
+      goal_disposition: {
+        schema_version: 'domeye_agent_goal_disposition_v1',
+        goal_id: goal.goal_id,
+        goal_state_revision: state.state_revision,
+        disposition: 'goal_satisfied',
+        reason_code: 'finding_input_ready',
+      },
+    }
+  }
+  if (
+    canonicalJsonSha256(state.completed_capability_ids)
+      === canonicalJsonSha256([])
+    && artifacts.length === 0
+  ) {
+    return {
+      tool_name: DOMEYE_CAPABILITY_PROPOSAL_TOOL,
+      capability_proposal: {
+        schema_version: 'domeye_agent_capability_proposal_v1',
+        goal_id: goal.goal_id,
+        goal_state_revision: state.state_revision,
+        rationale: '读取当前冻结身份下的固定可见 IPv4 地址数时序。',
+        capability_id: 'CAP-006',
+        input: { metric: 'fixed_visible_ipv4_address_count' },
+      },
+      goal_disposition: null,
+    }
+  }
+  const seriesArtifact = artifacts[0]
+  if (
+    canonicalJsonSha256(state.completed_capability_ids)
+      === canonicalJsonSha256(['CAP-006'])
+    && seriesArtifact?.artifact_kind === 'metric_series'
+    && canonicalJsonSha256(state.artifact_ids)
+      === canonicalJsonSha256([seriesArtifact.artifact_id])
+  ) {
+    return {
+      tool_name: DOMEYE_CAPABILITY_PROPOSAL_TOOL,
+      capability_proposal: {
+        schema_version: 'domeye_agent_capability_proposal_v1',
+        goal_id: goal.goal_id,
+        goal_state_revision: state.state_revision,
+        rationale: '只计算当前冻结时序 Artifact 的首个并列极值。',
+        capability_id: 'CAP-016',
+        input: {
+          metric: 'fixed_visible_ipv4_address_count',
+          source_artifact_id: seriesArtifact.artifact_id,
+          tie_policy: 'first_observed_occurrence',
+        },
+      },
+      goal_disposition: null,
+    }
+  }
+  return {
+    tool_name: DOMEYE_GOAL_DISPOSITION_TOOL,
+    capability_proposal: null,
+    goal_disposition: {
+      schema_version: 'domeye_agent_goal_disposition_v1',
+      goal_id: goal.goal_id,
+      goal_state_revision: state.state_revision,
+      disposition: 'stopped',
+      reason_code: 'required_finding_input_unavailable',
+    },
+  }
+}
+
+function requiredDecisionPromptFields(
+  decision: DomeyeRequiredDecision,
+): Record<string, unknown> {
+  return {
+    required_decision_tool: decision.tool_name,
+    required_capability_proposal: decision.capability_proposal,
+    required_goal_disposition: decision.goal_disposition,
+  }
+}
+
 function initialPrompt(
   goal: DomeyeSemanticGoal,
   state: DomeyeGoalState,
+  decision: DomeyeRequiredDecision,
 ): string {
   return JSON.stringify({
-    instruction: '根据当前 Goal State 恰好调用一次 Proposal 工具或 Goal Disposition 工具。禁止文本决策。',
+    instruction: '恰好调用 required_decision_tool，并原样提交对应 required_capability_proposal 或 required_goal_disposition；禁止文本决策、补字段或第二次工具调用。',
+    ...requiredDecisionPromptFields(decision),
     semantic_goal: goal,
     goal_state: state,
-    allowed_capabilities: ['CAP-006', 'CAP-016'],
   })
 }
 
@@ -253,6 +433,7 @@ function observationPrompt(
   state: DomeyeGoalState,
   observation: DomeyeCapabilityObservation,
   artifacts: readonly DomeyeArtifactEnvelope[],
+  decision: DomeyeRequiredDecision,
 ): string {
   const expectedFindingInput = findingInputForState(goal, state, artifacts)
   const evidenceReady = expectedFindingInput !== null
@@ -268,12 +449,10 @@ function observationPrompt(
     && state.last_observation_id === observation.observation_id
   return JSON.stringify({
     instruction: evidenceReady
-      ? '你只负责决策，不负责渲染最终答案。合格的 Typed Finding 输入已就绪；goal_satisfied 只表示该输入可交给受控 Finding/Context 构建器，不表示最终答案已经生成。请恰好调用一次 Goal Disposition 工具，固定提交 disposition=goal_satisfied 且 reason_code=finding_input_ready，禁止文本决策。'
-      : '你只负责决策，不负责渲染最终答案。只根据安全 Observation 更新判断；恰好调用一次 Proposal 工具或 Goal Disposition 工具。禁止文本决策。',
+      ? '你只负责决策，不负责渲染最终答案。合格的 Typed Finding 输入已就绪；goal_satisfied 只表示该输入可交给受控 Finding/Context 构建器，不表示最终答案已经生成。恰好调用 required_decision_tool 并原样提交 required_goal_disposition，禁止文本决策。'
+      : '你只负责决策，不负责渲染最终答案。只根据安全 Observation 更新判断；恰好调用 required_decision_tool，并原样提交对应机器对象，禁止文本决策。',
     evidence_ready_for_finding_context: evidenceReady,
-    required_goal_disposition: evidenceReady
-      ? { disposition: 'goal_satisfied', reason_code: 'finding_input_ready' }
-      : null,
+    ...requiredDecisionPromptFields(decision),
     semantic_goal: goal,
     goal_state: state,
     observation,
@@ -285,16 +464,15 @@ function protocolPrompt(
   state: DomeyeGoalState,
   rejection: DomeyeDecisionProtocolRejection,
   artifacts: readonly DomeyeArtifactEnvelope[],
+  decision: DomeyeRequiredDecision,
 ): string {
   const findingInputReady = findingInputForState(goal, state, artifacts) !== null
   return JSON.stringify({
     instruction: findingInputReady
-      ? '上一 Goal Disposition 不符合当前 ready 状态，未被接受。合格的 Typed Finding 输入已就绪；请重新恰好调用一次 Goal Disposition 工具，固定提交 disposition=goal_satisfied 且 reason_code=finding_input_ready。goal_satisfied 不表示最终答案已经生成，禁止文本决策。'
-      : '上一响应违反单决策工具合同，未执行任何 Action。请重新恰好调用一个 Proposal 或 Goal Disposition 工具。',
+      ? '上一 Goal Disposition 不符合当前 ready 状态，未被接受。合格的 Typed Finding 输入已就绪；请恰好调用 required_decision_tool 并原样提交 required_goal_disposition。goal_satisfied 不表示最终答案已经生成，禁止文本决策。'
+      : '上一响应违反单决策工具合同，未执行任何 Action。请恰好调用 required_decision_tool 并原样提交对应机器对象。',
     evidence_ready_for_finding_context: findingInputReady,
-    required_goal_disposition: findingInputReady
-      ? { disposition: 'goal_satisfied', reason_code: 'finding_input_ready' }
-      : null,
+    ...requiredDecisionPromptFields(decision),
     semantic_goal: goal,
     goal_state: state,
     protocol_rejection: rejection,
@@ -441,6 +619,8 @@ export class PiInteractiveAgentLoop {
     let stats: SessionStats | undefined
     let statsRecorded = false
     let proposalSequence = 0
+    let requiredDecisionTool: DomeyeDecisionToolName =
+      DOMEYE_CAPABILITY_PROPOSAL_TOOL
     try {
       const proposalTool: ToolDefinition<
         typeof DomeyeCapabilityProposalCaptureSchema
@@ -522,17 +702,24 @@ export class PiInteractiveAgentLoop {
         settingsManager,
       })
       session = created.session
+      installCognitionPayloadBoundary(
+        session,
+        () => requiredDecisionTool,
+      )
       installDomeyeProviderAttemptBoundary(
         session,
         budget,
         'cognition',
         this.#options.model_binding.identity,
       )
-      let nextPrompt = initialPrompt(goal, state)
+      let requiredDecision = requiredDecisionForState(goal, state, artifacts)
+      requiredDecisionTool = requiredDecision.tool_name
+      let nextPrompt = initialPrompt(goal, state, requiredDecision)
       for (let cycle = 1; cycle <= 10; cycle += 1) {
         signal?.throwIfAborted()
         const proposalStart = proposals.length
         const dispositionStart = dispositions.length
+        const providerAttemptsBeforeCycle = budget.used
         let timeoutHandle: ReturnType<typeof setTimeout> | undefined
         let timedOut = false
         const onAbort = (): void => { void session?.abort().catch(() => undefined) }
@@ -558,6 +745,9 @@ export class PiInteractiveAgentLoop {
         }
         if (timedOut) throw new Error('interactive_loop_timeout')
         signal?.throwIfAborted()
+        if (budget.used - providerAttemptsBeforeCycle !== 1) {
+          throw new Error('decision_cycle_provider_attempt_count_invalid')
+        }
         if (assistantProviderFailed(session)) {
           throw new Error('cognition_provider_failed')
         }
@@ -595,7 +785,15 @@ export class PiInteractiveAgentLoop {
             observed_disposition_count: 1,
           })
           protocolRejections.push(rejection)
-          nextPrompt = protocolPrompt(goal, state, rejection, artifacts)
+          requiredDecision = requiredDecisionForState(goal, state, artifacts)
+          requiredDecisionTool = requiredDecision.tool_name
+          nextPrompt = protocolPrompt(
+            goal,
+            state,
+            rejection,
+            artifacts,
+            requiredDecision,
+          )
           continue
         }
         if (capturedDecisionCount !== 1) {
@@ -608,7 +806,15 @@ export class PiInteractiveAgentLoop {
             observed_disposition_count: capturedDispositions.length,
           })
           protocolRejections.push(rejection)
-          nextPrompt = protocolPrompt(goal, state, rejection, artifacts)
+          requiredDecision = requiredDecisionForState(goal, state, artifacts)
+          requiredDecisionTool = requiredDecision.tool_name
+          nextPrompt = protocolPrompt(
+            goal,
+            state,
+            rejection,
+            artifacts,
+            requiredDecision,
+          )
           continue
         }
 
@@ -645,7 +851,15 @@ export class PiInteractiveAgentLoop {
             undefined,
             undefined,
           )
-          nextPrompt = observationPrompt(goal, state, observation, artifacts)
+          requiredDecision = requiredDecisionForState(goal, state, artifacts)
+          requiredDecisionTool = requiredDecision.tool_name
+          nextPrompt = observationPrompt(
+            goal,
+            state,
+            observation,
+            artifacts,
+            requiredDecision,
+          )
           continue
         }
 
@@ -663,11 +877,14 @@ export class PiInteractiveAgentLoop {
           execution.receipt,
           execution.artifact ?? undefined,
         )
+        requiredDecision = requiredDecisionForState(goal, state, artifacts)
+        requiredDecisionTool = requiredDecision.tool_name
         nextPrompt = observationPrompt(
           goal,
           state,
           execution.observation,
           artifacts,
+          requiredDecision,
         )
       }
       throw new Error('interactive_loop_decision_limit_exceeded')

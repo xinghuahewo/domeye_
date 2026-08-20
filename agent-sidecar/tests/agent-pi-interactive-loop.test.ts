@@ -24,6 +24,7 @@ import { DomeyeGoalDispositionSchema } from '../src/agent/contracts.js'
 import {
   DOMEYE_CAPABILITY_PROPOSAL_TOOL,
   DOMEYE_GOAL_DISPOSITION_TOOL,
+  DomeyePiInteractiveAgentLoopError,
   PiInteractiveAgentLoop,
   type DomeyePiModelBinding,
 } from '../src/agent/pi-interactive-agent-loop.js'
@@ -110,11 +111,11 @@ const registry: DomeyeRegistrySnapshotView = {
 }
 
 const model = {
-  id: 'model-first-slice',
-  name: 'model-first-slice',
+  id: 'deepseek-v4-flash',
+  name: 'deepseek-v4-flash',
   api: 'openai-completions',
-  provider: 'provider-first-slice',
-  baseUrl: 'https://provider.invalid',
+  provider: 'deepseek',
+  baseUrl: 'https://api.deepseek.com',
   reasoning: false,
   input: ['text'],
   contextWindow: 100_000,
@@ -126,12 +127,12 @@ const modelBinding: DomeyePiModelBinding = {
   identity: {
     candidate_id: 'model-first-slice-candidate',
     resource_sha256: `sha256:${'a'.repeat(64)}`,
-    provider: 'provider-first-slice',
-    model: 'model-first-slice',
-    model_version: 'model-first-slice-v1',
-    expected_response_model: 'model-first-slice',
+    provider: 'deepseek',
+    model: 'deepseek-v4-flash',
+    model_version: 'deepseek-v4-flash',
+    expected_response_model: 'deepseek-v4-flash',
     api: 'openai-completions',
-    base_url: 'https://provider.invalid',
+    base_url: 'https://api.deepseek.com',
     maximum_output_tokens: 4_096,
     thinking_level: 'off',
     pi_version: '0.84.1',
@@ -149,6 +150,14 @@ type ScriptStep = (
   assistantText?: string
   providerError?: string
   responseModel?: string | null
+  providerCalls?: number
+}
+
+interface ScriptedSessionProbe {
+  value: number
+  payloads?: unknown[]
+  existingPayloadHookCalls?: number
+  existingPayloadOverride?: { readonly value: unknown }
 }
 
 function stats(apiCalls: number): SessionStats {
@@ -173,7 +182,7 @@ function stats(apiCalls: number): SessionStats {
 
 function scriptedSessionFactory(
   steps: readonly ScriptStep[],
-  networkCalls: { value: number },
+  networkCalls: ScriptedSessionProbe,
 ): DomeyePiSessionFactory {
   return async (options) => {
     let index = 0
@@ -182,8 +191,33 @@ function scriptedSessionFactory(
     let responseModel: string | null =
       modelBinding.identity.expected_response_model
     const messages: unknown[] = []
-    const rawStream = () => {
+    const rawStream: DomeyePiSessionHandle['agent']['streamFunction'] = (
+      streamModel,
+      context,
+      streamOptions,
+    ) => {
       networkCalls.value += 1
+      const initialPayload = {
+        model: streamModel.id,
+        messages: context.messages,
+        stream: true,
+        tools: (options.customTools ?? []).map((tool) => ({
+          type: 'function',
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+          },
+        })),
+      }
+      const preparedPayload = (async () => {
+        const transformed = await streamOptions?.onPayload?.(
+          initialPayload,
+          streamModel,
+        )
+        networkCalls.payloads ??= []
+        networkCalls.payloads.push(transformed ?? initialPayload)
+      })()
       const message = {
         role: 'assistant' as const,
         content: [],
@@ -204,6 +238,7 @@ function scriptedSessionFactory(
       }
       return {
         async *[Symbol.asyncIterator]() {
+          await preparedPayload
           if (providerError) {
             yield {
               type: 'error',
@@ -217,15 +252,18 @@ function scriptedSessionFactory(
           }
         },
         async result() {
+          await preparedPayload
           return providerError
             ? { stopReason: 'error', errorMessage: providerError }
             : message
         },
-      }
+      } as unknown as ReturnType<
+        DomeyePiSessionHandle['agent']['streamFunction']
+      >
     }
     const session: DomeyePiSessionHandle = {
       agent: {
-        streamFunction: rawStream as unknown as DomeyePiSessionHandle['agent']['streamFunction'],
+        streamFunction: rawStream,
       },
       messages,
       async prompt(text) {
@@ -236,13 +274,36 @@ function scriptedSessionFactory(
         responseModel = response.responseModel === undefined
           ? modelBinding.identity.expected_response_model
           : response.responseModel
-        const stream = await session.agent.streamFunction(model, { messages: [] })
         let successfulDone = false
         let boundaryError = false
-        for await (const event of stream) {
-          const item = event as { type?: string }
-          successfulDone ||= item.type === 'done'
-          boundaryError ||= item.type === 'error'
+        for (let call = 0; call < (response.providerCalls ?? 1); call += 1) {
+          const stream = await session.agent.streamFunction(
+            model,
+            { messages: [] },
+            {
+              onPayload: async (payload) => {
+                networkCalls.existingPayloadHookCalls =
+                  (networkCalls.existingPayloadHookCalls ?? 0) + 1
+                if (networkCalls.existingPayloadOverride) {
+                  return networkCalls.existingPayloadOverride.value
+                }
+                assert.ok(
+                  payload !== null
+                  && typeof payload === 'object'
+                  && !Array.isArray(payload),
+                )
+                return {
+                  ...(payload as Record<string, unknown>),
+                  existing_payload_hook_marker: 'preserved',
+                }
+              },
+            },
+          )
+          for await (const event of stream) {
+            const item = event as { type?: string }
+            successfulDone ||= item.type === 'done'
+            boundaryError ||= item.type === 'error'
+          }
         }
         if (providerError || boundaryError || !successfulDone) {
           messages.push({
@@ -301,7 +362,7 @@ function scriptedSessionFactory(
 function loop(
   steps: readonly ScriptStep[],
   readModel: CountryOutageSeriesReadModel,
-  networkCalls = { value: 0 },
+  networkCalls: ScriptedSessionProbe = { value: 0 },
   now: () => Date = () => new Date('2026-08-19T06:00:00Z'),
 ): PiInteractiveAgentLoop {
   return new PiInteractiveAgentLoop({
@@ -336,32 +397,19 @@ function advancingClock(): () => Date {
 }
 
 function cap006(prompt: Record<string, unknown>): DomeyeCapabilityProposal {
-  const state = prompt.goal_state as DomeyeGoalState
-  return {
-    schema_version: 'domeye_agent_capability_proposal_v1',
-    goal_id: goal.goal_id,
-    goal_state_revision: state.state_revision,
-    rationale: '先读取固定指标时序',
-    capability_id: 'CAP-006',
-    input: { metric: 'fixed_visible_ipv4_address_count' },
-  }
+  const proposal = structuredClone(
+    prompt.required_capability_proposal,
+  ) as DomeyeCapabilityProposal
+  assert.equal(proposal.capability_id, 'CAP-006')
+  return proposal
 }
 
 function cap016(prompt: Record<string, unknown>): DomeyeCapabilityProposal {
-  const state = prompt.goal_state as DomeyeGoalState
-  const observation = prompt.observation as { artifact_ref: string }
-  return {
-    schema_version: 'domeye_agent_capability_proposal_v1',
-    goal_id: goal.goal_id,
-    goal_state_revision: state.state_revision,
-    rationale: '只计算已冻结 Artifact 的极值',
-    capability_id: 'CAP-016',
-    input: {
-      metric: 'fixed_visible_ipv4_address_count',
-      source_artifact_id: observation.artifact_ref,
-      tie_policy: 'first_observed_occurrence',
-    },
-  }
+  const proposal = structuredClone(
+    prompt.required_capability_proposal,
+  ) as DomeyeCapabilityProposal
+  assert.equal(proposal.capability_id, 'CAP-016')
+  return proposal
 }
 
 function goalDisposition(
@@ -415,13 +463,56 @@ const readModel: CountryOutageSeriesReadModel = {
 }
 
 test('真实交互顺序为 CAP-006 Observation 后才提出 CAP-016', async () => {
-  const networkCalls = { value: 0 }
+  const networkCalls: ScriptedSessionProbe = { value: 0 }
   const runtime = loop([
-    (prompt) => ({ proposals: [cap006(prompt)] }),
-    (prompt) => ({ proposals: [cap016(prompt)] }),
+    (prompt) => {
+      assert.equal(
+        prompt.required_decision_tool,
+        DOMEYE_CAPABILITY_PROPOSAL_TOOL,
+      )
+      assert.deepEqual(prompt.required_capability_proposal, {
+        schema_version: 'domeye_agent_capability_proposal_v1',
+        goal_id: goal.goal_id,
+        goal_state_revision: 1,
+        rationale: '读取当前冻结身份下的固定可见 IPv4 地址数时序。',
+        capability_id: 'CAP-006',
+        input: { metric: 'fixed_visible_ipv4_address_count' },
+      })
+      assert.equal(prompt.required_goal_disposition, null)
+      return { proposals: [cap006(prompt)] }
+    },
+    (prompt) => {
+      const state = prompt.goal_state as DomeyeGoalState
+      assert.equal(
+        prompt.required_decision_tool,
+        DOMEYE_CAPABILITY_PROPOSAL_TOOL,
+      )
+      assert.deepEqual(prompt.required_capability_proposal, {
+        schema_version: 'domeye_agent_capability_proposal_v1',
+        goal_id: goal.goal_id,
+        goal_state_revision: 2,
+        rationale: '只计算当前冻结时序 Artifact 的首个并列极值。',
+        capability_id: 'CAP-016',
+        input: {
+          metric: 'fixed_visible_ipv4_address_count',
+          source_artifact_id: state.artifact_ids[0],
+          tie_policy: 'first_observed_occurrence',
+        },
+      })
+      assert.equal(prompt.required_goal_disposition, null)
+      return { proposals: [cap016(prompt)] }
+    },
     (prompt) => {
       assert.equal(prompt.evidence_ready_for_finding_context, true)
+      assert.equal(
+        prompt.required_decision_tool,
+        DOMEYE_GOAL_DISPOSITION_TOOL,
+      )
+      assert.equal(prompt.required_capability_proposal, null)
       assert.deepEqual(prompt.required_goal_disposition, {
+        schema_version: 'domeye_agent_goal_disposition_v1',
+        goal_id: goal.goal_id,
+        goal_state_revision: 3,
         disposition: 'goal_satisfied',
         reason_code: 'finding_input_ready',
       })
@@ -468,6 +559,22 @@ test('真实交互顺序为 CAP-006 Observation 后才提出 CAP-016', async () 
   }
   assert.equal(result.usage.attempt_count, 3)
   assert.equal(networkCalls.value, 3)
+  assert.equal(networkCalls.existingPayloadHookCalls, 3)
+  assert.equal(networkCalls.payloads?.length, 3)
+  const payloads = networkCalls.payloads as Record<string, unknown>[]
+  const expectedToolNames = [
+    DOMEYE_CAPABILITY_PROPOSAL_TOOL,
+    DOMEYE_CAPABILITY_PROPOSAL_TOOL,
+    DOMEYE_GOAL_DISPOSITION_TOOL,
+  ]
+  for (const [index, payload] of payloads.entries()) {
+    assert.equal(payload.temperature, 0)
+    assert.equal(payload.existing_payload_hook_marker, 'preserved')
+    assert.deepEqual(payload.tool_choice, {
+      type: 'function',
+      function: { name: expectedToolNames[index] },
+    })
+  }
   assert.equal(result.decision_protocol_rejections.length, 0)
   assert.equal(result.disposition.disposition, 'goal_satisfied')
 })
@@ -562,6 +669,9 @@ test('Finding 输入 ready 后拒绝澄清、停止与错误成功原因，并�
       (prompt: Record<string, unknown>) => {
         assert.equal(prompt.evidence_ready_for_finding_context, true)
         assert.deepEqual(prompt.required_goal_disposition, {
+          schema_version: 'domeye_agent_goal_disposition_v1',
+          goal_id: goal.goal_id,
+          goal_state_revision: 3,
           disposition: 'goal_satisfied',
           reason_code: 'finding_input_ready',
         })
@@ -807,6 +917,71 @@ test('供应方错误立即失败关闭，不伪装成决策协议重试', async
     /cognition_provider_failed/,
   )
   assert.equal(networkCalls.value, 1)
+})
+
+test('同一 prompt 内第二次 provider attempt 在准入与领域执行前失败关闭', async () => {
+  const networkCalls: ScriptedSessionProbe = { value: 0 }
+  let readCount = 0
+  const runtime = loop([
+    (prompt) => ({
+      providerCalls: 2,
+      proposals: [cap006(prompt)],
+    }),
+  ], {
+    async readMetricSeries() {
+      readCount += 1
+      return readModel.readMetricSeries({
+        data_identity: identity,
+        metric: 'fixed_visible_ipv4_address_count',
+      })
+    },
+  }, networkCalls)
+
+  let caught: unknown
+  try {
+    await runtime.run(goal, initialState)
+  } catch (error) {
+    caught = error
+  }
+  assert.ok(caught instanceof DomeyePiInteractiveAgentLoopError)
+  assert.equal(caught.code, 'decision_cycle_provider_attempt_count_invalid')
+  assert.equal(caught.evidence.failure_code, caught.code)
+  assert.equal(caught.evidence.usage.attempt_count, 2)
+  assert.equal(caught.evidence.admission_receipts.length, 0)
+  assert.equal(caught.evidence.action_receipts.length, 0)
+  assert.equal(caught.evidence.artifacts.length, 0)
+  assert.equal(caught.evidence.observations.length, 0)
+  assert.equal(caught.evidence.decision_protocol_rejections.length, 0)
+  assert.equal(readCount, 0)
+  assert.equal(networkCalls.value, 2)
+  assert.equal(networkCalls.payloads?.length, 2)
+})
+
+test('认知 payload 边界保留现有 onPayload 且对非对象结果失败关闭', async () => {
+  const networkCalls: ScriptedSessionProbe = {
+    value: 0,
+    existingPayloadOverride: { value: [] },
+  }
+  let readCount = 0
+  const runtime = loop([
+    (prompt) => ({ proposals: [cap006(prompt)] }),
+  ], {
+    async readMetricSeries() {
+      readCount += 1
+      return readModel.readMetricSeries({
+        data_identity: identity,
+        metric: 'fixed_visible_ipv4_address_count',
+      })
+    },
+  }, networkCalls)
+
+  await assert.rejects(
+    () => runtime.run(goal, initialState),
+    /cognition_provider_payload_invalid/,
+  )
+  assert.equal(networkCalls.existingPayloadHookCalls, 1)
+  assert.equal(networkCalls.value, 1)
+  assert.equal(readCount, 0)
 })
 
 test('成功工具调用响应的 responseModel 漂移时不进入准入或领域执行', async () => {
