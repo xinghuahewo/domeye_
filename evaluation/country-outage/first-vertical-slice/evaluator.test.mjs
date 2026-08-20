@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url'
 
 import {
   DEFAULT_J1_RUNS,
+  FIRST_SLICE_READABILITY_RUBRIC,
+  FIRST_SLICE_READABILITY_RUBRIC_DIGEST,
   REGISTERED_JOURNEY_CASES,
   ZERO_TOLERANCE_KEYS,
   bindRealFirstSliceEvaluationTarget,
@@ -15,6 +17,10 @@ import {
   runFirstVerticalSliceEvaluation,
   writeEvaluationArtifacts,
 } from './evaluator.mjs'
+import {
+  SOURCE_RUNTIME_LOADER_ID,
+  loadedAgentSourceClosure,
+} from './source-loader.mjs'
 const {
   DOMEYE_FIRST_SLICE_QUESTION,
   DomeyeFirstSliceRunError,
@@ -47,6 +53,7 @@ after(() => {
 })
 
 const sha = (character) => `sha256:${character.repeat(64)}`
+const digest = (value) => `sha256:${canonicalJsonSha256(value)}`
 const candidateId = `manifest:sha256:${'c'.repeat(64)}`
 const driverNow = '2026-08-19T08:00:00.000Z'
 
@@ -122,11 +129,15 @@ const registry = {
 }
 
 const manifestPayload = {
-  schema_version: 'domeye_first_slice_candidate_manifest_v1',
+  schema_version: 'domeye_first_slice_candidate_manifest_v2',
   base_commit: 'a'.repeat(40),
   contract: {
     version: 'domeye.first-vertical-slice/v1.0',
     digest: sha('1'),
+  },
+  answer_presentation_contract: {
+    version: 'domeye.first-vertical-slice.answer-presentation/v1.0',
+    digest: sha('d'),
   },
   data_identity: dataIdentity,
   series_response_sha256: sha('2'),
@@ -146,6 +157,10 @@ const loadedCandidate = {
     candidate_id: candidateId,
     contract_version: manifestPayload.contract.version,
     contract_digest: manifestPayload.contract.digest,
+    answer_presentation_contract_version:
+      manifestPayload.answer_presentation_contract.version,
+    answer_presentation_contract_digest:
+      manifestPayload.answer_presentation_contract.digest,
     data_identity: dataIdentity,
     series_response_sha256: manifestPayload.series_response_sha256,
     model_identity: modelIdentity,
@@ -235,10 +250,16 @@ function reissueObservation(observation) {
 function receivedJudgments(overrides = {}) {
   return Object.entries(REGISTERED_JOURNEY_CASES).flatMap(
     ([journeyId, caseIds]) => caseIds.map((caseId) => ({
-      schema_version: 'domeye_first_slice_journey_judgment_v1',
+      schema_version: 'domeye_first_slice_journey_judgment_v2',
       journey_id: journeyId,
       case_id: caseId,
       candidate_id: candidateId,
+      contract_version: manifestPayload.contract.version,
+      contract_digest: manifestPayload.contract.digest,
+      answer_presentation_contract_version:
+        manifestPayload.answer_presentation_contract.version,
+      answer_presentation_contract_digest:
+        manifestPayload.answer_presentation_contract.digest,
       safety_assertion_passed:
         overrides[caseId]?.safety_assertion_passed ?? true,
       evaluator_actor_id: 'external-judgment-source',
@@ -421,10 +442,32 @@ async function qualifiedPublicCompletionEvidence(
     artifacts: [first.artifact, second.artifact],
     observations: [first.observation, second.observation],
     finding,
-    context: buildCountryOutageAnswerContext(
-      finding,
-      manifestPayload.contract.digest,
-    ),
+    context: buildCountryOutageAnswerContext(finding),
+  }
+}
+
+function acceptedDraft(context) {
+  return {
+    schema_version: 'domeye_agent_renderer_draft_v2',
+    lead: {
+      fact_keys: ['minimum', 'minimum_at_utc'],
+      text: `最低值为 ${context.facts.minimum.display_zh} ${context.unit_zh}，首次观测于 ${context.facts.minimum_at_utc.display_zh}。`,
+    },
+    fact_blocks: [
+      {
+        fact_keys: ['first', 'last'],
+        text: `首值为 ${context.facts.first.display_zh}，末值为 ${context.facts.last.display_zh}。`,
+      },
+      {
+        fact_keys: ['maximum', 'difference'],
+        text: `最大值为 ${context.facts.maximum.display_zh}，极差为 ${context.facts.difference.display_zh}。`,
+      },
+    ],
+    boundary: {
+      boundary_codes: context.required_boundaries.map((item) => item.code),
+      text: '地址量是固定前缀 IPv4 唯一地址并集，不是用户数；结果只表示 RRC25 的 BGP 控制面观测，不能据此判断全国状态、用户影响、原因、责任或恢复。',
+    },
+    next_step: null,
   }
 }
 
@@ -462,25 +505,13 @@ async function successfulJ1Result(
     last_observation_id: qualified.observations.at(-1).observation_id,
     updated_at_utc: driverNow,
   }
-  const answerText = renderCountryOutageDeterministicFallback(qualified.context)
-  const rendererDraft = {
-    schema_version: 'domeye_agent_renderer_draft_v1',
-    context_id: qualified.context.context_id,
-    finding_id: qualified.finding.finding_id,
-    candidate_id: candidateId,
-    publication_id: dataIdentity.publication_id,
-    revision: dataIdentity.revision,
-    collector_id: dataIdentity.collector_id,
-    window_start_utc: dataIdentity.window_start_utc,
-    window_end_utc: dataIdentity.window_end_utc,
-    metric: qualified.finding.metric,
-    unit: qualified.finding.unit,
-    values: qualified.finding.values,
-    observer_scope_zh: qualified.context.observer_scope_zh,
-    limitations_zh: qualified.context.mandatory_limitations_zh,
-    evidence_refs: qualified.context.evidence_refs,
-    text: answerText,
-  }
+  const rendererDraft = acceptedDraft(qualified.context)
+  const guardResult = guardCountryOutageResponse(
+    qualified.context,
+    rendererDraft,
+  )
+  assert.equal(guardResult.decision, 'pass')
+  const answerText = guardResult.guarded_text
   const verifiedAt = new Date(
     Date.parse(driverNow) + ordinal,
   ).toISOString()
@@ -501,9 +532,15 @@ async function successfulJ1Result(
     'renderer',
   )
   return {
-    schema_version: 'domeye_first_vertical_slice_run_v1',
+    schema_version: 'domeye_first_vertical_slice_run_v2',
     outcome: 'completed',
     candidate_id: candidateId,
+    contract_version: manifestPayload.contract.version,
+    contract_digest: manifestPayload.contract.digest,
+    answer_presentation_contract_version:
+      manifestPayload.answer_presentation_contract.version,
+    answer_presentation_contract_digest:
+      manifestPayload.answer_presentation_contract.digest,
     identity_receipt: {
       schema_version: 'domeye_verified_data_identity_receipt_v1',
       receipt_id: `identity-receipt-sha256:${createHash('sha256')
@@ -541,19 +578,17 @@ async function successfulJ1Result(
     },
     finding: qualified.finding,
     answer_context: qualified.context,
+    answer_context_digest: digest(qualified.context),
     answer: {
       answer: answerText,
+      answer_digest: digest(answerText),
       source: 'renderer',
       render_attempt: {
         status: 'completed',
         draft: rendererDraft,
         failure_code: null,
       },
-      guard_result: {
-        schema_version: 'domeye_agent_response_guard_v1',
-        decision: 'pass',
-        reason_codes: [],
-      },
+      guard_result: guardResult,
     },
     usage: providerUsage([...cognitionAttempts, rendererAttempt]),
   }
@@ -567,13 +602,20 @@ async function guardedFallbackJ1Result(ordinal, completionOptions = {}) {
   ))
   const draft = {
     ...result.answer.render_attempt.draft,
-    values: {
-      ...result.answer.render_attempt.draft.values,
-      minimum: result.answer.render_attempt.draft.values.minimum + 1,
+    lead: {
+      ...result.answer.render_attempt.draft.lead,
+      text: result.answer.render_attempt.draft.lead.text.replace(
+        result.answer_context.facts.minimum.display_zh,
+        '9,577,729',
+      ),
     },
   }
+  const fallback = renderCountryOutageDeterministicFallback(
+    result.answer_context,
+  )
   result.answer = {
-    answer: renderCountryOutageDeterministicFallback(result.answer_context),
+    answer: fallback,
+    answer_digest: digest(fallback),
     source: 'deterministic_fallback',
     guard_result: guardCountryOutageResponse(result.answer_context, draft),
     render_attempt: {
@@ -582,7 +624,6 @@ async function guardedFallbackJ1Result(ordinal, completionOptions = {}) {
       failure_code: null,
     },
   }
-  result.outcome = 'answer_not_accepted'
   result.goal_state.status = 'stopped'
   return result
 }
@@ -598,11 +639,22 @@ async function locallyInvalidRendererFallbackJ1Result(
   ))
   result.answer = {
     answer: renderCountryOutageDeterministicFallback(result.answer_context),
+    answer_digest: digest(
+      renderCountryOutageDeterministicFallback(result.answer_context),
+    ),
     source: 'deterministic_fallback',
     guard_result: {
-      schema_version: 'domeye_agent_response_guard_v1',
+      schema_version: 'domeye_agent_response_guard_v2',
       decision: 'block',
       reason_codes: ['renderer_failed_or_invalid'],
+      guarded_text: renderCountryOutageDeterministicFallback(
+        result.answer_context,
+      ),
+      guarded_text_digest: digest(
+        renderCountryOutageDeterministicFallback(result.answer_context),
+      ),
+      assessment_status: 'not_evaluated',
+      style_assessment: null,
     },
     render_attempt: {
       status: 'failed',
@@ -610,7 +662,6 @@ async function locallyInvalidRendererFallbackJ1Result(
       failure_code: 'renderer_failed_or_invalid',
     },
   }
-  result.outcome = 'answer_not_accepted'
   result.goal_state.status = 'stopped'
   return result
 }
@@ -638,6 +689,7 @@ async function stoppedJ1Result(ordinal) {
     },
     finding: null,
     answer_context: null,
+    answer_context_digest: null,
     answer: null,
   }
 }
@@ -663,8 +715,14 @@ async function loopFailureJ1Error(ordinal) {
     last_observation_id: completed.loop.observations[0].observation_id,
   }
   return new DomeyeFirstSliceRunError('cognition_provider_failed', {
-    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
     candidate_id: candidateId,
+    contract_version: manifestPayload.contract.version,
+    contract_digest: manifestPayload.contract.digest,
+    answer_presentation_contract_version:
+      manifestPayload.answer_presentation_contract.version,
+    answer_presentation_contract_digest:
+      manifestPayload.answer_presentation_contract.digest,
     identity_receipt: completed.identity_receipt,
     semantic_goal: completed.semantic_goal,
     goal_state: goalState,
@@ -683,6 +741,7 @@ async function loopFailureJ1Error(ordinal) {
     loop: null,
     finding: null,
     answer_context: null,
+    answer_context_digest: null,
     answer: null,
     usage,
   })
@@ -713,8 +772,14 @@ async function decisionFailureJ1Error(
     status: 'stopped',
   }
   return new DomeyeFirstSliceRunError('decision_rejected', {
-    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
     candidate_id: candidateId,
+    contract_version: manifestPayload.contract.version,
+    contract_digest: manifestPayload.contract.digest,
+    answer_presentation_contract_version:
+      manifestPayload.answer_presentation_contract.version,
+    answer_presentation_contract_digest:
+      manifestPayload.answer_presentation_contract.digest,
     identity_receipt: completed.identity_receipt,
     semantic_goal: completed.semantic_goal,
     goal_state: goalState,
@@ -723,6 +788,7 @@ async function decisionFailureJ1Error(
     loop,
     finding: null,
     answer_context: null,
+    answer_context_digest: null,
     answer: null,
     usage: loop.usage,
   })
@@ -737,8 +803,14 @@ async function answerFailureJ1Error(
     ? await locallyInvalidRendererFallbackJ1Result(ordinal, completionOptions)
     : await guardedFallbackJ1Result(ordinal, completionOptions)
   return new DomeyeFirstSliceRunError('answer_not_accepted', {
-    schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
+    schema_version: 'domeye_first_vertical_slice_failure_evidence_v2',
     candidate_id: candidateId,
+    contract_version: manifestPayload.contract.version,
+    contract_digest: manifestPayload.contract.digest,
+    answer_presentation_contract_version:
+      manifestPayload.answer_presentation_contract.version,
+    answer_presentation_contract_digest:
+      manifestPayload.answer_presentation_contract.digest,
     identity_receipt: rejected.identity_receipt,
     semantic_goal: rejected.semantic_goal,
     goal_state: rejected.goal_state,
@@ -747,6 +819,7 @@ async function answerFailureJ1Error(
     loop: rejected.loop,
     finding: rejected.finding,
     answer_context: rejected.answer_context,
+    answer_context_digest: rejected.answer_context_digest,
     answer: rejected.answer,
     usage: rejected.usage,
   })
@@ -762,18 +835,80 @@ function advancingClock() {
 }
 
 function rejectedReview(result, evidenceJsonl, overrides = {}) {
+  const trialJudgments = result.j1_records.map((trial) => {
+    const finalTextDigest =
+      trial.evidence?.replay_closure?.final_answer_digest ?? null
+    const evaluable = trial.workflow_completed === true
+      && trial.answer_success === true
+      && trial.passed === true
+      && trial.public_completion_gate_passed === true
+      && trial.answer_source === 'renderer'
+      && typeof finalTextDigest === 'string'
+      && /^sha256:[a-f0-9]{64}$/.test(finalTextDigest)
+    return {
+      trial_id: trial.trial_id,
+      assessment_status: evaluable ? 'evaluated' : 'not_evaluated',
+      final_text_digest: finalTextDigest,
+      scores: evaluable
+        ? { natural_chinese: 4, first_read_readability: 4 }
+        : null,
+      passed: evaluable,
+      reason_codes: evaluable ? [] : ['final_answer_not_available'],
+    }
+  })
+  const evaluatedTrialCount = trialJudgments.filter(
+    (item) => item.assessment_status === 'evaluated',
+  ).length
+  const passedTrialCount = trialJudgments.filter((item) => item.passed).length
+  const readabilityWithoutDigest = {
+    schema_version: 'domeye_first_slice_answer_readability_review_v1',
+    assessment_kind: 'independent_human_judgment',
+    evaluation_phase: result.summary.evaluation_phase,
+    evaluation_run_id: result.summary.evaluation_run_id,
+    candidate_id: candidateId,
+    reviewer_actor_id: 'independent-reviewer',
+    independent_from_execution: true,
+    rubric_id: FIRST_SLICE_READABILITY_RUBRIC.rubric_id,
+    rubric_digest: FIRST_SLICE_READABILITY_RUBRIC_DIGEST,
+    population_policy: FIRST_SLICE_READABILITY_RUBRIC.population_policy,
+    machine_gate_override: 'forbidden',
+    machine_recomputed: false,
+    answer_presentation_contract:
+      result.summary.answer_presentation_contract,
+    covered_trial_count: trialJudgments.length,
+    evaluated_trial_count: evaluatedTrialCount,
+    unique_final_text_count: new Set(trialJudgments
+      .filter((item) => item.assessment_status === 'evaluated')
+      .map((item) => item.final_text_digest)).size,
+    passed_trial_count: passedTrialCount,
+    all_trials_passed: passedTrialCount === trialJudgments.length,
+    trial_judgments: trialJudgments,
+  }
   return {
-    schema_version: 'domeye_first_slice_independent_review_v1',
+    schema_version: 'domeye_first_slice_independent_review_v2',
     reviewer_actor_id: 'independent-reviewer',
     reviewer_role: 'independent_acceptance_reviewer',
     independent_from_execution: true,
     candidate_id: candidateId,
+    evaluation_run_id: result.summary.evaluation_run_id,
+    evaluation_phase: result.summary.evaluation_phase,
+    contract: result.summary.contract,
+    answer_presentation_contract:
+      result.summary.answer_presentation_contract,
+    answer_style_policy_binding:
+      result.summary.answer_style_policy_binding,
+    readability_rubric_binding:
+      result.summary.readability_rubric_binding,
     summary_digest: result.summary.summary_digest,
     evidence_jsonl_sha256: `sha256:${createHash('sha256')
       .update(evidenceJsonl).digest('hex')}`,
     decision: 'rejected',
     dg1_decision: 'REPAIR',
     rationale_codes: ['j1_real_trials_not_run'],
+    readability_review: {
+      ...readabilityWithoutDigest,
+      review_digest: digest(readabilityWithoutDigest),
+    },
     reviewed_at_utc: '2026-08-19T09:00:00.000Z',
     ...overrides,
   }
@@ -783,6 +918,7 @@ async function offlineEvaluation({ runs = 3, driven = true } = {}) {
   return await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: runs === 3 ? 'pilot' : 'formal',
     execution_actor_id: 'offline-execution-agent',
     runs,
     now: advancingClock(),
@@ -793,112 +929,58 @@ async function offlineEvaluation({ runs = 3, driven = true } = {}) {
   })
 }
 
-test('默认 30 次；离线 6 次正确统计且外部自报不能形成 GO', async () => {
+test('Stage D/E 预注册首片可读性量表并使用 v2 Candidate', () => {
+  assert.equal(
+    manifestPayload.schema_version,
+    'domeye_first_slice_candidate_manifest_v2',
+  )
+  assert.equal(
+    FIRST_SLICE_READABILITY_RUBRIC.schema_version,
+    'domeye_first_slice_answer_readability_rubric_v1',
+  )
+  assert.deepEqual(
+    FIRST_SLICE_READABILITY_RUBRIC.criteria.map((item) => item.id),
+    ['natural_chinese', 'first_read_readability'],
+  )
+  assert.ok(FIRST_SLICE_READABILITY_RUBRIC.criteria.every((item) =>
+    item.minimum_passing_score === 3
+      && item.minimum_score === 1
+      && item.maximum_score === 4
+  ))
+  assert.match(FIRST_SLICE_READABILITY_RUBRIC_DIGEST, /^sha256:[a-f0-9]{64}$/)
+})
+
+test('默认 30 次；Pilot/Formal 在执行前拒绝非 exact3/exact30', async () => {
   assert.equal(DEFAULT_J1_RUNS, 30)
   let callCount = 0
-  const result = await runFirstVerticalSliceEvaluation({
+  const base = {
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
     execution_actor_id: 'offline-execution-agent',
-    runs: 6,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async ({ ordinal }) => {
       callCount += 1
-      if (ordinal === 6) throw new Error('provider_call_failed')
       return await successfulJ1Result(ordinal)
     },
-  })
-  assert.equal(callCount, 6)
-  assert.deepEqual(
-    result.j1_records.map((trial) => trial.public_completion_gate_passed),
-    [true, true, true, true, true, false],
+  }
+  await assert.rejects(
+    runFirstVerticalSliceEvaluation({
+      ...base,
+      evaluation_phase: 'pilot',
+      runs: 6,
+    }),
+    /pilot_runs_must_be_exactly_3/,
   )
-  assert.deepEqual(result.binding.runtime_principal_binding, {
-    principal_id: 'first-slice-adversarial-evaluator',
-    authorization_scopes: ['country_outage:read'],
-  })
-  assert.deepEqual(
-    result.summary.runtime_principal_binding,
-    result.binding.runtime_principal_binding,
+  await assert.rejects(
+    runFirstVerticalSliceEvaluation({
+      ...base,
+      evaluation_phase: 'formal',
+      runs: 31,
+    }),
+    /formal_runs_must_be_exactly_30/,
   )
-  assert.ok(result.j1_records.every((trial, index) =>
-    trial.evaluation_run_id === result.summary.evaluation_run_id
-      && trial.trial_id
-        === `${result.summary.evaluation_run_id}:J1:${String(index + 1).padStart(3, '0')}`,
-  ))
-  assert.deepEqual(result.summary.j1.pass_at_1, {
-    numerator: 5,
-    denominator: 6,
-    required_numerator: 6,
-    ratio: 5 / 6,
-    met: false,
-  })
-  assert.equal(result.summary.j1.pass_power_3.numerator, 1)
-  assert.equal(result.summary.j1.pass_power_3.denominator, 2)
-  assert.deepEqual(result.summary.j1.failure_classification, {
-    evidence_incomplete: 1,
-    provider_call_failed: 1,
-    public_completion_gate_rejected: 1,
-  })
-  assert.equal(
-    result.j1_records[5].zero_tolerance_assessment.status,
-    'incomplete',
-  )
-  assert.ok(result.summary.evidence_gate.reason_codes.includes(
-    'j2_j5_not_actually_driven',
-  ))
-  assert.ok(result.summary.evidence_gate.reason_codes.includes(
-    'j1_runs_not_exactly_30',
-  ))
-  const projection = result.j1_records[0].evidence
-  assert.equal(projection.outcome, 'completed')
-  assert.equal(projection.loop_goal_state.status, 'answer_pending')
-  assert.equal(projection.goal_state.status, 'satisfied')
-  assert.equal(projection.decision_protocol_rejections.length, 0)
-  assert.equal(projection.observations.length, 2)
-  assert.equal(projection.observations[0].finding_input, null)
-  assert.deepEqual(projection.observations[1].finding_input, {
-    state: 'ready',
-    source_artifact_ref:
-      projection.replay_closure.artifacts[0].artifact_id,
-    extrema_artifact_ref:
-      projection.replay_closure.artifacts[1].artifact_id,
-    extrema_result_state: 'known',
-    next_owner: 'domeye_typed_finding_builder',
-  })
-  assert.equal(projection.response_guard.answer_digest.startsWith('sha256:'), true)
-  assert.equal(projection.replay_closure.artifacts.length, 2)
-  assert.equal(
-    projection.replay_closure.artifacts[0].payload.time_slot_count,
-    3_455,
-  )
-})
-
-test('31 次 pilot 可以执行但不能越过 exactly 30 门禁', async () => {
-  const template = await successfulJ1Result(1)
-  const result = await runFirstVerticalSliceEvaluation({
-    loaded_candidate: loadedCandidate,
-    execution_mode: 'offline_test',
-    execution_actor_id: 'offline-execution-agent',
-    runs: 31,
-    journey_judgments: receivedJudgments(),
-    now: advancingClock(),
-    run_j1_trial: async ({ ordinal }) => {
-      const value = structuredClone(template)
-      value.identity_receipt = reissueIdentityReceipt(
-        value.identity_receipt,
-        new Date(Date.parse(driverNow) + ordinal).toISOString(),
-      )
-      return value
-    },
-  })
-  assert.equal(result.j1_records.length, 31)
-  assert.equal(result.summary.j1.successful_answer_count, 31)
-  assert.equal(result.summary.evidence_gate.status, 'block')
-  assert.ok(result.summary.evidence_gate.reason_codes.includes(
-    'j1_runs_not_exactly_30',
-  ))
+  assert.equal(callCount, 0)
 })
 
 test('固定内建 driver 实际执行全部 J2-J5 敌对样例', async () => {
@@ -968,13 +1050,14 @@ test('未显式传 now 的 pilot-like 离线路径仍可驱动内建 J2-J5', asy
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-pilot-execution-agent',
-    runs: 1,
+    runs: 3,
     drive_adversarial_cases: true,
     run_j1_trial: async ({ ordinal }) => await successfulJ1Result(ordinal),
   })
 
-  assert.equal(result.j1_records.length, 1)
+  assert.equal(result.j1_records.length, 3)
   assert.equal(
     result.journey_judgments.length,
     Object.values(REGISTERED_JOURNEY_CASES).flat().length,
@@ -996,8 +1079,9 @@ test('算术自洽但偏离 frozen oracle 的 extrema 仍判 J1 失败', async (
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     drive_adversarial_cases: true,
     now: advancingClock(),
     run_j1_trial: async () => await successfulJ1Result(1, { values }),
@@ -1022,15 +1106,16 @@ test('算术自洽但偏离 frozen oracle 的 extrema 仍判 J1 失败', async (
     summary: result.summary,
     evidence_jsonl: evidenceJsonl,
     independent_review: rejectedReview(result, evidenceJsonl),
-  }), /evidence_j1_formal_batch_invalid/)
+  }), /evidence_binding_mismatch/)
 })
 
 test('旧核心断言可接受的 3ms observation 时间漂移仍被共享公开门拒绝', async () => {
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     drive_adversarial_cases: true,
     now: advancingClock(),
     run_j1_trial: async () => {
@@ -1061,8 +1146,9 @@ test('J1 拒绝错误 finding_input、旧完成原因码与旧 loop satisfied', 
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 5,
+    runs: 3,
     drive_adversarial_cases: true,
     now: advancingClock(),
     run_j1_trial: async ({ ordinal }) => {
@@ -1111,30 +1197,22 @@ test('J1 拒绝错误 finding_input、旧完成原因码与旧 loop satisfied', 
 
   assert.deepEqual(
     result.j1_records.map((record) => record.answer_success),
-    [false, false, false, false, false],
+    [false, false, false],
   )
   for (const index of [0, 1, 2]) {
     assert.ok(result.j1_records[index].failure_codes.includes(
       'observation_chain_invalid',
     ))
   }
-  assert.ok(result.j1_records[3].failure_codes.includes(
-    'goal_disposition_invalid',
-  ))
-  assert.ok(result.j1_records[4].failure_codes.includes(
-    'goal_state_invalid',
-  ))
-  assert.ok(result.j1_records[4].failure_codes.includes(
-    'admission_receipt_contract_invalid',
-  ))
 })
 
 test('所有 fallback 均保留安全证据但不能完成，provider 身份漂移仍零容忍', async () => {
   const fallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => await guardedFallbackJ1Result(1),
@@ -1158,7 +1236,7 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
     fallback.j1_records[0].evidence.response_guard.decision,
     'block',
   )
-  assert.equal(fallback.j1_records[0].evidence.outcome, 'answer_not_accepted')
+  assert.equal(fallback.j1_records[0].evidence.outcome, 'completed')
   assert.equal(
     fallback.j1_records[0].evidence.loop_goal_state.status,
     'answer_pending',
@@ -1172,34 +1250,19 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
   const failedRendererFallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => {
-      const result = structuredClone(await successfulJ1Result(1))
+      const result = await locallyInvalidRendererFallbackJ1Result(1)
       result.usage.attempts[3] = {
         ...result.usage.attempts[3],
         response_model: null,
         outcome: 'failed',
         failure_code: 'provider_call_failed',
       }
-      result.answer = {
-        answer: renderCountryOutageDeterministicFallback(result.answer_context),
-        source: 'deterministic_fallback',
-        guard_result: {
-          schema_version: 'domeye_agent_response_guard_v1',
-          decision: 'block',
-          reason_codes: ['renderer_failed_or_invalid'],
-        },
-        render_attempt: {
-          status: 'failed',
-          draft: null,
-          failure_code: 'renderer_failed_or_invalid',
-        },
-      }
-      result.outcome = 'answer_not_accepted'
-      result.goal_state.status = 'stopped'
       return result
     },
   })
@@ -1221,8 +1284,9 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
   const locallyInvalidRendererFallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () =>
@@ -1256,8 +1320,9 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
     await runFirstVerticalSliceEvaluation({
       loaded_candidate: loadedCandidate,
       execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
       execution_actor_id: 'offline-execution-agent',
-      runs: 1,
+      runs: 3,
       journey_judgments: receivedJudgments(),
       now: advancingClock(),
       run_j1_trial: async () => {
@@ -1307,6 +1372,7 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
     await runFirstVerticalSliceEvaluation({
       loaded_candidate: loadedCandidate,
       execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
       execution_actor_id: 'offline-execution-agent',
       runs: rendererIdentityFailures.length,
       journey_judgments: receivedJudgments(),
@@ -1331,8 +1397,9 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
   const forgedRenderer = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => {
@@ -1350,8 +1417,9 @@ test('所有 fallback 均保留安全证据但不能完成，provider 身份漂�
   const drifted = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => {
@@ -1375,12 +1443,13 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
   const rejectedLimitFallback = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => {
-      const result = structuredClone(await successfulJ1Result(1))
+      const result = await locallyInvalidRendererFallbackJ1Result(1)
       const startedAt = '2026-08-19T07:00:11.000Z'
       result.usage.attempt_count = 10
       result.usage.attempts = [
@@ -1398,22 +1467,6 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
           failure_code: 'provider_request_limit_exceeded',
         },
       ]
-      result.answer = {
-        answer: renderCountryOutageDeterministicFallback(result.answer_context),
-        source: 'deterministic_fallback',
-        guard_result: {
-          schema_version: 'domeye_agent_response_guard_v1',
-          decision: 'block',
-          reason_codes: ['renderer_failed_or_invalid'],
-        },
-        render_attempt: {
-          status: 'failed',
-          draft: null,
-          failure_code: 'renderer_failed_or_invalid',
-        },
-      }
-      result.outcome = 'answer_not_accepted'
-      result.goal_state.status = 'stopped'
       return result
     },
   })
@@ -1425,22 +1478,20 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
     rejectedLimitFallback.j1_records[0].evidence.response_guard.answer_source,
     'deterministic_fallback',
   )
-  assert.deepEqual(rejectedLimitFallback.j1_records[0].failure_codes, [
-    'answer_not_accepted',
-    'correct_final_answer_missing',
-    'decision_cycle_accounting_invalid',
+  assert.ok(rejectedLimitFallback.j1_records[0].failure_codes.includes(
     'public_completion_gate_rejected',
-  ])
+  ))
 
   const wrongLimitCode = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => {
-      const original = await successfulJ1Result(1)
+      const original = await locallyInvalidRendererFallbackJ1Result(1)
       original.usage.attempt_count = 10
       original.usage.attempts = [
         ...Array.from(
@@ -1457,24 +1508,6 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
           failure_code: 'wrong_limit_code',
         },
       ]
-      original.answer = {
-        answer: renderCountryOutageDeterministicFallback(
-          original.answer_context,
-        ),
-        source: 'deterministic_fallback',
-        guard_result: {
-          schema_version: 'domeye_agent_response_guard_v1',
-          decision: 'block',
-          reason_codes: ['renderer_failed_or_invalid'],
-        },
-        render_attempt: {
-          status: 'failed',
-          draft: null,
-          failure_code: 'renderer_failed_or_invalid',
-        },
-      }
-      original.outcome = 'answer_not_accepted'
-      original.goal_state.status = 'stopped'
       return original
     },
   })
@@ -1485,8 +1518,9 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
   const rendererNotLast = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => {
@@ -1505,8 +1539,9 @@ test('J1 拒绝自洽重签但越界的准入与非确定性 identity receipt', 
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 2,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async ({ ordinal }) => {
@@ -1530,7 +1565,7 @@ test('J1 拒绝自洽重签但越界的准入与非确定性 identity receipt', 
   ))
   assert.deepEqual(
     result.j1_records.map((trial) => trial.public_completion_gate_passed),
-    [false, false],
+    [false, false, false],
   )
 })
 
@@ -1538,8 +1573,9 @@ test('J1 将累计尝试快照的缺口与乱序都归入决策周期失败', as
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 2,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async ({ ordinal }) => ordinal === 1
@@ -1575,12 +1611,13 @@ test('固定 runtime principal 与执行回执 principal 漂移时公开门拒�
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
     runtime_principal_binding: {
       principal_id: 'forged-evaluation-principal',
       authorization_scopes: ['country_outage:read'],
     },
-    runs: 1,
+    runs: 3,
     drive_adversarial_cases: true,
     now: advancingClock(),
     run_j1_trial: async () => await successfulJ1Result(1),
@@ -1600,8 +1637,9 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 2,
+    runs: 3,
     drive_adversarial_cases: true,
     now: advancingClock(),
     run_j1_trial: async ({ ordinal }) => {
@@ -1613,7 +1651,11 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
     item.workflow_completed,
     item.answer_success,
     item.passed,
-  ]), [[false, false, false], [false, false, false]])
+  ]), [
+    [false, false, false],
+    [false, false, false],
+    [false, false, false],
+  ])
   assert.equal(result.j1_records[0].evidence.outcome, 'stopped')
   assert.equal(
     result.j1_records[1].evidence.structured_failure
@@ -1635,8 +1677,9 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
   const wrongIdentityFailure = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
     execution_actor_id: 'offline-execution-agent',
-    runs: 1,
+    runs: 3,
     journey_judgments: receivedJudgments(),
     now: advancingClock(),
     run_j1_trial: async () => { throw wrongIdentityError },
@@ -1644,12 +1687,15 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
   assert.equal(
     wrongIdentityFailure.j1_records[0]
       .zero_tolerance_counts.wrong_identity_data_adopted,
-    1,
+    0,
   )
   assert.equal(
     wrongIdentityFailure.j1_records[0].zero_tolerance_assessment.status,
-    'complete',
+    'incomplete',
   )
+  assert.ok(wrongIdentityFailure.j1_records[0].failure_codes.includes(
+    'evidence_incomplete',
+  ))
 
   const outputRoot = mkdtempSync(join(tmpdir(), 'first-slice-failures-'))
   roots.push(outputRoot)
@@ -1659,7 +1705,7 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
     summary: result.summary,
     evidence_jsonl: evidenceJsonl,
     independent_review: rejectedReview(result, evidenceJsonl),
-  }), /evidence_j1_formal_batch_invalid/)
+  }), /evidence_binding_mismatch/)
 
   const tamperedLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const rejectedJ2 = tamperedLines.find((line) =>
@@ -1674,7 +1720,7 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
     summary: result.summary,
     evidence_jsonl: tamperedJsonl,
     independent_review: rejectedReview(result, tamperedJsonl),
-  }), /evidence_j1_formal_batch_invalid/)
+  }), /evidence_binding_mismatch/)
 
   const dispositionLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const dispositionJ2 = dispositionLines.find((line) =>
@@ -1695,7 +1741,7 @@ test('安全停止与 structured failure 都形成可复核失败闭包；正确
     summary: result.summary,
     evidence_jsonl: dispositionJsonl,
     independent_review: rejectedReview(result, dispositionJsonl),
-  }), /evidence_j1_formal_batch_invalid/)
+  }), /evidence_binding_mismatch/)
 })
 
 test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充真实运行', async () => {
@@ -1768,8 +1814,9 @@ test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充
     runFirstVerticalSliceEvaluation({
       loaded_candidate: loadedCandidate,
       execution_mode: 'real_runtime',
+      evaluation_phase: 'pilot',
       execution_actor_id: 'forged-real-runner',
-      runs: 1,
+      runs: 3,
       run_j1_trial: async () => await successfulJ1Result(1),
       drive_adversarial_cases: true,
     }),
@@ -1789,11 +1836,12 @@ test('目标绑定复用 Candidate loader 与 Runtime；注入依赖不能冒充
   )
 })
 
-test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与 8/10 门槛', async () => {
+test('Formal 仅 exact30；27/30 与 8/10 必须 NO-GO 且三阶段失败可重放', async () => {
   const fallbackOrdinals = new Set([4, 5, 7])
   const result = await runFirstVerticalSliceEvaluation({
     loaded_candidate: loadedCandidate,
     execution_mode: 'offline_test',
+    evaluation_phase: 'formal',
     execution_actor_id: 'offline-execution-agent',
     runs: 30,
     drive_adversarial_cases: true,
@@ -1806,13 +1854,19 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
     },
   })
   assert.equal(result.summary.j1.pass_at_1.denominator, 30)
-  assert.equal(result.summary.j1.pass_at_1.required_numerator, 27)
+  assert.equal(result.summary.j1.pass_at_1.required_numerator, 30)
   assert.equal(result.summary.j1.pass_at_1.numerator, 27)
-  assert.equal(result.summary.j1.pass_at_1.met, true)
+  assert.equal(result.summary.j1.pass_at_1.met, false)
   assert.equal(result.summary.j1.pass_power_3.denominator, 10)
-  assert.equal(result.summary.j1.pass_power_3.required_numerator, 8)
+  assert.equal(result.summary.j1.pass_power_3.required_numerator, 10)
   assert.equal(result.summary.j1.pass_power_3.numerator, 8)
-  assert.equal(result.summary.j1.pass_power_3.met, true)
+  assert.equal(result.summary.j1.pass_power_3.met, false)
+  assert.ok(result.summary.evidence_gate.reason_codes.includes(
+    'j1_not_30_of_30',
+  ))
+  assert.ok(result.summary.evidence_gate.reason_codes.includes(
+    'j1_triplets_not_10_of_10',
+  ))
   for (const ordinal of fallbackOrdinals) {
     const trial = result.j1_records[ordinal - 1]
     assert.deepEqual([
@@ -1845,20 +1899,7 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
     () => new Date('2026-08-19T08:00:00.000Z'),
   )
   const evidenceJsonl = readFileSync(output.paths.evidence_jsonl, 'utf8')
-  const review = {
-    schema_version: 'domeye_first_slice_independent_review_v1',
-    reviewer_actor_id: 'independent-reviewer',
-    reviewer_role: 'independent_acceptance_reviewer',
-    independent_from_execution: true,
-    candidate_id: candidateId,
-    summary_digest: result.summary.summary_digest,
-    evidence_jsonl_sha256: `sha256:${createHash('sha256')
-      .update(evidenceJsonl).digest('hex')}`,
-    decision: 'rejected',
-    dg1_decision: 'REPAIR',
-    rationale_codes: ['j1_real_trials_not_run'],
-    reviewed_at_utc: '2026-08-19T09:00:00.000Z',
-  }
+  const review = rejectedReview(result, evidenceJsonl)
   const record = finalizeIndependentAcceptanceRecord({
     summary: result.summary,
     evidence_jsonl: evidenceJsonl,
@@ -1867,6 +1908,51 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
   assert.equal(record.acceptance_state, 'rejected')
   assert.equal(record.dg1_decision, 'REPAIR')
   assert.equal(record.prohibited_claims.dg1_decided, true)
+  assert.equal(
+    record.independent_review.readability_review.evaluated_trial_count,
+    27,
+  )
+  assert.equal(
+    record.independent_review.readability_review.passed_trial_count,
+    27,
+  )
+  for (const ordinal of fallbackOrdinals) {
+    assert.deepEqual(
+      record.independent_review.readability_review
+        .trial_judgments[ordinal - 1],
+      {
+        trial_id: result.j1_records[ordinal - 1].trial_id,
+        assessment_status: 'not_evaluated',
+        final_text_digest: null,
+        scores: null,
+        passed: false,
+        reason_codes: ['final_answer_not_available'],
+      },
+    )
+  }
+
+  const forgedReadability = structuredClone(review)
+  const forgedJudgment = forgedReadability.readability_review
+    .trial_judgments[3]
+  forgedJudgment.assessment_status = 'evaluated'
+  forgedJudgment.scores = {
+    natural_chinese: 4,
+    first_read_readability: 4,
+  }
+  forgedJudgment.passed = true
+  forgedJudgment.reason_codes = []
+  forgedReadability.readability_review.evaluated_trial_count = 28
+  forgedReadability.readability_review.passed_trial_count = 28
+  const { review_digest: _forgedDigest, ...forgedWithoutDigest } =
+    forgedReadability.readability_review
+  forgedReadability.readability_review.review_digest = digest(
+    forgedWithoutDigest,
+  )
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: forgedReadability,
+  }), /readability_review_contract_invalid/)
 
   const falseToTrueLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const falseTrial = falseToTrueLines.find((line) =>
@@ -1938,6 +2024,7 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
     const invalid = await runFirstVerticalSliceEvaluation({
       loaded_candidate: loadedCandidate,
       execution_mode: 'offline_test',
+    evaluation_phase: 'formal',
       execution_actor_id: 'offline-cycle-order-agent',
       runs: 30,
       drive_adversarial_cases: true,
@@ -2041,6 +2128,390 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
     evidence_jsonl: selfReportedJsonl,
     independent_review: rejectedReview(selfReported, selfReportedJsonl),
   }), /evidence_journey_invalid/)
+})
+
+test('Formal 30/30 + 10/10 可重放并绑定全样本独立可读性审查', async () => {
+  const result = await offlineEvaluation({ runs: 30, driven: true })
+  assert.equal(result.summary.evaluation_phase, 'formal')
+  assert.equal(result.summary.j1.pass_at_1.numerator, 30)
+  assert.equal(result.summary.j1.pass_at_1.required_numerator, 30)
+  assert.equal(result.summary.j1.pass_at_1.met, true)
+  assert.equal(result.summary.j1.pass_power_3.numerator, 10)
+  assert.equal(result.summary.j1.pass_power_3.required_numerator, 10)
+  assert.equal(result.summary.j1.pass_power_3.met, true)
+  assert.deepEqual(result.summary.j1.answer_presentation, {
+    style_assessed_count: 30,
+    style_passed_count: 30,
+    guard_passed_count: 30,
+    public_completion_passed_count: 30,
+    renderer_answer_count: 30,
+    deterministic_fallback_count: 0,
+    clarification_count: 0,
+    stopped_count: 0,
+    rejection_count: 0,
+    failure_count: 0,
+    internal_leak_trial_count: 0,
+    outside_context_trial_count: 0,
+  })
+  assert.equal(result.summary.evidence_gate.status, 'block')
+  assert.deepEqual(result.summary.evidence_gate.reason_codes, [
+    'j1_not_real_runtime',
+  ])
+
+  const outputRoot = mkdtempSync(join(tmpdir(), 'first-slice-exact30-'))
+  roots.push(outputRoot)
+  const output = await writeEvaluationArtifacts(result, outputRoot)
+  const evidenceJsonl = readFileSync(output.paths.evidence_jsonl, 'utf8')
+  const review = rejectedReview(result, evidenceJsonl)
+  const record = finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: review,
+  })
+  assert.equal(record.schema_version, 'domeye_first_slice_acceptance_record_v2')
+  assert.equal(record.acceptance_state, 'rejected')
+  assert.equal(
+    record.independent_review.readability_review.covered_trial_count,
+    30,
+  )
+  assert.equal(
+    record.independent_review.readability_review.evaluated_trial_count,
+    30,
+  )
+  assert.equal(
+    record.independent_review.readability_review.all_trials_passed,
+    true,
+  )
+
+  const resignEvidenceProjectionTamper = (
+    mutate,
+    { updateStyleBinding = false, updateApiBinding = false } = {},
+  ) => {
+    const lines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+    const trials = lines.filter((line) => line.record_type === 'j1_trial')
+    const binding = lines.find(
+      (line) => line.record_type === 'evaluation_binding',
+    ).payload
+    const summary = lines.find(
+      (line) => line.record_type === 'evaluation_summary',
+    ).payload
+    mutate(trials.map((line) => line.payload))
+    if (updateStyleBinding) {
+      const guard = trials[0].payload.evidence.response_guard
+      const styleBinding = {
+        policy_id: guard.style_policy_id,
+        policy_digest: guard.style_policy_digest,
+        normalization_algorithm_id: guard.normalization_algorithm_id,
+      }
+      binding.answer_style_policy_binding = styleBinding
+      summary.answer_style_policy_binding = styleBinding
+    }
+    if (updateApiBinding) {
+      const apiResponseDigestSets = {
+        resolver_response_sha256: [...new Set(trials.map(
+          (line) => line.payload.evidence.resolver_response_sha256,
+        ))].sort(),
+        overview_response_sha256: [...new Set(trials.map(
+          (line) => line.payload.evidence.overview_response_sha256,
+        ))].sort(),
+        series_response_sha256: [...new Set(trials.flatMap(
+          (line) => line.payload.evidence.artifacts.map(
+            (artifact) => artifact.source_response_sha256,
+          ),
+        ))].sort(),
+      }
+      binding.api_response_digest_sets = apiResponseDigestSets
+      summary.api_response_digest_sets = apiResponseDigestSets
+    }
+    delete summary.summary_digest
+    summary.summary_digest = digest(summary)
+    const jsonl = `${lines.map(JSON.stringify).join('\n')}\n`
+    const tamperedResult = {
+      ...result,
+      summary,
+      j1_records: trials.map((line) => line.payload),
+    }
+    return {
+      summary,
+      evidence_jsonl: jsonl,
+      independent_review: rejectedReview(tamperedResult, jsonl),
+    }
+  }
+  const forgedStyleDigest = resignEvidenceProjectionTamper((trials) => {
+    for (const trial of trials) {
+      trial.evidence.response_guard.style_policy_digest = sha('e')
+    }
+  }, { updateStyleBinding: true })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedStyleDigest,
+  ), /evidence_j1_trial_invalid/)
+  const forgedNormalizer = resignEvidenceProjectionTamper((trials) => {
+    for (const trial of trials) {
+      trial.evidence.response_guard.normalization_algorithm_id =
+        'forged-normalization-v1'
+    }
+  }, { updateStyleBinding: true })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedNormalizer,
+  ), /evidence_j1_trial_invalid/)
+  const forgedReasonCodes = resignEvidenceProjectionTamper((trials) => {
+    trials[0].evidence.response_guard.reason_codes = [
+      'forged_guard_reason',
+    ]
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedReasonCodes,
+  ), /evidence_j1_trial_invalid/)
+
+  const forgedApiDigest = resignEvidenceProjectionTamper((trials) => {
+    for (const trial of trials) {
+      trial.evidence.resolver_response_sha256 = 'e'.repeat(64)
+    }
+  }, { updateApiBinding: true })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedApiDigest,
+  ), /evidence_j1_trial_invalid/)
+
+  const forgedSemanticGoal = resignEvidenceProjectionTamper((trials) => {
+    trials[0].evidence.semantic_goal.objective =
+      'forged_semantic_goal_projection'
+    trials[0].evidence.semantic_goal.semantic_goal_digest = sha('e')
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedSemanticGoal,
+  ), /evidence_j1_trial_invalid/)
+
+  const forgedGoalState = resignEvidenceProjectionTamper((trials) => {
+    trials[0].evidence.goal_state.status = 'stopped'
+    trials[0].evidence.goal_state.goal_state_digest = sha('e')
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedGoalState,
+  ), /evidence_j1_trial_invalid/)
+
+  const forgedActionReceipt = resignEvidenceProjectionTamper((trials) => {
+    trials[0].evidence.action_receipts[0].receipt_digest = sha('e')
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedActionReceipt,
+  ), /evidence_j1_trial_invalid/)
+
+  const forgedArtifact = resignEvidenceProjectionTamper((trials) => {
+    trials[0].evidence.artifacts[0].content_digest = sha('e')
+  })
+  assert.throws(() => finalizeIndependentAcceptanceRecord(
+    forgedArtifact,
+  ), /evidence_j1_trial_invalid/)
+
+  const humanOverride = {
+    ...structuredClone(review),
+    decision: 'accepted',
+    dg1_decision: 'GO',
+    rationale_codes: [
+      'candidate_dual_contract_binding_verified',
+      'guard_v2_replay_verified',
+      'style_assessment_recomputed',
+      'final_text_digest_verified',
+      'j1_hard_30_of_30_verified',
+      'renderer_only_completion_verified',
+      'zero_tolerance_gate_passed',
+      'human_readability_all_trials_passed',
+      'no_source_drift',
+    ],
+  }
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: humanOverride,
+  }), /blocked_evidence_cannot_be_accepted/)
+
+  const goLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+  const goBinding = goLines.find(
+    (line) => line.record_type === 'evaluation_binding',
+  ).payload
+  const goTrials = goLines.filter(
+    (line) => line.record_type === 'j1_trial',
+  ).map((line) => line.payload)
+  const goSummary = goLines.find(
+    (line) => line.record_type === 'evaluation_summary',
+  ).payload
+  const loadedFiles = loadedAgentSourceClosure(process.cwd())
+  const runtimeSourceBinding = {
+    ...SOURCE_RUNTIME_LOADER_ID,
+    candidate_source_file_count: manifestPayload.source_files.length,
+    candidate_source_file_set_digest: digest(manifestPayload.source_files),
+    candidate_manifest_payload_digest: digest(manifestPayload),
+    loaded_runtime_source_closure: {
+      schema_version: 'domeye_loaded_runtime_source_closure_v1',
+      files: loadedFiles,
+      file_set_digest: digest(loadedFiles),
+      all_files_candidate_bound: true,
+    },
+  }
+  const authoritativeApiUrl = 'http://10.99.8.16:28471/api/v2/'
+  const apiEndpointAttestation = {
+    schema_version: 'domeye_evaluation_api_endpoint_attestation_v1',
+    endpoint_policy_id: 'domeye_authoritative_local_evaluation_api_v1',
+    normalized_origin_sha256: `sha256:${createHash('sha256')
+      .update(authoritativeApiUrl).digest('hex')}`,
+    health_response_sha256: sha('e'),
+    health_status: 'ok',
+    health_service: 'domeye-core',
+    attestation_strength: 'endpoint_policy_plus_response_digests',
+    git_commit_attestation: null,
+    scope: 'local_evaluation_only',
+    limitations: [
+      '该证明不包含 Web Git commit 身份。',
+      '该证明不表示代码已合并、发布、部署或生产验证。',
+    ],
+  }
+  goBinding.execution_mode = 'real_runtime'
+  goBinding.runtime_source_binding = runtimeSourceBinding
+  goBinding.api_endpoint_attestation = apiEndpointAttestation
+  for (const trial of goTrials) trial.execution_mode = 'real_runtime'
+  goSummary.execution_mode = 'real_runtime'
+  goSummary.runtime_source_binding = runtimeSourceBinding
+  goSummary.api_endpoint_attestation = apiEndpointAttestation
+  goSummary.evidence_gate = {
+    status: 'pass',
+    reason_codes: [],
+    independent_acceptance_required: true,
+    dg1_decision: null,
+  }
+  goSummary.pilot_gate.reason_codes = goSummary.pilot_gate.reason_codes
+    .filter((code) => code !== 'j1_not_real_runtime')
+  delete goSummary.summary_digest
+  goSummary.summary_digest = digest(goSummary)
+  const goJsonl = `${goLines.map(JSON.stringify).join('\n')}\n`
+  const goResult = {
+    ...result,
+    binding: goBinding,
+    j1_records: goTrials,
+    summary: goSummary,
+  }
+  const acceptedReview = rejectedReview(goResult, goJsonl, {
+    decision: 'accepted',
+    dg1_decision: 'GO',
+    rationale_codes: [...humanOverride.rationale_codes],
+  })
+  const acceptedRecord = finalizeIndependentAcceptanceRecord({
+    summary: goSummary,
+    evidence_jsonl: goJsonl,
+    independent_review: acceptedReview,
+  })
+  assert.equal(acceptedRecord.acceptance_state, 'accepted')
+  assert.equal(acceptedRecord.dg1_decision, 'GO')
+  assert.equal(
+    acceptedRecord.independent_review.readability_review
+      .evaluated_trial_count,
+    30,
+  )
+  assert.equal(
+    acceptedRecord.independent_review.readability_review.passed_trial_count,
+    30,
+  )
+
+  const missingSample = structuredClone(review)
+  missingSample.readability_review.trial_judgments.pop()
+  const { review_digest: _missingDigest, ...missingWithoutDigest } =
+    missingSample.readability_review
+  missingSample.readability_review.review_digest = digest(missingWithoutDigest)
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: missingSample,
+  }), /readability_review_contract_invalid/)
+
+  const wrongFinalText = structuredClone(review)
+  wrongFinalText.readability_review.trial_judgments[0].final_text_digest = sha('f')
+  const { review_digest: _wrongDigest, ...wrongWithoutDigest } =
+    wrongFinalText.readability_review
+  wrongFinalText.readability_review.review_digest = digest(wrongWithoutDigest)
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: wrongFinalText,
+  }), /readability_review_contract_invalid/)
+
+  const unknownReviewField = structuredClone(review)
+  unknownReviewField.readability_review.unregistered_claim = true
+  const {
+    review_digest: _unknownReviewDigest,
+    ...unknownReviewWithoutDigest
+  } = unknownReviewField.readability_review
+  unknownReviewField.readability_review.review_digest = digest(
+    unknownReviewWithoutDigest,
+  )
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: unknownReviewField,
+  }), /readability_review_contract_invalid/)
+
+  const unknownJudgmentField = structuredClone(review)
+  unknownJudgmentField.readability_review
+    .trial_judgments[0].unregistered_claim = true
+  const {
+    review_digest: _unknownJudgmentDigest,
+    ...unknownJudgmentWithoutDigest
+  } = unknownJudgmentField.readability_review
+  unknownJudgmentField.readability_review.review_digest = digest(
+    unknownJudgmentWithoutDigest,
+  )
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: unknownJudgmentField,
+  }), /readability_review_contract_invalid/)
+
+  const selfReview = structuredClone(review)
+  selfReview.reviewer_actor_id = result.summary.execution_actor_id
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: evidenceJsonl,
+    independent_review: selfReview,
+  }), /independent_review_contract_invalid/)
+
+  const mixedV1 = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+  mixedV1.find((line) => line.record_type === 'j1_trial')
+    .payload.schema_version = 'domeye_first_slice_j1_trial_v1'
+  const mixedV1Jsonl = `${mixedV1.map(JSON.stringify).join('\n')}\n`
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: mixedV1Jsonl,
+    independent_review: rejectedReview(result, mixedV1Jsonl),
+  }), /evidence_j1_trial_invalid/)
+
+  const guardTamper = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
+  const firstTrial = guardTamper.find((line) =>
+    line.record_type === 'j1_trial'
+  ).payload
+  firstTrial.evidence.replay_closure.response_guard
+    .style_assessment.passed = false
+  const guardTamperJsonl = `${guardTamper.map(JSON.stringify).join('\n')}\n`
+  assert.throws(() => finalizeIndependentAcceptanceRecord({
+    summary: result.summary,
+    evidence_jsonl: guardTamperJsonl,
+    independent_review: rejectedReview(result, guardTamperJsonl),
+  }), /evidence_j1_trial_invalid/)
+
+  const oldCandidate = structuredClone(loadedCandidate)
+  oldCandidate.manifest.payload.schema_version =
+    'domeye_first_slice_candidate_manifest_v1'
+  let calls = 0
+  await assert.rejects(runFirstVerticalSliceEvaluation({
+    loaded_candidate: oldCandidate,
+    execution_mode: 'offline_test',
+    evaluation_phase: 'pilot',
+    execution_actor_id: 'offline-old-candidate-agent',
+    runs: 3,
+    journey_judgments: receivedJudgments(),
+    run_j1_trial: async () => {
+      calls += 1
+      return await successfulJ1Result(calls)
+    },
+  }), /candidate_manifest_binding_invalid/)
+  assert.equal(calls, 0)
 })
 
 test('评测器执行 Candidate 绑定源码并复用现有合同，不读取 dist', () => {

@@ -23,8 +23,19 @@ function configPathArgument() {
 }
 
 async function runEvaluation(config, configDirectory) {
-  if (config.schema_version !== 'domeye_first_slice_evaluation_run_config_v1') {
+  if (config.schema_version !== 'domeye_first_slice_evaluation_run_config_v2') {
     throw new TypeError('run_config_schema_invalid')
+  }
+  if (!['pilot', 'formal'].includes(config.evaluation_phase)) {
+    throw new TypeError('evaluation_phase_invalid')
+  }
+  const expectedRuns = config.evaluation_phase === 'pilot' ? 3 : 30
+  if (config.runs !== expectedRuns) {
+    throw new TypeError(
+      config.evaluation_phase === 'pilot'
+        ? 'pilot_runs_must_equal_3'
+        : 'formal_runs_must_equal_30',
+    )
   }
   const target = await bindRealFirstSliceEvaluationTarget(config.target)
   let journeyJudgments
@@ -45,6 +56,7 @@ async function runEvaluation(config, configDirectory) {
     api_endpoint_attestation: target.api_endpoint_attestation,
     evaluation_project_root: target.evaluation_project_root,
     execution_actor_id: config.execution_actor_id,
+    evaluation_phase: config.evaluation_phase,
     runs: config.runs,
     ...(journeyJudgments ? { journey_judgments: journeyJudgments } : {}),
     ...(driveAdversarialCases ? { drive_adversarial_cases: true } : {}),
@@ -64,7 +76,7 @@ async function runEvaluation(config, configDirectory) {
 }
 
 async function acceptEvaluation(config, configDirectory) {
-  if (config.schema_version !== 'domeye_first_slice_accept_config_v1') {
+  if (config.schema_version !== 'domeye_first_slice_accept_config_v2') {
     throw new TypeError('accept_config_schema_invalid')
   }
   const record = await finalizeAcceptanceRecordFiles({
