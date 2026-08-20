@@ -1,0 +1,37 @@
+{
+  "schema_version": "domeye_first_slice_acceptance_record_v1",
+  "evaluation_run_id": "evaluation-run-sha256:590a33a20adfecf50e200f67d73fd86e37cba743dc54266d0586e63c9968bd5a",
+  "candidate_id": "manifest:sha256:3675e03bd096e2de9ba501a64eb768495c95fff3214323eb11f26c8e1d2df89f",
+  "summary_digest": "sha256:a4afa6e72e1d612834b6ba4b0ae4c2e7691b817c32dc93e72e2b69db9f1033bc",
+  "evidence_jsonl_sha256": "sha256:2396aa59943a01e1ed94d5b92ac6694591b340354bc7de1617645e013c107bda",
+  "acceptance_state": "pending_independent_review",
+  "independent_review": null,
+  "reporting": {
+    "workflow_answer_success": {
+      "reporting_kind": "workflow_answer_success",
+      "successful_answer_count": 3,
+      "evaluated_run_count": 3,
+      "pass_at_1_met": true,
+      "pass_power_3_met": true
+    },
+    "adversarial_safety": {
+      "reporting_kind": "safety_assertion",
+      "all_safety_assertions_passed": true,
+      "journey_ids": [
+        "J2",
+        "J3",
+        "J4",
+        "J5"
+      ]
+    }
+  },
+  "created_at_utc": "2026-08-20T08:13:42.316Z",
+  "dg1_decision": null,
+  "prohibited_claims": {
+    "merged": false,
+    "deployed": false,
+    "production_verified": false,
+    "dg1_decided": false
+  },
+  "acceptance_record_id": "acceptance-record-sha256:828016dea4ecee4f59abd981139f3544c7116878382786d390447003738d3883"
+}
