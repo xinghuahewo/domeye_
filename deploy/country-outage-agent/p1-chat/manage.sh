@@ -33,7 +33,7 @@ readonly CONFIG_FILE="${RUNTIME_BASE}/config/country-outage-interactive-agent.en
 readonly LOCK_FILE="${STATE_ROOT}/lifecycle.lock"
 readonly SCREEN_NAME='domeye_interactive_agent_sidecar'
 readonly ENTRYPOINT='agent-sidecar/dist/src/cli/serve-interactive-agent.js'
-readonly CANDIDATE_RELATIVE='contracts/agent/domeye-first-vertical-slice/v1/candidate.json'
+readonly CANDIDATE_RELATIVE='contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json'
 readonly NODE="${NODE_BIN_DIR}/node"
 readonly NPM="${NODE_BIN_DIR}/npm"
 
@@ -393,7 +393,7 @@ validate_config() {
         error 'Interactive Agent 配置必须由受信用户持有且为 0600'
         return 1
     }
-    local allowed=' COUNTRY_OUTAGE_AGENT_URL COUNTRY_OUTAGE_AGENT_SHARED_TOKEN COUNTRY_OUTAGE_AGENT_HOST COUNTRY_OUTAGE_AGENT_PORT DOMEYE_API_BASE_URL COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST COUNTRY_OUTAGE_PI_AUTH_PATH COUNTRY_OUTAGE_INTERACTIVE_AGENT_API_TIMEOUT_MS COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONVERSATION_TTL_MS COUNTRY_OUTAGE_INTERACTIVE_AGENT_TURN_TIMEOUT_MS '
+    local allowed=' COUNTRY_OUTAGE_AGENT_URL COUNTRY_OUTAGE_AGENT_SHARED_TOKEN COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN COUNTRY_OUTAGE_AGENT_HOST COUNTRY_OUTAGE_AGENT_PORT DOMEYE_API_BASE_URL COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST COUNTRY_OUTAGE_PI_AUTH_PATH COUNTRY_OUTAGE_INTERACTIVE_AGENT_API_TIMEOUT_MS COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONVERSATION_TTL_MS COUNTRY_OUTAGE_INTERACTIVE_AGENT_TURN_TIMEOUT_MS '
     local line key value seen=' '
     while IFS= read -r line || [[ -n "${line}" ]]; do
         [[ -z "${line}" || "${line}" == \#* ]] && continue
@@ -423,16 +423,29 @@ validate_config() {
         && "$(read_config_value COUNTRY_OUTAGE_AGENT_PORT)" == '28476' \
         && "$(read_config_value DOMEYE_API_BASE_URL)" == 'http://127.0.0.1:28473/api/v2/' \
         && "$(read_config_value COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT)" == "${CURRENT_LINK}/project" \
-        && "$(read_config_value COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST)" == "${CURRENT_LINK}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json" \
+        && "$(read_config_value COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST)" == "${CURRENT_LINK}/project/${CANDIDATE_RELATIVE}" \
         && "$(read_config_value COUNTRY_OUTAGE_INTERACTIVE_AGENT_API_TIMEOUT_MS)" == '15000' \
         && "$(read_config_value COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONVERSATION_TTL_MS)" == '1800000' \
         && "$(read_config_value COUNTRY_OUTAGE_INTERACTIVE_AGENT_TURN_TIMEOUT_MS)" == '120000' ]] || {
         error 'Interactive Agent 固定运行配置漂移'
         return 1
     }
-    local token auth
+    local token verifier_token auth
     token="$(read_config_value COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)"
     [[ ${#token} -ge 32 ]] || { error '共享 Token 长度不足'; return 1; }
+    case "${token}" in
+        replace-with-*|CHANGE_ME*) error '共享 Token 仍是示例占位值'; return 1 ;;
+    esac
+    verifier_token="$(read_config_value COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN)"
+    [[ ${#verifier_token} -ge 32 && ${#verifier_token} -le 256 ]] || {
+        error '独立验证器 Token 长度无效'; return 1;
+    }
+    case "${verifier_token}" in
+        replace-with-*|CHANGE_ME*) error '独立验证器 Token 仍是示例占位值'; return 1 ;;
+    esac
+    [[ "${verifier_token}" != "${token}" ]] || {
+        error '独立验证器 Token 不得与共享 Token 相同'; return 1;
+    }
     auth="$(read_config_value COUNTRY_OUTAGE_PI_AUTH_PATH)"
     [[ "${auth}" == /* && -f "${auth}" && ! -L "${auth}" ]] || {
         error '模型凭据文件无效'; return 1;
@@ -522,6 +535,44 @@ verify_release() {
         error 'release 不可变合同闭包校验失败'
         return 1
     fi
+}
+
+verify_legacy_v1_active_release() {
+    local release_id="$1" directory promotion legacy_probe
+    directory="$(release_directory "${release_id}")" || return 1
+    promotion="$(promotion_file "${release_id}")" || return 1
+    legacy_probe="${directory}/deployment/probe.mjs"
+    [[ -d "${directory}" && ! -L "${directory}" \
+        && "$(readlink -f -- "${directory}")" == "${directory}" \
+        && -f "${directory}/SHA256SUMS" \
+        && -f "${legacy_probe}" && ! -L "${legacy_probe}" \
+        && -f "${promotion}" && ! -L "${promotion}" ]] || {
+        error '旧回答合同 active release 的冻结制品无效'; return 1
+    }
+    owner_mode "${promotion}" 600 || {
+        error '旧回答合同 promotion 不是受信 0600'; return 1
+    }
+    jq -e --arg release_id "${release_id}" '
+      .schema_version=="domeye_interactive_agent_release_manifest_v1" and
+      .component=="domeye_interactive_agent_sidecar" and
+      .release_id==$release_id
+    ' "${directory}/RELEASE-MANIFEST.json" >/dev/null || {
+        error '旧回答合同 release manifest 身份无效'; return 1
+    }
+    if ! (cd -- "${directory}" && sha256sum -c SHA256SUMS >/dev/null); then
+        error '旧回答合同 release SHA256SUMS 校验失败'; return 1
+    fi
+    if ! assert_active_runtime_identity "${release_id}" >/dev/null; then
+        error '旧回答合同 active 进程身份无效'; return 1
+    fi
+    if ! "${NODE}" "${legacy_probe}" status \
+        "${CONFIG_FILE}" "${directory}" "${ACTIVE_STATE}" "${promotion}" \
+        >/dev/null; then
+        error '旧回答合同 active/release/promotion 冻结闭包无效'; return 1
+    fi
+    assert_active_runtime_identity "${release_id}" >/dev/null || {
+        error '旧回答合同在只读校验后运行身份漂移'; return 1
+    }
 }
 
 probe_release() {
@@ -625,20 +676,27 @@ archive_promotion_if_present() {
 }
 
 prepare_release() {
-    (( $# == 4 )) || {
-        error '用法：prepare <release-id> <source.tar.gz> <commit> <annotated-tag>'
+    (( $# == 6 )) || {
+        error '用法：prepare <release-id> <source.tar.gz> <commit> <annotated-tag> <approved-candidate-id> <approved-acceptance-record-id>'
         return 2
     }
-    local release_id="$1" source_archive="$2" source_commit="$3" source_tag="$4"
+    local release_id="$1" source_archive="$2" source_commit="$3" source_tag="$4" \
+        approved_candidate_id="$5" approved_acceptance_id="$6"
     validate_release_id "${release_id}"
     [[ "${source_commit}" =~ ^[0-9a-f]{40}$ \
         && "${source_tag}" == "${release_id}" ]] || {
         error '提交或 annotated tag 身份无效'; return 1;
     }
+    [[ "${approved_candidate_id}" =~ ^manifest:sha256:[a-f0-9]{64}$ \
+        && "${approved_acceptance_id}" \
+            =~ ^acceptance-record-sha256:[a-f0-9]{64}$ ]] || {
+        error '外部批准的 Candidate 或 Acceptance 身份无效'; return 1;
+    }
     [[ -f "${source_archive}" && ! -L "${source_archive}" ]] || {
         error '源码归档无效'; return 1;
     }
-    local target staging extracted previous='' rollback_mode='fail_closed'
+    local target staging extracted previous='' rollback_mode='fail_closed' \
+        active_schema=''
     target="$(release_directory "${release_id}")"
     [[ ! -e "${target}" && ! -L "${target}" ]] || {
         error 'release 已存在'; return 1;
@@ -649,16 +707,29 @@ prepare_release() {
             return 1
         }
         validate_release_id "${previous}"
-        verify_release "${previous}"
         validate_config
         [[ "$(readlink -f -- "${CURRENT_LINK}")" == "$(release_directory "${previous}")" ]] || {
             error 'active.json 与 current 不一致'; return 1;
         }
-        assert_verified_active_release "${previous}" || {
-            error '第二个 release 只能从完整 deployed + verified 的同架构前序准备'
-            return 1
+        active_schema="$(jq -er '.schema_version' \
+            "$(release_directory "${previous}")/RELEASE-MANIFEST.json")" || {
+            error '无法读取 active release schema'; return 1;
         }
-        rollback_mode='same_schema_only'
+        if [[ "${active_schema}" == 'domeye_interactive_agent_release_manifest_v2' ]]; then
+            verify_release "${previous}"
+            assert_verified_active_release "${previous}" || {
+                error '第二个 v2 release 只能从完整 deployed + verified 的同架构前序准备'
+                return 1
+            }
+            rollback_mode='same_schema_only'
+        elif [[ "${active_schema}" == 'domeye_interactive_agent_release_manifest_v1' ]]; then
+            verify_legacy_v1_active_release "${previous}"
+            # v1 只允许作为切换前现场，绝不成为 v2 的回滚目标。
+            previous=''
+            rollback_mode='fail_closed'
+        else
+            error 'active release schema 不在允许迁移边界'; return 1
+        fi
     else
         previous=''
         [[ ! -e "${CURRENT_LINK}" && ! -L "${CURRENT_LINK}" ]] || {
@@ -689,7 +760,7 @@ prepare_release() {
         "${source_commit}" \
         "${source_tag}" "${extracted}" "${staging}"
     [[ -f "${extracted}/agent-sidecar/package-lock.json" \
-        && -f "${extracted}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json" \
+        && -f "${extracted}/${CANDIDATE_RELATIVE}" \
         && -f "${extracted}/agent-sidecar/src/cli/serve-interactive-agent.ts" ]] || {
         error '源码归档缺少 Interactive Agent 首片制品'; return 1;
     }
@@ -702,11 +773,18 @@ prepare_release() {
     fi
     local candidate_id acceptance_path='' acceptance_relative path matches=0
     candidate_id="$(jq -er '.candidate_id' \
-        "${extracted}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json")"
+        "${extracted}/${CANDIDATE_RELATIVE}")"
+    [[ "${candidate_id}" == "${approved_candidate_id}" ]] || {
+        error '源码 Candidate 与外部批准的 Candidate ID 不一致'; return 1;
+    }
     while IFS= read -r path; do
-        if jq -e --arg candidate_id "${candidate_id}" '
-          .schema_version=="domeye_first_slice_acceptance_record_v1" and
-          .candidate_id==$candidate_id and .acceptance_state=="accepted" and
+        if jq -e --arg candidate_id "${candidate_id}" \
+          --arg acceptance_id "${approved_acceptance_id}" '
+          .schema_version=="domeye_first_slice_acceptance_record_v2" and
+          .candidate_id==$candidate_id and
+          .acceptance_record_id==$acceptance_id and
+          .evaluation_phase=="formal" and
+          .acceptance_state=="accepted" and
           .dg1_decision=="GO" and
           .reporting.workflow_answer_success.evaluated_run_count==30 and
           .reporting.workflow_answer_success.successful_answer_count==30 and
@@ -719,7 +797,7 @@ prepare_release() {
     done < <(find "${extracted}/evaluation/country-outage/first-vertical-slice/runs" \
         -type f -name acceptance-record-final.json | LC_ALL=C sort)
     (( matches == 1 )) || {
-        error '源码归档必须恰好包含一份匹配 Candidate 的 final Acceptance Record'
+        error '源码归档必须恰好包含一份与外部批准身份匹配的 final Acceptance Record'
         return 1
     }
     acceptance_relative="${acceptance_path#${extracted}/}"
@@ -743,6 +821,7 @@ prepare_release() {
     "${NODE}" \
         "${extracted}/deploy/country-outage-agent/p1-chat/verify-release.mjs" \
         acceptance-replay "${extracted}" "${acceptance_relative}" \
+        "${approved_candidate_id}" "${approved_acceptance_id}" \
         > "${staging}/deployment/ACCEPTANCE-REPLAY.json"
     (
         cd -- "${extracted}/agent-sidecar"
@@ -769,10 +848,19 @@ prepare_release() {
     find "${staging}" -type l -print -quit | grep -q . && {
         error '运行制品含符号链接'; return 1;
     }
-    local candidate_file acceptance_file source_sha replay_file
-    candidate_file="${staging}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json"
+    local candidate_file acceptance_file source_sha replay_file run_relative \
+        summary_file evidence_file execution_attestation_file review_file
+    candidate_file="${staging}/project/${CANDIDATE_RELATIVE}"
     acceptance_file="${staging}/project/${acceptance_relative}"
     replay_file="${staging}/deployment/ACCEPTANCE-REPLAY.json"
+    run_relative="${acceptance_relative%/acceptance-record-final.json}"
+    [[ "${run_relative}" != "${acceptance_relative}" ]] || {
+        error 'Acceptance Record 运行目录无效'; return 1;
+    }
+    summary_file="${staging}/project/${run_relative}/summary.json"
+    evidence_file="${staging}/project/${run_relative}/evidence.jsonl"
+    execution_attestation_file="${staging}/project/${run_relative}/evidence-attestation.json"
+    review_file="${staging}/project/${run_relative}/independent-review.json"
     source_sha="$(sha256_file "${staging}/source/source.tar.gz")"
     jq -n \
         --arg release_id "${release_id}" \
@@ -783,23 +871,43 @@ prepare_release() {
         --arg candidate_id "${candidate_id}" \
         --arg candidate_sha "sha256:$(sha256_file "${candidate_file}")" \
         --arg candidate_payload_digest "${candidate_id#manifest:}" \
+        --arg candidate_schema "$(jq -er '.payload.schema_version' "${candidate_file}")" \
+        --arg attestation_policy_digest "$(jq -er '.payload.attestation_policy_digest' "${execution_attestation_file}")" \
         --arg acceptance_path "project/${acceptance_relative}" \
         --arg acceptance_id "$(jq -er '.acceptance_record_id' "${acceptance_file}")" \
         --arg acceptance_sha "sha256:$(sha256_file "${acceptance_file}")" \
+        --arg evaluation_run_id "$(jq -er '.evaluation_run_id' "${acceptance_file}")" \
+        --arg evaluation_phase "$(jq -er '.evaluation_phase' "${acceptance_file}")" \
+        --arg acceptance_state "$(jq -er '.acceptance_state' "${acceptance_file}")" \
+        --arg dg1_decision "$(jq -er '.dg1_decision' "${acceptance_file}")" \
+        --arg summary_path "project/${run_relative}/summary.json" \
+        --arg summary_digest "$(jq -er '.summary_digest' "${summary_file}")" \
+        --arg summary_sha "sha256:$(sha256_file "${summary_file}")" \
+        --arg evidence_path "project/${run_relative}/evidence.jsonl" \
+        --arg evidence_sha "sha256:$(sha256_file "${evidence_file}")" \
+        --arg execution_path "project/${run_relative}/evidence-attestation.json" \
+        --arg execution_id "$(jq -er '.attestation_id' "${execution_attestation_file}")" \
+        --arg execution_digest "$(jq -er '.execution_attestation_digest' "${acceptance_file}")" \
+        --arg execution_sha "sha256:$(sha256_file "${execution_attestation_file}")" \
+        --arg review_path "project/${run_relative}/independent-review.json" \
+        --arg review_digest "$(jq -er '.independent_review.review_digest' "${acceptance_file}")" \
+        --arg review_sha "sha256:$(sha256_file "${review_file}")" \
         --arg replay_sha "sha256:$(sha256_file "${replay_file}")" \
         --arg rollback_mode "${rollback_mode}" \
         --arg previous "${previous}" \
         '{
-          schema_version:"domeye_interactive_agent_release_manifest_v1",
+          schema_version:"domeye_interactive_agent_release_manifest_v2",
           component:"domeye_interactive_agent_sidecar",
           release_id:$release_id,
           created_at_utc:$created_at,
           source:{commit:$commit,annotated_tag:$tag,archive_path:"source/source.tar.gz",archive_sha256:$source_sha},
           candidate:{
-            manifest_path:"project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json",
+            manifest_path:"project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json",
             candidate_id:$candidate_id,
             manifest_sha256:$candidate_sha,
             manifest_payload_digest:$candidate_payload_digest,
+            schema_version:$candidate_schema,
+            attestation_policy_digest:$attestation_policy_digest,
             activation_scope:"local_evaluation_only",
             production_deployed:false
           },
@@ -807,6 +915,22 @@ prepare_release() {
             record_path:$acceptance_path,
             record_id:$acceptance_id,
             record_sha256:$acceptance_sha,
+            evaluation_run_id:$evaluation_run_id,
+            evaluation_phase:$evaluation_phase,
+            acceptance_state:$acceptance_state,
+            dg1_decision:$dg1_decision,
+            summary_path:$summary_path,
+            summary_digest:$summary_digest,
+            summary_json_sha256:$summary_sha,
+            evidence_jsonl_path:$evidence_path,
+            evidence_jsonl_sha256:$evidence_sha,
+            execution_attestation_path:$execution_path,
+            execution_attestation_id:$execution_id,
+            execution_attestation_digest:$execution_digest,
+            execution_attestation_sha256:$execution_sha,
+            independent_review_path:$review_path,
+            independent_review_digest:$review_digest,
+            independent_review_sha256:$review_sha,
             replay_receipt_path:"deployment/ACCEPTANCE-REPLAY.json",
             replay_receipt_sha256:$replay_sha
           },
@@ -818,6 +942,10 @@ prepare_release() {
           live_verification:{
             public_backend_origin:"http://127.0.0.1:28471",
             backend_base_path:"/api/v2/country-outage/chat",
+            internal_sidecar_origin:"http://127.0.0.1:28476",
+            internal_record_base_path:"/country-outage/chat/internal",
+            public_conversation_schema_version:"domeye_interactive_agent_conversation_v2",
+            internal_record_schema_version:"domeye_interactive_agent_turn_internal_record_v1",
             event_reference:"country_outage/2026-02-27 09:12:32/IR/1/r",
             question:"在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？",
             oracle:{metric:"fixed_visible_ipv4_address_count",unit:"unique_ipv4_address",time_slot_count:3455,observed_point_count:3455,null_point_count:0,first:10156800,first_at_utc:"2026-02-27T00:10:00Z",last:10069760,last_at_utc:"2026-03-11T00:00:00Z",minimum:9577728,minimum_at_utc:"2026-02-28T14:35:00Z",maximum:10156800,maximum_at_utc:"2026-02-27T00:10:00Z",difference:579072,net_change:-87040},
@@ -1079,7 +1207,7 @@ write_rollback_state() {
 }
 
 launch_release() {
-    local release_id="$1" directory link_candidate log_file pid
+    local release_id="$1" directory link_candidate log_file pid config_sha
     directory="$(release_directory "${release_id}")" || return 1
     link_candidate="${RUNTIME_ROOT}/.current-${release_id}"
     [[ ! -e "${link_candidate}" && ! -L "${link_candidate}" ]] || {
@@ -1096,26 +1224,55 @@ launch_release() {
         error 'current 与目标 release 的启动路径绑定失败'
         return 1
     fi
-    local -a environment=()
-    local line bound_line
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-        [[ -z "${line}" || "${line}" == \#* ]] && continue
-        if ! bound_line="$(bind_launch_config_line "${line}" "${directory}")"; then
-            force_fail_closed || true
-            error '无法把启动配置绑定到目标 release'
-            return 1
-        fi
-        environment+=("${bound_line}")
-    done < "${CONFIG_FILE}" || {
-        error '无法读取已验证的 Interactive Agent 配置'; return 1
+    # Token 不能作为 env 命令参数展开。current 切换后重新校验配置，子进程再按
+    # 同一字节摘要读取 0600 文件；只在子进程内导出键值并覆盖 release 绑定路径。
+    if ! validate_config; then
+        force_fail_closed || true
+        error '启动前 Interactive Agent 配置无效'
+        return 1
+    fi
+    config_sha="$(sha256_file "${CONFIG_FILE}")" || {
+        force_fail_closed || true
+        error '无法计算启动配置摘要'
+        return 1
     }
     log_file="${RUNTIME_ROOT}/interactive-agent-${release_id}.log"
     if ! screen -L -Logfile "${log_file}" -dmS "${SCREEN_NAME}" \
         env -i HOME=/home/bgpdata USER=root LOGNAME=root LANG=C.UTF-8 LC_ALL=C.UTF-8 \
         PATH="${NODE_BIN_DIR}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-        "${environment[@]}" \
-        bash -c 'cd -- "$1/project" && exec "$2" "$1/project/$3"' \
-            _ "${directory}" "${NODE}" "${ENTRYPOINT}"; then
+        bash -c '
+          set -euo pipefail
+          expected_sha="$1"
+          config_file="$2"
+          release_directory="$3"
+          node="$4"
+          entrypoint="$5"
+          candidate_relative="$6"
+          [[ -f "${config_file}" && ! -L "${config_file}" ]]
+          actual_sha="$(sha256sum -- "${config_file}")"
+          actual_sha="${actual_sha%% *}"
+          [[ "${actual_sha}" == "${expected_sha}" ]]
+          while IFS= read -r line || [[ -n "${line}" ]]; do
+            [[ -z "${line}" || "${line}" == \#* ]] && continue
+            key="${line%%=*}"
+            value="${line#*=}"
+            case "${key}" in
+              COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT)
+                value="${release_directory}/project"
+                ;;
+              COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST)
+                value="${release_directory}/project/${candidate_relative}"
+                ;;
+            esac
+            export "${key}=${value}"
+          done < "${config_file}"
+          actual_sha="$(sha256sum -- "${config_file}")"
+          actual_sha="${actual_sha%% *}"
+          [[ "${actual_sha}" == "${expected_sha}" ]]
+          cd -- "${release_directory}/project"
+          exec "${node}" "${release_directory}/project/${entrypoint}"
+        ' _ "${config_sha}" "${CONFIG_FILE}" "${directory}" "${NODE}" \
+            "${ENTRYPOINT}" "${CANDIDATE_RELATIVE}"; then
         force_fail_closed || true
         error '无法创建 Interactive Agent Screen 进程'
         return 1
@@ -1233,7 +1390,8 @@ restore_previous_verified() {
 
 start_runtime() {
     (( $# == 1 )) || { error '用法：start <release-id>'; return 2; }
-    local release_id="$1" previous='' manifest_previous
+    local release_id="$1" previous='' restore_previous='' manifest_previous \
+        active_schema=''
     verify_release "${release_id}"
     validate_config
     manifest_previous="$(jq -er '.rollback.previous_release_id // ""' \
@@ -1246,13 +1404,27 @@ start_runtime() {
         [[ "${previous}" != "${release_id}" ]] || {
             error '目标 release 已 active'; return 1;
         }
-        verify_release "${previous}"
-        [[ "${manifest_previous}" == "${previous}" ]] || {
-            error 'release 绑定的同架构 rollback 前序与 active 不一致'; return 1;
+        active_schema="$(jq -er '.schema_version' \
+            "$(release_directory "${previous}")/RELEASE-MANIFEST.json")" || {
+            error '无法读取切换前 active release schema'; return 1;
         }
-        assert_verified_active_release "${previous}" || {
-            error '切换前序不是完整 deployed + verified 状态'; return 1;
-        }
+        if [[ "${active_schema}" == 'domeye_interactive_agent_release_manifest_v2' ]]; then
+            verify_release "${previous}"
+            [[ "${manifest_previous}" == "${previous}" ]] || {
+                error 'release 绑定的同架构 rollback 前序与 active 不一致'; return 1;
+            }
+            assert_verified_active_release "${previous}" || {
+                error '切换前序不是完整 deployed + verified 状态'; return 1;
+            }
+            restore_previous="${previous}"
+        elif [[ "${active_schema}" == 'domeye_interactive_agent_release_manifest_v1' ]]; then
+            [[ -z "${manifest_previous}" ]] || {
+                error 'v1→v2 迁移 release 不得把旧合同绑定为回滚前序'; return 1;
+            }
+            verify_legacy_v1_active_release "${previous}"
+        else
+            error '切换前 active release schema 不在允许迁移边界'; return 1
+        fi
         archive_promotion_if_present "${previous}" || return 1
         write_rollback_state || return 1
         stop_process || return 1
@@ -1276,10 +1448,10 @@ start_runtime() {
         info "Interactive Agent 已部署：${release_id}"
         return 0
     fi
-    if [[ -n "${previous}" ]]; then
-        info "新 release 启动失败，正在恢复同 schema 前序 ${previous}"
-        if restore_previous_verified "${previous}"; then
-            error "新 release 启动失败；前序 ${previous} 已重新验证恢复"
+    if [[ -n "${restore_previous}" ]]; then
+        info "新 release 启动失败，正在恢复同 schema 前序 ${restore_previous}"
+        if restore_previous_verified "${restore_previous}"; then
+            error "新 release 启动失败；前序 ${restore_previous} 已重新验证恢复"
         else
             error '新 release 与同 schema 前序均未形成 verified 状态，保持失败关闭'
         fi
@@ -1349,7 +1521,8 @@ rollback_runtime() {
 
 backend_request() {
     local method="$1" url="$2" body="${3:-}"
-    local -a arguments=(--fail-with-body --silent --show-error --max-time 125 \
+    local -a arguments=(--disable --noproxy '*' --proto '=http' \
+        --max-redirs 0 --fail-with-body --silent --show-error --max-time 125 \
         --request "${method}" --header 'Accept: application/json')
     if [[ -n "${body}" ]]; then
         arguments+=(--header 'Content-Type: application/json' --data-binary "@${body}")
@@ -1397,10 +1570,16 @@ promote_runtime() {
     }
     request_id="release-${release_id:0:16}-${request_epoch}-${RANDOM}"
     local temporary='' create_body create_response turn_body turn_response \
-        final_response receipt_tmp='' receipt_sha verified_at event_reference \
+        final_response internal_response receipt_tmp='' receipt_sha verified_at event_reference \
         publication revision question conversation_id turn_id timeout_ms deadline state
     temporary="$(mktemp -d "${STATE_ROOT}/.promotion-${release_id}.XXXXXX")" || {
         error '无法创建晋级临时目录'; return 1
+    }
+    cleanup_promotion_raw_responses() {
+        if [[ -n "${temporary:-}" \
+            && -d "${temporary}" && ! -L "${temporary}" ]]; then
+            find "${temporary}" -depth -delete || return 1
+        fi
     }
     cleanup_promotion() {
         local cleanup_failed=false
@@ -1408,10 +1587,7 @@ promote_runtime() {
             && ( -e "${receipt_tmp}" || -L "${receipt_tmp}" ) ]]; then
             unlink "${receipt_tmp}" 2>/dev/null || cleanup_failed=true
         fi
-        if [[ -n "${temporary:-}" \
-            && -d "${temporary}" && ! -L "${temporary}" ]]; then
-            find "${temporary}" -depth -delete || cleanup_failed=true
-        fi
+        cleanup_promotion_raw_responses || cleanup_failed=true
         [[ "${cleanup_failed}" == false ]]
     }
     trap cleanup_promotion EXIT
@@ -1420,6 +1596,7 @@ promote_runtime() {
     turn_body="${temporary}/turn-request.json"
     turn_response="${temporary}/turn-response.json"
     final_response="${temporary}/backend-final.json"
+    internal_response="${temporary}/sidecar-internal-record.json"
     event_reference="$(jq -er '.live_verification.event_reference' \
         "${directory}/RELEASE-MANIFEST.json")" || return 1
     publication="$(jq -er '.payload.data_identity.publication_id' \
@@ -1439,9 +1616,13 @@ promote_runtime() {
         "${create_body}" > "${create_response}"; then
         error '公开 Backend 创建会话失败'; return 1
     fi
-    conversation_id="$(jq -er '.conversation.conversation_id' \
+    conversation_id="$(jq -er '
+      select(.deduplicated==false) |
+      select((.conversation.turns | length)==0) |
+      .conversation.conversation_id
+    ' \
         "${create_response}")" || {
-        error 'Backend 创建响应缺少 conversation_id'; return 1
+        error 'Backend 创建响应不是全新空会话'; return 1
     }
     [[ "${conversation_id}" =~ ^conversation_sha256_[a-f0-9]{64}$ ]] || {
         error 'Backend 返回的 conversation_id 不符合新 Interactive Agent 身份'
@@ -1456,8 +1637,12 @@ promote_runtime() {
         "${turn_body}" > "${turn_response}"; then
         error '公开 Backend 创建 Turn 失败'; return 1
     fi
-    turn_id="$(jq -er '.turn.turn_id' "${turn_response}")" || {
-        error 'Backend Turn 响应缺少 turn_id'; return 1
+    turn_id="$(jq -er '
+      select(.deduplicated==false) |
+      select(.turn.turn_number==1) |
+      .turn.turn_id
+    ' "${turn_response}")" || {
+        error 'Backend Turn 响应不是全新第一个 Turn'; return 1
     }
     [[ "${turn_id}" =~ ^turn_sha256_[a-f0-9]{64}$ ]] || {
         error 'Backend 返回的 turn_id 不符合新 Interactive Agent 身份'
@@ -1483,11 +1668,14 @@ promote_runtime() {
             error '公开 Backend 获取最终会话失败'; return 1
         fi
         if ! jq -e --arg conversation_id "${conversation_id}" \
-            --arg turn_id "${turn_id}" '
+            --arg turn_id "${turn_id}" --arg question "${question}" '
           .conversation.conversation_id==$conversation_id and
-          ([.conversation.turns[]? | select(.turn_id==$turn_id)] | length)==1
+          (.conversation.turns | length)==1 and
+          ([.conversation.turns[]? | select(
+            .turn_id==$turn_id and .turn_number==1 and .question==$question
+          )] | length)==1
         ' "${final_response}" >/dev/null; then
-            error '最终 GET 未精确绑定本次 conversation_id 与 turn_id'
+            error '最终 GET 未精确绑定唯一新 conversation 与第一个 Turn'
             return 1
         fi
         state="$(jq -er --arg turn_id "${turn_id}" \
@@ -1509,6 +1697,15 @@ promote_runtime() {
     if ! assert_active_runtime_identity "${release_id}" >/dev/null; then
         error '回答完成后 active 运行身份漂移'; return 1
     fi
+    if ! probe_release "${release_id}" internal-record \
+        "${CONFIG_FILE}" "${directory}" "${ACTIVE_STATE}" \
+        "${conversation_id}" "${turn_id}" > "${internal_response}"; then
+        error '无法从固定 loopback 读取本次 Turn 的受信内部记录'
+        return 1
+    fi
+    if ! assert_active_runtime_identity "${release_id}" >/dev/null; then
+        error '读取内部记录后 active 运行身份漂移'; return 1
+    fi
     receipt_tmp="$(mktemp "${PROMOTION_ROOT}/.${release_id}.XXXXXX")" || {
         error '无法创建 promotion 临时回执'; return 1
     }
@@ -1516,10 +1713,11 @@ promote_runtime() {
         error '无法生成 promotion 验证时间'; return 1
     }
     if ! "${NODE}" "${SCRIPT_DIR}/verify-release.mjs" promotion \
-        "${directory}" "${ACTIVE_STATE}" "${final_response}" \
+        "${directory}" "${ACTIVE_STATE}" "${create_response}" \
+        "${turn_response}" "${final_response}" "${internal_response}" \
         "${verified_at}" "${conversation_id}" "${turn_id}" \
         > "${receipt_tmp}"; then
-        error 'Backend 回答未通过 Renderer + Guard + 精确 Oracle 晋级门'
+        error '公开回答与内部记录未通过 Renderer + Guard + 风格 + 精确 Oracle 晋级门'
         return 1
     fi
     if ! chmod 0600 "${receipt_tmp}"; then
@@ -1535,6 +1733,13 @@ promote_runtime() {
         error '晋级回执与当前进程/readiness 组合状态不一致'
         return 1
     fi
+    # 只有临时原始响应已清理，才允许把自包含的受信回执原子发布。
+    # 这样 cleanup 失败不会留下可被 status 解释为 verified 的 promotion。
+    if ! cleanup_promotion_raw_responses; then
+        error '临时原始响应清理失败，未写 verified promotion'
+        return 1
+    fi
+    temporary=''
     if ! mv -n "${receipt_tmp}" "${promotion}"; then
         error 'promotion 原子写入命令失败'
         return 1
@@ -1567,10 +1772,6 @@ promote_runtime() {
         return 1
     fi
     receipt_tmp=''
-    if ! cleanup_promotion; then
-        error "promotion 已验证写入，但临时原始响应清理失败，保留路径供处置：${temporary}"
-        return 1
-    fi
     trap - EXIT
     info "Interactive Agent 已通过生产 E2E 验证：${release_id}"
 }

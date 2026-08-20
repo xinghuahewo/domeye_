@@ -19,16 +19,16 @@ import {
 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const PROBE_SCHEMA = 'domeye_interactive_agent_release_probe_v1'
-const RELEASE_SCHEMA = 'domeye_interactive_agent_release_manifest_v1'
+const PROBE_SCHEMA = 'domeye_interactive_agent_release_probe_v2'
+const RELEASE_SCHEMA = 'domeye_interactive_agent_release_manifest_v2'
 const ACTIVE_SCHEMA = 'domeye_interactive_agent_active_v1'
-const PROMOTION_SCHEMA = 'domeye_interactive_agent_promotion_v1'
+const PROMOTION_SCHEMA = 'domeye_interactive_agent_promotion_v2'
 const COMPONENT = 'domeye_interactive_agent_sidecar'
 const READINESS_SCHEMA = 'domeye_interactive_agent_readiness_v1'
 const ENTRYPOINT = 'agent-sidecar/dist/src/cli/serve-interactive-agent.js'
-const CANDIDATE_SCHEMA = 'domeye_first_slice_candidate_manifest_v1'
+const CANDIDATE_SCHEMA = 'domeye_first_slice_candidate_manifest_v2'
 const CANDIDATE_PATH =
-  'project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json'
+  'project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json'
 const FIXED_URL = 'http://127.0.0.1:28476'
 const FIXED_HOST = '127.0.0.1'
 const FIXED_PORT = 28_476
@@ -137,10 +137,94 @@ function secureStateFile(path, code, label) {
   return file
 }
 
+function parseJsonWithoutDuplicateKeys(text) {
+  let offset = 0
+  const skipWhitespace = () => {
+    while (/[ \t\r\n]/u.test(text[offset] ?? '')) offset += 1
+  }
+  const parseString = () => {
+    const start = offset
+    if (text[offset] !== '"') throw new SyntaxError('json_string_expected')
+    offset += 1
+    while (offset < text.length) {
+      if (text[offset] === '\\') {
+        offset += 2
+        continue
+      }
+      if (text[offset] === '"') {
+        offset += 1
+        return JSON.parse(text.slice(start, offset))
+      }
+      offset += 1
+    }
+    throw new SyntaxError('json_string_unterminated')
+  }
+  const parseValue = (depth) => {
+    if (depth > 256) throw new SyntaxError('json_depth_exceeded')
+    skipWhitespace()
+    if (text[offset] === '"') return parseString()
+    if (text[offset] === '{') {
+      offset += 1
+      skipWhitespace()
+      const entries = []
+      const keys = new Set()
+      if (text[offset] === '}') {
+        offset += 1
+        return {}
+      }
+      while (true) {
+        skipWhitespace()
+        const key = parseString()
+        if (keys.has(key)) throw new SyntaxError('json_duplicate_key')
+        keys.add(key)
+        skipWhitespace()
+        if (text[offset] !== ':') throw new SyntaxError('json_colon_expected')
+        offset += 1
+        entries.push([key, parseValue(depth + 1)])
+        skipWhitespace()
+        if (text[offset] === '}') {
+          offset += 1
+          return Object.fromEntries(entries)
+        }
+        if (text[offset] !== ',') throw new SyntaxError('json_comma_expected')
+        offset += 1
+      }
+    }
+    if (text[offset] === '[') {
+      offset += 1
+      skipWhitespace()
+      const values = []
+      if (text[offset] === ']') {
+        offset += 1
+        return values
+      }
+      while (true) {
+        values.push(parseValue(depth + 1))
+        skipWhitespace()
+        if (text[offset] === ']') {
+          offset += 1
+          return values
+        }
+        if (text[offset] !== ',') throw new SyntaxError('json_comma_expected')
+        offset += 1
+      }
+    }
+    const token = /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/u
+      .exec(text.slice(offset))?.[0]
+    if (!token) throw new SyntaxError('json_value_expected')
+    offset += token.length
+    return JSON.parse(token)
+  }
+  const value = parseValue(0)
+  skipWhitespace()
+  if (offset !== text.length) throw new SyntaxError('json_trailing_content')
+  return value
+}
+
 function readJson(path, code, label) {
   const file = regularFile(path, code, label)
   try {
-    const value = JSON.parse(readFileSync(file, 'utf8'))
+    const value = parseJsonWithoutDuplicateKeys(readFileSync(file, 'utf8'))
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       reject(code, `${label}根节点无效`)
     }
@@ -165,13 +249,18 @@ function boundFile(root, path, code, label) {
 }
 
 function validTimestamp(value) {
-  return typeof value === 'string'
-    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
-    && Number.isFinite(Date.parse(value))
+  if (
+    typeof value !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+  ) return false
+  const parsed = Date.parse(value)
+  if (!Number.isFinite(parsed)) return false
+  const normalized = value.includes('.') ? value : value.replace(/Z$/, '.000Z')
+  return new Date(parsed).toISOString() === normalized
 }
 
 function parseConfig(configArgument) {
-  const config = regularFile(
+  const config = secureStateFile(
     configArgument,
     'config_invalid',
     '运行配置',
@@ -195,14 +284,38 @@ function parseConfig(configArgument) {
   const host = values.get('COUNTRY_OUTAGE_AGENT_HOST')
   const port = values.get('COUNTRY_OUTAGE_AGENT_PORT')
   const token = values.get('COUNTRY_OUTAGE_AGENT_SHARED_TOKEN')
+  const verifierToken = values.get('COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN')
+  const expectedKeys = [
+    'COUNTRY_OUTAGE_AGENT_URL',
+    'COUNTRY_OUTAGE_AGENT_SHARED_TOKEN',
+    'COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN',
+    'COUNTRY_OUTAGE_AGENT_HOST',
+    'COUNTRY_OUTAGE_AGENT_PORT',
+    'DOMEYE_API_BASE_URL',
+    'COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT',
+    'COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST',
+    'COUNTRY_OUTAGE_PI_AUTH_PATH',
+    'COUNTRY_OUTAGE_INTERACTIVE_AGENT_API_TIMEOUT_MS',
+    'COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONVERSATION_TTL_MS',
+    'COUNTRY_OUTAGE_INTERACTIVE_AGENT_TURN_TIMEOUT_MS',
+  ]
   if (
-    baseUrl !== FIXED_URL
+    !sameValue([...values.keys()].sort(), [...expectedKeys].sort())
+    || baseUrl !== FIXED_URL
     || host !== FIXED_HOST
     || port !== String(FIXED_PORT)
     || typeof token !== 'string'
     || token.length < 32
+    || token.startsWith('replace-with-')
+    || token.startsWith('CHANGE_ME')
+    || typeof verifierToken !== 'string'
+    || verifierToken.length < 32
+    || verifierToken.length > 256
+    || verifierToken.startsWith('replace-with-')
+    || verifierToken.startsWith('CHANGE_ME')
+    || verifierToken === token
   ) reject('config_invalid', '固定 Sidecar 连接配置无效')
-  return { baseUrl, token }
+  return { baseUrl, token, verifierToken }
 }
 
 function releaseDirectory(rootArgument) {
@@ -306,6 +419,13 @@ function verifyRelease(rootArgument) {
       !== '/api/v2/country-outage/chat'
     || release.live_verification?.public_backend_origin
       !== 'http://127.0.0.1:28471'
+    || release.live_verification?.internal_sidecar_origin !== FIXED_URL
+    || release.live_verification?.internal_record_base_path
+      !== '/country-outage/chat/internal'
+    || release.live_verification?.public_conversation_schema_version
+      !== 'domeye_interactive_agent_conversation_v2'
+    || release.live_verification?.internal_record_schema_version
+      !== 'domeye_interactive_agent_turn_internal_record_v1'
     || release.live_verification?.question !== FIXED_QUESTION
   ) reject('release_invalid', 'release 身份、入口或固定验证问题漂移')
 
@@ -332,8 +452,11 @@ function verifyRelease(rootArgument) {
     candidate.candidate_id !== candidateId
     || release.candidate.candidate_id !== candidateId
     || receipt.candidate_id !== candidateId
+    || release.candidate.schema_version !== CANDIDATE_SCHEMA
     || release.candidate.manifest_payload_digest !== payloadDigest
     || release.candidate.manifest_sha256 !== candidateByteDigest
+    || release.candidate.attestation_policy_digest
+      !== digest(candidate.payload.attestation_policy)
     || release.candidate.activation_scope !== 'local_evaluation_only'
     || release.candidate.production_deployed !== false
   ) reject('candidate_invalid', 'Candidate ID 或摘要绑定漂移')
@@ -385,6 +508,7 @@ async function fetchReadiness(config, verified) {
     'activation_scope',
     'production_deployed',
     'contract',
+    'answer_presentation_contract',
     'data_identity',
     'model_identity',
     'budget_policy',
@@ -410,6 +534,10 @@ async function fetchReadiness(config, verified) {
     || readiness.activation_scope !== 'local_evaluation_only'
     || readiness.production_deployed !== false
     || !sameValue(readiness.contract, payload.contract)
+    || !sameValue(
+      readiness.answer_presentation_contract,
+      payload.answer_presentation_contract,
+    )
     || !sameValue(readiness.data_identity, payload.data_identity)
     || !sameValue(readiness.model_identity, payload.model)
     || !sameValue(readiness.budget_policy, payload.budget_policy)
@@ -423,6 +551,61 @@ async function fetchReadiness(config, verified) {
     || readiness.external_evidence !== 'disabled'
   ) reject('sidecar_identity_drift', 'Sidecar readiness Candidate 身份漂移')
   return readiness
+}
+
+async function fetchInternalRecord(
+  config,
+  verified,
+  activeArgument,
+  conversationId,
+  turnId,
+) {
+  if (
+    !/^conversation_sha256_[a-f0-9]{64}$/.test(conversationId)
+    || !/^turn_sha256_[a-f0-9]{64}$/.test(turnId)
+  ) reject('internal_record_invalid', '内部记录目标身份无效')
+  await fetchReadiness(config, verified)
+  const before = verifyActive(activeArgument, verified)
+  const target = `${FIXED_URL}/country-outage/chat/internal/conversations/${conversationId}/turns/${turnId}`
+  let response
+  try {
+    response = await fetch(target, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${config.verifierToken}`,
+      },
+      redirect: 'error',
+      signal: AbortSignal.timeout(5_000),
+    })
+  } catch {
+    reject('internal_record_unreachable', 'Sidecar 内部记录不可达')
+  }
+  if (response.status !== 200) {
+    reject('internal_record_invalid', 'Sidecar 内部记录未返回 200')
+  }
+  const body = Buffer.from(await response.arrayBuffer())
+  if (body.length < 2 || body.length > 16 * 1024 * 1024) {
+    reject('internal_record_invalid', 'Sidecar 内部记录大小无效')
+  }
+  let envelope
+  try {
+    envelope = parseJsonWithoutDuplicateKeys(body.toString('utf8'))
+  } catch {
+    reject('internal_record_invalid', 'Sidecar 内部记录 JSON 无效')
+  }
+  if (
+    !exactKeys(envelope, ['record'])
+    || envelope.record?.schema_version
+      !== 'domeye_interactive_agent_turn_internal_record_v1'
+    || envelope.record?.conversation_id !== conversationId
+    || envelope.record?.turn_id !== turnId
+  ) reject('internal_record_invalid', 'Sidecar 内部记录未绑定目标 Turn')
+  const after = verifyActive(activeArgument, verified)
+  if (after.digest !== before.digest) {
+    reject('active_drift', '读取内部记录期间 active 运行身份漂移')
+  }
+  process.stdout.write(body)
 }
 
 function verifyCurrentTarget(verified) {
@@ -617,33 +800,65 @@ function verifyPromotion(promotionArgument, verified, active) {
     'release_manifest_sha256',
     'active_receipt_sha256',
     'candidate_id',
-    'backend',
+    'acceptance_record_id',
+    'public_response',
+    'internal_record',
     'result',
   ]
-  const backendKeys = [
+  const publicKeys = [
     'origin',
     'base_path',
     'conversation_id',
     'turn_id',
     'question',
+    'create_response_sha256',
+    'create_response_body_base64',
+    'turn_response_sha256',
+    'turn_response_body_base64',
     'response_sha256',
     'response_body_base64',
+    'conversation_deduplicated',
+    'turn_deduplicated',
+    'turn_number',
+    'conversation_turn_count',
+    'turn_projection_sha256',
+    'answer_text_sha256',
+  ]
+  const internalKeys = [
+    'origin',
+    'base_path',
+    'record_schema_version',
+    'record_id',
+    'record_digest',
+    'response_sha256',
+    'response_body_base64',
+    'public_projection_sha256',
+    'runtime_result_sha256',
   ]
   const resultKeys = [
     'state',
     'answer_success',
     'workflow_completed',
     'answer_source',
+    'guard_schema_version',
     'guard_decision',
+    'guard_assessment_status',
+    'style_policy_id',
+    'style_policy_digest',
+    'style_assessment_passed',
+    'final_answer_digest',
     'oracle_digest',
     'public_answer_present',
+    'internal_record_verified',
+    'public_internal_projection_equal',
     'fallback_or_rejection_present',
   ]
   const payload = { ...promotion }
   delete payload.promotion_id
   if (
     !exactKeys(promotion, keys)
-    || !exactKeys(promotion.backend, backendKeys)
+    || !exactKeys(promotion.public_response, publicKeys)
+    || !exactKeys(promotion.internal_record, internalKeys)
     || !exactKeys(promotion.result, resultKeys)
     || promotion.promotion_id !== `promotion-${digest(payload)}`
     || promotion.schema_version !== PROMOTION_SCHEMA
@@ -656,26 +871,41 @@ function verifyPromotion(promotionArgument, verified, active) {
     || promotion.release_manifest_sha256 !== verified.manifestDigest
     || promotion.active_receipt_sha256 !== active.digest
     || promotion.candidate_id !== verified.candidateId
-    || promotion.backend.origin
+    || promotion.acceptance_record_id !== verified.release.acceptance.record_id
+    || promotion.public_response.origin
       !== verified.release.live_verification.public_backend_origin
-    || promotion.backend.base_path
+    || promotion.public_response.base_path
       !== verified.release.live_verification.backend_base_path
     || !/^conversation_sha256_[a-f0-9]{64}$/.test(
-      promotion.backend.conversation_id ?? '',
+      promotion.public_response.conversation_id ?? '',
     )
     || !/^turn_sha256_[a-f0-9]{64}$/.test(
-      promotion.backend.turn_id ?? '',
+      promotion.public_response.turn_id ?? '',
     )
-    || promotion.backend.question !== FIXED_QUESTION
-    || !/^sha256:[a-f0-9]{64}$/.test(promotion.backend.response_sha256 ?? '')
+    || promotion.public_response.question !== FIXED_QUESTION
+    || promotion.public_response.conversation_deduplicated !== false
+    || promotion.public_response.turn_deduplicated !== false
+    || promotion.public_response.turn_number !== 1
+    || promotion.public_response.conversation_turn_count !== 1
+    || promotion.internal_record.origin
+      !== verified.release.live_verification.internal_sidecar_origin
+    || promotion.internal_record.base_path
+      !== verified.release.live_verification.internal_record_base_path
+    || promotion.internal_record.record_schema_version
+      !== verified.release.live_verification.internal_record_schema_version
     || promotion.result.state !== 'completed'
     || promotion.result.answer_success !== true
     || promotion.result.workflow_completed !== true
     || promotion.result.answer_source !== 'renderer'
+    || promotion.result.guard_schema_version !== 'domeye_agent_response_guard_v2'
     || promotion.result.guard_decision !== 'pass'
+    || promotion.result.guard_assessment_status !== 'evaluated'
+    || promotion.result.style_assessment_passed !== true
     || promotion.result.oracle_digest
       !== verified.release.live_verification.oracle_digest
     || promotion.result.public_answer_present !== true
+    || promotion.result.internal_record_verified !== true
+    || promotion.result.public_internal_projection_equal !== true
     || promotion.result.fallback_or_rejection_present !== false
   ) {
     reject(
@@ -683,19 +913,79 @@ function verifyPromotion(promotionArgument, verified, active) {
       'promotion 未证明公开 Backend 固定问题的 Renderer + Guard 完整正确回答',
     )
   }
-  if (
-    typeof promotion.backend.response_body_base64 !== 'string'
-    || !promotion.backend.response_body_base64
-  ) reject('promotion_invalid', 'promotion 保留的 Backend 原始响应无效')
-  const responseBytes = Buffer.from(
-    promotion.backend.response_body_base64,
-    'base64',
+  const frozenBytes = (encoded, expectedDigest, label) => {
+    if (typeof encoded !== 'string' || !encoded) {
+      reject('promotion_invalid', `${label}缺少冻结原始字节`)
+    }
+    const bytes = Buffer.from(encoded, 'base64')
+    if (
+      bytes.toString('base64') !== encoded
+      || expectedDigest !== `sha256:${sha256(bytes)}`
+    ) reject('promotion_invalid', `${label}冻结原始字节无效`)
+    return bytes
+  }
+  const createBytes = frozenBytes(
+    promotion.public_response.create_response_body_base64,
+    promotion.public_response.create_response_sha256,
+    '创建响应',
   )
-  if (
-    responseBytes.toString('base64') !== promotion.backend.response_body_base64
-    || promotion.backend.response_sha256
-      !== `sha256:${sha256(responseBytes)}`
-  ) reject('promotion_invalid', 'promotion 保留的 Backend 原始响应无效')
+  const turnBytes = frozenBytes(
+    promotion.public_response.turn_response_body_base64,
+    promotion.public_response.turn_response_sha256,
+    'Turn 响应',
+  )
+  const responseBytes = frozenBytes(
+    promotion.public_response.response_body_base64,
+    promotion.public_response.response_sha256,
+    '最终公开响应',
+  )
+  const internalBytes = frozenBytes(
+    promotion.internal_record.response_body_base64,
+    promotion.internal_record.response_sha256,
+    '内部记录响应',
+  )
+  try {
+    const created = parseJsonWithoutDuplicateKeys(createBytes.toString('utf8'))
+    const started = parseJsonWithoutDuplicateKeys(turnBytes.toString('utf8'))
+    const completed = parseJsonWithoutDuplicateKeys(responseBytes.toString('utf8'))
+    const internalEnvelope = parseJsonWithoutDuplicateKeys(
+      internalBytes.toString('utf8'),
+    )
+    const turn = completed.conversation?.turns?.[0]
+    const record = internalEnvelope.record
+    if (
+      created.deduplicated !== false
+      || created.conversation?.conversation_id
+        !== promotion.public_response.conversation_id
+      || started.deduplicated !== false
+      || started.turn?.turn_id !== promotion.public_response.turn_id
+      || started.turn?.turn_number !== 1
+      || completed.conversation?.conversation_id
+        !== promotion.public_response.conversation_id
+      || completed.conversation?.schema_version
+        !== verified.release.live_verification.public_conversation_schema_version
+      || completed.conversation?.turns?.length !== 1
+      || turn?.turn_id !== promotion.public_response.turn_id
+      || turn?.turn_number !== 1
+      || turn?.question !== FIXED_QUESTION
+      || promotion.public_response.turn_projection_sha256 !== digest(turn)
+      || promotion.public_response.answer_text_sha256
+        !== `sha256:${sha256(turn?.answer?.answer_text ?? '')}`
+      || record?.record_id !== promotion.internal_record.record_id
+      || record?.record_digest !== promotion.internal_record.record_digest
+      || record?.schema_version !== promotion.internal_record.record_schema_version
+      || record?.conversation_id !== promotion.public_response.conversation_id
+      || record?.turn_id !== promotion.public_response.turn_id
+      || record?.public_projection_sha256
+        !== promotion.internal_record.public_projection_sha256
+      || !sameValue(record?.public_projection, turn)
+      || promotion.internal_record.runtime_result_sha256
+        !== digest(record?.runtime_result)
+    ) reject('promotion_invalid', 'promotion 冻结的公开与内部证据未闭合')
+  } catch (error) {
+    if (error instanceof ProbeFailure) throw error
+    reject('promotion_invalid', 'promotion 冻结证据 JSON 无效')
+  }
   runImmutablePromotionVerification(
     verified.root,
     active.file,
@@ -763,9 +1053,21 @@ async function main() {
     )}\n`)
     return
   }
+  if (command === 'internal-record') {
+    if (args.length !== 6) {
+      reject(
+        'usage_invalid',
+        '用法：probe.mjs internal-record <config> <release-root> <active.json> <conversation-id> <turn-id>',
+      )
+    }
+    const config = parseConfig(args[1])
+    const verified = verifyRelease(args[2])
+    await fetchInternalRecord(config, verified, args[3], args[4], args[5])
+    return
+  }
   reject(
     'usage_invalid',
-    '用法：probe.mjs {readiness|status} ...',
+    '用法：probe.mjs {readiness|status|internal-record} ...',
   )
 }
 

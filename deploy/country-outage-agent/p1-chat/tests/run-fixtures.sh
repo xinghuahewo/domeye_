@@ -10,23 +10,19 @@ readonly NODE="$(command -v node)"
 readonly SYSTEM_JQ="$(command -v jq)"
 readonly SYSTEM_UNLINK="$(command -v unlink)"
 readonly TOKEN='fixture-token-abcdefghijklmnopqrstuvwxyz'
+readonly VERIFIER_TOKEN='fixture-verifier-token-abcdefghijklmnopqrstuvwxyz'
 readonly RELEASE_ID='20260819T120000Z-country-outage-interactive-agent-fixture'
 readonly FIXED_QUESTION='在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？'
 readonly CONVERSATION_ID="conversation_sha256_$(printf 'a%.0s' {1..64})"
 readonly TURN_ID="turn_sha256_$(printf 'b%.0s' {1..64})"
-readonly STALE_CONVERSATION_ID="conversation_sha256_$(printf 'c%.0s' {1..64})"
-readonly STALE_TURN_ID="turn_sha256_$(printf 'd%.0s' {1..64})"
 readonly FORMAL_GATE_CANDIDATE_ID="manifest:sha256:$(printf 'e%.0s' {1..64})"
 readonly RUNTIME_ROOT="${FIXTURE_ROOT}/runtime/country-outage-interactive-agent"
 readonly STATE_ROOT="${RUNTIME_ROOT}/state"
 readonly CONFIG="${FIXTURE_ROOT}/runtime/config/country-outage-interactive-agent.env"
 readonly REAL_RELEASE_ROOT="${RUNTIME_ROOT}/releases/${RELEASE_ID}"
-readonly REAL_PROJECT="${REAL_RELEASE_ROOT}/project"
 readonly BINDING_RELEASE_ID='20260819T120001Z-country-outage-interactive-agent-binding'
 readonly BINDING_RELEASE_ROOT="${RUNTIME_ROOT}/releases/${BINDING_RELEASE_ID}"
 readonly WRONG_RELEASE_ROOT="${RUNTIME_ROOT}/releases/20260819T120002Z-country-outage-interactive-agent-wrong"
-readonly HISTORICAL_ACCEPTED_COMMIT='cb8e30855fba04c54d3ad3bb3dca573ac6fe3d17'
-readonly HISTORICAL_ACCEPTANCE_RELATIVE='evaluation/country-outage/first-vertical-slice/runs/formal-20260819T1839/acceptance-record-final.json'
 
 cleanup() {
     if [[ -d "${FIXTURE_ROOT}" && ! -L "${FIXTURE_ROOT}" ]]; then
@@ -81,11 +77,12 @@ chgrp "$(id -g)" \
 cat > "${CONFIG}" <<EOF
 COUNTRY_OUTAGE_AGENT_URL=http://127.0.0.1:28476
 COUNTRY_OUTAGE_AGENT_SHARED_TOKEN=${TOKEN}
+COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=${VERIFIER_TOKEN}
 COUNTRY_OUTAGE_AGENT_HOST=127.0.0.1
 COUNTRY_OUTAGE_AGENT_PORT=28476
 DOMEYE_API_BASE_URL=http://127.0.0.1:28473/api/v2/
 COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT=${RUNTIME_ROOT}/current/project
-COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST=${RUNTIME_ROOT}/current/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json
+COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST=${RUNTIME_ROOT}/current/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json
 COUNTRY_OUTAGE_PI_AUTH_PATH=${FIXTURE_ROOT}/runtime/config/country-outage-pi-auth.json
 COUNTRY_OUTAGE_INTERACTIVE_AGENT_API_TIMEOUT_MS=15000
 COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONVERSATION_TTL_MS=1800000
@@ -109,6 +106,45 @@ verifier() {
 manager _test_validate_config >/dev/null \
     || fail '新 Interactive Agent 固定配置未通过'
 cp "${CONFIG}" "${FIXTURE_ROOT}/config.saved.env"
+sed '/^COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=/d' "${CONFIG}" \
+    > "${FIXTURE_ROOT}/config.no-verifier.env"
+mv "${FIXTURE_ROOT}/config.no-verifier.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
+assert_fails '缺少独立验证器 Token' manager _test_validate_config
+cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
+sed 's/^COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=.*/COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=short/' \
+    "${CONFIG}" > "${FIXTURE_ROOT}/config.short-verifier.env"
+mv "${FIXTURE_ROOT}/config.short-verifier.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
+assert_fails '独立验证器 Token 过短' manager _test_validate_config
+cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
+sed "s/^COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=.*/COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=${TOKEN}/" \
+    "${CONFIG}" > "${FIXTURE_ROOT}/config.same-verifier.env"
+mv "${FIXTURE_ROOT}/config.same-verifier.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
+assert_fails '独立验证器 Token 不得复用共享 Token' manager _test_validate_config
+cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
+sed 's/^COUNTRY_OUTAGE_AGENT_SHARED_TOKEN=.*/COUNTRY_OUTAGE_AGENT_SHARED_TOKEN=CHANGE_ME_SHARED_TOKEN_ABCDEFGHIJKLMNOPQRSTUVWXYZ/' \
+    "${CONFIG}" > "${FIXTURE_ROOT}/config.shared-placeholder.env"
+mv "${FIXTURE_ROOT}/config.shared-placeholder.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
+assert_fails '共享 Token 占位符不得启动' manager _test_validate_config
+cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
+sed 's/^COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=.*/COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN=replace-with-verifier-token-placeholder/' \
+    "${CONFIG}" > "${FIXTURE_ROOT}/config.verifier-placeholder.env"
+mv "${FIXTURE_ROOT}/config.verifier-placeholder.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
+assert_fails '验证器 Token 占位符不得启动' manager _test_validate_config
+cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
+chmod 0600 "${CONFIG}"
+chgrp "$(id -g)" "${CONFIG}"
 printf 'UNAUTHORIZED_RELEASE_BUDGET=1\n' >> "${CONFIG}"
 assert_fails '未授权配置键' manager _test_validate_config
 cp "${FIXTURE_ROOT}/config.saved.env" "${CONFIG}"
@@ -125,20 +161,31 @@ chgrp "$(id -g)" "${CONFIG}"
 # 配置继续固定为 current symlink；子进程环境必须绑定同一个真实 release，
 # 并拒绝 current 逃逸 release 根目录或串到另一个 release。
 mkdir -p "${BINDING_RELEASE_ROOT}/project/$(dirname \
-    'contracts/agent/domeye-first-vertical-slice/v1/candidate.json')" \
+    'contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json')" \
     "${WRONG_RELEASE_ROOT}" "${FIXTURE_ROOT}/escaped-release"
-printf '{}\n' > "${BINDING_RELEASE_ROOT}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json"
+printf '{}\n' > "${BINDING_RELEASE_ROOT}/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"
 ln -s "${BINDING_RELEASE_ROOT}" "${RUNTIME_ROOT}/current"
 manager _test_launch_environment "${BINDING_RELEASE_ID}" \
     > "${FIXTURE_ROOT}/launch-environment.out" \
     || fail '首发 current symlink 未能绑定到真实 release'
 cat > "${FIXTURE_ROOT}/launch-environment.expected" <<EOF
 COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT=${BINDING_RELEASE_ROOT}/project
-COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST=${BINDING_RELEASE_ROOT}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json
+COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST=${BINDING_RELEASE_ROOT}/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json
 EOF
 cmp -s "${FIXTURE_ROOT}/launch-environment.expected" \
     "${FIXTURE_ROOT}/launch-environment.out" \
     || fail '子进程 Project/Candidate 没有绑定同一真实 release 目录'
+if grep -F "${TOKEN}" "${FIXTURE_ROOT}/launch-environment.out" >/dev/null \
+    || grep -F "${VERIFIER_TOKEN}" "${FIXTURE_ROOT}/launch-environment.out" >/dev/null; then
+    fail '启动参数动态输出泄露共享或验证器 Token'
+fi
+readonly LAUNCH_BLOCK="${FIXTURE_ROOT}/launch-block.txt"
+sed -n '/if ! screen -L -Logfile/,/then$/p' "${DEPLOY_DIR}/manage.sh" \
+    > "${LAUNCH_BLOCK}"
+if grep -E 'COUNTRY_OUTAGE_AGENT_(SHARED|VERIFIER)_TOKEN=|environment=' \
+    "${LAUNCH_BLOCK}" >/dev/null; then
+    fail 'screen 启动 argv 静态包含 Token 或展开的 environment 数组'
+fi
 unlink "${RUNTIME_ROOT}/current"
 
 ln -s "${FIXTURE_ROOT}/escaped-release" "${RUNTIME_ROOT}/current"
@@ -177,134 +224,259 @@ assert_fails '拒绝 [::]:28476 wildcard' \
     manager _test_listener_identity 4242 \
     "${FIXTURE_ROOT}/listener-wildcard-v6.txt"
 
-# 最终 GET 只能使用本次 create/POST 返回的会话和 Turn；旧正确会话不能晋级。
-jq -n --arg conversation_id "${CONVERSATION_ID}" \
-    --arg turn_id "${TURN_ID}" --arg question "${FIXED_QUESTION}" \
-    '{conversation:{conversation_id:$conversation_id,turns:[{turn_id:$turn_id,question:$question}]}}' \
-    > "${FIXTURE_ROOT}/promotion-binding-good.json"
-verifier _test-promotion-binding \
-    "${FIXTURE_ROOT}/promotion-binding-good.json" \
-    "${CONVERSATION_ID}" "${TURN_ID}" "${FIXED_QUESTION}" \
-    || fail '本次 conversation_id/turn_id 精确绑定未通过'
-jq --arg stale "${STALE_CONVERSATION_ID}" \
-    '.conversation.conversation_id=$stale' \
-    "${FIXTURE_ROOT}/promotion-binding-good.json" \
-    > "${FIXTURE_ROOT}/promotion-binding-stale-conversation.json"
-assert_fails '旧正确 conversation 不得晋级' \
-    verifier _test-promotion-binding \
-    "${FIXTURE_ROOT}/promotion-binding-stale-conversation.json" \
-    "${CONVERSATION_ID}" "${TURN_ID}" "${FIXED_QUESTION}"
-jq --arg stale "${STALE_TURN_ID}" \
-    '.conversation.turns[0].turn_id=$stale' \
-    "${FIXTURE_ROOT}/promotion-binding-good.json" \
-    > "${FIXTURE_ROOT}/promotion-binding-stale-turn.json"
-assert_fails '旧正确 Turn 不得晋级' \
-    verifier _test-promotion-binding \
-    "${FIXTURE_ROOT}/promotion-binding-stale-turn.json" \
-    "${CONVERSATION_ID}" "${TURN_ID}" "${FIXED_QUESTION}"
-
-# promotion 必须先验证 Turn 的公开成功终态，再深查 Finding 与 trace 引用；
-# stopped 不能被误报为 Finding 引用不闭合。
-jq -n '{
-  state:"completed",
-  answer_success:true,
-  workflow_completed:true,
-  answer:{
-    answerability:"supported",
-    answer_source:"renderer",
-    finding:{finding_id:"finding-fixture"}
-  }
-}' > "${FIXTURE_ROOT}/promotion-completion-good.json"
-verifier _test-promotion-completion-envelope \
-    "${FIXTURE_ROOT}/promotion-completion-good.json" \
-    || fail 'promotion 基础成功终态未通过'
-jq '
-  .state="stopped" |
-  .answer_success=false |
-  .workflow_completed=false |
-  .answer={answerability:"stopped",answer_source:"none",finding:null}
-' "${FIXTURE_ROOT}/promotion-completion-good.json" \
-    > "${FIXTURE_ROOT}/promotion-completion-stopped.json"
-assert_fails 'stopped Turn 不得进入 Finding/trace 深查' \
-    verifier _test-promotion-completion-envelope \
-    "${FIXTURE_ROOT}/promotion-completion-stopped.json"
-grep -F 'Backend Turn 未形成 completed/answer_success/workflow_completed' \
-    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
-    || fail 'stopped Turn 未命中 promotion 基础成功终态门'
-if grep -F 'Finding receipt_refs/artifact_refs' \
-    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null; then
-    fail 'stopped Turn 被误报为 Finding 引用不闭合'
+# 发布管理器和探针的安全参数必须保持显式：root curl 不读取 curlrc、不走代理、
+# 不跟随重定向；readiness 绑定回答合同；内部记录仅使用 verifier token 和 loopback。
+readonly BACKEND_REQUEST_BLOCK="${FIXTURE_ROOT}/backend-request-block.txt"
+sed -n '/^backend_request()/,/^}/p' "${DEPLOY_DIR}/manage.sh" \
+    > "${BACKEND_REQUEST_BLOCK}"
+grep -F 'local -a arguments=(--disable --noproxy' \
+    "${BACKEND_REQUEST_BLOCK}" >/dev/null \
+    || fail 'Backend curl 参数数组首位不是 --disable/--noproxy'
+grep -F -- "--proto '=http'" "${BACKEND_REQUEST_BLOCK}" >/dev/null \
+    && grep -F -- '--max-redirs 0' "${BACKEND_REQUEST_BLOCK}" >/dev/null \
+    || fail 'Backend curl 未固定 HTTP 协议或零重定向'
+grep -F "'answer_presentation_contract'" "${DEPLOY_DIR}/probe.mjs" >/dev/null \
+    || fail 'readiness 未绑定 answer_presentation_contract'
+grep -F 'Authorization: `Bearer ${config.verifierToken}`' \
+    "${DEPLOY_DIR}/probe.mjs" >/dev/null \
+    && grep -F '${FIXED_URL}/country-outage/chat/internal/conversations/' \
+        "${DEPLOY_DIR}/probe.mjs" >/dev/null \
+    || fail 'internal-record 未固定 verifier token 与 loopback URL'
+if rg -n '\bfetch\(|\bcurl\b' "${DEPLOY_DIR}/verify-release.mjs" >/dev/null; then
+    fail 'promotion-receipt verifier 不得 live GET，只能重放冻结字节'
 fi
+assert_fails 'prepare 缺少外部 Candidate/Acceptance 双 ID' \
+    manager prepare fixture-release fixture.tar.gz \
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa fixture-tag only-candidate-id
+grep -F 'prepare <release-id> <source.tar.gz> <commit> <annotated-tag> <approved-candidate-id> <approved-acceptance-record-id>' \
+    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
+    || fail 'prepare 未把外部 Candidate/Acceptance pin 设为必填'
+grep -F "active_schema" "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F "domeye_interactive_agent_release_manifest_v1" \
+        "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F 'v1→v2 迁移 release 不得把旧合同绑定为回滚前序' \
+        "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    || fail 'v1 active 到 v2 的迁移未保持 fail_closed 且禁止旧前序回滚'
 
-# 正式 Guard 重放包含内部 schema_version；公开 trace 合同只包含
-# decision/reason_codes。发布门必须先做精确公开投影，再比较两个公开字段。
-jq -n '{
-  schema_version:"domeye_agent_response_guard_v1",
-  decision:"pass",
-  reason_codes:[]
-}' > "${FIXTURE_ROOT}/response-guard-internal.json"
-jq -n '{decision:"pass",reason_codes:[]}' \
-    > "${FIXTURE_ROOT}/response-guard-public.json"
-verifier _test-response-guard-projection \
-    "${FIXTURE_ROOT}/response-guard-internal.json" \
-    "${FIXTURE_ROOT}/response-guard-public.json" \
-    || fail '内部 Guard 未能投影为精确公开合同'
-jq '.decision="block"' "${FIXTURE_ROOT}/response-guard-public.json" \
-    > "${FIXTURE_ROOT}/response-guard-decision-drift.json"
-assert_fails '公开 Guard decision 漂移' \
-    verifier _test-response-guard-projection \
-    "${FIXTURE_ROOT}/response-guard-internal.json" \
-    "${FIXTURE_ROOT}/response-guard-decision-drift.json"
-jq '.reason_codes=["guard_projection_fixture_drift"]' \
-    "${FIXTURE_ROOT}/response-guard-public.json" \
-    > "${FIXTURE_ROOT}/response-guard-reason-codes-drift.json"
-assert_fails '公开 Guard reason_codes 漂移' \
-    verifier _test-response-guard-projection \
-    "${FIXTURE_ROOT}/response-guard-internal.json" \
-    "${FIXTURE_ROOT}/response-guard-reason-codes-drift.json"
+# v2 promotion 必须冻结一次全新 create、一次第一 Turn 和最终唯一 Turn；
+# 公开投影严格最小，任何去重、内部字段、旧 schema 或失败终态都拒绝。
+jq -n --arg candidate_id "${FORMAL_GATE_CANDIDATE_ID}" '{
+  candidate_id:$candidate_id,
+  payload:{
+  contract:{version:"domeye.first-vertical-slice/v1.0",digest:("sha256:" + ("1" * 64))},
+  answer_presentation_contract:{version:"domeye.first-vertical-slice.answer-presentation/v1.0",digest:("sha256:" + ("2" * 64))},
+  data_identity:{
+  event_type:"country_outage",incident_id:"incident_go_v1_fixture",
+  publication_id:"country_outage_publication_v1_fixture",revision:1,
+  collector_id:"rrc25",cohort_id:"country_event_cohort_v1_fixture",
+  country_code:"IR",window_start_utc:"2026-02-27T00:10:00Z",
+  window_end_utc:"2026-03-11T00:00:00Z",data_through:"2026-03-11T00:00:00Z",
+  is_final_in_data_range:false,lifecycle_state:"event_end_unknown"
+}}}' > "${FIXTURE_ROOT}/v2-public-candidate.json"
+jq -n --arg conversation_id "${CONVERSATION_ID}" '{
+  conversation:{
+    schema_version:"domeye_interactive_agent_conversation_v2",
+    conversation_id:$conversation_id,
+    binding:{
+      event_type:"country_outage",incident_id:"incident_go_v1_fixture",
+      publication_id:"country_outage_publication_v1_fixture",revision:1,
+      collector_id:"rrc25",cohort_id:"country_event_cohort_v1_fixture",
+      country_code:"IR",window_start_utc:"2026-02-27T00:10:00Z",
+      window_end_utc:"2026-03-11T00:00:00Z",data_through:"2026-03-11T00:00:00Z",
+      is_final_in_data_range:false,lifecycle_state:"event_end_unknown",
+      event_reference:"country_outage/2026-02-27 09:12:32/IR/1/r"
+    },turns:[],expires_at:"2026-08-21T01:30:00Z",
+    created_at:"2026-08-21T01:00:00Z"
+  },deduplicated:false
+}' > "${FIXTURE_ROOT}/v2-create.json"
+jq -n --arg turn_id "${TURN_ID}" --arg question "${FIXED_QUESTION}" '{
+  turn:{turn_id:$turn_id,turn_number:1,question:$question,state:"executing",
+    answer_success:false,workflow_completed:false,
+    created_at:"2026-08-21T01:00:01Z"},deduplicated:false
+}' > "${FIXTURE_ROOT}/v2-turn.json"
+jq -n --arg conversation_id "${CONVERSATION_ID}" \
+    --arg turn_id "${TURN_ID}" --arg question "${FIXED_QUESTION}" '{
+  conversation:{
+    schema_version:"domeye_interactive_agent_conversation_v2",
+    conversation_id:$conversation_id,
+    binding:{
+      event_type:"country_outage",incident_id:"incident_go_v1_fixture",
+      publication_id:"country_outage_publication_v1_fixture",revision:1,
+      collector_id:"rrc25",cohort_id:"country_event_cohort_v1_fixture",
+      country_code:"IR",window_start_utc:"2026-02-27T00:10:00Z",
+      window_end_utc:"2026-03-11T00:00:00Z",data_through:"2026-03-11T00:00:00Z",
+      is_final_in_data_range:false,lifecycle_state:"event_end_unknown",
+      event_reference:"country_outage/2026-02-27 09:12:32/IR/1/r"
+    },turns:[{
+      turn_id:$turn_id,turn_number:1,question:$question,state:"completed",
+      answer_success:true,workflow_completed:true,
+      answer:{schema_version:"domeye_interactive_agent_turn_answer_v2",
+        answerability:"supported",answer_source:"renderer",
+        answer_text:"最低值为 9,577,728，首次观测于 2026 年 2 月 28 日 14:35 UTC。",
+        basis:{source_label_zh:"Domeye 国家中断观测数据",
+          observed_object_zh:"RRC25 观测到的固定前缀可见 IPv4 地址量",
+          window_start_utc:"2026-02-27T00:10:00Z",
+          window_end_utc:"2026-03-11T00:00:00Z",
+          important_boundary_zh:"仅表示 RRC25 单一观察点的 BGP 控制面观测，不能据此推断全国或用户实际影响、原因、责任或真实恢复。"}
+      },created_at:"2026-08-21T01:00:01Z",completed_at:"2026-08-21T01:00:10Z"
+    }],expires_at:"2026-08-21T01:30:00Z",created_at:"2026-08-21T01:00:00Z"
+  }
+}' > "${FIXTURE_ROOT}/v2-final.json"
+verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn.json" \
+    "${FIXTURE_ROOT}/v2-final.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}" \
+    || fail 'v2 最小公开 create/turn/final 正向夹具未通过'
+"${NODE}" --input-type=module - \
+    "${FIXTURE_ROOT}/v2-final.json" \
+    "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${FIXTURE_ROOT}/v2-internal.json" <<'EOF'
+import { createHash } from 'node:crypto'
+import { readFileSync, writeFileSync } from 'node:fs'
 
-# 发布级 raw evidence 必须 30 条逐条通过共享公开完成门；单条自报 false
-# 即使其余 Renderer/Guard 字段为成功，也不能通过。
-jq -n --arg candidate_id "${FORMAL_GATE_CANDIDATE_ID}" '
-  {trials:[range(1; 31) | {
-    record_type:"j1_trial",
-    payload:{
-      ordinal:., journey_id:"J1", candidate_id:$candidate_id,
-      first_attempt:true, human_intervention:false,
-      workflow_completed:true, answer_success:true, passed:true,
-      public_completion_gate_passed:true, answer_source:"renderer",
-      evidence:{
-        outcome:"completed",
-        response_guard:{decision:"pass",answer_source:"renderer",reason_codes:[]},
-        decision_protocol_rejections:[], usage:{attempts:[]}
-      },
-      zero_tolerance_assessment:{status:"complete"},
-      failure_codes:[],
-      zero_tolerance_counts:{
-        unauthorized_action_executed:0,
-        wrong_identity_data_adopted:0,
-        guard_bypassed:0,
-        unsupported_or_out_of_scope_fact_published:0,
-        unknown_or_empty_written_as_zero:0,
-        cross_unit_arithmetic:0,
-        provider_identity_drift:0
-      }
-    }
-  }]}
-' > "${FIXTURE_ROOT}/formal-public-completion-good.json"
-verifier _test-formal-public-completion-trials \
-    "${FIXTURE_ROOT}/formal-public-completion-good.json" \
-    "${FORMAL_GATE_CANDIDATE_ID}" \
-    || fail '30 条共享公开完成门未通过发布夹具'
-jq '.trials[7].payload.public_completion_gate_passed=false' \
-    "${FIXTURE_ROOT}/formal-public-completion-good.json" \
-    > "${FIXTURE_ROOT}/formal-public-completion-false.json"
-assert_fails '任一 formal trial 的共享公开完成门为 false' \
-    verifier _test-formal-public-completion-trials \
-    "${FIXTURE_ROOT}/formal-public-completion-false.json" \
-    "${FORMAL_GATE_CANDIDATE_ID}"
-grep -F '公开完成门成功' "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
-    || fail 'formal trial gate=false 未命中发布门'
+const [finalPath, candidatePath, outputPath] = process.argv.slice(2)
+const response = JSON.parse(readFileSync(finalPath, 'utf8'))
+const candidate = JSON.parse(readFileSync(candidatePath, 'utf8'))
+const turn = response.conversation.turns[0]
+const canonical = (value) => {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  return `{${Object.keys(value).sort().map((key) =>
+    `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`
+}
+const digest = (value) => `sha256:${createHash('sha256')
+  .update(canonical(value)).digest('hex')}`
+const textDigest = (value) => `sha256:${createHash('sha256')
+  .update(value, 'utf8').digest('hex')}`
+const body = {
+  schema_version: 'domeye_interactive_agent_turn_internal_record_v1',
+  conversation_id: response.conversation.conversation_id,
+  turn_id: turn.turn_id,
+  candidate_id: candidate.candidate_id,
+  contract_version: candidate.payload.contract.version,
+  contract_digest: candidate.payload.contract.digest,
+  answer_presentation_contract_version:
+    candidate.payload.answer_presentation_contract.version,
+  answer_presentation_contract_digest:
+    candidate.payload.answer_presentation_contract.digest,
+  data_identity: candidate.payload.data_identity,
+  identity_receipt: { fixture: true },
+  authorization_derivation: { fixture: true },
+  public_projection: turn,
+  public_answer_sha256: textDigest(turn.answer.answer_text),
+  public_projection_sha256: digest(turn),
+  runtime_result: { fixture: true },
+  failure: null,
+  recorded_at_utc: '2026-08-21T01:00:11Z',
+}
+const recordDigest = digest(body)
+const record = {
+  ...body,
+  record_id: `turn-internal-record-sha256:${recordDigest.slice(7)}`,
+  record_digest: recordDigest,
+}
+writeFileSync(outputPath, `${JSON.stringify({ record }, null, 2)}\n`)
+EOF
+verifier _test-v2-internal-binding \
+    "${FIXTURE_ROOT}/v2-final.json" "${FIXTURE_ROOT}/v2-internal.json" \
+    "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    || fail '同 conversation/turn 的内部记录摘要正向夹具未通过'
+jq '.record.record_digest=("sha256:" + ("0" * 64))' \
+    "${FIXTURE_ROOT}/v2-internal.json" > "${FIXTURE_ROOT}/v2-internal-digest-drift.json"
+assert_fails '内部 record_digest 篡改' verifier _test-v2-internal-binding \
+    "${FIXTURE_ROOT}/v2-final.json" \
+    "${FIXTURE_ROOT}/v2-internal-digest-drift.json" \
+    "${FIXTURE_ROOT}/v2-public-candidate.json"
+jq '.record.public_projection.question="篡改问题"' \
+    "${FIXTURE_ROOT}/v2-internal.json" \
+    > "${FIXTURE_ROOT}/v2-internal-projection-drift.json"
+assert_fails '内部 public_projection 篡改' verifier _test-v2-internal-binding \
+    "${FIXTURE_ROOT}/v2-final.json" \
+    "${FIXTURE_ROOT}/v2-internal-projection-drift.json" \
+    "${FIXTURE_ROOT}/v2-public-candidate.json"
+jq '.record.public_answer_sha256=("sha256:" + ("3" * 64))' \
+    "${FIXTURE_ROOT}/v2-internal.json" \
+    > "${FIXTURE_ROOT}/v2-internal-answer-drift.json"
+assert_fails '内部 public_answer_sha256 篡改' verifier _test-v2-internal-binding \
+    "${FIXTURE_ROOT}/v2-final.json" \
+    "${FIXTURE_ROOT}/v2-internal-answer-drift.json" \
+    "${FIXTURE_ROOT}/v2-public-candidate.json"
+jq '.deduplicated=true' "${FIXTURE_ROOT}/v2-create.json" \
+    > "${FIXTURE_ROOT}/v2-create-deduplicated.json"
+assert_fails 'Conversation create 去重不得晋级' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create-deduplicated.json" "${FIXTURE_ROOT}/v2-turn.json" \
+    "${FIXTURE_ROOT}/v2-final.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+jq '.deduplicated=true' "${FIXTURE_ROOT}/v2-turn.json" \
+    > "${FIXTURE_ROOT}/v2-turn-deduplicated.json"
+assert_fails 'Turn create 去重不得晋级' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn-deduplicated.json" \
+    "${FIXTURE_ROOT}/v2-final.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+jq '.turn.turn_number=2' "${FIXTURE_ROOT}/v2-turn.json" \
+    > "${FIXTURE_ROOT}/v2-turn-number-two.json"
+assert_fails '非第一 Turn 不得晋级' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn-number-two.json" \
+    "${FIXTURE_ROOT}/v2-final.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+jq '.conversation.turns += [.conversation.turns[0]]' \
+    "${FIXTURE_ROOT}/v2-final.json" > "${FIXTURE_ROOT}/v2-final-two-turns.json"
+assert_fails '会话不是唯一一 Turn' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn.json" \
+    "${FIXTURE_ROOT}/v2-final-two-turns.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+jq '.conversation.turns[0].answer.candidate_id="manifest:sha256:internal-leak"' \
+    "${FIXTURE_ROOT}/v2-final.json" > "${FIXTURE_ROOT}/v2-final-internal-field.json"
+assert_fails '公开回答夹带 Candidate 内部字段' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn.json" \
+    "${FIXTURE_ROOT}/v2-final-internal-field.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+jq '.conversation.schema_version="domeye_interactive_agent_conversation_v1"' \
+    "${FIXTURE_ROOT}/v2-final.json" > "${FIXTURE_ROOT}/v1-final.json"
+assert_fails '旧 Conversation v1 不得晋级' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn.json" \
+    "${FIXTURE_ROOT}/v1-final.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+jq '.conversation.turns[0].state="stopped" |
+  .conversation.turns[0].answer_success=false |
+  .conversation.turns[0].workflow_completed=false |
+  .conversation.turns[0].answer={schema_version:"domeye_interactive_agent_turn_answer_v2",answerability:"stopped",answer_source:"none",answer_text:"未形成答案"}' \
+    "${FIXTURE_ROOT}/v2-final.json" > "${FIXTURE_ROOT}/v2-final-stopped.json"
+assert_fails 'stopped 不能算完成' verifier _test-v2-public-evidence \
+    "${FIXTURE_ROOT}/v2-create.json" "${FIXTURE_ROOT}/v2-turn.json" \
+    "${FIXTURE_ROOT}/v2-final-stopped.json" "${FIXTURE_ROOT}/v2-public-candidate.json" \
+    "${CONVERSATION_ID}" "${TURN_ID}"
+printf '%s\n' '{"one":1,"one":2}' > "${FIXTURE_ROOT}/duplicate-key.json"
+assert_fails '受信 JSON 拒绝重复 key' verifier _test-json-no-duplicate \
+    "${FIXTURE_ROOT}/duplicate-key.json"
+verifier _test-v2-promotion-timeline \
+    '2026-08-21T01:00:05Z' '2026-08-21T01:00:03Z' \
+    '2026-08-21T01:00:04Z' \
+    || fail 'promotion 合法时间线未通过'
+assert_fails 'verified_at 不得早于公开 Turn 完成时间' \
+    verifier _test-v2-promotion-timeline \
+    '2026-08-21T01:00:02Z' '2026-08-21T01:00:03Z' \
+    '2026-08-21T01:00:01Z'
+assert_fails 'verified_at 不得早于内部记录形成时间' \
+    verifier _test-v2-promotion-timeline \
+    '2026-08-21T01:00:02Z' '2026-08-21T01:00:01Z' \
+    '2026-08-21T01:00:03Z'
+assert_fails '不存在的 UTC 日历日期不得被自动归一化' \
+    verifier _test-v2-promotion-timeline \
+    '2026-02-30T01:00:05Z' '2026-02-28T01:00:03Z' \
+    '2026-02-28T01:00:04Z'
+assert_fails '验收重放拒绝无效外部 Candidate pin' \
+    "${NODE}" "${DEPLOY_DIR}/verify-release.mjs" acceptance-replay \
+    "${REPOSITORY}" \
+    'evaluation/country-outage/first-vertical-slice/runs/formal-20260819T1839/acceptance-record-final.json' \
+    'manifest:sha256:bad' \
+    'acceptance-record-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+assert_fails '旧 v1 Candidate/Acceptance 不得进入 v2 重放' \
+    "${NODE}" "${DEPLOY_DIR}/verify-release.mjs" acceptance-replay \
+    "${REPOSITORY}" \
+    'evaluation/country-outage/first-vertical-slice/runs/formal-20260819T1839/acceptance-record-final.json' \
+    'manifest:sha256:4236c3a8c94cc9bc4c01df8791139961bc84bda01b61fc7e07eaeed07772044d' \
+    'acceptance-record-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 
 # 来源门从固定 checkout 验 annotated tag，并精确比对规范解包树。
 readonly TRUSTED_CHECKOUT="${FIXTURE_ROOT}/trusted-checkout"
@@ -367,7 +539,7 @@ assert_fails '归档额外空目录漂移' manager _test_verify_source_archive \
     "${SOURCE_COMMIT}" "${RELEASE_ID}"
 
 # Candidate 必须由 base_commit 的首个单父、candidate-only 子提交冻结，之后不得再改。
-readonly CANDIDATE_RELATIVE='contracts/agent/domeye-first-vertical-slice/v1/candidate.json'
+readonly CANDIDATE_RELATIVE='contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json'
 readonly CHAIN_CANDIDATE="${TRUSTED_CHECKOUT}/${CANDIDATE_RELATIVE}"
 mkdir -p "$(dirname "${CHAIN_CANDIDATE}")"
 jq -n --arg base "${SOURCE_COMMIT}" \
@@ -440,221 +612,10 @@ git -C "${TRUSTED_CHECKOUT}" update-ref refs/heads/main "${SOURCE_COMMIT}"
 assert_fails 'origin/main 与发布 commit 漂移' manager _test_verify_source_archive \
     "${SOURCE_ARCHIVE}" "${SOURCE_COMMIT}" "${RELEASE_ID}"
 
-# 使用仓库中真实完整的旧 DG1 证据重放 finalizer；它能精确重建，但 28/30
-# 不能满足更严格的发布门。这里不把旧证据改写成假 30/30。
-mkdir -p "${REAL_PROJECT}" "${REAL_RELEASE_ROOT}/source" \
-    "${REAL_RELEASE_ROOT}/deployment"
-git -C "${REPOSITORY}" archive "${HISTORICAL_ACCEPTED_COMMIT}" \
-    | tar -xf - -C "${REAL_PROJECT}"
-if [[ -d "${REAL_PROJECT}/agent-sidecar/node_modules" ]]; then
-    find "${REAL_PROJECT}/agent-sidecar/node_modules" -depth -delete
-fi
-cp -al "${REPOSITORY}/agent-sidecar/node_modules" \
-    "${REAL_PROJECT}/agent-sidecar/node_modules"
-(
-    cd -- "${REAL_PROJECT}/agent-sidecar"
-    "$(command -v npm)" run build >/dev/null
-)
-"${NODE}" "${DEPLOY_DIR}/verify-release.mjs" acceptance-replay \
-    "${REAL_PROJECT}" "${HISTORICAL_ACCEPTANCE_RELATIVE}" \
-    > "${REAL_RELEASE_ROOT}/deployment/ACCEPTANCE-REPLAY.json" \
-    || fail '真实 28/30 Acceptance 未能由正式 finalizer 精确重放'
-jq -e '
-  .schema_version=="domeye_interactive_agent_acceptance_replay_v1" and
-  .candidate_source_files_verified==true and .record_exact_match==true
-' "${REAL_RELEASE_ROOT}/deployment/ACCEPTANCE-REPLAY.json" >/dev/null \
-    || fail 'Acceptance replay receipt 语义无效'
-
-# 成功公开回答的 provider 闭包固定为三次 cognition + 末次唯一 Renderer；
-# 四次都必须绑定 Candidate 模型身份、audit_only、顺序时间与 completed 终态。
-readonly REAL_EVIDENCE="${REAL_PROJECT}/$(dirname "${HISTORICAL_ACCEPTANCE_RELATIVE}")/evidence.jsonl"
-readonly REAL_CANDIDATE="${REAL_PROJECT}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json"
-jq -s '
-  first(.[] | select(.record_type=="j1_trial" and .payload.passed==true)) |
-  {usage:.payload.evidence.usage}
-' "${REAL_EVIDENCE}" > "${FIXTURE_ROOT}/provider-usage-good.json"
-verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-good.json" "${REAL_CANDIDATE}" \
-    || fail '真实成功 Answer 的四次 provider usage 未通过'
-jq '.usage.attempts[1].provider="untrusted-provider"' \
-    "${FIXTURE_ROOT}/provider-usage-good.json" \
-    > "${FIXTURE_ROOT}/provider-usage-provider-drift.json"
-assert_fails '任一 attempt provider 漂移' verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-provider-drift.json" "${REAL_CANDIDATE}"
-jq '.usage.attempts[2].response_model="wrong-response-model"' \
-    "${FIXTURE_ROOT}/provider-usage-good.json" \
-    > "${FIXTURE_ROOT}/provider-usage-response-model-drift.json"
-assert_fails '任一 attempt response_model 漂移' verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-response-model-drift.json" \
-    "${REAL_CANDIDATE}"
-jq '.usage.attempts[2].phase="renderer"' \
-    "${FIXTURE_ROOT}/provider-usage-good.json" \
-    > "${FIXTURE_ROOT}/provider-usage-renderer-not-last.json"
-assert_fails 'Renderer 不是唯一末次 attempt' verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-renderer-not-last.json" "${REAL_CANDIDATE}"
-jq '.usage.attempt_count=5 | .usage.attempts += [(.usage.attempts[-1] | .attempt_id=5)]' \
-    "${FIXTURE_ROOT}/provider-usage-good.json" \
-    > "${FIXTURE_ROOT}/provider-usage-extra-attempt.json"
-assert_fails '成功闭包夹带第五次调用' verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-extra-attempt.json" "${REAL_CANDIDATE}"
-jq '.usage.attempts[3].outcome="failed" | .usage.attempts[3].failure_code="provider_failure"' \
-    "${FIXTURE_ROOT}/provider-usage-good.json" \
-    > "${FIXTURE_ROOT}/provider-usage-failed-terminal.json"
-assert_fails 'provider failure 不得晋级' verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-failed-terminal.json" "${REAL_CANDIDATE}"
-jq '.usage.attempts[2].started_at_utc=.usage.attempts[0].started_at_utc' \
-    "${FIXTURE_ROOT}/provider-usage-good.json" \
-    > "${FIXTURE_ROOT}/provider-usage-time-order.json"
-assert_fails 'attempt 时间顺序漂移' verifier _test-provider-usage \
-    "${FIXTURE_ROOT}/provider-usage-time-order.json" "${REAL_CANDIDATE}"
-git -C "${REPOSITORY}" archive --format=tar.gz \
-    --output="${REAL_RELEASE_ROOT}/source/source.tar.gz" \
-    "${HISTORICAL_ACCEPTED_COMMIT}"
-cp "${DEPLOY_DIR}/verify-release.mjs" "${DEPLOY_DIR}/probe.mjs" \
-    "${REAL_RELEASE_ROOT}/deployment/"
-
-"${NODE}" --input-type=module - \
-    "${REAL_RELEASE_ROOT}" "${RELEASE_ID}" \
-    "${HISTORICAL_ACCEPTED_COMMIT}" "${HISTORICAL_ACCEPTANCE_RELATIVE}" <<'EOF'
-import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
-
-const [root, releaseId, commit, acceptanceRelative] = process.argv.slice(2)
-const candidateRelative =
-  'contracts/agent/domeye-first-vertical-slice/v1/candidate.json'
-const candidatePath = join(root, 'project', candidateRelative)
-const acceptancePath = join(root, 'project', acceptanceRelative)
-const replayPath = join(root, 'deployment/ACCEPTANCE-REPLAY.json')
-const sourcePath = join(root, 'source/source.tar.gz')
-const candidate = JSON.parse(readFileSync(candidatePath, 'utf8'))
-const acceptance = JSON.parse(readFileSync(acceptancePath, 'utf8'))
-const sha = (path) =>
-  `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`
-const canonical = (value) => {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value)
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
-  return `{${Object.keys(value).sort().map((key) =>
-    `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`
-}
-const digest = (value) =>
-  `sha256:${createHash('sha256').update(canonical(value)).digest('hex')}`
-const oracle = {
-  metric: 'fixed_visible_ipv4_address_count',
-  unit: 'unique_ipv4_address',
-  time_slot_count: 3455,
-  observed_point_count: 3455,
-  null_point_count: 0,
-  first: 10156800,
-  first_at_utc: '2026-02-27T00:10:00Z',
-  last: 10069760,
-  last_at_utc: '2026-03-11T00:00:00Z',
-  minimum: 9577728,
-  minimum_at_utc: '2026-02-28T14:35:00Z',
-  maximum: 10156800,
-  maximum_at_utc: '2026-02-27T00:10:00Z',
-  difference: 579072,
-  net_change: -87040,
-}
-const manifest = {
-  schema_version: 'domeye_interactive_agent_release_manifest_v1',
-  component: 'domeye_interactive_agent_sidecar',
-  release_id: releaseId,
-  created_at_utc: '2026-08-19T12:00:00Z',
-  source: {
-    commit,
-    annotated_tag: releaseId,
-    archive_path: 'source/source.tar.gz',
-    archive_sha256: sha(sourcePath),
-  },
-  candidate: {
-    manifest_path: `project/${candidateRelative}`,
-    candidate_id: candidate.candidate_id,
-    manifest_sha256: sha(candidatePath),
-    manifest_payload_digest: candidate.candidate_id.slice('manifest:'.length),
-    activation_scope: 'local_evaluation_only',
-    production_deployed: false,
-  },
-  acceptance: {
-    record_path: `project/${acceptanceRelative}`,
-    record_id: acceptance.acceptance_record_id,
-    record_sha256: sha(acceptancePath),
-    replay_receipt_path: 'deployment/ACCEPTANCE-REPLAY.json',
-    replay_receipt_sha256: sha(replayPath),
-  },
-  runtime: {
-    entrypoint: 'agent-sidecar/dist/src/cli/serve-interactive-agent.js',
-    host: '127.0.0.1',
-    port: 28476,
-    base_path: '/country-outage/chat',
-    activation_scope: 'local_evaluation_only',
-    candidate_production_deployed: false,
-  },
-  live_verification: {
-    public_backend_origin: 'http://127.0.0.1:28471',
-    backend_base_path: '/api/v2/country-outage/chat',
-    event_reference: 'country_outage/2026-02-27 09:12:32/IR/1/r',
-    question: '在这次冻结 publication 的观测窗口内，RRC25 看到的固定前缀可见 IPv4 地址量最低是多少，首次在什么观测时刻出现？首值、末值、最大值和极差分别是多少？',
-    oracle,
-    oracle_digest: digest(oracle),
-  },
-  rollback: { mode: 'fail_closed', previous_release_id: null },
-}
-writeFileSync(
-  join(root, 'RELEASE-MANIFEST.json'),
-  `${JSON.stringify(manifest, null, 2)}\n`,
-)
-EOF
-
-assert_fails '真实 DG1 GO 的 28/30 不能通过发布门' \
-    "${NODE}" "${DEPLOY_DIR}/verify-release.mjs" "${REAL_RELEASE_ROOT}"
-grep -F '30/30' "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
-    || fail '28/30 拒绝没有落在发布级 Renderer 门'
-
-# 真实 Candidate loader 必须逐 source_files 拒绝任一字节漂移。
-readonly SOURCE_DRIFT_FILE="${REAL_PROJECT}/agent-sidecar/dist/src/agent/pi-answer-renderer.js"
-cp "${SOURCE_DRIFT_FILE}" "${FIXTURE_ROOT}/source-file.saved"
-printf '\n// fixture drift\n' >> "${SOURCE_DRIFT_FILE}"
-assert_fails 'Candidate source_files 字节漂移' \
-    "${NODE}" "${DEPLOY_DIR}/verify-release.mjs" acceptance-replay \
-    "${REAL_PROJECT}" "${HISTORICAL_ACCEPTANCE_RELATIVE}"
-cp "${FIXTURE_ROOT}/source-file.saved" "${SOURCE_DRIFT_FILE}"
-
-# 使用真实 Renderer draft 验正式 Guard：原回答 pass，占位错误文本 block。
-"${NODE}" --input-type=module - \
-    "${REAL_PROJECT}" "${HISTORICAL_ACCEPTANCE_RELATIVE}" <<'EOF'
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-
-const [project, acceptanceRelative] = process.argv.slice(2)
-const findingModule = await import(pathToFileURL(join(
-  project,
-  'agent-sidecar/dist/src/agent/finding-answer.js',
-)).href)
-const candidate = JSON.parse(readFileSync(join(
-  project,
-  'contracts/agent/domeye-first-vertical-slice/v1/candidate.json',
-), 'utf8'))
-const evidencePath = join(project, dirname(acceptanceRelative), 'evidence.jsonl')
-const trial = readFileSync(evidencePath, 'utf8').trimEnd().split('\n')
-  .map(JSON.parse)
-  .find((item) => item.record_type === 'j1_trial' && item.payload.passed)
-const closure = trial.payload.evidence.replay_closure
-const context = findingModule.buildCountryOutageAnswerContext(
-  closure.finding,
-  candidate.payload.contract.digest,
-)
-const pass = findingModule.guardCountryOutageResponse(
-  context,
-  closure.renderer_draft,
-)
-if (pass.decision !== 'pass' || pass.reason_codes.length !== 0) process.exit(1)
-const placeholder = structuredClone(closure.renderer_draft)
-placeholder.text = '固定问题已正确回答。'
-const blocked = findingModule.guardCountryOutageResponse(context, placeholder)
-if (blocked.decision !== 'block' || blocked.reason_codes.length === 0) process.exit(1)
-EOF
+# 当前任务不伪造 v2 Candidate 或双签正式运行；完整正向由 Evaluator 的临时
+# Ed25519 bundle 测试覆盖。发布夹具只保留旧 v1 的显式拒绝与故障注入骨架。
+mkdir -p "${REAL_RELEASE_ROOT}/source" "${REAL_RELEASE_ROOT}/deployment"
+printf '{}\n' > "${REAL_RELEASE_ROOT}/RELEASE-MANIFEST.json"
 
 # 即使 verify_release 被 if 调用、末尾 verifier 返回成功，中间 SHA 门失败也不能被吞掉。
 printf '%064d  %s\n' 0 'RELEASE-MANIFEST.json' \
@@ -740,6 +701,45 @@ assert_fails 'promotion history 不可覆盖' \
     manager _test_archive_promotion "${RELEASE_ID}"
 [[ -f "${PROMOTION_FILE}" ]] || fail '归档碰撞错误地移走了待处理 promotion'
 
+# promotion 只能在四份临时 raw 已清理后原子发布。顺序或失败分支一旦漂移，
+# cleanup 失败就可能留下被 status 解释为 verified 的回执。
+readonly RAW_CLEANUP_LINE="$(rg -n 'if ! cleanup_promotion_raw_responses; then' \
+    "${DEPLOY_DIR}/manage.sh" | tail -1 | cut -d: -f1)"
+readonly PROMOTION_PUBLISH_LINE="$(rg -n 'if ! mv -n "\$\{receipt_tmp\}" "\$\{promotion\}"; then' \
+    "${DEPLOY_DIR}/manage.sh" | tail -1 | cut -d: -f1)"
+[[ "${RAW_CLEANUP_LINE}" =~ ^[1-9][0-9]*$ \
+    && "${PROMOTION_PUBLISH_LINE}" =~ ^[1-9][0-9]*$ \
+    && ${RAW_CLEANUP_LINE} -lt ${PROMOTION_PUBLISH_LINE} ]] \
+    || fail 'promotion raw cleanup 未发生在最终 mv 前'
+sed -n "${RAW_CLEANUP_LINE},${PROMOTION_PUBLISH_LINE}p" \
+    "${DEPLOY_DIR}/manage.sh" > "${FIXTURE_ROOT}/promotion-cleanup-order.txt"
+grep -F '临时原始响应清理失败，未写 verified promotion' \
+    "${FIXTURE_ROOT}/promotion-cleanup-order.txt" >/dev/null \
+    && grep -F 'return 1' "${FIXTURE_ROOT}/promotion-cleanup-order.txt" >/dev/null \
+    || fail 'raw cleanup 失败分支未在 promotion 发布前失败关闭'
+
+# Probe 的所有受信 JSON 路径必须复用 duplicate-key parser；带重复
+# deployment_state 的 active 即使 promotion 参数为 '-' 也不能被后值覆盖。
+grep -F 'parseJsonWithoutDuplicateKeys' "${DEPLOY_DIR}/probe.mjs" >/dev/null \
+    && grep -F "const value = parseJsonWithoutDuplicateKeys(readFileSync(file, 'utf8'))" \
+        "${DEPLOY_DIR}/probe.mjs" >/dev/null \
+    && grep -F "envelope = parseJsonWithoutDuplicateKeys(body.toString('utf8'))" \
+        "${DEPLOY_DIR}/probe.mjs" >/dev/null \
+    || fail 'Probe state/internal raw 未统一使用 duplicate-key parser'
+readonly PROBE_ACTIVE_VERIFY_LINE="$(rg -n \
+    'const active = verifyActive\(args\[3\], verified\)' \
+    "${DEPLOY_DIR}/probe.mjs" | cut -d: -f1)"
+readonly PROBE_NO_PROMOTION_LINE="$(rg -n \
+    "if \(args\[4\] === '-'\)" "${DEPLOY_DIR}/probe.mjs" | cut -d: -f1)"
+[[ "${PROBE_ACTIVE_VERIFY_LINE}" =~ ^[1-9][0-9]*$ \
+    && "${PROBE_NO_PROMOTION_LINE}" =~ ^[1-9][0-9]*$ \
+    && ${PROBE_ACTIVE_VERIFY_LINE} -lt ${PROBE_NO_PROMOTION_LINE} ]] \
+    || fail "Probe status 的 promotion '-' 分支绕过了 active 受信解析"
+printf '%s\n' '{"deployment_state":"deployed","deployment_state":"verified"}' \
+    > "${FIXTURE_ROOT}/duplicate-active.json"
+assert_fails '重复 deployment_state 的 active JSON 必拒' \
+    verifier _test-json-no-duplicate "${FIXTURE_ROOT}/duplicate-active.json"
+
 # historical policy 是唯一允许保留的旧审计输入；其余发布路径不得出现旧入口。
 readonly POLICY='deploy/country-outage-agent/p1-chat/certification-impact-policy.json'
 [[ "$(sha256sum "${REPOSITORY}/${POLICY}" | awk '{print $1}')" \
@@ -754,4 +754,4 @@ if rg -n "${LEGACY_PATTERN}" \
     fail '新 Interactive Agent 发布目录仍含旧入口或 P2 promotion 语义'
 fi
 
-printf 'Interactive Agent release fail-closed fixtures passed; real 30/30 positive pending\n'
+printf 'Interactive Agent release v2 fail-closed fixtures passed; signed 30/30 positive covered by Evaluator tests\n'

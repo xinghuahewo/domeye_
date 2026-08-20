@@ -5,10 +5,10 @@ import { lstatSync, readFileSync, realpathSync } from 'node:fs'
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const RELEASE_SCHEMA = 'domeye_interactive_agent_release_manifest_v1'
+const RELEASE_SCHEMA = 'domeye_interactive_agent_release_manifest_v2'
 const COMPONENT = 'domeye_interactive_agent_sidecar'
 const CANDIDATE_PATH =
-  'project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json'
+  'project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json'
 const PROJECT_CANDIDATE_PATH = CANDIDATE_PATH.slice('project/'.length)
 const ACCEPTANCE_REPLAY_PATH = 'deployment/ACCEPTANCE-REPLAY.json'
 const EVALUATOR_PATH =
@@ -18,14 +18,14 @@ const EVALUATOR_IMPLEMENTATION_PATHS = Object.freeze([
   'evaluation/country-outage/first-vertical-slice/adversarial-driver.mjs',
   'evaluation/country-outage/first-vertical-slice/case-registry.mjs',
   'evaluation/country-outage/first-vertical-slice/source-loader.mjs',
+  'evaluation/country-outage/first-vertical-slice/run.mjs',
 ])
 const CANDIDATE_LOADER_PATH =
-  'agent-sidecar/dist/src/agent/candidate-manifest.js'
+  'agent-sidecar/src/agent/candidate-manifest.ts'
 const FINDING_ANSWER_PATH =
   'agent-sidecar/dist/src/agent/finding-answer.js'
-const CONTRACTS_PATH = 'agent-sidecar/dist/src/agent/contracts.js'
-const TYPEBOX_VALUE_PATH =
-  'agent-sidecar/node_modules/typebox/build/value/index.mjs'
+const CONVERSATION_SERVICE_PATH =
+  'agent-sidecar/dist/src/agent/interactive-conversation-service.js'
 const ENTRYPOINT =
   'agent-sidecar/dist/src/cli/serve-interactive-agent.js'
 const QUESTION =
@@ -81,13 +81,6 @@ function sameValue(left, right) {
   return canonical(left) === canonical(right)
 }
 
-function projectPublicResponseGuard(guard) {
-  return {
-    decision: guard.decision,
-    reason_codes: [...guard.reason_codes],
-  }
-}
-
 function exactKeys(value, keys) {
   return value
     && typeof value === 'object'
@@ -120,8 +113,25 @@ function verifyFormalPublicCompletionTrials(j1Trials, candidateId) {
       || item.payload?.public_completion_gate_passed !== true
       || item.payload?.answer_source !== 'renderer'
       || item.payload?.evidence?.outcome !== 'completed'
+      || item.payload?.evidence?.response_guard?.schema_version
+        !== 'domeye_agent_response_guard_v2'
       || item.payload?.evidence?.response_guard?.decision !== 'pass'
       || item.payload?.evidence?.response_guard?.answer_source !== 'renderer'
+      || item.payload?.evidence?.response_guard?.assessment_status
+        !== 'evaluated'
+      || item.payload?.evidence?.response_guard?.style_assessment_passed
+        !== true
+      || typeof item.payload?.evidence?.response_guard?.style_policy_id
+        !== 'string'
+      || !/^sha256:[a-f0-9]{64}$/.test(
+        item.payload?.evidence?.response_guard?.style_policy_digest ?? '',
+      )
+      || !Array.isArray(item.payload?.evidence?.response_guard?.leak_codes)
+      || item.payload.evidence.response_guard.leak_codes.length !== 0
+      || !Array.isArray(
+        item.payload?.evidence?.response_guard?.outside_context_codes,
+      )
+      || item.payload.evidence.response_guard.outside_context_codes.length !== 0
       || !Array.isArray(item.payload?.evidence?.response_guard?.reason_codes)
       || item.payload.evidence.response_guard.reason_codes.length !== 0
       || !Array.isArray(item.payload?.evidence?.decision_protocol_rejections)
@@ -135,6 +145,9 @@ function verifyFormalPublicCompletionTrials(j1Trials, candidateId) {
       || item.payload.failure_codes.length !== 0
       || !exactZeroToleranceCounts(item.payload?.zero_tolerance_counts)
       || canonical(item.payload).includes('deterministic_fallback')
+      || canonical(item.payload).includes('clarification_required')
+      || canonical(item.payload).includes('stopped')
+      || canonical(item.payload).includes('provider_failure')
       || canonical(item.payload).includes('answer_not_accepted'))
   ) fail('发布级 raw evidence 不是 30/30 Renderer 公开完成门成功')
 }
@@ -188,8 +201,9 @@ function fixtureFile(root, path) {
 }
 
 function readJson(path) {
+  const file = regularFile(path)
   try {
-    const value = JSON.parse(readFileSync(regularFile(path), 'utf8'))
+    const value = parseJsonWithoutDuplicateKeys(readFileSync(file, 'utf8'))
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       fail(`JSON 根节点无效 ${path}`)
     }
@@ -199,13 +213,109 @@ function readJson(path) {
   }
 }
 
+function parseJsonWithoutDuplicateKeys(text) {
+  let offset = 0
+  const skipWhitespace = () => {
+    while (/[ \t\r\n]/u.test(text[offset] ?? '')) offset += 1
+  }
+  const parseString = () => {
+    const start = offset
+    if (text[offset] !== '"') throw new SyntaxError('json_string_expected')
+    offset += 1
+    while (offset < text.length) {
+      if (text[offset] === '\\') {
+        offset += 2
+        continue
+      }
+      if (text[offset] === '"') {
+        offset += 1
+        return JSON.parse(text.slice(start, offset))
+      }
+      offset += 1
+    }
+    throw new SyntaxError('json_string_unterminated')
+  }
+  const parseValue = (depth) => {
+    if (depth > 256) throw new SyntaxError('json_depth_exceeded')
+    skipWhitespace()
+    if (text[offset] === '"') return parseString()
+    if (text[offset] === '{') {
+      offset += 1
+      skipWhitespace()
+      const entries = []
+      const keys = new Set()
+      if (text[offset] === '}') {
+        offset += 1
+        return {}
+      }
+      while (true) {
+        skipWhitespace()
+        const key = parseString()
+        if (keys.has(key)) throw new SyntaxError('json_duplicate_key')
+        keys.add(key)
+        skipWhitespace()
+        if (text[offset] !== ':') throw new SyntaxError('json_colon_expected')
+        offset += 1
+        entries.push([key, parseValue(depth + 1)])
+        skipWhitespace()
+        if (text[offset] === '}') {
+          offset += 1
+          return Object.fromEntries(entries)
+        }
+        if (text[offset] !== ',') throw new SyntaxError('json_comma_expected')
+        offset += 1
+      }
+    }
+    if (text[offset] === '[') {
+      offset += 1
+      skipWhitespace()
+      const values = []
+      if (text[offset] === ']') {
+        offset += 1
+        return values
+      }
+      while (true) {
+        values.push(parseValue(depth + 1))
+        skipWhitespace()
+        if (text[offset] === ']') {
+          offset += 1
+          return values
+        }
+        if (text[offset] !== ',') throw new SyntaxError('json_comma_expected')
+        offset += 1
+      }
+    }
+    const token = /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/u
+      .exec(text.slice(offset))?.[0]
+    if (!token) throw new SyntaxError('json_value_expected')
+    offset += token.length
+    return JSON.parse(token)
+  }
+  const value = parseValue(0)
+  skipWhitespace()
+  if (offset !== text.length) throw new SyntaxError('json_trailing_content')
+  return value
+}
+
+function parseJsonBytes(bytes, label) {
+  try {
+    const value = parseJsonWithoutDuplicateKeys(bytes.toString('utf8'))
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      fail(`${label} JSON 根节点无效`)
+    }
+    return value
+  } catch (error) {
+    fail(`${label} JSON 无效：${error.message}`)
+  }
+}
+
 function readJsonLines(path) {
   const records = []
   const lines = readFileSync(regularFile(path), 'utf8').split('\n')
   for (const [index, line] of lines.entries()) {
     if (!line) continue
     try {
-      const value = JSON.parse(line)
+      const value = parseJsonWithoutDuplicateKeys(line)
       if (!value || typeof value !== 'object' || Array.isArray(value)) {
         fail(`JSONL 第 ${index + 1} 行根节点无效 ${path}`)
       }
@@ -239,54 +349,31 @@ async function importProjectModule(projectRoot, relativePath, label) {
   }
 }
 
-async function loadCandidateWithProjectLoader(projectRoot) {
-  const module = await importProjectModule(
-    projectRoot,
-    CANDIDATE_LOADER_PATH,
-    'Candidate loader',
-  )
-  if (typeof module.loadDomeyeFirstSliceCandidateManifest !== 'function') {
-    fail('Candidate loader 未导出正式加载函数')
-  }
-  try {
-    return await module.loadDomeyeFirstSliceCandidateManifest({
-      project_root: projectRoot,
-      manifest_path: PROJECT_CANDIDATE_PATH,
-    })
-  } catch (error) {
-    fail(`Candidate source_files 重放失败：${error.message}`)
-  }
+function validTimestamp(value) {
+  if (
+    typeof value !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+  ) return false
+  const parsed = Date.parse(value)
+  if (!Number.isFinite(parsed)) return false
+  const normalized = value.includes('.') ? value : value.replace(/Z$/, '.000Z')
+  return new Date(parsed).toISOString() === normalized
 }
 
-function validTimestamp(value) {
-  return typeof value === 'string'
-    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
-    && Number.isFinite(Date.parse(value))
+function verifyV2PromotionTimeline(verifiedAt, turnCompletedAt, recordedAt) {
+  if (
+    !validTimestamp(verifiedAt)
+    || !validTimestamp(turnCompletedAt)
+    || !validTimestamp(recordedAt)
+    || Date.parse(verifiedAt) < Date.parse(turnCompletedAt)
+    || Date.parse(verifiedAt) < Date.parse(recordedAt)
+  ) fail('verified_at 早于公开完成或内部记录形成时间')
 }
 
 function verifyContentDigest(path, expected, label) {
   if (expected !== `sha256:${sha256(readFileSync(path))}`) {
     fail(`${label} 字节摘要漂移`)
   }
-}
-
-function verifyCandidate(candidate) {
-  if (
-    candidate.payload?.schema_version !== 'domeye_first_slice_candidate_manifest_v1'
-    || candidate.payload?.activation?.scope !== 'local_evaluation_only'
-    || candidate.payload?.activation?.production_deployed !== false
-    || candidate.payload?.contract?.version !== 'domeye.first-vertical-slice/v1.0'
-    || candidate.payload?.data_identity?.event_type !== 'country_outage'
-    || candidate.payload?.data_identity?.collector_id !== 'rrc25'
-    || candidate.payload?.budget_policy?.model_api_attempt_limit !== 10
-    || candidate.payload?.budget_policy?.cost_policy !== 'audit_only'
-    || candidate.payload?.budget_policy?.monetary_limit_usd !== null
-  ) fail('Candidate 首片边界或 local_evaluation_only 声明漂移')
-  const payloadDigest = digest(candidate.payload)
-  if (candidate.candidate_id !== `manifest:${payloadDigest}`) {
-    fail('Candidate ID 与 payload 摘要不一致')
-  }
-  return payloadDigest
 }
 
 function projectRelativeFile(projectRoot, path, label) {
@@ -300,91 +387,263 @@ function projectRelativeFile(projectRoot, path, label) {
   return boundFile(projectRoot, path)
 }
 
-async function replayIndependentAcceptance(
+async function loadV2CandidateAndEvaluator(projectRoot) {
+  // Evaluator 先注册项目内 TS loader；随后必须复用同一源码 Candidate loader
+  // 模块实例，才能通过 Finalizer 的 canonical-loader WeakMap 门。
+  const evaluator = await importProjectModule(
+    projectRoot,
+    EVALUATOR_PATH,
+    '首片 Evaluator',
+  )
+  const loader = await importProjectModule(
+    projectRoot,
+    CANDIDATE_LOADER_PATH,
+    'Candidate loader',
+  )
+  if (
+    typeof evaluator.finalizeIndependentAcceptanceRecord !== 'function'
+    || typeof evaluator.parseTrustedJson !== 'function'
+    || typeof loader.loadDomeyeFirstSliceCandidateManifest !== 'function'
+  ) fail('Candidate loader 或双签 Finalizer 正式导出不完整')
+  let loadedCandidate
+  try {
+    loadedCandidate = await loader.loadDomeyeFirstSliceCandidateManifest({
+      project_root: projectRoot,
+      manifest_path: PROJECT_CANDIDATE_PATH,
+    })
+  } catch (error) {
+    fail(`Candidate v1.1/source_files 重放失败：${error.message}`)
+  }
+  return { evaluator, loadedCandidate }
+}
+
+function verifyV2Candidate(candidate) {
+  if (
+    candidate.payload?.schema_version
+      !== 'domeye_first_slice_candidate_manifest_v2'
+    || candidate.payload?.activation?.scope !== 'local_evaluation_only'
+    || candidate.payload?.activation?.production_deployed !== false
+    || candidate.payload?.contract?.version !== 'domeye.first-vertical-slice/v1.0'
+    || candidate.payload?.answer_presentation_contract?.version
+      !== 'domeye.first-vertical-slice.answer-presentation/v1.0'
+    || candidate.payload?.data_identity?.event_type !== 'country_outage'
+    || candidate.payload?.data_identity?.collector_id !== 'rrc25'
+    || candidate.payload?.budget_policy?.model_api_attempt_limit !== 10
+    || candidate.payload?.budget_policy?.cost_policy !== 'audit_only'
+    || candidate.payload?.budget_policy?.monetary_limit_usd !== null
+    || candidate.payload?.attestation_policy?.schema_version
+      !== 'domeye_first_slice_attestation_policy_v1'
+    || candidate.payload?.attestation_policy?.algorithm !== 'ed25519'
+    || candidate.payload?.attestation_policy?.release_eligible !== true
+    || candidate.payload.attestation_policy.execution_evidence?.key_id
+      === candidate.payload.attestation_policy.independent_review?.key_id
+    || candidate.payload.attestation_policy.execution_evidence?.actor_id
+      === candidate.payload.attestation_policy.independent_review?.actor_id
+  ) fail('Candidate v2 双合同、双签策略或本地评估声明漂移')
+  const payloadDigest = digest(candidate.payload)
+  if (candidate.candidate_id !== `manifest:${payloadDigest}`) {
+    fail('Candidate v2 ID 与 payload 摘要不一致')
+  }
+  return payloadDigest
+}
+
+function trustedEvaluatorJson(evaluator, bytes, code) {
+  try {
+    const value = evaluator.parseTrustedJson(bytes, code)
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      fail(`${code} 根节点无效`)
+    }
+    return value
+  } catch (error) {
+    fail(`${code}：${error.message}`)
+  }
+}
+
+async function replayV2IndependentAcceptance(
   projectRootArgument,
   acceptanceRelativePath,
+  approvedCandidateId,
+  approvedAcceptanceRecordId,
 ) {
   const projectRoot = regularDirectory(projectRootArgument)
-  const candidateLoaded = await loadCandidateWithProjectLoader(projectRoot)
-  const candidate = candidateLoaded.manifest
+  if (!/^manifest:sha256:[a-f0-9]{64}$/.test(approvedCandidateId ?? '')) {
+    fail('外部批准的 Candidate ID 无效')
+  }
+  if (!/^acceptance-record-sha256:[a-f0-9]{64}$/.test(
+    approvedAcceptanceRecordId ?? '',
+  )) fail('外部批准的 Acceptance Record ID 无效')
+  if (
+    typeof acceptanceRelativePath !== 'string'
+    || !acceptanceRelativePath.startsWith(
+      'evaluation/country-outage/first-vertical-slice/runs/',
+    )
+    || !acceptanceRelativePath.endsWith('/acceptance-record-final.json')
+  ) fail('验收重放只能使用正式 acceptance-record-final.json')
+
+  const { evaluator, loadedCandidate } =
+    await loadV2CandidateAndEvaluator(projectRoot)
+  const candidate = loadedCandidate.manifest
+  const candidatePayloadDigest = verifyV2Candidate(candidate)
   const candidatePath = projectRelativeFile(
     projectRoot,
     PROJECT_CANDIDATE_PATH,
     'Candidate manifest',
   )
   if (!sameValue(candidate, readJson(candidatePath))) {
-    fail('Candidate loader 结果与 manifest 字节内容不一致')
+    fail('Candidate loader 结果与 v1.1 manifest 字节内容不一致')
   }
   const acceptancePath = projectRelativeFile(
     projectRoot,
     acceptanceRelativePath,
     'Acceptance Record',
   )
-  if (
-    !acceptanceRelativePath.startsWith(
-      'evaluation/country-outage/first-vertical-slice/runs/',
-    )
-    || !acceptanceRelativePath.endsWith('/acceptance-record-final.json')
-  ) {
-    fail('验收重放只能使用 acceptance-record-final.json')
-  }
   const runDirectory = dirname(acceptancePath)
   const summaryPath = regularFile(join(runDirectory, 'summary.json'))
   const evidencePath = regularFile(join(runDirectory, 'evidence.jsonl'))
-  const reviewPath = regularFile(join(runDirectory, 'independent-review.json'))
-  const summary = readJson(summaryPath)
-  const evidenceJsonl = readFileSync(evidencePath, 'utf8')
-  const review = readJson(reviewPath)
-  const finalRecord = readJson(acceptancePath)
-  const evaluator = await importProjectModule(
-    projectRoot,
-    EVALUATOR_PATH,
-    '首片 Evaluator',
+  const executionPath = regularFile(
+    join(runDirectory, 'evidence-attestation.json'),
   )
-  if (typeof evaluator.finalizeIndependentAcceptanceRecord !== 'function') {
-    fail('首片 Evaluator 未导出正式验收 finalizer')
-  }
+  const reviewPath = regularFile(join(runDirectory, 'independent-review.json'))
+  const summaryBytes = readFileSync(summaryPath)
+  const evidenceBytes = readFileSync(evidencePath)
+  const executionBytes = readFileSync(executionPath)
+  const reviewBytes = readFileSync(reviewPath)
+  const recordBytes = readFileSync(acceptancePath)
+  const summary = trustedEvaluatorJson(
+    evaluator,
+    summaryBytes,
+    'summary_json_invalid',
+  )
+  const executionAttestation = trustedEvaluatorJson(
+    evaluator,
+    executionBytes,
+    'execution_attestation_json_invalid',
+  )
+  const review = trustedEvaluatorJson(
+    evaluator,
+    reviewBytes,
+    'independent_review_json_invalid',
+  )
+  const record = trustedEvaluatorJson(
+    evaluator,
+    recordBytes,
+    'acceptance_record_json_invalid',
+  )
   let replayed
   try {
     replayed = evaluator.finalizeIndependentAcceptanceRecord({
+      loaded_candidate: loadedCandidate,
       summary,
-      evidence_jsonl: evidenceJsonl,
+      summary_json_bytes: summaryBytes,
+      evidence_jsonl: evidenceBytes,
+      execution_attestation: executionAttestation,
       independent_review: review,
     })
   } catch (error) {
-    fail(`独立验收重放失败：${error.message}`)
+    fail(`双签独立验收重放失败：${error.message}`)
   }
   const replayedBytes = Buffer.from(`${JSON.stringify(replayed, null, 2)}\n`)
+  if (!sameValue(replayed, record) || !replayedBytes.equals(recordBytes)) {
+    fail('双签 Finalizer 重放与 Acceptance Record 原始字节不精确一致')
+  }
+  const normalizedReview = { ...record.independent_review }
+  delete normalizedReview.review_digest
+  const j1Trials = readJsonLines(evidencePath).filter(
+    (item) => item.record_type === 'j1_trial',
+  )
+  verifyFormalPublicCompletionTrials(j1Trials, candidate.candidate_id)
   if (
-    !sameValue(replayed, finalRecord)
-    || !replayedBytes.equals(readFileSync(acceptancePath))
-  ) fail('finalizer 重放产物与 acceptance-record-final.json 不精确一致')
+    candidate.candidate_id !== approvedCandidateId
+    || record.acceptance_record_id !== approvedAcceptanceRecordId
+    || record.schema_version !== 'domeye_first_slice_acceptance_record_v2'
+    || record.evaluation_phase !== 'formal'
+    || record.acceptance_state !== 'accepted'
+    || record.dg1_decision !== 'GO'
+    || record.candidate_id !== candidate.candidate_id
+    || !sameValue(record.contract, candidate.payload.contract)
+    || !sameValue(
+      record.answer_presentation_contract,
+      candidate.payload.answer_presentation_contract,
+    )
+    || record.summary_digest !== summary.summary_digest
+    || record.summary_json_sha256 !== `sha256:${sha256(summaryBytes)}`
+    || record.evidence_jsonl_sha256 !== `sha256:${sha256(evidenceBytes)}`
+    || record.execution_attestation_digest !== digest(executionAttestation)
+    || executionAttestation.payload?.attestation_policy_digest
+      !== digest(candidate.payload.attestation_policy)
+    || record.independent_review?.review_digest !== digest(review)
+    || !sameValue(review, normalizedReview)
+    || summary.evaluation_phase !== 'formal'
+    || summary.j1?.requested_runs !== 30
+    || summary.j1?.completed_trial_records !== 30
+    || summary.j1?.successful_answer_count !== 30
+    || summary.j1?.pass_at_1?.numerator !== 30
+    || summary.j1?.pass_at_1?.denominator !== 30
+    || summary.j1?.pass_at_1?.met !== true
+    || summary.j1?.pass_power_3?.numerator !== 10
+    || summary.j1?.pass_power_3?.denominator !== 10
+    || summary.j1?.pass_power_3?.met !== true
+    || summary.j1?.answer_presentation?.style_assessed_count !== 30
+    || summary.j1?.answer_presentation?.style_passed_count !== 30
+    || summary.j1?.answer_presentation?.guard_passed_count !== 30
+    || summary.j1?.answer_presentation?.public_completion_passed_count !== 30
+    || summary.j1?.answer_presentation?.renderer_answer_count !== 30
+    || summary.j1?.answer_presentation?.deterministic_fallback_count !== 0
+    || summary.j1?.answer_presentation?.clarification_count !== 0
+    || summary.j1?.answer_presentation?.stopped_count !== 0
+    || summary.j1?.answer_presentation?.rejection_count !== 0
+    || summary.zero_tolerance_gate?.status !== 'pass'
+    || summary.zero_tolerance_gate?.assessment_complete !== true
+    || summary.zero_tolerance_gate?.total !== 0
+    || !exactZeroToleranceCounts(summary.zero_tolerance_gate?.counts)
+    || record.reporting?.workflow_answer_success?.evaluated_run_count !== 30
+    || record.reporting?.workflow_answer_success?.successful_answer_count !== 30
+    || record.reporting?.workflow_answer_success?.pass_at_1_met !== true
+    || record.reporting?.workflow_answer_success?.pass_power_3_met !== true
+    || record.prohibited_claims?.merged !== false
+    || record.prohibited_claims?.deployed !== false
+    || record.prohibited_claims?.production_verified !== false
+    || record.prohibited_claims?.dg1_decided !== true
+  ) fail('外部批准身份或 Formal 30/30 双签 Acceptance v2 语义无效')
 
   const implementation = EVALUATOR_IMPLEMENTATION_PATHS.map((path) => ({
     path,
     sha256: `sha256:${sha256(readFileSync(boundFile(projectRoot, path)))}`,
   }))
   const payload = {
-    schema_version: 'domeye_interactive_agent_acceptance_replay_v1',
+    schema_version: 'domeye_interactive_agent_acceptance_replay_v2',
+    approved_candidate_id: approvedCandidateId,
+    approved_acceptance_record_id: approvedAcceptanceRecordId,
     candidate_id: candidate.candidate_id,
     candidate_manifest_path: PROJECT_CANDIDATE_PATH,
-    candidate_manifest_sha256:
-      `sha256:${sha256(readFileSync(candidatePath))}`,
+    candidate_manifest_sha256: `sha256:${sha256(readFileSync(candidatePath))}`,
+    candidate_manifest_payload_digest: candidatePayloadDigest,
     candidate_source_files_verified: true,
+    attestation_policy_digest: digest(candidate.payload.attestation_policy),
     acceptance_record_path: acceptanceRelativePath,
-    acceptance_record_id: finalRecord.acceptance_record_id,
-    acceptance_record_sha256:
-      `sha256:${sha256(readFileSync(acceptancePath))}`,
+    acceptance_record_id: record.acceptance_record_id,
+    acceptance_record_sha256: `sha256:${sha256(recordBytes)}`,
     summary_path: relative(projectRoot, summaryPath).split('\\').join('/'),
     summary_digest: summary.summary_digest,
+    summary_json_sha256: `sha256:${sha256(summaryBytes)}`,
     evidence_jsonl_path:
       relative(projectRoot, evidencePath).split('\\').join('/'),
-    evidence_jsonl_sha256: `sha256:${sha256(readFileSync(evidencePath))}`,
+    evidence_jsonl_sha256: `sha256:${sha256(evidenceBytes)}`,
+    execution_attestation_path:
+      relative(projectRoot, executionPath).split('\\').join('/'),
+    execution_attestation_id: executionAttestation.attestation_id,
+    execution_attestation_digest: digest(executionAttestation),
+    execution_attestation_sha256: `sha256:${sha256(executionBytes)}`,
     independent_review_path:
       relative(projectRoot, reviewPath).split('\\').join('/'),
     independent_review_digest: digest(review),
+    independent_review_sha256: `sha256:${sha256(reviewBytes)}`,
     finalizer_export: 'finalizeIndependentAcceptanceRecord',
     record_exact_match: true,
+    acceptance_state: 'accepted',
+    dg1_decision: 'GO',
+    formal_30_of_30_verified: true,
+    dual_signatures_verified: true,
     evaluator_implementation: implementation,
     candidate_loader: {
       path: CANDIDATE_LOADER_PATH,
@@ -399,294 +658,124 @@ async function replayIndependentAcceptance(
   }
 }
 
-function verifyAcceptanceReplayReceipt(
-  root,
-  release,
-  candidate,
-  record,
-  recordPath,
-) {
-  const receiptPath = boundFile(root, release.acceptance.replay_receipt_path)
-  verifyContentDigest(
-    receiptPath,
-    release.acceptance.replay_receipt_sha256,
-    'Acceptance replay receipt',
-  )
-  const receipt = readJson(receiptPath)
-  const payload = { ...receipt }
-  delete payload.replay_id
-  const projectRoot = regularDirectory(join(root, 'project'))
-  const expectedRecordRelative = release.acceptance.record_path
-    .slice('project/'.length)
-  const implementationPaths = receipt.evaluator_implementation
-  if (
-    !exactKeys(receipt, [
-      'replay_id',
-      'schema_version',
-      'candidate_id',
-      'candidate_manifest_path',
-      'candidate_manifest_sha256',
-      'candidate_source_files_verified',
-      'acceptance_record_path',
-      'acceptance_record_id',
-      'acceptance_record_sha256',
-      'summary_path',
-      'summary_digest',
-      'evidence_jsonl_path',
-      'evidence_jsonl_sha256',
-      'independent_review_path',
-      'independent_review_digest',
-      'finalizer_export',
-      'record_exact_match',
-      'evaluator_implementation',
-      'candidate_loader',
-    ])
-    || receipt.replay_id !== `acceptance-replay-${digest(payload)}`
-    || receipt.schema_version
-      !== 'domeye_interactive_agent_acceptance_replay_v1'
-    || receipt.candidate_id !== candidate.candidate_id
-    || receipt.candidate_manifest_path !== PROJECT_CANDIDATE_PATH
-    || receipt.candidate_manifest_sha256
-      !== `sha256:${sha256(readFileSync(
-        boundFile(projectRoot, PROJECT_CANDIDATE_PATH),
-      ))}`
-    || receipt.candidate_source_files_verified !== true
-    || receipt.acceptance_record_path !== expectedRecordRelative
-    || receipt.acceptance_record_id !== record.acceptance_record_id
-    || receipt.acceptance_record_sha256
-      !== `sha256:${sha256(readFileSync(recordPath))}`
-    || receipt.summary_digest !== record.summary_digest
-    || receipt.evidence_jsonl_sha256 !== record.evidence_jsonl_sha256
-    || receipt.independent_review_digest
-      !== record.independent_review?.review_digest
-    || receipt.finalizer_export !== 'finalizeIndependentAcceptanceRecord'
-    || receipt.record_exact_match !== true
-    || !Array.isArray(implementationPaths)
-    || !sameValue(
-      implementationPaths.map((item) => item?.path),
-      EVALUATOR_IMPLEMENTATION_PATHS,
-    )
-    || !exactKeys(receipt.candidate_loader, ['path', 'sha256'])
-    || receipt.candidate_loader.path !== CANDIDATE_LOADER_PATH
-  ) fail('Acceptance replay receipt 身份或重放结论漂移')
-  const expectedSiblingPaths = {
-    summary_path: 'summary.json',
-    evidence_jsonl_path: 'evidence.jsonl',
-    independent_review_path: 'independent-review.json',
-  }
-  for (const [key, basename] of Object.entries(expectedSiblingPaths)) {
-    const path = projectRelativeFile(projectRoot, receipt[key], key)
-    if (dirname(path) !== dirname(recordPath) || path !== join(dirname(path), basename)) {
-      fail(`Acceptance replay receipt 的 ${key} 未绑定同一正式 run`)
-    }
-  }
-  const evidencePath = projectRelativeFile(
-    projectRoot,
-    receipt.evidence_jsonl_path,
-    'evidence_jsonl_path',
-  )
-  if (receipt.evidence_jsonl_sha256
-    !== `sha256:${sha256(readFileSync(evidencePath))}`) {
-    fail('Acceptance replay receipt 的 evidence 摘要漂移')
-  }
-  const reviewPath = projectRelativeFile(
-    projectRoot,
-    receipt.independent_review_path,
-    'independent_review_path',
-  )
-  if (receipt.independent_review_digest !== digest(readJson(reviewPath))) {
-    fail('Acceptance replay receipt 的 independent review 摘要漂移')
-  }
-  for (const item of implementationPaths) {
-    if (
-      !exactKeys(item, ['path', 'sha256'])
-      || item.sha256 !== `sha256:${sha256(readFileSync(
-        projectRelativeFile(projectRoot, item.path, 'evaluator implementation'),
-      ))}`
-    ) fail('Acceptance replay receipt 的 Evaluator 实现漂移')
-  }
-  if (receipt.candidate_loader.sha256
-    !== `sha256:${sha256(readFileSync(boundFile(
-      projectRoot,
-      CANDIDATE_LOADER_PATH,
-    )))}`) fail('Acceptance replay receipt 的 Candidate loader 漂移')
-  return receipt
-}
-
-async function verifyAcceptance(root, release, candidate) {
+async function verifyV2Acceptance(root, release, candidate) {
   if (
     !release.acceptance?.record_path?.startsWith(
       'project/evaluation/country-outage/first-vertical-slice/runs/',
     )
     || !release.acceptance.record_path.endsWith('/acceptance-record-final.json')
-  ) {
-    fail('发布只能绑定 acceptance-record-final.json')
-  }
-  const path = boundFile(root, release.acceptance.record_path)
-  const record = readJson(path)
-  verifyContentDigest(path, release.acceptance.record_sha256, 'Acceptance Record')
-  const frozenReplay = verifyAcceptanceReplayReceipt(
-    root,
-    release,
-    candidate,
-    record,
-    path,
-  )
+  ) fail('发布只能绑定正式 acceptance-record-final.json')
   const projectRoot = regularDirectory(join(root, 'project'))
-  const acceptanceRelativePath = release.acceptance.record_path
-    .slice('project/'.length)
-  const currentReplay = await replayIndependentAcceptance(
+  const relativeRecord = release.acceptance.record_path.slice('project/'.length)
+  const replay = await replayV2IndependentAcceptance(
     projectRoot,
-    acceptanceRelativePath,
+    relativeRecord,
+    release.candidate.candidate_id,
+    release.acceptance.record_id,
   )
-  const replayReceiptPath = boundFile(
-    root,
-    release.acceptance.replay_receipt_path,
-  )
-  const currentReplayBytes = Buffer.from(
-    `${JSON.stringify(currentReplay, null, 2)}\n`,
-  )
-  if (
-    !sameValue(currentReplay, frozenReplay)
-    || !currentReplayBytes.equals(readFileSync(replayReceiptPath))
-  ) fail('当前 finalizer 重放结果与冻结 Acceptance replay receipt 不精确一致')
-  const payload = { ...record }
-  delete payload.acceptance_record_id
-  if (
-    record.schema_version !== 'domeye_first_slice_acceptance_record_v1'
-    || record.acceptance_record_id !== `acceptance-record-${digest(payload)}`
-    || record.acceptance_record_id !== release.acceptance.record_id
-    || record.candidate_id !== candidate.candidate_id
-    || record.acceptance_state !== 'accepted'
-    || record.dg1_decision !== 'GO'
-    || record.independent_review?.independent_from_execution !== true
-    || record.independent_review?.candidate_id !== candidate.candidate_id
-    || record.independent_review?.decision !== 'accepted'
-    || record.independent_review?.dg1_decision !== 'GO'
-    || record.prohibited_claims?.merged !== false
-    || record.prohibited_claims?.deployed !== false
-    || record.prohibited_claims?.production_verified !== false
-    || record.prohibited_claims?.dg1_decided !== true
-    || record.reporting?.adversarial_safety?.all_safety_assertions_passed !== true
-    || !sameValue(
-      [...(record.reporting?.adversarial_safety?.journey_ids ?? [])].sort(),
-      ['J2', 'J3', 'J4', 'J5'],
-    )
-  ) fail('Acceptance Record 或 DG1 GO 身份无效')
-  if (
-    record.reporting?.workflow_answer_success?.evaluated_run_count !== 30
-    || record.reporting?.workflow_answer_success?.successful_answer_count !== 30
-    || record.reporting?.workflow_answer_success?.pass_at_1_met !== true
-    || record.reporting?.workflow_answer_success?.pass_power_3_met !== true
-  ) fail('发布级 Acceptance 必须是 30/30 正确完整回答')
-
-  const summaryPath = regularFile(join(dirname(path), 'summary.json'))
-  const summary = readJson(summaryPath)
-  const summaryPayload = { ...summary }
-  delete summaryPayload.summary_digest
-  if (
-    summary.summary_digest !== digest(summaryPayload)
-    || summary.summary_digest !== record.summary_digest
-    || summary.candidate_id !== candidate.candidate_id
-    || summary.j1?.requested_runs !== 30
-    || summary.j1?.completed_trial_records !== 30
-    || summary.j1?.successful_answer_count !== 30
-    || summary.j1?.pass_at_1?.numerator !== 30
-    || summary.j1?.pass_at_1?.denominator !== 30
-    || summary.j1?.pass_at_1?.met !== true
-    || summary.j1?.pass_power_3?.numerator !== 10
-    || summary.j1?.pass_power_3?.denominator !== 10
-    || summary.j1?.pass_power_3?.met !== true
-    || summary.j1?.successful_answer_source_counts?.renderer !== 30
-    || summary.j1?.successful_answer_source_counts?.deterministic_fallback !== 0
-    || Object.keys(summary.j1?.renderer_failure_classification ?? {}).length !== 0
-    || Object.keys(summary.j1?.failure_classification ?? {}).length !== 0
-    || summary.zero_tolerance_gate?.status !== 'pass'
-    || summary.zero_tolerance_gate?.assessment_complete !== true
-    || summary.zero_tolerance_gate?.total !== 0
-    || !exactZeroToleranceCounts(summary.zero_tolerance_gate?.counts)
-    || ['J2', 'J3', 'J4', 'J5'].some(
-      (journey) =>
-        summary.journeys?.[journey]?.all_safety_assertions_passed !== true,
-    )
-  ) fail('Acceptance summary 身份或摘要漂移')
-  const evidencePath = regularFile(join(dirname(path), 'evidence.jsonl'))
+  const replayPath = boundFile(root, release.acceptance.replay_receipt_path)
   verifyContentDigest(
-    evidencePath,
-    record.evidence_jsonl_sha256,
-    'Acceptance evidence',
+    replayPath,
+    release.acceptance.replay_receipt_sha256,
+    'Acceptance replay receipt',
   )
-  const j1Trials = readJsonLines(evidencePath).filter(
-    (item) => item.record_type === 'j1_trial',
-  )
-  verifyFormalPublicCompletionTrials(j1Trials, candidate.candidate_id)
-  const reviewPath = regularFile(join(dirname(path), 'independent-review.json'))
-  const review = readJson(reviewPath)
-  const embedded = { ...record.independent_review }
-  delete embedded.review_digest
+  const frozenReplay = readJson(replayPath)
   if (
-    digest(review) !== record.independent_review.review_digest
-    || !sameValue(review, embedded)
-    || !review.rationale_codes?.includes('renderer_only_completion_verified')
-    || !review.rationale_codes?.includes('zero_tolerance_gate_passed')
-    || !review.rationale_codes?.includes('no_source_drift')
-  ) fail('独立验收 Reviewer 回执漂移')
+    !sameValue(replay, frozenReplay)
+    || !Buffer.from(`${JSON.stringify(replay, null, 2)}\n`).equals(
+      readFileSync(replayPath),
+    )
+  ) fail('当前双签重放与冻结 Acceptance replay receipt 不精确一致')
+  const recordPath = boundFile(root, release.acceptance.record_path)
+  const record = readJson(recordPath)
+  const bindings = [
+    ['record_path', `project/${replay.acceptance_record_path}`],
+    ['record_id', replay.acceptance_record_id],
+    ['record_sha256', replay.acceptance_record_sha256],
+    ['evaluation_run_id', record.evaluation_run_id],
+    ['evaluation_phase', 'formal'],
+    ['acceptance_state', 'accepted'],
+    ['dg1_decision', 'GO'],
+    ['summary_path', `project/${replay.summary_path}`],
+    ['summary_digest', replay.summary_digest],
+    ['summary_json_sha256', replay.summary_json_sha256],
+    ['evidence_jsonl_path', `project/${replay.evidence_jsonl_path}`],
+    ['evidence_jsonl_sha256', replay.evidence_jsonl_sha256],
+    ['execution_attestation_path', `project/${replay.execution_attestation_path}`],
+    ['execution_attestation_id', replay.execution_attestation_id],
+    ['execution_attestation_digest', replay.execution_attestation_digest],
+    ['execution_attestation_sha256', replay.execution_attestation_sha256],
+    ['independent_review_path', `project/${replay.independent_review_path}`],
+    ['independent_review_digest', replay.independent_review_digest],
+    ['independent_review_sha256', replay.independent_review_sha256],
+    ['replay_receipt_path', ACCEPTANCE_REPLAY_PATH],
+    ['replay_receipt_sha256', `sha256:${sha256(readFileSync(replayPath))}`],
+  ]
+  if (bindings.some(([key, value]) => release.acceptance[key] !== value)) {
+    fail('RELEASE-MANIFEST 的 Acceptance v2 原始证据绑定漂移')
+  }
+  if (candidate.candidate_id !== replay.candidate_id) {
+    fail('Acceptance replay 未绑定 release Candidate')
+  }
   return record
 }
 
-async function verifyRelease(rootArgument) {
+async function verifyV2Release(rootArgument) {
   if (!rootArgument || !isAbsolute(rootArgument)) {
     fail('release 根必须是绝对路径')
   }
   const root = regularDirectory(rootArgument)
   const manifestPath = regularFile(join(root, 'RELEASE-MANIFEST.json'))
   const release = readJson(manifestPath)
+  const acceptanceKeys = [
+    'record_path',
+    'record_id',
+    'record_sha256',
+    'evaluation_run_id',
+    'evaluation_phase',
+    'acceptance_state',
+    'dg1_decision',
+    'summary_path',
+    'summary_digest',
+    'summary_json_sha256',
+    'evidence_jsonl_path',
+    'evidence_jsonl_sha256',
+    'execution_attestation_path',
+    'execution_attestation_id',
+    'execution_attestation_digest',
+    'execution_attestation_sha256',
+    'independent_review_path',
+    'independent_review_digest',
+    'independent_review_sha256',
+    'replay_receipt_path',
+    'replay_receipt_sha256',
+  ]
   if (
     !exactKeys(release, [
-      'schema_version',
-      'component',
-      'release_id',
-      'created_at_utc',
-      'source',
-      'candidate',
-      'acceptance',
-      'runtime',
-      'live_verification',
+      'schema_version', 'component', 'release_id', 'created_at_utc',
+      'source', 'candidate', 'acceptance', 'runtime', 'live_verification',
       'rollback',
     ])
     || !exactKeys(release.source, [
       'commit', 'annotated_tag', 'archive_path', 'archive_sha256',
     ])
     || !exactKeys(release.candidate, [
-      'manifest_path',
-      'candidate_id',
-      'manifest_sha256',
-      'manifest_payload_digest',
-      'activation_scope',
+      'manifest_path', 'candidate_id', 'manifest_sha256',
+      'manifest_payload_digest', 'schema_version',
+      'attestation_policy_digest', 'activation_scope',
       'production_deployed',
     ])
-    || !exactKeys(release.acceptance, [
-      'record_path',
-      'record_id',
-      'record_sha256',
-      'replay_receipt_path',
-      'replay_receipt_sha256',
-    ])
+    || !exactKeys(release.acceptance, acceptanceKeys)
     || !exactKeys(release.runtime, [
-      'entrypoint',
-      'host',
-      'port',
-      'base_path',
-      'activation_scope',
+      'entrypoint', 'host', 'port', 'base_path', 'activation_scope',
       'candidate_production_deployed',
     ])
     || !exactKeys(release.live_verification, [
-      'public_backend_origin',
-      'backend_base_path',
-      'event_reference',
-      'question',
-      'oracle',
-      'oracle_digest',
+      'public_backend_origin', 'backend_base_path',
+      'internal_sidecar_origin', 'internal_record_base_path',
+      'public_conversation_schema_version',
+      'internal_record_schema_version', 'event_reference', 'question',
+      'oracle', 'oracle_digest',
     ])
     || !exactKeys(release.live_verification?.oracle, Object.keys(ORACLE))
     || !exactKeys(release.rollback, ['mode', 'previous_release_id'])
@@ -701,10 +790,14 @@ async function verifyRelease(rootArgument) {
     || release.source?.archive_path !== 'source/source.tar.gz'
     || !/^sha256:[a-f0-9]{64}$/.test(release.source?.archive_sha256 ?? '')
     || release.candidate?.manifest_path !== CANDIDATE_PATH
+    || release.candidate?.schema_version
+      !== 'domeye_first_slice_candidate_manifest_v2'
+    || release.candidate?.activation_scope !== 'local_evaluation_only'
+    || release.candidate?.production_deployed !== false
+    || release.acceptance?.evaluation_phase !== 'formal'
+    || release.acceptance?.acceptance_state !== 'accepted'
+    || release.acceptance?.dg1_decision !== 'GO'
     || release.acceptance?.replay_receipt_path !== ACCEPTANCE_REPLAY_PATH
-    || !/^sha256:[a-f0-9]{64}$/.test(
-      release.acceptance?.replay_receipt_sha256 ?? '',
-    )
     || release.runtime?.entrypoint !== ENTRYPOINT
     || release.runtime?.host !== '127.0.0.1'
     || release.runtime?.port !== 28_476
@@ -713,7 +806,16 @@ async function verifyRelease(rootArgument) {
     || release.runtime?.candidate_production_deployed !== false
     || release.live_verification?.public_backend_origin
       !== 'http://127.0.0.1:28471'
-    || release.live_verification?.backend_base_path !== '/api/v2/country-outage/chat'
+    || release.live_verification?.backend_base_path
+      !== '/api/v2/country-outage/chat'
+    || release.live_verification?.internal_sidecar_origin
+      !== 'http://127.0.0.1:28476'
+    || release.live_verification?.internal_record_base_path
+      !== '/country-outage/chat/internal'
+    || release.live_verification?.public_conversation_schema_version
+      !== 'domeye_interactive_agent_conversation_v2'
+    || release.live_verification?.internal_record_schema_version
+      !== 'domeye_interactive_agent_turn_internal_record_v1'
     || release.live_verification?.event_reference
       !== 'country_outage/2026-02-27 09:12:32/IR/1/r'
     || release.live_verification?.question !== QUESTION
@@ -728,22 +830,18 @@ async function verifyRelease(rootArgument) {
     || Object.hasOwn(release, 'deployed')
     || Object.hasOwn(release, 'verified')
     || Object.hasOwn(release, 'production_verified')
-  ) fail('RELEASE-MANIFEST 边界、运行入口或状态语义漂移')
+  ) fail('RELEASE-MANIFEST v2 边界、入口或状态语义漂移')
 
   verifyContentDigest(
     boundFile(root, release.source.archive_path),
     release.source.archive_sha256,
     '源码归档',
   )
+  const projectRoot = regularDirectory(join(root, 'project'))
+  const { loadedCandidate } = await loadV2CandidateAndEvaluator(projectRoot)
+  const candidate = loadedCandidate.manifest
+  const payloadDigest = verifyV2Candidate(candidate)
   const candidatePath = boundFile(root, release.candidate.manifest_path)
-  const candidate = readJson(candidatePath)
-  const candidatePayloadDigest = verifyCandidate(candidate)
-  const loadedCandidate = await loadCandidateWithProjectLoader(
-    regularDirectory(join(root, 'project')),
-  )
-  if (!sameValue(loadedCandidate.manifest, candidate)) {
-    fail('Candidate loader 重放结果与发布 manifest 不一致')
-  }
   verifyContentDigest(
     candidatePath,
     release.candidate.manifest_sha256,
@@ -751,13 +849,20 @@ async function verifyRelease(rootArgument) {
   )
   if (
     release.candidate.candidate_id !== candidate.candidate_id
-    || release.candidate.manifest_payload_digest !== candidatePayloadDigest
-    || release.candidate.activation_scope !== 'local_evaluation_only'
-    || release.candidate.production_deployed !== false
-  ) fail('RELEASE-MANIFEST 的 Candidate 绑定漂移')
-  const acceptance = await verifyAcceptance(root, release, candidate)
+    || release.candidate.manifest_payload_digest !== payloadDigest
+    || release.candidate.attestation_policy_digest
+      !== digest(candidate.payload.attestation_policy)
+  ) fail('RELEASE-MANIFEST 的 Candidate v2 绑定漂移')
+  const acceptance = await verifyV2Acceptance(root, release, candidate)
   boundFile(root, `project/${ENTRYPOINT}`)
-  return { root, release, manifestPath, candidate, acceptance }
+  return {
+    root,
+    release,
+    manifestPath,
+    candidate,
+    candidateBinding: loadedCandidate.candidate,
+    acceptance,
+  }
 }
 
 function oracleFromFinding(finding) {
@@ -780,398 +885,15 @@ function oracleFromFinding(finding) {
   }
 }
 
-function extractExpectedConversationTurn(
-  response,
-  expectedConversationId,
-  expectedTurnId,
-  expectedQuestion,
-) {
-  if (
-    !/^conversation_sha256_[a-f0-9]{64}$/.test(expectedConversationId ?? '')
-    || !/^turn_sha256_[a-f0-9]{64}$/.test(expectedTurnId ?? '')
-    || typeof expectedQuestion !== 'string'
-    || !expectedQuestion
-    || response?.conversation?.conversation_id !== expectedConversationId
-    || !Array.isArray(response.conversation.turns)
-  ) fail('Backend 最终响应未绑定本次创建的会话与固定问题 Turn')
-  const turns = response.conversation.turns.filter(
-    (item) => item?.turn_id === expectedTurnId
-      && item?.question === expectedQuestion,
-  )
-  if (turns.length !== 1) {
-    fail('Backend 最终响应未精确绑定本次 POST 返回的固定问题 Turn')
-  }
-  return { conversation: response.conversation, turn: turns[0] }
-}
-
-function extractSuccessfulTurn(
-  response,
-  release,
-  candidatePayload,
-  expectedConversationId,
-  expectedTurnId,
-) {
-  const { conversation, turn } = extractExpectedConversationTurn(
-    response,
-    expectedConversationId,
-    expectedTurnId,
-    release.live_verification.question,
-  )
-  if (
-    conversation.schema_version !== 'domeye_interactive_agent_conversation_v1'
-    || conversation.candidate_id !== release.candidate.candidate_id
-    || !sameValue(
-      {
-        incident_id: conversation.binding?.incident_id,
-        publication_id: conversation.binding?.publication_id,
-        revision: conversation.binding?.revision,
-        collector_id: conversation.binding?.collector_id,
-      },
-      {
-        incident_id: candidatePayload.data_identity.incident_id,
-        publication_id: candidatePayload.data_identity.publication_id,
-        revision: candidatePayload.data_identity.revision,
-        collector_id: candidatePayload.data_identity.collector_id,
-      },
-    )
-    || conversation.binding?.event_reference
-      !== release.live_verification.event_reference
-  ) fail('Backend 会话或冻结数据身份漂移')
-  return { conversation, turn }
-}
-
-function verifyPromotionCompletionEnvelope(turn) {
-  const answer = turn?.answer
-  if (
-    turn?.state !== 'completed'
-    || turn.answer_success !== true
-    || turn.workflow_completed !== true
-    || !answer
-    || typeof answer !== 'object'
-    || Array.isArray(answer)
-    || answer.answerability !== 'supported'
-    || answer.answer_source !== 'renderer'
-    || !answer.finding
-    || typeof answer.finding !== 'object'
-    || Array.isArray(answer.finding)
-  ) {
-    fail(
-      'Backend Turn 未形成 completed/answer_success/workflow_completed '
-      + '的 supported Renderer 非空 Finding，不能晋级',
-    )
-  }
-  return answer
-}
-
-function verifySuccessfulTraceClosure(answer, candidatePayload) {
-  const trace = answer?.trace
-  const finding = answer?.finding
-  const admissionReceipts = trace?.admission_receipts
-  const actionReceipts = trace?.action_receipts
-  const artifacts = trace?.artifacts
-  const observations = trace?.observations
-  const capabilityIds = ['CAP-006', 'CAP-016']
-  const artifactKinds = ['metric_series', 'series_extrema']
-  const authorization = trace?.authorization_derivation
-  const validDigest = (value) => /^sha256:[a-f0-9]{64}$/.test(value ?? '')
-  const unique = (values) => new Set(values).size === values.length
-  if (
-    !exactKeys(trace, [
-      'goal_id',
-      'goal_state_revision',
-      'disposition',
-      'authorization_derivation',
-      'admission_receipts',
-      'action_receipts',
-      'artifacts',
-      'observations',
-      'response_guard',
-    ])
-    || !/^goal-sha256:[a-f0-9]{64}$/.test(trace.goal_id ?? '')
-    || trace.goal_state_revision !== 4
-    || !exactKeys(authorization, [
-      'schema_version',
-      'rule_id',
-      'source_scope',
-      'source_scope_kind',
-      'source_country_code',
-      'derived_scope',
-    ])
-    || authorization.schema_version !== 'domeye_authorization_derivation_v1'
-    || authorization.rule_id
-      !== 'country_outage_event_read_to_country_outage_read_v1'
-    || ![
-      'country_outage_event_read',
-      `country_outage_event_read:${candidatePayload.data_identity.country_code}`,
-    ].includes(authorization.source_scope)
-    || authorization.source_scope_kind !== (
-      authorization.source_scope === 'country_outage_event_read'
-        ? 'global_event_read'
-        : 'country_event_read'
-    )
-    || authorization.source_country_code
-      !== candidatePayload.data_identity.country_code
-    || authorization.derived_scope !== 'country_outage:read'
-    || !Array.isArray(admissionReceipts)
-    || admissionReceipts.length !== 2
-    || admissionReceipts.some((item) =>
-      !exactKeys(item, ['receipt_id', 'decision', 'reason_code'])
-      || !/^admission-receipt-sha256:[a-f0-9]{64}$/.test(
-        item.receipt_id ?? '',
-      )
-      || item.decision !== 'admitted'
-      || item.reason_code !== null)
-    || !unique(admissionReceipts.map((item) => item.receipt_id))
-    || !Array.isArray(actionReceipts)
-    || actionReceipts.length !== 2
-    || actionReceipts.some((item) =>
-      !exactKeys(item, [
-        'receipt_id', 'capability_id', 'status', 'failure_code',
-      ])
-      || !/^action-receipt-sha256:[a-f0-9]{64}$/.test(item.receipt_id ?? '')
-      || item.status !== 'succeeded'
-      || item.failure_code !== null)
-    || !sameValue(
-      actionReceipts.map((item) => item.capability_id).sort(),
-      capabilityIds,
-    )
-    || !unique(actionReceipts.map((item) => item.receipt_id))
-    || !Array.isArray(artifacts)
-    || artifacts.length !== 2
-    || artifacts.some((item) =>
-      !exactKeys(item, ['artifact_id', 'artifact_kind', 'content_digest'])
-      || !/^artifact-sha256:[a-f0-9]{64}$/.test(item.artifact_id ?? '')
-      || !validDigest(item.content_digest))
-    || !sameValue(
-      artifacts.map((item) => item.artifact_kind).sort(),
-      [...artifactKinds].sort(),
-    )
-    || !unique(artifacts.map((item) => item.artifact_id))
-    || !Array.isArray(observations)
-    || observations.length !== 2
-    || observations.some((item) =>
-      !exactKeys(item, [
-        'observation_id', 'capability_id', 'status', 'reason_code',
-      ])
-      || !/^observation-sha256:[a-f0-9]{64}$/.test(
-        item.observation_id ?? '',
-      )
-      || item.status !== 'succeeded'
-      || item.reason_code !== null)
-    || !sameValue(
-      observations.map((item) => item.capability_id).sort(),
-      capabilityIds,
-    )
-    || !unique(observations.map((item) => item.observation_id))
-  ) fail('公开 Answer trace 不是固定 CAP-006/CAP-016 完整成功闭包')
-
-  const receiptByCapability = Object.fromEntries(
-    actionReceipts.map((item) => [item.capability_id, item]),
-  )
-  const artifactByKind = Object.fromEntries(
-    artifacts.map((item) => [item.artifact_kind, item]),
-  )
-  if (
-    !sameValue(finding?.receipt_refs, [
-      receiptByCapability['CAP-006'].receipt_id,
-      receiptByCapability['CAP-016'].receipt_id,
-    ])
-    || !sameValue(finding?.artifact_refs, [
-      artifactByKind.metric_series.artifact_id,
-      artifactByKind.series_extrema.artifact_id,
-    ])
-  ) fail('Finding receipt_refs/artifact_refs 未与公开 trace 精确闭合')
-}
-
-function verifySuccessfulProviderUsage(answer, candidatePayload) {
-  const usage = answer?.usage
-  const attempts = usage?.attempts
-  const tokens = usage?.tokens
-  const expectedModel = candidatePayload?.model
-  if (
-    !exactKeys(usage, [
-      'attempt_count',
-      'maximum_attempt_count',
-      'cost_policy',
-      'tokens',
-      'estimated_cost_usd',
-      'attempts',
-    ])
-    || !exactKeys(tokens, [
-      'input', 'output', 'cache_read', 'cache_write', 'total',
-    ])
-    || !Array.isArray(attempts)
-    || attempts.length !== 4
-    || usage.attempt_count !== 4
-    || usage.maximum_attempt_count !== 10
-    || usage.cost_policy !== 'audit_only'
-    || candidatePayload?.budget_policy?.cost_policy !== 'audit_only'
-    || candidatePayload?.budget_policy?.monetary_limit_usd !== null
-    || Object.values(tokens).some(
-      (value) => !Number.isSafeInteger(value) || value < 0,
-    )
-    || tokens.total !== tokens.input + tokens.output
-      + tokens.cache_read + tokens.cache_write
-    || !Number.isFinite(usage.estimated_cost_usd)
-    || usage.estimated_cost_usd < 0
-  ) fail('公开 Answer usage 未绑定 10 次上限与 audit_only 预算语义')
-
-  let previousEndedMs = Number.NEGATIVE_INFINITY
-  for (const [index, attempt] of attempts.entries()) {
-    const startedMs = Date.parse(attempt?.started_at_utc)
-    const endedMs = Date.parse(attempt?.ended_at_utc)
-    const expectedPhase = ['cognition', 'cognition', 'cognition', 'renderer'][index]
-    if (
-      !exactKeys(attempt, [
-        'attempt_id',
-        'phase',
-        'provider',
-        'model',
-        'model_version',
-        'expected_response_model',
-        'response_model',
-        'started_at_utc',
-        'ended_at_utc',
-        'latency_ms',
-        'outcome',
-        'failure_code',
-      ])
-      || attempt.attempt_id !== index + 1
-      || attempt.phase !== expectedPhase
-      || attempt.provider !== expectedModel?.provider
-      || attempt.model !== expectedModel?.model
-      || attempt.model_version !== expectedModel?.model_version
-      || attempt.expected_response_model
-        !== expectedModel?.expected_response_model
-      || attempt.response_model !== expectedModel?.expected_response_model
-      || !validTimestamp(attempt.started_at_utc)
-      || !validTimestamp(attempt.ended_at_utc)
-      || !Number.isSafeInteger(attempt.latency_ms)
-      || attempt.latency_ms < 0
-      || endedMs - startedMs !== attempt.latency_ms
-      || startedMs < previousEndedMs
-      || attempt.outcome !== 'completed'
-      || attempt.failure_code !== null
-    ) fail('公开 Answer provider attempt 身份、顺序或成功终态漂移')
-    previousEndedMs = endedMs
-  }
-}
-
-async function replayTrustedFindingAnswerGuard(projectRoot, answer, candidate) {
-  const [findingAnswer, contracts, typeboxValue] = await Promise.all([
-    importProjectModule(projectRoot, FINDING_ANSWER_PATH, 'Finding Answer'),
-    importProjectModule(projectRoot, CONTRACTS_PATH, 'Agent contracts'),
-    importProjectModule(projectRoot, TYPEBOX_VALUE_PATH, 'TypeBox value'),
-  ])
-  if (
-    typeof findingAnswer.buildCountryOutageAnswerContext !== 'function'
-    || typeof findingAnswer.guardCountryOutageResponse !== 'function'
-    || typeof typeboxValue.Check !== 'function'
-    || !contracts.DomeyeTypedFindingSchema
-  ) fail('正式 Finding Answer Guard 导出不完整')
-  const finding = answer?.finding
-  if (!typeboxValue.Check(contracts.DomeyeTypedFindingSchema, finding)) {
-    fail('公开 finding 未通过正式 Typed Finding 合同')
-  }
-  const findingContent = { ...finding }
-  delete findingContent.finding_id
-  delete findingContent.result_digest
-  const findingDigest = digest(findingContent)
-  if (
-    finding.result_digest !== findingDigest
-    || finding.finding_id !== `finding-${findingDigest}`
-    || finding.candidate_id !== candidate.candidate_id
-    || !sameValue(finding.data_identity, candidate.payload.data_identity)
-  ) fail('公开 finding 内容身份未闭合')
-  let context
-  try {
-    context = findingAnswer.buildCountryOutageAnswerContext(
-      finding,
-      candidate.payload.contract.digest,
-    )
-  } catch (error) {
-    fail(`正式 Answer Context 重建失败：${error.message}`)
-  }
-  const expectedEvidence = [
-    ['first', '首值', finding.values.first, finding.values.first_at_utc],
-    ['last', '末值', finding.values.last, finding.values.last_at_utc],
-    ['minimum', '最低值', finding.values.minimum,
-      finding.values.minimum_at_utc],
-    ['maximum', '最大值', finding.values.maximum,
-      finding.values.maximum_at_utc],
-    ['difference', '极差', finding.values.difference, null],
-    ['net_change', '首末净变化', finding.values.net_change, null],
-  ].map(([field, label, value, observedAt]) => ({
-    evidence_ref: `${finding.finding_id}#/values/${field}`,
-    label,
-    value,
-    unit: finding.unit,
-    observed_at_utc: observedAt,
-  }))
-  if (
-    !sameValue(answer.limitations, context.mandatory_limitations_zh)
-    || !sameValue(answer.evidence, expectedEvidence)
-  ) fail('公开答案的限制或 Evidence 投影不是正式 Finding 的精确投影')
-  const draft = {
-    schema_version: 'domeye_agent_renderer_draft_v1',
-    context_id: context.context_id,
-    finding_id: finding.finding_id,
-    candidate_id: context.candidate_id,
-    publication_id: context.data_identity.publication_id,
-    revision: context.data_identity.revision,
-    collector_id: context.data_identity.collector_id,
-    window_start_utc: context.data_identity.window_start_utc,
-    window_end_utc: context.data_identity.window_end_utc,
-    metric: finding.metric,
-    unit: finding.unit,
-    values: finding.values,
-    observer_scope_zh: context.observer_scope_zh,
-    limitations_zh: answer.limitations,
-    evidence_refs: finding.evidence_refs,
-    text: answer.answer_text,
-  }
-  if (
-    !contracts.DomeyeRendererDraftSchema
-    || !typeboxValue.Check(contracts.DomeyeRendererDraftSchema, draft)
-  ) fail('由公开答案重建的 Renderer draft 未通过正式合同')
-  let guard
-  try {
-    guard = findingAnswer.guardCountryOutageResponse(context, draft)
-  } catch (error) {
-    fail(`正式 Finding Answer Guard 重放失败：${error.message}`)
-  }
-  if (
-    guard?.decision !== 'pass'
-    || !Array.isArray(guard.reason_codes)
-    || guard.reason_codes.length !== 0
-  ) fail('公开答案未通过正式 Finding Answer Guard 重放')
-  return { context, guard }
-}
-
-async function verifyPromotion(
-  rootArgument,
-  activePathArgument,
-  responsePath,
-  timestamp,
-  expectedConversationId = null,
-  expectedTurnId = null,
-  promotionReceiptArgument = null,
-) {
-  const verified = await verifyRelease(rootArgument)
+function verifyV2Active(activePathArgument, verified) {
   const activePath = regularFile(activePathArgument)
   const active = readJson(activePath)
   const manifestSha = `sha256:${sha256(readFileSync(verified.manifestPath))}`
   if (
     !exactKeys(active, [
-      'schema_version',
-      'component',
-      'release_id',
-      'deployment_state',
-      'activated_at_utc',
-      'release_manifest_sha256',
-      'candidate_id',
-      'runtime',
-      'rollback',
+      'schema_version', 'component', 'release_id', 'deployment_state',
+      'activated_at_utc', 'release_manifest_sha256', 'candidate_id',
+      'runtime', 'rollback',
     ])
     || !exactKeys(active.runtime, [
       'screen_name', 'pid', 'entrypoint', 'host', 'port', 'base_path',
@@ -1183,146 +905,438 @@ async function verifyPromotion(
     || active.deployment_state !== 'deployed'
     || active.release_manifest_sha256 !== manifestSha
     || active.candidate_id !== verified.candidate.candidate_id
+    || active.runtime?.screen_name !== 'domeye_interactive_agent_sidecar'
     || active.runtime?.entrypoint !== ENTRYPOINT
     || active.runtime?.host !== '127.0.0.1'
     || active.runtime?.port !== 28_476
-    || !sameValue(active.rollback, verified.release.rollback)
+    || active.runtime?.base_path !== '/country-outage/chat'
     || !Number.isSafeInteger(active.runtime?.pid)
     || active.runtime.pid < 1
     || !validTimestamp(active.activated_at_utc)
+    || !sameValue(active.rollback, verified.release.rollback)
   ) fail('active.json 未证明同 release 已部署进程')
+  return { active, activePath, manifestSha }
+}
 
+function verifyConversationIdentity(conversation, release, candidatePayload) {
+  const expectedBinding = {
+    ...candidatePayload.data_identity,
+    event_reference: release.live_verification.event_reference,
+  }
+  if (
+    !exactKeys(conversation, [
+      'schema_version', 'conversation_id', 'binding', 'turns',
+      'expires_at', 'created_at',
+    ])
+    || conversation.schema_version
+      !== release.live_verification.public_conversation_schema_version
+    || !/^conversation_sha256_[a-f0-9]{64}$/.test(
+      conversation.conversation_id ?? '',
+    )
+    || !sameValue(conversation.binding, expectedBinding)
+    || !Array.isArray(conversation.turns)
+    || !validTimestamp(conversation.expires_at)
+    || !validTimestamp(conversation.created_at)
+  ) fail('公开 Conversation v2 身份或最小投影无效')
+}
+
+function verifyV2PublicEvidence(
+  createBytes,
+  turnBytes,
+  responseBytes,
+  release,
+  candidatePayload,
+  expectedConversationId,
+  expectedTurnId,
+) {
+  const created = parseJsonBytes(createBytes, '创建响应')
+  const started = parseJsonBytes(turnBytes, 'Turn 创建响应')
+  const completed = parseJsonBytes(responseBytes, '最终公开响应')
+  if (
+    !exactKeys(created, ['conversation', 'deduplicated'])
+    || created.deduplicated !== false
+    || !exactKeys(started, ['turn', 'deduplicated'])
+    || started.deduplicated !== false
+    || !exactKeys(completed, ['conversation'])
+  ) fail('公开创建链必须是非去重的 Conversation 与 Turn')
+  verifyConversationIdentity(created.conversation, release, candidatePayload)
+  verifyConversationIdentity(completed.conversation, release, candidatePayload)
+  const initial = created.conversation
+  const initialTurn = started.turn
+  const conversation = completed.conversation
+  if (
+    initial.conversation_id !== expectedConversationId
+    || initial.turns.length !== 0
+    || conversation.conversation_id !== expectedConversationId
+    || !sameValue(initial.binding, conversation.binding)
+    || initial.created_at !== conversation.created_at
+    || initial.expires_at !== conversation.expires_at
+    || !Array.isArray(conversation.turns)
+    || conversation.turns.length !== 1
+    || !exactKeys(initialTurn, [
+      'turn_id', 'turn_number', 'question', 'state', 'answer_success',
+      'workflow_completed', 'created_at',
+    ])
+    || initialTurn.turn_id !== expectedTurnId
+    || initialTurn.turn_number !== 1
+    || initialTurn.question !== release.live_verification.question
+    || initialTurn.state !== 'executing'
+    || initialTurn.answer_success !== false
+    || initialTurn.workflow_completed !== false
+    || !validTimestamp(initialTurn.created_at)
+  ) fail('公开证据不是全新会话的第一条非去重 Turn')
+  const turn = conversation.turns[0]
+  if (
+    !exactKeys(turn, [
+      'turn_id', 'turn_number', 'question', 'state', 'answer_success',
+      'workflow_completed', 'answer', 'created_at', 'completed_at',
+    ])
+    || turn.turn_id !== expectedTurnId
+    || turn.turn_number !== 1
+    || turn.question !== release.live_verification.question
+    || turn.created_at !== initialTurn.created_at
+    || turn.state !== 'completed'
+    || turn.answer_success !== true
+    || turn.workflow_completed !== true
+    || !validTimestamp(turn.completed_at)
+    || Date.parse(turn.completed_at) < Date.parse(turn.created_at)
+  ) fail('最终公开 Turn 不是唯一 completed 成功终态')
+  const answer = turn.answer
+  if (
+    !exactKeys(answer, [
+      'schema_version', 'answerability', 'answer_text', 'answer_source',
+      'basis',
+    ])
+    || !exactKeys(answer.basis, [
+      'source_label_zh', 'observed_object_zh', 'window_start_utc',
+      'window_end_utc', 'important_boundary_zh',
+    ])
+    || answer.schema_version !== 'domeye_interactive_agent_turn_answer_v2'
+    || answer.answerability !== 'supported'
+    || answer.answer_source !== 'renderer'
+    || typeof answer.answer_text !== 'string'
+    || !answer.answer_text.trim()
+    || !sameValue(answer.basis, {
+      source_label_zh: 'Domeye 国家中断观测数据',
+      observed_object_zh: 'RRC25 观测到的固定前缀可见 IPv4 地址量',
+      window_start_utc: candidatePayload.data_identity.window_start_utc,
+      window_end_utc: candidatePayload.data_identity.window_end_utc,
+      important_boundary_zh:
+        '仅表示 RRC25 单一观察点的 BGP 控制面观测，不能据此推断全国或用户实际影响、原因、责任或真实恢复。',
+    })
+  ) fail('公开 Answer 不是严格最小 Renderer v2 投影')
+  const serialized = canonical(completed)
+  if (
+    /"(?:candidate_id|finding|trace|usage|evidence|receipt_refs|artifact_refs|record_digest|runtime_result)":/u.test(
+      serialized,
+    )
+    || serialized.includes('deterministic_fallback')
+    || serialized.includes('clarification_required')
+    || serialized.includes('answer_not_accepted')
+    || serialized.includes('provider_failure')
+    || serialized.includes('stopped')
+    || serialized.includes('failed')
+    || serialized.includes('cancelled')
+  ) fail('公开响应夹带内部证据或失败/回退语义')
+  return { created, started, completed, conversation, turn, answer }
+}
+
+function verifyV2InternalEnvelopeBinding(
+  internalBytes,
+  publicEvidence,
+  verified,
+) {
+  const envelope = parseJsonBytes(internalBytes, 'Sidecar 内部记录响应')
+  if (!exactKeys(envelope, ['record'])) fail('内部记录响应必须严格只有 record')
+  const record = envelope.record
+  if (
+    !exactKeys(record, [
+      'schema_version', 'record_id', 'record_digest', 'conversation_id',
+      'turn_id', 'candidate_id', 'contract_version', 'contract_digest',
+      'answer_presentation_contract_version',
+      'answer_presentation_contract_digest', 'data_identity',
+      'identity_receipt', 'authorization_derivation', 'public_projection',
+      'public_answer_sha256', 'public_projection_sha256', 'runtime_result',
+      'failure', 'recorded_at_utc',
+    ])
+    || record.schema_version
+      !== verified.release.live_verification.internal_record_schema_version
+    || !/^turn-internal-record-sha256:[a-f0-9]{64}$/.test(
+      record.record_id ?? '',
+    )
+    || !/^sha256:[a-f0-9]{64}$/.test(record.record_digest ?? '')
+    || record.conversation_id !== publicEvidence.conversation.conversation_id
+    || record.turn_id !== publicEvidence.turn.turn_id
+    || record.candidate_id !== verified.candidate.candidate_id
+    || record.contract_version !== verified.candidate.payload.contract.version
+    || record.contract_digest !== verified.candidate.payload.contract.digest
+    || record.answer_presentation_contract_version
+      !== verified.candidate.payload.answer_presentation_contract.version
+    || record.answer_presentation_contract_digest
+      !== verified.candidate.payload.answer_presentation_contract.digest
+    || !sameValue(record.data_identity, verified.candidate.payload.data_identity)
+    || !sameValue(record.public_projection, publicEvidence.turn)
+    || record.public_projection_sha256 !== digest(publicEvidence.turn)
+    || record.public_answer_sha256
+      !== `sha256:${sha256(publicEvidence.answer.answer_text)}`
+    || record.failure !== null
+    || !validTimestamp(record.recorded_at_utc)
+  ) fail('内部记录未精确绑定同一 Candidate/Conversation/Turn 公共投影')
+  const {
+    record_id: recordId,
+    record_digest: recordDigest,
+    ...recordBody
+  } = record
+  const expectedRecordDigest = digest(recordBody)
+  if (
+    recordDigest !== expectedRecordDigest
+    || recordId
+      !== `turn-internal-record-sha256:${expectedRecordDigest.slice(7)}`
+  ) fail('内部 record_id/record_digest 重算不一致')
+  return record
+}
+
+async function verifyV2InternalEvidence(
+  projectRoot,
+  internalBytes,
+  publicEvidence,
+  verified,
+) {
+  const record = verifyV2InternalEnvelopeBinding(
+    internalBytes,
+    publicEvidence,
+    verified,
+  )
+
+  const [service, findingAnswer] = await Promise.all([
+    importProjectModule(
+      projectRoot,
+      CONVERSATION_SERVICE_PATH,
+      'Interactive Conversation Service',
+    ),
+    importProjectModule(projectRoot, FINDING_ANSWER_PATH, 'Finding Answer'),
+  ])
+  if (
+    typeof service.hasValidDomeyeInteractiveTurnInternalRecord !== 'function'
+    || typeof service.hasSuccessfulDomeyePublicFinalAnswer !== 'function'
+    || typeof findingAnswer.buildCountryOutageAnswerContext !== 'function'
+    || typeof findingAnswer.guardCountryOutageResponse !== 'function'
+  ) fail('内部记录或正式 Guard 重放导出不完整')
+  if (!service.hasValidDomeyeInteractiveTurnInternalRecord(record)) {
+    fail('内部记录未通过正式完整性校验')
+  }
+  const result = record.runtime_result
+  const principalId = result?.loop?.admission_receipts?.[0]?.principal?.principal_id
+  if (
+    typeof principalId !== 'string'
+    || !principalId
+    || !service.hasSuccessfulDomeyePublicFinalAnswer(
+      result,
+      verified.candidateBinding,
+      record.identity_receipt,
+      principalId,
+    )
+  ) fail('内部 runtime result 未通过正式公共成功门重放')
+  let expectedContext
+  let replayedGuard
+  try {
+    expectedContext = findingAnswer.buildCountryOutageAnswerContext(result.finding)
+    replayedGuard = findingAnswer.guardCountryOutageResponse(
+      expectedContext,
+      result.answer.render_attempt.draft,
+    )
+  } catch (error) {
+    fail(`Renderer/Guard v2 重放失败：${error.message}`)
+  }
+  const guard = result.answer?.guard_result
+  const style = guard?.style_assessment
+  if (
+    result.outcome !== 'completed'
+    || result.schema_version !== 'domeye_first_vertical_slice_run_v2'
+    || result.answer?.source !== 'renderer'
+    || result.answer?.render_attempt?.status !== 'completed'
+    || result.answer.render_attempt.failure_code !== null
+    || result.answer.answer !== publicEvidence.answer.answer_text
+    || !sameValue(expectedContext, result.answer_context)
+    || !sameValue(replayedGuard, guard)
+    || guard?.schema_version !== 'domeye_agent_response_guard_v2'
+    || guard?.decision !== 'pass'
+    || guard?.assessment_status !== 'evaluated'
+    || !Array.isArray(guard.reason_codes)
+    || guard.reason_codes.length !== 0
+    || style?.schema_version !== 'domeye_agent_answer_style_assessment_v1'
+    || style?.passed !== true
+    || !Array.isArray(style.reason_codes)
+    || style.reason_codes.length !== 0
+    || !Array.isArray(style.leak_codes)
+    || style.leak_codes.length !== 0
+    || !Array.isArray(style.outside_context_codes)
+    || style.outside_context_codes.length !== 0
+    || style.policy_id
+      !== verified.acceptance.answer_style_policy_binding?.policy_id
+    || style.policy_digest
+      !== verified.acceptance.answer_style_policy_binding?.policy_digest
+    || !sameValue(
+      oracleFromFinding(result.finding),
+      verified.release.live_verification.oracle,
+    )
+    || canonical(result).includes('deterministic_fallback')
+    || canonical(result).includes('answer_not_accepted')
+    || canonical(result).includes('clarification_required')
+    || canonical(result).includes('provider_failure')
+  ) fail('内部结果不是 Renderer + Guard v2 + style + 精确 Oracle 完成闭包')
+  return { record, result, guard, style }
+}
+
+function frozenBytesFromReceipt(encoded, expectedSha, label) {
+  if (typeof encoded !== 'string' || !encoded) fail(`${label}缺少冻结原始字节`)
+  const bytes = Buffer.from(encoded, 'base64')
+  if (
+    bytes.toString('base64') !== encoded
+    || expectedSha !== `sha256:${sha256(bytes)}`
+  ) fail(`${label}冻结原始字节或摘要无效`)
+  return bytes
+}
+
+async function verifyV2Promotion(
+  rootArgument,
+  activePathArgument,
+  createPath,
+  turnPath,
+  responsePath,
+  internalPath,
+  timestamp,
+  expectedConversationId,
+  expectedTurnId,
+  storedPromotionPathArgument = null,
+) {
+  const verified = await verifyV2Release(rootArgument)
+  const activeBinding = verifyV2Active(activePathArgument, verified)
+  let stored = null
+  let storedPath = null
+  let createBytes
+  let turnBytes
   let responseBytes
-  let response
-  let storedPromotion = null
-  let storedPromotionPath = null
-  if (promotionReceiptArgument !== null) {
-    storedPromotionPath = regularFile(promotionReceiptArgument)
-    storedPromotion = readJson(storedPromotionPath)
-    timestamp = storedPromotion.verified_at_utc
-    expectedConversationId = storedPromotion.backend?.conversation_id
-    expectedTurnId = storedPromotion.backend?.turn_id
-    const encoded = storedPromotion.backend?.response_body_base64
-    if (typeof encoded !== 'string' || encoded.length === 0) {
-      fail('promotion 未保留 Backend 原始响应')
-    }
-    responseBytes = Buffer.from(encoded, 'base64')
-    if (responseBytes.toString('base64') !== encoded) {
-      fail('promotion 的 Backend 原始响应 base64 无效')
-    }
-    try {
-      response = JSON.parse(responseBytes.toString('utf8'))
-    } catch (error) {
-      fail(`promotion 的 Backend 原始响应不是 JSON：${error.message}`)
-    }
+  let internalBytes
+  if (storedPromotionPathArgument !== null) {
+    storedPath = regularFile(storedPromotionPathArgument)
+    stored = readJson(storedPath)
+    timestamp = stored.verified_at_utc
+    expectedConversationId = stored.public_response?.conversation_id
+    expectedTurnId = stored.public_response?.turn_id
+    createBytes = frozenBytesFromReceipt(
+      stored.public_response?.create_response_body_base64,
+      stored.public_response?.create_response_sha256,
+      '创建响应',
+    )
+    turnBytes = frozenBytesFromReceipt(
+      stored.public_response?.turn_response_body_base64,
+      stored.public_response?.turn_response_sha256,
+      'Turn 响应',
+    )
+    responseBytes = frozenBytesFromReceipt(
+      stored.public_response?.response_body_base64,
+      stored.public_response?.response_sha256,
+      '最终公开响应',
+    )
+    internalBytes = frozenBytesFromReceipt(
+      stored.internal_record?.response_body_base64,
+      stored.internal_record?.response_sha256,
+      '内部记录响应',
+    )
   } else {
-    const responseFile = regularFile(responsePath)
-    responseBytes = readFileSync(responseFile)
-    try {
-      response = JSON.parse(responseBytes.toString('utf8'))
-    } catch (error) {
-      fail(`Backend 原始响应不是 JSON：${error.message}`)
-    }
+    createBytes = readFileSync(regularFile(createPath))
+    turnBytes = readFileSync(regularFile(turnPath))
+    responseBytes = readFileSync(regularFile(responsePath))
+    internalBytes = readFileSync(regularFile(internalPath))
   }
-  if (!response || typeof response !== 'object' || Array.isArray(response)) {
-    fail('Backend 原始响应根节点无效')
-  }
-  if (!validTimestamp(timestamp)) fail('verified-at 时间无效')
-  const { conversation, turn } = extractSuccessfulTurn(
-    response,
+  if (
+    !validTimestamp(timestamp)
+    || Date.parse(timestamp) < Date.parse(activeBinding.active.activated_at_utc)
+    || !/^conversation_sha256_[a-f0-9]{64}$/.test(
+      expectedConversationId ?? '',
+    )
+    || !/^turn_sha256_[a-f0-9]{64}$/.test(expectedTurnId ?? '')
+  ) fail('promotion 时间或本次会话/Turn 身份无效')
+  const publicEvidence = verifyV2PublicEvidence(
+    createBytes,
+    turnBytes,
+    responseBytes,
     verified.release,
     verified.candidate.payload,
     expectedConversationId,
     expectedTurnId,
   )
-  const answer = verifyPromotionCompletionEnvelope(turn)
-  verifySuccessfulTraceClosure(answer, verified.candidate.payload)
-  verifySuccessfulProviderUsage(answer, verified.candidate.payload)
-  const replayedAnswer = await replayTrustedFindingAnswerGuard(
+  const internalEvidence = await verifyV2InternalEvidence(
     join(verified.root, 'project'),
-    answer,
-    verified.candidate,
+    internalBytes,
+    publicEvidence,
+    verified,
   )
-  const replayedPublicGuard = projectPublicResponseGuard(
-    replayedAnswer.guard,
+  verifyV2PromotionTimeline(
+    timestamp,
+    publicEvidence.turn.completed_at,
+    internalEvidence.record.recorded_at_utc,
   )
-  const serialized = canonical(turn)
-  if (
-    !/^conversation_sha256_[a-f0-9]{64}$/.test(conversation?.conversation_id)
-    || !/^turn_sha256_[a-f0-9]{64}$/.test(turn?.turn_id)
-    || answer?.schema_version !== 'domeye_interactive_agent_turn_answer_v1'
-    || typeof answer.answer_text !== 'string'
-    || !answer.answer_text.trim()
-    || answer.candidate_id !== verified.candidate.candidate_id
-    || !sameValue(answer.data_identity, verified.candidate.payload.data_identity)
-    || answer.finding?.candidate_id !== verified.candidate.candidate_id
-    || answer.finding?.value_state !== 'known'
-    || answer.finding?.completeness_state !== 'complete'
-    || !sameValue(
-      oracleFromFinding(answer.finding),
-      verified.release.live_verification.oracle,
-    )
-    || !Array.isArray(answer.evidence)
-    || answer.evidence.length === 0
-    || !Array.isArray(answer.limitations)
-    || answer.limitations.length === 0
-    || answer.trace?.disposition !== 'goal_satisfied'
-    || !sameValue(answer.trace?.response_guard, replayedPublicGuard)
-    || answer.trace?.response_guard?.decision !== 'pass'
-    || !Array.isArray(answer.trace.response_guard.reason_codes)
-    || answer.trace.response_guard.reason_codes.length !== 0
-    || !Array.isArray(answer.trace.admission_receipts)
-    || answer.trace.admission_receipts.length !== 2
-    || answer.trace.admission_receipts.some((item) =>
-      item?.decision !== 'admitted' || item.reason_code !== null)
-    || !Array.isArray(answer.trace.action_receipts)
-    || answer.trace.action_receipts.length !== 2
-    || answer.trace.action_receipts.some((item) =>
-      item?.status !== 'succeeded' || item.failure_code !== null)
-    || !Array.isArray(answer.trace.observations)
-    || answer.trace.observations.length !== 2
-    || answer.trace.observations.some((item) =>
-      item?.status !== 'succeeded' || item.reason_code !== null)
-    || !Array.isArray(answer.usage?.attempts)
-    || answer.usage.attempts.length < 1
-    || answer.usage.attempts.length > 10
-    || answer.usage.attempt_count !== answer.usage.attempts.length
-    || answer.usage.maximum_attempt_count !== 10
-    || answer.usage.attempts.some((item) => item?.outcome !== 'completed')
-    || !answer.usage.attempts.some((item) =>
-      item?.phase === 'renderer' && item.outcome === 'completed')
-    || serialized.includes('deterministic_fallback')
-    || serialized.includes('clarification_required')
-    || serialized.includes('answer_not_accepted')
-    || serialized.includes('provider_failure')
-  ) fail('Backend 结果不是 Renderer + Guard + 精确 Oracle 的完整成功回答')
-
   const payload = {
-    schema_version: 'domeye_interactive_agent_promotion_v1',
+    schema_version: 'domeye_interactive_agent_promotion_v2',
     component: COMPONENT,
     release_id: verified.release.release_id,
     promotion_state: 'verified',
     verified_at_utc: timestamp,
-    release_manifest_sha256: manifestSha,
-    active_receipt_sha256: `sha256:${sha256(readFileSync(activePath))}`,
+    release_manifest_sha256: activeBinding.manifestSha,
+    active_receipt_sha256:
+      `sha256:${sha256(readFileSync(activeBinding.activePath))}`,
     candidate_id: verified.candidate.candidate_id,
-    backend: {
+    acceptance_record_id: verified.acceptance.acceptance_record_id,
+    public_response: {
       origin: verified.release.live_verification.public_backend_origin,
       base_path: verified.release.live_verification.backend_base_path,
-      conversation_id: conversation.conversation_id,
-      turn_id: turn.turn_id,
-      question: turn.question,
+      conversation_id: expectedConversationId,
+      turn_id: expectedTurnId,
+      question: verified.release.live_verification.question,
+      create_response_sha256: `sha256:${sha256(createBytes)}`,
+      create_response_body_base64: createBytes.toString('base64'),
+      turn_response_sha256: `sha256:${sha256(turnBytes)}`,
+      turn_response_body_base64: turnBytes.toString('base64'),
       response_sha256: `sha256:${sha256(responseBytes)}`,
       response_body_base64: responseBytes.toString('base64'),
+      conversation_deduplicated: false,
+      turn_deduplicated: false,
+      turn_number: 1,
+      conversation_turn_count: 1,
+      turn_projection_sha256: digest(publicEvidence.turn),
+      answer_text_sha256:
+        `sha256:${sha256(publicEvidence.answer.answer_text)}`,
+    },
+    internal_record: {
+      origin: verified.release.live_verification.internal_sidecar_origin,
+      base_path: verified.release.live_verification.internal_record_base_path,
+      record_schema_version: internalEvidence.record.schema_version,
+      record_id: internalEvidence.record.record_id,
+      record_digest: internalEvidence.record.record_digest,
+      response_sha256: `sha256:${sha256(internalBytes)}`,
+      response_body_base64: internalBytes.toString('base64'),
+      public_projection_sha256:
+        internalEvidence.record.public_projection_sha256,
+      runtime_result_sha256: digest(internalEvidence.result),
     },
     result: {
       state: 'completed',
       answer_success: true,
       workflow_completed: true,
       answer_source: 'renderer',
+      guard_schema_version: internalEvidence.guard.schema_version,
       guard_decision: 'pass',
+      guard_assessment_status: 'evaluated',
+      style_policy_id: internalEvidence.style.policy_id,
+      style_policy_digest: internalEvidence.style.policy_digest,
+      style_assessment_passed: true,
+      final_answer_digest: internalEvidence.result.answer.answer_digest,
       oracle_digest: verified.release.live_verification.oracle_digest,
       public_answer_present: true,
+      internal_record_verified: true,
+      public_internal_projection_equal: true,
       fallback_or_rejection_present: false,
     },
   }
@@ -1330,80 +1344,123 @@ async function verifyPromotion(
     promotion_id: `promotion-${digest(payload)}`,
     ...payload,
   }
-  if (storedPromotion !== null) {
-    const expectedBytes = Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`)
+  if (stored !== null) {
     if (
-      !sameValue(storedPromotion, receipt)
-      || !expectedBytes.equals(readFileSync(storedPromotionPath))
-    ) fail('promotion 与保留 Backend 响应的当前 Guard 重放不精确一致')
+      !sameValue(stored, receipt)
+      || !Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`).equals(
+        readFileSync(storedPath),
+      )
+    ) fail('promotion 与冻结公私原始证据的当前重放不精确一致')
     return receipt
   }
   process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`)
 }
 
 const args = process.argv.slice(2)
-if (args[0] === '_test-promotion-binding') {
-  if (args.length !== 5) {
-    fail('用法：verify-release.mjs _test-promotion-binding <response.json> <conversation-id> <turn-id> <question>')
+if (args[0] === '_test-v2-public-evidence') {
+  if (args.length !== 7) {
+    fail('用法：verify-release.mjs _test-v2-public-evidence <create.json> <turn.json> <final.json> <candidate.json> <conversation-id> <turn-id>')
+  }
+  const root = fixtureRoot()
+  const candidate = readJson(fixtureFile(root, args[4]))
+  verifyV2PublicEvidence(
+    readFileSync(fixtureFile(root, args[1])),
+    readFileSync(fixtureFile(root, args[2])),
+    readFileSync(fixtureFile(root, args[3])),
+    {
+      live_verification: {
+        public_conversation_schema_version:
+          'domeye_interactive_agent_conversation_v2',
+        event_reference: 'country_outage/2026-02-27 09:12:32/IR/1/r',
+        question: QUESTION,
+      },
+    },
+    candidate.payload,
+    args[5],
+    args[6],
+  )
+} else if (args[0] === '_test-v2-internal-binding') {
+  if (args.length !== 4) {
+    fail('用法：verify-release.mjs _test-v2-internal-binding <final.json> <internal.json> <candidate.json>')
   }
   const root = fixtureRoot()
   const response = readJson(fixtureFile(root, args[1]))
-  extractExpectedConversationTurn(response, args[2], args[3], args[4])
-} else if (args[0] === '_test-promotion-completion-envelope') {
+  const candidate = readJson(fixtureFile(root, args[3]))
+  const conversation = response.conversation
+  const turn = conversation?.turns?.[0]
+  verifyV2InternalEnvelopeBinding(
+    readFileSync(fixtureFile(root, args[2])),
+    { conversation, turn, answer: turn?.answer },
+    {
+      candidate,
+      release: {
+        live_verification: {
+          internal_record_schema_version:
+            'domeye_interactive_agent_turn_internal_record_v1',
+        },
+      },
+    },
+  )
+} else if (args[0] === '_test-json-no-duplicate') {
   if (args.length !== 2) {
-    fail('用法：verify-release.mjs _test-promotion-completion-envelope <turn.json>')
+    fail('用法：verify-release.mjs _test-json-no-duplicate <input.json>')
   }
   const root = fixtureRoot()
-  verifyPromotionCompletionEnvelope(readJson(fixtureFile(root, args[1])))
-} else if (args[0] === '_test-provider-usage') {
-  if (args.length !== 3) {
-    fail('用法：verify-release.mjs _test-provider-usage <answer.json> <candidate.json>')
+  parseJsonBytes(readFileSync(fixtureFile(root, args[1])), '测试输入')
+} else if (args[0] === '_test-v2-promotion-timeline') {
+  if (args.length !== 4) {
+    fail('用法：verify-release.mjs _test-v2-promotion-timeline <verified-at> <turn-completed-at> <internal-recorded-at>')
   }
-  const root = fixtureRoot()
-  const answer = readJson(fixtureFile(root, args[1]))
-  const candidate = readJson(fixtureFile(root, args[2]))
-  verifySuccessfulProviderUsage(answer, candidate.payload)
-} else if (args[0] === '_test-response-guard-projection') {
-  if (args.length !== 3) {
-    fail('用法：verify-release.mjs _test-response-guard-projection <internal-guard.json> <public-guard.json>')
-  }
-  const root = fixtureRoot()
-  const internalGuard = readJson(fixtureFile(root, args[1]))
-  const publicGuard = readJson(fixtureFile(root, args[2]))
-  if (!sameValue(
-    publicGuard,
-    projectPublicResponseGuard(internalGuard),
-  )) fail('公开 Response Guard 与内部 Guard 重放投影不一致')
-} else if (args[0] === '_test-formal-public-completion-trials') {
-  if (args.length !== 3) {
-    fail('用法：verify-release.mjs _test-formal-public-completion-trials <trials.json> <candidate-id>')
-  }
-  const root = fixtureRoot()
-  const fixture = readJson(fixtureFile(root, args[1]))
-  if (!Array.isArray(fixture.trials)) fail('trials 必须是数组')
-  verifyFormalPublicCompletionTrials(fixture.trials, args[2])
+  fixtureRoot()
+  verifyV2PromotionTimeline(args[1], args[2], args[3])
 } else if (args[0] === 'acceptance-replay') {
-  if (args.length !== 3) {
-    fail('用法：verify-release.mjs acceptance-replay <project-root> <acceptance-record-relative-path>')
+  if (args.length !== 5) {
+    fail('用法：verify-release.mjs acceptance-replay <project-root> <acceptance-record-relative-path> <approved-candidate-id> <approved-acceptance-record-id>')
   }
-  const receipt = await replayIndependentAcceptance(args[1], args[2])
+  const receipt = await replayV2IndependentAcceptance(
+    args[1],
+    args[2],
+    args[3],
+    args[4],
+  )
   process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`)
 } else if (args[0] === 'promotion') {
-  if (args.length !== 7) {
-    fail('用法：verify-release.mjs promotion <release-root> <active.json> <backend-response.json> <verified-at> <conversation-id> <turn-id>')
+  if (args.length !== 10) {
+    fail('用法：verify-release.mjs promotion <release-root> <active.json> <create-response.json> <turn-response.json> <final-response.json> <internal-response.json> <verified-at> <conversation-id> <turn-id>')
   }
-  await verifyPromotion(args[1], args[2], args[3], args[4], args[5], args[6])
+  await verifyV2Promotion(
+    args[1],
+    args[2],
+    args[3],
+    args[4],
+    args[5],
+    args[6],
+    args[7],
+    args[8],
+    args[9],
+  )
 } else if (args[0] === 'promotion-receipt') {
   if (args.length !== 4) {
     fail('用法：verify-release.mjs promotion-receipt <release-root> <active.json> <promotion.json>')
   }
-  await verifyPromotion(args[1], args[2], null, null, null, null, args[3])
+  await verifyV2Promotion(
+    args[1],
+    args[2],
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    args[3],
+  )
 } else {
   const root = args[0] === 'release' ? args[1] : args[0]
   if (!root || args.length > (args[0] === 'release' ? 2 : 1)) {
     fail('用法：verify-release.mjs [release] <release-root>')
   }
-  const verified = await verifyRelease(root)
+  const verified = await verifyV2Release(root)
   process.stdout.write(`${JSON.stringify({
     status: 'release_verified',
     schema_version: verified.release.schema_version,
