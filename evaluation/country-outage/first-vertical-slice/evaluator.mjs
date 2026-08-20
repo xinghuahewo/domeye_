@@ -575,6 +575,71 @@ function validProviderUsageAudit(usage, candidate) {
     && !providerUsageIdentityDrift(usage, candidate)
 }
 
+function strictlyIncreasingPositiveIntegers(values) {
+  return values.every((value, index) =>
+    Number.isSafeInteger(value)
+    && value >= 1
+    && (index === 0 || value > values[index - 1])
+  )
+}
+
+function validJ1LoopDecisionCycleAccounting(loop) {
+  if (!isRecord(loop)) return false
+  const loopUsage = loop.usage
+  if (
+    !validProviderUsageStructure(loopUsage)
+    || !Array.isArray(loop.admission_receipts)
+    || !Array.isArray(loop.decision_protocol_rejections)
+  ) return false
+
+  const cognitionAttempts = loopUsage.attempts
+  if (
+    cognitionAttempts.length < 1
+    || loopUsage.attempt_count !== cognitionAttempts.length
+    || cognitionAttempts.some((attempt) =>
+      attempt?.phase !== 'cognition' || attempt.outcome !== 'completed'
+    )
+  ) return false
+  const admissionCycles = loop.admission_receipts.map(
+    (receipt) => receipt?.budget?.model_api_attempts_used,
+  )
+  const rejectionCycles = loop.decision_protocol_rejections.map(
+    (rejection) => rejection?.sequence,
+  )
+  const cognitionAttemptCount = cognitionAttempts.length
+  if (
+    !strictlyIncreasingPositiveIntegers(admissionCycles)
+    || !strictlyIncreasingPositiveIntegers(rejectionCycles)
+    || admissionCycles.some((cycle) => cycle >= cognitionAttemptCount)
+    || rejectionCycles.some((cycle) => cycle >= cognitionAttemptCount)
+  ) return false
+  const decisionCycles = [
+    ...admissionCycles,
+    ...rejectionCycles,
+    cognitionAttemptCount,
+  ].sort((left, right) => left - right)
+  return sameValue(decisionCycles, Array.from(
+    { length: cognitionAttemptCount },
+    (_value, index) => index + 1,
+  ))
+}
+
+function validJ1DecisionCycleAccounting(result) {
+  const loop = isRecord(result?.loop) ? result.loop : {}
+  const usage = result?.usage
+  const loopUsage = loop.usage
+  if (
+    !validJ1LoopDecisionCycleAccounting(loop)
+    || !validProviderUsageStructure(usage)
+  ) return false
+  const cognitionAttempts = usage.attempts.filter(
+    (attempt) => attempt?.phase === 'cognition',
+  )
+  return usage.attempts.at(-1)?.phase === 'renderer'
+    && cognitionAttempts.length === usage.attempts.length - 1
+    && sameValue(loopUsage.attempts, cognitionAttempts)
+}
+
 function j1ZeroToleranceCounts(result, candidate) {
   const counts = emptyZeroToleranceCounts()
   if (!isRecord(result)) return counts
@@ -911,7 +976,6 @@ function validJ1AdmissionExecutionChain({
       )
       || (index === 0
         && admission.goal_state.state_digest !== digest(initialGoalState))
-      || admission.budget.model_api_attempts_used !== index + 1
       || admission.budget.approved_actions_used !== index + 1
       || admission.revocation.state !== 'not_revoked'
       || !sameValue(
@@ -1707,6 +1771,9 @@ function j1FailureReasons(result, candidate, counts) {
     !Array.isArray(loop.decision_protocol_rejections)
     || loop.decision_protocol_rejections.length !== 0
   ) reasons.push('decision_protocol_rejection_present')
+  if (!validJ1DecisionCycleAccounting(result)) {
+    reasons.push('decision_cycle_accounting_invalid')
+  }
   if (!sameValue(
     actionReceipts.map((item) => [item?.capability_id, item?.status]),
     [['CAP-006', 'succeeded'], ['CAP-016', 'succeeded']],
@@ -3325,6 +3392,7 @@ function validDecisionFailureStage(failure, failureCode, candidate) {
     && failure.answer_context === null
     && failure.answer === null
     && validFailureTraceCandidateBinding(loop, candidate)
+    && validJ1LoopDecisionCycleAccounting(loop)
     && hasRejectedExecutionDecision(loop)
     && terminalFailureStateAdvances(
       failure.goal_state,
@@ -3345,6 +3413,7 @@ function validAnswerFailureStage(failure, failureCode, candidate) {
     && failureCode === 'answer_not_accepted'
     && failure.loop_failure === null
     && validFailureTraceCandidateBinding(loop, candidate)
+    && validJ1LoopDecisionCycleAccounting(loop)
     && loop.goal_state.status === 'answer_pending'
     && loop.disposition.disposition === 'goal_satisfied'
     && loop.disposition.reason_code === J1_SATISFIED_REASON

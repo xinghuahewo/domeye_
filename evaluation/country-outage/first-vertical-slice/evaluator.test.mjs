@@ -296,6 +296,7 @@ function evaluationAdmissionRequest({
   goalState,
   proposal,
   sequence,
+  modelApiAttemptsUsed = sequence,
   actionHistory = [],
   artifacts = [],
 }) {
@@ -317,14 +318,20 @@ function evaluationAdmissionRequest({
       checked_at_utc: driverNow,
       reason_code: null,
     },
-    model_api_attempts_used: sequence,
+    model_api_attempts_used: modelApiAttemptsUsed,
     action_history: actionHistory,
     artifacts,
     admitted_at_utc: driverNow,
   }
 }
 
-async function qualifiedPublicCompletionEvidence(seriesOverrides = {}) {
+async function qualifiedPublicCompletionEvidence(
+  seriesOverrides = {},
+  {
+    firstModelApiAttemptsUsed = 1,
+    secondModelApiAttemptsUsed = 2,
+  } = {},
+) {
   const start = Date.parse(dataIdentity.window_start_utc)
   const end = Date.parse(dataIdentity.window_end_utc)
   const timestamps = []
@@ -369,6 +376,7 @@ async function qualifiedPublicCompletionEvidence(seriesOverrides = {}) {
     goalState: initialState,
     proposal: evaluationProposal(initialState, 'CAP-006'),
     sequence: 1,
+    modelApiAttemptsUsed: firstModelApiAttemptsUsed,
   }))
   assert.equal(firstDecision.status, 'admitted')
   if (firstDecision.status !== 'admitted') throw new Error('first_not_admitted')
@@ -391,6 +399,7 @@ async function qualifiedPublicCompletionEvidence(seriesOverrides = {}) {
       first.artifact.artifact_id,
     ),
     sequence: 2,
+    modelApiAttemptsUsed: secondModelApiAttemptsUsed,
     actionHistory: [first.receipt],
     artifacts: [first.artifact],
   }))
@@ -419,8 +428,19 @@ async function qualifiedPublicCompletionEvidence(seriesOverrides = {}) {
   }
 }
 
-async function successfulJ1Result(ordinal, seriesOverrides = {}) {
-  const qualified = await qualifiedPublicCompletionEvidence(seriesOverrides)
+async function successfulJ1Result(
+  ordinal,
+  seriesOverrides = {},
+  {
+    cognitionAttemptCount = 3,
+    firstModelApiAttemptsUsed = 1,
+    secondModelApiAttemptsUsed = 2,
+  } = {},
+) {
+  const qualified = await qualifiedPublicCompletionEvidence(
+    seriesOverrides,
+    { firstModelApiAttemptsUsed, secondModelApiAttemptsUsed },
+  )
   const goalId = qualified.goalId
   const semanticGoal = {
     schema_version: 'domeye_agent_semantic_goal_v1',
@@ -472,12 +492,14 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
     overview_response_sha256: 'c'.repeat(64),
     verified_at_utc: verifiedAt,
   }
-  const cognitionAttempts = [
-    providerAttempt(1, 'cognition'),
-    providerAttempt(2, 'cognition'),
-    providerAttempt(3, 'cognition'),
-  ]
-  const rendererAttempt = providerAttempt(4, 'renderer')
+  const cognitionAttempts = Array.from(
+    { length: cognitionAttemptCount },
+    (_value, index) => providerAttempt(index + 1, 'cognition'),
+  )
+  const rendererAttempt = providerAttempt(
+    cognitionAttemptCount + 1,
+    'renderer',
+  )
   return {
     schema_version: 'domeye_first_vertical_slice_run_v1',
     outcome: 'completed',
@@ -537,8 +559,12 @@ async function successfulJ1Result(ordinal, seriesOverrides = {}) {
   }
 }
 
-async function guardedFallbackJ1Result(ordinal) {
-  const result = structuredClone(await successfulJ1Result(ordinal))
+async function guardedFallbackJ1Result(ordinal, completionOptions = {}) {
+  const result = structuredClone(await successfulJ1Result(
+    ordinal,
+    {},
+    completionOptions,
+  ))
   const draft = {
     ...result.answer.render_attempt.draft,
     values: {
@@ -561,8 +587,15 @@ async function guardedFallbackJ1Result(ordinal) {
   return result
 }
 
-async function locallyInvalidRendererFallbackJ1Result(ordinal) {
-  const result = structuredClone(await successfulJ1Result(ordinal))
+async function locallyInvalidRendererFallbackJ1Result(
+  ordinal,
+  completionOptions = {},
+) {
+  const result = structuredClone(await successfulJ1Result(
+    ordinal,
+    {},
+    completionOptions,
+  ))
   result.answer = {
     answer: renderCountryOutageDeterministicFallback(result.answer_context),
     source: 'deterministic_fallback',
@@ -655,15 +688,25 @@ async function loopFailureJ1Error(ordinal) {
   })
 }
 
-async function decisionFailureJ1Error(ordinal) {
-  const completed = await successfulJ1Result(ordinal)
+async function decisionFailureJ1Error(
+  ordinal,
+  {
+    cognitionAttemptCount = 4,
+    secondModelApiAttemptsUsed = 2,
+    rejectionSequences = [3],
+  } = {},
+) {
+  const completed = await successfulJ1Result(ordinal, {}, {
+    cognitionAttemptCount,
+    secondModelApiAttemptsUsed,
+  })
   const loop = structuredClone(completed.loop)
-  loop.decision_protocol_rejections = [{
-    sequence: 4,
+  loop.decision_protocol_rejections = rejectionSequences.map((sequence) => ({
+    sequence,
     reason_code: 'decision_missing_or_invalid',
     observed_proposal_count: 0,
     observed_disposition_count: 0,
-  }]
+  }))
   const goalState = {
     ...loop.goal_state,
     state_revision: loop.goal_state.state_revision + 1,
@@ -685,10 +728,14 @@ async function decisionFailureJ1Error(ordinal) {
   })
 }
 
-async function answerFailureJ1Error(ordinal, localRendererFailure = false) {
+async function answerFailureJ1Error(
+  ordinal,
+  localRendererFailure = false,
+  completionOptions = {},
+) {
   const rejected = localRendererFailure
-    ? await locallyInvalidRendererFallbackJ1Result(ordinal)
-    : await guardedFallbackJ1Result(ordinal)
+    ? await locallyInvalidRendererFallbackJ1Result(ordinal, completionOptions)
+    : await guardedFallbackJ1Result(ordinal, completionOptions)
   return new DomeyeFirstSliceRunError('answer_not_accepted', {
     schema_version: 'domeye_first_vertical_slice_failure_evidence_v1',
     candidate_id: candidateId,
@@ -1381,6 +1428,7 @@ test('第 11 条限流 fallback 仍失败，renderer 末条顺序保持精确合
   assert.deepEqual(rejectedLimitFallback.j1_records[0].failure_codes, [
     'answer_not_accepted',
     'correct_final_answer_missing',
+    'decision_cycle_accounting_invalid',
     'public_completion_gate_rejected',
   ])
 
@@ -1484,6 +1532,43 @@ test('J1 拒绝自洽重签但越界的准入与非确定性 identity receipt', 
     result.j1_records.map((trial) => trial.public_completion_gate_passed),
     [false, false],
   )
+})
+
+test('J1 将累计尝试快照的缺口与乱序都归入决策周期失败', async () => {
+  const result = await runFirstVerticalSliceEvaluation({
+    loaded_candidate: loadedCandidate,
+    execution_mode: 'offline_test',
+    execution_actor_id: 'offline-execution-agent',
+    runs: 2,
+    journey_judgments: receivedJudgments(),
+    now: advancingClock(),
+    run_j1_trial: async ({ ordinal }) => ordinal === 1
+      ? await successfulJ1Result(ordinal, {}, {
+          cognitionAttemptCount: 4,
+          secondModelApiAttemptsUsed: 3,
+        })
+      : await successfulJ1Result(ordinal, {}, {
+          firstModelApiAttemptsUsed: 2,
+          secondModelApiAttemptsUsed: 1,
+        }),
+  })
+  for (const [index, trial] of result.j1_records.entries()) {
+    assert.deepEqual(trial.failure_codes, [
+      'decision_cycle_accounting_invalid',
+      'public_completion_gate_rejected',
+    ])
+    assert.ok(!trial.failure_codes.includes(
+      'admission_receipt_contract_invalid',
+    ))
+    assert.deepEqual([
+      trial.workflow_completed,
+      trial.answer_success,
+      trial.passed,
+      trial.public_completion_gate_passed,
+      trial.answer_source,
+      trial.provider_attempt_count,
+    ], [false, false, false, false, null, index === 0 ? 5 : 4])
+  }
 })
 
 test('固定 runtime principal 与执行回执 principal 漂移时公开门拒绝', async () => {
@@ -1848,6 +1933,52 @@ test('仅 exactly 30 的 JSONL 可重放三阶段失败闭包，固定 27/30 与
   assertFailureClosureTamperRejected(7, (failure) => {
     failure.answer.answer += ' 非确定性伪造文本'
   })
+
+  const assertStructuredCycleOrderRejected = async (failureFactory) => {
+    const invalid = await runFirstVerticalSliceEvaluation({
+      loaded_candidate: loadedCandidate,
+      execution_mode: 'offline_test',
+      execution_actor_id: 'offline-cycle-order-agent',
+      runs: 30,
+      drive_adversarial_cases: true,
+      now: advancingClock(),
+      run_j1_trial: async ({ ordinal }) => {
+        if (ordinal === 5) throw await failureFactory(ordinal)
+        return await successfulJ1Result(ordinal)
+      },
+    })
+    const invalidRoot = mkdtempSync(
+      join(tmpdir(), 'first-slice-cycle-order-'),
+    )
+    roots.push(invalidRoot)
+    const invalidOutput = await writeEvaluationArtifacts(
+      invalid,
+      invalidRoot,
+      () => new Date('2026-08-19T08:30:00.000Z'),
+    )
+    const invalidJsonl = readFileSync(
+      invalidOutput.paths.evidence_jsonl,
+      'utf8',
+    )
+    assert.throws(() => finalizeIndependentAcceptanceRecord({
+      summary: invalid.summary,
+      evidence_jsonl: invalidJsonl,
+      independent_review: rejectedReview(invalid, invalidJsonl),
+    }), /evidence_j1_trial_invalid/)
+  }
+  await assertStructuredCycleOrderRejected(async (ordinal) =>
+    await decisionFailureJ1Error(ordinal, {
+      cognitionAttemptCount: 5,
+      secondModelApiAttemptsUsed: 3,
+      rejectionSequences: [4, 2],
+    })
+  )
+  await assertStructuredCycleOrderRejected(async (ordinal) =>
+    await answerFailureJ1Error(ordinal, false, {
+      firstModelApiAttemptsUsed: 2,
+      secondModelApiAttemptsUsed: 1,
+    })
+  )
 
   const wrongBatchLines = evidenceJsonl.trimEnd().split('\n').map(JSON.parse)
   const wrongBatchTrial = wrongBatchLines.find((line) =>
