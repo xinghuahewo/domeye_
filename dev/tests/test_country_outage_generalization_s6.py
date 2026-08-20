@@ -7,6 +7,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 DEPLOY = ROOT / "deploy/country-outage-general-page"
+NGINX_CONFIG = ROOT / "deploy/nginx/domeye-core.conf"
 SCRIPTS = tuple(sorted(DEPLOY.glob("*.sh")))
 
 
@@ -216,6 +217,33 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
                 "as_window_path, timeout_seconds=125"
             ),
             1,
+        )
+
+        nginx = NGINX_CONFIG.read_text(encoding="utf-8")
+        production_v1_proxy = nginx.split(
+            "location ^~ /api/v1/ {", 1
+        )[1].split("\n    }", 1)[0]
+        production_v2_proxy = nginx.split(
+            "location ^~ /api/v2/ {", 1
+        )[1].split("\n    }", 1)[0]
+        self.assertEqual(
+            production_v1_proxy.count("proxy_connect_timeout 3s;"), 1
+        )
+        self.assertEqual(
+            production_v1_proxy.count("proxy_read_timeout 125s;"), 1
+        )
+        self.assertNotIn("proxy_read_timeout 75s;", production_v1_proxy)
+        self.assertEqual(
+            production_v1_proxy.count("proxy_send_timeout 60s;"), 1
+        )
+        self.assertEqual(
+            production_v2_proxy.count("proxy_connect_timeout 3s;"), 1
+        )
+        self.assertEqual(
+            production_v2_proxy.count("proxy_read_timeout 75s;"), 1
+        )
+        self.assertEqual(
+            production_v2_proxy.count("proxy_send_timeout 60s;"), 1
         )
 
     def test_production_completion_requires_verified_promotion(self) -> None:
