@@ -13,8 +13,8 @@ error() {
     printf '国家中断通用观测制品准备错误：%s\n' "$*" >&2
 }
 
-if (( $# != 6 )); then
-    printf '用法：%s <release-id> <source-archive> <source-commit> <source-tag> <previous-backend-root> <general-read-model-root>\n' \
+if (( $# != 8 )); then
+    printf '用法：%s <release-id> <source-archive> <source-commit> <source-tag> <approved-candidate-id> <approved-acceptance-record-id> <previous-backend-root> <general-read-model-root>\n' \
         "${0##*/}" >&2
     exit 2
 fi
@@ -23,8 +23,10 @@ readonly RELEASE_ID="$1"
 readonly SOURCE_ARCHIVE="$2"
 readonly SOURCE_COMMIT="$3"
 readonly SOURCE_TAG="$4"
-readonly PREVIOUS_BACKEND="$5"
-readonly GENERAL_READ_MODEL="$6"
+readonly APPROVED_CANDIDATE_ID="$5"
+readonly APPROVED_ACCEPTANCE_RECORD_ID="$6"
+readonly PREVIOUS_BACKEND="$7"
+readonly GENERAL_READ_MODEL="$8"
 readonly RUNTIME_RELEASE_ROOT='/home/bgpdata/Domeye-Core-runtime/releases'
 readonly UNIFIED_ROOT="/home/bgpdata/Domeye-Core-runtime/unified-releases/${RELEASE_ID}"
 readonly BACKEND_RELEASE_ID="${RELEASE_ID}-backend"
@@ -40,7 +42,7 @@ readonly INTERACTIVE_AGENT_CURRENT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/current"
 readonly INTERACTIVE_AGENT_ACTIVE="${INTERACTIVE_AGENT_RUNTIME_ROOT}/state/active.json"
 readonly INTERACTIVE_AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-interactive-agent.env'
 readonly INTERACTIVE_AGENT_MANAGER="${PROJECT_ROOT}/deploy/country-outage-agent/p1-chat/manage.sh"
-readonly INTERACTIVE_AGENT_CANDIDATE_RELATIVE='project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json'
+readonly INTERACTIVE_AGENT_CANDIDATE_RELATIVE='project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json'
 readonly DATABASE_STATE='/home/bgpdata/Domeye-Core-dev-data/state.json'
 readonly FRONTEND_CURRENT_STATE='/home/bgpdata/Domeye-Core-runtime/web/state/frontend-current'
 readonly NGINX_MAIN='/etc/nginx/nginx.conf'
@@ -56,6 +58,12 @@ if [[ ! "${RELEASE_ID}" =~ ^[0-9]{8}T[0-9]{6}Z-[a-z0-9][a-z0-9._-]{0,47}$ ]]; th
 fi
 if [[ ! "${SOURCE_COMMIT}" =~ ^[0-9a-f]{40}$ || -z "${SOURCE_TAG}" ]]; then
     error '源码提交或 tag 身份无效'
+    exit 2
+fi
+if [[ ! "${APPROVED_CANDIDATE_ID}" =~ ^manifest:sha256:[a-f0-9]{64}$ \
+    || ! "${APPROVED_ACCEPTANCE_RECORD_ID}" \
+        =~ ^acceptance-record-sha256:[a-f0-9]{64}$ ]]; then
+    error '外部批准的 Candidate 或 Acceptance 身份无效'
     exit 2
 fi
 if [[ "${RELEASE_ID}" != "${SOURCE_TAG}" ]]; then
@@ -122,6 +130,11 @@ interactive_agent_active_sha256=''
 interactive_agent_candidate_manifest=''
 interactive_agent_candidate_manifest_sha256=''
 interactive_agent_candidate_id=''
+interactive_agent_acceptance_record=''
+interactive_agent_acceptance_record_sha256=''
+interactive_agent_acceptance_record_id=''
+interactive_agent_acceptance_replay_receipt=''
+interactive_agent_acceptance_replay_receipt_sha256=''
 interactive_agent_readiness_identity_sha256=''
 interactive_agent_answer_attempt_limit=''
 interactive_agent_cost_policy=''
@@ -161,10 +174,33 @@ verify_interactive_agent_binding() {
     }
     interactive_agent_release_manifest="${interactive_agent_path}/RELEASE-MANIFEST.json"
     interactive_agent_candidate_manifest="${interactive_agent_path}/${INTERACTIVE_AGENT_CANDIDATE_RELATIVE}"
+    [[ -f "${interactive_agent_release_manifest}" \
+        && ! -L "${interactive_agent_release_manifest}" ]] || {
+        error 'Interactive Agent RELEASE-MANIFEST.json 不是普通文件'
+        return 1
+    }
+    local acceptance_relative replay_relative
+    if ! acceptance_relative="$(jq -er '.acceptance.record_path' \
+        "${interactive_agent_release_manifest}")" \
+        || ! replay_relative="$(jq -er '.acceptance.replay_receipt_path' \
+            "${interactive_agent_release_manifest}")"; then
+        error '无法读取 Interactive Agent Acceptance 证据路径'
+        return 1
+    fi
+    [[ "${acceptance_relative}" \
+        == project/evaluation/country-outage/first-vertical-slice/runs/*/acceptance-record-final.json \
+        && "${replay_relative}" == 'deployment/ACCEPTANCE-REPLAY.json' ]] || {
+        error 'Interactive Agent Acceptance 证据路径越界'
+        return 1
+    }
+    interactive_agent_acceptance_record="${interactive_agent_path}/${acceptance_relative}"
+    interactive_agent_acceptance_replay_receipt="${interactive_agent_path}/${replay_relative}"
     local file
     for file in \
         "${interactive_agent_release_manifest}" \
         "${interactive_agent_candidate_manifest}" \
+        "${interactive_agent_acceptance_record}" \
+        "${interactive_agent_acceptance_replay_receipt}" \
         "${INTERACTIVE_AGENT_CONFIG}"; do
         [[ -f "${file}" && ! -L "${file}" ]] || {
             error "Interactive Agent 绑定文件不是普通文件：${file}"
@@ -184,47 +220,70 @@ verify_interactive_agent_binding() {
     fi
     if ! jq -e \
         --arg release_id "${interactive_agent_release_id}" '
-          .schema_version == "domeye_interactive_agent_release_probe_v1"
+          .schema_version == "domeye_interactive_agent_release_probe_v2"
           and .ready == true
           and .component == "domeye_interactive_agent_sidecar"
-          and (.lifecycle_state == "deployed" or .lifecycle_state == "verified")
+          and .lifecycle_state == "deployed"
           and .release_id == $release_id
           and .candidate_activation_scope == "local_evaluation_only"
           and .candidate_production_deployed == false
           and .current_target_matches == true
           and .deployment_active == true
-          and (
-            (.lifecycle_state == "deployed"
-             and .promotion_state == "absent"
-             and .production_verified == false)
-            or
-            (.lifecycle_state == "verified"
-             and .promotion_state == "verified"
-             and .production_verified == true)
-          )
+          and .promotion_state == "absent"
+          and .production_verified == false
         ' <<<"${interactive_agent_status}" >/dev/null; then
         error 'Interactive Agent manager status 不代表 deployed/verified 身份闭包'
         return 1
     fi
 
-    local release_sha active_sha candidate_sha
+    local release_sha active_sha candidate_sha acceptance_sha replay_sha
     if ! release_sha="$(sha256sum -- "${interactive_agent_release_manifest}" \
         | awk '{print $1}')" \
         || ! active_sha="$(sha256sum -- "${INTERACTIVE_AGENT_ACTIVE}" \
             | awk '{print $1}')" \
         || ! candidate_sha="$(sha256sum -- "${interactive_agent_candidate_manifest}" \
+            | awk '{print $1}')" \
+        || ! acceptance_sha="$(sha256sum -- "${interactive_agent_acceptance_record}" \
+            | awk '{print $1}')" \
+        || ! replay_sha="$(sha256sum -- "${interactive_agent_acceptance_replay_receipt}" \
             | awk '{print $1}')"; then
-        error '无法计算 Interactive Agent release/active/Candidate 摘要'
+        error '无法计算 Interactive Agent release/active/Candidate/Acceptance 摘要'
         return 1
     fi
     interactive_agent_release_manifest_sha256="sha256:${release_sha}"
     interactive_agent_active_sha256="sha256:${active_sha}"
     interactive_agent_candidate_manifest_sha256="sha256:${candidate_sha}"
+    interactive_agent_acceptance_record_sha256="sha256:${acceptance_sha}"
+    interactive_agent_acceptance_replay_receipt_sha256="sha256:${replay_sha}"
     interactive_agent_candidate_id="$(jq -er '.candidate_id' \
         "${interactive_agent_candidate_manifest}")" || {
         error '无法读取 Interactive Agent Candidate ID'
         return 1
     }
+    interactive_agent_acceptance_record_id="$(jq -er '.acceptance_record_id' \
+        "${interactive_agent_acceptance_record}")" || {
+        error '无法读取 Interactive Agent Acceptance Record ID'
+        return 1
+    }
+    [[ "${interactive_agent_candidate_id}" == "${APPROVED_CANDIDATE_ID}" \
+        && "${interactive_agent_acceptance_record_id}" \
+            == "${APPROVED_ACCEPTANCE_RECORD_ID}" ]] || {
+        error 'Interactive Agent 与外部批准的 Candidate/Acceptance 身份不一致'
+        return 1
+    }
+    if ! jq -e \
+        --arg candidate_id "${interactive_agent_candidate_id}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" '
+          .schema_version == "domeye_first_slice_acceptance_record_v2"
+          and .candidate_id == $candidate_id
+          and .acceptance_record_id == $acceptance_id
+          and .evaluation_phase == "formal"
+          and .acceptance_state == "accepted"
+          and .dg1_decision == "GO"
+        ' "${interactive_agent_acceptance_record}" >/dev/null; then
+        error 'Interactive Agent Acceptance Record 不是外部批准的 Formal accepted/GO 证据'
+        return 1
+    fi
     if ! interactive_agent_answer_attempt_limit="$(jq -er \
         '.payload.budget_policy.model_api_attempt_limit' \
         "${interactive_agent_candidate_manifest}")" \
@@ -261,22 +320,45 @@ verify_interactive_agent_binding() {
         --arg release_id "${interactive_agent_release_id}" \
         --arg candidate_id "${interactive_agent_candidate_id}" \
         --arg candidate_sha "${interactive_agent_candidate_manifest_sha256}" \
+        --arg candidate_path "${INTERACTIVE_AGENT_CANDIDATE_RELATIVE}" \
+        --arg acceptance_path "${acceptance_relative}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
+        --arg acceptance_sha "${interactive_agent_acceptance_record_sha256}" \
+        --arg replay_path "${replay_relative}" \
+        --arg replay_sha "${interactive_agent_acceptance_replay_receipt_sha256}" \
         --arg source_commit "${SOURCE_COMMIT}" \
         --arg source_tag "${SOURCE_TAG}" \
         --arg source_archive_sha "${SOURCE_ARCHIVE_SHA256}" '
-          .schema_version == "domeye_interactive_agent_release_manifest_v1"
+          .schema_version == "domeye_interactive_agent_release_manifest_v2"
           and .component == "domeye_interactive_agent_sidecar"
           and .release_id == $release_id
           and .source.commit == $source_commit
           and .source.annotated_tag == $source_tag
           and .source.archive_sha256 == $source_archive_sha
+          and .candidate.manifest_path == $candidate_path
           and .candidate.candidate_id == $candidate_id
           and .candidate.manifest_sha256 == $candidate_sha
+          and .candidate.schema_version == "domeye_first_slice_candidate_manifest_v2"
           and .candidate.activation_scope == "local_evaluation_only"
           and .candidate.production_deployed == false
+          and .acceptance.record_path == $acceptance_path
+          and .acceptance.record_id == $acceptance_id
+          and .acceptance.record_sha256 == $acceptance_sha
+          and .acceptance.evaluation_phase == "formal"
+          and .acceptance.acceptance_state == "accepted"
+          and .acceptance.dg1_decision == "GO"
+          and .acceptance.replay_receipt_path == $replay_path
+          and .acceptance.replay_receipt_sha256 == $replay_sha
           and .runtime.host == "127.0.0.1"
           and .runtime.port == 28476
           and .runtime.base_path == "/country-outage/chat"
+          and .live_verification.public_backend_origin == "http://127.0.0.1:28471"
+          and .live_verification.backend_base_path == "/api/v2/country-outage/chat"
+          and .live_verification.internal_sidecar_origin == "http://127.0.0.1:28476"
+          and .live_verification.internal_record_base_path == "/country-outage/chat/internal"
+          and .live_verification.public_conversation_schema_version == "domeye_interactive_agent_conversation_v2"
+          and .live_verification.internal_record_schema_version == "domeye_interactive_agent_turn_internal_record_v1"
+          and .rollback == {mode:"fail_closed",previous_release_id:null}
         ' "${interactive_agent_release_manifest}" >/dev/null; then
         error 'General Source 与 Interactive Agent 权威 Source/Candidate 身份不一致'
         return 1
@@ -301,7 +383,8 @@ verify_interactive_agent_binding() {
     if ! jq -e \
         --arg release_sha "${interactive_agent_release_manifest_sha256}" \
         --arg candidate_id "${interactive_agent_candidate_id}" '
-          .release_manifest_sha256 == $release_sha
+          .schema_version == "domeye_interactive_agent_release_probe_v2"
+          and .release_manifest_sha256 == $release_sha
           and .candidate_id == $candidate_id
         ' <<<"${interactive_agent_status}" >/dev/null; then
         error 'Interactive Agent manager status 摘要与冻结制品不一致'
@@ -342,12 +425,12 @@ trap cleanup EXIT
 tar -xzf "${SOURCE_ARCHIVE}" -C "${backend_candidate}"
 [[ -f "${backend_candidate}/backend/run.py" \
     && -f "${backend_candidate}/deploy/country-outage-general-page/manage-runtime.sh" \
-    && -f "${backend_candidate}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json" ]] || {
+    && -f "${backend_candidate}/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json" ]] || {
     error '源码归档不包含 S6 运行入口'
     exit 1
 }
 cmp -s \
-    "${backend_candidate}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json" \
+    "${backend_candidate}/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json" \
     "${interactive_agent_candidate_manifest}" || {
     error 'General Source 内 Candidate 与已部署 Interactive Agent Candidate 不一致'
     exit 1
@@ -406,6 +489,11 @@ jq -n \
     --arg interactive_agent_candidate_id "${interactive_agent_candidate_id}" \
     --arg interactive_agent_candidate_manifest "${interactive_agent_candidate_manifest}" \
     --arg interactive_agent_candidate_manifest_sha256 "${interactive_agent_candidate_manifest_sha256}" \
+    --arg interactive_agent_acceptance_record "${interactive_agent_acceptance_record}" \
+    --arg interactive_agent_acceptance_record_id "${interactive_agent_acceptance_record_id}" \
+    --arg interactive_agent_acceptance_record_sha256 "${interactive_agent_acceptance_record_sha256}" \
+    --arg interactive_agent_acceptance_replay_receipt "${interactive_agent_acceptance_replay_receipt}" \
+    --arg interactive_agent_acceptance_replay_receipt_sha256 "${interactive_agent_acceptance_replay_receipt_sha256}" \
     --arg interactive_agent_readiness_identity_sha256 "${interactive_agent_readiness_identity_sha256}" \
     --argjson interactive_answer_attempt_limit "${interactive_agent_answer_attempt_limit}" \
     --arg interactive_agent_cost_policy "${interactive_agent_cost_policy}" \
@@ -431,12 +519,18 @@ jq -n \
         path:$interactive_agent_path,
         release_manifest_path:$interactive_agent_release_manifest,
         release_manifest_sha256:$interactive_agent_release_manifest_sha256,
+        release_manifest_schema_version:"domeye_interactive_agent_release_manifest_v2",
         active_state_path:$interactive_agent_active,
         active_state_sha256:$interactive_agent_active_sha256,
         candidate_id:$interactive_agent_candidate_id,
         candidate_manifest_path:$interactive_agent_candidate_manifest,
         candidate_manifest_sha256:$interactive_agent_candidate_manifest_sha256,
-        readiness_schema_version:"domeye_interactive_agent_release_probe_v1",
+        acceptance_record_path:$interactive_agent_acceptance_record,
+        acceptance_record_id:$interactive_agent_acceptance_record_id,
+        acceptance_record_sha256:$interactive_agent_acceptance_record_sha256,
+        acceptance_replay_receipt_path:$interactive_agent_acceptance_replay_receipt,
+        acceptance_replay_receipt_sha256:$interactive_agent_acceptance_replay_receipt_sha256,
+        readiness_schema_version:"domeye_interactive_agent_release_probe_v2",
         readiness_identity_sha256:$interactive_agent_readiness_identity_sha256,
         interactive_answer_attempt_limit:$interactive_answer_attempt_limit,
         cost_policy:$interactive_agent_cost_policy,
@@ -503,7 +597,7 @@ frontend_manifest_sha="$(sha256sum "${frontend_candidate}/FRONTEND-MANIFEST.json
         RELEASE-TAG \
         backend/core.sha256 \
         contracts/openapi.json \
-        contracts/agent/domeye-first-vertical-slice/v1/candidate.json \
+        contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json \
         country-outage-registry.json \
         data-layer/PRODUCTION-SELECTION.json \
         data-layer/production-index.json \
@@ -572,6 +666,11 @@ jq -n \
     --arg interactive_agent_candidate_id "${interactive_agent_candidate_id}" \
     --arg interactive_agent_candidate_manifest "${interactive_agent_candidate_manifest}" \
     --arg interactive_agent_candidate_manifest_sha256 "${interactive_agent_candidate_manifest_sha256}" \
+    --arg interactive_agent_acceptance_record "${interactive_agent_acceptance_record}" \
+    --arg interactive_agent_acceptance_record_id "${interactive_agent_acceptance_record_id}" \
+    --arg interactive_agent_acceptance_record_sha256 "${interactive_agent_acceptance_record_sha256}" \
+    --arg interactive_agent_acceptance_replay_receipt "${interactive_agent_acceptance_replay_receipt}" \
+    --arg interactive_agent_acceptance_replay_receipt_sha256 "${interactive_agent_acceptance_replay_receipt_sha256}" \
     --arg interactive_agent_readiness_identity_sha256 "${interactive_agent_readiness_identity_sha256}" \
     --argjson interactive_answer_attempt_limit "${interactive_agent_answer_attempt_limit}" \
     --arg interactive_agent_cost_policy "${interactive_agent_cost_policy}" \
@@ -598,12 +697,18 @@ jq -n \
         path:$interactive_agent_path,
         release_manifest_path:$interactive_agent_release_manifest,
         release_manifest_sha256:$interactive_agent_release_manifest_sha256,
+        release_manifest_schema_version:"domeye_interactive_agent_release_manifest_v2",
         active_state_path:$interactive_agent_active,
         active_state_sha256:$interactive_agent_active_sha256,
         candidate_id:$interactive_agent_candidate_id,
         candidate_manifest_path:$interactive_agent_candidate_manifest,
         candidate_manifest_sha256:$interactive_agent_candidate_manifest_sha256,
-        readiness_schema_version:"domeye_interactive_agent_release_probe_v1",
+        acceptance_record_path:$interactive_agent_acceptance_record,
+        acceptance_record_id:$interactive_agent_acceptance_record_id,
+        acceptance_record_sha256:$interactive_agent_acceptance_record_sha256,
+        acceptance_replay_receipt_path:$interactive_agent_acceptance_replay_receipt,
+        acceptance_replay_receipt_sha256:$interactive_agent_acceptance_replay_receipt_sha256,
+        readiness_schema_version:"domeye_interactive_agent_release_probe_v2",
         readiness_identity_sha256:$interactive_agent_readiness_identity_sha256,
         interactive_answer_attempt_limit:$interactive_answer_attempt_limit,
         cost_policy:$interactive_agent_cost_policy,

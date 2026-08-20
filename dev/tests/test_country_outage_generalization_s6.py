@@ -40,7 +40,7 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue(path.stat().st_mode & 0o100)
 
-    def test_prepare_binds_one_deployed_interactive_agent_and_fail_closed(self) -> None:
+    def test_prepare_binds_one_deployed_interactive_agent_v2_and_fail_closed(self) -> None:
         text = script("prepare-runtime-release.sh")
         for phrase in (
             "domeye_country_outage_general_release_candidate_v2",
@@ -48,10 +48,22 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "cutover_baseline",
             "country-outage-interactive-agent",
             "http://127.0.0.1:28476",
-            "domeye_interactive_agent_release_probe_v1",
+            "domeye_interactive_agent_release_manifest_v2",
+            "domeye_interactive_agent_release_probe_v2",
+            "domeye_first_slice_candidate_manifest_v2",
+            "domeye_first_slice_acceptance_record_v2",
+            "<approved-candidate-id>",
+            "<approved-acceptance-record-id>",
+            "APPROVED_CANDIDATE_ID",
+            "APPROVED_ACCEPTANCE_RECORD_ID",
             "release_manifest_sha256",
+            "release_manifest_schema_version",
             "active_state_sha256",
             "candidate_manifest_sha256",
+            "acceptance_record_id",
+            "acceptance_record_sha256",
+            "acceptance_replay_receipt_sha256",
+            "readiness_schema_version",
             "readiness_identity_sha256",
             'mode:"fail_closed"',
             "previous_release_id:null",
@@ -73,7 +85,7 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "deploy/country-outage-agent/p1-chat/manage.sh",
             "deploy/country-outage-agent/p1-chat/probe.mjs",
             "deploy/country-outage-agent/p1-chat/verify-release.mjs",
-            "contracts/agent/domeye-first-vertical-slice/v1/candidate.json",
+            "contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json",
         ):
             self.assertIn(frozen_path, text)
         self.assertNotIn("protected_runtime.sidecar_", text)
@@ -103,15 +115,22 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             '127.0.0.1:${API_PORT}',
             'pid=${pid},',
             "ss -H -ltnp",
-            "domeye_interactive_agent_release_probe_v1",
+            "domeye_interactive_agent_release_manifest_v2",
+            "domeye_interactive_agent_release_probe_v2",
+            "domeye_first_slice_acceptance_record_v2",
+            "acceptance_record_id",
+            "acceptance_record_sha256",
+            "acceptance_replay_receipt_sha256",
             "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL",
             "http://127.0.0.1:28476",
             "country-outage-interactive-agent.env",
             "readiness_identity_sha256",
             "sha256sum -c core.sha256",
             "PRODUCTION-VERIFICATION.json",
+            "CANARY-VERIFICATION.json",
             "ACTIVATION-STATE.json",
             "DEPLOYMENT.json",
+            "public_internal_projection_equal",
             "requires_general_production_evidence:true",
             'cd -- "$1" && exec "$2" run.py',
         ):
@@ -125,8 +144,15 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "pkill",
             "killall",
             "rm -rf",
+            "domeye_interactive_agent_release_manifest_v1",
+            "domeye_interactive_agent_release_probe_v1",
+            "first-vertical-slice/v1/candidate.json",
         ):
             self.assertNotIn(forbidden, text)
+        self.assertEqual(
+            text.count("curl --disable --noproxy '*' --proto '=http' --max-redirs 0"),
+            2,
+        )
         start_body = text.split("start_runtime() {", 1)[1].split(
             "stop_runtime() {", 1
         )[0]
@@ -160,16 +186,46 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "conversation_id",
             "turn_id",
             "verify-release.mjs",
+            "probe.mjs",
+            "internal-record",
             "promotion",
+            "domeye_interactive_agent_promotion_v2",
+            "public_response",
+            "internal_record",
+            "create_response_body_base64",
+            "turn_response_body_base64",
+            "response_body_base64",
+            "conversation_deduplicated",
+            "turn_deduplicated",
+            "conversation_turn_count",
+            "internal_record_verified",
+            "public_internal_projection_equal",
             "response_sha256",
-            "validation_receipt_body_base64",
+            "promotion_receipt_body_base64",
             "sha256_hex_file",
             "answer_source",
             "renderer",
             "guard_decision",
             "pass",
+            "--disable",
+            "--noproxy '*'",
+            "--proto '=http'",
+            "--max-redirs 0",
         ):
             self.assertIn(phrase, text)
+        self.assertNotIn("public_response:$proof[0].public_response", text)
+        self.assertNotIn("internal_record:$proof[0].internal_record", text)
+        self.assertNotIn("public_response:$promotion[0].public_response", text)
+        self.assertNotIn("internal_record:$promotion[0].internal_record", text)
+        for redundant_projection in (
+            "answer_source:$proof[0].result.answer_source",
+            "guard_decision:$proof[0].result.guard_decision",
+            "validation:{",
+            "answer_source:$promotion[0].result.answer_source",
+            "guard_decision:$promotion[0].result.guard_decision",
+            "internal_record_verified:$promotion[0].result.internal_record_verified",
+        ):
+            self.assertNotIn(redundant_projection, text)
         for forbidden in (
             "deterministic_fallback",
             "clarification_required",
@@ -187,9 +243,48 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
         self.assertIn(
             ".result.fallback_or_rejection_present == false", text
         )
+        self.assertIn("select(.deduplicated == false)", text)
+        self.assertIn("(.conversation.turns | length) == 0", text)
+        self.assertIn("select(.turn.turn_number == 1)", text)
+        self.assertIn("(.conversation.turns | length) == 1", text)
+        canary_body = text.split("verify_canary_answer() {", 1)[1].split(
+            "promote_production_answer() {", 1
+        )[0]
+        self.assertIn("new Date().toISOString()", canary_body)
+        verified_at_body = canary_body.split("local verified_at", 1)[1]
+        self.assertNotIn(
+            'verified_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"',
+            verified_at_body,
+        )
+        publication_tail = text.rsplit('chmod 0640 "${temporary}"', 1)[1]
+        self.assertLess(
+            publication_tail.index("cleanup_verification_raw_responses"),
+            publication_tail.index('mv -n -- "${temporary}" "${EVIDENCE}"'),
+        )
+        self.assertLess(
+            publication_tail.index('mv -n -- "${temporary}" "${EVIDENCE}"'),
+            publication_tail.index("trap - EXIT"),
+        )
+        self.assertIn("未发布完成证据", publication_tail)
+
+    def test_canary_and_production_use_distinct_fresh_turns(self) -> None:
+        text = script("verify-runtime.sh")
+        self.assertIn(
+            'readonly CANARY_EVIDENCE="${UNIFIED_ROOT}/CANARY-VERIFICATION.json"',
+            text,
+        )
+        self.assertIn("production conversation/turn 与 canary 重复", text)
+        self.assertIn(".public_response.conversation_id", text)
+        self.assertIn(".public_response.turn_id", text)
+        self.assertIn("!= $canary_conversation_id", text)
+        self.assertIn("!= $canary_turn_id", text)
 
     def test_runtime_verifier_embedded_python_compiles_and_is_deterministic(self) -> None:
         text = script("verify-runtime.sh")
+        self.assertIn("ProxyHandler({})", text)
+        self.assertIn("class NoRedirectHandler(HTTPRedirectHandler)", text)
+        self.assertIn("DIRECT_OPENER.open(request", text)
+        self.assertNotIn("urlopen(request", text)
         embedded_python = text.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
         compile(embedded_python, "verify-runtime.sh:<embedded-python>", "exec")
         for phrase in (
@@ -208,7 +303,7 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             embedded_python,
         )
         self.assertIn(
-            "with urlopen(request, timeout=timeout_seconds)",
+            "with DIRECT_OPENER.open(request, timeout=timeout_seconds)",
             embedded_python,
         )
         self.assertEqual(embedded_python.count("timeout_seconds=125"), 1)
@@ -259,14 +354,29 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "CANARY-VERIFICATION.json",
             "canary_verified",
             "promotion-receipt",
+            "domeye_interactive_agent_release_manifest_v2",
+            "domeye_interactive_agent_promotion_v2",
+            "public_response",
+            "internal_record",
+            "acceptance_record_id",
+            "internal_record_verified",
+            "public_internal_projection_equal",
             "PRODUCTION-VERIFICATION.json",
             "production_verified",
             "fail_closed",
             "canary_backend_is_closed",
             "production_backend_is_closed",
             "screen_session_is_absent",
+            "curl --disable --noproxy '*' --proto '=http' --max-redirs 0",
+            "baseline_backend_is_active",
+            "127.0.0.1:28473",
+            "acceptance_record_id",
+            'canary:{path:"CANARY-VERIFICATION.json",sha256:$canary_sha}',
+            'production:{path:"PRODUCTION-VERIFICATION.json",sha256:$production_sha}',
         ):
             self.assertIn(phrase, activate)
+        self.assertNotIn('"${BASELINE_MANAGER}" status', activate)
+        self.assertIn('"${BASELINE_MANAGER}" stop', activate)
         for forbidden in (
             "rollback_after_failure",
             "FRONTEND_ROLLBACK",
@@ -357,6 +467,24 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
         self.assertIn(".production_verified = false", text)
         self.assertIn(".was_production_verified = true", text)
 
+    def test_general_release_consumers_have_no_v1_interactive_contracts(self) -> None:
+        combined = "\n".join(
+            script(name)
+            for name in (
+                "prepare-runtime-release.sh",
+                "manage-runtime.sh",
+                "verify-runtime.sh",
+                "activate-runtime.sh",
+            )
+        )
+        for forbidden in (
+            "domeye_interactive_agent_release_manifest_v1",
+            "domeye_interactive_agent_release_probe_v1",
+            "domeye_interactive_agent_promotion_v1",
+            "first-vertical-slice/v1/candidate.json",
+        ):
+            self.assertNotIn(forbidden, combined)
+
     def test_public_cutover_has_no_old_route_or_request_fallback(self) -> None:
         combined = "\n".join(path.read_text(encoding="utf-8") for path in SCRIPTS)
         for forbidden in (
@@ -367,6 +495,13 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "/rebind",
         ):
             self.assertNotIn(forbidden, combined)
+        governance = (
+            ROOT / "deploy/governance/check-release-normalization.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "curl --disable --noproxy '*' --proto '=http' --max-redirs 0",
+            governance,
+        )
         self.assertNotIn("fallback_route", combined)
         self.assertNotIn("route_selector", combined)
 

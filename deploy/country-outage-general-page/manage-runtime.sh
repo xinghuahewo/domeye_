@@ -15,7 +15,7 @@ readonly INTERACTIVE_AGENT_RELEASE_ROOT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/relea
 readonly INTERACTIVE_AGENT_CURRENT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/current"
 readonly INTERACTIVE_AGENT_ACTIVE="${INTERACTIVE_AGENT_RUNTIME_ROOT}/state/active.json"
 readonly INTERACTIVE_AGENT_MANAGER="${RUNTIME_ROOT}/deploy/country-outage-agent/p1-chat/manage.sh"
-readonly FIRST_SLICE_CANDIDATE="${RUNTIME_ROOT}/contracts/agent/domeye-first-vertical-slice/v1/candidate.json"
+readonly FIRST_SLICE_CANDIDATE="${RUNTIME_ROOT}/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"
 readonly INFO_DIR='/home/bgpdata/Domeye-Core-dev-data/api/info'
 readonly P0_DATA_DIR='/home/bgpdata/Domeye-Core-artifacts/releases/20260720T160000Z-p0-legacy/data-quality/api-candidate'
 readonly RUNTIME_PATH='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin:/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
@@ -165,7 +165,10 @@ verify_interactive_agent_binding() {
 
     local ia_release_id ia_path ia_release_manifest ia_release_sha
     local ia_active ia_active_sha ia_candidate_id ia_candidate ia_candidate_sha
-    local ia_readiness_sha ia_url ia_attempt_limit ia_cost_policy
+    local ia_acceptance ia_acceptance_id ia_acceptance_sha
+    local ia_acceptance_replay ia_acceptance_replay_sha
+    local ia_release_schema ia_readiness_schema ia_readiness_sha ia_url
+    local ia_attempt_limit ia_cost_policy
     if ! ia_release_id="$(jq -er '.interactive_agent.release_id' "${binding}")" \
         || ! ia_path="$(jq -er '.interactive_agent.path' "${binding}")" \
         || ! ia_release_manifest="$(jq -er \
@@ -182,6 +185,20 @@ verify_interactive_agent_binding() {
             '.interactive_agent.candidate_manifest_path' "${binding}")" \
         || ! ia_candidate_sha="$(jq -er \
             '.interactive_agent.candidate_manifest_sha256' "${binding}")" \
+        || ! ia_acceptance="$(jq -er \
+            '.interactive_agent.acceptance_record_path' "${binding}")" \
+        || ! ia_acceptance_id="$(jq -er \
+            '.interactive_agent.acceptance_record_id' "${binding}")" \
+        || ! ia_acceptance_sha="$(jq -er \
+            '.interactive_agent.acceptance_record_sha256' "${binding}")" \
+        || ! ia_acceptance_replay="$(jq -er \
+            '.interactive_agent.acceptance_replay_receipt_path' "${binding}")" \
+        || ! ia_acceptance_replay_sha="$(jq -er \
+            '.interactive_agent.acceptance_replay_receipt_sha256' "${binding}")" \
+        || ! ia_release_schema="$(jq -er \
+            '.interactive_agent.release_manifest_schema_version' "${binding}")" \
+        || ! ia_readiness_schema="$(jq -er \
+            '.interactive_agent.readiness_schema_version' "${binding}")" \
         || ! ia_readiness_sha="$(jq -er \
             '.interactive_agent.readiness_identity_sha256' "${binding}")" \
         || ! ia_url="$(jq -er '.interactive_agent.endpoint.url' \
@@ -198,7 +215,13 @@ verify_interactive_agent_binding() {
         && "${ia_path}" == "${INTERACTIVE_AGENT_RELEASE_ROOT}/${ia_release_id}" \
         && "${ia_release_manifest}" == "${ia_path}/RELEASE-MANIFEST.json" \
         && "${ia_active}" == "${INTERACTIVE_AGENT_ACTIVE}" \
-        && "${ia_candidate}" == "${ia_path}/project/contracts/agent/domeye-first-vertical-slice/v1/candidate.json" \
+        && "${ia_candidate}" == "${ia_path}/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json" \
+        && "${ia_acceptance}" \
+            == "${ia_path}/project/evaluation/country-outage/first-vertical-slice/runs/"*/acceptance-record-final.json \
+        && "${ia_acceptance_replay}" \
+            == "${ia_path}/deployment/ACCEPTANCE-REPLAY.json" \
+        && "${ia_release_schema}" == 'domeye_interactive_agent_release_manifest_v2' \
+        && "${ia_readiness_schema}" == 'domeye_interactive_agent_release_probe_v2' \
         && "${ia_url}" == 'http://127.0.0.1:28476' \
         && "${ia_attempt_limit}" == '10' \
         && "${ia_cost_policy}" == 'audit_only' ]] || {
@@ -210,6 +233,8 @@ verify_interactive_agent_binding() {
         "${ia_release_manifest}" \
         "${ia_active}" \
         "${ia_candidate}" \
+        "${ia_acceptance}" \
+        "${ia_acceptance_replay}" \
         "${FIRST_SLICE_CANDIDATE}"; do
         [[ -f "${file}" && ! -L "${file}" ]] || {
             error "Interactive Agent 绑定文件不是普通文件：${file}"
@@ -223,16 +248,23 @@ verify_interactive_agent_binding() {
     }
 
     local actual_release_sha actual_active_sha actual_candidate_sha
+    local actual_acceptance_sha actual_acceptance_replay_sha
     if ! actual_release_sha="$(sha256_file "${ia_release_manifest}")" \
         || ! actual_active_sha="$(sha256_file "${ia_active}")" \
-        || ! actual_candidate_sha="$(sha256_file "${ia_candidate}")"; then
-        error '无法计算 Interactive Agent 绑定摘要'
+        || ! actual_candidate_sha="$(sha256_file "${ia_candidate}")" \
+        || ! actual_acceptance_sha="$(sha256_file "${ia_acceptance}")" \
+        || ! actual_acceptance_replay_sha="$(sha256_file \
+            "${ia_acceptance_replay}")"; then
+        error '无法计算 Interactive Agent Candidate/Acceptance 绑定摘要'
         return 1
     fi
     [[ "sha256:${actual_release_sha}" == "${ia_release_sha}" \
         && "sha256:${actual_active_sha}" == "${ia_active_sha}" \
-        && "sha256:${actual_candidate_sha}" == "${ia_candidate_sha}" ]] || {
-        error 'Interactive Agent release/active/Candidate 摘要漂移'
+        && "sha256:${actual_candidate_sha}" == "${ia_candidate_sha}" \
+        && "sha256:${actual_acceptance_sha}" == "${ia_acceptance_sha}" \
+        && "sha256:${actual_acceptance_replay_sha}" \
+            == "${ia_acceptance_replay_sha}" ]] || {
+        error 'Interactive Agent release/active/Candidate/Acceptance 摘要漂移'
         return 1
     }
     if ! cmp -s "${FIRST_SLICE_CANDIDATE}" "${ia_candidate}"; then
@@ -240,13 +272,29 @@ verify_interactive_agent_binding() {
         return 1
     fi
     if ! jq -e \
+        --arg candidate_id "${ia_candidate_id}" \
         --argjson attempt_limit "${ia_attempt_limit}" \
         --arg cost_policy "${ia_cost_policy}" '
-          .payload.budget_policy.model_api_attempt_limit == $attempt_limit
+          .candidate_id == $candidate_id
+          and .payload.schema_version == "domeye_first_slice_candidate_manifest_v2"
+          and .payload.budget_policy.model_api_attempt_limit == $attempt_limit
           and .payload.budget_policy.cost_policy == $cost_policy
           and .payload.budget_policy.monetary_limit_usd == null
         ' "${ia_candidate}" >/dev/null; then
         error 'Interactive Agent 尝试次数或仅审计费用策略漂移'
+        return 1
+    fi
+    if ! jq -e \
+        --arg candidate_id "${ia_candidate_id}" \
+        --arg acceptance_id "${ia_acceptance_id}" '
+          .schema_version == "domeye_first_slice_acceptance_record_v2"
+          and .candidate_id == $candidate_id
+          and .acceptance_record_id == $acceptance_id
+          and .evaluation_phase == "formal"
+          and .acceptance_state == "accepted"
+          and .dg1_decision == "GO"
+        ' "${ia_acceptance}" >/dev/null; then
+        error 'Interactive Agent Acceptance Record 外部批准身份漂移'
         return 1
     fi
     local source_commit source_tag source_archive_bound
@@ -267,19 +315,41 @@ verify_interactive_agent_binding() {
         --arg release_sha "${ia_release_sha}" \
         --arg candidate_id "${ia_candidate_id}" \
         --arg candidate_sha "${ia_candidate_sha}" \
+        --arg candidate_path "project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json" \
+        --arg acceptance_path "${ia_acceptance#${ia_path}/}" \
+        --arg acceptance_id "${ia_acceptance_id}" \
+        --arg acceptance_sha "${ia_acceptance_sha}" \
+        --arg replay_path "${ia_acceptance_replay#${ia_path}/}" \
+        --arg replay_sha "${ia_acceptance_replay_sha}" \
         --arg source_commit "${source_commit}" \
         --arg source_tag "${source_tag}" \
         --arg source_archive_sha "${source_archive_bound}" '
-          .schema_version == "domeye_interactive_agent_release_manifest_v1"
+          .schema_version == "domeye_interactive_agent_release_manifest_v2"
           and .release_id == $release_id
           and .source.commit == $source_commit
           and .source.annotated_tag == $source_tag
           and .source.archive_sha256 == $source_archive_sha
+          and .candidate.manifest_path == $candidate_path
           and .candidate.candidate_id == $candidate_id
           and .candidate.manifest_sha256 == $candidate_sha
+          and .candidate.schema_version == "domeye_first_slice_candidate_manifest_v2"
+          and .candidate.activation_scope == "local_evaluation_only"
+          and .candidate.production_deployed == false
+          and .acceptance.record_path == $acceptance_path
+          and .acceptance.record_id == $acceptance_id
+          and .acceptance.record_sha256 == $acceptance_sha
+          and .acceptance.evaluation_phase == "formal"
+          and .acceptance.acceptance_state == "accepted"
+          and .acceptance.dg1_decision == "GO"
+          and .acceptance.replay_receipt_path == $replay_path
+          and .acceptance.replay_receipt_sha256 == $replay_sha
           and .runtime.host == "127.0.0.1"
           and .runtime.port == 28476
           and .runtime.base_path == "/country-outage/chat"
+          and .live_verification.public_backend_origin == "http://127.0.0.1:28471"
+          and .live_verification.backend_base_path == "/api/v2/country-outage/chat"
+          and .live_verification.internal_sidecar_origin == "http://127.0.0.1:28476"
+          and .live_verification.internal_record_base_path == "/country-outage/chat/internal"
         ' "${ia_release_manifest}" >/dev/null; then
         error 'Interactive Agent RELEASE-MANIFEST 与 General Source 等式漂移'
         return 1
@@ -328,7 +398,7 @@ verify_interactive_agent_binding() {
         --arg release_id "${ia_release_id}" \
         --arg release_sha "${ia_release_sha}" \
         --arg candidate_id "${ia_candidate_id}" '
-          .schema_version == "domeye_interactive_agent_release_probe_v1"
+          .schema_version == "domeye_interactive_agent_release_probe_v2"
           and .ready == true
           and .component == "domeye_interactive_agent_sidecar"
           and (.lifecycle_state == "deployed" or .lifecycle_state == "verified")
@@ -420,7 +490,14 @@ validate_runtime() {
            equality_verified:true
          }
          and .interactive_agent.release_id == .source_tag
-         and .interactive_agent.readiness_schema_version == "domeye_interactive_agent_release_probe_v1"
+         and .interactive_agent.release_manifest_schema_version == "domeye_interactive_agent_release_manifest_v2"
+         and .interactive_agent.readiness_schema_version == "domeye_interactive_agent_release_probe_v2"
+         and (.interactive_agent.candidate_id | test("^manifest:sha256:[a-f0-9]{64}$"))
+         and (.interactive_agent.candidate_manifest_path | endswith("/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"))
+         and (.interactive_agent.candidate_manifest_sha256 | test("^sha256:[a-f0-9]{64}$"))
+         and (.interactive_agent.acceptance_record_id | test("^acceptance-record-sha256:[a-f0-9]{64}$"))
+         and (.interactive_agent.acceptance_record_sha256 | test("^sha256:[a-f0-9]{64}$"))
+         and (.interactive_agent.acceptance_replay_receipt_sha256 | test("^sha256:[a-f0-9]{64}$"))
          and .interactive_agent.interactive_answer_attempt_limit == 10
          and .interactive_agent.cost_policy == "audit_only"
          and .interactive_agent.endpoint == {url:"http://127.0.0.1:28476",host:"127.0.0.1",port:28476,base_path:"/country-outage/chat"}
@@ -613,8 +690,8 @@ assert_runtime_port_closed() {
 }
 
 workflow_completion_state() {
-    local unified_candidate unified_root deployment evidence state
-    local evidence_sha selected_release
+    local unified_candidate unified_root deployment canary production state
+    local canary_sha production_sha selected_release
     unified_candidate="$(jq -er '.unified_candidate.manifest_path' \
         "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")" || return 1
     case "${unified_candidate}" in
@@ -623,42 +700,91 @@ workflow_completion_state() {
     esac
     unified_root="${unified_candidate%/CANDIDATE-MANIFEST.json}"
     deployment="${unified_root}/DEPLOYMENT.json"
-    evidence="${unified_root}/PRODUCTION-VERIFICATION.json"
+    canary="${unified_root}/CANARY-VERIFICATION.json"
+    production="${unified_root}/PRODUCTION-VERIFICATION.json"
     state="${unified_root}/ACTIVATION-STATE.json"
     [[ -f "${deployment}" && ! -L "${deployment}" \
-        && -f "${evidence}" && ! -L "${evidence}" \
+        && -f "${canary}" && ! -L "${canary}" \
+        && -f "${production}" && ! -L "${production}" \
         && -f "${state}" && ! -L "${state}" ]] || {
         printf 'pending\n'
         return 0
     }
-    evidence_sha="$(sha256_file "${evidence}")" || return 1
+    canary_sha="$(sha256_file "${canary}")" || return 1
+    production_sha="$(sha256_file "${production}")" || return 1
     selected_release="$(jq -er '.unified_candidate.release_id' \
         "${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json")" || return 1
     if jq -e --arg release_id "${selected_release}" \
-        --arg evidence_sha "sha256:${evidence_sha}" \
+        --arg canary_sha "sha256:${canary_sha}" \
+        --arg production_sha "sha256:${production_sha}" \
+        --slurpfile candidate "${unified_candidate}" \
         --slurpfile state "${state}" \
-        --slurpfile evidence "${evidence}" '
+        --slurpfile canary "${canary}" \
+        --slurpfile production "${production}" '
       .schema_version == "domeye_country_outage_general_deployment_v2"
       and .release_id == $release_id
       and .status == "production_verified"
       and .production_verified == true
       and .verification == {
-        path:"PRODUCTION-VERIFICATION.json",
-        sha256:$evidence_sha
+        canary:{path:"CANARY-VERIFICATION.json",sha256:$canary_sha},
+        production:{path:"PRODUCTION-VERIFICATION.json",sha256:$production_sha}
+      }
+      and .components.interactive_agent == {
+        release_id:$candidate[0].interactive_agent.release_id,
+        candidate_id:$candidate[0].interactive_agent.candidate_id,
+        acceptance_record_id:$candidate[0].interactive_agent.acceptance_record_id
       }
       and $state[0].release_id == $release_id
       and $state[0].phase == "production_verified"
       and $state[0].status == "passed"
-      and $evidence[0].schema_version
+      and $state[0].candidate.interactive_agent == {
+        release_id:$candidate[0].interactive_agent.release_id,
+        candidate_id:$candidate[0].interactive_agent.candidate_id,
+        acceptance_record_id:$candidate[0].interactive_agent.acceptance_record_id
+      }
+      and $state[0].verification == {
+        canary:{path:"CANARY-VERIFICATION.json",sha256:$canary_sha},
+        production:{path:"PRODUCTION-VERIFICATION.json",sha256:$production_sha}
+      }
+      and $canary[0].schema_version
         == "domeye_country_outage_general_runtime_verification_v2"
-      and $evidence[0].release_id == $release_id
-      and $evidence[0].mode == "production"
-      and $evidence[0].status == "production_verified"
-      and $evidence[0].interactive_answer.production_verified == true
-      and $evidence[0].interactive_answer.answer_source == "renderer"
-      and $evidence[0].interactive_answer.guard_decision == "pass"
-      and $evidence[0].interactive_answer.public_answer_present == true
-      and $evidence[0].interactive_answer.fallback_or_rejection_present == false
+      and $canary[0].release_id == $release_id
+      and $canary[0].mode == "canary"
+      and $canary[0].status == "canary_verified"
+      and $production[0].schema_version
+        == "domeye_country_outage_general_runtime_verification_v2"
+      and $production[0].release_id == $release_id
+      and $production[0].mode == "production"
+      and $production[0].status == "production_verified"
+      and ($canary[0].interactive_answer | .status == "canary_verified"
+        and .promotion_receipt.schema_version == "domeye_interactive_agent_promotion_v2"
+        and .promotion_receipt.candidate_id == $candidate[0].interactive_agent.candidate_id
+        and .promotion_receipt.acceptance_record_id == $candidate[0].interactive_agent.acceptance_record_id
+        and .promotion_receipt.result.state == "completed"
+        and .promotion_receipt.result.answer_success == true
+        and .promotion_receipt.result.workflow_completed == true
+        and .promotion_receipt.result.answer_source == "renderer"
+        and .promotion_receipt.result.guard_decision == "pass"
+        and .promotion_receipt.result.internal_record_verified == true
+        and .promotion_receipt.result.public_internal_projection_equal == true
+        and .promotion_receipt.result.fallback_or_rejection_present == false)
+      and ($production[0].interactive_answer | .status == "production_verified"
+        and .production_verified == true
+        and .promotion_receipt.schema_version == "domeye_interactive_agent_promotion_v2"
+        and .promotion_receipt.candidate_id == $candidate[0].interactive_agent.candidate_id
+        and .promotion_receipt.acceptance_record_id == $candidate[0].interactive_agent.acceptance_record_id
+        and .promotion_receipt.result.state == "completed"
+        and .promotion_receipt.result.answer_success == true
+        and .promotion_receipt.result.workflow_completed == true
+        and .promotion_receipt.result.answer_source == "renderer"
+        and .promotion_receipt.result.guard_decision == "pass"
+        and .promotion_receipt.result.internal_record_verified == true
+        and .promotion_receipt.result.public_internal_projection_equal == true
+        and .promotion_receipt.result.fallback_or_rejection_present == false)
+      and $canary[0].interactive_answer.promotion_receipt.public_response.conversation_id
+        != $production[0].interactive_answer.promotion_receipt.public_response.conversation_id
+      and $canary[0].interactive_answer.promotion_receipt.public_response.turn_id
+        != $production[0].interactive_answer.promotion_receipt.public_response.turn_id
     ' "${deployment}" >/dev/null; then
         printf 'verified\n'
     else
@@ -846,7 +972,8 @@ start_runtime() {
         mapfile -t sessions < <(list_sessions)
         if (( ${#sessions[@]} == 1 )) \
             && assert_runtime_listener "${sessions[0]}" >/dev/null \
-            && curl -fsS --max-time 2 \
+            && curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+                -fsS --max-time 2 \
                 "http://127.0.0.1:${API_PORT}/api/v1/healthz" >/dev/null 2>&1; then
             if ! verify_interactive_agent_binding; then
                 error 'Backend 就绪后 Interactive Agent 身份发生漂移'
@@ -936,7 +1063,8 @@ status_runtime() {
         error "运行时进程或 ${API_PORT} 监听身份不匹配：${sessions[0]}"
         return 1
     }
-    if ! curl -fsS --max-time 5 \
+    if ! curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+        -fsS --max-time 5 \
         "http://127.0.0.1:${API_PORT}/api/v1/healthz" \
         | jq -e '.status == "ok" and .service == "domeye-core"' >/dev/null; then
         error 'Backend 健康检查失败'

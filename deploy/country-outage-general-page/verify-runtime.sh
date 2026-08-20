@@ -8,8 +8,10 @@ readonly BINDING="${RUNTIME_ROOT}/BACKEND-SOURCE-BINDING.json"
 readonly RELEASE_ID="$(jq -er '.release_id | sub("-backend$"; "")' "${BINDING}")"
 readonly UNIFIED_ROOT="/home/bgpdata/Domeye-Core-runtime/unified-releases/${RELEASE_ID}"
 readonly CANDIDATE="${UNIFIED_ROOT}/CANDIDATE-MANIFEST.json"
+readonly CANARY_EVIDENCE="${UNIFIED_ROOT}/CANARY-VERIFICATION.json"
 readonly MANAGER="${RUNTIME_ROOT}/deploy/country-outage-general-page/manage-runtime.sh"
 readonly INTERACTIVE_AGENT_MANAGER="${RUNTIME_ROOT}/deploy/country-outage-agent/p1-chat/manage.sh"
+readonly INTERACTIVE_AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-interactive-agent.env'
 readonly TRUSTED_NODE='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin/node'
 # shellcheck source=../lib/artifact-common.sh
 source "${RUNTIME_ROOT}/deploy/lib/artifact-common.sh"
@@ -52,7 +54,7 @@ readonly MODE="$1"
 case "${MODE}" in
     canary)
         readonly BASE_URL='http://127.0.0.1:38672'
-        readonly EVIDENCE="${UNIFIED_ROOT}/CANARY-VERIFICATION.json"
+        readonly EVIDENCE="${CANARY_EVIDENCE}"
         ;;
     production)
         readonly BASE_URL='http://127.0.0.1:28471'
@@ -84,6 +86,19 @@ if ! jq -e --arg release_id "${RELEASE_ID}" '
   and .release_id == $release_id
   and .source.annotated_tag == $release_id
   and .interactive_agent.release_id == $release_id
+  and .interactive_agent.release_manifest_schema_version
+    == "domeye_interactive_agent_release_manifest_v2"
+  and .interactive_agent.readiness_schema_version
+    == "domeye_interactive_agent_release_probe_v2"
+  and (.interactive_agent.candidate_id | test("^manifest:sha256:[a-f0-9]{64}$"))
+  and (.interactive_agent.candidate_manifest_path
+    | endswith("/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"))
+  and (.interactive_agent.acceptance_record_id
+    | test("^acceptance-record-sha256:[a-f0-9]{64}$"))
+  and (.interactive_agent.acceptance_record_sha256
+    | test("^sha256:[a-f0-9]{64}$"))
+  and (.interactive_agent.acceptance_replay_receipt_sha256
+    | test("^sha256:[a-f0-9]{64}$"))
   and .rollback == {mode:"fail_closed",previous_release_id:null}
   and .interactive_agent.endpoint == {
     url:"http://127.0.0.1:28476",
@@ -114,6 +129,11 @@ interactive_agent_active_sha="$(jq -er '.interactive_agent.active_state_sha256' 
 interactive_agent_candidate_id="$(jq -er '.interactive_agent.candidate_id' "${CANDIDATE}")"
 interactive_agent_candidate_path="$(jq -er '.interactive_agent.candidate_manifest_path' "${CANDIDATE}")"
 interactive_agent_candidate_sha="$(jq -er '.interactive_agent.candidate_manifest_sha256' "${CANDIDATE}")"
+interactive_agent_acceptance_path="$(jq -er '.interactive_agent.acceptance_record_path' "${CANDIDATE}")"
+interactive_agent_acceptance_record_id="$(jq -er '.interactive_agent.acceptance_record_id' "${CANDIDATE}")"
+interactive_agent_acceptance_sha="$(jq -er '.interactive_agent.acceptance_record_sha256' "${CANDIDATE}")"
+interactive_agent_acceptance_replay_path="$(jq -er '.interactive_agent.acceptance_replay_receipt_path' "${CANDIDATE}")"
+interactive_agent_acceptance_replay_sha="$(jq -er '.interactive_agent.acceptance_replay_receipt_sha256' "${CANDIDATE}")"
 interactive_agent_readiness_sha="$(jq -er '.interactive_agent.readiness_identity_sha256' "${CANDIDATE}")"
 
 trusted_origin="$(trusted_git remote get-url origin 2>/dev/null || true)"
@@ -180,7 +200,13 @@ fi
     && -f "${interactive_agent_active_path}" \
     && ! -L "${interactive_agent_active_path}" \
     && -f "${interactive_agent_candidate_path}" \
-    && ! -L "${interactive_agent_candidate_path}" ]] || {
+    && ! -L "${interactive_agent_candidate_path}" \
+    && -f "${interactive_agent_acceptance_path}" \
+    && ! -L "${interactive_agent_acceptance_path}" \
+    && -f "${interactive_agent_acceptance_replay_path}" \
+    && ! -L "${interactive_agent_acceptance_replay_path}" \
+    && -f "${INTERACTIVE_AGENT_CONFIG}" \
+    && ! -L "${INTERACTIVE_AGENT_CONFIG}" ]] || {
     error 'Interactive Agent 冻结文件或受信发布工具缺失'
     exit 1
 }
@@ -189,8 +215,12 @@ fi
     && "sha256:$(sha256sum "${interactive_agent_active_path}" | awk '{print $1}')" \
         == "${interactive_agent_active_sha}" \
     && "sha256:$(sha256sum "${interactive_agent_candidate_path}" | awk '{print $1}')" \
-        == "${interactive_agent_candidate_sha}" ]] || {
-    error 'Interactive Agent release/active/Candidate 摘要相对候选漂移'
+        == "${interactive_agent_candidate_sha}" \
+    && "sha256:$(sha256sum "${interactive_agent_acceptance_path}" | awk '{print $1}')" \
+        == "${interactive_agent_acceptance_sha}" \
+    && "sha256:$(sha256sum "${interactive_agent_acceptance_replay_path}" | awk '{print $1}')" \
+        == "${interactive_agent_acceptance_replay_sha}" ]] || {
+    error 'Interactive Agent release/active/Candidate/Acceptance 摘要相对候选漂移'
     exit 1
 }
 [[ "$(jq -er '.candidate_id' "${interactive_agent_candidate_path}")" \
@@ -198,6 +228,51 @@ fi
     error 'Interactive Agent Candidate ID 相对候选漂移'
     exit 1
 }
+if ! jq -e \
+    --arg candidate_id "${interactive_agent_candidate_id}" \
+    --arg acceptance_id "${interactive_agent_acceptance_record_id}" '
+      .schema_version == "domeye_first_slice_acceptance_record_v2"
+      and .candidate_id == $candidate_id
+      and .acceptance_record_id == $acceptance_id
+      and .evaluation_phase == "formal"
+      and .acceptance_state == "accepted"
+      and .dg1_decision == "GO"
+    ' "${interactive_agent_acceptance_path}" >/dev/null; then
+    error 'Interactive Agent Acceptance Record 身份或 Formal accepted/GO 语义漂移'
+    exit 1
+fi
+if ! jq -e \
+    --arg release_id "${interactive_agent_release_id}" \
+    --arg candidate_id "${interactive_agent_candidate_id}" \
+    --arg candidate_path "${interactive_agent_candidate_path#${interactive_agent_path}/}" \
+    --arg candidate_sha "${interactive_agent_candidate_sha}" \
+    --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
+    --arg acceptance_path "${interactive_agent_acceptance_path#${interactive_agent_path}/}" \
+    --arg acceptance_sha "${interactive_agent_acceptance_sha}" \
+    --arg replay_path "${interactive_agent_acceptance_replay_path#${interactive_agent_path}/}" \
+    --arg replay_sha "${interactive_agent_acceptance_replay_sha}" '
+      .schema_version == "domeye_interactive_agent_release_manifest_v2"
+      and .release_id == $release_id
+      and .candidate.manifest_path == $candidate_path
+      and .candidate.candidate_id == $candidate_id
+      and .candidate.manifest_sha256 == $candidate_sha
+      and .candidate.schema_version == "domeye_first_slice_candidate_manifest_v2"
+      and .acceptance.record_path == $acceptance_path
+      and .acceptance.record_id == $acceptance_id
+      and .acceptance.record_sha256 == $acceptance_sha
+      and .acceptance.replay_receipt_path == $replay_path
+      and .acceptance.replay_receipt_sha256 == $replay_sha
+      and .acceptance.evaluation_phase == "formal"
+      and .acceptance.acceptance_state == "accepted"
+      and .acceptance.dg1_decision == "GO"
+      and .live_verification.public_backend_origin == "http://127.0.0.1:28471"
+      and .live_verification.backend_base_path == "/api/v2/country-outage/chat"
+      and .live_verification.internal_sidecar_origin == "http://127.0.0.1:28476"
+      and .live_verification.internal_record_base_path == "/country-outage/chat/internal"
+    ' "${interactive_agent_path}/RELEASE-MANIFEST.json" >/dev/null; then
+    error 'Interactive Agent RELEASE-MANIFEST v2 与 Candidate/Acceptance 绑定漂移'
+    exit 1
+fi
 [[ "$(readlink -f /home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent/current)" \
     == "${interactive_agent_path}" ]] || {
     error 'Interactive Agent current 相对候选漂移'
@@ -210,7 +285,7 @@ if ! interactive_agent_status="$("${INTERACTIVE_AGENT_MANAGER}" status)"; then
 fi
 if ! jq -e --arg release_id "${interactive_agent_release_id}" \
     --arg candidate_id "${interactive_agent_candidate_id}" '
-      .schema_version == "domeye_interactive_agent_release_probe_v1"
+      .schema_version == "domeye_interactive_agent_release_probe_v2"
       and .ready == true
       and .release_id == $release_id
       and .candidate_id == $candidate_id
@@ -256,6 +331,7 @@ backend_request() {
     local url="$2"
     local body="${3:-}"
     local -a arguments=(
+        --disable --noproxy '*' --proto '=http' --max-redirs 0
         --fail-with-body --silent --show-error --max-time 125
         --request "${method}" --header 'Accept: application/json'
     )
@@ -271,14 +347,19 @@ verify_canary_answer() {
     local release_manifest="${interactive_agent_path}/RELEASE-MANIFEST.json"
     local verifier="${interactive_agent_path}/deployment/verify-release.mjs"
     local trusted_verifier="${RUNTIME_ROOT}/deploy/country-outage-agent/p1-chat/verify-release.mjs"
+    local probe="${interactive_agent_path}/deployment/probe.mjs"
+    local trusted_probe="${RUNTIME_ROOT}/deploy/country-outage-agent/p1-chat/probe.mjs"
     [[ -f "${verifier}" && ! -L "${verifier}" \
         && -f "${trusted_verifier}" && ! -L "${trusted_verifier}" \
+        && -f "${probe}" && ! -L "${probe}" \
+        && -f "${trusted_probe}" && ! -L "${trusted_probe}" \
         && "$(readlink -f -- "${verifier}")" == "${verifier}" ]] || {
-        error 'canary 受信 release verifier 缺失'
+        error 'canary 受信 release verifier/probe 缺失'
         return 1
     }
-    if ! cmp -s "${verifier}" "${trusted_verifier}"; then
-        error 'canary release verifier 与本次 General Source 不一致'
+    if ! cmp -s "${verifier}" "${trusted_verifier}" \
+        || ! cmp -s "${probe}" "${trusted_probe}"; then
+        error 'canary release verifier/probe 与本次 General Source 不一致'
         return 1
     fi
 
@@ -299,7 +380,8 @@ verify_canary_answer() {
     local turn_body="${working_root}/canary-turn-request.json"
     local turn_response="${working_root}/canary-turn-response.json"
     local final_response="${working_root}/canary-final-response.json"
-    local validation="${working_root}/canary-validation.json"
+    local internal_response="${working_root}/canary-internal-response.json"
+    local promotion_receipt="${working_root}/canary-promotion-receipt.json"
     if ! jq -n --arg reference "${event_reference}" \
         --arg publication "${publication}" --argjson revision "${revision}" \
         --arg key "${request_id}-create" \
@@ -314,9 +396,13 @@ verify_canary_answer() {
         return 1
     fi
     local conversation_id turn_id
-    conversation_id="$(jq -er '.conversation.conversation_id' \
+    conversation_id="$(jq -er '
+      select(.deduplicated == false) |
+      select((.conversation.turns | length) == 0) |
+      .conversation.conversation_id
+    ' \
         "${create_response}")" || {
-        error 'canary 创建响应缺少 conversation_id'
+        error 'canary 创建响应不是唯一全新空会话'
         return 1
     }
     [[ "${conversation_id}" =~ ^conversation_sha256_[a-f0-9]{64}$ ]] || {
@@ -335,8 +421,12 @@ verify_canary_answer() {
         error 'canary Backend 创建 Turn 失败'
         return 1
     fi
-    turn_id="$(jq -er '.turn.turn_id' "${turn_response}")" || {
-        error 'canary Turn 响应缺少 turn_id'
+    turn_id="$(jq -er '
+      select(.deduplicated == false) |
+      select(.turn.turn_number == 1) |
+      .turn.turn_id
+    ' "${turn_response}")" || {
+        error 'canary Turn 响应不是全新会话的第一个 Turn'
         return 1
     }
     [[ "${turn_id}" =~ ^turn_sha256_[a-f0-9]{64}$ ]] || {
@@ -344,7 +434,10 @@ verify_canary_answer() {
         return 1
     }
     if ! jq -e --arg turn_id "${turn_id}" --arg question "${question}" '
-      .turn.turn_id == $turn_id and .turn.question == $question
+      .deduplicated == false
+      and .turn.turn_id == $turn_id
+      and .turn.turn_number == 1
+      and .turn.question == $question
     ' "${turn_response}" >/dev/null; then
         error 'canary Turn 响应未绑定本次固定问题'
         return 1
@@ -361,9 +454,14 @@ verify_canary_answer() {
             return 1
         fi
         if ! jq -e --arg conversation_id "${conversation_id}" \
-            --arg turn_id "${turn_id}" '
+            --arg turn_id "${turn_id}" --arg question "${question}" '
           .conversation.conversation_id == $conversation_id
-          and ([.conversation.turns[]? | select(.turn_id == $turn_id)] | length) == 1
+          and (.conversation.turns | length) == 1
+          and ([.conversation.turns[]? | select(
+            .turn_id == $turn_id
+            and .turn_number == 1
+            and .question == $question
+          )] | length) == 1
         ' "${final_response}" >/dev/null; then
             error 'canary 最终响应未精确绑定本次 conversation/turn'
             return 1
@@ -384,78 +482,94 @@ verify_canary_answer() {
     done
 
     local verified_at
-    verified_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" || return 1
+    verified_at="$("${TRUSTED_NODE}" -e \
+        'process.stdout.write(new Date().toISOString())')" || {
+        error '无法生成毫秒级 canary promotion 验证时间'
+        return 1
+    }
+    if ! "${TRUSTED_NODE}" "${probe}" internal-record \
+        "${INTERACTIVE_AGENT_CONFIG}" "${interactive_agent_path}" \
+        "${interactive_agent_active_path}" "${conversation_id}" \
+        "${turn_id}" > "${internal_response}"; then
+        error 'canary 无法读取同一 Turn 的受信内部记录'
+        return 1
+    fi
     if ! "${TRUSTED_NODE}" "${verifier}" promotion \
         "${interactive_agent_path}" "${interactive_agent_active_path}" \
-        "${final_response}" "${verified_at}" \
-        "${conversation_id}" "${turn_id}" > "${validation}"; then
+        "${create_response}" "${turn_response}" "${final_response}" \
+        "${internal_response}" "${verified_at}" \
+        "${conversation_id}" "${turn_id}" > "${promotion_receipt}"; then
         error 'canary 回答未通过 release 内 Renderer + Guard + Oracle/trace/model 完整重放'
         return 1
     fi
-    if ! jq -e '
-      .promotion_state == "verified"
+    if ! jq -e --arg release_id "${interactive_agent_release_id}" \
+        --arg candidate_id "${interactive_agent_candidate_id}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
+        --arg conversation_id "${conversation_id}" \
+        --arg turn_id "${turn_id}" --arg question "${question}" '
+      .schema_version == "domeye_interactive_agent_promotion_v2"
+      and .promotion_state == "verified"
+      and .release_id == $release_id
+      and .candidate_id == $candidate_id
+      and .acceptance_record_id == $acceptance_id
+      and .public_response.conversation_id == $conversation_id
+      and .public_response.turn_id == $turn_id
+      and .public_response.question == $question
+      and .public_response.conversation_deduplicated == false
+      and .public_response.turn_deduplicated == false
+      and .public_response.turn_number == 1
+      and .public_response.conversation_turn_count == 1
+      and (.public_response.create_response_body_base64 | type == "string" and length > 0)
+      and (.public_response.turn_response_body_base64 | type == "string" and length > 0)
+      and (.public_response.response_body_base64 | type == "string" and length > 0)
+      and (.internal_record.response_body_base64 | type == "string" and length > 0)
       and .result.state == "completed"
       and .result.answer_success == true
       and .result.workflow_completed == true
       and .result.answer_source == "renderer"
       and .result.guard_decision == "pass"
+      and .result.guard_assessment_status == "evaluated"
+      and .result.style_assessment_passed == true
       and .result.public_answer_present == true
+      and .result.internal_record_verified == true
+      and .result.public_internal_projection_equal == true
       and .result.fallback_or_rejection_present == false
-    ' "${validation}" >/dev/null; then
+    ' "${promotion_receipt}" >/dev/null; then
         error 'canary verifier 输出不是直接 Renderer 正确回答'
         return 1
     fi
-    local response_hex validation_hex response_sha validation_sha
-    local validation_body_base64
-    if ! response_hex="$(sha256_hex_file "${final_response}")"; then
-        error '无法冻结 canary Backend 原始响应摘要'
+    local promotion_hex promotion_sha promotion_body_base64
+    if ! promotion_hex="$(sha256_hex_file "${promotion_receipt}")"; then
+        error '无法冻结 canary promotion v2 回执摘要'
         return 1
     fi
-    if ! validation_hex="$(sha256_hex_file "${validation}")"; then
-        error '无法冻结 canary verifier 回执摘要'
-        return 1
-    fi
-    response_sha="sha256:${response_hex}"
-    validation_sha="sha256:${validation_hex}"
-    validation_body_base64="$(base64 -w 0 "${validation}")" || {
-        error '无法冻结 canary verifier 原始回执'
+    promotion_sha="sha256:${promotion_hex}"
+    promotion_body_base64="$(base64 -w 0 "${promotion_receipt}")" || {
+        error '无法冻结 canary promotion v2 原始回执'
         return 1
     }
     if ! jq -n --arg base_url "${BASE_URL}" \
         --arg release_id "${interactive_agent_release_id}" \
         --arg candidate_id "${interactive_agent_candidate_id}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
         --arg conversation_id "${conversation_id}" --arg turn_id "${turn_id}" \
-        --arg question "${question}" --arg response_sha "${response_sha}" \
-        --arg validation_sha "${validation_sha}" \
-        --arg validation_body_base64 "${validation_body_base64}" \
-        --slurpfile proof "${validation}" '
+        --arg question "${question}" \
+        --arg promotion_sha "${promotion_sha}" \
+        --arg promotion_body_base64 "${promotion_body_base64}" \
+        --slurpfile proof "${promotion_receipt}" '
       {
         status:"canary_verified",
         base_url:$base_url,
         release_id:$release_id,
         candidate_id:$candidate_id,
+        acceptance_record_id:$acceptance_id,
         conversation_id:$conversation_id,
         turn_id:$turn_id,
         question:$question,
-        response_sha256:$response_sha,
-        validation_sha256:$validation_sha,
-        validation_receipt_body_base64:$validation_body_base64,
-        validation_receipt:$proof[0],
-        answer_source:$proof[0].result.answer_source,
-        guard_decision:$proof[0].result.guard_decision,
-        oracle_digest:$proof[0].result.oracle_digest,
-        public_answer_present:$proof[0].result.public_answer_present,
-        fallback_or_rejection_present:$proof[0].result.fallback_or_rejection_present,
-        validation:{
-          state:$proof[0].result.state,
-          answer_success:$proof[0].result.answer_success,
-          workflow_completed:$proof[0].result.workflow_completed,
-          answer_source:$proof[0].result.answer_source,
-          guard_decision:$proof[0].result.guard_decision,
-          oracle_digest:$proof[0].result.oracle_digest,
-          public_answer_present:$proof[0].result.public_answer_present,
-          fallback_or_rejection_present:$proof[0].result.fallback_or_rejection_present
-        }
+        response_sha256:$proof[0].public_response.response_sha256,
+        promotion_receipt_sha256:$promotion_sha,
+        promotion_receipt_body_base64:$promotion_body_base64,
+        promotion_receipt:$proof[0]
       }
     ' > "${output}"; then
         error '无法生成 canary 正确回答证据'
@@ -466,6 +580,38 @@ verify_canary_answer() {
 promote_production_answer() {
     local working_root="$1"
     local output="$2"
+    [[ -f "${CANARY_EVIDENCE}" && ! -L "${CANARY_EVIDENCE}" ]] || {
+        error 'production 晋级缺少冻结 CANARY-VERIFICATION.json'
+        return 1
+    }
+    local canary_conversation_id canary_turn_id
+    if ! canary_conversation_id="$(jq -er \
+        --arg release_id "${interactive_agent_release_id}" \
+        --arg candidate_id "${interactive_agent_candidate_id}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" '
+          select(.status == "canary_verified" and .mode == "canary")
+          | select(.interactive_answer.release_id == $release_id)
+          | select(.interactive_answer.candidate_id == $candidate_id)
+          | select(.interactive_answer.acceptance_record_id == $acceptance_id)
+          | select(.interactive_answer.promotion_receipt.schema_version
+              == "domeye_interactive_agent_promotion_v2")
+          | select(.interactive_answer.promotion_receipt.result.state == "completed")
+          | select(.interactive_answer.promotion_receipt.result.answer_success == true)
+          | select(.interactive_answer.promotion_receipt.result.workflow_completed == true)
+          | select(.interactive_answer.promotion_receipt.result.answer_source == "renderer")
+          | select(.interactive_answer.promotion_receipt.result.guard_decision == "pass")
+          | select(.interactive_answer.promotion_receipt.result.style_assessment_passed == true)
+          | select(.interactive_answer.promotion_receipt.result.internal_record_verified == true)
+          | select(.interactive_answer.promotion_receipt.result.public_internal_projection_equal == true)
+          | select(.interactive_answer.promotion_receipt.result.fallback_or_rejection_present == false)
+          | .interactive_answer.promotion_receipt.public_response.conversation_id
+        ' "${CANARY_EVIDENCE}")" \
+        || ! canary_turn_id="$(jq -er \
+            '.interactive_answer.promotion_receipt.public_response.turn_id' \
+            "${CANARY_EVIDENCE}")"; then
+        error 'production 晋级无法读取冻结 canary conversation/turn'
+        return 1
+    fi
     if ! "${INTERACTIVE_AGENT_MANAGER}" promote \
         "${interactive_agent_release_id}"; then
         error 'Interactive Agent 公开固定问题晋级失败'
@@ -478,7 +624,7 @@ promote_production_answer() {
     fi
     if ! jq -e --arg release_id "${interactive_agent_release_id}" \
         --arg candidate_id "${interactive_agent_candidate_id}" '
-      .schema_version == "domeye_interactive_agent_release_probe_v1"
+      .schema_version == "domeye_interactive_agent_release_probe_v2"
       and .ready == true
       and .release_id == $release_id
       and .candidate_id == $candidate_id
@@ -496,6 +642,72 @@ promote_production_answer() {
         error 'Interactive Agent verified promotion 回执缺失'
         return 1
     }
+    local production_conversation_id production_turn_id
+    if ! production_conversation_id="$(jq -er \
+        '.public_response.conversation_id' "${promotion_file}")" \
+        || ! production_turn_id="$(jq -er '.public_response.turn_id' \
+            "${promotion_file}")"; then
+        error 'production promotion v2 缺少 conversation/turn 身份'
+        return 1
+    fi
+    if [[ "${production_conversation_id}" == "${canary_conversation_id}" \
+        || "${production_turn_id}" == "${canary_turn_id}" ]]; then
+        error 'production conversation/turn 与 canary 重复'
+        return 1
+    fi
+    local verifier="${interactive_agent_path}/deployment/verify-release.mjs"
+    local trusted_verifier="${RUNTIME_ROOT}/deploy/country-outage-agent/p1-chat/verify-release.mjs"
+    [[ -f "${verifier}" && ! -L "${verifier}" \
+        && -f "${trusted_verifier}" && ! -L "${trusted_verifier}" ]] || {
+        error 'production 受信 release verifier 缺失'
+        return 1
+    }
+    if ! cmp -s "${verifier}" "${trusted_verifier}" \
+        || ! "${TRUSTED_NODE}" "${verifier}" promotion-receipt \
+            "${interactive_agent_path}" "${interactive_agent_active_path}" \
+            "${promotion_file}" >/dev/null; then
+        error 'production promotion v2 未通过当前 release 冻结证据重放'
+        return 1
+    fi
+    if ! jq -e \
+        --arg release_id "${interactive_agent_release_id}" \
+        --arg candidate_id "${interactive_agent_candidate_id}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
+        --arg canary_conversation_id "${canary_conversation_id}" \
+        --arg canary_turn_id "${canary_turn_id}" '
+      .schema_version == "domeye_interactive_agent_promotion_v2"
+      and .release_id == $release_id
+      and .promotion_state == "verified"
+      and .candidate_id == $candidate_id
+      and .acceptance_record_id == $acceptance_id
+      and (.public_response.conversation_id
+        | test("^conversation_sha256_[a-f0-9]{64}$"))
+      and (.public_response.turn_id | test("^turn_sha256_[a-f0-9]{64}$"))
+      and .public_response.conversation_id != $canary_conversation_id
+      and .public_response.turn_id != $canary_turn_id
+      and .public_response.conversation_deduplicated == false
+      and .public_response.turn_deduplicated == false
+      and .public_response.turn_number == 1
+      and .public_response.conversation_turn_count == 1
+      and (.public_response.create_response_body_base64 | type == "string" and length > 0)
+      and (.public_response.turn_response_body_base64 | type == "string" and length > 0)
+      and (.public_response.response_body_base64 | type == "string" and length > 0)
+      and (.internal_record.response_body_base64 | type == "string" and length > 0)
+      and .result.state == "completed"
+      and .result.answer_success == true
+      and .result.workflow_completed == true
+      and .result.answer_source == "renderer"
+      and .result.guard_decision == "pass"
+      and .result.guard_assessment_status == "evaluated"
+      and .result.style_assessment_passed == true
+      and .result.public_answer_present == true
+      and .result.internal_record_verified == true
+      and .result.public_internal_projection_equal == true
+      and .result.fallback_or_rejection_present == false
+    ' "${promotion_file}" >/dev/null; then
+        error 'production promotion v2 未证明唯一新 Turn 的公私投影完整正确回答'
+        return 1
+    fi
     local status_hex promotion_hex status_sha promotion_sha
     local promotion_body_base64
     if ! status_hex="$(sha256_hex_file "${status_file}")"; then
@@ -515,6 +727,7 @@ promote_production_answer() {
     if ! jq -n --arg base_url "${BASE_URL}" \
         --arg release_id "${interactive_agent_release_id}" \
         --arg candidate_id "${interactive_agent_candidate_id}" \
+        --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
         --arg status_sha "${status_sha}" --arg promotion_sha "${promotion_sha}" \
         --arg promotion_body_base64 "${promotion_body_base64}" \
         --slurpfile status "${status_file}" --slurpfile promotion "${promotion_file}" '
@@ -523,21 +736,17 @@ promote_production_answer() {
         base_url:$base_url,
         release_id:$release_id,
         candidate_id:$candidate_id,
+        acceptance_record_id:$acceptance_id,
         manager_status_sha256:$status_sha,
         promotion_receipt_sha256:$promotion_sha,
         promotion_receipt_body_base64:$promotion_body_base64,
         promotion_receipt:$promotion[0],
         lifecycle_state:$status[0].lifecycle_state,
         production_verified:$status[0].production_verified,
-        conversation_id:$promotion[0].backend.conversation_id,
-        turn_id:$promotion[0].backend.turn_id,
-        question:$promotion[0].backend.question,
-        response_sha256:$promotion[0].backend.response_sha256,
-        answer_source:$promotion[0].result.answer_source,
-        guard_decision:$promotion[0].result.guard_decision,
-        oracle_digest:$promotion[0].result.oracle_digest,
-        public_answer_present:$promotion[0].result.public_answer_present,
-        fallback_or_rejection_present:$promotion[0].result.fallback_or_rejection_present
+        conversation_id:$promotion[0].public_response.conversation_id,
+        turn_id:$promotion[0].public_response.turn_id,
+        question:$promotion[0].public_response.question,
+        response_sha256:$promotion[0].public_response.response_sha256
       }
     ' > "${output}"; then
         error '无法生成生产正确回答证据'
@@ -549,6 +758,13 @@ working_directory="$(mktemp -d "${UNIFIED_ROOT}/.${MODE}-verification.XXXXXX")"
 runtime_receipt="${working_directory}/runtime.json"
 answer_receipt="${working_directory}/answer.json"
 temporary="${UNIFIED_ROOT}/.${MODE}-verification.tmp.$$"
+cleanup_verification_raw_responses() {
+    if [[ -d "${working_directory}" && ! -L "${working_directory}" ]]; then
+        find "${working_directory}" -depth -delete
+    elif [[ -e "${working_directory}" || -L "${working_directory}" ]]; then
+        return 1
+    fi
+}
 cleanup_verification() {
     local exit_code=$?
     local cleanup_failed=false
@@ -557,11 +773,7 @@ cleanup_verification() {
             cleanup_failed=true
         fi
     fi
-    if [[ -d "${working_directory}" && ! -L "${working_directory}" ]]; then
-        if ! find "${working_directory}" -depth -delete; then
-            cleanup_failed=true
-        fi
-    elif [[ -e "${working_directory}" || -L "${working_directory}" ]]; then
+    if ! cleanup_verification_raw_responses; then
         cleanup_failed=true
     fi
     if [[ "${cleanup_failed}" == true ]]; then
@@ -585,7 +797,7 @@ import time
 from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 base_url, mode, release_id, output_path = sys.argv[1:]
 references = {
@@ -594,10 +806,18 @@ references = {
 }
 
 
+class NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+DIRECT_OPENER = build_opener(ProxyHandler({}), NoRedirectHandler())
+
+
 def fetch(path: str, timeout_seconds: int = 30) -> tuple[dict[str, Any], int, float, str]:
     started = time.perf_counter()
     request = Request(base_url + path, headers={"Accept": "application/json"})
-    with urlopen(request, timeout=timeout_seconds) as response:
+    with DIRECT_OPENER.open(request, timeout=timeout_seconds) as response:
         raw = response.read()
         etag = response.headers.get("ETag", "")
     elapsed = (time.perf_counter() - started) * 1000
@@ -812,6 +1032,12 @@ if ! jq -n --arg status "${verification_status}" \
     exit 1
 fi
 chmod 0640 "${temporary}"
+# 原始公开/内部响应只允许存在于临时目录。必须先证明它们已严格清理，
+# 才能发布已自包含冻结 bytes 的 General verification 证据。
+if ! cleanup_verification_raw_responses; then
+    error '验证临时原始响应清理失败，未发布完成证据'
+    exit 70
+fi
 if ! mv -n -- "${temporary}" "${EVIDENCE}"; then
     error '无法原子写入 create-only 验证证据'
     exit 1
@@ -822,8 +1048,5 @@ fi
     exit 1
 }
 trap - EXIT
-if ! cleanup_verification; then
-    exit 70
-fi
-jq -c '{release_id,status,mode,interactive_answer:(.interactive_answer | {conversation_id,turn_id,answer_source,guard_decision})}' \
+jq -c '{release_id,status,mode,interactive_answer:(.interactive_answer | {conversation_id,turn_id,result:(.promotion_receipt.result | {answer_source,guard_decision})})}' \
     "${EVIDENCE}"

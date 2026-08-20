@@ -57,6 +57,10 @@ readonly CANDIDATE_FRONTEND_TREE_SHA="$(jq -er '.components.frontend.tree_sha256
 readonly INTERACTIVE_AGENT_RELEASE_ID="$(jq -er '.interactive_agent.release_id' "${CANDIDATE}")"
 readonly INTERACTIVE_AGENT_PATH="$(jq -er '.interactive_agent.path' "${CANDIDATE}")"
 readonly INTERACTIVE_AGENT_CANDIDATE_ID="$(jq -er '.interactive_agent.candidate_id' "${CANDIDATE}")"
+readonly INTERACTIVE_AGENT_CANDIDATE_SHA="$(jq -er '.interactive_agent.candidate_manifest_sha256' "${CANDIDATE}")"
+readonly INTERACTIVE_AGENT_ACCEPTANCE_RECORD_ID="$(jq -er '.interactive_agent.acceptance_record_id' "${CANDIDATE}")"
+readonly INTERACTIVE_AGENT_ACCEPTANCE_RECORD_SHA="$(jq -er '.interactive_agent.acceptance_record_sha256' "${CANDIDATE}")"
+readonly INTERACTIVE_AGENT_ACCEPTANCE_REPLAY_SHA="$(jq -er '.interactive_agent.acceptance_replay_receipt_sha256' "${CANDIDATE}")"
 readonly INTERACTIVE_AGENT_ACTIVE_PATH="$(jq -er '.interactive_agent.active_state_path' "${CANDIDATE}")"
 readonly INTERACTIVE_AGENT_ACTIVE_SHA="$(jq -er '.interactive_agent.active_state_sha256' "${CANDIDATE}")"
 readonly INTERACTIVE_AGENT_RELEASE_MANIFEST_SHA="$(jq -er '.interactive_agent.release_manifest_sha256' "${CANDIDATE}")"
@@ -70,6 +74,21 @@ atomic_state() {
     local status="$2"
     local detail="$3"
     local temporary="${UNIFIED_ROOT}/.ACTIVATION-STATE.tmp.$$"
+    local canary_hex canary_sha production_hex='' production_sha=''
+    [[ -f "${CANARY_EVIDENCE}" && ! -L "${CANARY_EVIDENCE}" ]] || {
+        error '激活状态缺少普通 CANARY-VERIFICATION.json'
+        return 1
+    }
+    canary_hex="$(sha256_hex_file "${CANARY_EVIDENCE}")" || return 1
+    canary_sha="sha256:${canary_hex}"
+    if [[ -e "${PRODUCTION_EVIDENCE}" || -L "${PRODUCTION_EVIDENCE}" ]]; then
+        [[ -f "${PRODUCTION_EVIDENCE}" && ! -L "${PRODUCTION_EVIDENCE}" ]] || {
+            error 'PRODUCTION-VERIFICATION.json 存在但不是普通文件'
+            return 1
+        }
+        production_hex="$(sha256_hex_file "${PRODUCTION_EVIDENCE}")" || return 1
+        production_sha="sha256:${production_hex}"
+    fi
     if ! jq -n \
         --arg release_id "${RELEASE_ID}" --arg phase "${phase}" \
         --arg status "${status}" --arg detail "${detail}" \
@@ -77,7 +96,11 @@ atomic_state() {
         --arg backend_release_id "${CANDIDATE_BACKEND_RELEASE}" \
         --arg backend_path "${RUNTIME_ROOT}" \
         --arg frontend_release_id "${CANDIDATE_FRONTEND_RELEASE}" \
-        --arg interactive_release_id "${INTERACTIVE_AGENT_RELEASE_ID}" '
+        --arg interactive_release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
+        --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" \
+        --arg acceptance_id "${INTERACTIVE_AGENT_ACCEPTANCE_RECORD_ID}" \
+        --arg canary_sha "${canary_sha}" \
+        --arg production_sha "${production_sha}" '
       {
         schema_version:"domeye_country_outage_general_activation_v2",
         release_id:$release_id,
@@ -88,7 +111,18 @@ atomic_state() {
         candidate:{
           backend:{release_id:$backend_release_id,path:$backend_path},
           frontend:{release_id:$frontend_release_id},
-          interactive_agent:{release_id:$interactive_release_id}
+          interactive_agent:{
+            release_id:$interactive_release_id,
+            candidate_id:$candidate_id,
+            acceptance_record_id:$acceptance_id
+          }
+        },
+        verification:{
+          canary:{path:"CANARY-VERIFICATION.json",sha256:$canary_sha},
+          production:{
+            path:"PRODUCTION-VERIFICATION.json",
+            sha256:(if $production_sha == "" then null else $production_sha end)
+          }
         },
         rollback:{mode:"fail_closed",previous_release_id:null}
       }
@@ -364,10 +398,20 @@ replay_canary_answer() {
         error '无法创建 canary 现场重放临时文件'
         return 1
     }
-    if ! jq -er '.interactive_answer.validation_receipt_body_base64' \
-        "${CANARY_EVIDENCE}" | base64 --decode > "${frozen_receipt}"; then
+    local frozen_receipt_body_base64
+    if ! frozen_receipt_body_base64="$(jq -er \
+        '.interactive_answer.promotion_receipt_body_base64' \
+        "${CANARY_EVIDENCE}")" \
+        || ! printf '%s' "${frozen_receipt_body_base64}" | base64 --decode \
+            > "${frozen_receipt}"; then
         remove_canary_replay_file "${frozen_receipt}" || return 1
-        error 'CANARY 证据中的 verifier 原始回执 base64 无效'
+        error 'CANARY 证据中的 promotion v2 原始回执 base64 无效'
+        return 1
+    fi
+    if [[ "$(base64 -w 0 "${frozen_receipt}")" \
+        != "${frozen_receipt_body_base64}" ]]; then
+        remove_canary_replay_file "${frozen_receipt}" || return 1
+        error 'CANARY promotion v2 原始回执 base64 不是唯一规范表示'
         return 1
     fi
     if ! chmod 0600 "${frozen_receipt}"; then
@@ -377,15 +421,15 @@ replay_canary_answer() {
     fi
     local expected_receipt_sha
     if ! expected_receipt_sha="$(jq -er \
-        '.interactive_answer.validation_sha256' \
+        '.interactive_answer.promotion_receipt_sha256' \
         "${CANARY_EVIDENCE}")"; then
         remove_canary_replay_file "${frozen_receipt}" || return 1
-        error 'CANARY 证据缺少 verifier 原始回执摘要'
+        error 'CANARY 证据缺少 promotion v2 原始回执摘要'
         return 1
     fi
     [[ "${expected_receipt_sha}" =~ ^sha256:[a-f0-9]{64}$ ]] || {
         remove_canary_replay_file "${frozen_receipt}" || return 1
-        error 'CANARY verifier 原始回执摘要格式无效'
+        error 'CANARY promotion v2 原始回执摘要格式无效'
         return 1
     }
     local frozen_receipt_hex
@@ -400,15 +444,38 @@ replay_canary_answer() {
         return 1
     fi
     if ! jq -e --slurpfile receipt "${frozen_receipt}" '
-      .interactive_answer.validation_receipt == $receipt[0]
+      .interactive_answer.promotion_receipt == $receipt[0]
       and .interactive_answer.response_sha256
-        == $receipt[0].backend.response_sha256
+        == $receipt[0].public_response.response_sha256
+      and .interactive_answer.conversation_id
+        == $receipt[0].public_response.conversation_id
+      and .interactive_answer.turn_id == $receipt[0].public_response.turn_id
+      and $receipt[0].schema_version == "domeye_interactive_agent_promotion_v2"
+      and $receipt[0].promotion_state == "verified"
+      and $receipt[0].release_id == .interactive_answer.release_id
+      and $receipt[0].candidate_id == .interactive_answer.candidate_id
+      and $receipt[0].acceptance_record_id
+        == .interactive_answer.acceptance_record_id
+      and $receipt[0].public_response.conversation_deduplicated == false
+      and $receipt[0].public_response.turn_deduplicated == false
+      and $receipt[0].public_response.turn_number == 1
+      and $receipt[0].public_response.conversation_turn_count == 1
+      and ($receipt[0].public_response.create_response_body_base64
+        | type == "string" and length > 0)
+      and ($receipt[0].public_response.turn_response_body_base64
+        | type == "string" and length > 0)
+      and ($receipt[0].public_response.response_body_base64
+        | type == "string" and length > 0)
+      and ($receipt[0].internal_record.response_body_base64
+        | type == "string" and length > 0)
       and $receipt[0].result.state == "completed"
       and $receipt[0].result.answer_success == true
       and $receipt[0].result.workflow_completed == true
       and $receipt[0].result.answer_source == "renderer"
       and $receipt[0].result.guard_decision == "pass"
       and $receipt[0].result.public_answer_present == true
+      and $receipt[0].result.internal_record_verified == true
+      and $receipt[0].result.public_internal_projection_equal == true
       and $receipt[0].result.fallback_or_rejection_present == false
     ' "${CANARY_EVIDENCE}" >/dev/null; then
         remove_canary_replay_file "${frozen_receipt}" || return 1
@@ -440,7 +507,8 @@ replay_canary_answer() {
     fi
     if ! jq -e --arg release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
         --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" '
-      .release_id == $release_id
+      .schema_version == "domeye_interactive_agent_release_probe_v2"
+      and .release_id == $release_id
       and .candidate_id == $candidate_id
       and .lifecycle_state == "deployed"
       and .promotion_state == "absent"
@@ -494,7 +562,8 @@ canary_backend_is_closed() {
         || ! screen_session_is_absent domeye_country_outage_general_canary; then
         return 1
     fi
-    if curl -fsS --max-time 5 \
+    if curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+        -fsS --max-time 5 \
         http://127.0.0.1:38672/api/v1/healthz >/dev/null 2>&1; then
         error 'canary Backend 38672 仍返回成功'
         return 1
@@ -506,9 +575,78 @@ production_backend_is_closed() {
         || ! screen_session_is_absent domeye_core_app; then
         return 1
     fi
-    if curl -fsS --max-time 5 \
+    if curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+        -fsS --max-time 5 \
         http://127.0.0.1:28471/api/v1/healthz >/dev/null 2>&1; then
         error '公共 Backend 路由仍返回成功'
+        return 1
+    fi
+}
+
+baseline_backend_is_active() {
+    local screen_output screen_status
+    if screen_output="$(screen -ls 2>&1)"; then
+        screen_status=0
+    else
+        screen_status=$?
+    fi
+    (( screen_status == 0 || screen_status == 1 )) || {
+        error '无法查询 cutover_baseline Screen 会话'
+        return 1
+    }
+    local -a sessions
+    mapfile -t sessions < <(awk '
+      $1 ~ /^[0-9]+\.domeye_core_app$/ {print $1}
+    ' <<<"${screen_output}")
+    (( ${#sessions[@]} == 1 )) || {
+        error "cutover_baseline domeye_core_app 会话数量不是 1：${#sessions[@]}"
+        return 1
+    }
+    local root_pid="${sessions[0]%%.*}" candidate_pid
+    local -a matching_pids=()
+    while IFS= read -r candidate_pid; do
+        [[ "${candidate_pid}" =~ ^[1-9][0-9]*$ \
+            && -r "/proc/${candidate_pid}/environ" ]] || continue
+        if [[ "$(readlink -f -- "/proc/${candidate_pid}/cwd" 2>/dev/null || true)" \
+            == "${BASELINE_BACKEND}/backend" ]] \
+            && tr '\0' '\n' < "/proc/${candidate_pid}/environ" | awk -F= \
+                -v release="${BASELINE_BACKEND_RELEASE}" '
+                  $1 == "DOMEYE_P0_PRODUCTION_RELEASE_ID" && $2 == release {a=1}
+                  $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" && $2 == "production" {b=1}
+                  $1 == "PORT" && $2 == "28473" {c=1}
+                  END {exit(a && b && c ? 0 : 1)}
+                '; then
+            matching_pids+=("${candidate_pid}")
+        fi
+    done < <(pgrep -P "${root_pid}" -f 'python.*run.py' 2>/dev/null || true)
+    (( ${#matching_pids[@]} == 1 )) || {
+        error "cutover_baseline python run.py 进程数量不是 1：${#matching_pids[@]}"
+        return 1
+    }
+    local listeners
+    if ! listeners="$(ss -H -ltnp 'sport = :28473')" \
+        || ! awk -v marker="pid=${matching_pids[0]}," '
+          NF {
+            count += 1
+            if ($4 == "127.0.0.1:28473" && index($0, marker) > 0) matched += 1
+          }
+          END {exit(count == 1 && matched == 1 ? 0 : 1)}
+        ' <<<"${listeners}"; then
+        error 'cutover_baseline 28473 唯一回环监听与进程 PID 不一致'
+        return 1
+    fi
+    if ! curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+        -fsS --max-time 5 http://127.0.0.1:28473/api/v1/healthz \
+        | jq -e '.status == "ok" and .service == "domeye-core"' \
+            >/dev/null; then
+        error 'cutover_baseline 28473 直连健康检查失败'
+        return 1
+    fi
+    if ! curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+        -fsS --max-time 5 http://127.0.0.1:28471/api/v1/healthz \
+        | jq -e '.status == "ok" and .service == "domeye-core"' \
+            >/dev/null; then
+        error 'cutover_baseline 28471 公共路由健康检查失败'
         return 1
     fi
 }
@@ -611,11 +749,16 @@ cleanup() {
 }
 
 write_deployment() {
-    local production_hex production_sha
+    local canary_hex canary_sha production_hex production_sha
+    if ! canary_hex="$(sha256_hex_file "${CANARY_EVIDENCE}")"; then
+        error '无法计算 CANARY-VERIFICATION 最终摘要'
+        return 1
+    fi
     if ! production_hex="$(sha256_hex_file "${PRODUCTION_EVIDENCE}")"; then
         error '无法计算 PRODUCTION-VERIFICATION 最终摘要'
         return 1
     fi
+    canary_sha="sha256:${canary_hex}"
     production_sha="sha256:${production_hex}"
     local temporary="${UNIFIED_ROOT}/.DEPLOYMENT.tmp.$$"
     if ! jq -n \
@@ -630,6 +773,8 @@ write_deployment() {
         --arg frontend_quarantine_path "${FRONTEND_QUARANTINE_PATH}" \
         --arg interactive_release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
         --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" \
+        --arg acceptance_id "${INTERACTIVE_AGENT_ACCEPTANCE_RECORD_ID}" \
+        --arg canary_sha "${canary_sha}" \
         --arg production_sha "${production_sha}" '
       {
         schema_version:"domeye_country_outage_general_deployment_v2",
@@ -646,7 +791,11 @@ write_deployment() {
             source_artifact_path:$frontend_source_path,
             tree_sha256:$frontend_tree_sha
           },
-          interactive_agent:{release_id:$interactive_release_id,candidate_id:$candidate_id}
+          interactive_agent:{
+            release_id:$interactive_release_id,
+            candidate_id:$candidate_id,
+            acceptance_record_id:$acceptance_id
+          }
         },
         cutover_quarantine:{
           path:$frontend_quarantine_path,
@@ -655,7 +804,10 @@ write_deployment() {
           routed:false,
           automatic_restore:false
         },
-        verification:{path:"PRODUCTION-VERIFICATION.json",sha256:$production_sha},
+        verification:{
+          canary:{path:"CANARY-VERIFICATION.json",sha256:$canary_sha},
+          production:{path:"PRODUCTION-VERIFICATION.json",sha256:$production_sha}
+        },
         rollback:{mode:"fail_closed",previous_release_id:null,available:false}
       }
     ' > "${temporary}"; then
@@ -683,7 +835,7 @@ if [[ "${CONFIRM_RELEASE_ID:-}" != "${RELEASE_ID}" ]]; then
     exit 2
 fi
 for command_name in awk base64 chmod cmp cp curl date find flock grep install jq \
-    ln mktemp mv nginx python3 readlink screen sha256sum ss unlink; do
+    ln mktemp mv nginx pgrep python3 readlink screen sha256sum ss tr unlink; do
     command -v "${command_name}" >/dev/null 2>&1 || {
         error "缺少命令：${command_name}"
         exit 1
@@ -710,6 +862,20 @@ if ! jq -e --arg release_id "${RELEASE_ID}" \
   and .protected_runtime.nginx_changed == false
   and .rollback == {mode:"fail_closed",previous_release_id:null}
   and .interactive_agent.release_id == $release_id
+  and .interactive_agent.release_manifest_schema_version
+    == "domeye_interactive_agent_release_manifest_v2"
+  and .interactive_agent.readiness_schema_version
+    == "domeye_interactive_agent_release_probe_v2"
+  and (.interactive_agent.candidate_manifest_path
+    | endswith("/project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"))
+  and (.interactive_agent.candidate_id
+    | test("^manifest:sha256:[a-f0-9]{64}$"))
+  and (.interactive_agent.acceptance_record_id
+    | test("^acceptance-record-sha256:[a-f0-9]{64}$"))
+  and (.interactive_agent.acceptance_record_sha256
+    | test("^sha256:[a-f0-9]{64}$"))
+  and (.interactive_agent.acceptance_replay_receipt_sha256
+    | test("^sha256:[a-f0-9]{64}$"))
   and .interactive_agent.endpoint == {
     url:"http://127.0.0.1:28476",
     host:"127.0.0.1",
@@ -720,9 +886,25 @@ if ! jq -e --arg release_id "${RELEASE_ID}" \
     error '统一候选不是新架构首发 fail_closed 合同'
     exit 1
 fi
-if ! jq -e --arg release_id "${INTERACTIVE_AGENT_RELEASE_ID}" '
-  .schema_version == "domeye_interactive_agent_release_manifest_v1"
+if ! jq -e --arg release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
+    --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" \
+    --arg candidate_sha "${INTERACTIVE_AGENT_CANDIDATE_SHA}" \
+    --arg acceptance_id "${INTERACTIVE_AGENT_ACCEPTANCE_RECORD_ID}" \
+    --arg acceptance_sha "${INTERACTIVE_AGENT_ACCEPTANCE_RECORD_SHA}" \
+    --arg replay_sha "${INTERACTIVE_AGENT_ACCEPTANCE_REPLAY_SHA}" '
+  .schema_version == "domeye_interactive_agent_release_manifest_v2"
   and .release_id == $release_id
+  and .candidate.manifest_path
+    == "project/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"
+  and .candidate.schema_version == "domeye_first_slice_candidate_manifest_v2"
+  and .candidate.candidate_id == $candidate_id
+  and .candidate.manifest_sha256 == $candidate_sha
+  and .acceptance.record_id == $acceptance_id
+  and .acceptance.record_sha256 == $acceptance_sha
+  and .acceptance.replay_receipt_sha256 == $replay_sha
+  and .acceptance.evaluation_phase == "formal"
+  and .acceptance.acceptance_state == "accepted"
+  and .acceptance.dg1_decision == "GO"
   and .rollback == {mode:"fail_closed",previous_release_id:null}
 ' "${INTERACTIVE_AGENT_PATH}/RELEASE-MANIFEST.json" >/dev/null; then
     error 'Interactive Agent 不是首个 fail_closed release'
@@ -730,7 +912,8 @@ if ! jq -e --arg release_id "${INTERACTIVE_AGENT_RELEASE_ID}" '
 fi
 if ! jq -e --arg release_id "${RELEASE_ID}" \
     --arg interactive_release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
-    --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" '
+    --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" \
+    --arg acceptance_id "${INTERACTIVE_AGENT_ACCEPTANCE_RECORD_ID}" '
   .status == "canary_verified"
   and .mode == "canary"
   and .release_id == $release_id
@@ -738,22 +921,36 @@ if ! jq -e --arg release_id "${RELEASE_ID}" \
   and .interactive_answer.base_url == "http://127.0.0.1:38672"
   and .interactive_answer.release_id == $interactive_release_id
   and .interactive_answer.candidate_id == $candidate_id
+  and .interactive_answer.acceptance_record_id == $acceptance_id
   and (.interactive_answer.conversation_id | test("^conversation_sha256_[a-f0-9]{64}$"))
   and (.interactive_answer.turn_id | test("^turn_sha256_[a-f0-9]{64}$"))
   and (.interactive_answer.response_sha256 | test("^sha256:[a-f0-9]{64}$"))
-  and (.interactive_answer.validation_sha256 | test("^sha256:[a-f0-9]{64}$"))
-  and (.interactive_answer.validation_receipt_body_base64 | type == "string" and length > 0)
-  and .interactive_answer.answer_source == "renderer"
-  and .interactive_answer.guard_decision == "pass"
-  and .interactive_answer.public_answer_present == true
-  and .interactive_answer.fallback_or_rejection_present == false
-  and .interactive_answer.validation.state == "completed"
-  and .interactive_answer.validation.answer_success == true
-  and .interactive_answer.validation.workflow_completed == true
-  and .interactive_answer.validation.answer_source == "renderer"
-  and .interactive_answer.validation.guard_decision == "pass"
-  and .interactive_answer.validation.public_answer_present == true
-  and .interactive_answer.validation.fallback_or_rejection_present == false
+  and (.interactive_answer.promotion_receipt_sha256 | test("^sha256:[a-f0-9]{64}$"))
+  and (.interactive_answer.promotion_receipt_body_base64 | type == "string" and length > 0)
+  and .interactive_answer.promotion_receipt.schema_version
+    == "domeye_interactive_agent_promotion_v2"
+  and .interactive_answer.promotion_receipt.release_id == $interactive_release_id
+  and .interactive_answer.promotion_receipt.candidate_id == $candidate_id
+  and .interactive_answer.promotion_receipt.acceptance_record_id == $acceptance_id
+  and .interactive_answer.promotion_receipt.public_response.conversation_id
+    == .interactive_answer.conversation_id
+  and .interactive_answer.promotion_receipt.public_response.turn_id
+    == .interactive_answer.turn_id
+  and .interactive_answer.promotion_receipt.public_response.conversation_deduplicated == false
+  and .interactive_answer.promotion_receipt.public_response.turn_deduplicated == false
+  and .interactive_answer.promotion_receipt.public_response.turn_number == 1
+  and .interactive_answer.promotion_receipt.public_response.conversation_turn_count == 1
+  and .interactive_answer.promotion_receipt.result.state == "completed"
+  and .interactive_answer.promotion_receipt.result.answer_success == true
+  and .interactive_answer.promotion_receipt.result.workflow_completed == true
+  and .interactive_answer.promotion_receipt.result.answer_source == "renderer"
+  and .interactive_answer.promotion_receipt.result.guard_decision == "pass"
+  and .interactive_answer.promotion_receipt.result.guard_assessment_status == "evaluated"
+  and .interactive_answer.promotion_receipt.result.style_assessment_passed == true
+  and .interactive_answer.promotion_receipt.result.public_answer_present == true
+  and .interactive_answer.promotion_receipt.result.internal_record_verified == true
+  and .interactive_answer.promotion_receipt.result.public_internal_projection_equal == true
+  and .interactive_answer.promotion_receipt.result.fallback_or_rejection_present == false
 ' "${CANARY_EVIDENCE}" >/dev/null; then
     error 'CANARY-VERIFICATION.json 未证明本次 correct direct Renderer + Guard 回答'
     exit 1
@@ -801,14 +998,8 @@ if ! replay_canary_answer; then
     error '切换前 CANARY 正确回答现场重放失败'
     exit 1
 fi
-if ! DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE=production \
-    "${BASELINE_MANAGER}" status >/dev/null; then
-    error 'cutover_baseline Backend 无法验证，拒绝切换'
-    exit 1
-fi
-if ! curl -fsS --max-time 10 \
-    http://127.0.0.1:28471/api/v1/healthz >/dev/null; then
-    error '切换前公共 Backend 不健康，拒绝误判当前身份'
+if ! baseline_backend_is_active; then
+    error 'cutover_baseline Backend 进程、监听或公共路由身份无效，拒绝切换'
     exit 1
 fi
 
@@ -863,7 +1054,8 @@ fi
 if ! atomic_frontend_cutover; then
     exit 1
 fi
-if ! curl -fsS --max-time 10 http://127.0.0.1:28471/ \
+if ! curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+    -fsS --max-time 10 http://127.0.0.1:28471/ \
     | grep -F '<div id="app"></div>' >/dev/null; then
     error '候选 Frontend 公开页面校验失败'
     exit 1
@@ -876,16 +1068,54 @@ if ! "${VERIFY}" production; then
     error '公共生产验证失败；拒绝把拒绝、回退或 provider failure 计为完成'
     exit 1
 fi
-if ! jq -e --arg release_id "${RELEASE_ID}" '
+if ! jq -e --arg release_id "${RELEASE_ID}" \
+    --arg interactive_release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
+    --arg candidate_id "${INTERACTIVE_AGENT_CANDIDATE_ID}" \
+    --arg acceptance_id "${INTERACTIVE_AGENT_ACCEPTANCE_RECORD_ID}" \
+    --slurpfile canary "${CANARY_EVIDENCE}" '
   .release_id == $release_id
   and .mode == "production"
   and .status == "production_verified"
   and .interactive_answer.status == "production_verified"
+  and .interactive_answer.base_url == "http://127.0.0.1:28471"
+  and .interactive_answer.release_id == $interactive_release_id
+  and .interactive_answer.candidate_id == $candidate_id
+  and .interactive_answer.acceptance_record_id == $acceptance_id
+  and (.interactive_answer.promotion_receipt_sha256
+    | test("^sha256:[a-f0-9]{64}$"))
+  and (.interactive_answer.promotion_receipt_body_base64
+    | type == "string" and length > 0)
+  and .interactive_answer.promotion_receipt.schema_version
+    == "domeye_interactive_agent_promotion_v2"
+  and .interactive_answer.promotion_receipt.release_id
+    == $interactive_release_id
+  and .interactive_answer.promotion_receipt.candidate_id == $candidate_id
+  and .interactive_answer.promotion_receipt.acceptance_record_id
+    == $acceptance_id
+  and .interactive_answer.promotion_receipt.public_response.conversation_id
+    == .interactive_answer.conversation_id
+  and .interactive_answer.promotion_receipt.public_response.turn_id
+    == .interactive_answer.turn_id
+  and .interactive_answer.promotion_receipt.public_response.conversation_id
+    != $canary[0].interactive_answer.promotion_receipt.public_response.conversation_id
+  and .interactive_answer.promotion_receipt.public_response.turn_id
+    != $canary[0].interactive_answer.promotion_receipt.public_response.turn_id
+  and .interactive_answer.promotion_receipt.public_response.conversation_deduplicated == false
+  and .interactive_answer.promotion_receipt.public_response.turn_deduplicated == false
+  and .interactive_answer.promotion_receipt.public_response.turn_number == 1
+  and .interactive_answer.promotion_receipt.public_response.conversation_turn_count == 1
   and .interactive_answer.production_verified == true
-  and .interactive_answer.answer_source == "renderer"
-  and .interactive_answer.guard_decision == "pass"
-  and .interactive_answer.public_answer_present == true
-  and .interactive_answer.fallback_or_rejection_present == false
+  and .interactive_answer.promotion_receipt.result.state == "completed"
+  and .interactive_answer.promotion_receipt.result.answer_success == true
+  and .interactive_answer.promotion_receipt.result.workflow_completed == true
+  and .interactive_answer.promotion_receipt.result.answer_source == "renderer"
+  and .interactive_answer.promotion_receipt.result.guard_decision == "pass"
+  and .interactive_answer.promotion_receipt.result.guard_assessment_status == "evaluated"
+  and .interactive_answer.promotion_receipt.result.style_assessment_passed == true
+  and .interactive_answer.promotion_receipt.result.public_answer_present == true
+  and .interactive_answer.promotion_receipt.result.internal_record_verified == true
+  and .interactive_answer.promotion_receipt.result.public_internal_projection_equal == true
+  and .interactive_answer.promotion_receipt.result.fallback_or_rejection_present == false
 ' "${PRODUCTION_EVIDENCE}" >/dev/null; then
     error 'PRODUCTION-VERIFICATION.json 未证明正确公共回答'
     exit 1
