@@ -75,7 +75,7 @@ if (( EUID != 0 )); then
     error '运行时验证必须由 root 执行'
     exit 1
 fi
-for command_name in base64 chmod cmp curl date dirname env find git jq mktemp mv \
+for command_name in chmod cmp curl date dirname env find git jq mktemp mv \
     python3 readlink sha256sum sleep unlink; do
     command -v "${command_name}" >/dev/null 2>&1 || {
         error "缺少命令：${command_name}"
@@ -557,16 +557,12 @@ verify_canary_answer() {
         error 'canary verifier 输出不是直接 Renderer 正确回答'
         return 1
     fi
-    local promotion_hex promotion_sha promotion_body_base64
+    local promotion_hex promotion_sha
     if ! promotion_hex="$(sha256_hex_file "${promotion_receipt}")"; then
         error '无法冻结 canary promotion v2 回执摘要'
         return 1
     fi
     promotion_sha="sha256:${promotion_hex}"
-    promotion_body_base64="$(base64 -w 0 "${promotion_receipt}")" || {
-        error '无法冻结 canary promotion v2 原始回执'
-        return 1
-    }
     if ! jq -n --arg base_url "${BASE_URL}" \
         --arg release_id "${interactive_agent_release_id}" \
         --arg candidate_id "${interactive_agent_candidate_id}" \
@@ -574,7 +570,7 @@ verify_canary_answer() {
         --arg conversation_id "${conversation_id}" --arg turn_id "${turn_id}" \
         --arg question "${question}" \
         --arg promotion_sha "${promotion_sha}" \
-        --arg promotion_body_base64 "${promotion_body_base64}" \
+        --rawfile promotion_body "${promotion_receipt}" \
         --slurpfile proof "${promotion_receipt}" '
       {
         status:"canary_verified",
@@ -587,7 +583,7 @@ verify_canary_answer() {
         question:$question,
         response_sha256:$proof[0].public_response.response_sha256,
         promotion_receipt_sha256:$promotion_sha,
-        promotion_receipt_body_base64:$promotion_body_base64,
+        promotion_receipt_body_base64:($promotion_body | @base64),
         promotion_receipt:$proof[0]
       }
     ' > "${output}"; then
@@ -728,7 +724,6 @@ promote_production_answer() {
         return 1
     fi
     local status_hex promotion_hex status_sha promotion_sha
-    local promotion_body_base64
     if ! status_hex="$(sha256_hex_file "${status_file}")"; then
         error '无法冻结 production manager status 摘要'
         return 1
@@ -739,16 +734,12 @@ promote_production_answer() {
     fi
     status_sha="sha256:${status_hex}"
     promotion_sha="sha256:${promotion_hex}"
-    promotion_body_base64="$(base64 -w 0 "${promotion_file}")" || {
-        error '无法冻结生产 promotion 原始回执'
-        return 1
-    }
     if ! jq -n --arg base_url "${BASE_URL}" \
         --arg release_id "${interactive_agent_release_id}" \
         --arg candidate_id "${interactive_agent_candidate_id}" \
         --arg acceptance_id "${interactive_agent_acceptance_record_id}" \
         --arg status_sha "${status_sha}" --arg promotion_sha "${promotion_sha}" \
-        --arg promotion_body_base64 "${promotion_body_base64}" \
+        --rawfile promotion_body "${promotion_file}" \
         --slurpfile status "${status_file}" --slurpfile promotion "${promotion_file}" '
       {
         status:"production_verified",
@@ -758,7 +749,7 @@ promote_production_answer() {
         acceptance_record_id:$acceptance_id,
         manager_status_sha256:$status_sha,
         promotion_receipt_sha256:$promotion_sha,
-        promotion_receipt_body_base64:$promotion_body_base64,
+        promotion_receipt_body_base64:($promotion_body | @base64),
         promotion_receipt:$promotion[0],
         lifecycle_state:$status[0].lifecycle_state,
         production_verified:$status[0].production_verified,

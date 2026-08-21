@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
+import json
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import unittest
 
 
@@ -478,6 +481,62 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "automatic_restore:true",
         ):
             self.assertNotIn(forbidden, text)
+
+    def test_large_promotion_receipt_is_read_from_file_not_process_argv(self) -> None:
+        text = script("verify-runtime.sh")
+        self.assertEqual(text.count("--rawfile promotion_body"), 2)
+        self.assertEqual(
+            text.count(
+                "promotion_receipt_body_base64:($promotion_body | @base64)"
+            ),
+            2,
+        )
+        self.assertNotIn("--arg promotion_body_base64", text)
+        self.assertNotIn("base64 -w 0", text)
+
+        receipt = {
+            "schema_version": "domeye_interactive_agent_promotion_v2",
+            "promotion_state": "verified",
+            "note": "中文边界",
+            "padding": "x" * (3 * 1024 * 1024),
+        }
+        receipt_bytes = (
+            json.dumps(receipt, ensure_ascii=False, separators=(",", ":")) + "\n"
+        ).encode("utf-8")
+        with tempfile.TemporaryDirectory() as directory:
+            receipt_path = Path(directory) / "promotion.json"
+            receipt_path.write_bytes(receipt_bytes)
+            result = subprocess.run(
+                [
+                    "/usr/bin/jq",
+                    "-n",
+                    "--rawfile",
+                    "promotion_body",
+                    str(receipt_path),
+                    "--slurpfile",
+                    "promotion",
+                    str(receipt_path),
+                    "{promotion_receipt_body_base64:"
+                    "($promotion_body | @base64),"
+                    "promotion_receipt:$promotion[0]}",
+                ],
+                capture_output=True,
+                check=False,
+                timeout=20,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8"))
+        evidence = json.loads(result.stdout)
+        self.assertEqual(
+            evidence["promotion_receipt_body_base64"],
+            base64.b64encode(receipt_bytes).decode("ascii"),
+        )
+        self.assertEqual(
+            base64.b64decode(
+                evidence["promotion_receipt_body_base64"], validate=True
+            ),
+            receipt_bytes,
+        )
+        self.assertEqual(evidence["promotion_receipt"], receipt)
 
     def test_first_release_rollback_only_fails_closed(self) -> None:
         text = script("rollback-runtime.sh")
