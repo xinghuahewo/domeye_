@@ -613,6 +613,31 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
         self.assertGreaterEqual(normalization.count('mode:"fail_closed"'), 5)
         self.assertEqual(normalization.count('"same_schema_only"'), 2)
 
+    def test_activation_accepts_bounded_interactive_successor_rollback(self) -> None:
+        activate = script("activate-runtime.sh")
+        release_gate = activate.split(
+            'if ! jq -e --arg release_id "${INTERACTIVE_AGENT_RELEASE_ID}"',
+            1,
+        )[1].split(
+            '"${INTERACTIVE_AGENT_PATH}/RELEASE-MANIFEST.json"',
+            1,
+        )[0]
+
+        for phrase in (
+            '.rollback == {mode:"fail_closed",previous_release_id:null}',
+            '.rollback.mode == "same_schema_only"',
+            '(.rollback.previous_release_id | type == "string")',
+            (
+                "^[0-9]{8}T[0-9]{6}Z-country-outage-interactive-agent-"
+                "[a-z0-9][a-z0-9-]{0,31}$"
+            ),
+            ".rollback.previous_release_id != $release_id",
+        ):
+            self.assertIn(phrase, release_gate)
+        self.assertEqual(release_gate.count('"same_schema_only"'), 1)
+        self.assertIn("Interactive Agent rollback 合同不受支持", activate)
+        self.assertNotIn("Interactive Agent 不是首个 fail_closed release", activate)
+
     def test_fail_closed_receipt_binds_and_preserves_pre_rollback_v2_evidence(
         self,
     ) -> None:

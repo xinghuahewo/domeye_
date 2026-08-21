@@ -905,9 +905,18 @@ if ! jq -e --arg release_id "${INTERACTIVE_AGENT_RELEASE_ID}" \
   and .acceptance.evaluation_phase == "formal"
   and .acceptance.acceptance_state == "accepted"
   and .acceptance.dg1_decision == "GO"
-  and .rollback == {mode:"fail_closed",previous_release_id:null}
+  and (
+    .rollback == {mode:"fail_closed",previous_release_id:null}
+    or (
+      .rollback.mode == "same_schema_only"
+      and (.rollback.previous_release_id | type == "string")
+      and (.rollback.previous_release_id
+        | test("^[0-9]{8}T[0-9]{6}Z-country-outage-interactive-agent-[a-z0-9][a-z0-9-]{0,31}$"))
+      and .rollback.previous_release_id != $release_id
+    )
+  )
 ' "${INTERACTIVE_AGENT_PATH}/RELEASE-MANIFEST.json" >/dev/null; then
-    error 'Interactive Agent 不是首个 fail_closed release'
+    error 'Interactive Agent rollback 合同不受支持'
     exit 1
 fi
 if ! jq -e --arg release_id "${RELEASE_ID}" \
