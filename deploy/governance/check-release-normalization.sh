@@ -34,6 +34,42 @@ require_actual_directory() {
         || die "${label}不是规范实际目录：${path}"
 }
 
+require_port_closed() {
+    local port="$1"
+    local label="$2"
+    local sockets
+    sockets="$(ss -H -ltn "sport = :${port}")" \
+        || die "无法读取${label}监听状态"
+    [[ -z "${sockets}" ]] || die "${label}仍在监听 127.0.0.1:${port}"
+}
+
+require_screen_absent() {
+    local screen_name="$1"
+    local label="$2"
+    local sessions
+    sessions="$(
+        (screen -ls 2>/dev/null || true) \
+            | awk -v suffix=".${screen_name}" '
+                $1 ~ /^[0-9]+\./ \
+                    && substr($1, length($1) - length(suffix) + 1) == suffix {
+                    print $1
+                }
+            '
+    )"
+    [[ -z "${sessions}" ]] || die "${label} Screen 仍在运行"
+}
+
+require_public_path_retired() {
+    local path="$1"
+    local label="$2"
+    local status
+    status="$(curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
+        -sS -o /dev/null -w '%{http_code}' --max-time 5 \
+        "http://127.0.0.1:28471${path}")" \
+        || die "无法读取${label}退役状态"
+    [[ "${status}" == '404' ]] || die "${label}仍可公开路由：HTTP ${status}"
+}
+
 sha256_hex() {
     local value
     value="$(sha256sum -- "$1" | awk 'NR == 1 {print $1}')" \
@@ -503,8 +539,8 @@ fi
 readonly RELEASE_ID="$1"
 valid_release_id "${RELEASE_ID}" || die 'release-id 格式无效'
 
-require_commands awk base64 chmod cmp curl date env find git jq readlink sha256sum \
-    mktemp rm rmdir sort tr
+require_commands awk base64 chmod cmp curl date env find git jq readlink screen \
+    sha256sum ss mktemp rm rmdir sort tr
 
 readonly RUNTIME_ROOT='/home/bgpdata/Domeye-Core-runtime'
 readonly REPOSITORY='/home/bgpdata/Domeye-Core'
@@ -973,6 +1009,21 @@ curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
     | jq -e '.status == "ok" and .service == "domeye-core"' >/dev/null \
     || die '28471 公共 Backend 健康检查失败'
 
+require_port_closed 28474 '旧报告 Agent'
+require_port_closed 28475 '旧 P1 Chat'
+require_screen_absent 'domeye_country_outage_agent' '旧报告 Agent'
+require_screen_absent 'domeye_country_outage_p1_chat' '旧 P1 Chat'
+require_public_path_retired '/api/v2/country-outage/reports' '旧报告与追问 API'
+require_public_path_retired \
+    '/api/v2/country-outage/investigations/retired-surface-probe' \
+    '旧组合调查 API'
+require_public_path_retired \
+    '/api/v2/country-outage/capabilities/external-evidence' \
+    '旧外部证据能力 API'
+require_public_path_retired \
+    '/api/v2/country-outage/runs/retired-surface-probe/abort' \
+    '旧运行中止 API'
+
 governance_scripts_checked=false
 readonly INSTALL_RECEIPT="${GOVERNANCE_ROOT}/installations/${RELEASE_ID}.json"
 if [[ -e "${INSTALL_RECEIPT}" || -L "${INSTALL_RECEIPT}" ]]; then
@@ -1042,6 +1093,7 @@ jq -n --arg release_id "${RELEASE_ID}" --arg commit "${COMMIT}" \
       source_manifest_and_archive:true,
       backend_candidate_manifest_and_process:true,
       interactive_agent_28476_and_external_promotion:true,
+      legacy_agent_surfaces_retired:true,
       release_local_canary_and_production_replay:true,
       frontend_candidate_and_public_bytes:true,
       nginx_config:true,

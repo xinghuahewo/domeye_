@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import {
@@ -10,7 +10,6 @@ import {
 } from '@/api/events'
 import CountryOutageDashboard from '@/components/CountryOutageDashboard.vue'
 import CountryOutageGeneralPage from '@/components/CountryOutageGeneralPage.vue'
-import CountryOutageReportWorkbench from '@/components/CountryOutageReportWorkbench.vue'
 import PageState from '@/components/PageState.vue'
 import type {
   EvidenceBundle,
@@ -21,10 +20,6 @@ import type {
   EventObservation,
   ParsedDetailRef,
 } from '@/types/api'
-import {
-  countryOutageViewForTabKey,
-  type CountryOutageView,
-} from '@/utils/countryOutageReport'
 import {
   CountryOutageObservationRequestGate,
   decideCountryOutageObservationRefresh,
@@ -54,38 +49,10 @@ const bundle = ref<EvidenceBundle | null>(null)
 const observation = ref<EventObservation | null>(null)
 const generalPage = ref<CountryOutageGeneralPageModel | null>(null)
 const observationRefreshNotice = ref('')
-const countryOutageView = ref<CountryOutageView>('observation')
-const observationTab = ref<HTMLButtonElement | null>(null)
-const reportTab = ref<HTMLButtonElement | null>(null)
 let observationRefreshTimer: ReturnType<typeof setInterval> | undefined
 const observationRequests = new CountryOutageObservationRequestGate()
 
 const reference = computed(() => typeof route.query.ref === 'string' ? route.query.ref : '')
-const investigationEntry = computed(() => {
-  const identity = generalPage.value?.resolution
-  if (identity) {
-    return {
-      name: 'country-outage-investigation',
-      query: {
-        ref: reference.value,
-        publication_id: identity.publication_id,
-        revision: String(identity.revision),
-      },
-    }
-  }
-  if (observation.value?.publication_id && observation.value.revision) {
-    return {
-      name: 'country-outage-investigation',
-      query: {
-        ref: reference.value,
-        publication_id: observation.value.publication_id,
-        revision: String(observation.value.revision),
-      },
-    }
-  }
-  return null
-})
-
 const keyLabels: Record<string, string> = {
   hijacked_prefix: '被劫持前缀',
   hijacker_prefix: '异常子前缀',
@@ -275,43 +242,7 @@ async function load() {
   }
 }
 
-function openObservationAnchor(anchor: string) {
-  countryOutageView.value = 'observation'
-  void nextTick(() => {
-    const target = document.getElementById(anchor)
-    if (!target) return
-    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
-    target.scrollIntoView({
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'auto'
-        : 'smooth',
-      block: 'start',
-    })
-    target.focus({ preventScroll: true })
-  })
-}
-
-function selectCountryOutageView(
-  view: CountryOutageView,
-  moveFocus = false,
-) {
-  countryOutageView.value = view
-  if (!moveFocus) return
-  void nextTick(() => {
-    const target = view === 'observation' ? observationTab.value : reportTab.value
-    target?.focus()
-  })
-}
-
-function onCountryOutageTabKeydown(event: KeyboardEvent) {
-  const next = countryOutageViewForTabKey(countryOutageView.value, event.key)
-  if (!next) return
-  event.preventDefault()
-  selectCountryOutageView(next, true)
-}
-
 watch(reference, () => {
-  countryOutageView.value = 'observation'
   void load()
 }, { immediate: true })
 onBeforeUnmount(() => {
@@ -367,14 +298,6 @@ onBeforeUnmount(() => {
     />
 
     <template v-else-if="generalPage">
-      <aside class="investigation-entry" aria-label="本地组合调查入口">
-        <div>
-          <span>P2-S1 W5 · LOCAL ISOLATED</span>
-          <strong>用可见静态计划组合调查当前 RRC25 publication</strong>
-          <p>支持节点状态、取消、单步重跑、稳定预览、证据追溯与完整导出；不表示生产部署。</p>
-        </div>
-        <RouterLink v-if="investigationEntry" :to="investigationEntry">创建组合调查 →</RouterLink>
-      </aside>
       <CountryOutageGeneralPage
         :page="generalPage"
         :reference="reference"
@@ -382,52 +305,6 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-else-if="observation">
-      <aside class="investigation-entry" aria-label="本地组合调查入口">
-        <div>
-          <span>P2-S1 W5 · LOCAL ISOLATED</span>
-          <strong>创建当前冻结事件的组合调查</strong>
-          <p>仅组合已准入 W1–W4 原子能力；P2.1 动态 fan-out 继续延期。</p>
-        </div>
-        <RouterLink v-if="investigationEntry" :to="investigationEntry">创建组合调查 →</RouterLink>
-      </aside>
-      <nav class="country-outage-view-switch" aria-label="国家中断事件视图">
-        <div role="tablist" aria-label="数据观测与报告">
-          <button
-            id="country-outage-observation-tab"
-            ref="observationTab"
-            type="button"
-            role="tab"
-            :aria-selected="countryOutageView === 'observation'"
-            aria-controls="country-outage-observation-panel"
-            :tabindex="countryOutageView === 'observation' ? 0 : -1"
-            :class="{ 'is-active': countryOutageView === 'observation' }"
-            @click="selectCountryOutageView('observation')"
-            @keydown="onCountryOutageTabKeydown"
-          >
-            <span>01</span>
-            数据观测
-          </button>
-          <button
-            id="country-outage-report-tab"
-            ref="reportTab"
-            type="button"
-            role="tab"
-            :aria-selected="countryOutageView === 'report'"
-            aria-controls="country-outage-report-panel"
-            :tabindex="countryOutageView === 'report' ? 0 : -1"
-            :class="{ 'is-active': countryOutageView === 'report' }"
-            @click="selectCountryOutageView('report')"
-            @keydown="onCountryOutageTabKeydown"
-          >
-            <span>02</span>
-            报告与追问
-          </button>
-        </div>
-        <p>
-          {{ observation.event_identity.country_name }} · RRC25 ·
-          REV {{ observation.revision ?? 1 }}
-        </p>
-      </nav>
       <p
         v-if="observationRefreshNotice"
         class="observation-refresh-notice"
@@ -435,26 +312,7 @@ onBeforeUnmount(() => {
       >
         {{ observationRefreshNotice }}
       </p>
-      <div
-        id="country-outage-observation-panel"
-        v-show="countryOutageView === 'observation'"
-        role="tabpanel"
-        aria-labelledby="country-outage-observation-tab"
-      >
-        <CountryOutageDashboard :observation="observation" />
-      </div>
-      <div
-        id="country-outage-report-panel"
-        v-show="countryOutageView === 'report'"
-        role="tabpanel"
-        aria-labelledby="country-outage-report-tab"
-      >
-        <CountryOutageReportWorkbench
-          :observation="observation"
-          :event-reference="reference"
-          @open-observation="openObservationAnchor"
-        />
-      </div>
+      <CountryOutageDashboard :observation="observation" />
     </template>
 
     <template v-else-if="bundle">
@@ -769,93 +627,6 @@ onBeforeUnmount(() => {
 .raw-facts summary { cursor: pointer; font-weight: 700; }
 .raw-facts pre { max-height: 430px; margin: 12px 0 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 9px/1.55 var(--mono); }
 
-.country-outage-view-switch {
-  position: sticky;
-  top: 64px;
-  z-index: 29;
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px clamp(14px, 3vw, 34px);
-  color: #dce5ea;
-  background: rgba(18, 29, 38, .97);
-  border-bottom: 1px solid #42515c;
-  backdrop-filter: blur(12px);
-}
-
-.investigation-entry {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-  margin: 1rem 0;
-  padding: 1rem 1.25rem;
-  border: 1px solid #c9d9e4;
-  border-left: 4px solid #27658d;
-  background: #f2f8fb;
-}
-
-.investigation-entry span {
-  color: #52728a;
-  font-size: .72rem;
-  letter-spacing: .1em;
-}
-
-.investigation-entry strong,
-.investigation-entry p {
-  display: block;
-  margin: .2rem 0 0;
-}
-
-.investigation-entry a {
-  flex: none;
-  padding: .65rem .85rem;
-  color: #fff;
-  background: #1c5278;
-  text-decoration: none;
-}
-
-.country-outage-view-switch > div {
-  display: flex;
-  gap: 4px;
-}
-
-.country-outage-view-switch button {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  padding: 10px 14px;
-  cursor: pointer;
-  color: #99a8b2;
-  background: transparent;
-  border: 1px solid transparent;
-}
-
-.country-outage-view-switch button span {
-  color: #6e818e;
-  font: 700 9px/1 var(--mono);
-}
-
-.country-outage-view-switch button.is-active {
-  color: #fff;
-  background: #263845;
-  border-color: #526572;
-}
-
-.country-outage-view-switch button.is-active span {
-  color: #e69a69;
-}
-
-.country-outage-view-switch > p {
-  overflow: hidden;
-  margin: 0;
-  color: #91a0aa;
-  font: 700 9px/1.3 var(--mono);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .observation-refresh-notice {
   margin: 0;
   padding: 10px 13px;
@@ -876,23 +647,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 720px) {
-  .country-outage-view-switch {
-    position: relative;
-    align-items: stretch;
-    flex-direction: column;
-    gap: 7px;
-  }
-  .country-outage-view-switch > div {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .country-outage-view-switch button {
-    justify-content: center;
-  }
-  .country-outage-view-switch > p {
-    padding: 0 5px 4px;
-    text-align: center;
-  }
   .evidence-boundary { grid-template-columns: 1fr; }
   .incident-header { gap: 18px; padding: 18px; }
   .identity-block { grid-template-columns: 1fr; }

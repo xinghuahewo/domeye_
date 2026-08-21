@@ -52,9 +52,10 @@ executable，不读取命令行参数或环境变量。任何 finding 或保护�
 
 它不读取配置内容、进程实参或进程环境；因此它会明确把“实参中是否仍有凭证”标为
 `not_performed_by_contract`，不能把配置权限合规误报为凭证迁移完成。Interactive Agent 当前
-没有以 cwd 绑定到活动 release 时，同样只能报告 `not_verified`。线上旧 P1 Chat 以
-`retained_not_routed`、`read_only` 身份保留在库存中；这只保护其活动指针、release、进程和
-凭证表面不从治理视野消失，不允许它重新成为路由、启动、回退或发布选择。
+没有以 cwd 绑定到活动 release 时，同样只能报告 `not_verified`。旧报告 Agent 和旧 P1 Chat
+统一标为 `retired_stopped`、`retired_unrouted`、`read_only`：历史活动指针、release、状态和
+root-only 配置继续受保护，但进程与监听必须不存在，也不允许重新成为路由、启动、回退或
+发布选择。
 
 它对每个对象只输出 `inventory` 状态。即使对象暂无进程、挂载、锁或硬链接引用，仍须
 另有精确批次清单、空间估算、恢复路径和用户授权才可进入 `quarantine_planned`；删除
@@ -86,7 +87,7 @@ release 声明的 rollback，以及声明自身通过全部 `passed`/`verified` 
 标为 `protected_or_unknown`。活动 manifest 缺失、不可解析或指向不存在的 rollback 时，全部
 候选失败关闭为 `unknown`；不得以“最多保留五套”覆盖正式回滚或验收证据。
 
-对旧报告 Agent、Interactive Agent 和只读保留的旧 P1 Chat 这类生命周期管理组件，策略还必须列出
+对已退役旧报告 Agent、Interactive Agent 和已退役旧 P1 Chat 这类生命周期管理组件，策略还必须列出
 root-only `state/active.json` 与 `state/rollback.json`。审计器只提取其中的 release ID/previous
 release ID，不输出状态原文；
 文件不是普通 `root:root 0600` JSON、过大、不可解析，或其中 ID 不在同一 release 根时，
@@ -121,13 +122,19 @@ python3 deploy/governance/audit-server-credential-surface.py \
   --policy deploy/governance/server-directory-policy.json
 ```
 
-Backend 以活动 release 下 cwd/executable 绑定；旧报告 Agent 仍绑定 28474；Interactive Agent 必须
-同时绑定 28476 和活动 release 路径实参。只读旧 P1 Chat 库存继续观察 28475、活动 release 实参和
-`country-outage-p1-chat.env`，但保持 `retained_not_routed`，不参与路由或启动选择。若任一受管组件的
-cwd 在 release 外、命令行为空、监听器
-不可读或任一配置不是 `root:root 0600`，输出必须为 `not_verified` 和 `BLOCK_MUTATION`。这
+Backend 以活动 release 下 cwd/executable 绑定，且只引用数据库与新 Interactive Agent 配置；
+Interactive Agent 必须同时绑定 28476 和活动 release 路径实参。旧报告 Agent 与旧 P1 Chat
+仍保留 28474/28475、活动 release 和 root-only 配置的审计身份，但 `retired_stopped` 要求端口、
+进程和 Screen 均不存在；存在任一项即报告 `retired_process_present` 或
+`retired_listener_present`。若活动组件的 cwd 在 release 外、命令行为空、监听器不可读，或
+任一配置不是 `root:root 0600`，输出必须为 `not_verified` 和 `BLOCK_MUTATION`。这
 是防止把“没有可见凭证实参”误称为已完成凭证迁移；它本身不授权重启、Screen 迁移、配置
 写入、release 切换或任何凭证修改。
+
+最终 `check-release-normalization.sh` 还会读回旧报告/追问、组合调查、外部证据能力和旧运行
+中止 API 均为 404，并确认 28474、28475 以及两个旧 Screen 全部不存在；只有这些条件与新
+Interactive Agent 的 28476、Renderer、Guard、canary 和 production 证据同时成立，才输出
+`legacy_agent_surfaces_retired:true`。
 
 ## S4 Runtime release 可恢复隔离
 

@@ -80,6 +80,7 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
             b"PATH=/bin\x00",
         )
         self.policy = self.build_policy()
+        self.stopped_ports: set[int] = set()
         self.original_run = S3.readonly_run
         S3.readonly_run = self.fake_run
 
@@ -187,6 +188,7 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
 
     def fake_run(self, arguments):
         port = arguments[-1]
+        numeric_port = int(port.rsplit(":", 1)[-1])
         pid = (
             102
             if port.endswith("28474")
@@ -196,8 +198,53 @@ class ServerCredentialSurfaceTest(unittest.TestCase):
             if port.endswith("28475")
             else None
         )
+        if numeric_port in self.stopped_ports:
+            pid = None
         stdout = f'LISTEN 0 1 127.0.0.1:* users:(("node",pid={pid},fd=24))\n' if pid else ""
         return subprocess.CompletedProcess(arguments, 0, stdout, "")
+
+    def test_retired_components_require_preserved_release_and_no_process_or_listener(self):
+        for index, pid, port in ((1, 102, 28474), (3, 104, 28475)):
+            self.policy["credentialGovernance"]["components"][index][
+                "runtimeState"
+            ] = "retired_stopped"
+            cwd = self.process_root / str(pid) / "cwd"
+            cwd.unlink()
+            cwd.symlink_to(self.root)
+            self.stopped_ports.add(port)
+
+        report = S3.build_report(self.policy)
+        for index in (1, 3):
+            component = report["components"][index]
+            self.assertEqual(component["runtimeState"], "retired_stopped")
+            self.assertEqual(component["identityState"], "verified_stopped")
+            self.assertEqual(
+                component["commandLineCredentialState"],
+                "not_applicable_retired_stopped",
+            )
+            self.assertEqual(component["processes"], [])
+
+        self.assertFalse(
+            any("legacy_agent_sidecar:" in item for item in report["gate"]["reasons"])
+        )
+        self.assertFalse(
+            any("legacy_p1_chat_sidecar:" in item for item in report["gate"]["reasons"])
+        )
+
+    def test_retired_component_fails_closed_when_listener_or_process_remains(self):
+        component = self.policy["credentialGovernance"]["components"][1]
+        component["runtimeState"] = "retired_stopped"
+
+        report = S3.build_report(self.policy)
+
+        self.assertIn(
+            "legacy_agent_sidecar:retired_process_present",
+            report["gate"]["reasons"],
+        )
+        self.assertIn(
+            "legacy_agent_sidecar:retired_listener_present",
+            report["gate"]["reasons"],
+        )
 
     def test_reports_safe_surface_and_fails_closed_for_unbound_interactive_agent(self):
         report = S3.build_report(self.policy)

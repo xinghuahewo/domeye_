@@ -7,6 +7,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from flask import Blueprint
+from flask_restful import Api
+
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
@@ -179,6 +182,77 @@ class CountryOutageP2S1InvestigationApiTest(unittest.TestCase):
         )
         cls.environment.start()
         cls.app = create_app("testing")
+        blueprint = Blueprint("legacy_country_outage_investigation_test", __name__)
+        test_api = Api(blueprint)
+        test_api.add_resource(
+            api.CountryOutageInvestigationCollectionResource,
+            "/country-outage/investigations",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationResource,
+            "/country-outage/investigations/<investigation_id>",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationStartResource,
+            "/country-outage/investigations/<investigation_id>/start",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationCancelResource,
+            "/country-outage/investigations/<investigation_id>/cancel",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationNodeCancelResource,
+            "/country-outage/investigations/<investigation_id>/nodes/<node_id>/cancel",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationNodeRerunResource,
+            "/country-outage/investigations/<investigation_id>/nodes/<node_id>/reruns",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationTurnCollectionResource,
+            "/country-outage/investigations/<investigation_id>/turns",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationTurnResource,
+            (
+                "/country-outage/investigations/<investigation_id>/turns/"
+                "<turn_id>/revisions/<int:turn_revision>"
+            ),
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationResultSetResource,
+            (
+                "/country-outage/investigations/<investigation_id>/result-sets/"
+                "<result_set_id>/revisions/<int:result_set_revision>"
+            ),
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationEvidenceGraphResource,
+            (
+                "/country-outage/investigations/<investigation_id>/"
+                "evidence-graphs/<int:graph_revision>"
+            ),
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationReceiptCollectionResource,
+            "/country-outage/investigations/<investigation_id>/receipts",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationExportCollectionResource,
+            "/country-outage/investigations/<investigation_id>/exports",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationExportResource,
+            "/country-outage/investigations/<investigation_id>/exports/<export_id>",
+        )
+        test_api.add_resource(
+            api.CountryOutageInvestigationExportArtifactResource,
+            (
+                "/country-outage/investigations/<investigation_id>/exports/"
+                "<export_id>/artifact"
+            ),
+        )
+        cls.app.register_blueprint(blueprint, url_prefix="/api/v2")
 
     @classmethod
     def tearDownClass(cls):
@@ -385,7 +459,7 @@ class CountryOutageP2S1InvestigationApiTest(unittest.TestCase):
         self.assertNotIn("forged_claim", payload["nodes"][0])
         self.assertEqual(payload["nodes"][0]["payload_digest"], "c" * 64)
 
-    def test_openapi_w5_success_contracts_are_closed_and_typed(self):
+    def test_frozen_w5_schemas_remain_closed_but_public_paths_are_retired(self):
         contract = json.loads(
             (BACKEND_ROOT.parent / "contracts" / "openapi.json").read_text(
                 encoding="utf-8"
@@ -462,12 +536,12 @@ class CountryOutageP2S1InvestigationApiTest(unittest.TestCase):
             "#/components/schemas/CountryOutageInvestigationReceipt",
         )
 
-        artifact_json = contract["paths"][
-            "/api/v2/country-outage/investigations/{investigation_id}/exports/{export_id}/artifact"
-        ]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
-        self.assertEqual(
-            artifact_json["items"]["$ref"],
-            "#/components/schemas/CountryOutageInvestigationResultSetMember",
+        self.assertFalse(
+            any(
+                path.startswith("/api/v2/country-outage/investigations")
+                for path in contract["paths"]
+            ),
+            "冻结 Legacy schema 可以保留，但正式 OpenAPI 不得继续公开 W5 路由",
         )
 
 

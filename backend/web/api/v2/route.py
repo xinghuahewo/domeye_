@@ -12,36 +12,11 @@ from .country_outages import (
     CountryOutageSeriesResource,
     CountryOutageTrendResource,
 )
-from .country_outage_agent_proxy import (
-    CountryOutageAgentAbortResource,
-    CountryOutageAgentArtifactResource,
-    CountryOutageAgentExternalEvidenceCapabilityResource,
-    CountryOutageAgentExternalAppendixArtifactResource,
-    CountryOutageAgentEventResource,
-    CountryOutageAgentQuestionResource,
-    CountryOutageAgentReportCollectionResource,
-)
 from .country_outage_chat_proxy import (
     CountryOutageChatCancelResource,
     CountryOutageChatConversationCollectionResource,
     CountryOutageChatConversationResource,
     CountryOutageChatTurnCollectionResource,
-)
-from .country_outage_investigations import (
-    CountryOutageInvestigationCancelResource,
-    CountryOutageInvestigationCollectionResource,
-    CountryOutageInvestigationEvidenceGraphResource,
-    CountryOutageInvestigationExportArtifactResource,
-    CountryOutageInvestigationExportCollectionResource,
-    CountryOutageInvestigationExportResource,
-    CountryOutageInvestigationNodeCancelResource,
-    CountryOutageInvestigationNodeRerunResource,
-    CountryOutageInvestigationReceiptCollectionResource,
-    CountryOutageInvestigationResource,
-    CountryOutageInvestigationResultSetResource,
-    CountryOutageInvestigationStartResource,
-    CountryOutageInvestigationTurnCollectionResource,
-    CountryOutageInvestigationTurnResource,
 )
 
 
@@ -74,37 +49,6 @@ api.add_resource(
     "/country-outages/<incident_id>/trend",
 )
 api.add_resource(
-    CountryOutageAgentExternalEvidenceCapabilityResource,
-    "/country-outage/capabilities/external-evidence",
-)
-api.add_resource(
-    CountryOutageAgentReportCollectionResource,
-    "/country-outage/reports",
-)
-api.add_resource(
-    CountryOutageAgentEventResource,
-    "/country-outage/reports/<report_id>/events",
-)
-api.add_resource(
-    CountryOutageAgentQuestionResource,
-    "/country-outage/reports/<report_id>/questions",
-)
-api.add_resource(
-    CountryOutageAgentAbortResource,
-    "/country-outage/runs/<run_id>/abort",
-)
-api.add_resource(
-    CountryOutageAgentArtifactResource,
-    "/country-outage/reports/<report_id>/artifacts/<artifact_format>",
-)
-api.add_resource(
-    CountryOutageAgentExternalAppendixArtifactResource,
-    (
-        "/country-outage/reports/<report_id>/questions/<question_id>/"
-        "artifacts/external-appendix"
-    ),
-)
-api.add_resource(
     CountryOutageChatConversationCollectionResource,
     "/country-outage/chat/conversations",
 )
@@ -121,73 +65,5 @@ api.add_resource(
     (
         "/country-outage/chat/conversations/<conversation_id>/turns/"
         "<turn_id>/cancel"
-    ),
-)
-api.add_resource(
-    CountryOutageInvestigationCollectionResource,
-    "/country-outage/investigations",
-)
-api.add_resource(
-    CountryOutageInvestigationResource,
-    "/country-outage/investigations/<investigation_id>",
-)
-api.add_resource(
-    CountryOutageInvestigationStartResource,
-    "/country-outage/investigations/<investigation_id>/start",
-)
-api.add_resource(
-    CountryOutageInvestigationCancelResource,
-    "/country-outage/investigations/<investigation_id>/cancel",
-)
-api.add_resource(
-    CountryOutageInvestigationNodeCancelResource,
-    "/country-outage/investigations/<investigation_id>/nodes/<node_id>/cancel",
-)
-api.add_resource(
-    CountryOutageInvestigationNodeRerunResource,
-    "/country-outage/investigations/<investigation_id>/nodes/<node_id>/reruns",
-)
-api.add_resource(
-    CountryOutageInvestigationTurnCollectionResource,
-    "/country-outage/investigations/<investigation_id>/turns",
-)
-api.add_resource(
-    CountryOutageInvestigationTurnResource,
-    (
-        "/country-outage/investigations/<investigation_id>/turns/"
-        "<turn_id>/revisions/<int:turn_revision>"
-    ),
-)
-api.add_resource(
-    CountryOutageInvestigationResultSetResource,
-    (
-        "/country-outage/investigations/<investigation_id>/result-sets/"
-        "<result_set_id>/revisions/<int:result_set_revision>"
-    ),
-)
-api.add_resource(
-    CountryOutageInvestigationEvidenceGraphResource,
-    (
-        "/country-outage/investigations/<investigation_id>/"
-        "evidence-graphs/<int:graph_revision>"
-    ),
-)
-api.add_resource(
-    CountryOutageInvestigationReceiptCollectionResource,
-    "/country-outage/investigations/<investigation_id>/receipts",
-)
-api.add_resource(
-    CountryOutageInvestigationExportCollectionResource,
-    "/country-outage/investigations/<investigation_id>/exports",
-)
-api.add_resource(
-    CountryOutageInvestigationExportResource,
-    "/country-outage/investigations/<investigation_id>/exports/<export_id>",
-)
-api.add_resource(
-    CountryOutageInvestigationExportArtifactResource,
-    (
-        "/country-outage/investigations/<investigation_id>/exports/"
-        "<export_id>/artifact"
     ),
 )

@@ -4,6 +4,8 @@ import json
 
 import pytest
 import requests
+from flask import Blueprint
+from flask_restful import Api
 
 from web.api.v2 import country_outage_agent_proxy as proxy
 from web.country_outage_agent_identity import (
@@ -33,6 +35,45 @@ def proxy_environment(monkeypatch):
     monkeypatch.delenv(
         "COUNTRY_OUTAGE_AGENT_ACCEPTANCE_SCOPE", raising=False
     )
+
+
+@pytest.fixture(autouse=True)
+def legacy_proxy_routes(app):
+    """旧代理仅保留模块级回归测试，不进入正式 API 蓝图。"""
+    blueprint = Blueprint("legacy_country_outage_agent_test", __name__)
+    api = Api(blueprint)
+    api.add_resource(
+        proxy.CountryOutageAgentExternalEvidenceCapabilityResource,
+        "/country-outage/capabilities/external-evidence",
+    )
+    api.add_resource(
+        proxy.CountryOutageAgentReportCollectionResource,
+        "/country-outage/reports",
+    )
+    api.add_resource(
+        proxy.CountryOutageAgentEventResource,
+        "/country-outage/reports/<report_id>/events",
+    )
+    api.add_resource(
+        proxy.CountryOutageAgentQuestionResource,
+        "/country-outage/reports/<report_id>/questions",
+    )
+    api.add_resource(
+        proxy.CountryOutageAgentAbortResource,
+        "/country-outage/runs/<run_id>/abort",
+    )
+    api.add_resource(
+        proxy.CountryOutageAgentArtifactResource,
+        "/country-outage/reports/<report_id>/artifacts/<artifact_format>",
+    )
+    api.add_resource(
+        proxy.CountryOutageAgentExternalAppendixArtifactResource,
+        (
+            "/country-outage/reports/<report_id>/questions/<question_id>/"
+            "artifacts/external-appendix"
+        ),
+    )
+    app.register_blueprint(blueprint, url_prefix="/api/v2")
 
 
 @pytest.fixture()

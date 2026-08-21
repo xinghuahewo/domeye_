@@ -592,6 +592,13 @@ for required_text in \
     'deployment/verify-release.mjs' \
     'promotion-receipt' \
     'http://127.0.0.1:28476' \
+    'legacy_agent_surfaces_retired:true' \
+    'require_port_closed 28474' \
+    'require_port_closed 28475' \
+    "require_screen_absent 'domeye_country_outage_agent'" \
+    "require_screen_absent 'domeye_country_outage_p1_chat'" \
+    '/api/v2/country-outage/reports' \
+    '/api/v2/country-outage/investigations/retired-surface-probe' \
     'answer_source == "renderer"' \
     'fallback_or_rejection_present == false' \
     'protected_runtime.database_changed == false'; do

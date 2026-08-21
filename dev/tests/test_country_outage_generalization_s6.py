@@ -155,6 +155,7 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "acceptance_record_sha256",
             "acceptance_replay_receipt_sha256",
             "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL",
+            "DOMEYE_COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONFIG_SHA256",
             "http://127.0.0.1:28476",
             "country-outage-interactive-agent.env",
             "readiness_identity_sha256",
@@ -171,6 +172,11 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
         for forbidden in (
             "COUNTRY_OUTAGE_P1_CHAT_SIDECAR_URL",
             "country-outage-p1-chat",
+            "country-outage-agent.env",
+            "DOMEYE_COUNTRY_OUTAGE_AGENT_CONFIG_SHA256",
+            "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE",
+            "COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID",
+            "28474",
             "28475",
             "/rebind",
             "serve-formal-p1",
@@ -694,6 +700,16 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "curl --disable --noproxy '*' --proto '=http' --max-redirs 0",
             governance,
         )
+        for required in (
+            "legacy_agent_surfaces_retired:true",
+            "require_port_closed 28474",
+            "require_port_closed 28475",
+            "require_screen_absent 'domeye_country_outage_agent'",
+            "require_screen_absent 'domeye_country_outage_p1_chat'",
+            "/api/v2/country-outage/reports",
+            "/api/v2/country-outage/investigations/retired-surface-probe",
+        ):
+            self.assertIn(required, governance)
         self.assertNotIn("fallback_route", combined)
         self.assertNotIn("route_selector", combined)
 

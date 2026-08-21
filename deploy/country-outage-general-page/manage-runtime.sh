@@ -8,7 +8,6 @@ readonly RUNTIME_ROOT="${DOMEYE_COUNTRY_OUTAGE_RUNTIME_ROOT_OVERRIDE:-${DEFAULT_
 readonly MODE="${DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE:-production}"
 readonly DATABASE_CONFIG='/home/bgpdata/Domeye-Core-data/config/database.env'
 readonly DATABASE_STATE='/home/bgpdata/Domeye-Core-dev-data/state.json'
-readonly AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-agent.env'
 readonly INTERACTIVE_AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-interactive-agent.env'
 readonly INTERACTIVE_AGENT_RUNTIME_ROOT='/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent'
 readonly INTERACTIVE_AGENT_RELEASE_ROOT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/releases"
@@ -559,21 +558,14 @@ validate_runtime() {
         }
     fi
     if ! require_secure_config "${DATABASE_CONFIG}" \
-        || ! require_secure_config "${AGENT_CONFIG}" \
         || ! require_secure_config "${INTERACTIVE_AGENT_CONFIG}"; then
         return 1
     fi
-    local report_agent_url interactive_agent_url
-    if ! report_agent_url="$(read_config_value \
-        "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
-        || ! interactive_agent_url="$(read_config_value \
+    local interactive_agent_url
+    if ! interactive_agent_url="$(read_config_value \
             "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)"; then
         return 1
     fi
-    [[ "${report_agent_url}" == 'http://127.0.0.1:28474' ]] || {
-        error '报告 Agent 仅允许保留在固定 127.0.0.1:28474，不得成为聊天回退'
-        return 1
-    }
     [[ "${interactive_agent_url}" == 'http://127.0.0.1:28476' ]] || {
         error 'Interactive Agent Sidecar URL 必须固定为 127.0.0.1:28476'
         return 1
@@ -611,9 +603,10 @@ release_id() {
 
 session_process() {
     local session="$1"
-    local expected_release expected_agent_config_sha
+    local expected_release expected_interactive_config_sha
     if ! expected_release="$(release_id)" \
-        || ! expected_agent_config_sha="$(sha256_file "${AGENT_CONFIG}")"; then
+        || ! expected_interactive_config_sha="$(sha256_file \
+            "${INTERACTIVE_AGENT_CONFIG}")"; then
         return 1
     fi
     local root_pid="${session%%.*}"
@@ -626,18 +619,16 @@ session_process() {
                 -v release="${expected_release}" \
                 -v mode="${RUNTIME_MODE}" \
                 -v port="${API_PORT}" \
-                -v report_agent_url="http://127.0.0.1:28474" \
                 -v interactive_agent_url="http://127.0.0.1:28476" \
-                -v agent_config_sha="${expected_agent_config_sha}" '
+                -v interactive_config_sha="${expected_interactive_config_sha}" '
                     $1 == "DOMEYE_P0_PRODUCTION_RELEASE_ID" && $2 == release { a=1 }
                     $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" && $2 == mode { b=1 }
                     $1 == "PORT" && $2 == port { c=1 }
                     $1 == "DOMEYE_P0_RUNTIME_MODE" && $2 == mode { d=1 }
-                    $1 == "COUNTRY_OUTAGE_AGENT_URL" && $2 == report_agent_url { e=1 }
-                    $1 == "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL" && $2 == interactive_agent_url { f=1 }
-                    $1 == "DOMEYE_COUNTRY_OUTAGE_AGENT_CONFIG_SHA256" && $2 == agent_config_sha { g=1 }
+                    $1 == "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL" && $2 == interactive_agent_url { e=1 }
+                    $1 == "DOMEYE_COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONFIG_SHA256" && $2 == interactive_config_sha { f=1 }
                     END {
-                        exit(a && b && c && d && e && f && g ? 0 : 1)
+                        exit(a && b && c && d && e && f ? 0 : 1)
                     }
                 '; then
             printf '%s\n' "${pid}"
@@ -801,8 +792,7 @@ serve_runtime() {
         return 1
     fi
     local db_name db_port db_user db_password secret_key
-    local agent_url agent_token agent_identity agent_user agent_config_sha
-    local interactive_agent_url interactive_agent_token
+    local interactive_agent_url interactive_agent_token interactive_agent_config_sha
     if ! db_name="$(read_config_value \
         "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)" \
         || ! db_user="$(read_config_value \
@@ -811,19 +801,12 @@ serve_runtime() {
             "${DATABASE_CONFIG}" DOMEYE_CORE_DB_READER_PASSWORD)" \
         || ! secret_key="$(read_config_value \
             "${DATABASE_CONFIG}" DOMEYE_CORE_SECRET_KEY)" \
-        || ! agent_url="$(read_config_value \
-            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
-        || ! agent_token="$(read_config_value \
-            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)" \
-        || ! agent_identity="$(read_config_value \
-            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_IDENTITY_MODE)" \
-        || ! agent_user="$(read_config_value \
-            "${AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID)" \
-        || ! agent_config_sha="$(sha256_file "${AGENT_CONFIG}")" \
         || ! interactive_agent_url="$(read_config_value \
             "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
         || ! interactive_agent_token="$(read_config_value \
-            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)"; then
+            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)" \
+        || ! interactive_agent_config_sha="$(sha256_file \
+            "${INTERACTIVE_AGENT_CONFIG}")"; then
         error '无法读取 Backend 固定运行配置'
         return 1
     fi
@@ -835,10 +818,6 @@ serve_runtime() {
     fi
     [[ "${interactive_agent_url}" == 'http://127.0.0.1:28476' ]] || {
         error 'Interactive Agent Sidecar URL 必须固定为 127.0.0.1:28476'
-        return 1
-    }
-    [[ "${interactive_agent_token}" == "${agent_token}" ]] || {
-        error 'Interactive Agent 与现有 Agent 内部共享 Token 不一致'
         return 1
     }
     local selected_release log_root general_read_model
@@ -905,12 +884,9 @@ serve_runtime() {
             DOMEYE_DATA_LAYER_224_310_SELECTION="${RUNTIME_ROOT}/data-layer/PRODUCTION-SELECTION.json" \
             DOMEYE_COUNTRY_OUTAGE_REGISTRY="${RUNTIME_ROOT}/country-outage-registry.json" \
             DOMEYE_COUNTRY_OUTAGE_GENERAL_READ_MODEL="${general_read_model}" \
-            COUNTRY_OUTAGE_AGENT_URL="${agent_url}" \
-            COUNTRY_OUTAGE_AGENT_SHARED_TOKEN="${agent_token}" \
-            COUNTRY_OUTAGE_AGENT_IDENTITY_MODE="${agent_identity}" \
-            COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID="${agent_user}" \
+            COUNTRY_OUTAGE_AGENT_SHARED_TOKEN="${interactive_agent_token}" \
             COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL="${interactive_agent_url}" \
-            DOMEYE_COUNTRY_OUTAGE_AGENT_CONFIG_SHA256="${agent_config_sha}" \
+            DOMEYE_COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONFIG_SHA256="${interactive_agent_config_sha}" \
             PYTHONUNBUFFERED=1 \
             PYTHONDONTWRITEBYTECODE=1 \
             VIRTUAL_ENV="${RUNTIME_ROOT}/venv" \

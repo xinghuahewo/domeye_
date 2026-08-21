@@ -169,6 +169,11 @@ def validate_policy(policy: dict[str, Any]) -> None:
             raise CredentialSurfaceError(f"components[{index}].requiredIdentitySignals 不得重复")
         if "listener_port" in signals and port is None:
             raise CredentialSurfaceError(f"components[{index}] 要求 listener_port 但未提供端口")
+        runtime_state = item.get("runtimeState", "active")
+        if runtime_state not in {"active", "retired_stopped"}:
+            raise CredentialSurfaceError(
+                f"components[{index}].runtimeState 必须为 active 或 retired_stopped"
+            )
         references = item.get("configFileIds")
         if not isinstance(references, list) or not references or any(reference not in file_ids for reference in references):
             raise CredentialSurfaceError(f"components[{index}].configFileIds 非法")
@@ -346,32 +351,64 @@ def component_report(
     no_assignment_arguments = bool(command_line_complete and not any(item.get("assignmentStyleArgument") for item in processes))
     referenced_configs = {identifier: config_observations[identifier] for identifier in component["configFileIds"]}
     config_complete = all(item["compliant"] for item in referenced_configs.values())
+    runtime_state = component.get("runtimeState", "active")
     blockers: list[str] = []
     if not release.get("valid"):
         blockers.append("active_release_invalid")
     if listener and not listener["coverageComplete"]:
         blockers.append("listener_inspection_incomplete")
-    if not identity_complete:
-        blockers.append("process_identity_not_verified")
-    if not command_line_complete:
-        blockers.append("command_line_not_inspectable")
-    if command_line_complete and not no_credential_like_arguments:
-        blockers.append("credential_like_command_line_argument_detected")
-    if command_line_complete and not no_assignment_arguments:
-        blockers.append("assignment_style_command_line_argument_detected")
+    if runtime_state == "retired_stopped":
+        retired_stopped = bool(
+            release.get("valid")
+            and (listener is None or listener["coverageComplete"])
+            and not observed_pids
+        )
+        if observed_pids:
+            blockers.append("retired_process_present")
+        if listener and listener["pids"]:
+            blockers.append("retired_listener_present")
+    else:
+        retired_stopped = False
+        if not identity_complete:
+            blockers.append("process_identity_not_verified")
+        if not command_line_complete:
+            blockers.append("command_line_not_inspectable")
+        if command_line_complete and not no_credential_like_arguments:
+            blockers.append("credential_like_command_line_argument_detected")
+        if command_line_complete and not no_assignment_arguments:
+            blockers.append("assignment_style_command_line_argument_detected")
     if not config_complete:
         blockers.append("root_only_config_not_verified")
     return (
         {
             "name": component["name"],
+            "runtimeState": runtime_state,
             "activeRelease": release,
             "listener": listener,
             "referencedConfigFiles": referenced_configs,
             "processes": processes,
             "identityByProcess": identity_by_process,
-            "identityState": "verified" if identity_complete else "not_verified",
-            "commandLineCredentialState": "verified_no_credential_like_arguments" if no_credential_like_arguments else "not_verified",
-            "commandLineAssignmentState": "verified_no_assignment_style_arguments" if no_assignment_arguments else "not_verified",
+            "identityState": (
+                "verified_stopped"
+                if retired_stopped
+                else "verified"
+                if identity_complete
+                else "not_verified"
+            ),
+            "commandLineCredentialState": (
+                "not_applicable_retired_stopped"
+                if retired_stopped
+                else "verified_no_credential_like_arguments"
+                if no_credential_like_arguments
+                else "not_verified"
+            ),
+            "commandLineAssignmentState": (
+                "not_applicable_retired_stopped"
+                if retired_stopped
+                else "verified_no_assignment_style_arguments"
+                if no_assignment_arguments
+                else "not_verified"
+            ),
             "configurationState": "root_only_verified" if config_complete else "not_verified",
         },
         blockers,

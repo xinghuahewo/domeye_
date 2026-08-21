@@ -76,7 +76,10 @@
     {
       "name": "legacy_agent_sidecar",
       "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/current",
-      "allowedTargetPrefix": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases"
+      "allowedTargetPrefix": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases",
+      "runtimeState": "retired_stopped",
+      "routingState": "retired_unrouted",
+      "governanceMode": "read_only"
     },
     {
       "name": "interactive_agent_sidecar",
@@ -87,7 +90,8 @@
       "name": "legacy_p1_chat_sidecar",
       "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/current",
       "allowedTargetPrefix": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases",
-      "routingState": "retained_not_routed",
+      "runtimeState": "retired_stopped",
+      "routingState": "retired_unrouted",
       "governanceMode": "read_only"
     }
   ],
@@ -102,7 +106,10 @@
     },
     {
       "name": "legacy_agent_releases",
-      "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases"
+      "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases",
+      "runtimeState": "retired_stopped",
+      "routingState": "retired_unrouted",
+      "governanceMode": "read_only"
     },
     {
       "name": "interactive_agent_releases",
@@ -111,7 +118,8 @@
     {
       "name": "legacy_p1_chat_releases",
       "path": "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/releases",
-      "routingState": "retained_not_routed",
+      "runtimeState": "retired_stopped",
+      "routingState": "retired_unrouted",
       "governanceMode": "read_only"
     }
   ],
@@ -158,7 +166,10 @@
         "rollbackStatePaths": [
           "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/state/active.json",
           "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/state/rollback.json"
-        ]
+        ],
+        "runtimeState": "retired_stopped",
+        "routingState": "retired_unrouted",
+        "governanceMode": "read_only"
       },
       {
         "name": "interactive_agent_sidecar",
@@ -177,7 +188,8 @@
           "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/state/active.json",
           "/home/bgpdata/Domeye-Core-runtime/country-outage-p1-chat/state/rollback.json"
         ],
-        "routingState": "retained_not_routed",
+        "runtimeState": "retired_stopped",
+        "routingState": "retired_unrouted",
         "governanceMode": "read_only"
       }
     ],
@@ -268,7 +280,6 @@
         "requiredIdentitySignals": ["cwd_or_executable"],
         "configFileIds": [
           "backend_database_env",
-          "country_outage_agent_env",
           "country_outage_interactive_agent_env"
         ]
       },
@@ -278,7 +289,10 @@
         "releaseRoot": "/home/bgpdata/Domeye-Core-runtime/country-outage-agent/releases",
         "listenerPort": 28474,
         "requiredIdentitySignals": ["cwd_or_executable", "listener_port"],
-        "configFileIds": ["country_outage_agent_env", "country_outage_pi_auth"]
+        "configFileIds": ["country_outage_agent_env", "country_outage_pi_auth"],
+        "runtimeState": "retired_stopped",
+        "routingState": "retired_unrouted",
+        "governanceMode": "read_only"
       },
       {
         "name": "interactive_agent_sidecar",
@@ -295,7 +309,8 @@
         "listenerPort": 28475,
         "requiredIdentitySignals": ["listener_port", "active_release_argument"],
         "configFileIds": ["country_outage_p1_chat_env", "country_outage_pi_auth"],
-        "routingState": "retained_not_routed",
+        "runtimeState": "retired_stopped",
+        "routingState": "retired_unrouted",
         "governanceMode": "read_only"
       }
     ]
