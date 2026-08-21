@@ -9,6 +9,8 @@ readonly MODE="${DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE:-production}"
 readonly DATABASE_CONFIG='/home/bgpdata/Domeye-Core-data/config/database.env'
 readonly DATABASE_STATE='/home/bgpdata/Domeye-Core-dev-data/state.json'
 readonly INTERACTIVE_AGENT_CONFIG='/home/bgpdata/Domeye-Core-runtime/config/country-outage-interactive-agent.env'
+readonly INTERACTIVE_AGENT_IDENTITY_MODE='internal_fixed_history'
+readonly INTERACTIVE_AGENT_INTERNAL_USER_ID='domeye-first-slice-interactive-user-v1'
 readonly INTERACTIVE_AGENT_RUNTIME_ROOT='/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent'
 readonly INTERACTIVE_AGENT_RELEASE_ROOT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/releases"
 readonly INTERACTIVE_AGENT_CURRENT="${INTERACTIVE_AGENT_RUNTIME_ROOT}/current"
@@ -561,22 +563,13 @@ validate_runtime() {
         || ! require_secure_config "${INTERACTIVE_AGENT_CONFIG}"; then
         return 1
     fi
-    local interactive_agent_url interactive_identity_mode interactive_user_id
+    local interactive_agent_url
     if ! interactive_agent_url="$(read_config_value \
-            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
-        || ! interactive_identity_mode="$(read_config_value \
-            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE)" \
-        || ! interactive_user_id="$(read_config_value \
-            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID)"; then
+            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)"; then
         return 1
     fi
     [[ "${interactive_agent_url}" == 'http://127.0.0.1:28476' ]] || {
         error 'Interactive Agent Sidecar URL 必须固定为 127.0.0.1:28476'
-        return 1
-    }
-    [[ "${interactive_identity_mode}" == 'internal_fixed_history' \
-        && "${interactive_user_id}" == 'domeye-first-slice-interactive-user-v1' ]] || {
-        error 'Interactive Agent 新 Chat 固定身份配置漂移'
         return 1
     }
 }
@@ -630,8 +623,8 @@ session_process() {
                 -v port="${API_PORT}" \
                 -v interactive_agent_url="http://127.0.0.1:28476" \
                 -v interactive_config_sha="${expected_interactive_config_sha}" \
-                -v identity_mode="internal_fixed_history" \
-                -v internal_user="domeye-first-slice-interactive-user-v1" '
+                -v identity_mode="${INTERACTIVE_AGENT_IDENTITY_MODE}" \
+                -v internal_user="${INTERACTIVE_AGENT_INTERNAL_USER_ID}" '
                     $1 == "DOMEYE_P0_PRODUCTION_RELEASE_ID" && $2 == release { a=1 }
                     $1 == "DOMEYE_COUNTRY_OUTAGE_GENERAL_RUNTIME_MODE" && $2 == mode { b=1 }
                     $1 == "PORT" && $2 == port { c=1 }
@@ -806,7 +799,6 @@ serve_runtime() {
     fi
     local db_name db_port db_user db_password secret_key
     local interactive_agent_url interactive_agent_token interactive_agent_config_sha
-    local interactive_identity_mode interactive_user_id
     if ! db_name="$(read_config_value \
         "${DATABASE_CONFIG}" DOMEYE_CORE_DB_NAME)" \
         || ! db_user="$(read_config_value \
@@ -819,10 +811,6 @@ serve_runtime() {
             "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_URL)" \
         || ! interactive_agent_token="$(read_config_value \
             "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_AGENT_SHARED_TOKEN)" \
-        || ! interactive_identity_mode="$(read_config_value \
-            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE)" \
-        || ! interactive_user_id="$(read_config_value \
-            "${INTERACTIVE_AGENT_CONFIG}" COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID)" \
         || ! interactive_agent_config_sha="$(sha256_file \
             "${INTERACTIVE_AGENT_CONFIG}")"; then
         error '无法读取 Backend 固定运行配置'
@@ -836,11 +824,6 @@ serve_runtime() {
     fi
     [[ "${interactive_agent_url}" == 'http://127.0.0.1:28476' ]] || {
         error 'Interactive Agent Sidecar URL 必须固定为 127.0.0.1:28476'
-        return 1
-    }
-    [[ "${interactive_identity_mode}" == 'internal_fixed_history' \
-        && "${interactive_user_id}" == 'domeye-first-slice-interactive-user-v1' ]] || {
-        error 'Interactive Agent 新 Chat 固定身份配置漂移'
         return 1
     }
     local selected_release log_root general_read_model
@@ -909,8 +892,8 @@ serve_runtime() {
             DOMEYE_COUNTRY_OUTAGE_GENERAL_READ_MODEL="${general_read_model}" \
             COUNTRY_OUTAGE_AGENT_SHARED_TOKEN="${interactive_agent_token}" \
             COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL="${interactive_agent_url}" \
-            COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE="${interactive_identity_mode}" \
-            COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID="${interactive_user_id}" \
+            COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE="${INTERACTIVE_AGENT_IDENTITY_MODE}" \
+            COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID="${INTERACTIVE_AGENT_INTERNAL_USER_ID}" \
             DOMEYE_COUNTRY_OUTAGE_INTERACTIVE_AGENT_CONFIG_SHA256="${interactive_agent_config_sha}" \
             PYTHONUNBUFFERED=1 \
             PYTHONDONTWRITEBYTECODE=1 \
