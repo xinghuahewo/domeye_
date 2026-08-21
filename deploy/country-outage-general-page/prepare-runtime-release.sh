@@ -358,7 +358,16 @@ verify_interactive_agent_binding() {
           and .live_verification.internal_record_base_path == "/country-outage/chat/internal"
           and .live_verification.public_conversation_schema_version == "domeye_interactive_agent_conversation_v2"
           and .live_verification.internal_record_schema_version == "domeye_interactive_agent_turn_internal_record_v1"
-          and .rollback == {mode:"fail_closed",previous_release_id:null}
+          and (
+            .rollback == {mode:"fail_closed",previous_release_id:null}
+            or (
+              .rollback.mode == "same_schema_only"
+              and (.rollback.previous_release_id | type == "string")
+              and (.rollback.previous_release_id
+                | test("^[0-9]{8}T[0-9]{6}Z-country-outage-interactive-agent-[a-z0-9][a-z0-9-]{0,31}$"))
+              and .rollback.previous_release_id != $release_id
+            )
+          )
         ' "${interactive_agent_release_manifest}" >/dev/null; then
         error 'General Source 与 Interactive Agent 权威 Source/Candidate 身份不一致'
         return 1

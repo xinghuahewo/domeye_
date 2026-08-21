@@ -579,6 +579,37 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
         self.assertIn(".production_verified = false", text)
         self.assertIn(".was_production_verified = true", text)
 
+    def test_interactive_successor_release_preserves_bounded_rollback_contract(
+        self,
+    ) -> None:
+        prepare = script("prepare-runtime-release.sh")
+        normalization = (
+            ROOT / "deploy/governance/check-release-normalization.sh"
+        ).read_text(encoding="utf-8")
+        release_id_pattern = (
+            "^[0-9]{8}T[0-9]{6}Z-country-outage-interactive-agent-"
+            "[a-z0-9][a-z0-9-]{0,31}$"
+        )
+
+        for text in (prepare, normalization):
+            self.assertIn(
+                '.rollback == {mode:"fail_closed",previous_release_id:null}',
+                text,
+            )
+            self.assertIn('.rollback.mode == "same_schema_only"', text)
+            self.assertIn(
+                '(.rollback.previous_release_id | type == "string")', text
+            )
+            self.assertIn(release_id_pattern, text)
+            self.assertIn(
+                ".rollback.previous_release_id != $release_id", text
+            )
+
+        self.assertEqual(prepare.count('mode:"fail_closed"'), 2)
+        self.assertEqual(prepare.count('"same_schema_only"'), 1)
+        self.assertGreaterEqual(normalization.count('mode:"fail_closed"'), 5)
+        self.assertEqual(normalization.count('"same_schema_only"'), 2)
+
     def test_fail_closed_receipt_binds_and_preserves_pre_rollback_v2_evidence(
         self,
     ) -> None:

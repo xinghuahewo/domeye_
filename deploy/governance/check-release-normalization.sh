@@ -819,7 +819,16 @@ jq -e --arg release_id "${INTERACTIVE_RELEASE}" \
   and .live_verification.internal_record_schema_version
     == "domeye_interactive_agent_turn_internal_record_v1"
   and ((.live_verification.oracle_digest // "") | test("^sha256:[a-f0-9]{64}$"))
-  and .rollback == {mode:"fail_closed",previous_release_id:null}
+  and (
+    .rollback == {mode:"fail_closed",previous_release_id:null}
+    or (
+      .rollback.mode == "same_schema_only"
+      and (.rollback.previous_release_id | type == "string")
+      and (.rollback.previous_release_id
+        | test("^[0-9]{8}T[0-9]{6}Z-country-outage-interactive-agent-[a-z0-9][a-z0-9-]{0,31}$"))
+      and .rollback.previous_release_id != $release_id
+    )
+  )
 ' "${INTERACTIVE_MANIFEST}" >/dev/null \
     || die 'Interactive Agent release manifest 未与 Source/Candidate/Acceptance/28476 绑定'
 jq -e --arg release_id "${INTERACTIVE_RELEASE}" \
@@ -837,7 +846,16 @@ jq -e --arg release_id "${INTERACTIVE_RELEASE}" \
   and .runtime.host == "127.0.0.1"
   and .runtime.port == 28476
   and .runtime.base_path == "/country-outage/chat"
-  and .rollback == {mode:"fail_closed",previous_release_id:null}
+  and (
+    .rollback == {mode:"fail_closed",previous_release_id:null}
+    or (
+      .rollback.mode == "same_schema_only"
+      and (.rollback.previous_release_id | type == "string")
+      and (.rollback.previous_release_id
+        | test("^[0-9]{8}T[0-9]{6}Z-country-outage-interactive-agent-[a-z0-9][a-z0-9-]{0,31}$"))
+      and .rollback.previous_release_id != $release_id
+    )
+  )
 ' "${INTERACTIVE_ACTIVE_PATH}" >/dev/null \
     || die 'Interactive Agent active 回执未与 release/Candidate/28476 绑定'
 jq -e '
