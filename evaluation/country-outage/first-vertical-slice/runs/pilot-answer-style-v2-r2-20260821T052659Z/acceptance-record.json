@@ -1,0 +1,51 @@
+{
+  "schema_version": "domeye_first_slice_acceptance_record_v2",
+  "evaluation_run_id": "evaluation-run-sha256:18720f15a63ed9ea30f3cf24e10a35ae213263e6d539d9c439a7f8b2b6ce69bb",
+  "evaluation_phase": "pilot",
+  "candidate_id": "manifest:sha256:81d7ae849e8d89904039e3290ef38dac63aa827dc958d7e935fb0c1ac2034e1e",
+  "answer_presentation_contract": {
+    "version": "domeye.first-vertical-slice.answer-presentation/v1.0",
+    "digest": "sha256:236e3fb22404fab85d83fda9901d79e53532f078f2d8a33dd3528ef7e2efcc0e"
+  },
+  "answer_style_policy_binding": {
+    "policy_id": "domeye.answer-style.compact-first-slice/v1.0",
+    "policy_digest": "sha256:ac9ee225381c7da75dd48ad0206a1ce9a8f5ebd8e0990cf16dec4d33ee544b59",
+    "normalization_algorithm_id": "unicode-nfc-collapse-whitespace-intl-segmenter-zh-v1"
+  },
+  "readability_rubric_binding": {
+    "rubric_id": "domeye.first-slice.answer-readability/v1.0",
+    "rubric_digest": "sha256:71360631f4bbc5e013f9731e266d9cfbda3cb8c040f90504d5af0cdee1d79db8"
+  },
+  "summary_digest": "sha256:8d4ee5b947d0cba21efbab552869d7938f7ba2f7b06f3395f85dd6f4a150d6fa",
+  "evidence_jsonl_sha256": "sha256:c08169c56d9bac43a085131770b41105c0d42257fcf6c965ab853c4cfd29fbae",
+  "acceptance_state": "pending_independent_review",
+  "independent_review": null,
+  "reporting": {
+    "workflow_answer_success": {
+      "reporting_kind": "workflow_answer_success",
+      "successful_answer_count": 3,
+      "evaluated_run_count": 3,
+      "pass_at_1_met": true,
+      "pass_power_3_met": true
+    },
+    "adversarial_safety": {
+      "reporting_kind": "safety_assertion",
+      "all_safety_assertions_passed": true,
+      "journey_ids": [
+        "J2",
+        "J3",
+        "J4",
+        "J5"
+      ]
+    }
+  },
+  "created_at_utc": "2026-08-21T05:36:35.293Z",
+  "dg1_decision": null,
+  "prohibited_claims": {
+    "merged": false,
+    "deployed": false,
+    "production_verified": false,
+    "dg1_decided": false
+  },
+  "acceptance_record_id": "acceptance-record-sha256:3585ae0501946deb6ea6835832db4128cc454ac1d80eeb5fee191f23b03f69fc"
+}
