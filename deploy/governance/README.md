@@ -208,33 +208,51 @@ root-only 回滚回执。安装或回滚均不能代替 S3 凭证迁移、S4/S5 
 ## S2 checkout 可恢复归一
 
 `normalize-server-checkout.py` 只接受固定的 `buptserver16`、
-`/home/bgpdata/Domeye-Core`、`/home/bgpdata/Domeye-Core-artifacts` 与公开 HTTPS
-GitHub remote。默认只读预检；只有明确给出 `--apply` 才会创建 archive、把原 checkout
-原子移动到 `Domeye-Core-artifacts/quarantine/checkouts/<operation-id>/`、clone 干净
-`main` 并写入 root-only 回执。
+`/home/bgpdata/Domeye-Core`、`/home/bgpdata/Domeye-Core-artifacts` 与官方 SSH
+`git@github.com:xinghuahewo/domeye_.git`。默认只读预检；只有明确给出 `--apply` 才会
+在 mutation 前执行无交互、严格主机密钥和有限超时的 SSH `ls-remote`，核对冻结的
+`main` 完整 SHA。该门通过后，脚本才创建 archive、把原 checkout 原子移动到
+`Domeye-Core-artifacts/quarantine/checkouts/<operation-id>/`、clone 干净 `main` 并写入
+root-only 回执。SSH 门失败时不会创建 quarantine、移动 source 或尝试 HTTPS。
+预检 Git 命令固定 `GIT_OPTIONAL_LOCKS=0`，不会为刷新 stat cache 改写 `.git/index`。
 
 该脚本会拒绝进程 cwd/exe/fd 引用、挂载、Git 锁、活动指针引用源码 checkout、跨文件
 系统隔离、SHA 漂移或带凭证的 remote。clone 或读回失败时会把原 checkout 恢复到原精确
 路径；它不修改 GitHub 账号凭证、运行指针、生产配置、服务或旧 Domeye。
 
-若服务器到公开 GitHub HTTPS 的无凭证连接已明确失败，可传入受管
+也可传入受管
 `--bundle-path /home/bgpdata/Domeye-Core-artifacts/incoming/<operation-id>.bundle`。bundle
-只能由本机从冻结的 GitHub `main` 生成并经 SSH 传入；脚本会 clone 该 bundle 后把新
-checkout 的 `origin` 固定为公开 HTTPS URL，读回 HEAD、`origin/main`、分支和 clean
-状态。bundle SHA-256 与原 checkout archive 一同保留在本次 quarantine 回执中。此替代
-不证明服务器已恢复 GitHub HTTPS 出站能力。
+只能由本机通过官方 SSH 冻结 GitHub `main` 后生成、记录 SHA-256 并经服务器 SSH 传入；
+脚本 clone 该 bundle 后把新 checkout 的 `origin` 固定为官方 SSH URL，读回 HEAD、
+`origin/main`、分支和 clean 状态。该路径不访问 GitHub，是离线制品传输，不是 HTTPS
+fallback。bundle SHA-256 与原 checkout archive 一同保留在本次 quarantine 回执中。
+
+成功回执使用 `domeye.server-checkout-normalization/v2`，其 `repositoryAccess` 明确记录
+`official_ssh_first_v1` 策略、官方 origin、实际 acquisition、SSH 预检状态、是否发生
+GitHub 网络访问，以及 `httpsFallback.performed=false`。本脚本没有 HTTPS fallback CLI；
+若后续确需 HTTPS，必须由独立批准任务记录 SSH 失败的固定原因码、UTC、冻结 ref/SHA、
+批准范围、实际官方 URL 与回执摘要。禁止镜像、固定 IP、主机密钥或 TLS 绕过。
+联网 probe 和 clone 从非仓库目录运行，并屏蔽 repository/system/global Git 配置及环境
+注入，防止 `url.*.insteadOf` 把字面 SSH 改写为其他协议；checkout 还必须只有一个
+`origin`、一个官方 SSH fetch URL、没有独立 push URL，隔离配置后的有效 fetch/push URL
+也必须仍是同一官方 SSH。
 
 ## S2 后续 checkout 刷新
 
 首次归一后，GitHub `main` 可以继续前进；服务器 checkout 不得因此长期停留在旧 SHA。
-`refresh-server-checkout.py` 只允许在现有 checkout 为干净 `main`、唯一 remote 为固定公开
-HTTPS `origin`，且没有 cwd/exe/fd、挂载、Git 锁或活动指针引用时运行。它只接受本机从
-冻结 `main` 制作、先传至 `Domeye-Core-artifacts/incoming/<operation-id>.bundle` 的 bundle。
+`refresh-server-checkout.py` 只允许在现有 checkout 为干净 `main`、唯一 remote 为固定的
+官方 GitHub SSH `origin`，且没有 cwd/exe/fd、挂载、Git 锁或活动指针引用时运行。它只接受
+本机从官方 SSH 冻结 `main` 后制作、先经服务器 SSH 传至
+`Domeye-Core-artifacts/incoming/<operation-id>.bundle` 的 bundle。
 
 刷新时它保留输入 bundle，在 `.git/refs/domeye-governance/checkout-refresh/` 建立刷新前
 commit 的 rollback ref，导入 bundle、更新本地 `origin/main` 跟踪引用并硬重置到冻结目标。
 任一读回失败会把 checkout 与 `origin/main` 恢复到刷新前 SHA。该操作不接触运行 release、
-服务、旧 Domeye 或 GitHub 凭证，也不证明服务器具备 GitHub HTTPS 出站能力。
+服务、旧 Domeye 或 GitHub 凭证。它不访问 GitHub，也不自动尝试 HTTPS。成功回执使用
+`domeye.server-checkout-refresh/v2`，并在 `sourceBefore`、`sourceAfter` 和
+`repositoryAccess` 中绑定官方 SSH origin、本地不可变 bundle、网络访问为 false 及
+HTTPS fallback 为 false。对象导入固定使用 `git bundle unbundle`，不经过 transport URL
+解析，保证显式受管 bundle 路径不会被本地 URL rewrite 改写成网络地址。
 
 脚本必须先从已合入 `main` 的不可变提交运行，并由独立 S2 任务冻结 operation ID 与两个
 预期 SHA。生产服务器不安装该脚本；经审批后可通过标准输入运行，避免新增服务器脚本文件。

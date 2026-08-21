@@ -20,8 +20,12 @@ from typing import Any
 EXPECTED_HOST = "buptserver16"
 EXPECTED_SOURCE = Path("/home/bgpdata/Domeye-Core")
 EXPECTED_ARTIFACT_ROOT = Path("/home/bgpdata/Domeye-Core-artifacts")
-EXPECTED_REMOTE = "https://github.com/xinghuahewo/domeye_.git"
+EXPECTED_REMOTE = "git@github.com:xinghuahewo/domeye_.git"
 EXPECTED_BRANCH = "main"
+SSH_PROBE_TIMEOUT_SECONDS = 20
+GIT_SSH_COMMAND = "ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes"
+SCHEMA = "domeye.server-checkout-normalization/v2"
+REPOSITORY_ACCESS_POLICY = "official_ssh_first_v1"
 PROTECTED_ROOTS = (
     Path("/home/bgpdata/Domeye"),
     Path("/home/bgpdata/data"),
@@ -45,7 +49,13 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def run(arguments: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def run(
+    arguments: list[str],
+    cwd: Path | None = None,
+    environment: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    if environment is None and arguments and arguments[0] == "git":
+        environment = isolated_git_environment()
     return subprocess.run(
         arguments,
         cwd=cwd,
@@ -53,7 +63,37 @@ def run(arguments: list[str], cwd: Path | None = None) -> subprocess.CompletedPr
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        env=environment,
     )
+
+
+def isolated_git_environment(
+    ignore_repository_config: bool = False,
+) -> dict[str, str]:
+    environment = {
+        name: value for name, value in os.environ.items() if not name.startswith("GIT_")
+    }
+    environment.update(
+        {
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_SSH_COMMAND": GIT_SSH_COMMAND,
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+    )
+    if ignore_repository_config:
+        environment["GIT_CONFIG"] = os.devnull
+    return environment
+
+
+def trusted_non_repository_cwd() -> Path:
+    root = Path("/")
+    if (root / ".git").exists():
+        raise NormalizationError("受信 Git 工作目录意外包含仓库元数据")
+    return root
 
 
 def is_within(path: Path, root: Path) -> bool:
@@ -79,8 +119,8 @@ def validate_scope(host: str, source: Path, artifact_root: Path, remote: str) ->
         raise NormalizationError(f"只允许归一指定源码检出：{EXPECTED_SOURCE}")
     if canonical(artifact_root) != canonical(EXPECTED_ARTIFACT_ROOT):
         raise NormalizationError(f"只允许写入指定制品根：{EXPECTED_ARTIFACT_ROOT}")
-    if remote != EXPECTED_REMOTE or "@" in remote or "?" in remote or "#" in remote:
-        raise NormalizationError("只允许无凭证的固定公开 HTTPS GitHub remote")
+    if remote != EXPECTED_REMOTE:
+        raise NormalizationError("只允许固定的官方 GitHub SSH remote")
     for protected in PROTECTED_ROOTS:
         protected = canonical(protected)
         if is_within(canonical(source), protected) or is_within(canonical(artifact_root), protected):
@@ -92,6 +132,51 @@ def git_value(root: Path, *arguments: str) -> str:
     if completed.returncode != 0:
         raise NormalizationError(completed.stderr.strip() or f"git {' '.join(arguments)} 失败")
     return completed.stdout.strip()
+
+
+def git_lines_allow_absent(
+    root: Path, *arguments: str, environment: dict[str, str] | None = None
+) -> list[str]:
+    completed = run(["git", *arguments], cwd=root, environment=environment)
+    if completed.returncode not in {0, 1}:
+        raise NormalizationError(
+            completed.stderr.strip() or f"git {' '.join(arguments)} 失败"
+        )
+    return [line for line in completed.stdout.splitlines() if line]
+
+
+def validate_official_origin(source: Path) -> str:
+    remote_names = git_lines_allow_absent(source, "remote")
+    raw_fetch_urls = git_lines_allow_absent(
+        source, "config", "--local", "--get-all", "remote.origin.url"
+    )
+    raw_push_urls = git_lines_allow_absent(
+        source, "config", "--local", "--get-all", "remote.origin.pushurl"
+    )
+    isolated = isolated_git_environment()
+    effective_fetch_urls = git_lines_allow_absent(
+        source, "remote", "get-url", "--all", "origin", environment=isolated
+    )
+    effective_push_urls = git_lines_allow_absent(
+        source,
+        "remote",
+        "get-url",
+        "--push",
+        "--all",
+        "origin",
+        environment=isolated,
+    )
+    if (
+        remote_names != ["origin"]
+        or raw_fetch_urls != [EXPECTED_REMOTE]
+        or raw_push_urls
+        or effective_fetch_urls != [EXPECTED_REMOTE]
+        or effective_push_urls != [EXPECTED_REMOTE]
+    ):
+        raise NormalizationError(
+            "checkout remote 不是唯一且不可改写的官方 GitHub SSH origin"
+        )
+    return EXPECTED_REMOTE
 
 
 def git_snapshot(source: Path) -> dict[str, Any]:
@@ -275,21 +360,79 @@ def validate_bundle_path(operation_id: str, artifact_root: Path, bundle_path: Pa
     return bundle_path
 
 
+def ssh_failure_reason(stderr: str) -> str:
+    message = stderr.lower()
+    if "permission denied" in message or "publickey" in message:
+        return "authentication_failed"
+    if "host key verification failed" in message or "remote host identification has changed" in message:
+        return "host_key_verification_failed"
+    if "could not resolve hostname" in message or "name or service not known" in message:
+        return "dns_or_network_unavailable"
+    if "timed out" in message or "timeout" in message:
+        return "timeout"
+    if "connection refused" in message or "network is unreachable" in message or "no route to host" in message:
+        return "dns_or_network_unavailable"
+    return "transport_failed"
+
+
+def probe_official_ssh_main(
+    expected_main: str, timeout_seconds: int = SSH_PROBE_TIMEOUT_SECONDS
+) -> dict[str, str | None]:
+    reference = f"refs/heads/{EXPECTED_BRANCH}"
+    try:
+        completed = subprocess.run(
+            ["git", "ls-remote", "--exit-code", EXPECTED_REMOTE, reference],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout_seconds,
+            env=isolated_git_environment(ignore_repository_config=True),
+            cwd=trusted_non_repository_cwd(),
+        )
+    except subprocess.TimeoutExpired as error:
+        raise NormalizationError("官方 SSH 预检失败：timeout") from error
+    if completed.returncode != 0:
+        raise NormalizationError(
+            f"官方 SSH 预检失败：{ssh_failure_reason(completed.stderr)}"
+        )
+    heads = [
+        fields[0]
+        for line in completed.stdout.splitlines()
+        if len(fields := line.split()) == 2 and fields[1] == reference
+    ]
+    if heads != [expected_main]:
+        raise NormalizationError("官方 SSH 预检失败：main_identity_mismatch")
+    return {
+        "status": "passed",
+        "checkedAt": utc_now(),
+        "ref": reference,
+        "expectedCommit": expected_main,
+        "observedCommit": expected_main,
+        "reasonCode": None,
+    }
+
+
 def clone_clean_checkout(
     source: Path, expected_main: str, bundle_path: Path | None = None
 ) -> dict[str, Any]:
     clone_source = str(bundle_path) if bundle_path is not None else EXPECTED_REMOTE
+    clone_environment = isolated_git_environment(ignore_repository_config=True)
     completed = subprocess.run(
         ["git", "-c", "credential.helper=", "clone", "--branch", EXPECTED_BRANCH, "--single-branch", "--origin", "origin", clone_source, str(source)],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        env=clone_environment,
+        cwd=trusted_non_repository_cwd(),
     )
     if completed.returncode != 0:
-        origin = "本机 Git bundle" if bundle_path is not None else "公开 HTTPS"
-        raise NormalizationError(completed.stderr.strip() or f"{origin} clone 失败")
+        if bundle_path is not None:
+            raise NormalizationError("本机 Git bundle clone 失败")
+        raise NormalizationError(
+            f"官方 SSH clone 失败：{ssh_failure_reason(completed.stderr)}"
+        )
     if bundle_path is not None:
         remote_update = run(["git", "remote", "set-url", "origin", EXPECTED_REMOTE], cwd=source)
         if remote_update.returncode != 0:
@@ -297,7 +440,7 @@ def clone_clean_checkout(
     head = git_value(source, "rev-parse", "HEAD")
     origin_main = git_value(source, "rev-parse", "origin/main")
     branch = git_value(source, "branch", "--show-current")
-    remote = git_value(source, "remote", "get-url", "origin")
+    remote = validate_official_origin(source)
     status = git_value(source, "status", "--porcelain=v1", "-z")
     if head != expected_main or origin_main != expected_main or branch != EXPECTED_BRANCH or remote != EXPECTED_REMOTE or status:
         raise NormalizationError("新 checkout 身份或干净状态不满足冻结目标")
@@ -319,6 +462,9 @@ def normalize(
     if bundle_path is not None:
         bundle_path = validate_bundle_path(operation_id, artifact_root, bundle_path)
     before = preflight(source, artifact_root, expected_source_head)
+    authority_probe = (
+        probe_official_ssh_main(expected_main) if bundle_path is None else None
+    )
     operation_root = artifact_root / "quarantine" / "checkouts" / operation_id
     original = operation_root / "original-Domeye-Core"
     archive = operation_root / "original-Domeye-Core.tar.gz"
@@ -348,8 +494,9 @@ def normalize(
         if bundle_path is not None:
             retained_bundle = operation_root / "source-main.bundle"
             os.rename(bundle_path, retained_bundle)
+        acquisition = "local_immutable_git_bundle" if bundle_path is not None else "official_ssh"
         result = {
-            "schemaVersion": "domeye.server-checkout-normalization/v1",
+            "schemaVersion": SCHEMA,
             "operationId": operation_id,
             "completedAt": utc_now(),
             "host": socket.gethostname(),
@@ -362,11 +509,28 @@ def normalize(
             ),
             "quarantine": {"path": str(original), "state": "retained"},
             "newCheckout": after_checkout,
+            "repositoryAccess": {
+                "policy": REPOSITORY_ACCESS_POLICY,
+                "origin": EXPECTED_REMOTE,
+                "acquisition": acquisition,
+                "networkGitHubAccessPerformed": bundle_path is None,
+                "sshPreflight": authority_probe
+                if authority_probe is not None
+                else {
+                    "status": "not_required_bundle_input",
+                    "checkedAt": None,
+                    "ref": f"refs/heads/{EXPECTED_BRANCH}",
+                    "expectedCommit": expected_main,
+                    "observedCommit": None,
+                    "reasonCode": None,
+                },
+                "httpsFallback": {"performed": False, "receiptSha256": None},
+            },
             "activeLinksBefore": before["activeLinks"],
             "activeLinksAfter": after_links,
             "oldDomeyeTouched": False,
             "serverGitHubCredentialsChanged": False,
-            "checkoutAcquisition": "local_immutable_git_bundle" if bundle_path is not None else "public_https",
+            "checkoutAcquisition": acquisition,
             "productionSwitchPerformed": False,
         }
         write_json(receipt, result)
@@ -385,7 +549,7 @@ def normalize(
                     f"归一失败且自动恢复原路径失败：{rollback_error}"
                 ) from error
         if operation_root.exists() and not receipt.exists():
-            write_json(receipt, {"schemaVersion": "domeye.server-checkout-normalization/v1", "operationId": operation_id, "failedAt": utc_now(), "state": "failed_or_rolled_back"})
+            write_json(receipt, {"schemaVersion": SCHEMA, "operationId": operation_id, "failedAt": utc_now(), "state": "failed_or_rolled_back"})
         raise
 
 
@@ -394,7 +558,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--operation-id", required=True)
     parser.add_argument("--expected-source-head", required=True)
     parser.add_argument("--expected-main", required=True)
-    parser.add_argument("--bundle-path", type=Path, help="受管输入 Git bundle；省略时使用公开 HTTPS")
+    parser.add_argument("--bundle-path", type=Path, help="受管输入 Git bundle；省略时使用官方 SSH")
     parser.add_argument("--apply", action="store_true", help="执行归档、隔离、clone 与回执写入；默认只读预检")
     return parser.parse_args()
 
@@ -415,7 +579,7 @@ def main() -> int:
             )
         else:
             result = {
-                "schemaVersion": "domeye.server-checkout-normalization-preflight/v1",
+                "schemaVersion": "domeye.server-checkout-normalization-preflight/v2",
                 "operationId": arguments.operation_id,
                 "mode": "read_only",
                 "preflight": preflight(EXPECTED_SOURCE, EXPECTED_ARTIFACT_ROOT, arguments.expected_source_head),

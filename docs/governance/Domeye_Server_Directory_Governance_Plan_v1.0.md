@@ -76,28 +76,37 @@ GitHub `xinghuahewo/domeye_@main` 是源码权威。服务器 checkout、目录�
 
 执行顺序：
 
-1. 生成当前脏工作树的 Git 状态、文件清单、时间范围和 SHA-256；
-2. 创建只读、可恢复归档，并将摘要写入仓库外治理回执；
-3. 把脏 checkout 移入同文件系统 quarantine，观察期内不删除；
-4. 不修改服务器 GitHub 账号凭证，使用公开 HTTPS 建立干净 `main` checkout；
-5. 读回 `HEAD == origin/main`、分支、remote、clean=true 和治理 Hook 摘要；
-6. 任一步失败时恢复原精确路径，不触碰旧 `/home/bgpdata/Domeye`。
+1. 只读生成当前脏工作树的 Git 状态、文件清单、时间范围和 SHA-256；
+2. 不修改服务器 GitHub 账号凭证；任何 mutation 前以官方 SSH 受限读测核对冻结
+   `main`，失败时零写入停止；
+3. 创建只读、可恢复归档，并将摘要写入仓库外治理回执；
+4. 把脏 checkout 移入同文件系统 quarantine，观察期内不删除；
+5. 使用官方 SSH 建立干净 `main` checkout；
+6. 读回 `HEAD == origin/main`、分支、remote、clean=true 和治理 Hook 摘要；
+7. 任一步失败时恢复原精确路径，不触碰旧 `/home/bgpdata/Domeye`。
 
 实现约束：归一器默认只读预检，`--apply` 才能写入；它固定拒绝保护根、进程 cwd/exe/fd
-引用、挂载、Git 锁、跨文件系统移动、活动指针引用源码 checkout、SHA 漂移和带凭证
-remote。它先创建可校验 archive，再同文件系统隔离旧 checkout；clone 或读回失败时自动
-恢复原精确路径。S2 完成不代表生产发布或业务验证完成。
+引用、挂载、Git 锁、跨文件系统移动、活动指针引用源码 checkout、SHA 漂移和非官方
+SSH remote。直连路径先执行无交互、严格主机密钥和有限超时的 SSH `ls-remote`；只有
+返回的 `main` 完整 SHA 等于冻结值，才创建操作目录、归档和隔离旧 checkout。SSH 失败
+只保留固定脱敏原因码，零写入停止，不自动尝试 HTTPS。随后 clone 或读回失败时自动恢复
+原精确路径。联网命令从非仓库目录运行，并隔离 repository/system/global Git 配置与环境
+注入；checkout 拒绝额外 fetch URL、独立 push URL 和任何 `insteadOf` 协议改写。S2
+完成不代表生产发布或业务验证完成。
 
-若无凭证公开 HTTPS 连接经受限时读测确认不可用，才允许本机从冻结 GitHub `main` 生成
-完整 Git bundle、记录 bundle SHA-256、经现有 SSH 传入受管制品根并由同一归一器 clone。
-新 checkout 的 `origin` 仍固定为公开 GitHub URL；该替代不写入 GitHub 凭证，也不表示
-服务器已经具备后续 fetch 能力。bundle 必须随本批 quarantine 长期保留。
+允许使用本机从官方 SSH 冻结 GitHub `main` 后生成的完整 Git bundle：记录 bundle
+SHA-256，经服务器 SSH 传入受管制品根，再由同一归一器 clone。该路径不访问 GitHub，
+不是 HTTPS fallback；新 checkout 的 `origin` 仍固定为官方 SSH。bundle 必须随本批
+quarantine 长期保留。若确需 HTTPS，只能另开单次批准任务，记录 SSH 失败的固定原因码、
+UTC、冻结 ref/SHA、批准范围、实际官方 HTTPS URL 和回执摘要；本归一器不提供该入口。
 
 首次归一完成后，若 GitHub `main` 前进而服务器 checkout 仍干净、无运行引用，则必须
 使用独立 Gate 的可恢复 refresh 流程追平。refresh 只接受受管本机 bundle，冻结刷新前/
 目标 SHA 与 bundle SHA-256，在 checkout 本地保留刷新前 rollback ref，并在 HEAD、
-`origin/main`、branch、clean 和活动指针读回一致后才成功；失败时恢复刷新前 SHA。它
-不修改 GitHub 凭证、运行 release、服务或旧 Domeye。
+`origin/main`、官方 SSH `origin`、branch、clean 和活动指针读回一致后才成功；失败时
+恢复刷新前 SHA。refresh 只读取本地 bundle，不访问 GitHub，不自动尝试 HTTPS，也不修改
+GitHub 凭证、运行 release、服务或旧 Domeye。对象导入使用 `git bundle unbundle`，不经
+transport URL 解析，避免 source 本地 URL rewrite 把 bundle 路径改写为网络地址。
 
 ### S3：运行身份与凭证治理
 

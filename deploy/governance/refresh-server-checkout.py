@@ -20,7 +20,7 @@ from typing import Any
 EXPECTED_HOST = "buptserver16"
 EXPECTED_SOURCE = Path("/home/bgpdata/Domeye-Core")
 EXPECTED_ARTIFACT_ROOT = Path("/home/bgpdata/Domeye-Core-artifacts")
-EXPECTED_REMOTE = "https://github.com/xinghuahewo/domeye_.git"
+EXPECTED_REMOTE = "git@github.com:xinghuahewo/domeye_.git"
 EXPECTED_BRANCH = "main"
 PROTECTED_ROOTS = (
     Path("/home/bgpdata/Domeye"), Path("/home/bgpdata/data"), Path("/home/bgpdata/AS402425"),
@@ -35,7 +35,8 @@ ACTIVE_LINKS = (
 BOOTSTRAP_ABSENT_ACTIVE_LINK = Path(
     "/home/bgpdata/Domeye-Core-runtime/country-outage-interactive-agent/current"
 )
-SCHEMA = "domeye.server-checkout-refresh/v1"
+SCHEMA = "domeye.server-checkout-refresh/v2"
+REPOSITORY_ACCESS_POLICY = "official_ssh_first_v1"
 
 
 class RefreshError(RuntimeError):
@@ -54,8 +55,42 @@ def is_within(path: Path, root: Path) -> bool:
     return path == root or root in path.parents
 
 
-def run(arguments: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(arguments, cwd=cwd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+def run(
+    arguments: list[str],
+    cwd: Path | None = None,
+    environment: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    if environment is None and arguments and arguments[0] == "git":
+        environment = isolated_git_environment()
+    return subprocess.run(arguments, cwd=cwd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=environment)
+
+
+def isolated_git_environment(
+    ignore_repository_config: bool = False,
+) -> dict[str, str]:
+    environment = {
+        name: value for name, value in os.environ.items() if not name.startswith("GIT_")
+    }
+    environment.update(
+        {
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+    )
+    if ignore_repository_config:
+        environment["GIT_CONFIG"] = os.devnull
+    return environment
+
+
+def trusted_non_repository_cwd() -> Path:
+    root = Path("/")
+    if (root / ".git").exists():
+        raise RefreshError("受信 Git 工作目录意外包含仓库元数据")
+    return root
 
 
 def git_value(source: Path, *arguments: str) -> str:
@@ -63,6 +98,49 @@ def git_value(source: Path, *arguments: str) -> str:
     if result.returncode:
         raise RefreshError(result.stderr.strip() or f"git {' '.join(arguments)} 失败")
     return result.stdout.strip()
+
+
+def git_lines_allow_absent(
+    source: Path, *arguments: str, environment: dict[str, str] | None = None
+) -> list[str]:
+    result = run(["git", *arguments], source, environment)
+    if result.returncode not in {0, 1}:
+        raise RefreshError(result.stderr.strip() or f"git {' '.join(arguments)} 失败")
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def validate_official_origin(source: Path) -> str:
+    remote_names = git_lines_allow_absent(source, "remote")
+    raw_fetch_urls = git_lines_allow_absent(
+        source, "config", "--local", "--get-all", "remote.origin.url"
+    )
+    raw_push_urls = git_lines_allow_absent(
+        source, "config", "--local", "--get-all", "remote.origin.pushurl"
+    )
+    isolated = isolated_git_environment()
+    effective_fetch_urls = git_lines_allow_absent(
+        source, "remote", "get-url", "--all", "origin", environment=isolated
+    )
+    effective_push_urls = git_lines_allow_absent(
+        source,
+        "remote",
+        "get-url",
+        "--push",
+        "--all",
+        "origin",
+        environment=isolated,
+    )
+    if (
+        remote_names != ["origin"]
+        or raw_fetch_urls != [EXPECTED_REMOTE]
+        or raw_push_urls
+        or effective_fetch_urls != [EXPECTED_REMOTE]
+        or effective_push_urls != [EXPECTED_REMOTE]
+    ):
+        raise RefreshError(
+            "source remote 不是唯一且不可改写的官方 GitHub SSH origin"
+        )
+    return EXPECTED_REMOTE
 
 
 def sha256_file(path: Path) -> str:
@@ -165,24 +243,47 @@ def source_snapshot(source: Path) -> dict[str, Any]:
     status = git_value(source, "status", "--porcelain=v1", "-z", "--untracked-files=all")
     if status:
         raise RefreshError("source checkout 非干净，拒绝刷新")
-    remote_names = [name for name in git_value(source, "remote").splitlines() if name]
-    if remote_names != ["origin"] or git_value(source, "remote", "get-url", "origin") != EXPECTED_REMOTE:
-        raise RefreshError("source remote 不是唯一的无凭证公开 GitHub origin")
+    remote = validate_official_origin(source)
     branch = git_value(source, "branch", "--show-current")
     if branch != EXPECTED_BRANCH:
         raise RefreshError(f"source 分支不是 {EXPECTED_BRANCH}：{branch}")
-    return {"head": git_value(source, "rev-parse", "HEAD"), "originMain": git_value(source, "rev-parse", "origin/main"), "branch": branch, "clean": True}
+    return {"head": git_value(source, "rev-parse", "HEAD"), "originMain": git_value(source, "rev-parse", "origin/main"), "branch": branch, "remote": remote, "clean": True}
 
 
 def bundle_head(bundle: Path) -> str:
-    listed = run(["git", "bundle", "list-heads", str(bundle)])
+    listed = run(
+        ["git", "bundle", "list-heads", str(bundle)],
+        cwd=trusted_non_repository_cwd(),
+        environment=isolated_git_environment(ignore_repository_config=True),
+    )
     if listed.returncode:
         raise RefreshError(listed.stderr.strip() or "bundle 无法列出 refs")
-    for line in listed.stdout.splitlines():
-        fields = line.split()
-        if len(fields) == 2 and fields[1] in {"main", "refs/heads/main"}:
-            return fields[0]
-    raise RefreshError("bundle 未包含 main")
+    heads = [
+        (fields[0], fields[1])
+        for line in listed.stdout.splitlines()
+        if len(fields := line.split()) == 2
+    ]
+    if len(heads) != 1 or heads[0][1] not in {"main", "refs/heads/main"}:
+        raise RefreshError("bundle 必须且只能包含 main")
+    return heads[0][0]
+
+
+def unbundle_main(source: Path, bundle: Path, expected_main: str) -> None:
+    unbundled = run(
+        ["git", "bundle", "unbundle", str(bundle)],
+        source,
+        isolated_git_environment(),
+    )
+    if unbundled.returncode:
+        raise RefreshError("bundle unbundle 失败")
+    heads = [
+        (fields[0], fields[1])
+        for line in unbundled.stdout.splitlines()
+        if len(fields := line.split()) == 2
+    ]
+    if heads != [(expected_main, "refs/heads/main")]:
+        raise RefreshError("bundle unbundle 身份不满足")
+    git_value(source, "cat-file", "-e", f"{expected_main}^{{commit}}")
 
 
 def validate_bundle(bundle: Path, operation_id: str, artifact_root: Path, expected_sha256: str, expected_main: str) -> dict[str, Any]:
@@ -244,19 +345,17 @@ def refresh(operation_id: str, expected_current: str, expected_main: str, bundle
     try:
         os.rename(bundle, retained_bundle)
         git_value(source, "update-ref", rollback_ref, before["source"]["head"])
-        fetched = run(["git", "fetch", "--no-tags", str(retained_bundle), "main"], source)
-        if fetched.returncode or git_value(source, "rev-parse", "FETCH_HEAD") != expected_main:
-            raise RefreshError(fetched.stderr.strip() or "bundle fetch 身份不满足")
+        unbundle_main(source, retained_bundle, expected_main)
+        changed = True
         git_value(source, "update-ref", "refs/remotes/origin/main", expected_main, before["source"]["originMain"])
         git_value(source, "reset", "--hard", expected_main)
-        changed = True
         after = source_snapshot(source)
         after_links = active_links()
         if after["head"] != expected_main or after["originMain"] != expected_main or after_links != before["activeLinks"]:
             raise RefreshError("刷新后 checkout 或活动指针身份不一致")
         if source_references(source) or mount_references(source) or git_locks(source):
             raise RefreshError("刷新后 source checkout 出现运行引用、挂载或锁")
-        result = {"schemaVersion": SCHEMA, "operationId": operation_id, "completedAt": utc_now(), "sourceBefore": before["source"], "sourceAfter": after, "inputBundle": {**before["bundle"], "path": str(retained_bundle)}, "rollbackRef": {"ref": rollback_ref, "head": before["source"]["head"]}, "activeLinksBefore": before["activeLinks"], "activeLinksAfter": after_links, "oldDomeyeTouched": False, "serverGitHubCredentialsChanged": False, "productionSwitchPerformed": False, "rollback": {"priorHead": before["source"]["head"], "state": "available"}}
+        result = {"schemaVersion": SCHEMA, "operationId": operation_id, "completedAt": utc_now(), "sourceBefore": before["source"], "sourceAfter": after, "repositoryAccess": {"policy": REPOSITORY_ACCESS_POLICY, "origin": EXPECTED_REMOTE, "acquisition": "local_immutable_git_bundle", "networkGitHubAccessPerformed": False, "sshPreflight": {"status": "not_required_bundle_only", "checkedAt": None, "ref": f"refs/heads/{EXPECTED_BRANCH}", "expectedCommit": expected_main, "observedCommit": None, "reasonCode": None}, "httpsFallback": {"performed": False, "receiptSha256": None}}, "authorityRemote": EXPECTED_REMOTE, "checkoutAcquisition": "local_immutable_git_bundle", "inputBundle": {**before["bundle"], "path": str(retained_bundle)}, "rollbackRef": {"ref": rollback_ref, "head": before["source"]["head"]}, "activeLinksBefore": before["activeLinks"], "activeLinksAfter": after_links, "oldDomeyeTouched": False, "serverGitHubCredentialsChanged": False, "productionSwitchPerformed": False, "rollback": {"priorHead": before["source"]["head"], "state": "available"}}
         write_json(receipt, result)
         result["receiptPath"] = str(receipt)
         return result

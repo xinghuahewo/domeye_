@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import socket
@@ -108,6 +109,21 @@ class ServerCheckoutRefreshTest(unittest.TestCase):
         self.assertEqual(result["sourceBefore"]["head"], self.old)
         self.assertEqual(result["sourceAfter"]["head"], self.new)
         self.assertEqual(
+            result["sourceBefore"]["remote"],
+            "git@github.com:xinghuahewo/domeye_.git",
+        )
+        self.assertEqual(result["sourceAfter"]["remote"], result["sourceBefore"]["remote"])
+        self.assertEqual(result["authorityRemote"], result["sourceBefore"]["remote"])
+        self.assertEqual(result["checkoutAcquisition"], "local_immutable_git_bundle")
+        self.assertEqual(result["schemaVersion"], "domeye.server-checkout-refresh/v2")
+        self.assertEqual(result["repositoryAccess"]["policy"], "official_ssh_first_v1")
+        self.assertFalse(result["repositoryAccess"]["networkGitHubAccessPerformed"])
+        self.assertEqual(
+            result["repositoryAccess"]["sshPreflight"]["status"],
+            "not_required_bundle_only",
+        )
+        self.assertFalse(result["repositoryAccess"]["httpsFallback"]["performed"])
+        self.assertEqual(
             result["activeLinksBefore"],
             [
                 {
@@ -171,11 +187,161 @@ class ServerCheckoutRefreshTest(unittest.TestCase):
         self.assertTrue(self.bundle.is_file())
         self.assertFalse((self.artifacts / "quarantine").exists())
 
+    def test_preflight_does_not_refresh_git_index(self):
+        tracked = self.source / "tracked.txt"
+        current = tracked.stat()
+        os.utime(
+            tracked,
+            ns=(current.st_atime_ns, current.st_mtime_ns + 2_000_000_000),
+        )
+        index = self.source / ".git" / "index"
+        before = index.read_bytes()
+
+        snapshot = REFRESH.preflight(
+            self.operation,
+            self.old,
+            self.new,
+            self.bundle,
+            REFRESH.sha256_file(self.bundle),
+        )
+
+        self.assertEqual(snapshot["source"]["head"], self.old)
+        self.assertEqual(index.read_bytes(), before)
+        self.assertTrue(self.bundle.is_file())
+        self.assertFalse((self.artifacts / "quarantine").exists())
+
     def test_operation_id_and_scope_fail_closed(self):
+        self.assertEqual(
+            REFRESH.EXPECTED_REMOTE,
+            "git@github.com:xinghuahewo/domeye_.git",
+        )
         with self.assertRaisesRegex(REFRESH.RefreshError, "operation-id"):
             REFRESH.safe_operation_id("../escape")
         with self.assertRaisesRegex(REFRESH.RefreshError, "指定源码 checkout"):
             REFRESH.validate_scope(socket.gethostname(), self.root / "other", self.artifacts)
+
+    def test_source_snapshot_rejects_https_origin(self):
+        run(
+            [
+                "git",
+                "remote",
+                "set-url",
+                "origin",
+                "https://github.com/xinghuahewo/domeye_.git",
+            ],
+            self.source,
+        )
+
+        with self.assertRaisesRegex(REFRESH.RefreshError, "官方 GitHub SSH"):
+            REFRESH.refresh(
+                self.operation,
+                self.old,
+                self.new,
+                self.bundle,
+                REFRESH.sha256_file(self.bundle),
+            )
+
+        self.assertTrue(self.bundle.is_file())
+        self.assertEqual(run(["git", "rev-parse", "HEAD"], self.source), self.old)
+        self.assertEqual(
+            run(["git", "rev-parse", "origin/main"], self.source), self.old
+        )
+        self.assertFalse((self.artifacts / "quarantine").exists())
+
+    def test_source_snapshot_rejects_separate_https_pushurl(self):
+        run(
+            [
+                "git",
+                "config",
+                "--local",
+                "--add",
+                "remote.origin.pushurl",
+                "https://github.com/xinghuahewo/domeye_.git",
+            ],
+            self.source,
+        )
+
+        with self.assertRaisesRegex(REFRESH.RefreshError, "不可改写的官方 GitHub SSH"):
+            REFRESH.source_snapshot(self.source)
+
+        self.assertTrue(self.bundle.is_file())
+        self.assertFalse((self.artifacts / "quarantine").exists())
+
+    def test_source_snapshot_rejects_extra_fetch_url(self):
+        run(
+            [
+                "git",
+                "config",
+                "--local",
+                "--add",
+                "remote.origin.url",
+                "https://github.com/xinghuahewo/domeye_.git",
+            ],
+            self.source,
+        )
+
+        with self.assertRaisesRegex(REFRESH.RefreshError, "不可改写的官方 GitHub SSH"):
+            REFRESH.source_snapshot(self.source)
+
+        self.assertTrue(self.bundle.is_file())
+        self.assertEqual(run(["git", "rev-parse", "HEAD"], self.source), self.old)
+        self.assertEqual(
+            run(["git", "rev-parse", "origin/main"], self.source), self.old
+        )
+        self.assertFalse((self.artifacts / "quarantine").exists())
+
+    def test_refresh_unbundle_ignores_local_url_rewrite(self):
+        run(
+            [
+                "git",
+                "config",
+                "--local",
+                f"url.file://{self.root}/missing-bundle.insteadOf",
+                str(self.bundle),
+            ],
+            self.source,
+        )
+
+        result = REFRESH.refresh(
+            self.operation,
+            self.old,
+            self.new,
+            self.bundle,
+            REFRESH.sha256_file(self.bundle),
+        )
+
+        self.assertEqual(result["sourceAfter"]["head"], self.new)
+        self.assertEqual(
+            result["repositoryAccess"]["acquisition"],
+            "local_immutable_git_bundle",
+        )
+        self.assertFalse(result["repositoryAccess"]["networkGitHubAccessPerformed"])
+
+    def test_source_snapshot_ignores_ambient_decoy_repository(self):
+        decoy = self.root / "decoy"
+        decoy.mkdir()
+        run(["git", "init", "-b", "main"], decoy)
+        run(["git", "config", "user.email", "fixture@example.invalid"], decoy)
+        run(["git", "config", "user.name", "Fixture"], decoy)
+        (decoy / "decoy.txt").write_text("decoy\n", encoding="utf-8")
+        run(["git", "add", "decoy.txt"], decoy)
+        run(["git", "commit", "-m", "decoy"], decoy)
+        decoy_head = run(["git", "rev-parse", "HEAD"], decoy)
+        self.assertNotEqual(decoy_head, self.old)
+
+        with mock.patch.dict(
+            os.environ,
+            {
+                "GIT_DIR": str(decoy / ".git"),
+                "GIT_WORK_TREE": str(decoy),
+                "GIT_OBJECT_DIRECTORY": str(decoy / ".git" / "objects"),
+            },
+            clear=False,
+        ):
+            snapshot = REFRESH.source_snapshot(self.source)
+
+        self.assertEqual(snapshot["head"], self.old)
+        self.assertEqual(snapshot["originMain"], self.old)
 
 
 if __name__ == "__main__":

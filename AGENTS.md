@@ -20,7 +20,10 @@
 - `main` 是永久主干、默认 Pull Request 合并目标、合并后代码的权威位置，也是
   当前代码基线和候选取证的默认起点。本地永久检出固定为
   `/Users/botongwu/Documents/domeye/core-work`。详细合同见
-  [主干开发与发布归一治理规范](docs/主干开发与发布归一治理规范.md)。
+  [主干开发与发布归一治理规范](docs/governance/主干开发与发布归一治理规范.md)。
+- GitHub 权威读取、`fetch`、`push` 和正式 tag 发布必须先使用官方 SSH
+  `git@github.com:xinghuahewo/domeye_.git`。SSH 失败即停止当前操作；不得自动切换
+  HTTPS、镜像、固定 IP 或 TLS 绕过。HTTPS 只能由单独批准并留有脱敏回执的任务使用。
 - Worktree 只是本地隔离检出，不是版本或发布身份。普通任务必须使用短生命周期
   `codex/<task>` 分支和独立 Worktree，任务 Worktree 不得直接作为生产发布来源。
 - `main` 只能通过服务器端保护 Hook 快进；目标提交必须绑定评审和 CI 证据。
