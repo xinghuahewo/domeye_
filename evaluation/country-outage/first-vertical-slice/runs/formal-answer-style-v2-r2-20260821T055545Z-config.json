@@ -1,0 +1,19 @@
+{
+  "schema_version": "domeye_first_slice_evaluation_run_config_v2",
+  "target": {
+    "project_root": "/Users/botongwu/Documents/domeye/agent-answer-style-formal-acceptance-r2-work",
+    "api_base_url": "http://10.99.8.16:28471/api/v2/",
+    "api_timeout_ms": 15000,
+    "manifest_path": "contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json",
+    "model_auth_path": "/Users/botongwu/.config/domeye/secrets/country-outage-pi-auth.json",
+    "event_reference": "country_outage/2026-02-27 09:12:32/IR/1/r",
+    "principal_id": "domeye-first-slice-evaluator",
+    "authorization_scopes": [
+      "country_outage:read"
+    ]
+  },
+  "evaluation_phase": "formal",
+  "runs": 30,
+  "output_directory": "formal-answer-style-v2-r2-20260821T055545Z",
+  "drive_adversarial_cases": true
+}
