@@ -1,0 +1,12 @@
+{
+  "schema_version": "domeye_first_slice_review_sign_config_v1",
+  "target": {
+    "project_root": "/Users/botongwu/Documents/domeye/agent-answer-style-formal-acceptance-r2-work",
+    "manifest_path": "contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"
+  },
+  "summary_path": "summary.json",
+  "evidence_jsonl_path": "evidence.jsonl",
+  "evidence_attestation_path": "evidence-attestation.json",
+  "independent_review_draft_path": "independent-review-draft.json",
+  "output_path": "independent-review.json"
+}
