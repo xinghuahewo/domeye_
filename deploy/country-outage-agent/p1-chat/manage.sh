@@ -63,13 +63,18 @@ require_commands() {
 }
 
 trusted_git() {
-    env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_INDEX_FILE \
-        -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
-        -u GIT_CONFIG -u GIT_CONFIG_COUNT -u GIT_CONFIG_PARAMETERS \
-        -u GIT_NAMESPACE -u GIT_CEILING_DIRECTORIES \
+    /usr/bin/env -i HOME="${HOME:-/root}" PATH=/usr/bin:/bin \
+        LANG=C LC_ALL=C SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-}" \
         GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
-        GIT_CONFIG_SYSTEM=/dev/null \
-        git --no-replace-objects -C "${TRUSTED_CHECKOUT}" "$@"
+        GIT_CONFIG_SYSTEM=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+        GIT_OPTIONAL_LOCKS=0 GIT_TERMINAL_PROMPT=0 \
+        GIT_SSH_COMMAND='/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes' \
+        /usr/bin/git --no-replace-objects -C "${TRUSTED_CHECKOUT}" "$@"
+}
+
+trusted_git_line_count() {
+    { trusted_git "$@" 2>/dev/null || true; } \
+        | /usr/bin/awk 'END { print NR + 0 }'
 }
 
 verify_trusted_source_archive() {
@@ -81,19 +86,38 @@ verify_trusted_source_archive() {
         error "固定受信 Git checkout 无效：${TRUSTED_CHECKOUT}"
         return 1
     }
-    local origin_url expected_test_origin
-    origin_url="$(trusted_git remote get-url origin 2>/dev/null || true)"
+    local origin_url push_url raw_origin_url remote_names \
+        remote_name_count raw_origin_count raw_push_count origin_count \
+        push_count expected_origin expected_test_origin
+    remote_names="$(trusted_git remote 2>/dev/null || true)"
+    remote_name_count="$(trusted_git_line_count remote)"
+    raw_origin_url="$(trusted_git config --local --get-all remote.origin.url 2>/dev/null || true)"
+    raw_origin_count="$(trusted_git_line_count config --local --get-all remote.origin.url)"
+    raw_push_count="$(trusted_git_line_count config --local --get-all remote.origin.pushurl)"
+    origin_url="$(trusted_git remote get-url --all origin 2>/dev/null || true)"
+    origin_count="$(trusted_git_line_count remote get-url --all origin)"
+    push_url="$(trusted_git remote get-url --push --all origin 2>/dev/null || true)"
+    push_count="$(trusted_git_line_count remote get-url --push --all origin)"
     expected_test_origin="${TEST_ROOT}/trusted-origin.git"
     if [[ "${TEST_MODE}" == true ]]; then
-        [[ "${origin_url}" == "${expected_test_origin}" ]] || {
-            error '测试受信 checkout 的 origin 不在同一临时边界'; return 1
-        }
+        expected_origin="${expected_test_origin}"
     else
-        [[ "${origin_url}" == 'git@github.com:xinghuahewo/domeye_.git' \
-            || "${origin_url}" == 'https://github.com/xinghuahewo/domeye_.git' ]] || {
-            error '固定受信 checkout 的 origin 不是 GitHub 权威仓库'; return 1
-        }
+        expected_origin='git@github.com:xinghuahewo/domeye_.git'
     fi
+    [[ "${remote_name_count}" == 1 && "${remote_names}" == origin \
+        && "${raw_origin_count}" == 1 \
+        && "${raw_origin_url}" == "${expected_origin}" \
+        && "${raw_push_count}" == 0 \
+        && "${origin_count}" == 1 \
+        && "${origin_url}" == "${expected_origin}" \
+        && "${push_count}" == 1 \
+        && "${push_url}" == "${expected_origin}" ]] || {
+        if [[ "${TEST_MODE}" == true ]]; then
+            error '测试受信 checkout 的 origin 不在同一临时边界'; return 1
+        fi
+        error '固定受信 checkout 的 origin 不是唯一且不可改写的官方 GitHub SSH remote'
+        return 1
+    }
     if ! trusted_git fetch --quiet --force --no-tags origin \
         "+refs/heads/main:refs/remotes/origin/main" \
         "+refs/tags/${source_tag}:refs/tags/${source_tag}"; then

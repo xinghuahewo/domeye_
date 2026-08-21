@@ -563,20 +563,39 @@ readonly INTERACTIVE_ACCEPTANCE_REPLAY_SHA="$(json_value "${CANDIDATE}" '.intera
 readonly INTERACTIVE_READINESS_SHA="$(json_value "${CANDIDATE}" '.interactive_agent.readiness_identity_sha256' 'Interactive Agent readiness 摘要')"
 
 trusted_git() {
-    env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_INDEX_FILE \
-        -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
-        -u GIT_CONFIG -u GIT_CONFIG_COUNT -u GIT_CONFIG_PARAMETERS \
-        -u GIT_NAMESPACE -u GIT_CEILING_DIRECTORIES \
+    /usr/bin/env -i HOME="${HOME:-/root}" PATH=/usr/bin:/bin \
+        LANG=C LC_ALL=C SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-}" \
         GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
-        GIT_CONFIG_SYSTEM=/dev/null \
-        git --no-replace-objects -C "${REPOSITORY}" "$@"
+        GIT_CONFIG_SYSTEM=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+        GIT_OPTIONAL_LOCKS=0 GIT_TERMINAL_PROMPT=0 \
+        GIT_SSH_COMMAND='/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes' \
+        /usr/bin/git --no-replace-objects -C "${REPOSITORY}" "$@"
+}
+
+trusted_git_line_count() {
+    { trusted_git "$@" 2>/dev/null || true; } \
+        | /usr/bin/awk 'END { print NR + 0 }'
 }
 
 require_actual_directory "${REPOSITORY}" '生产 Git checkout '
-readonly TRUSTED_ORIGIN="$(trusted_git remote get-url origin 2>/dev/null || true)"
-[[ "${TRUSTED_ORIGIN}" == 'git@github.com:xinghuahewo/domeye_.git' \
-    || "${TRUSTED_ORIGIN}" == 'https://github.com/xinghuahewo/domeye_.git' ]] \
-    || die '生产 checkout 的 origin 不是 GitHub 权威仓库'
+readonly TRUSTED_REMOTE_NAMES="$(trusted_git remote 2>/dev/null || true)"
+readonly TRUSTED_REMOTE_NAME_COUNT="$(trusted_git_line_count remote)"
+readonly TRUSTED_RAW_ORIGIN="$(trusted_git config --local --get-all remote.origin.url 2>/dev/null || true)"
+readonly TRUSTED_RAW_ORIGIN_COUNT="$(trusted_git_line_count config --local --get-all remote.origin.url)"
+readonly TRUSTED_RAW_PUSH_COUNT="$(trusted_git_line_count config --local --get-all remote.origin.pushurl)"
+readonly TRUSTED_ORIGIN="$(trusted_git remote get-url --all origin 2>/dev/null || true)"
+readonly TRUSTED_ORIGIN_COUNT="$(trusted_git_line_count remote get-url --all origin)"
+readonly TRUSTED_PUSH="$(trusted_git remote get-url --push --all origin 2>/dev/null || true)"
+readonly TRUSTED_PUSH_COUNT="$(trusted_git_line_count remote get-url --push --all origin)"
+[[ "${TRUSTED_REMOTE_NAME_COUNT}" == 1 && "${TRUSTED_REMOTE_NAMES}" == origin \
+    && "${TRUSTED_RAW_ORIGIN_COUNT}" == 1 \
+    && "${TRUSTED_RAW_ORIGIN}" == 'git@github.com:xinghuahewo/domeye_.git' \
+    && "${TRUSTED_RAW_PUSH_COUNT}" == 0 \
+    && "${TRUSTED_ORIGIN_COUNT}" == 1 \
+    && "${TRUSTED_ORIGIN}" == 'git@github.com:xinghuahewo/domeye_.git' \
+    && "${TRUSTED_PUSH_COUNT}" == 1 \
+    && "${TRUSTED_PUSH}" == 'git@github.com:xinghuahewo/domeye_.git' ]] \
+    || die '生产 checkout 的 origin 不是唯一且不可改写的官方 GitHub SSH remote'
 [[ "$(trusted_git symbolic-ref -q HEAD)" == 'refs/heads/main' \
     && "$(trusted_git rev-parse HEAD)" == "${COMMIT}" \
     && "$(trusted_git rev-parse refs/heads/main)" == "${COMMIT}" \

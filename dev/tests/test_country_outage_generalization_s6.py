@@ -41,6 +41,35 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue(path.stat().st_mode & 0o100)
 
+    def test_runtime_verification_requires_unique_official_ssh_origin(self) -> None:
+        text = script("verify-runtime.sh")
+        for phrase in (
+            "/usr/bin/env -i HOME=",
+            "PATH=/usr/bin:/bin",
+            "/usr/bin/git --no-replace-objects",
+            "GIT_SSH_COMMAND='/usr/bin/ssh ",
+            "GIT_CONFIG_NOSYSTEM=1",
+            "GIT_NO_REPLACE_OBJECTS=1",
+            "GIT_OPTIONAL_LOCKS=0",
+            "GIT_TERMINAL_PROMPT=0",
+            "StrictHostKeyChecking=yes",
+            "remote.origin.url",
+            "remote.origin.pushurl",
+            "remote get-url --all origin",
+            "remote get-url --push --all origin",
+            "trusted_raw_origin_count",
+            "trusted_raw_push_count",
+            "trusted_origin_count",
+            "trusted_push_count",
+            "git@github.com:xinghuahewo/domeye_.git",
+            "唯一且不可改写的官方 GitHub SSH remote",
+        ):
+            self.assertIn(phrase, text)
+        self.assertNotIn(
+            "https://github.com/xinghuahewo/domeye_.git",
+            text,
+        )
+
     def test_prepare_binds_one_deployed_interactive_agent_v2_and_fail_closed(self) -> None:
         text = script("prepare-runtime-release.sh")
         for phrase in (

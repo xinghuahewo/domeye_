@@ -560,6 +560,17 @@ expect_contract_reject 'Canary 证据摘要漂移' "${NORMALIZATION_CANDIDATE}" 
 for required_text in \
     'refs/heads/main' \
     'refs/remotes/origin/main' \
+    'git@github.com:xinghuahewo/domeye_.git' \
+    '/usr/bin/env -i HOME=' \
+    'PATH=/usr/bin:/bin' \
+    '/usr/bin/git --no-replace-objects' \
+    "GIT_SSH_COMMAND='/usr/bin/ssh " \
+    'TRUSTED_RAW_ORIGIN_COUNT' \
+    'TRUSTED_RAW_PUSH_COUNT' \
+    'TRUSTED_ORIGIN_COUNT' \
+    'TRUSTED_PUSH_COUNT' \
+    'remote.origin.pushurl' \
+    '唯一且不可改写的官方 GitHub SSH remote' \
     'source.archive_sha256' \
     'SOURCE-MANIFEST.json' \
     'BACKEND-SOURCE-BINDING.json' \
@@ -589,6 +600,7 @@ for required_text in \
 done
 
 for forbidden_text in \
+    'https://github.com/xinghuahewo/domeye_.git' \
     'domeye_unified_release_candidate_v1' \
     'domeye_interactive_agent_release_manifest_v1' \
     'domeye_interactive_agent_release_probe_v1' \

@@ -505,6 +505,68 @@ manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
     "${SOURCE_COMMIT}" "${RELEASE_ID}" >/dev/null \
     || fail '合法 annotated tag 与 git archive 未通过来源门'
 
+# 外部 Git 身份变量不得把受信命令重定向到诱饵仓库。
+readonly DECOY_CHECKOUT="${FIXTURE_ROOT}/decoy-checkout"
+mkdir "${DECOY_CHECKOUT}"
+git -C "${DECOY_CHECKOUT}" init -q -b main
+git -C "${DECOY_CHECKOUT}" config user.name 'Domeye Decoy'
+git -C "${DECOY_CHECKOUT}" config user.email 'decoy@domeye.invalid'
+printf '诱饵源码\n' > "${DECOY_CHECKOUT}/README.md"
+git -C "${DECOY_CHECKOUT}" add README.md
+git -C "${DECOY_CHECKOUT}" commit -q -m 'decoy source'
+GIT_DIR="${DECOY_CHECKOUT}/.git" \
+GIT_WORK_TREE="${DECOY_CHECKOUT}" \
+GIT_OBJECT_DIRECTORY="${DECOY_CHECKOUT}/.git/objects" \
+    manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+        "${SOURCE_COMMIT}" "${RELEASE_ID}" >/dev/null \
+    || fail '外部 Git 身份变量重定向了受信 checkout'
+
+# 调用者 PATH 中的伪 Git 也不得进入受信 Git 路径。
+readonly FAKE_GIT_MARKER="${FIXTURE_ROOT}/fake-git-invoked"
+printf '#!/bin/sh\nprintf invoked > "%s"\nexit 99\n' \
+    "${FAKE_GIT_MARKER}" > "${FIXTURE_ROOT}/tools/bin/git"
+chmod 0500 "${FIXTURE_ROOT}/tools/bin/git"
+manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+    "${SOURCE_COMMIT}" "${RELEASE_ID}" >/dev/null \
+    || fail '固定系统 Git 路径未通过合法来源闭包'
+[[ ! -e "${FAKE_GIT_MARKER}" ]] \
+    || fail '受信 Git 调用了 PATH 中的伪 git'
+rm "${FIXTURE_ROOT}/tools/bin/git"
+
+# 空/非空附加 fetch URL、额外 remote、本地 URL rewrite 或独立 pushurl
+# 都必须在 fetch 前失败关闭。
+git -C "${TRUSTED_CHECKOUT}" config --add remote.origin.url ''
+assert_fails '受信 origin 不得追加空 fetch URL' \
+    manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+    "${SOURCE_COMMIT}" "${RELEASE_ID}"
+git -C "${TRUSTED_CHECKOUT}" config --unset-all remote.origin.url
+git -C "${TRUSTED_CHECKOUT}" config remote.origin.url "${TRUSTED_ORIGIN}"
+git -C "${TRUSTED_CHECKOUT}" config --add remote.origin.url \
+    "${TRUSTED_ORIGIN}-extra"
+assert_fails '受信 origin 不得追加第二个 fetch URL' \
+    manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+    "${SOURCE_COMMIT}" "${RELEASE_ID}"
+git -C "${TRUSTED_CHECKOUT}" config --unset-all remote.origin.url
+git -C "${TRUSTED_CHECKOUT}" config remote.origin.url "${TRUSTED_ORIGIN}"
+git -C "${TRUSTED_CHECKOUT}" remote add extra "${TRUSTED_ORIGIN}"
+assert_fails '受信 checkout 不得存在额外 remote' \
+    manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+    "${SOURCE_COMMIT}" "${RELEASE_ID}"
+git -C "${TRUSTED_CHECKOUT}" remote remove extra
+git -C "${TRUSTED_CHECKOUT}" config \
+    "url.file://${FIXTURE_ROOT}/missing-origin.insteadOf" "${TRUSTED_ORIGIN}"
+assert_fails '受信 origin 不得被本地 insteadOf 改写' \
+    manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+    "${SOURCE_COMMIT}" "${RELEASE_ID}"
+git -C "${TRUSTED_CHECKOUT}" config --unset-all \
+    "url.file://${FIXTURE_ROOT}/missing-origin.insteadOf"
+git -C "${TRUSTED_CHECKOUT}" remote set-url --add --push origin \
+    "${TRUSTED_ORIGIN}-push"
+assert_fails '受信 origin 不得配置独立 pushurl' \
+    manager _test_verify_source_archive "${SOURCE_ARCHIVE}" \
+    "${SOURCE_COMMIT}" "${RELEASE_ID}"
+git -C "${TRUSTED_CHECKOUT}" config --unset-all remote.origin.pushurl
+
 git -C "${TRUSTED_CHECKOUT}" tag lightweight-fixture
 assert_fails 'lightweight tag' manager _test_verify_source_archive \
     "${SOURCE_ARCHIVE}" "${SOURCE_COMMIT}" lightweight-fixture
@@ -739,6 +801,22 @@ printf '%s\n' '{"deployment_state":"deployed","deployment_state":"verified"}' \
     > "${FIXTURE_ROOT}/duplicate-active.json"
 assert_fails '重复 deployment_state 的 active JSON 必拒' \
     verifier _test-json-no-duplicate "${FIXTURE_ROOT}/duplicate-active.json"
+
+# 生产 GitHub 访问只能使用唯一、不可改写的官方 SSH remote；测试模式仍只接受
+# 本夹具的本地 bare origin。
+grep -F "expected_origin='git@github.com:xinghuahewo/domeye_.git'" \
+    "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F '/usr/bin/env -i HOME=' "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F 'PATH=/usr/bin:/bin' "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F '/usr/bin/git --no-replace-objects' "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F "GIT_SSH_COMMAND='/usr/bin/ssh " "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F 'raw_origin_count' "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    && grep -F 'remote.origin.pushurl' "${DEPLOY_DIR}/manage.sh" >/dev/null \
+    || fail 'Interactive Agent 生命周期入口未锁定 SSH-only Git 环境'
+if grep -F 'https://github.com/xinghuahewo/domeye_.git' \
+    "${DEPLOY_DIR}/manage.sh" >/dev/null; then
+    fail 'Interactive Agent 生命周期入口仍接受 GitHub HTTPS'
+fi
 
 # historical policy 是唯一允许保留的旧审计输入；其余发布路径不得出现旧入口。
 readonly POLICY='deploy/country-outage-agent/p1-chat/certification-impact-policy.json'

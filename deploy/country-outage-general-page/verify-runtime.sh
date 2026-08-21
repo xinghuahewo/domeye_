@@ -37,13 +37,18 @@ sha256_hex_file() {
 }
 
 trusted_git() {
-    env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_INDEX_FILE \
-        -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
-        -u GIT_CONFIG -u GIT_CONFIG_COUNT -u GIT_CONFIG_PARAMETERS \
-        -u GIT_NAMESPACE -u GIT_CEILING_DIRECTORIES \
+    /usr/bin/env -i HOME="${HOME:-/root}" PATH=/usr/bin:/bin \
+        LANG=C LC_ALL=C SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-}" \
         GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
-        GIT_CONFIG_SYSTEM=/dev/null \
-        git --no-replace-objects -C /home/bgpdata/Domeye-Core "$@"
+        GIT_CONFIG_SYSTEM=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+        GIT_OPTIONAL_LOCKS=0 GIT_TERMINAL_PROMPT=0 \
+        GIT_SSH_COMMAND='/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes' \
+        /usr/bin/git --no-replace-objects -C /home/bgpdata/Domeye-Core "$@"
+}
+
+trusted_git_line_count() {
+    { trusted_git "$@" 2>/dev/null || true; } \
+        | /usr/bin/awk 'END { print NR + 0 }'
 }
 
 if (( $# != 1 )); then
@@ -136,10 +141,24 @@ interactive_agent_acceptance_replay_path="$(jq -er '.interactive_agent.acceptanc
 interactive_agent_acceptance_replay_sha="$(jq -er '.interactive_agent.acceptance_replay_receipt_sha256' "${CANDIDATE}")"
 interactive_agent_readiness_sha="$(jq -er '.interactive_agent.readiness_identity_sha256' "${CANDIDATE}")"
 
-trusted_origin="$(trusted_git remote get-url origin 2>/dev/null || true)"
-[[ "${trusted_origin}" == 'git@github.com:xinghuahewo/domeye_.git' \
-    || "${trusted_origin}" == 'https://github.com/xinghuahewo/domeye_.git' ]] || {
-    error '固定 checkout 的 origin 不是 GitHub 权威仓库'
+trusted_remote_names="$(trusted_git remote 2>/dev/null || true)"
+trusted_remote_name_count="$(trusted_git_line_count remote)"
+trusted_raw_origin="$(trusted_git config --local --get-all remote.origin.url 2>/dev/null || true)"
+trusted_raw_origin_count="$(trusted_git_line_count config --local --get-all remote.origin.url)"
+trusted_raw_push_count="$(trusted_git_line_count config --local --get-all remote.origin.pushurl)"
+trusted_origin="$(trusted_git remote get-url --all origin 2>/dev/null || true)"
+trusted_origin_count="$(trusted_git_line_count remote get-url --all origin)"
+trusted_push="$(trusted_git remote get-url --push --all origin 2>/dev/null || true)"
+trusted_push_count="$(trusted_git_line_count remote get-url --push --all origin)"
+[[ "${trusted_remote_name_count}" == 1 && "${trusted_remote_names}" == origin \
+    && "${trusted_raw_origin_count}" == 1 \
+    && "${trusted_raw_origin}" == 'git@github.com:xinghuahewo/domeye_.git' \
+    && "${trusted_raw_push_count}" == 0 \
+    && "${trusted_origin_count}" == 1 \
+    && "${trusted_origin}" == 'git@github.com:xinghuahewo/domeye_.git' \
+    && "${trusted_push_count}" == 1 \
+    && "${trusted_push}" == 'git@github.com:xinghuahewo/domeye_.git' ]] || {
+    error '固定 checkout 的 origin 不是唯一且不可改写的官方 GitHub SSH remote'
     exit 1
 }
 [[ "$(trusted_git rev-parse refs/heads/main)" == "${source_commit}" \
