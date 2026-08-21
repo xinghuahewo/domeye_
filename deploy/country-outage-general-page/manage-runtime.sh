@@ -19,6 +19,7 @@ readonly FIRST_SLICE_CANDIDATE="${RUNTIME_ROOT}/contracts/agent/domeye-first-ver
 readonly INFO_DIR='/home/bgpdata/Domeye-Core-dev-data/api/info'
 readonly P0_DATA_DIR='/home/bgpdata/Domeye-Core-artifacts/releases/20260720T160000Z-p0-legacy/data-quality/api-candidate'
 readonly RUNTIME_PATH='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin:/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+readonly STARTUP_TIMEOUT_SECONDS=120
 INTERACTIVE_AGENT_STATUS_JSON='{}'
 
 error() {
@@ -967,11 +968,22 @@ start_runtime() {
         return 1
     fi
 
-    local attempt
-    for (( attempt = 1; attempt <= 60; attempt++ )); do
+    # `_serve` 会在 exec Backend 前重放完整制品和 Interactive Agent 绑定校验。
+    # 生产冷缓存下该只读校验可能超过 30 秒；只扩大等待窗口，不放宽任何身份门。
+    local deadline
+    deadline=$(( SECONDS + STARTUP_TIMEOUT_SECONDS ))
+    while (( SECONDS < deadline )); do
         mapfile -t sessions < <(list_sessions)
-        if (( ${#sessions[@]} == 1 )) \
-            && assert_runtime_listener "${sessions[0]}" >/dev/null \
+        if (( ${#sessions[@]} == 0 )); then
+            error 'Backend Screen 在就绪前退出'
+            tail -80 "${log_root}/screen.log" >&2 || true
+            return 1
+        fi
+        if (( ${#sessions[@]} > 1 )); then
+            error "启动期间出现多个同名会话：${sessions[*]}"
+            return 1
+        fi
+        if assert_runtime_listener "${sessions[0]}" >/dev/null 2>&1 \
             && curl --disable --noproxy '*' --proto '=http' --max-redirs 0 \
                 -fsS --max-time 2 \
                 "http://127.0.0.1:${API_PORT}/api/v1/healthz" >/dev/null 2>&1; then
@@ -985,7 +997,7 @@ start_runtime() {
         fi
         sleep 0.5
     done
-    error "运行时 30 秒内未就绪：${selected_release}"
+    error "启动前闭包校验或运行时进程在 ${STARTUP_TIMEOUT_SECONDS} 秒内未就绪：${selected_release}"
     tail -80 "${log_root}/screen.log" >&2 || true
     return 1
 }

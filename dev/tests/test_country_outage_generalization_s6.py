@@ -161,6 +161,21 @@ class CountryOutageGeneralizationS6Test(unittest.TestCase):
             "status_runtime() {", 1
         )[0]
         self.assertIn('assert_runtime_listener "${sessions[0]}"', start_body)
+        self.assertIn("readonly STARTUP_TIMEOUT_SECONDS=120", text)
+        self.assertIn(
+            "deadline=$(( SECONDS + STARTUP_TIMEOUT_SECONDS ))", start_body
+        )
+        self.assertIn("while (( SECONDS < deadline )); do", start_body)
+        self.assertIn(
+            'error "启动前闭包校验或运行时进程在 ${STARTUP_TIMEOUT_SECONDS} 秒内未就绪：${selected_release}"',
+            start_body,
+        )
+        self.assertIn("Backend Screen 在就绪前退出", start_body)
+        self.assertIn(
+            'assert_runtime_listener "${sessions[0]}" >/dev/null 2>&1',
+            start_body,
+        )
+        self.assertNotIn("attempt <= 60", start_body)
         self.assertIn("assert_runtime_port_closed", stop_body)
         completion_body = text.split("workflow_completion_state() {", 1)[1].split(
             "serve_runtime() {", 1
