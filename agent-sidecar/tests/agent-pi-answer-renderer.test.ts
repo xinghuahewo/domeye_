@@ -136,8 +136,10 @@ function sessionFactory(
     messages: [],
     stream: true,
   },
+  systemPrompts: string[] = [],
 ): DomeyePiSessionFactory {
-  return async () => {
+  return async (options) => {
+    systemPrompts.push(options.resourceLoader?.getSystemPrompt() ?? '')
     let lastText: string | undefined
     const rawStream = (
       _streamModel: typeof model,
@@ -217,6 +219,7 @@ function renderer(
     >['onPayload']
   >,
   rawPayload?: unknown,
+  systemPrompts: string[] = [],
 ): PiAnswerRenderer {
   return new PiAnswerRenderer({
     model_binding: {
@@ -238,6 +241,7 @@ function renderer(
       forwardedPayloads,
       existingPayloadHook,
       rawPayload,
+      systemPrompts,
     ),
   })
 }
@@ -246,9 +250,19 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
   const accounting = new DomeyeTurnProviderAccounting()
   const networkCalls = { value: 0 }
   const prompts: Record<string, unknown>[] = []
+  const systemPrompts: string[] = []
   const result = await composeCountryOutageAnswer(
     context,
-    renderer(JSON.stringify(draft()), accounting, networkCalls, prompts),
+    renderer(
+      JSON.stringify(draft()),
+      accounting,
+      networkCalls,
+      prompts,
+      [],
+      undefined,
+      undefined,
+      systemPrompts,
+    ),
   )
   assert.equal(result.source, 'renderer')
   assert.equal(result.guard_result.decision, 'pass')
@@ -257,6 +271,15 @@ test('Pi Renderer 只读取 Answer Context 受控投影且只产生一次供应�
   assert.equal(accounting.audit().attempt_count, 1)
   assert.equal(accounting.audit().estimated_cost_usd, 0.01)
   assert.equal(prompts.length, 1)
+  assert.equal(systemPrompts.length, 1)
+  assert.match(
+    systemPrompts[0]!,
+    /unit_zh 只能在 lead\.text 中紧跟 minimum\.display_zh 原样出现一次/,
+  )
+  assert.match(
+    systemPrompts[0]!,
+    /边界中的“唯一地址并集”不能代替 unit_zh/,
+  )
   assert.equal('answer_context' in prompts[0]!, false)
   assert.equal('instruction' in prompts[0]!, false)
   assert.equal('renderer_draft_skeleton' in prompts[0]!, false)
@@ -392,6 +415,26 @@ test('Renderer 继续拒绝 fenced、非 JSON、Schema 非法与 Guard 不通过
       text: `${acceptedDraft.fact_blocks[0]!.text} 事件已经恢复。`,
     }, acceptedDraft.fact_blocks[1]!],
   }
+  const unitMissing = {
+    ...acceptedDraft,
+    lead: {
+      ...acceptedDraft.lead,
+      text: acceptedDraft.lead.text.replace(` ${context.unit_zh}`, ''),
+    },
+  }
+  const unitDuplicated = {
+    ...acceptedDraft,
+    fact_blocks: [
+      acceptedDraft.fact_blocks[0]!,
+      {
+        ...acceptedDraft.fact_blocks[1]!,
+        text: acceptedDraft.fact_blocks[1]!.text.replace(
+          `${context.facts.difference.display_zh}`,
+          `${context.facts.difference.display_zh} ${context.unit_zh}`,
+        ),
+      },
+    ],
+  }
   const wrappedDraft = {
     renderer_draft_skeleton: draft(),
   }
@@ -401,7 +444,21 @@ test('Renderer 继续拒绝 fenced、非 JSON、Schema 非法与 Guard 不通过
     { name: '非 JSON', output: 'not-json' },
     { name: '外层 wrapper', output: JSON.stringify(wrappedDraft) },
     { name: 'Schema 非法', output: JSON.stringify(invalidSchema) },
-    { name: 'Guard 不通过', output: JSON.stringify(guardRejected) },
+    {
+      name: 'Guard 拒绝恢复结论',
+      output: JSON.stringify(guardRejected),
+      guard_reason: 'forbidden_recovery_claim',
+    },
+    {
+      name: 'Guard 拒绝单位缺失',
+      output: JSON.stringify(unitMissing),
+      guard_reason: 'unit_missing_or_duplicate',
+    },
+    {
+      name: 'Guard 拒绝单位重复',
+      output: JSON.stringify(unitDuplicated),
+      guard_reason: 'unit_missing_or_duplicate',
+    },
   ]
 
   for (const item of cases) {
@@ -416,11 +473,11 @@ test('Renderer 继续拒绝 fenced、非 JSON、Schema 非法与 Guard 不通过
     assert.equal(result.guard_result.decision, 'block', item.name)
     assert.equal(networkCalls.value, 1, item.name)
     assert.equal(accounting.audit().attempt_count, 1, item.name)
-    if (item.name === 'Guard 不通过') {
+    if ('guard_reason' in item) {
       assert.equal(result.render_attempt.status, 'completed')
       assert.ok(
         result.guard_result.reason_codes.includes(
-          'forbidden_recovery_claim',
+          item.guard_reason,
         ),
       )
     } else {
