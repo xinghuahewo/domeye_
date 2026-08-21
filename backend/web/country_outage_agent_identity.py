@@ -11,14 +11,21 @@ from flask import request
 
 
 IDENTITY_MODE_ENV = "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE"
+INTERACTIVE_IDENTITY_MODE_ENV = (
+    "COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE"
+)
 WSGI_REMOTE_USER_MODE = "wsgi_remote_user"
 INTERNAL_FIXED_HISTORY_MODE = "internal_fixed_history"
 INTERNAL_USER_ID_ENV = "COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID"
+INTERACTIVE_INTERNAL_USER_ID_ENV = (
+    "COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID"
+)
 TRUSTED_AUTHORIZATION_SCOPE_ENVIRON_KEY = (
     "domeye.country_outage_authorization_scope"
 )
 
 _AGENT_PATH_PREFIX = "/api/v2/country-outage/"
+_INTERACTIVE_AGENT_PATH_PREFIX = "/api/v2/country-outage/chat/"
 _DOMEYE_USER_KEY = "domeye.authenticated_user_id"
 _DOMEYE_SCOPE_KEY = "domeye.authorization_scope"
 _INTERNAL_IR_READ_SCOPE = "country_outage_event_read:IR"
@@ -93,7 +100,16 @@ def inject_country_outage_agent_principal() -> None:
     if not request.path.startswith(_AGENT_PATH_PREFIX):
         return
 
-    mode = os.environ.get(IDENTITY_MODE_ENV, "").strip()
+    if request.path.startswith(_INTERACTIVE_AGENT_PATH_PREFIX):
+        mode_env = INTERACTIVE_IDENTITY_MODE_ENV
+        internal_user_env = INTERACTIVE_INTERNAL_USER_ID_ENV
+    else:
+        # 旧报告和组合调查只保留模块级回归；正式路由已退役。它们不能借用
+        # 新 Chat 的身份键重新进入生产，但历史测试仍可验证旧边界。
+        mode_env = IDENTITY_MODE_ENV
+        internal_user_env = INTERNAL_USER_ID_ENV
+
+    mode = os.environ.get(mode_env, "").strip()
     environ = request.environ
 
     if mode == INTERNAL_FIXED_HISTORY_MODE:
@@ -104,7 +120,7 @@ def inject_country_outage_agent_principal() -> None:
         if not _is_loopback_address(environ.get("REMOTE_ADDR")):
             return
         user_id = _validated_internal_user_id(
-            os.environ.get(INTERNAL_USER_ID_ENV)
+            os.environ.get(internal_user_env)
         )
         if user_id is None:
             return

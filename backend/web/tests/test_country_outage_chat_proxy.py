@@ -7,6 +7,9 @@ from unittest.mock import patch
 
 from web.api.v2 import country_outage_chat_proxy as chat_proxy
 from web.country_outage_agent_identity import (
+    INTERNAL_FIXED_HISTORY_MODE,
+    INTERACTIVE_IDENTITY_MODE_ENV,
+    INTERACTIVE_INTERNAL_USER_ID_ENV,
     TRUSTED_AUTHORIZATION_SCOPE_ENVIRON_KEY,
     WSGI_REMOTE_USER_MODE,
 )
@@ -130,7 +133,7 @@ class CountryOutageChatProxyTest(unittest.TestCase):
                 "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL": (
                     "http://127.0.0.1:28475"
                 ),
-                "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE": WSGI_REMOTE_USER_MODE,
+                INTERACTIVE_IDENTITY_MODE_ENV: WSGI_REMOTE_USER_MODE,
             },
         )
         cls.environment.start()
@@ -146,6 +149,80 @@ class CountryOutageChatProxyTest(unittest.TestCase):
         self.client.environ_base[
             TRUSTED_AUTHORIZATION_SCOPE_ENVIRON_KEY
         ] = "country_outage_event_read:IR"
+
+    def test_legacy_identity_environment_cannot_authorize_new_chat(self):
+        calls = []
+
+        with patch.dict(
+            os.environ,
+            {
+                "COUNTRY_OUTAGE_AGENT_SHARED_TOKEN": (
+                    "test-only-country-outage-agent-token"
+                ),
+                "COUNTRY_OUTAGE_INTERACTIVE_AGENT_SIDECAR_URL": (
+                    "http://127.0.0.1:28475"
+                ),
+                "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE": WSGI_REMOTE_USER_MODE,
+                "COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID": "legacy-user",
+            },
+            clear=True,
+        ), patch.object(
+            chat_proxy,
+            "_request_interactive_agent",
+            side_effect=lambda *args, **kwargs: calls.append((args, kwargs)),
+        ):
+            response = self.client.post(
+                "/api/v2/country-outage/chat/conversations",
+                json={
+                    "event_reference": REFERENCE,
+                    "publication_id": "publication-test",
+                    "revision": 1,
+                    "idempotency_key": "legacy-identity-must-not-authorize",
+                },
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(calls, [])
+        self.assertNotIn(INTERACTIVE_INTERNAL_USER_ID_ENV, os.environ)
+
+    def test_new_fixed_history_identity_authorizes_loopback_chat(self):
+        calls = []
+
+        def fake_request(method, path, **kwargs):
+            calls.append((method, path, kwargs))
+            return FakeUpstream(
+                {"conversation": public_conversation(), "deduplicated": False},
+                201,
+            )
+
+        with patch.dict(
+            os.environ,
+            {
+                INTERACTIVE_IDENTITY_MODE_ENV: INTERNAL_FIXED_HISTORY_MODE,
+                INTERACTIVE_INTERNAL_USER_ID_ENV: (
+                    "domeye-first-slice-interactive-user-v1"
+                ),
+            },
+        ), patch.object(
+            chat_proxy, "_request_interactive_agent", side_effect=fake_request
+        ):
+            response = self.client.post(
+                "/api/v2/country-outage/chat/conversations",
+                json=binding_request(),
+                environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(calls), 1)
+        headers = calls[0][2]["headers"]
+        self.assertEqual(
+            headers["X-Domeye-User"],
+            "domeye-first-slice-interactive-user-v1",
+        )
+        self.assertEqual(
+            headers["X-Domeye-Authorization-Scope"],
+            "country_outage_event_read:IR",
+        )
 
     def test_forwards_only_bound_read_only_conversation_calls(self):
         calls = []

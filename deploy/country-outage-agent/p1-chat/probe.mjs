@@ -291,6 +291,8 @@ function parseConfig(configArgument) {
     'COUNTRY_OUTAGE_AGENT_VERIFIER_TOKEN',
     'COUNTRY_OUTAGE_AGENT_HOST',
     'COUNTRY_OUTAGE_AGENT_PORT',
+    'COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE',
+    'COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID',
     'DOMEYE_API_BASE_URL',
     'COUNTRY_OUTAGE_FIRST_SLICE_PROJECT_ROOT',
     'COUNTRY_OUTAGE_FIRST_SLICE_CANDIDATE_MANIFEST',
@@ -304,6 +306,8 @@ function parseConfig(configArgument) {
     || baseUrl !== FIXED_URL
     || host !== FIXED_HOST
     || port !== String(FIXED_PORT)
+    || values.get('COUNTRY_OUTAGE_INTERACTIVE_AGENT_IDENTITY_MODE') !== 'internal_fixed_history'
+    || values.get('COUNTRY_OUTAGE_INTERACTIVE_AGENT_INTERNAL_USER_ID') !== 'domeye-first-slice-interactive-user-v1'
     || typeof token !== 'string'
     || token.length < 32
     || token.startsWith('replace-with-')

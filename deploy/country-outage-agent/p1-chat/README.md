@@ -65,9 +65,10 @@
 `/home/bgpdata/Domeye-Core-runtime/config/country-outage-interactive-agent.env`
 
 生产文件必须为 `root:root 0600`。Candidate manifest、项目根、模型凭据、数据 API、
-会话 TTL、超时、回环 host/port、共享 Token 和独立 verifier Token 都是必填项；两个 Token
-必须不同，verifier Token 不写入命令行、日志、manifest 或回执。未知键、重复键或含空白值
-会失败关闭。
+会话 TTL、超时、回环 host/port、共享 Token、独立 verifier Token，以及新 Chat 专用的
+固定历史观测身份模式和内部用户都是必填项；两个 Token 必须不同，verifier Token 不写入
+命令行、日志、manifest 或回执。新 Chat 身份键不与已退役报告或组合调查共享，未知键、
+重复键或含空白值会失败关闭。
 
 ## 发布顺序
 
