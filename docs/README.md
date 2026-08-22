@@ -16,6 +16,12 @@
 
 七份文档不是七个并行项目。当前首片合同仍是 `Designed`；代码、PR、历史验收或 Issue 状态不能自动把它提升为 `Implemented`、`Verified` 或 `Released`。
 
+实施首片后继修复前，还必须阅读
+[首个纵向切片目标效果与实现硬边界 v1.0](architecture/Domeye_First_Vertical_Slice_Target_Effect_v1.0.md)。
+它已合并 PR #62 的“五个核心难点与实施计划”，专门把“Pi 真正提出下一步、最小 Goal
+State、Capability View、Observation 后重选和轨迹 Eval”拆成四个 Spike。每个 Spike 均有
+`GO / REPAIR / STOP`；Spike 全部 GO 后仍须暂停，不能自动写成 M1 已实现或开始产品化。
+
 ## 回答体验专项
 
 - [用户回答与内部证据边界 v1.0](architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)：定义用户最终看到什么、哪些证据只留在内部，以及成功、澄清、拒绝和失败的表达边界。
