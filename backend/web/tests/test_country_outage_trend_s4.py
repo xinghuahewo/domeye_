@@ -2,114 +2,30 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-from unittest.mock import patch
-import unittest
 import sys
+import unittest
+from unittest.mock import patch
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = REPOSITORY_ROOT / "backend"
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
+for path in (REPOSITORY_ROOT, BACKEND_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
-from services.country_outage_trend_product import (
+from dev.tests.build_country_outage_trend_product import (  # noqa: E402
+    build_country_outage_trend_product,
+    build_country_outage_trend_resources,
+)
+from services.country_outage_trend_product import (  # noqa: E402
     TrendProductValidationError,
     compile_country_outage_trend_product_from_resources,
 )
 
 
-VERIFIER_PATH = REPOSITORY_ROOT / "dev" / "verify_country_outage_trend_analysis_s4.py"
-
-
-def load_verifier():
-    specification = importlib.util.spec_from_file_location(
-        "s4_verifier_for_api_test", VERIFIER_PATH
-    )
-    if specification is None or specification.loader is None:
-        raise RuntimeError("无法加载 S4 校验器")
-    module = importlib.util.module_from_spec(specification)
-    specification.loader.exec_module(module)
-    return module
-
-
-def resources():
-    candidate = load_verifier().build_candidate()
-    profile = candidate["profile"]
-    snapshot = profile["snapshot"]
-    common = {
-        "incident_id": snapshot["incident_id"],
-        "publication_id": snapshot["publication_id"],
-        "revision": snapshot["revision"],
-        "data_through": snapshot["data_through"],
-        "cohort_id": "cohort-s4-api",
-        "window_start_utc": snapshot["window_start_utc"],
-        "window_end_utc": snapshot["window_end_utc"],
-        "is_final": snapshot["is_final"],
-    }
-    overview = {
-        "schema_version": "country_outage_overview_v2",
-        **common,
-        "event_identity": {
-            "incident_id": snapshot["incident_id"],
-            "legacy_reference": snapshot["event_reference"],
-            "event_type": "country_outage",
-            "country_code": snapshot["country_code"],
-            "country_name": "验收国家",
-            "display_name": "验收国家国家中断",
-        },
-        "observation_scope": {
-            "collector_id": "rrc25",
-            "collector_ids": ["rrc25"],
-            "collector_count": 1,
-            "window_start_utc": snapshot["window_start_utc"],
-            "window_end_utc": snapshot["window_end_utc"],
-            "timezone": snapshot["timezone"],
-            "interval_seconds": profile["time_grid"]["slot_seconds"],
-        },
-        "cohort": {
-            "cohort_id": "cohort-s4-api",
-            "prefix_vp_count": profile["metric"]["denominator"]["value"],
-        },
-        "capabilities": {"trend_analysis": {"state": "available"}},
-    }
-    series = {
-        "schema_version": "country_outage_series_v2",
-        **common,
-        "interval_seconds": profile["time_grid"]["slot_seconds"],
-        "series": [
-            {
-                "observed_at_utc": slot["observed_at_utc"],
-                "slot_state": slot["state"],
-                "visible_prefix_vp_count": slot["value"],
-                "update_total": index * 10,
-                "announce_count": index * 7,
-                "withdraw_count": index * 3,
-            }
-            for index, slot in enumerate(profile["slots"])
-        ],
-    }
-    slot_count = len(profile["slots"])
-    asn_page = {
-        "schema_version": "country_outage_asn_page_v2",
-        **common,
-        "page": 1,
-        "page_count": 1,
-        "items": [
-            {
-                "asn": "64500",
-                "address_families": [4, 6],
-                "baseline_prefix_count": 2,
-                "baseline_prefix_vp_count": 8,
-                "states": [0, *([1] * max(0, slot_count - 2)), 0],
-            }
-        ],
-    }
-    return overview, series, [asn_page]
-
-
 class CountryOutageTrendS4ApiTest(unittest.TestCase):
     def test_resource_adapter_compiles_one_authoritative_product(self):
-        overview, series, pages = resources()
+        overview, series, pages = build_country_outage_trend_resources()
         product = compile_country_outage_trend_product_from_resources(
             overview, series, pages
         )
@@ -117,7 +33,8 @@ class CountryOutageTrendS4ApiTest(unittest.TestCase):
             product["schema_version"], "country_outage_trend_product_v1"
         )
         self.assertEqual(
-            product["snapshot"]["publication_id"], overview["publication_id"]
+            product["snapshot"]["publication_id"],
+            overview["publication_id"],
         )
         self.assertEqual(
             product["render_contract"]["source_product_id"],
@@ -128,18 +45,22 @@ class CountryOutageTrendS4ApiTest(unittest.TestCase):
             "fully_visible",
         )
         self.assertEqual(
-            product["contexts"]["asn"]["asns"][0]["per_family_state_status"],
+            product["contexts"]["asn"]["asns"][0][
+                "per_family_state_status"
+            ],
             "unavailable_in_current_observation_contract",
         )
 
     def test_resource_adapter_rejects_cross_publication_mix(self):
-        overview, series, pages = resources()
+        overview, series, pages = build_country_outage_trend_resources()
         series["publication_id"] = "publication-conflict"
         with self.assertRaises(TrendProductValidationError) as captured:
             compile_country_outage_trend_product_from_resources(
                 overview, series, pages
             )
-        self.assertEqual(captured.exception.code, "resource_identity_conflict")
+        self.assertEqual(
+            captured.exception.code, "resource_identity_conflict"
+        )
 
     def test_asn_slot_population_indexes_rows_once(self):
         class CountingAsn:
@@ -152,13 +73,10 @@ class CountryOutageTrendS4ApiTest(unittest.TestCase):
                 type(self).calls += 1
                 return self.value
 
-        overview, series, pages = resources()
+        overview, series, pages = build_country_outage_trend_resources()
         template = pages[0]["items"][0]
         pages[0]["items"] = [
-            {
-                **template,
-                "asn": CountingAsn(64500 + index),
-            }
+            {**template, "asn": CountingAsn(64500 + index)}
             for index in range(24)
         ]
 
@@ -177,17 +95,19 @@ class CountryOutageTrendS4ApiTest(unittest.TestCase):
         from run import create_app
 
         app = create_app("testing")
-        product = load_verifier().build_candidate()
+        product = build_country_outage_trend_product()
         with patch(
             "web.api.v2.country_outages.get_country_outage_trend_product",
             return_value=product,
         ):
             response = app.test_client().get(
-                "/api/v2/country-outages/incident-s4/trend",
-                query_string={"publication_id": "publication-s4"},
+                "/api/v2/country-outages/incident-current-trend/trend",
+                query_string={"publication_id": "publication-current-trend"},
             )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()["product_id"], product["product_id"])
+        self.assertEqual(
+            response.get_json()["product_id"], product["product_id"]
+        )
         self.assertTrue(response.headers["ETag"])
 
 

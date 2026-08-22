@@ -53,12 +53,6 @@ readonly DATA_END_EXCLUSIVE='2026-04-01 00:00:00'
 readonly SNAPSHOT_TIME='2026-03-31 23:59:59'
 readonly UV='/home/bgpdata/.local/bin/uv'
 readonly RUNTIME_PATH='/home/bgpdata/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-readonly COUNTRY_OUTAGE_AGENT_RUNTIME_ENV='/home/bgpdata/Domeye-Core-runtime/config/country-outage-agent.env'
-readonly COUNTRY_OUTAGE_AGENT_EXPECTED_URL='http://127.0.0.1:28474'
-readonly COUNTRY_OUTAGE_AGENT_EXPECTED_IDENTITY_MODE='internal_fixed_history'
-readonly COUNTRY_OUTAGE_AGENT_EXPECTED_SCOPE='country_outage_event_read:IR'
-readonly COUNTRY_OUTAGE_AGENT_NODE='/home/bgpdata/.local/node-v22.23.1-linux-x64/bin/node'
-readonly COUNTRY_OUTAGE_AGENT_PROBE_SCRIPT="${PROJECT_ROOT}/deploy/country-outage-agent/probe-sidecar.mjs"
 
 DB_NAME=''
 DB_READER_USER=''
@@ -69,12 +63,6 @@ DB_IMAGE_ID=''
 DB_RELEASE_ID=''
 DB_SYSTEM_IDENTIFIER=''
 DB_CHECKPOINT_KEY=''
-COUNTRY_OUTAGE_AGENT_ENABLED=false
-COUNTRY_OUTAGE_AGENT_URL_VALUE=''
-COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE=''
-COUNTRY_OUTAGE_AGENT_IDENTITY_MODE_VALUE=''
-COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID_VALUE=''
-COUNTRY_OUTAGE_AGENT_CONFIG_SHA256_VALUE=''
 
 error() {
     printf '错误：%s\n' "$*" >&2
@@ -214,144 +202,6 @@ read_config_value() {
         return 1
     fi
     printf '%s\n' "${value}"
-}
-
-read_country_outage_agent_config_value() {
-    local key="$1"
-    local -a values
-    mapfile -t values < <(
-        awk -v wanted="${key}" '
-            /^[[:space:]]*(#|$)/ { next }
-            {
-                separator = index($0, "=")
-                if (separator == 0) next
-                name = substr($0, 1, separator - 1)
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
-                if (name != wanted) next
-                value = substr($0, separator + 1)
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-                print value
-            }
-        ' "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}"
-    )
-    if (( ${#values[@]} != 1 )); then
-        error "国家中断 Agent 运行配置键必须恰好出现一次：${key}"
-        return 1
-    fi
-    local value="${values[0]}"
-    if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
-        value="${value:1:${#value}-2}"
-    elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
-        value="${value:1:${#value}-2}"
-    fi
-    if [[ -z "${value}" || "${value}" =~ [[:space:]] ]]; then
-        error "国家中断 Agent 运行配置键不得为空或包含空白：${key}"
-        return 1
-    fi
-    printf '%s\n' "${value}"
-}
-
-load_country_outage_agent_runtime_config() {
-    COUNTRY_OUTAGE_AGENT_ENABLED=false
-    COUNTRY_OUTAGE_AGENT_URL_VALUE=''
-    COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE=''
-    COUNTRY_OUTAGE_AGENT_IDENTITY_MODE_VALUE=''
-    COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID_VALUE=''
-    COUNTRY_OUTAGE_AGENT_CONFIG_SHA256_VALUE=''
-
-    # 远程开发档保持既有行为；只有对外的固定历史观测档消费正式 Agent 配置。
-    if [[ "${API_PROFILE}" != 'core' ]]; then
-        return 0
-    fi
-    if [[ ! -e "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" \
-        && ! -L "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" ]]; then
-        return 0
-    fi
-
-    local config_dir="${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV%/*}"
-    local dir_mode
-    if [[ "${config_dir}" != '/home/bgpdata/Domeye-Core-runtime/config' \
-        || ! -d "${config_dir}" || -L "${config_dir}" \
-        || "$(readlink -f "${config_dir}")" != "${config_dir}" \
-        || "$(stat -c '%u' "${config_dir}")" != '0' ]]; then
-        error "国家中断 Agent 配置目录不是 root 拥有的固定实际目录：${config_dir}"
-        return 1
-    fi
-    dir_mode="$(stat -c '%a' "${config_dir}")"
-    if (( (8#${dir_mode} & 8#022) != 0 )); then
-        error '国家中断 Agent 配置目录不得被组或其他用户写入'
-        return 1
-    fi
-    if [[ ! -f "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" \
-        || -L "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" \
-        || "$(readlink -f "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}")" \
-            != "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" \
-        || "$(stat -c '%u' "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}")" != '0' \
-        || "$(stat -c '%a' "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}")" != '600' ]]; then
-        error '国家中断 Agent 运行配置必须是 root 拥有的 0600 实际普通文件'
-        return 1
-    fi
-
-    COUNTRY_OUTAGE_AGENT_URL_VALUE="$(
-        read_country_outage_agent_config_value COUNTRY_OUTAGE_AGENT_URL
-    )" || return 1
-    COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE="$(
-        read_country_outage_agent_config_value COUNTRY_OUTAGE_AGENT_SHARED_TOKEN
-    )" || return 1
-    COUNTRY_OUTAGE_AGENT_IDENTITY_MODE_VALUE="$(
-        read_country_outage_agent_config_value COUNTRY_OUTAGE_AGENT_IDENTITY_MODE
-    )" || return 1
-    COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID_VALUE="$(
-        read_country_outage_agent_config_value COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID
-    )" || return 1
-
-    if [[ "${COUNTRY_OUTAGE_AGENT_URL_VALUE}" \
-        != "${COUNTRY_OUTAGE_AGENT_EXPECTED_URL}" ]]; then
-        error "国家中断 Agent URL 必须固定为 ${COUNTRY_OUTAGE_AGENT_EXPECTED_URL}"
-        return 1
-    fi
-    if (( ${#COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE} < 32 \
-        || ${#COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE} > 256 )) \
-        || [[ ! "${COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE}" \
-            =~ ^[A-Za-z0-9._~-]+$ ]]; then
-        error '国家中断 Agent 内部凭据必须是 32 至 256 位安全随机字符'
-        return 1
-    fi
-    if [[ "${COUNTRY_OUTAGE_AGENT_IDENTITY_MODE_VALUE}" \
-        != "${COUNTRY_OUTAGE_AGENT_EXPECTED_IDENTITY_MODE}" ]]; then
-        error "固定历史观测环境只允许身份模式 ${COUNTRY_OUTAGE_AGENT_EXPECTED_IDENTITY_MODE}"
-        return 1
-    fi
-    if [[ ! "${COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID_VALUE}" \
-        =~ ^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$ ]]; then
-        error '国家中断 Agent 内部用户标识不符合安全格式'
-        return 1
-    fi
-    if [[ ! -x "${COUNTRY_OUTAGE_AGENT_NODE}" \
-        || ! -f "${COUNTRY_OUTAGE_AGENT_PROBE_SCRIPT}" \
-        || -L "${COUNTRY_OUTAGE_AGENT_PROBE_SCRIPT}" \
-        || "$(readlink -f "${COUNTRY_OUTAGE_AGENT_PROBE_SCRIPT}")" \
-            != "${COUNTRY_OUTAGE_AGENT_PROBE_SCRIPT}" ]]; then
-        error '国家中断 Agent 固定 Node.js 或 readiness 探针无效'
-        return 1
-    fi
-    COUNTRY_OUTAGE_AGENT_CONFIG_SHA256_VALUE="$(
-        sha256sum "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" | awk '{print $1}'
-    )"
-    COUNTRY_OUTAGE_AGENT_ENABLED=true
-}
-
-country_outage_agent_readiness_request() {
-    if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" != true ]]; then
-        return 0
-    fi
-    env -i \
-        HOME=/home/bgpdata \
-        PATH="${RUNTIME_PATH}" \
-        "${COUNTRY_OUTAGE_AGENT_NODE}" \
-        "${COUNTRY_OUTAGE_AGENT_PROBE_SCRIPT}" \
-        "${COUNTRY_OUTAGE_AGENT_RUNTIME_ENV}" \
-        >/dev/null
 }
 
 load_database_config() {
@@ -620,12 +470,7 @@ api_process_matches() {
                     -v data_start="${DATA_START}" \
                     -v data_end="${DATA_END_EXCLUSIVE}" \
                     -v snapshot="${SNAPSHOT_TIME}" \
-                    -v no_bytecode="1" \
-                    -v agent_required="${COUNTRY_OUTAGE_AGENT_ENABLED}" \
-                    -v agent_url="${COUNTRY_OUTAGE_AGENT_URL_VALUE}" \
-                    -v agent_identity_mode="${COUNTRY_OUTAGE_AGENT_IDENTITY_MODE_VALUE}" \
-                    -v agent_user="${COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID_VALUE}" \
-                    -v agent_config_sha="${COUNTRY_OUTAGE_AGENT_CONFIG_SHA256_VALUE}" '
+                    -v no_bytecode="1" '
                     function value() { sub(/^[^=]*=/, ""); return $0 }
                     $1 == "DOMEYE_DEV_API_INSTANCE" && value() == marker { a=1 }
                     $1 == "HOST" && value() == host { b=1 }
@@ -643,14 +488,8 @@ api_process_matches() {
                     $1 == "LOAD_CORE_DATA_ON_STARTUP" && value() == "false" { m=1 }
                     $1 == "DOMEYE_CORE_SKIP_LOCAL_ENV" && value() == "true" { n=1 }
                     $1 == "PYTHONDONTWRITEBYTECODE" && value() == no_bytecode { p=1 }
-                    $1 == "COUNTRY_OUTAGE_AGENT_URL" && value() == agent_url { q=1 }
-                    $1 == "COUNTRY_OUTAGE_AGENT_SHARED_TOKEN" && length(value()) >= 32 { r=1 }
-                    $1 == "COUNTRY_OUTAGE_AGENT_IDENTITY_MODE" && value() == agent_identity_mode { s=1 }
-                    $1 == "COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID" && value() == agent_user { t=1 }
-                    $1 == "COUNTRY_OUTAGE_AGENT_CONFIG_SHA256" && value() == agent_config_sha { u=1 }
                     END {
-                        agent_ok = agent_required != "true" || (q&&r&&s&&t&&u)
-                        exit(a&&b&&c&&d&&e&&f&&g&&h&&i&&j&&k&&l&&m&&n&&o&&p&&agent_ok ? 0 : 1)
+                        exit(a&&b&&c&&d&&e&&f&&g&&h&&i&&j&&k&&l&&m&&n&&o&&p ? 0 : 1)
                     }
                 '; then
             return 0
@@ -768,7 +607,6 @@ serve_internal() {
     load_database_config
     validate_database
     validate_info
-    load_country_outage_agent_runtime_config
 
     export HOME=/home/bgpdata
     export USER=root
@@ -804,16 +642,8 @@ serve_internal() {
     export PYTHONUNBUFFERED=1
     export PYTHONDONTWRITEBYTECODE=1
     export UV_PROJECT_ENVIRONMENT="${VENV_DIR}"
-    if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" == true ]]; then
-        export COUNTRY_OUTAGE_AGENT_URL="${COUNTRY_OUTAGE_AGENT_URL_VALUE}"
-        export COUNTRY_OUTAGE_AGENT_SHARED_TOKEN="${COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE}"
-        export COUNTRY_OUTAGE_AGENT_IDENTITY_MODE="${COUNTRY_OUTAGE_AGENT_IDENTITY_MODE_VALUE}"
-        export COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID="${COUNTRY_OUTAGE_AGENT_INTERNAL_USER_ID_VALUE}"
-        export COUNTRY_OUTAGE_AGENT_CONFIG_SHA256="${COUNTRY_OUTAGE_AGENT_CONFIG_SHA256_VALUE}"
-    fi
     DB_READER_PASSWORD=''
     SECRET_KEY_VALUE=''
-    COUNTRY_OUTAGE_AGENT_SHARED_TOKEN_VALUE=''
 
     exec "${UV}" run --directory "${BACKEND_DIR}" --frozen python run.py
 }
@@ -826,12 +656,6 @@ start_action() {
     load_database_config
     validate_database
     validate_info
-    load_country_outage_agent_runtime_config
-    if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" == true ]] \
-        && ! country_outage_agent_readiness_request; then
-        error '国家中断 Agent 已配置，但 Sidecar readiness 未通过；拒绝启动固定后端'
-        return 1
-    fi
 
     local -a sessions
     mapfile -t sessions < <(list_sessions)
@@ -909,12 +733,6 @@ start_action() {
                     tail_log
                     return 1
                 fi
-                if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" == true ]] \
-                    && ! country_outage_agent_readiness_request; then
-                    error '固定后端已启动，但国家中断 Agent readiness 未通过'
-                    tail_log
-                    return 1
-                fi
                 START_COMPLETE=true
                 trap - EXIT
                 printf '开发 API 启动成功：%s\n' "${started_session}"
@@ -964,7 +782,6 @@ health_action() {
     load_database_config
     validate_database
     validate_info
-    load_country_outage_agent_runtime_config
     local -a sessions
     mapfile -t sessions < <(list_sessions)
     if (( ${#sessions[@]} != 1 )) || ! api_process_matches "${sessions[0]}"; then
@@ -979,24 +796,12 @@ health_action() {
         error '开发 API 健康探针通过，但固定窗口事件查询失败'
         return 1
     fi
-    if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" == true ]] \
-        && ! country_outage_agent_readiness_request; then
-        error '固定后端健康，但国家中断 Agent readiness 失败'
-        return 1
-    fi
     printf '开发 API 健康：%s（Screen %s，数据库只读）\n' "${HEALTH_URL}" "${sessions[0]}"
     printf '数据库冒烟：%s\n' "${DATABASE_SMOKE_URL}"
-    if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" == true ]]; then
-        printf '国家中断 Agent：ready（external evidence not_configured / disabled）\n'
-    fi
 }
 
 status_action() {
     local failed=false
-    if ! load_country_outage_agent_runtime_config; then
-        printf '国家中断 Agent 配置：无效\n'
-        failed=true
-    fi
     if load_database_config && validate_database; then
         printf '开发数据库：verified / running / readonly（127.0.0.1:%s）\n' "${DB_PORT}"
     else
@@ -1026,16 +831,6 @@ status_action() {
     else
         printf '开发 API 健康：failed（%s）\n' "${HEALTH_URL}"
         failed=true
-    fi
-    if [[ "${COUNTRY_OUTAGE_AGENT_ENABLED}" == true ]]; then
-        if country_outage_agent_readiness_request; then
-            printf '国家中断 Agent：ready（external evidence not_configured / disabled）\n'
-        else
-            printf '国家中断 Agent：failed\n'
-            failed=true
-        fi
-    else
-        printf '国家中断 Agent：未配置（核心观测 API 仍可用）\n'
     fi
     [[ "${failed}" == false ]]
 }

@@ -55,7 +55,7 @@
       "check_id": "raw-full-window", "dimension": "raw_traceability", "rule_id": "P0-RAW-001", "title_zh": "原始制品全窗口可追溯", "status": "fail", "severity": "warning", "scope_ref": "raw:rrc25:2026-02..2026-03",
       "observed": {"value": 0.6045, "unit": "ratio_0_1"}, "expected": {"operator": "eq", "value": 1, "unit": "ratio_0_1"}, "unknown_count": 0,
       "failure_samples": [{"source_ref": "raw:rrc25", "primary_key": null, "field": null, "event_time": "2026-01-31T16:00:00Z", "reason_codes": ["source_unavailable"]}],
-      "evidence_refs": [{"ref_id": "raw-audit:feb-mar-2026", "locator": "docs/data/P0原始制品审计.json", "sha256": null}], "message_zh": "缺少 6720 个 UPDATE 槽。", "remediation_stage": "external"
+      "evidence_refs": [{"ref_id": "raw-audit:feb-mar-2026", "locator": "git:093bb8331535d48b4b876291406bb72812793c82:docs/archive/data/evidence/P0原始制品审计.json", "sha256": null}], "message_zh": "缺少 6720 个 UPDATE 槽。", "remediation_stage": "external"
     },
     {
       "check_id": "coverage-known-gaps", "dimension": "sample_coverage", "rule_id": "P0-COVERAGE-001", "title_zh": "覆盖缺口完成分类", "status": "pass", "severity": "blocking", "scope_ref": "feature_country:five-minute-slots",
@@ -70,7 +70,7 @@
     {
       "check_id": "phase-normalization-pending", "dimension": "event_phase_coverage", "rule_id": "P0-PHASE-001", "title_zh": "六类事件阶段状态完整", "status": "pending", "severity": "blocking", "scope_ref": "normalized:six-event-types:phase-state",
       "observed": {"value": null, "unit": "ratio_0_1"}, "expected": {"operator": "eq", "value": 1, "unit": "ratio_0_1"}, "unknown_count": 1171464, "failure_samples": [],
-      "evidence_refs": [{"ref_id": "coverage-matrix:six-events", "locator": "docs/data/P0六类事件字段覆盖矩阵.csv", "sha256": null}], "message_zh": "D0 只完成物理字段盘点，等待 D2 逐记录规范化。", "remediation_stage": "D2"
+      "evidence_refs": [{"ref_id": "coverage-matrix:six-events", "locator": "git:093bb8331535d48b4b876291406bb72812793c82:docs/archive/data/evidence/P0六类事件字段覆盖矩阵.csv", "sha256": null}], "message_zh": "D0 只完成物理字段盘点，等待 D2 逐记录规范化。", "remediation_stage": "D2"
     },
     {
       "check_id": "window-public-tables", "dimension": "fixed_window_bounds", "rule_id": "P0-WINDOW-001", "title_zh": "固定 Overlay 窗口外记录为零", "status": "pass", "severity": "blocking", "scope_ref": "database:public:37-tables",
@@ -80,7 +80,7 @@
     {
       "check_id": "missing-normalization-pending", "dimension": "unknown_missingness", "rule_id": "P0-MISSING-001", "title_zh": "派生空值原因完整", "status": "pending", "severity": "blocking", "scope_ref": "normalized:nullable-derived-fields",
       "observed": {"value": null, "unit": "record_count"}, "expected": {"operator": "eq", "value": 0, "unit": "record_count"}, "unknown_count": 1, "failure_samples": [],
-      "evidence_refs": [{"ref_id": "audit:missing-risks", "locator": "docs/data/P0数据现状审计.md#当前指标实现中的缺失补零风险", "sha256": null}], "message_zh": "规范层尚未生成，未知派生缺失门禁保持待定。", "remediation_stage": "D2"
+      "evidence_refs": [{"ref_id": "audit:missing-risks", "locator": "git:093bb8331535d48b4b876291406bb72812793c82:docs/archive/data/evidence/P0数据现状审计.md#当前指标实现中的缺失补零风险", "sha256": null}], "message_zh": "规范层尚未生成，未知派生缺失门禁保持待定。", "remediation_stage": "D2"
     }
   ],
   "check_summary": {"total_check_count": 10, "passed_check_count": 4, "failed_check_count": 4, "pending_check_count": 2, "blocking_failed_check_count": 3, "blocking_pending_check_count": 2},

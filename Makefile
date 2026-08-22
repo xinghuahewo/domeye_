@@ -6,7 +6,7 @@ MOCK_SCENARIO ?= normal
 P0_DATA_PROFILE ?= config/data-profile.json
 P0_PIPELINE_ROOT ?= .
 
-.PHONY: dev preview risk api-types codex-preflight codex-postflight codex-version-policy check-fast check-integration check-data-p0 check-p0-producer-identity check-release check-release-full release-prepare release-activate release-rollback release-gc
+.PHONY: dev preview risk api-types codex-preflight codex-postflight codex-version-policy check-fast check-integration check-data-p0 check-release check-release-full release-prepare release-activate release-rollback release-gc
 
 dev:
 	DOMEYE_MOCK_SCENARIO="$(MOCK_SCENARIO)" $(PYTHON) dev/run_local.py dev --api "$(API_MODE)"
@@ -64,10 +64,6 @@ check-data-p0:
 			$(if $(P0_METRIC_SUMMARY),--metric-summary "$(P0_METRIC_SUMMARY)" --metric-manifest "$(P0_METRIC_MANIFEST)" --metric-checksums "$(P0_METRIC_CHECKSUMS)") \
 			$(if $(P0_REPRODUCIBILITY_SUMMARY),--reproducibility-summary "$(P0_REPRODUCIBILITY_SUMMARY)" --reproducibility-checksums "$(P0_REPRODUCIBILITY_CHECKSUMS)"); \
 	fi
-
-check-p0-producer-identity:
-	$(PYTHON) dev/data_quality/p0_producer_identity.py
-	$(PYTHON) -m unittest dev.tests.test_p0_producer_identity dev.tests.test_p0_r_track_hook
 
 check-release:
 	$(PYTHON) dev/checks.py release

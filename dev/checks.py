@@ -135,10 +135,7 @@ def classify(path):
         return 3
     if path in (
         "config/performance-budget.json",
-        "config/country-outage-agent-acceptance-v1.json",
-        "config/country-outage-agent-acceptance-v2.json",
         "config/country-outage-agent-core-acceptance-v3.json",
-        "config/country-outage-external-evidence-pack-v1.json",
     ):
         return 2
     if path == "openspec/config.yaml":
@@ -338,10 +335,7 @@ def fast_checks(files):
         or path.startswith("contracts/agent/")
         or path
         in (
-            "config/country-outage-agent-acceptance-v2.json",
             "config/country-outage-agent-core-acceptance-v3.json",
-            "config/country-outage-external-evidence-pack-v1.json",
-            ".codex/hooks/country_outage_agent_review.py",
         )
         for path in files
     )

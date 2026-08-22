@@ -33,14 +33,14 @@ Operator、Typed Finding 和回答边界，到安全答案。它不是新产品�
 | 6 | [22 项开发优先级与阶段计划 v1.1](docs/roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md) | 哪些问题先处理、哪些必须由真实证据触发后再建设 |
 | 7 | [Domeye GitHub 治理套件 v1.0](docs/governance/README.md) | 上述工作如何进入 Issue、Project、Candidate、Evidence 和状态同步 |
 
-旧 W6 讨论包、旧 P0–P2 计划和历史 Evidence 继续保留，但不能覆盖这套交接主线；所有旧文档统一从[文档归档索引](docs/archive/README.md)进入。
+旧 W6、P0–P2 方案和被取代的阶段 Evidence 已从当前树删除。需要追溯时使用 Git 历史或对应发布 tag，不能让历史材料覆盖这套交接主线。
 
 ## 现有 Core 能力概览
 
 - 查询前缀劫持、子前缀劫持、路由泄漏、前缀中断、AS 中断和国家中断六类历史事件；
 - 展示事件列表、事件详情、统计、资源量、报文量和受约束的观测时序；
-- v1 Core 数据查询接口仍是只读；仓库另有 v2 report、chat、investigation 状态端点和
-  旧 Candidate 实现，它们的存在不等于新锚点已经实现或通过评测；
+- v1 Core 数据查询接口仍是只读；v2 只保留当前注册的事件、趋势、通用页面和交互式
+  Agent 接口。仓库中的旧实现源码不代表对应路由仍然可用；
 - `backend/core/` 是离线检测核心，Web 启动不会自动运行检测管线。
 
 ## 按目的开始阅读
@@ -49,12 +49,10 @@ Operator、Typed Finding 和回答边界，到安全答案。它不是新产品�
   [开发与验收流水线](docs/core/开发与验收流水线.md)、[后端说明](backend/README.md)和
   [部署说明](deploy/README.md)。
 - 参与 Agent 重构：先读上面的七份核心交接文档，再按当前任务进入
-  [Capability Map](docs/architecture/capability-map.md)、[Epics](docs/roadmap/epics.md)或
-  [Feature Breakdown](docs/roadmap/feature-breakdown.md)。
+  [Capability Map](docs/architecture/capability-map.md)。
 - 查看 GitHub 进度与状态语义：读
   [GitHub 管理与任务收尾同步规则](docs/governance/Domeye_GitHub_Management_Rules_v1.0.md)。
-- 查找旧设计、历史验收或模板：从[文档导航](docs/README.md)进入，不要用文件名中的
-  “最终验收”推断当前 Candidate 已通过。
+- 查找当前设计与验收入口：从[文档导航](docs/README.md)进入；历史材料从对应 Git 对象取证，不以文件名推断当前 Candidate 状态。
 
 ## 权威顺序
 
@@ -78,17 +76,16 @@ Candidate 身份。
 
 | 目录 | 职责 |
 |---|---|
-| `.codex/` | Codex 任务合同示例、任务边界检查、阶段 Hook 与项目级收尾代理配置 |
+| `.codex/` | Codex 任务合同示例、任务边界检查与项目级收尾代理配置 |
 | `.github/` | Issue / PR 模板和 GitHub Actions 工作流 |
 | `agent-sidecar/` | Pi/模型接入、会话与执行适配、技能、认证资源和 Agent 测试；包含不同历史 Candidate 的资产，不等于新锚点已实现 |
 | `backend/` | Flask API、查询服务、数据管线与原样迁移的离线检测核心；`backend/core/` 属于冻结迁移基线 |
 | `config/` | 数据档、性能预算、Agent 程序及研究输入配置；`config/data-profile.json` 是数据范围与快照时钟的唯一配置源 |
-| `contracts/` | API、数据、Tool、Operator、Registry 和历史评测使用的机器可读合同 |
+| `contracts/` | 当前 API、数据、首个纵向切片和仍被运行链消费的机器可读合同 |
 | `deploy/` | 候选验收、制品、数据库、运行管理、Nginx、治理 Hook、发布与回滚工具 |
 | `dev/` | 本地开发入口、快速检查、固定夹具、数据质量研究和开发数据库/API 工具 |
-| `docs/` | 当前权威文档、Core 运行约束和归档入口；分类见文档导航 |
-| `docs/archive/` | 旧 Agent 设计、旧 Core 产品/页面、旧数据计划和历史 Evidence；只作追溯与迁移输入 |
-| `evaluation/` | 各历史 Candidate 的案例、轨迹、回执和评测制品；只证明其自身绑定的对象 |
+| `docs/` | 当前权威文档与 Core 运行约束；分类见文档导航 |
+| `evaluation/` | 当前首片 Candidate 的评测源码、轨迹、回执和验收制品；只证明其绑定对象 |
 | `frontend/` | Vue 3 + TypeScript 页面、组件、API 客户端和前端测试 |
 | `openspec/` | 研究或变更提案、设计、规格与任务记录，不自动代表已经实现 |
 | `tools/` | 数据构建、RRC25 重放、候选生成和离线分析工具 |

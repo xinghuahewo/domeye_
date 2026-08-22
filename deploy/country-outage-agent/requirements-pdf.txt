@@ -1,7 +1,0 @@
-# 国家中断报告 PDF 渲染的完整直接运行集合。
-# prepare 使用 --no-deps 安装并在 release 定稿前逐项核对版本，禁止解析浮动依赖。
-charset-normalizer==3.4.9
-pillow==12.2.0
-pypdf==6.10.0
-reportlab==4.4.9
-typing-extensions==4.15.0

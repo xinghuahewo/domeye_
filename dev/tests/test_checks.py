@@ -22,18 +22,13 @@ class RiskClassificationTest(unittest.TestCase):
         self.assertEqual(CHECKS.classify("frontend/src/api/events.ts"), 2)
         self.assertEqual(CHECKS.classify("backend/services/events_service.py"), 2)
         self.assertEqual(CHECKS.classify("config/performance-budget.json"), 2)
-        self.assertEqual(
-            CHECKS.classify("config/country-outage-agent-acceptance-v2.json"),
-            2,
-        )
-        self.assertEqual(CHECKS.classify(".codex/hooks/country_outage_agent_review.py"), 2)
         self.assertEqual(CHECKS.classify("tools/verify_rrc25_global_country_packages.py"), 2)
 
     def test_database_and_deploy_are_l3(self):
         self.assertEqual(CHECKS.classify("backend/database/event.py"), 3)
         self.assertEqual(CHECKS.classify("deploy/database/restore-database.sh"), 3)
         self.assertEqual(
-            CHECKS.classify("deploy/country-outage-agent/prepare.sh"),
+            CHECKS.classify("deploy/country-outage-agent/p1-chat/manage.sh"),
             3,
         )
         self.assertEqual(CHECKS.classify("dev/database/manage-dev-database.sh"), 3)
@@ -158,11 +153,10 @@ class SelectionTest(unittest.TestCase):
         self.assertIn("国家中断 Agent Sidecar 类型检查", labels)
         self.assertIn("国家中断 Agent Sidecar 全量测试", labels)
 
-    def test_agent_contract_and_hook_changes_keep_sidecar_gate(self):
+    def test_current_agent_contract_changes_keep_sidecar_gate(self):
         for path in (
-            "contracts/agent/country-outage-report-facts-v1.schema.json",
+            "contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json",
             "config/country-outage-agent-core-acceptance-v3.json",
-            ".codex/hooks/country_outage_agent_review.py",
         ):
             labels = [
                 label
@@ -173,7 +167,7 @@ class SelectionTest(unittest.TestCase):
 
     def test_agent_deploy_is_stateful_security_boundary(self):
         summary = CHECKS.risk_summary(
-            ["deploy/country-outage-agent/activate.sh"]
+            ["deploy/country-outage-agent/p1-chat/manage.sh"]
         )
         self.assertEqual(summary["risk"], 3)
         self.assertTrue(summary["stateful"])

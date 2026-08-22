@@ -1,7 +1,0 @@
-{
-  "execution_started": false,
-  "node_count": 1,
-  "plan_id": "plan-active-001",
-  "registry_snapshot_id": "registry-snapshot-sha256:d1111847888e4ec343de974e943cdea467207c63c5091814dcab79512d365fff",
-  "status": "admitted"
-}

@@ -17,11 +17,9 @@ root = Path(sys.argv[1])
 documents = (
     root / "AGENTS.md",
     root / "README.md",
-    root / "docs" / "主干开发与发布归一治理规范.md",
-    root / "docs" / "Codex版本边界治理说明.md",
-    root / "docs" / "开发与验收流水线.md",
     root / "deploy" / "README.md",
     root / "deploy" / "governance" / "README.md",
+    *sorted((root / "docs").rglob("*.md")),
 )
 link_pattern = re.compile(r"(?<!!)\[[^]]+\]\(([^)]+)\)")
 errors: list[str] = []
