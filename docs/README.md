@@ -16,6 +16,12 @@
 
 七份文档不是七个并行项目。当前首片合同仍是 `Designed`；代码、PR、历史验收或 Issue 状态不能自动把它提升为 `Implemented`、`Verified` 或 `Released`。
 
+实施 M1 首片 Agent Loop 实验前，还必须阅读
+[首个真实 Agent Loop Spike 合同 v1.1](architecture/Domeye_First_Real_Agent_Loop_Spike_Contract_v1.1.md)。
+它以“合法推进 Goal”取代固定 `read → derive` 轨迹验收，固定最小 Goal State、稳定
+Capability View、Observation Replan 和四个 Spike。每个 Spike 均有 `GO / REPAIR / STOP`；
+Spike 全部 GO 后仍须暂停，不能自动写成 M1 已实现或开始产品化。
+
 ## 回答体验专项
 
 - [用户回答与内部证据边界 v1.0](architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)：定义用户最终看到什么、哪些证据只留在内部，以及成功、澄清、拒绝和失败的表达边界。
