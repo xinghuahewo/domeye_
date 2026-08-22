@@ -45,7 +45,7 @@
 
 ## 2. 这次重构要纠正什么
 
-当前代码已经有大量有价值的 Tool、Operator、Registry、ResultSet、Evidence、CAS 和审计资产。问题不在于“一切都没有”，而在于这些资产还没有组成目标中的 Agent 闭环。
+当前代码已用首个纵向切片 Candidate 固定一个只读 Tool、一个确定性 Operator、Typed Finding、最小 Answer Context、Renderer、Response Guard、Artifact / Receipt 和 Trust Kernel 边界，也保留 BGP 领域与审计资产。旧 P1 / P2 的通用 Plan、ResultSet、Investigation 和 CAS 原型已经退役；当前缺口是把已经验证的窄闭环扩展到目标架构，而不是恢复旧主路径。
 
 旧主路径容易变成：
 
@@ -515,10 +515,9 @@ Gate 不能靠 Issue 数量、代码合并或“每层都有一个模块”自�
 
 ### 13.1 优先保留
 
-- 已有只读 Tool 和确定性 Domain Operator；
+- 当前 Candidate 已固定的只读 Tool 和确定性 Domain Operator；
 - Registry snapshot、版本绑定和 fail-closed 校验；
-- ResultSet、内容寻址 Artifact、Receipt 和可重放计算；
-- P2 已有 CAS、取消、重跑、幂等、失败终态收口和隔离 Store 资产；正式跨进程恢复与自动重试尚未实现或验证；
+- 经当前 Candidate 证明仍存续的内容寻址 Artifact、Receipt 和可重放计算；
 - BGP 领域边界、时间语义、人口和证据合同；
 - `backend/core/` 冻结核心及其摘要校验。
 
@@ -534,7 +533,7 @@ Gate 不能靠 Issue 数量、代码合并或“每层都有一个模块”自�
 - 先生成自然语言答案、再补事实验证；
 - 让 Host 同时承担规划、授权、业务计算和事实发布。
 
-旧 `SemanticPlan`、`GroundingPlan`、`InvestigationPlan` 名称可以保留在历史证据和旧实现中，但必须标为 Legacy。`InvestigationPlan` 如继续使用，只能是 Durable Job 内部实现资产，不能是自然语言任务的公共生产合同。
+旧 `SemanticPlan`、`GroundingPlan`、`InvestigationPlan` 名称只保留在历史证据和 Git 历史中，并标为 Legacy。未来如重新引入 `InvestigationPlan`，只能作为 Durable Job 内部实现资产，不能成为自然语言任务的公共生产合同。
 
 ### 13.3 迁移方式
 
@@ -551,7 +550,7 @@ Pi Proposal
   → Renderer / Response Guard
 ```
 
-首个切片通过后，再扩展复杂 Finding 组合、Durable Job 和动态多能力组合。P2 的耐久资产留到真正需要 Job 时接入，不能让 Durable Workflow 或通用 Claim 平台建设阻塞第一个交互闭环。
+首个切片通过后，再扩展复杂 Finding 组合、Durable Job 和动态多能力组合。真正需要 Job 时，应从 Git 历史重新提取并审查相关合同经验，不预设旧 P2 实现可以直接接入，也不能让 Durable Workflow 或通用 Claim 平台建设阻塞交互闭环扩展。
 
 ---
 

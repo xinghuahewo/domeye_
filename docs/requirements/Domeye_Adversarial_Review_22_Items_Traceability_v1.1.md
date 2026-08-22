@@ -6,7 +6,7 @@
 |---|---|
 | 原始评审 | `敌对式架构评审结论(1).docx` |
 | 目标架构 | [Domeye Agent 目标架构 v1.1](../architecture/Domeye_Agent_Target_Architecture_v1.1.md) |
-| 当前代码基线 | [main@6a4bbd41aa712c12080a0126e5f8b1ec1440a9ca](../architecture/Domeye_Current_Code_Baseline_2026-08-16.md) |
+| 审计起始代码基线（历史） | [main@6a4bbd41aa712c12080a0126e5f8b1ec1440a9ca](../architecture/Domeye_Current_Code_Baseline_2026-08-16.md) |
 | 开发执行版 | [22 项整改开发优先级与阶段计划 v1.1](../roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md) |
 | 文档版本 | v1.1 |
 | 日期 | 2026-08-16 |
@@ -97,8 +97,8 @@ W6 的 168 个 case 证明 disposition 与冻结预期一致，不证明 28 个�
 
 **当前 `main` 基线**
 
-- W6：162 个 case 正确阻断、6 个正确延期、实际支持执行数为 0。
-- 历史 P1 有真实模型评测，但源码和可变模型 alias 与当前 `main` 不是同一不可变候选。
+- 历史 W6 Evidence 记录过 162 个正确阻断、6 个正确延期、实际支持执行数为 0；其 Runtime 和评测目录已退出当前树。
+- 历史 P1 有真实模型评测，但源码和可变模型 alias 已退役，不是当前不可变 Candidate。
 
 **架构归属与阶段**
 
@@ -226,7 +226,7 @@ fixture 168/168、Issue 关闭或代码合并，均不能单独证明 Agent 能�
 
 **当前 `main` 基线**
 
-现有 fixture 资产很丰富，但当前 P1 主链仍是一次性 UserGoalPlan 目标列表，随后由 Host 编译完整 GroundingPlan / DAG，不是逐步 observe / replan。
+旧 P1 UserGoalPlan、GroundingPlan / DAG 和对应 fixture 已退出当前树。当前首个纵向切片已形成逐项 propose / admit / observe 闭环，但尚未证明超出固定问题的开放式 replan 泛化。
 
 **架构归属与阶段**
 
@@ -287,7 +287,7 @@ SHA-256 只能说明内容是否变化，不能说明由谁生成、构建来源
 
 **当前 `main` 基线**
 
-TypeScript Registry Runtime 和 Python 服务分别存在 canonicalization / digest 实现；仓库有依赖和版本审计资产，但没有统一签名构建 provenance 闭环。
+旧 TypeScript Registry Runtime 与 Python P2 服务的平行 canonicalization / digest 实现已退役。当前 Candidate 有固定摘要、签名角色和依赖审计，但尚未形成覆盖全仓组件的统一签名构建 provenance 闭环。
 
 **架构归属与阶段**
 
@@ -537,7 +537,7 @@ Teacher 如果保留，只能产生 advisory outline，不产生事实、授权�
 
 **当前 `main` 基线**
 
-P2 Plan 仍含 `teacher_required=true` 和 `sol_teacher_then_ds_student`；旧评测使用 fixture 回放，不能证明收益。
+旧 P2 Teacher → Student Plan 与 fixture 已退出当前树。当前首个纵向切片使用单一 Renderer 和确定性回退；这不构成 Teacher 路径的收益证据，也不授权重新引入该链。
 
 **架构归属与阶段**
 
@@ -569,7 +569,7 @@ P2 Plan 仍含 `teacher_required=true` 和 `sol_teacher_then_ds_student`；旧�
 
 **当前 `main` 基线**
 
-P1 `P1RuntimeV2Grounder` 仍按 `normalized_kind` 的固定分支编译 DAG；`answer_trend_question_v1` 还有按问题关键词选路的旧实现。
+旧 P1 `normalized_kind → DAG` 与关键词选路实现已退出当前树。当前首个纵向切片不按问题模板绑定固定 DAG，但尚未用 held-out 表达和未见组合证明更广泛泛化。
 
 **架构归属与阶段**
 
@@ -660,7 +660,7 @@ Route Server、AS_SET、confederation、prepending 等使 AS_PATH 相邻不能�
 
 **当前 `main` 基线**
 
-OP-15..17、TOOL-12 和旧字段中仍有 `directly_adjacent_in_path` 等容易误读的命名，需要逐一校正。
+旧 OP-15..17、TOOL-12 与相关误读字段已退出当前树。当前 `path-downstreams` 等页面能力仍必须明确只是 RRC25 AS_PATH 观测关系，不能推出物理拓扑、商业关系或真实流量。
 
 **架构归属与阶段**
 
@@ -686,7 +686,7 @@ OP-15..17、TOOL-12 和旧字段中仍有 `directly_adjacent_in_path` 等容易�
 
 **当前 `main` 基线**
 
-OP-06、OP-35、OP-36 已有部分左 / 右删失和阈值概念，是重要迁移资产，但还未形成统一时间 Finding 与回答表达合同。
+旧 OP-06、OP-35、OP-36 已退出当前树。当前仍没有覆盖左 / 右删失、阈值和观察槽的统一时间 Finding 与回答表达合同；需要时只能从 Git 历史重新审查相关经验。
 
 **架构归属与阶段**
 
