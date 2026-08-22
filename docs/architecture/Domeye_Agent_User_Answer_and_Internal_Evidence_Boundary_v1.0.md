@@ -10,7 +10,6 @@
 | 适用范围 | Domeye 所有正式用户出口中的 Agent 文本回答 |
 | 上位依据 | [目标架构 v1.1](Domeye_Agent_Target_Architecture_v1.1.md)、[产品、数据与 Claim 边界 v1.1](Domeye_Product_Data_Claim_Boundary_v1.1.md) |
 | 当前首片 | [首个纵向切片锚点合同 v1.0](Domeye_First_Vertical_Slice_Anchor_v1.0.md) |
-| 配套计划 | [回答风格开发与验收计划 v1.0](../roadmap/Domeye_Agent_Answer_Style_Development_and_Acceptance_Plan_v1.0.md) |
 
 ---
 

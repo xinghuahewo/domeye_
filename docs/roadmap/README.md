@@ -8,26 +8,14 @@ Roadmap 用用户旅程、风险和同一 Candidate 的证据管理进度，不�
 2. [22 项整改审计对应表](../requirements/Domeye_Adversarial_Review_22_Items_Traceability_v1.1.md)：按 R01–R22 原顺序防遗漏，不是 22 个平行功能。
 3. [22 项开发优先级与阶段计划](Domeye_22_Items_Development_Priority_and_Stages_v1.1.md)：按依赖和风险安排阶段，并保留条件建设项。
 4. [Capability Map](../architecture/capability-map.md)：当前需要形成的可观察能力。
-5. [Epics](epics.md)：按能力和风险组织的工作范围。
-6. [Feature Breakdown](feature-breakdown.md)：可产生用户效果或关闭风险的 Feature。
-7. [Roadmap 视图](roadmap-view.md)：M0、M1 和 DG1 的推进关系。
-8. [进度可视化](progress-visualization.md)：如何区分工作进展、能力成熟度和 Gate 决定。
 
 ## 回答体验专项
 
-- [回答风格开发与验收计划 v1.0](Domeye_Agent_Answer_Style_Development_and_Acceptance_Plan_v1.0.md)：先实现用户回答与内部证据分离，再冻结新 Candidate，依次完成 3/3、30/30 和生产收口。
-- 目标效果以[用户回答与内部证据边界 v1.0](../architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)为准。
+- 目标效果以[用户回答与内部证据边界 v1.0](../architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)和[首片回答呈现附加合同](../architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md)为准。
 
 该专项不改变 22 项总路线，也不把文档完成、前端隐藏或旧 Candidate 验收写成新回答风格已经完成。
 
-## 辅助材料
-
-- [Capability Roadmap 模板](capability-roadmap.md)
-- [Milestone 模板](milestones.md)
-- [开发原则](development-principles.md)
-
-辅助材料不能覆盖锚点合同。其中出现的通用 Plan / Workflow、Answer Publication 或分层完成度，
-不得解释为 M0/M1 要建设通用 Plan IR、预生成 DAG 或 Claim 发布体系。
+已删除与上述权威入口重复的通用 Epics、Feature Breakdown 和开发原则。新的工作项直接从锚点、整改对应表、阶段计划与 Capability Map 推导，不再维护第二套规划文档。
 
 ## 使用规则
 

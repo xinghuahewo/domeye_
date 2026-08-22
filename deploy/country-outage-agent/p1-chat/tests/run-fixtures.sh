@@ -465,18 +465,63 @@ assert_fails '不存在的 UTC 日历日期不得被自动归一化' \
     verifier _test-v2-promotion-timeline \
     '2026-02-30T01:00:05Z' '2026-02-28T01:00:03Z' \
     '2026-02-28T01:00:04Z'
+
+# 从当前有效 v2 Acceptance 派生运行时 v1 负例，避免把已退役历史运行当测试依赖。
+readonly ACCEPTANCE_REPLAY_PROJECT="${FIXTURE_ROOT}/acceptance-replay-project"
+readonly ACCEPTANCE_REPLAY_SEED_RELATIVE='evaluation/country-outage/first-vertical-slice/runs/formal-answer-style-v2-r2-20260821T055545Z'
+readonly ACCEPTANCE_REPLAY_SEED="${REPOSITORY}/${ACCEPTANCE_REPLAY_SEED_RELATIVE}"
+readonly V1_ACCEPTANCE_RUN_RELATIVE='evaluation/country-outage/first-vertical-slice/runs/runtime-v1-negative'
+readonly V1_ACCEPTANCE_RUN="${ACCEPTANCE_REPLAY_PROJECT}/${V1_ACCEPTANCE_RUN_RELATIVE}"
+readonly V1_ACCEPTANCE_RELATIVE_PATH="${V1_ACCEPTANCE_RUN_RELATIVE}/acceptance-record-final.json"
+mkdir -p \
+    "${ACCEPTANCE_REPLAY_PROJECT}/contracts/agent" \
+    "${ACCEPTANCE_REPLAY_PROJECT}/docs" \
+    "${ACCEPTANCE_REPLAY_PROJECT}/evaluation/country-outage/first-vertical-slice" \
+    "${V1_ACCEPTANCE_RUN}"
+cp -RPl "${REPOSITORY}/agent-sidecar" \
+    "${ACCEPTANCE_REPLAY_PROJECT}/agent-sidecar"
+cp -RPl "${REPOSITORY}/contracts/agent/domeye-first-vertical-slice" \
+    "${ACCEPTANCE_REPLAY_PROJECT}/contracts/agent/domeye-first-vertical-slice"
+cp -RPl "${REPOSITORY}/docs/architecture" \
+    "${ACCEPTANCE_REPLAY_PROJECT}/docs/architecture"
+for evaluator_source in \
+    adversarial-driver.mjs case-registry.mjs evaluator.mjs run.mjs source-loader.mjs; do
+    cp -Pl \
+        "${REPOSITORY}/evaluation/country-outage/first-vertical-slice/${evaluator_source}" \
+        "${ACCEPTANCE_REPLAY_PROJECT}/evaluation/country-outage/first-vertical-slice/${evaluator_source}"
+done
+for acceptance_artifact in \
+    summary.json evidence.jsonl evidence-attestation.json independent-review.json; do
+    cp -Pl "${ACCEPTANCE_REPLAY_SEED}/${acceptance_artifact}" \
+        "${V1_ACCEPTANCE_RUN}/${acceptance_artifact}"
+done
+"${SYSTEM_JQ}" \
+    '.schema_version="domeye_first_slice_acceptance_record_v1"' \
+    "${ACCEPTANCE_REPLAY_SEED}/acceptance-record-final.json" \
+    > "${V1_ACCEPTANCE_RUN}/acceptance-record-final.json"
+readonly ACCEPTANCE_REPLAY_CANDIDATE_ID="$(
+    "${SYSTEM_JQ}" -r '.candidate_id' \
+        "${ACCEPTANCE_REPLAY_PROJECT}/contracts/agent/domeye-first-vertical-slice/v1.1/candidate.json"
+)"
+readonly ACCEPTANCE_REPLAY_RECORD_ID="$(
+    "${SYSTEM_JQ}" -r '.acceptance_record_id' \
+        "${ACCEPTANCE_REPLAY_SEED}/acceptance-record-final.json"
+)"
 assert_fails '验收重放拒绝无效外部 Candidate pin' \
     "${NODE}" "${DEPLOY_DIR}/verify-release.mjs" acceptance-replay \
-    "${REPOSITORY}" \
-    'evaluation/country-outage/first-vertical-slice/runs/formal-20260819T1839/acceptance-record-final.json' \
+    "${ACCEPTANCE_REPLAY_PROJECT}" \
+    "${V1_ACCEPTANCE_RELATIVE_PATH}" \
     'manifest:sha256:bad' \
-    'acceptance-record-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-assert_fails '旧 v1 Candidate/Acceptance 不得进入 v2 重放' \
+    "${ACCEPTANCE_REPLAY_RECORD_ID}"
+assert_fails '旧 v1 Acceptance 不得进入 v2 重放' \
     "${NODE}" "${DEPLOY_DIR}/verify-release.mjs" acceptance-replay \
-    "${REPOSITORY}" \
-    'evaluation/country-outage/first-vertical-slice/runs/formal-20260819T1839/acceptance-record-final.json' \
-    'manifest:sha256:4236c3a8c94cc9bc4c01df8791139961bc84bda01b61fc7e07eaeed07772044d' \
-    'acceptance-record-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    "${ACCEPTANCE_REPLAY_PROJECT}" \
+    "${V1_ACCEPTANCE_RELATIVE_PATH}" \
+    "${ACCEPTANCE_REPLAY_CANDIDATE_ID}" \
+    "${ACCEPTANCE_REPLAY_RECORD_ID}"
+grep -F '双签 Finalizer 重放与 Acceptance Record 原始字节不精确一致' \
+    "${FIXTURE_ROOT}/expected-failure.err" >/dev/null \
+    || fail '运行时 v1 Acceptance 未命中 v2 Finalizer 精确字节门'
 
 # 来源门从固定 checkout 验 annotated tag，并精确比对规范解包树。
 readonly TRUSTED_CHECKOUT="${FIXTURE_ROOT}/trusted-checkout"

@@ -530,32 +530,32 @@ R14 的整改目标是防止“有引用就任意扩写”，不是要求给所�
 
 ---
 
-## 14. 当前 `main` 的真实状态
+## 14. 审计起始基线与当前树状态
 
-当前基线为：
+本文最初审计的历史基线为：
 
 ```text
 main@6a4bbd41aa712c12080a0126e5f8b1ec1440a9ca
 ```
 
-当前代码已有：
+这个 SHA 只用于定位 2026-08-16 的审计快照，不再代表当前 `main`。当前树已有：
 
-- Tool、Operator 和部分类型化结果资产；
-- P1 Evidence Bundle；
-- P2 ResultSet、EvidenceGraph、Receipt 和 CAS 原型；
-- 多类 BGP 边界规则；
-- 旧回答校验和 fixture 经验。
+- 当前 Candidate 固定的 `TOOL-03 read_metric_series → OP-01 series_extrema` 窄切片；
+- 用途受限的 Typed Finding、最小 Answer Context、确定性 Renderer、Response Guard、Artifact / Receipt 和 Trust Kernel 准入边界；
+- 当前国家中断页面使用的 RRC25 读模型、趋势产品 EvidenceGraph 和多类 BGP 边界规则；
+- 同一 v1.1 Candidate 的当前评测与验收记录。
+
+旧 P1 / P2 的 Plan、通用 ResultSet、Investigation Runtime、隔离 Store 和报告公开路由已经从当前树退役，不构成现行能力。
 
 当前尚未证明：
 
-- 真实 Pi 使用 Tool 的滚动 Agent 闭环；
-- 统一 Typed Finding / Artifact Envelope；
-- Answer Context Builder；
-- 本文规定的轻量 Response Guard；
-- 同一候选上的成功、拒绝、执行失败后重选和回答回退轨迹；
-- 生产部署和真实用户流量。
+- 首个固定问题之外的开放式多能力 Agent；
+- 跨能力统一的 Typed Finding / Artifact Envelope 与完整性合同；
+- Durable Job、恢复、取消、重试和跨会话执行；
+- 动态能力组合和 held-out 任务上的泛化；
+- 本次仓库清理后的生产运行身份和真实用户流量。
 
-因此本文当前状态是 **Designed**，不能标为 Implemented、Verified 或 Released。
+因此，首个窄切片的实现和验收不能把本文描述的完整目标产品整体提升为 Implemented、Verified 或 Released；本文的全局目标状态仍是 **Designed**。
 
 ---
 

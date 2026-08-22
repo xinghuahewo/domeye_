@@ -14,16 +14,8 @@ Agent 当前开发只按以下顺序进入：
 6. [22 项开发优先级与阶段计划](../roadmap/Domeye_22_Items_Development_Priority_and_Stages_v1.1.md)
 7. [用户回答与内部证据边界 v1.0](../architecture/Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)
 
-回答风格的实施顺序和 Candidate 边界见[回答风格开发与验收计划 v1.0](../roadmap/Domeye_Agent_Answer_Style_Development_and_Acceptance_Plan_v1.0.md)。两份文档当前都只证明 `Designed`。
+回答呈现边界见[首个纵向切片回答呈现附加合同 v1.0](../architecture/Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md)。实现、评测与发布结论必须绑定同一 Candidate，不能从设计文档自动推导。
 
 当前产品主名称是 **Domeye 国家网络中断调查 Agent**；当前首片只提供已绑定事件、publication、revision、单一 RRC25 和冻结时间窗内的 **RRC25 BGP 控制面证据调查**。产品名不能扩大当前事实边界。
 
-## 旧材料
-
-旧 Agent 材料统一在 [docs/archive/agent](../archive/agent/README.md)：
-
-- W6 讨论包：旧 Tool、Operator、Registry、Host、ResultSet 和 EvidenceGraph 设计；
-- 旧 P0/P1/P2：旧需求、页面覆盖、组合调查、生命周期和离线实现计划；
-- 历史记录：旧模型认证、运维、报告与追问 Agent 的验收和回检。
-
-它们保留用于迁移和追溯，不是当前任务路由、当前架构或当前 Candidate 的证明。
+旧 P0/P1/P2、W6 设计包和被取代的阶段记录不再保留在当前树。确需追溯时从对应 Git 提交或发布 tag 读取，且不得把历史结论当作当前任务路由、架构或 Candidate 证明。

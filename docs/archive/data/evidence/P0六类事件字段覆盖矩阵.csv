@@ -1,7 +1,0 @@
-event_type,fact_table_family,problem_field,event_id_field,start_time_field,end_time_field,duration_field,affected_object_fields,before_field,during_field,after_field,vp_identity_status,raw_reference_status,lineage_level,notes
-hijack,hijack,prefix,hijack_eventid,s_time,e_time,duration,"prefix;hijacked_as;hijacker_as;hijacked_country;hijacker_country",pre_vp_paths,eve_vp_paths,next_vp_paths,not_retained,not_retained,legacy_untraceable,"路径持久化前已丢失VP键；阶段快照不是因果传播证据"
-sub_hijack,sub_hijack,prefix,sub_hijack_eventid,s_time,e_time,duration,"prefix;hijacked_prefix;hijacked_as;hijacker_as",,,,not_retained,not_retained,legacy_untraceable,"事实表没有阶段路径字段；hijacked_as和hijacker_as为集合文本"
-leak,leak_event,prefix,leak_event_id,s_time,,,"prefix;prefix_ori_as;leak_by;leak_to",,as_path,,asn_token_retained_not_unique_vp,not_retained,legacy_untraceable,"仅有事件中AS_PATH；leak_vp在二三月63281条中全非空且为47个纯数字ASN值，但未保留peer IP，详情和Evidence Bundle也未暴露；无结束时间和持续时间"
-prefix_outage,prefix_outage,prefix,outage_id,s_time,e_time,duration,"prefix;asn;country",pre_vp_paths,eve_vp_paths,next_vp_paths,not_retained,not_retained,legacy_untraceable,"原生主键含asn但detail_url不含asn，必须检查一对多歧义"
-as_outage,as_outage,asn,outage_id,s_time,e_time,duration,"asn;outage_prefixes;total_prefix_num;max_outage_prefix_num",pre_vp_paths,eve_vp_paths,next_vp_paths,not_retained,not_retained,legacy_untraceable,"阶段路径来自代表性前缀但事实表未保留该前缀身份"
-country_outage,country_outage,country,outage_id,s_time,e_time,duration,"country;outage_ases;total_as_num;max_outage_as_num",,,,not_retained,not_retained,legacy_untraceable,"事实表没有阶段路径；受影响AS集合缺少生成时点与覆盖口径"

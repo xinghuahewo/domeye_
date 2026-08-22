@@ -157,13 +157,6 @@ def main() -> int:
         name: request_json(endpoint(arguments.base_url, path, params), arguments.timeout)
         for name, (path, params) in probes.items()
     }
-    result["external_evidence"] = request_json(
-        endpoint(
-            arguments.base_url,
-            "/api/v2/country-outage/capabilities/external-evidence",
-        ),
-        arguments.timeout,
-    )
     series_payload = result["probes"]["series"].get("payload")
     result["series_extrema"] = (
         extrema(series_payload) if isinstance(series_payload, dict) else {}

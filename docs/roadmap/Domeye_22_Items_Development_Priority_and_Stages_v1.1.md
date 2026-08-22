@@ -6,7 +6,7 @@
 |---|---|
 | 配套审计文档 | [Domeye 敌对评审 22 项整改审计对应表 v1.1](../requirements/Domeye_Adversarial_Review_22_Items_Traceability_v1.1.md) |
 | 目标架构 | [Domeye Agent 目标架构 v1.1](../architecture/Domeye_Agent_Target_Architecture_v1.1.md) |
-| 当前代码基线 | [main@6a4bbd41aa712c12080a0126e5f8b1ec1440a9ca](../architecture/Domeye_Current_Code_Baseline_2026-08-16.md) |
+| 审计起始代码基线（历史） | [main@6a4bbd41aa712c12080a0126e5f8b1ec1440a9ca](../architecture/Domeye_Current_Code_Baseline_2026-08-16.md) |
 | 当前首片合同 | [Domeye 首个纵向切片锚点合同 v1.0](../architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md) |
 | 文档版本 | v1.1 |
 | 日期 | 2026-08-16 |
@@ -70,7 +70,7 @@
 | 9 | R19 AS_PATH 相邻语义 | A0 | 领域词义错误会被稳定地计算和发布，越晚修历史兼容成本越高 | M0 定义；M1/M2 接入 | R02 |
 | 10 | R05 真实 Agent Eval | A1 | M1 必须能证明滚动闭环，而不是再次只测 fixture | M1；M4 扩展 | R01、R09、R16 |
 | 11 | R08 逐 Proposal 安全与 DLP | A1 | Pi 的提议必须在第一条真实执行链上受到权威准入 | M1；M2–M5 硬化 | R03、R07、R09 |
-| 12 | R13 Typed Adapter | A1 | 当前 Executor 混合多层责任，首个 Action 需要清楚的输入输出边界 | M1 | R03、R09 |
+| 12 | R13 Typed Adapter | A1 | 历史 Executor 混合多层责任且已退役；扩展首个 Action 时仍需清楚的输入输出边界 | M1 | R03、R09 |
 | 13 | R14 Finding-to-Answer 边界 | A1 | 首个真实切片必须能把结构化结果安全表达给用户，不能把回答可信性推迟到另一个平台阶段 | M0 最小不变量；M1 实现；M2–M5 硬化 | R02、R13、R18、R19 |
 | 14 | R17 SLO、预算和容量 | A1 | 没有真实成本和上限，就无法判断 Action、Job 或 Compute 需求 | M1 起步；M3–M5 收敛 | R01、R09 |
 | 15 | R15 Teacher → Student 默认退役 | A1 | 先简化回答链，避免把双模型复杂性带入首个真实切片 | M1；M4 条件 A/B | R01、R14 |
@@ -78,7 +78,7 @@
 | 17 | R06 三类核心 Evidence 语义 | B | M1 先做最小分离，M2 再扩展跨步骤 lineage；不建设独立 Claim / Finding Support Graph | M1 最小；M2 主建设 | R07、R14、R18 |
 | 18 | R22 双人口与分母 | B | 多 Finding 和比例回答必须明确统计人口与分母 | M2；M4 扩展 | R18、R13、R14 |
 | 19 | R21 多指标严重度 | B | 先有明确人口和有边界的 Finding，再验证排序和展示是否有产品价值 | M2；M4 认证 | R18、R20、R22 |
-| 20 | R11 分区 ResultSet | B | 当前 fixture 很小，先测真实 rows / bytes，再做分区和聚合优化 | M2 合同；M4 优化 | R17、R18、R22 |
+| 20 | R11 分区 ResultSet | B | 历史小 fixture 与 Runtime 已退役；若真实需求触发，先测 rows / bytes，再决定分区和聚合优化 | M2 合同；M4 优化 | R17、R18、R22 |
 | 21 | R12 Bounded Map | C | 只有真实 Durable Job 和 fan-out 需求出现后才有实现对象 | M3 条件项 | R04、R06、R07、R08、R17、R22；`DG-DUR` |
 | 22 | R10 Restricted Compute Engine | C | 只有 Operator 膨胀和负载数据证明收益后才建设，不能先造平台 | M4 条件项 | R11、R13、R17；`DG-COMP` |
 

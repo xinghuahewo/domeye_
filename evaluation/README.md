@@ -1,13 +1,10 @@
 # Evaluation 目录说明
 
-本目录保存历次 `country_outage` 评测、阶段回执、原始轨迹、截图和候选发布尝试。现有
-内容默认属于 **Historical Evidence**：它们对绑定的旧 Candidate 仍有追溯价值，但
-不能自动证明当前首个纵向切片已经实现、通过 DG1、发布或部署。
+本目录只保留当前首个纵向切片 v1.1 Candidate 的评测源码，以及与它绑定的 Pilot 和 Formal 证据。旧 P0/P1/P2 与 v1 试跑已经删除；需要追溯时使用 Git 历史。
 
 当前权威评测目标见
 [首个纵向切片锚点合同](../docs/architecture/Domeye_First_Vertical_Slice_Anchor_v1.0.md)。
-该合同状态仍是 `Designed`；未来必须用同一个最终 Candidate 完成 J1–J5、独立
-Acceptance Record 和 DG1 决定，才能推进状态。
+当前保留的 Formal 记录证明其绑定 Candidate 已完成 30/30、独立 Acceptance Record 与 DG1 `GO`；该结论不自动证明当前生产运行身份。
 
 ## 状态说明
 
@@ -16,25 +13,19 @@ GitHub 治理五轴，也不能替代 Candidate、Delivery Maturity、Evidence S
 
 | 状态 | 在本目录中的含义 |
 |---|---|
-| **Current** | 未来与当前锚点 digest、最终 Candidate 和预注册 J1–J5 完整绑定的新评测包 |
-| **Legacy-Frozen** | 旧评测方法、问题集或阶段流程；不再作为 M0/M1 建设目标扩展 |
-| **Historical Evidence** | 现有 case、raw trace、receipt、manifest、review、截图和费用记录 |
+| **Current** | 与当前 v1.1 Candidate、锚点 digest 和预注册场景完整绑定的评测包 |
+| **Historical Evidence** | 已删除，仅可从 Git 历史按提交身份追溯 |
 
 目录或文件名中的 `acceptance`、`final`、`prod-release`、`review`、`passed`、`W6` 等词
 只属于其原始证据语境。它们不能单独推出当前 `main`、生产进程或首个纵向切片的状态。
 
-## 现有材料导航
+## 当前材料导航
 
 | 路径 | 内容 | 当前解释 |
 |---|---|---|
-| `country-outage/p0-v1*` | 早期评测基线及 Evidence | **Historical Evidence**；不等于新锚点 J1–J5 |
-| `country-outage/p1-page-coverage/` | S0–S4 页面、语义、旅程与浏览器材料 | **Legacy-Frozen + Historical Evidence** |
-| `country-outage/p1-trend-operator/` | 趋势 Operator 与模型对齐材料 | **Legacy-Frozen + Historical Evidence** |
-| `country-outage/p1-prod-release/` | 多次旧候选发布尝试与费用汇总 | **Historical Evidence**；目录名不是当前生产部署证明 |
-| `country-outage/p2-s0a-lifecycle/` | Registry 生命周期与治理阶段回执 | **Historical Evidence** |
-| `country-outage/p2-s0b-runtime/`、`p2-s0b-prod34-release/` | 旧 runtime/shadow baseline 与发布影响材料 | **Historical Evidence**；锚点仅引用其中冻结 baseline 身份 |
-| `country-outage/p2-s1-execution-unit-design/` | 旧执行单元设计阶段材料 | **Legacy-Frozen + Historical Evidence** |
-| `country-outage/p2-s1-implementation*/` | 旧实施规划、W0–W6 阶段材料 | **Legacy-Frozen + Historical Evidence**；不能替代最终纵向切片真实运行 |
+| `country-outage/first-vertical-slice/*.mjs` | 当前评测器、案例注册和源加载器 | 被 v1.1 Candidate 固定的评测源码 |
+| `country-outage/first-vertical-slice/runs/pilot-answer-style-v2-r2-20260821T052659Z/` | 3/3 Pilot 证据 | 只证明绑定的 v1.1 Candidate |
+| `country-outage/first-vertical-slice/runs/formal-answer-style-v2-r2-20260821T055545Z/` | 30/30 Formal、独立复核与 Acceptance Record | 只证明绑定的 v1.1 Candidate，不代替生产读回 |
 
 ## Codex 阅读顺序
 
@@ -46,13 +37,12 @@ GitHub 治理五轴，也不能替代 Candidate、Delivery Maturity、Evidence S
    时间和生成方式后再下结论。
 4. 报告时明确区分 fixture replay、本地测试、真实模型调用、独立验收、发布和生产读回。
 
-## 原始 Evidence 保留规则
+## Evidence 保留规则
 
-- 不移动、重命名、删除、覆盖、压缩、重采样、重新截图或批量格式化既有 Evidence。
+- 当前 Candidate 仍引用的 Evidence 不移动、重命名、覆盖、压缩、重采样、重新截图或批量格式化。
 - 不修补旧 JSON/JSONL 中的值来适配新合同；发现错误时新增勘误或新 Candidate 证据，
   并保留原始字节。
 - 不把多个 Candidate、不同时间窗或不同单位的结果拼成一个“完整”评测。
 - fixture、mock、本地回放、截图和单次成功都不等于生产或 Verified；Trace 也不能冒充
   Domain Evidence。
-- 不要默认递归扫描 `raw/`、全部 case、PNG 或约百 MB 的评测树。先读 manifest 和索引，
-  再按明确引用取证；不要打开凭据或仓库外运行数据。
+- 先读当前 run 的配置、summary、Acceptance Record 和签名，再按明确引用取证；不要打开凭据或仓库外运行数据。

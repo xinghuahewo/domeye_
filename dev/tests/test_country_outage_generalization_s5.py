@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VERIFIER = ROOT / "dev/verify_country_outage_generalization_s5.py"
 COMPONENT = ROOT / "frontend/src/components/CountryOutageGeneralPage.vue"
 ASN_SERVICE = ROOT / "backend/services/asn_service.py"
 
@@ -39,22 +35,6 @@ class CountryOutageGeneralizationS5Test(unittest.TestCase):
         self.assertIn("country_outage_general_read_model().resolve(reference)", source)
         self.assertIn("请求范围与国家中断事件窗口不一致", source)
         self.assertIn("previous_start = start if event_window", source)
-
-    def test_stage_verifier_passes(self) -> None:
-        result = subprocess.run(
-            [sys.executable, str(VERIFIER)],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
-        payload = json.loads(result.stdout)
-        self.assertEqual(payload["status"], "pass")
-        self.assertEqual(payload["stage"], "S5")
-        self.assertEqual(payload["events"], ["IR", "MW"])
-
 
 if __name__ == "__main__":
     unittest.main()

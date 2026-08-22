@@ -118,7 +118,7 @@
       "expected": {"operator": "eq", "value": 1, "unit": "ratio_0_1"},
       "unknown_count": 0,
       "failure_samples": [{"source_ref": "raw:rrc25", "primary_key": null, "field": null, "event_time": "2026-01-31T16:00:00Z", "reason_codes": ["source_unavailable"]}],
-      "evidence_refs": [{"ref_id": "raw-audit:feb-mar-2026", "locator": "docs/data/P0原始制品审计.json", "sha256": null}],
+      "evidence_refs": [{"ref_id": "raw-audit:feb-mar-2026", "locator": "git:093bb8331535d48b4b876291406bb72812793c82:docs/archive/data/evidence/P0原始制品审计.json", "sha256": null}],
       "message_zh": "缺少 2026-02-01 至 2026-02-24 08:00 的原始文件，不能声明 raw_traceable。",
       "remediation_stage": "external"
     },
@@ -166,7 +166,7 @@
       "expected": {"operator": "eq", "value": 1, "unit": "ratio_0_1"},
       "unknown_count": 0,
       "failure_samples": [],
-      "evidence_refs": [{"ref_id": "coverage-matrix:six-events", "locator": "docs/data/P0六类事件字段覆盖矩阵.csv", "sha256": null}],
+      "evidence_refs": [{"ref_id": "coverage-matrix:six-events", "locator": "git:093bb8331535d48b4b876291406bb72812793c82:docs/archive/data/evidence/P0六类事件字段覆盖矩阵.csv", "sha256": null}],
       "message_zh": "字段不存在、未保留、碰撞和不适用均以冻结状态表达。",
       "remediation_stage": "none"
     },

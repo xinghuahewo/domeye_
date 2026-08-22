@@ -13,7 +13,7 @@ import requests
 from flask import Response
 from flask_restful import Resource
 
-from .country_outage_agent_proxy import (
+from .country_outage_proxy_common import (
     _error,
     _read_json_body,
     _request_headers,

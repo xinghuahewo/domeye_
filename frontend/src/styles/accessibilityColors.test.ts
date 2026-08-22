@@ -3,10 +3,6 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const globalCss = readFileSync(new URL('./main.css', import.meta.url), 'utf8')
-const reportWorkbench = readFileSync(
-  new URL('../components/CountryOutageReportWorkbench.vue', import.meta.url),
-  'utf8',
-)
 
 function rule(
   source: string,
@@ -72,7 +68,7 @@ function expectContrast(
   ).toBeGreaterThanOrEqual(minimum)
 }
 
-describe('国家中断报告工作台无障碍颜色合同', () => {
+describe('全局无障碍颜色合同', () => {
   it('全局键盘焦点使用明暗双环，在浅色和深色表面均达到 3:1', () => {
     const block = rule(globalCss, 'button:focus-visible,')
     const lightRing = hexColor(property(block, 'outline'))
@@ -86,50 +82,4 @@ describe('国家中断报告工作台无障碍颜色合同', () => {
     expectContrast(lightRing, '#17212a', 3)
   })
 
-  it('程序聚焦的深色页头和浅色报告标题分别使用高对比轮廓', () => {
-    const publishedHeaderFocus = rule(
-      reportWorkbench,
-      '.published-header:focus {',
-    )
-    const reportTitleFocus = rule(
-      reportWorkbench,
-      '.report-title-block:focus {',
-    )
-
-    expectContrast(
-      hexColor(property(publishedHeaderFocus, 'outline')),
-      '#17212a',
-      3,
-    )
-    expectContrast(
-      hexColor(property(reportTitleFocus, 'outline')),
-      '#fffdf8',
-      3,
-    )
-  })
-
-  it('外部来源登记和 URL 要求小字达到普通文本 4.5:1', () => {
-    const sourceLabel = rule(
-      reportWorkbench,
-      '.external-request-ledger dt,',
-    )
-    const urlRequirement = rule(
-      reportWorkbench,
-      '.external-url-register-heading small {',
-      'last',
-    )
-
-    expectContrast(
-      hexColor(property(sourceLabel, 'color')),
-      '#fffdf8',
-      4.5,
-    )
-    expect(property(sourceLabel, 'font')).toMatch(/\b9px\//)
-    expectContrast(
-      hexColor(property(urlRequirement, 'color')),
-      '#eee9df',
-      4.5,
-    )
-    expect(property(urlRequirement, 'font-size')).toBe('9px')
-  })
 })

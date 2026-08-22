@@ -10,7 +10,7 @@ import { normalizeCountryOutageTrendProduct } from '@/utils/normalize'
 const repositoryRoot = fileURLToPath(new URL('../../../..', import.meta.url))
 const rawProduct = JSON.parse(execFileSync(
   'python3',
-  ['dev/verify_country_outage_trend_analysis_s6.py', '--emit-product'],
+  ['dev/tests/build_country_outage_trend_product.py', '--emit-product'],
   { cwd: repositoryRoot, encoding: 'utf8' },
 ))
 const product = normalizeCountryOutageTrendProduct(rawProduct)
@@ -20,8 +20,8 @@ const componentSource = readFileSync(
 )
 
 
-describe('S6 同候选趋势页面', () => {
-  it('消费 Python 验收器生成的同一 product_id 与 graph_id', () => {
+describe('当前同候选趋势页面', () => {
+  it('消费共享构造器生成的同一 product_id 与 graph_id', () => {
     expect(product.product_id).toBe('trend_product_v1_4a62c0d73936f3b6174bc0493b1803fd')
     expect(product.graph_id).toBe('evidence_graph_v1_405fd628b95d954da40568c196a3976a')
     expect(product.render_contract.source_product_id).toBe(product.product_id)
@@ -40,7 +40,7 @@ describe('S6 同候选趋势页面', () => {
     }
   })
 
-  it('页面按验收阅读旅程显示身份、阶段、账本、同期参照和边界', () => {
+  it('页面显示身份、阶段、账本、同期参照和边界', () => {
     for (const marker of [
       'product.product_id',
       'product.snapshot.publication_id',
@@ -59,7 +59,9 @@ describe('S6 同候选趋势页面', () => {
   })
 
   it('组件不重算阶段、不允许 Hypothesis 与因果关系', () => {
-    expect(componentSource).not.toMatch(/detectPhase|classifyPattern|caused_by|Hypothesis/)
+    expect(componentSource).not.toMatch(
+      /detectPhase|classifyPattern|caused_by|Hypothesis/,
+    )
     expect(product.evidence_graph.hypothesis_nodes_allowed).toBe(false)
     expect(product.evidence_graph.causal_relations_allowed).toBe(false)
   })
