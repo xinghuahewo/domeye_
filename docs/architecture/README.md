@@ -8,7 +8,7 @@ M0/M1 不以架构层、文件或 Issue 数量衡量进度。
 1. [当前代码基线](Domeye_Current_Code_Baseline_2026-08-16.md)：确认 `main@6a4bbd4…` 的真实起点，不把设计当实现。
 2. [产品、数据与 Claim 边界 v1.1](Domeye_Product_Data_Claim_Boundary_v1.1.md)：确认产品主名称、当前数据范围和禁止结论。
 3. [首个纵向切片锚点合同](Domeye_First_Vertical_Slice_Anchor_v1.0.md)：确认 M0/M1 的固定问题、身份、执行链、J1–J5 与 DG1 门槛。
-4. [首个纵向切片目标效果与实现硬边界 v1.0](Domeye_First_Vertical_Slice_Target_Effect_v1.0.md)：合并五个核心难点，以四个 Spike 验证 Pi 决策因果、Capability Gateway、Observation Replan 和轨迹 Eval。
+4. [首个真实 Agent Loop Spike 合同 v1.1](Domeye_First_Real_Agent_Loop_Spike_Contract_v1.1.md)：以合法 Goal 推进而非固定轨迹，验证 Pi 决策因果、稳定 Capability View、薄执行边界、Observation Replan 和可行性评测。
 5. [目标架构 v1.1](Domeye_Agent_Target_Architecture_v1.1.md)：理解长期职责和迁移方向，不将其当作当前建设清单。
 6. [用户回答与内部证据边界 v1.0](Domeye_Agent_User_Answer_and_Internal_Evidence_Boundary_v1.0.md)：明确用户正文、内部证据、简洁表达和完成语义；当前状态为 `Designed`。
 7. [首个纵向切片回答呈现附加合同 v1.0](Domeye_First_Vertical_Slice_Answer_Presentation_Addendum_v1.0.md)：在不改写锚点 v1.0 的前提下，固定 Answer Context v2、结构化 Draft、Host 拼接和 Guard v2。
