@@ -161,7 +161,7 @@ fixture 168/168、Issue 关闭或代码合并，均不能单独证明 Agent 能�
 
 **当前 `main` 基线**
 
-`p2-s1-composition-contracts.ts`、`country_outage_p2_s1_investigation_runtime.py`、`country_outage_p2_s1_registry_dispatcher.py` 和历史 Evidence 中仍有旧 Gate 语义。
+旧 P1 / P2 Runtime、Dispatcher 和组合合同已从当前树退役。旧 Gate 编号语义只保留在 Git 历史和历史 Evidence 中，不再作为当前实现依据；当前 Candidate 尚未完成语义 URI 迁移的通用化工作。
 
 **架构归属与阶段**
 
@@ -187,7 +187,7 @@ fixture 168/168、Issue 关闭或代码合并，均不能单独证明 Agent 能�
 
 **代码基线校正**
 
-当前 P2 确有 CAS、取消、rerun、幂等、失败终态和隔离 Store，但没有已确认的正式 worker、跨进程等待、自动恢复和自动重试主路径。它更准确地说是“带耐久资产的本地同步 DAG 原型”，不是已经完成的 Durable Job。
+旧 P2 的 CAS、取消、rerun、幂等指针、失败终态和隔离 Store 原型已退出当前树。当前 Candidate 没有 Durable Job、正式 worker、跨进程等待、自动恢复或自动重试主路径；相关经验只能从 Git 历史重新审查后提取。
 
 **v1.1 整改决定**
 
@@ -257,7 +257,7 @@ Answer Context 对 Finding 的选择、Renderer 版本和 Guard 结果进入回�
 
 **当前 `main` 基线**
 
-`country_outage_p2_s1_evidence_graph.py` 有内容寻址、闭包和 Receipt 经验，但当前对象自报 `design_only=true`、`runtime_implemented=false`、`production_deployed=false`，并且逻辑关系仍混合。
+旧 Python P2 EvidenceGraph 已移除。当前趋势产品仍有用途受限的 EvidenceGraph 产物，但它不能证明 Execution Provenance、Data Lineage 和 Domain Evidence 三类通用语义已经拆分完成。
 
 **架构归属与阶段**
 
@@ -359,7 +359,7 @@ Action 需要耐久性时，以 `upgrade_required` 结束并创建新 Job Propos
 
 **当前 `main` 基线**
 
-P1 的 `P1RuntimeV2Grounder` 仍按 `normalized_kind` 编译完整 GroundingPlan / DAG，并由 `admitPlan()` 整体准入；P2 仍以 InvestigationPlan / 静态 DAG 为中心。
+旧 P1 GroundingPlan 和 P2 InvestigationPlan / 静态 DAG Runtime 已从当前树退役。当前首个纵向切片只允许 Pi 提出一个下一步 Capability Proposal，并由 Trust Kernel 独立准入。
 
 **架构归属与阶段**
 
@@ -386,7 +386,7 @@ Compute Contract 只能由 L4 领域编译器在准入后生成；模型不可�
 
 **当前 `main` 基线**
 
-P2 有 OP-05..33、OP-35..39，大量确定性计算有复用价值；同时确实包含不少通用集合和聚合行为。真实负载和维护收益尚未证明需要新 Compute 平台。
+OP-05..33、OP-35..39 只存在于 Git 历史，不是当前可执行能力。当前切片只保留经 Candidate 固定的最小确定性计算；真实负载和维护收益仍未证明需要新 Compute 平台。
 
 **架构归属与阶段**
 
@@ -414,7 +414,7 @@ P2 有 OP-05..33、OP-35..39，大量确定性计算有复用价值；同时确�
 
 **当前 `main` 基线**
 
-`country_outage_p2_s1_result_set.py` 已有内容寻址、分页链和 manifest 经验，但当前 fixture 小，尚未形成真实大人口性能证据。
+旧 Python ResultSet 已从当前树移除。当前没有通用、可执行的分页 ResultSet、partition manifest 或大人口容量证据；相关设计只能作为后续重新立项时的历史输入。
 
 **架构归属与阶段**
 
@@ -441,7 +441,7 @@ P2 有 OP-05..33、OP-35..39，大量确定性计算有复用价值；同时确�
 
 **当前 `main` 基线**
 
-P2 有多 revision Plan 设计和延期的 PLAN-CAP-02，但没有正式 Durable Job / worker 主链。
+多 revision Plan 与 PLAN-CAP-02 只保留在 Git 历史中；当前没有正式 Durable Job / worker 主链。
 
 **架构归属与阶段**
 
@@ -466,7 +466,7 @@ Adapter 分为 Structural Projection、Canonicalization、Type Coercion 和 Sema
 
 **当前 `main` 基线**
 
-`P1PageCapabilityExecutor` 仍混合 API 读取、字段拼装、计算、Evidence 和中文渲染；P2 有 structural context / binding receipt 的设计资产。
+旧 P1 Page Capability Executor 与 P2 structural context / binding receipt 原型已退出当前树。当前首个纵向切片已有用途受限的 typed read model 和 Trust Kernel 边界，但尚未形成通用 Adapter 合同。
 
 **架构归属与阶段**
 
@@ -501,7 +501,7 @@ Answer Context 只选择本轮所需 Finding 和必要 limitation，不执行新
 
 **当前 `main` 基线**
 
-P1 Executor 直接构造中文结果；旧报告路径已有确定性事实骨架和后置校验经验；P2 有私有 staging、结构化事实和最后 CAS 的资产。当前缺口是统一 Typed Finding / Answer Context 和职责受限的 Response Guard，不是缺少独立 Publisher。
+当前首个纵向切片已实现用途受限的 Typed Finding、最小 Answer Context、确定性 Renderer 和 Response Guard。旧 P1 / P2 staging 与最终 CAS 原型已退役；当前缺口是把这些边界扩展到多 Finding 和跨步骤回答，而不是增加独立 Publisher。
 
 **架构归属与阶段**
 
@@ -633,7 +633,7 @@ Artifact Envelope / Finding 必须传播 collector / VP / peer set、peer health
 
 **当前 `main` 基线**
 
-现有 ResultSet completeness 主要是 `complete`、`partial_page`、`source_incomplete`，尚未统一表达四个正交维度。
+旧 P2 completeness 实现已移除。当前首个切片只表达自身冻结读模型所需的范围与限制，尚未用统一合同覆盖四个正交完整性维度。
 
 **架构归属与阶段**
 
@@ -712,7 +712,7 @@ OP-06、OP-35、OP-36 已有部分左 / 右删失和阈值概念，是重要迁�
 
 **当前 `main` 基线**
 
-OP-05 有 severity rank Profile，但必须避免把它渲染成用户影响或全国影响排名。
+旧 OP-05 severity rank Profile 已退出当前树。当前没有可执行的严重度排名能力，也不得把控制面指标渲染成用户影响或全国影响排名。
 
 **架构归属与阶段**
 
@@ -742,7 +742,7 @@ Fixed cohort 有利于可比，但会漏掉新前缀、deaggregation、更具体
 
 **当前 `main` 基线**
 
-TOOL-07、TOOL-10 和 P1 fixed / new 逻辑提供了基础，但统一的 `population_strategy` 和比例 Finding `denominator_ref` 尚未形成。
+旧 TOOL-07、TOOL-10 和 P1 fixed / new Runtime 已退出当前树。当前切片只固定单一读模型人口，统一的 `population_strategy` 和比例 Finding `denominator_ref` 尚未形成。
 
 **架构归属与阶段**
 

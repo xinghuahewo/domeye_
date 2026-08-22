@@ -18,9 +18,9 @@ EXPECTED_ROUTES = {
     '/api/v1/features/top',
     '/api/v1/features/countries',
     '/api/v1/features/countries/overview',
-        '/api/v1/features/ases',
-        '/api/v1/features/ases/overview',
-        '/api/v1/features/ases/events',
+    '/api/v1/features/ases',
+    '/api/v1/features/ases/overview',
+    '/api/v1/features/ases/events',
     '/api/v1/features/outages/country-as',
     '/api/v1/features/outages/country-prefix',
     '/api/v1/features/outages/as-prefix',
@@ -35,16 +35,14 @@ EXPECTED_ROUTES = {
     '/api/v2/country-outages/<incident_id>/asns',
     '/api/v2/country-outages/<incident_id>/audit',
     '/api/v2/country-outages/<incident_id>/trend',
-    '/api/v2/country-outage/capabilities/external-evidence',
-    '/api/v2/country-outage/reports',
-    '/api/v2/country-outage/reports/<report_id>/events',
-    '/api/v2/country-outage/reports/<report_id>/questions',
+    '/api/v2/country-outages/<incident_id>/path-downstreams',
+    '/api/v2/country-outage/chat/conversations',
+    '/api/v2/country-outage/chat/conversations/<conversation_id>',
+    '/api/v2/country-outage/chat/conversations/<conversation_id>/turns',
     (
-        '/api/v2/country-outage/reports/<report_id>/questions/'
-        '<question_id>/artifacts/external-appendix'
+        '/api/v2/country-outage/chat/conversations/<conversation_id>/'
+        'turns/<turn_id>/cancel'
     ),
-    '/api/v2/country-outage/reports/<report_id>/artifacts/<artifact_format>',
-    '/api/v2/country-outage/runs/<run_id>/abort',
 }
 
 
