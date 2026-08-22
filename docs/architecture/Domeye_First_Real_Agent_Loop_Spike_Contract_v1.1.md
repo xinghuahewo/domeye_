@@ -263,8 +263,10 @@ Finding-to-Answer 链得到正确最终答案，当前 trial 才能记为成功�
 每个真实 trial 至少记录并绑定：
 
 - 输入 Goal State；
-- Capability View digest 和内容摘要；
-- 发给 Provider 的请求摘要；
+- Capability View digest 和完整内容；
+- 发给 Provider 的完整请求制品，必须保留 system prompt、messages、Tool / Decision schema、
+  `tool_choice` 和 Capability View；持久化前只允许按显式字段规则去除凭据值，不得省略可能
+  泄漏 expected decision 的语义内容；
 - Pi 原始 Decision；
 - 当前状态对应的合法 Decision 集及判定依据；
 - Resolver 结果和实际 Execution Unit；
@@ -320,6 +322,21 @@ Finding-to-Answer 链得到正确最终答案，当前 trial 才能记为成功�
 - 每个 Spike 都必须包含至少一条真实 Pi 路径；纯 scripted 结果不能 `GO`。
 - Spike 代码默认是隔离实验，不接生产路由，不声明产品能力。
 
+#### 跨 Spike 不可变输入
+
+后继 Spike 不能读取兄弟 worktree、未提交文件、旧会话上下文或可变本地路径。每个 Spike
+`GO` 后必须先：
+
+1. 将实现、版本化合同、测试和 `spike-result` manifest 提交并推送；
+2. 在 manifest 中绑定 Spike ID、完整 source commit、输入/输出合同 digest、Evidence digest、
+   Gate 决定和非目标；
+3. 由独立只读复核确认 commit、manifest 和 Evidence 一致；
+4. 后继 Spike 从该完整 GO commit 新建 worktree，并把它写成新任务合同的 `baseCommit`；
+5. 后继任务只从当前 worktree 中已经由基线提交带入的版本化合同和 Adapter 读取前序结果。
+
+前序 Spike 未提交、未推送、未形成 `GO` manifest 或基线不一致时，后继 Spike 不得启动。
+这种线性继承只用于实验可重放，不表示前序 Spike 已经产品化或进入正式运行路径。
+
 ### 5.2 Spike 1 — Pi Decision Causality
 
 **唯一未知：** 不给标准下一步时，Pi 能否根据最小 Goal State、稳定 Capability View 和
@@ -368,7 +385,8 @@ Observation Builder 职责分离。
 
 **最小范围：**
 
-- 复用 Spike 1 Decision；
+- 从 Spike 1 `GO` commit 继承版本化 Decision schema 和最小循环实现，不读取 Spike 1 的兄弟
+  worktree 或临时运行输出；
 - 接现有 Trust Kernel 调用位置；
 - 两条 Resolver 映射；
 - 两个薄 Execution Adapter；
@@ -397,8 +415,8 @@ Observation Builder 职责分离。
 
 **唯一未知：** 真实执行结果变化时，Pi 是否会在稳定 Capability View 中改变后续 Decision。
 
-**最小范围：** 复用前两个 Spike，只增加 `completed / partial / rejected / failed` Observation、
-Observation History 和 Budget。
+**最小范围：** 从 Spike 2 `GO` commit 线性继承前两个 Spike 的版本化合同与薄执行边界，只增加
+`completed / partial / rejected / failed` Observation、Observation History 和 Budget。
 
 **真实验证：** 用真实 Pi 运行读取完成、已有 Artifact、部分结果、可重试失败、终止失败和
 rejected；失败由受控 Execution Unit fixture 产生，但 Pi 路径不得 scripted。
